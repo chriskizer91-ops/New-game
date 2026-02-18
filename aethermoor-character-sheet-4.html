@@ -1,0 +1,1356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aethermoor — Character Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
+
+  :root {
+    --bg0: #0c0a0e; --bg1: #110f15; --bg2: #16131c;
+    --panel: #1a1722; --panel2: #14111b; --panel-hover: #201c2a;
+    --text: #ede8df; --text-dim: #c4bdb0; --text-muted: #7d7688;
+    --accent: #c9a24d; --accent-dim: rgba(201,162,77,.12); --accent-glow: rgba(201,162,77,.2);
+    --accent2: #7ea88e; --accent2-dim: rgba(126,168,142,.12);
+    --warn: #d4a24a; --warn-dim: rgba(212,162,74,.12);
+    --danger: #c47272; --danger-dim: rgba(196,114,114,.12);
+    --info: #8a9ec4; --info-dim: rgba(138,158,196,.12);
+    --hp-green: #7ea88e; --hp-yellow: #c9a24d; --hp-red: #c47272;
+    --border: rgba(237,232,223,.06); --border-accent: rgba(201,162,77,.25); --border-hover: rgba(237,232,223,.12);
+    --shadow: 0 4px 24px rgba(0,0,0,.5); --shadow-lg: 0 12px 48px rgba(0,0,0,.6);
+    --radius: 6px; --radius-sm: 4px; --radius-pill: 999px;
+    --serif: 'Cormorant Garamond', 'Georgia', serif;
+    --font: 'DM Sans', system-ui, -apple-system, sans-serif;
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+    --base: 14px; --transition: .2s cubic-bezier(.4,0,.2,1);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font); font-size: var(--base); line-height: 1.55;
+    color: var(--text); background: var(--bg0); overflow-x: hidden; min-height: 100vh;
+  }
+
+  /* Texture overlay — grain, not glow */
+  body::before {
+    content: ''; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background:
+      radial-gradient(ellipse 700px 500px at 20% 5%, rgba(201,162,77,.04) 0%, transparent 70%),
+      radial-gradient(ellipse 500px 400px at 80% 90%, rgba(126,168,142,.03) 0%, transparent 70%);
+    z-index: -1; pointer-events: none;
+  }
+  body::after {
+    content: ''; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    opacity: 0.35; z-index: -1; pointer-events: none; mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 200px 200px;
+  }
+
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(201,162,77,.15); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(201,162,77,.3); }
+
+  .app-wrap { max-width: 1060px; margin: 0 auto; padding: 28px 20px 60px; }
+
+  /* ============================================================
+     HEADER — responds to the character arriving
+     ============================================================ */
+  .header { text-align: center; margin-bottom: 28px; padding: 8px 0; }
+
+  /* When nobody is here yet */
+  .header-empty h1 {
+    font-family: var(--serif); font-size: 32px; font-weight: 700;
+    letter-spacing: .02em; color: var(--accent);
+    text-shadow: 0 0 40px rgba(201,162,77,.15);
+  }
+  .header-empty .sub {
+    font-family: var(--serif); font-size: 13px; font-weight: 400;
+    color: var(--text-muted); letter-spacing: .25em; text-transform: uppercase;
+    margin-top: 4px; font-style: italic;
+  }
+
+  /* When someone has arrived */
+  .header-named .char-name {
+    font-family: var(--serif); font-size: 36px; font-weight: 700;
+    letter-spacing: .01em; color: var(--text);
+    line-height: 1.2;
+  }
+  .header-named .char-title {
+    font-family: var(--serif); font-size: 15px; font-weight: 400;
+    color: var(--accent); font-style: italic;
+    margin-top: 2px; letter-spacing: .04em;
+  }
+  .header-named .sub {
+    font-family: var(--serif); font-size: 11px; font-weight: 400;
+    color: var(--text-muted); letter-spacing: .2em; text-transform: uppercase;
+    margin-top: 8px; font-style: italic;
+    opacity: .6;
+  }
+
+  /* Cards — less glossy, more material */
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 18px; box-shadow: var(--shadow);
+    transition: border-color var(--transition);
+    margin-bottom: 16px;
+    position: relative;
+  }
+  .card:hover { border-color: var(--border-hover); }
+
+  /* The worn-and-wielded card — these are on your body */
+  .card.worn {
+    border-left: 2px solid rgba(201,162,77,.15);
+  }
+
+  /* Section Dividers — like chapter markers */
+  .divider { display: flex; align-items: center; gap: 16px; margin: 32px 0 18px; }
+  .divider::before, .divider::after {
+    content: ''; flex: 1; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border), transparent);
+  }
+  .divider-label {
+    font-family: var(--serif); font-size: 14px; font-weight: 600;
+    letter-spacing: .15em; text-transform: uppercase;
+    color: var(--text-muted); white-space: nowrap;
+  }
+
+  /* Toolbar — New Character is separated, because it's an ending */
+  .toolbar { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 20px; }
+  .toolbar-gap { width: 16px; }
+  .btn {
+    cursor: pointer; border: 1px solid var(--border); background: rgba(237,232,223,.03);
+    color: var(--text-dim); padding: 7px 16px; border-radius: var(--radius-sm);
+    font-family: var(--font); font-size: 12px; font-weight: 500;
+    transition: all var(--transition); white-space: nowrap; letter-spacing: .02em;
+  }
+  .btn:hover { background: rgba(237,232,223,.07); color: var(--text); border-color: var(--border-hover); }
+  .btn.danger {
+    border-color: rgba(196,114,114,.15); color: var(--text-muted);
+  }
+  .btn.danger:hover { background: var(--danger-dim); color: var(--danger); border-color: rgba(196,114,114,.3); }
+
+  /* Form Fields */
+  .field-grid { display: grid; gap: 14px; }
+  .field-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .field-grid.cols-6 { grid-template-columns: repeat(6, 1fr); }
+  .field-grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
+  .field-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field-label {
+    font-family: var(--serif); font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .08em;
+    color: var(--text-muted);
+  }
+  input[type="text"], select, input[type="number"], textarea {
+    background: rgba(237,232,223,.04); border: 1px solid var(--border); color: var(--text);
+    padding: 9px 12px; border-radius: var(--radius-sm); font-family: var(--font); font-size: 13px;
+    outline: none; transition: border-color var(--transition), box-shadow var(--transition); width: 100%;
+  }
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--border-accent); box-shadow: 0 0 0 2px var(--accent-dim);
+  }
+  select { cursor: pointer; }
+  textarea { min-height: 100px; resize: vertical; line-height: 1.65; }
+
+  /* ============================================================
+     ABILITY SCORES — scores that have been shaped glow warmer
+     ============================================================ */
+  .ability-card {
+    text-align: center; padding: 16px 8px;
+    background: rgba(237,232,223,.02); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    transition: all .3s ease;
+    position: relative;
+  }
+  .ability-card:hover { border-color: var(--border-hover); background: rgba(237,232,223,.04); }
+  /* When a score has been changed from default — the character is taking shape here */
+  .ability-card.shaped {
+    background: rgba(201,162,77,.04); border-color: rgba(201,162,77,.1);
+  }
+  .ability-name {
+    font-family: var(--serif); font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .12em;
+    color: var(--text-muted); margin-bottom: 8px;
+  }
+  .ability-score {
+    font-family: var(--mono); font-size: 28px; font-weight: 700; color: var(--text);
+    width: 60px; text-align: center; background: transparent; border: none;
+    border-bottom: 2px solid rgba(201,162,77,.2); outline: none;
+    margin: 0 auto; display: block; transition: border-color var(--transition);
+  }
+  .ability-score:focus { border-bottom-color: var(--accent); box-shadow: none; }
+  .ability-mod {
+    font-family: var(--mono); font-size: 13px; font-weight: 700;
+    color: var(--accent); margin-top: 8px; letter-spacing: .05em;
+  }
+
+  /* ============================================================
+     VITAL STATISTICS — HP card tints with health state
+     ============================================================ */
+  .vital-card {
+    text-align: center; padding: 16px 10px;
+    background: rgba(237,232,223,.02); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    transition: background .4s ease, border-color .4s ease;
+  }
+  .vital-card.hp-healthy { background: rgba(126,168,142,.04); border-color: rgba(126,168,142,.1); }
+  .vital-card.hp-wounded { background: rgba(201,162,77,.05); border-color: rgba(201,162,77,.12); }
+  .vital-card.hp-critical { background: rgba(196,114,114,.06); border-color: rgba(196,114,114,.15); }
+  .vital-label {
+    font-family: var(--serif); font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .08em;
+    color: var(--text-muted); margin-bottom: 10px;
+  }
+  .vital-value { display: flex; align-items: center; justify-content: center; gap: 4px; }
+  .vital-input {
+    font-family: var(--mono); font-size: 24px; font-weight: 700; color: var(--text);
+    width: 54px; text-align: center; background: transparent; border: none;
+    border-bottom: 2px solid rgba(201,162,77,.2); outline: none;
+  }
+  .vital-input:focus { border-bottom-color: var(--accent); }
+  .vital-sep { font-size: 18px; color: var(--text-muted); }
+  .vital-static {
+    font-family: var(--mono); font-size: 24px; font-weight: 700; color: var(--accent);
+  }
+
+  .hp-bar-track {
+    width: 100%; height: 6px; background: rgba(237,232,223,.06);
+    border-radius: 3px; margin-top: 10px; overflow: hidden;
+  }
+  .hp-bar-fill {
+    height: 100%; border-radius: 3px;
+    transition: width 0.4s ease, background 0.4s ease;
+  }
+
+  /* ============================================================
+     CONDITIONS — active ones pulse slowly, because they're ongoing
+     ============================================================ */
+  .conditions-wrap { display: flex; flex-wrap: wrap; gap: 7px; }
+  .cond-tag {
+    font-family: var(--serif); font-size: 12px; font-weight: 600;
+    padding: 4px 14px; letter-spacing: .03em;
+    border: 1px solid var(--border); background: rgba(237,232,223,.02);
+    border-radius: var(--radius-sm); cursor: pointer; transition: all var(--transition);
+    color: var(--text-dim);
+  }
+  .cond-tag:hover { background: rgba(237,232,223,.06); border-color: var(--border-hover); }
+  .cond-tag.active {
+    background: var(--danger-dim); border-color: rgba(196,114,114,.35);
+    color: var(--danger); font-weight: 700;
+    animation: condPulse 3.5s ease-in-out infinite;
+  }
+  @keyframes condPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .7; }
+  }
+
+  /* ============================================================
+     DOMAINS — invested ones breathe, empty ones recede
+     ============================================================ */
+  .domains-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .domain-card.expanded { grid-column: 1 / -1; }
+  .domain-card {
+    padding: 14px 16px;
+    background: rgba(237,232,223,.02); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    transition: all .3s ease; position: relative; overflow: hidden;
+  }
+  /* Empty domains recede — they're possibilities, not commitments */
+  .domain-card.empty {
+    opacity: .5;
+  }
+  .domain-card.empty:hover {
+    opacity: .75;
+    background: rgba(237,232,223,.04); border-color: var(--border-hover);
+  }
+  /* Invested domains warm up */
+  .domain-card.has-level {
+    border-left: 3px solid var(--accent);
+    opacity: 1;
+    background: rgba(201,162,77,.03);
+  }
+  .domain-card.has-level:hover {
+    background: rgba(201,162,77,.05); border-color: var(--border-hover);
+  }
+  /* Deep investment — level 10+ */
+  .domain-card.deep {
+    background: rgba(201,162,77,.05);
+    border-left-color: var(--accent);
+    box-shadow: inset 0 0 20px rgba(201,162,77,.04);
+  }
+  .domain-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .domain-icon {
+    width: 34px; height: 34px; border-radius: var(--radius-sm); display: flex;
+    align-items: center; justify-content: center;
+    font-size: 17px; background: rgba(201,162,77,.06); border: 1px solid rgba(201,162,77,.1); flex-shrink: 0;
+  }
+  .domain-info { flex: 1; min-width: 0; }
+  .domain-name {
+    font-family: var(--serif); font-size: 13px; font-weight: 700;
+    color: var(--text); letter-spacing: .01em;
+  }
+  .domain-meta { font-size: 10px; color: var(--text-muted); line-height: 1.4; margin-top: 1px; }
+  .domain-level-wrap { display: flex; align-items: center; gap: 4px; }
+  .domain-level-lbl {
+    font-family: var(--serif); font-size: 9px; font-weight: 700;
+    color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em;
+  }
+  .domain-level-input {
+    font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--accent);
+    width: 38px; text-align: center; background: var(--accent-dim);
+    border: 1px solid var(--border-accent);
+    border-radius: var(--radius-sm); outline: none; padding: 3px 4px;
+  }
+  .domain-level-input:focus { box-shadow: 0 0 0 2px var(--accent-glow); }
+  .domain-ib {
+    font-family: var(--mono); font-size: 10px; font-weight: 700; color: var(--accent);
+    background: var(--accent-dim); padding: 2px 10px; border-radius: var(--radius-sm);
+    display: inline-block; margin-top: 4px; letter-spacing: .03em;
+  }
+  .domain-path { margin-top: 8px; }
+  .domain-path select {
+    font-family: var(--font); font-size: 11px; color: var(--text); width: 100%;
+    background: rgba(237,232,223,.04); border: 1px solid var(--border);
+    padding: 5px 8px; border-radius: var(--radius-sm); cursor: pointer; outline: none;
+  }
+  .domain-path select:focus { border-color: var(--border-accent); box-shadow: 0 0 0 2px var(--accent-dim); }
+  .domain-path-label {
+    font-family: var(--serif); font-size: 9px; font-weight: 700;
+    color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px;
+  }
+  .domain-path-hint { font-size: 10px; color: var(--text-muted); opacity: .5; margin-top: 4px; }
+
+  .domain-opt-section { margin-top: 6px; }
+  .domain-opt-label {
+    font-family: var(--serif); font-size: 9px; font-weight: 700;
+    color: var(--info); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 3px;
+  }
+  .domain-opt-section select {
+    font-family: var(--font); font-size: 11px; color: var(--text); width: 100%;
+    background: rgba(237,232,223,.04); border: 1px solid var(--border);
+    padding: 5px 8px; border-radius: var(--radius-sm); cursor: pointer; outline: none;
+  }
+  .domain-opt-section select:focus { border-color: var(--info); box-shadow: 0 0 0 2px var(--info-dim); }
+
+  /* Resources */
+  .resource-card {
+    text-align: center; padding: 12px 8px;
+    background: rgba(237,232,223,.02); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  }
+  .resource-label {
+    font-family: var(--serif); font-size: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .08em;
+    color: var(--text-muted); margin-bottom: 8px;
+  }
+  .resource-input {
+    font-family: var(--mono); font-size: 18px; font-weight: 700; color: var(--warn);
+    width: 60px; text-align: center; background: transparent; border: none;
+    border-bottom: 2px solid rgba(201,162,77,.15); outline: none;
+  }
+  .resource-input:focus { border-bottom-color: var(--warn); }
+
+  /* Equipment & Inventory */
+  .inv-list { list-style: none; }
+  .inv-item {
+    display: flex; align-items: center; gap: 10px; padding: 7px 0;
+    border-bottom: 1px solid var(--border); font-size: 13px;
+  }
+  .inv-item:last-child { border-bottom: none; }
+  .inv-bullet { color: var(--accent); font-size: 7px; flex-shrink: 0; opacity: .6; }
+  .inv-input {
+    flex: 1; font-family: var(--font); font-size: 13px; color: var(--text);
+    background: transparent; border: none; outline: none; padding: 2px 0;
+  }
+  .inv-input::placeholder { color: rgba(237,232,223,.15); }
+  .inv-input:focus { color: var(--text); }
+  .inv-remove {
+    background: none; border: none; color: rgba(237,232,223,.12); cursor: pointer;
+    font-size: 14px; padding: 2px 6px; transition: color var(--transition);
+  }
+  .inv-remove:hover { color: var(--danger); }
+  .add-btn {
+    font-family: var(--font); font-size: 11px; font-weight: 500;
+    color: var(--text-muted); background: none; border: 1px dashed rgba(201,162,77,.15);
+    border-radius: var(--radius-sm); padding: 7px 12px; cursor: pointer;
+    transition: all var(--transition); margin-top: 10px; display: block; width: 100%;
+    letter-spacing: .02em;
+  }
+  .add-btn:hover { border-color: var(--border-accent); color: var(--accent); background: var(--accent-dim); }
+
+  .inv-section-title {
+    font-family: var(--serif); font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .08em;
+    color: var(--text-muted); margin-bottom: 10px;
+  }
+
+  /* ============================================================
+     BACKSTORY & NOTES — given more room, more warmth
+     ============================================================ */
+  .notes-area {
+    width: 100%; min-height: 120px; font-family: var(--font); font-size: 13px;
+    color: var(--text); background: rgba(237,232,223,.03); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 14px 16px; outline: none; resize: vertical; line-height: 1.7;
+    transition: border-color var(--transition), box-shadow var(--transition);
+  }
+  .notes-area:focus { border-color: var(--border-accent); box-shadow: 0 0 0 2px var(--accent-dim); }
+  .notes-area::placeholder { color: rgba(237,232,223,.18); font-style: italic; }
+
+  /* Backstory gets its own treatment — this is where the person lives */
+  .backstory-area {
+    min-height: 140px;
+    background: rgba(201,162,77,.02);
+    border-color: rgba(201,162,77,.08);
+  }
+  .backstory-area:focus {
+    border-color: var(--border-accent);
+    background: rgba(201,162,77,.03);
+  }
+
+  /* Colophon */
+  .colophon {
+    text-align: center; margin-top: 48px; padding: 16px 0;
+    border-top: 1px solid var(--border);
+    font-family: var(--serif); font-size: 11px; font-style: italic;
+    color: rgba(125,118,136,.35); letter-spacing: .04em;
+    line-height: 1.7;
+  }
+
+  /* Responsive */
+  @media (max-width: 860px) {
+    .field-grid.cols-3 { grid-template-columns: 1fr; }
+    .field-grid.cols-6 { grid-template-columns: repeat(3, 1fr); }
+    .field-grid.cols-4 { grid-template-columns: repeat(2, 1fr); }
+    .domains-grid { grid-template-columns: 1fr; }
+    .field-grid.cols-2 { grid-template-columns: 1fr; }
+    .toolbar-gap { width: 8px; }
+  }
+  @media (max-width: 480px) {
+    .field-grid.cols-6 { grid-template-columns: repeat(2, 1fr); }
+    .field-grid.cols-4 { grid-template-columns: repeat(2, 1fr); }
+    .app-wrap { padding: 16px 12px 40px; }
+    .header-named .char-name { font-size: 28px; }
+    .header-empty h1 { font-size: 26px; }
+  }
+
+  #importInput { display: none; }
+
+  @media print {
+    body { background: #fff !important; color: #000 !important; }
+    body::before, body::after { display: none; }
+    .card { box-shadow: none !important; border-color: #ccc !important; background: #fff !important; }
+    .toolbar { display: none !important; }
+    .btn { display: none !important; }
+    .colophon { display: none !important; }
+    input, select, textarea { color: #000 !important; border-color: #ccc !important; }
+    .ability-score, .vital-input, .resource-input { color: #000 !important; }
+    .domain-level-input { color: #000 !important; background: #eee !important; }
+    .cond-tag { color: #333 !important; border-color: #ccc !important; animation: none !important; }
+    .cond-tag.active { color: #c00 !important; border-color: #c00 !important; background: #fdd !important; }
+    .domain-card.empty { opacity: 1 !important; }
+  }
+
+  /* ============================================================
+     DOMAIN MECHANICS — expandable detail panel
+     ============================================================ */
+  .domain-expand-btn {
+    font-family: var(--serif); font-size: 10px; font-weight: 600;
+    color: var(--text-muted); background: none; border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 3px 10px; cursor: pointer;
+    transition: all var(--transition); margin-top: 8px; letter-spacing: .04em;
+  }
+  .domain-expand-btn:hover { color: var(--accent); border-color: var(--border-accent); background: var(--accent-dim); }
+  .domain-expand-btn.open { color: var(--accent); border-color: var(--border-accent); }
+
+  .domain-mechanics {
+    margin-top: 10px; padding-top: 10px;
+    border-top: 1px solid var(--border);
+    max-height: 500px; overflow-y: auto;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px;
+  }
+  .domain-mechanics .mech-section { break-inside: avoid; }
+  @media (max-width: 860px) {
+    .domain-mechanics { grid-template-columns: 1fr; }
+  }
+  .domain-mechanics::-webkit-scrollbar { width: 3px; }
+  .domain-mechanics::-webkit-scrollbar-thumb { background: rgba(201,162,77,.15); border-radius: 2px; }
+
+  .mech-section { margin-bottom: 10px; }
+  .mech-section:last-child { margin-bottom: 0; }
+  .mech-section-title {
+    font-family: var(--serif); font-size: 10px; font-weight: 700;
+    color: var(--accent); text-transform: uppercase; letter-spacing: .06em;
+    margin-bottom: 4px;
+  }
+  .mech-section-title.path-title { color: var(--info); }
+  .mech-node {
+    padding: 6px 8px; margin-bottom: 4px;
+    background: rgba(237,232,223,.02); border-left: 2px solid rgba(201,162,77,.15);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    font-size: 11px; line-height: 1.5; color: var(--text-dim);
+  }
+  .mech-node.locked-node {
+    opacity: .4; border-left-color: rgba(237,232,223,.06);
+  }
+  .mech-node-level {
+    font-family: var(--mono); font-size: 9px; font-weight: 700;
+    color: var(--accent); background: var(--accent-dim);
+    padding: 1px 6px; border-radius: var(--radius-sm);
+    display: inline-block; margin-right: 4px;
+  }
+  .mech-node.locked-node .mech-node-level {
+    color: var(--text-muted); background: rgba(237,232,223,.04);
+  }
+  .mech-node-title {
+    font-weight: 600; color: var(--text); font-size: 11px;
+    display: inline;
+  }
+  .mech-node-body {
+    font-style: italic; color: var(--text-muted); margin-top: 2px; font-size: 10px;
+  }
+  .mech-bullet {
+    margin-top: 3px; padding-left: 10px; position: relative;
+    font-size: 10.5px; color: var(--text-dim); line-height: 1.45;
+  }
+  .mech-bullet::before {
+    content: '\u25B8'; position: absolute; left: 0; color: var(--accent); font-size: 9px;
+  }
+  .mech-node.locked-node .mech-bullet::before { color: var(--text-muted); }
+  .mech-path-block {
+    padding: 6px 8px; margin-bottom: 4px;
+    background: rgba(138,158,196,.03); border-left: 2px solid rgba(138,158,196,.2);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    font-size: 11px; line-height: 1.5;
+  }
+  .mech-path-name {
+    font-weight: 700; color: var(--info); font-size: 11px;
+  }
+
+  /* Definition tooltips */
+  .def-term {
+    border-bottom: 1px dotted var(--text-muted); cursor: help;
+    position: relative; display: inline;
+  }
+
+  /* No entrance animation — it's already here when you arrive */
+  .animate-in { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="app-wrap" id="app"></div>
+<input type="file" id="importInput" accept=".json" onchange="importCharacter(event)">
+
+<script>
+// ============================================================
+// DOMAIN DATA (imported from Accretion Skill Tree v4)
+// ============================================================
+// ============================================================
+// DEFINITIONS — game term glossary from the Accretion Skill Tree
+// ============================================================
+const DEFINITIONS = {
+  "Imprint Bonus": "Your Imprint Bonus (IB) is a scaling value determined by your domain level. L1-4: +2, L5-8: +3, L9-12: +4, L13-16: +5, L17-20: +6.",
+  "Imprint DC": "For features that call for a saving throw: Imprint DC = 8 + IB + relevant ability modifier.",
+  "Expertise": "Double your proficiency bonus for that skill or tool.",
+  "Advantage": "Roll two d20s and use the higher result.",
+  "Bonus Action": "A swift action on your turn in addition to your main action. One per turn.",
+  "Reaction": "A special response triggered by a specific event, even on another creature's turn. One per round.",
+  "Opportunity Attack": "When a hostile creature moves out of your melee reach, you can use your reaction to make one melee attack.",
+  "Temporary Hit Points": "A buffer that absorbs damage first. They don't stack — use the highest. Gone after a long rest.",
+  "Short Rest": "At least 1 hour of downtime. Some features recharge on a short rest.",
+  "Long Rest": "At least 8 hours of rest. Most features and all hit points/Hit Dice recharge.",
+  "Concentration": "Some effects require concentration. Damage forces a Con save (DC 10 or half damage). One effect at a time.",
+  "Fighting Style": "Archery: +2 ranged. Defense: +1 AC in armor. Dueling: +2 damage one-handed. Great Weapon: reroll 1s/2s. Two-Weapon: add mod to off-hand. Protection: impose disadvantage with shield.",
+  "Grapple": "Special melee attack. Contested Athletics vs Athletics/Acrobatics. Success: target speed 0.",
+  "Shove": "Push 5 ft or knock prone. Contested Athletics vs Athletics/Acrobatics.",
+  "Restrained": "Speed 0. Attacks against have advantage. Your attacks have disadvantage. Disadvantage on Dex saves.",
+  "Frightened": "Disadvantage on checks and attacks while source is visible. Can't move closer.",
+  "Prone": "Disadvantage on attacks. Melee against you has advantage; ranged has disadvantage. Standing costs half movement.",
+  "Charmed": "Can't attack the charmer. Charmer has advantage on social checks.",
+  "Hit Dice": "Spent during short rests to heal. One per character level.",
+  "Arcane Charges": "Attunement domain resource. Refresh on short/long rest.",
+  "Psi Points": "Psionics domain resource. Refresh on short/long rest.",
+  "Renown": "Influence domain resource. Social capital. Refresh on long rest.",
+  "Difficult Terrain": "Each foot costs 1 extra foot of movement.",
+  "Incapacitated": "Can't take actions or reactions.",
+  "Stunned": "Incapacitated, can't move, auto-fail Str/Dex saves. Attacks against have advantage.",
+  "Exhaustion": "6 levels (cumulative). L1: disadvantage checks. L2: speed halved. L3: disadvantage attacks/saves. L4: HP max halved. L5: speed 0. L6: death.",
+  "Cover": "Half: +2 AC/Dex saves. Three-quarters: +5. Total: can't be targeted directly.",
+};
+
+const DOMAINS = [
+  { id: 'physical', name: 'Physical Mastery', icon: '\uD83D\uDCAA',
+    subtitle: 'Body optimization: strength, speed, fortitude.',
+    core: [
+      { level: 1, title: 'Baseline Conditioning', body: 'Foundation: posture, breathing, recovery habits.', mechanics: ['Gain proficiency in Athletics and Acrobatics. If you already have one, choose one to gain Expertise.', 'Your long jump and high jump distances increase by your IB (minimum +5 ft).'] },
+      { level: 2, title: 'Hardened Routine', body: 'Adaptation: fewer minor injuries, better consistency.', mechanics: ['Your walking speed increases by 5 ft.', 'You have advantage on Constitution saving throws to resist exhaustion from forced march, starvation, thirst, and extreme temperatures.'] },
+      { level: 3, title: 'Branch Point: Choose Path', body: 'Choose one: Power / Speed / Fortitude.', mechanics: ['Pick a Path. Your Path grants a passive benefit immediately and unlocks its L7/L13 options.'] },
+      { level: 5, title: 'Push Limits', body: 'You can perform under stress; failure doesn\'t stick.', mechanics: ['When you fail a Strength, Dexterity, or Constitution check or save, you can reroll it. You must use the new roll. Uses: IB per long rest.'] },
+      { level: 7, title: 'Branch Point: Discipline', body: 'Your path splits into two disciplines.', mechanics: ['Pick one L7 option within your chosen Path.'] },
+      { level: 10, title: 'Efficient Body', body: 'Movement becomes efficient, practiced, hard to disrupt.', mechanics: ['Choose one: climb speed, swim speed, or +5 ft walking speed.', 'You have advantage on checks to escape a grapple or restraints.'] },
+      { level: 13, title: 'Master Technique', body: 'Choose a signature technique.', mechanics: ['Pick one L13 Master Technique within your chosen Path.'] },
+      { level: 15, title: 'Overexertion Control', body: 'Push past limits in controlled bursts.', mechanics: ['Once per long rest, enter Overexertion for 1 minute. Ignore exhaustion effects, advantage on Str/Dex checks and saves. Gain 1 exhaustion when it ends.'] },
+      { level: 18, title: 'Apex Conditioning', body: 'Near-paragon performance.', mechanics: ['Immune to disease, resistance to poison damage, advantage on poison saves.', 'Gain temporary HP equal to your domain level when you roll initiative.'] },
+      { level: 20, title: 'Living Paragon', body: 'Maximum mortal physical mastery.', mechanics: ['Increase Str, Dex, or Con by 2 (max 22) and another by 1 (max 21).', 'Once per long rest, negate a level of exhaustion.'] },
+    ],
+    paths: [
+      { id: 'power', name: 'Power', desc: 'Force, leverage, impact.',
+        mechanics: ['Count as one size larger for carrying capacity, push, drag, lift.', 'Advantage on Athletics checks to shove, grapple, break objects, or force open doors.'],
+        options7: [{ id: 'bruiser', name: 'Bruiser', desc: 'Raw physical dominance.', mechanics: ['Once per turn, +IB extra melee damage.', 'After melee damage, bonus action shove. Uses: IB per long rest.'] }, { id: 'grappler', name: 'Grappler', desc: 'Control bodies, locks, throws.', mechanics: ['Grapple as a bonus action.', 'Grapple creatures up to two sizes larger.', 'Speed not halved when moving a grappled creature.'] }],
+        options13: [{ id: 'overwhelming', name: 'Overwhelming Force', desc: 'Burst power without loss of form.', mechanics: ['On melee hit, target Str save or pushed 10 ft and prone. Success: pushed 5 ft.', 'Objects take double damage from your attacks.'] }, { id: 'bonebreak', name: 'Bonebreak Holds', desc: 'Finish fights with decisive control.', mechanics: ['On successful grapple, contested check to restrain the creature (you are not restrained).', 'Once per short or long rest.'] }]
+      },
+      { id: 'speed', name: 'Speed', desc: 'Acceleration, reflex, balance.',
+        mechanics: ['Walking speed +5 ft.', 'Add IB to initiative rolls.'],
+        options7: [{ id: 'sprinter', name: 'Sprinter', desc: 'Explosive starts; chase and escape.', mechanics: ['Walking speed +10 ft.', 'Dash without provoking opportunity attacks. Uses: IB per long rest.'] }, { id: 'acrobat', name: 'Acrobat', desc: 'Movement mastery, landings, precision.', mechanics: ['Gain climb speed equal to walking speed.', 'Stand from prone costs only 5 ft.', 'Advantage on Dex saves vs being knocked prone or falling.'] }],
+        options13: [{ id: 'blinkstep', name: 'Blink-Step', desc: 'Burst repositioning via perfect footwork.', mechanics: ['Bonus action: move 15 ft without provoking. Advantage on next melee attack if ending adjacent.', 'Uses: IB per long rest.'] }, { id: 'balance', name: 'Impossible Balance', desc: 'Stay upright where others fall.', mechanics: ['Can\'t be knocked prone unless incapacitated.', 'Advantage on Acrobatics/saves vs shove/push.', 'Reduce falling damage by 2d6.'] }]
+      },
+      { id: 'fortitude', name: 'Fortitude', desc: 'Endurance, toughness, recovery.',
+        mechanics: ['Max HP increases by your Physical Mastery level (retroactive).', 'Advantage on Con saves vs poison, disease, and exhaustion.'],
+        options7: [{ id: 'ironhide', name: 'Ironhide', desc: 'Damage resistance through conditioning.', mechanics: ['+1 AC without heavy armor.', 'Reaction: reduce bludgeoning/piercing/slashing damage by 1d8 + IB. Uses: IB per long rest.'] }, { id: 'marathon', name: 'Marathoner', desc: 'Outlast anyone.', mechanics: ['Ignore speed penalty from exhaustion levels 1-2. Level 3: speed only halved.', 'Regain one Hit Die on short rest. +IB HP per Hit Die spent.', 'Only 4 hours sleep needed for long rest benefits.'] }],
+        options13: [{ id: 'painnull', name: 'Pain Nullification', desc: 'Operate through shock and strain.', mechanics: ['Reaction: reduce damage by 2d6 + IB. Advantage on Con saves until end of next turn.', 'Uses: IB per long rest.'] }, { id: 'unyielding', name: 'Unyielding Recovery', desc: 'Recover faster than expected.', mechanics: ['Hit Dice: treat 1s/2s as 3s, add IB to each roll.', 'Once per long rest: reduced to 1 HP instead of 0, gain temp HP equal to domain level.'] }]
+      },
+    ]
+  },
+  { id: 'combat', name: 'Predation & Conflict', icon: '\u2694\uFE0F',
+    subtitle: 'Weapons, tactics, defense, decisive finishing.',
+    core: [
+      { level: 1, title: 'Basic Strikes', body: 'Competent attacks and guard.', mechanics: ['Proficiency with martial weapons and shields.', 'Choose one Fighting Style: Archery, Defense, Dueling, Great Weapon Fighting, Two-Weapon Fighting, Protection.'] },
+      { level: 2, title: 'Combat Footwork', body: 'Spacing, timing, initiative instincts.', mechanics: ['Add IB to initiative rolls.', 'Disengage as a bonus action. Uses: IB per long rest.'] },
+      { level: 3, title: 'Branch Point: Choose Style', body: 'Choose one: Precision / Aggression / Control.', mechanics: ['Pick a Style. Grants passive benefit and unlocks L7/L13 options.'] },
+      { level: 5, title: 'Extra Strike', body: 'You can reliably chain attacks.', mechanics: ['Extra Attack: attack twice instead of once on the Attack action.'] },
+      { level: 7, title: 'Branch Point: Role', body: 'Your style splits into two roles.', mechanics: ['Pick one L7 Role within your Style.'] },
+      { level: 10, title: 'Signature Technique', body: 'A defining move under stress.', mechanics: ['Choose 2 Combat Techniques: Trip, Disarm, Push, Hamstring, Feint, Brace.', 'Apply on hit (no action), target makes save (DC = 8 + IB + Str/Dex mod). Uses: IB per short rest.'] },
+      { level: 13, title: 'Branch Point: Doctrine', body: 'Pick your doctrine.', mechanics: ['Pick one L13 Doctrine within your Style.'] },
+      { level: 15, title: 'Battlefield Dominance', body: 'You dictate tempo.', mechanics: ['Indomitable: reroll a failed save once per long rest.', 'Opportunity attacks have advantage.'] },
+      { level: 18, title: 'Perfected Form', body: 'No wasted motion.', mechanics: ['Attack three times instead of twice.', 'Can\'t be surprised while conscious.'] },
+      { level: 20, title: 'Legendary Warrior', body: 'Peak mortal combat mastery.', mechanics: ['Attack four times instead of three.', 'Regain 1 Indomitable use on initiative if at 0 uses.'] },
+    ],
+    paths: [
+      { id: 'precision', name: 'Precision', desc: 'Accuracy, timing, clean wins.',
+        mechanics: ['Once per turn, +1d6 damage on weapon hit. +1d8 if you moved 10 ft or less this turn.'],
+        options7: [{ id: 'duelist', name: 'Duelist', desc: 'One-on-one supremacy.', mechanics: ['+1 AC when only one enemy within 5 ft.', 'Parry (reaction): reduce melee damage by 1d10 + IB. Uses: IB per long rest.'] }, { id: 'marksman', name: 'Marksman', desc: 'Control distance; shots that matter.', mechanics: ['Ranged attacks ignore half and three-quarters cover.', 'Called Shot: +1d8 damage and -10 ft speed on ranged hit. Uses: IB per long rest.'] }],
+        options13: [{ id: 'killline', name: 'Killing Line', desc: 'Angle attacks into guaranteed damage.', mechanics: ['Once per short rest, replace one attack with a Line Strike: one attack roll vs up to 3 creatures in a line.'] }, { id: 'unerring', name: 'Unerring Aim', desc: 'Hit what you intend.', mechanics: ['Reroll a missed weapon attack. Uses: IB per long rest.'] }]
+      },
+      { id: 'aggression', name: 'Aggression', desc: 'Pressure, momentum, fear.',
+        mechanics: ['Gain temp HP equal to Combat level when reducing a creature to 0 HP.', 'Advantage on melee attacks in round 1 against creatures that haven\'t acted.'],
+        options7: [{ id: 'berserker', name: 'Berserker', desc: 'Relentless forward threat.', mechanics: ['Fury (bonus action, 1 min): advantage on Str checks/saves, +IB melee damage. Attacks against you have advantage. 1/short rest.'] }, { id: 'executioner', name: 'Executioner', desc: 'Punish openings with brutal finishes.', mechanics: ['Once per turn, +1d10 damage vs creatures at/below half HP.', 'Bonus action weapon attack when you reduce a creature to 0 HP.'] }],
+        options13: [{ id: 'momentum', name: 'Relentless Momentum', desc: 'Your pressure never lets up.', mechanics: ['On kill or crit: move half speed (no AoO) and make one weapon attack.', 'On kill: temp HP equal to IB + domain level until start of next turn.'] }, { id: 'terror', name: 'Terror Assault', desc: 'Break morale with violence.', mechanics: ['On hit, force Wis save or frightened (speed halved) until end of next turn.', 'If failed twice in one combat: also stunned (once per creature per combat). Uses: IB per long rest.'] }]
+      },
+      { id: 'control', name: 'Control', desc: 'Protect, command, lock down space.',
+        mechanics: ['Opportunity attack reduces target\'s speed to 0 until end of turn.', 'Reaction: impose disadvantage on attack vs ally within 5 ft.'],
+        options7: [{ id: 'guardian', name: 'Guardian', desc: 'Shield others; deny approaches.', mechanics: ['+1 AC while wearing armor or wielding shield.', 'If your reaction disadvantage doesn\'t prevent the hit, reduce damage by IB.'] }, { id: 'warlord', name: 'Warlord', desc: 'Win fights by positioning allies.', mechanics: ['Command (bonus action): ally within 30 ft uses reaction to move half speed or make one weapon attack. Uses: IB per long rest.'] }],
+        options13: [{ id: 'zone', name: 'Zone Mastery', desc: 'Own space; force bad choices.', mechanics: ['Creatures provoke AoO when entering your reach. Speed 0 until end of next turn, +1d6 damage.', 'Make IB opportunity attacks per round (special reaction recovery).'] }, { id: 'command', name: 'Command Shout', desc: 'Turn orders into action.', mechanics: ['Command Shout (bonus action): up to IB allies within 60 ft each use reaction to move 10 ft or attack. 1/short rest.'] }]
+      },
+    ]
+  },
+  { id: 'survival', name: 'Survival & Adaptation', icon: '\uD83C\uDF32',
+    subtitle: 'Wilderness mastery: tracking, stealth, navigation.',
+    core: [
+      { level: 1, title: 'Forage & Shelter', body: 'You can get by: water, food, basic shelter.', mechanics: ['Proficiency in Survival (Expertise if already proficient).', 'Find food/water for yourself + IB creatures if any edible resources exist.'] },
+      { level: 2, title: 'Hazard Sense', body: 'You notice weather, tracks, and subtle danger.', mechanics: ['Advantage on Perception/Investigation to spot natural hazards and traps.', 'Can\'t be surprised in natural environments.'] },
+      { level: 3, title: 'Branch Point: Approach', body: 'Choose: Scout / Forager / Shadow.', mechanics: ['Pick an Approach. Grants passive benefit and unlocks L7/L13 options.'] },
+      { level: 5, title: 'Terrain Memory', body: 'Routes stick; you rarely get lost.', mechanics: ['Always know north; can\'t be lost by nonmagical means.', 'You + IB companions ignore nonmagical difficult terrain while traveling 1+ hours.'] },
+      { level: 7, title: 'Branch Point: Specialization', body: 'Your approach splits.', mechanics: ['Pick one L7 option within your Approach.'] },
+      { level: 10, title: 'Terrain Mastery', body: 'You move like you belong anywhere.', mechanics: ['Choose two: climb speed, swim speed, or +5 ft walking speed.', 'Advantage on Survival (tracking) and Stealth (outdoors).'] },
+      { level: 13, title: 'Extreme Technique', body: 'A defining survival technique.', mechanics: ['Pick one L13 option within your Approach.'] },
+      { level: 15, title: 'Environmental Resistance', body: 'Operate in harsh environments longer.', mechanics: ['Resistance to cold, fire, or lightning (choose one).', 'Advantage on saves vs environmental effects.'] },
+      { level: 18, title: 'Ghost of the Wilds', body: 'Hard to track; hard to ambush.', mechanics: ['Disadvantage to track you.', 'Advantage on initiative; Hide as bonus action outdoors.'] },
+      { level: 20, title: 'Apex Survivor', body: 'Endure nearly any natural threat.', mechanics: ['Survive without food/water for 10 days. Resistance to cold and fire.', 'Once per long rest, auto-succeed an environmental save.'] },
+    ],
+    paths: [
+      { id: 'scout', name: 'Scout', desc: 'Navigation, spotting danger, moving first.',
+        mechanics: ['Proficiency in Perception (Expertise if already).', 'Add IB to initiative rolls.'],
+        options7: [{ id: 'pathfinder', name: 'Pathfinder', desc: 'Routes, crossings, safe lines.', mechanics: ['Group never slowed by nonmagical difficult terrain.', 'Move stealthily at normal pace.'] }, { id: 'sentinel', name: 'Sentinel', desc: 'Early warning, camp defense.', mechanics: ['Passive Perception +IB.', 'Remain alert while sleeping during long rests.'] }],
+        options13: [{ id: 'ambushsense', name: 'Ambush Sense', desc: 'Catch the moment before it happens.', mechanics: ['Can\'t be surprised (any environment).', 'On initiative, up to IB allies within 30 ft add your IB to their initiative. 1/short rest.'] }, { id: 'perfectmap', name: 'Perfect Map', desc: 'Hold terrain in memory.', mechanics: ['Perfectly recall layout of 1-mile radius after 10 min travel.', 'Advantage on navigation, route, and shortcut checks.'] }]
+      },
+      { id: 'forager', name: 'Forager', desc: 'Sustainment, animals, plants, remedies.',
+        mechanics: ['Proficiency in Nature (Expertise if already).', 'Identify natural plants/poisons with DC 10 Nature check.'],
+        options7: [{ id: 'beasttamer', name: 'Beast-Tamer', desc: 'Read and handle wild creatures.', mechanics: ['Proficiency in Animal Handling (Expertise if already).', 'Action: calm a Beast within 30 ft (Wis save). Uses: IB per long rest.'] }, { id: 'herbalist', name: 'Herbalist', desc: 'Reliable remedies, poultices.', mechanics: ['Proficiency with Herbalism Kit.', 'Create IB poultices per long rest. Action: heal 1d6 + IB HP (once per creature per short rest).'] }],
+        options13: [{ id: 'miracle', name: 'Miracle Remedies', desc: 'Heal beyond the expected.', mechanics: ['Short rest: treat IB creatures, each rerolls one Hit Die.', 'Once per long rest: end poisoned, diseased, or 1 exhaustion level.'] }, { id: 'neverstarve', name: 'Never-Starve', desc: 'Turn almost anything into food.', mechanics: ['Forage for IB+5 creatures in any environment. Purify tainted food/water in 10 min.', 'You + IB creatures go 3 days without food/water, no penalties.', 'Auto-identify any natural poison/toxin/disease by smell/taste without suffering effects.'] }]
+      },
+      { id: 'shadow', name: 'Shadow', desc: 'Stealth movement and escape mastery.',
+        mechanics: ['Proficiency in Stealth (Expertise if already).', 'Hide when only lightly obscured.'],
+        options7: [{ id: 'stalker', name: 'Stalker', desc: 'Hunt without being seen.', mechanics: ['Hide as bonus action.', 'Once per turn, +1d8 damage vs creatures that can\'t see you.'] }, { id: 'escape', name: 'Escape Artist', desc: 'Break contact; vanish cleanly.', mechanics: ['Advantage on escaping grapples/restraints.', 'Reaction: move 10 ft without AoO when hit. Uses: IB per long rest.'] }],
+        options13: [{ id: 'untraceable', name: 'Untraceable', desc: 'Leave nothing behind.', mechanics: ['No tracks or scent unless you choose. Magical tracking must beat your Imprint DC.', 'Disadvantage to track you; advantage on Stealth vs pursuit.'] }, { id: 'vanish', name: 'Vanish', desc: 'Disappear in plain terrain.', mechanics: ['Once per short rest, bonus action Hide even when lightly obscured or observed.', 'Move through difficult terrain without extra cost while hidden.'] }]
+      },
+    ]
+  },
+  { id: 'craft', name: 'Craft & Creation', icon: '\uD83D\uDD28',
+    subtitle: 'Tools, materials, inventions, masterworks.',
+    core: [
+      { level: 1, title: 'Tool Familiarity', body: 'Use basic tools without ruining materials.', mechanics: ['Proficiency with 2 artisan tools (Expertise if already).', 'Repair a weapon/shield/armor during a short rest.'] },
+      { level: 2, title: 'Precision Hands', body: 'Cleaner joins; fewer flaws.', mechanics: ['Add IB to tool proficiency checks.', 'Advantage to identify counterfeits and hidden flaws.'] },
+      { level: 3, title: 'Branch Point: Craft', body: 'Choose: Forge / Alchemy / Construction.', mechanics: ['Pick a Craft. Grants passive benefit and unlocks L7/L13 options.'] },
+      { level: 5, title: 'Quality Control', body: 'Reproduce a standard reliably.', mechanics: ['Downtime crafting time halved.', 'Masterwork Tags: Balanced, Reinforced, Quiet, or Resilient.'] },
+      { level: 7, title: 'Branch Point: Specialty', body: 'Your craft splits.', mechanics: ['Pick one L7 Specialty within your Craft.'] },
+      { level: 10, title: 'Masterwork I', body: 'Your work is sought after.', mechanics: ['Expertise in one tool proficiency.', 'Salvage 25% of raw materials when dismantling your own craft.'] },
+      { level: 13, title: 'Branch Point: Doctrine', body: 'Choose how you pursue greatness.', mechanics: ['Pick one L13 Doctrine within your Craft.'] },
+      { level: 15, title: 'Signature Masterpiece', body: 'Create a named work.', mechanics: ['Craft a Masterpiece: +1 AC (armor/shield), +1 attack/damage (weapon), or Advantage on a tool check.', 'One active Masterpiece at a time.'] },
+      { level: 18, title: 'Artifact-Grade', body: 'Legendary quality output.', mechanics: ['Masterpiece bonus improves to +2.', 'Repair any broken nonmagical item to full in 10 minutes. 1/long rest.'] },
+      { level: 20, title: 'Grandmaster Artisan', body: 'Peak mortal crafting mastery.', mechanics: ['Masterpiece can become +3 (DM discretion).', 'Designate one crafted item as Perfected: counts as magical for 24 hours. 1/long rest.'] },
+    ],
+    paths: [
+      { id: 'forge', name: 'Forge', desc: 'Metal, edge, armor, durability.',
+        mechanics: ['Proficiency with Smith\'s Tools (Expertise if already).', 'Forge Maintenance (long rest): +1 attack (weapon) or +1 AC (armor/shield) until next long rest. One item at a time.'],
+        options7: [{ id: 'weaponsmith', name: 'Weaponsmith', desc: 'Blades and impact tools optimized.', mechanics: ['Crafted weapons hold 2 Masterwork Tags.', 'Hone Edge (1 min): +IB to first damage roll each turn for 1 hour. Uses: IB per long rest.'] }, { id: 'armorsmith', name: 'Armorsmith', desc: 'Protection, weight, fit.', mechanics: ['Armorsmith Enhancement: Lightweight, Fitted, or Reinforced.', 'Field Repair (action): grant 1d8 + IB temp HP to armored creature. Uses: IB per long rest.'] }],
+        options13: [{ id: 'temper', name: 'Perfect Temper', desc: 'Near-flawless heat control.', mechanics: ['Designate one item as Perfect Temper: counts as magical, +1 attack/damage or +1 AC.', 'Stacks with Forge Maintenance but not other magical bonuses.'] }, { id: 'alloy', name: 'Living Alloy', desc: 'Materials that behave better than they should.', mechanics: ['Living Alloy weapon: wielder chooses damage type each hit. Cannot be broken by nonmagical means.', 'Living Alloy armor: advantage vs disarm/prone/push. Reduce all physical damage by 1. Self-maintaining.'] }]
+      },
+      { id: 'alchemy', name: 'Alchemy', desc: 'Brews, reagents, reactions.',
+        mechanics: ['Proficiency with Alchemist\'s Supplies (Expertise if already).', 'Create one basic alchemical item per long rest (acid, alchemist\'s fire, antitoxin, or healer\'s salve).'],
+        options7: [{ id: 'brewer', name: 'Brewer', desc: 'Reliable potions, tonics.', mechanics: ['Create IB tonics per long rest. Bonus action: 1d6 + IB temp HP and advantage on next Con save within 10 min. Expire 24h.'] }, { id: 'mutagen', name: 'Mutagenist', desc: 'Risky boosts.', mechanics: ['Create IB mutagens per long rest. +2 to Str or Dex for 1 hour. Side effect: disadvantage on Perception.'] }],
+        options13: [{ id: 'panacea', name: 'Panacea Line', desc: 'Broad cures.', mechanics: ['Create IB panacea doses per long rest. Action: heal 2d4 + IB HP, end poisoned or advantage vs poison 1h. Expire 24h.'] }, { id: 'volatile', name: 'Volatile Bombard', desc: 'Precision explosives.', mechanics: ['Create IB bombs per long rest. Action: throw (20/60), 10-ft radius, Dex save, 2d6 fire/acid. Expire 24h.'] }]
+      },
+      { id: 'construction', name: 'Construction', desc: 'Buildings, engines, siegecraft.',
+        mechanics: ['Proficiency with Carpenter\'s or Mason\'s Tools (Expertise if already).', 'Advantage to assess structural weaknesses and safe paths through ruins.'],
+        options7: [{ id: 'siegewright', name: 'Siegewright', desc: 'Levers, torsion, siege devices.', mechanics: ['Proficiency with Vehicles (land).', 'Set a trap (caltrops, snare, tripline) in 1 minute. DC = Imprint DC (Int).'] }, { id: 'architect', name: 'Architect', desc: 'Load-bearing, hidden strength, design.', mechanics: ['Action: create improvised half cover if materials present. Uses: IB per long rest.', 'Reinforce door/window in 10 min: double HP.'] }],
+        options13: [{ id: 'scaffold', name: 'Instant Scaffolding', desc: 'Build safely under pressure.', mechanics: ['Action: create 10×5 ft scaffolding within 10 ft, half cover, 10 min duration (AC 15, HP 15). Uses: IB per long rest.'] }, { id: 'vaults', name: 'Unbreakable Vaults', desc: 'Structures that resist sabotage.', mechanics: ['Reinforce container/door/gate in 10 min: AC 19, HP = 5 × Craft level.', 'Advantage to detect tampering and hidden compartments.'] }]
+      },
+    ]
+  },
+  { id: 'knowledge', name: 'Knowledge & Research', icon: '\uD83D\uDCD6',
+    subtitle: 'Study, experiments, theory, breakthroughs.',
+    core: [
+      { level: 1, title: 'Study Discipline', body: 'You learn efficiently.', mechanics: ['Proficiency in Investigation + one of: Arcana, History, Nature, Religion.', 'Learn languages in half time.'] },
+      { level: 2, title: 'Pattern Sense', body: 'You spot connections others miss.', mechanics: ['Add IB to Intelligence checks (after seeing d20, before result). Uses: IB per long rest.'] },
+      { level: 3, title: 'Branch Point: Track', body: 'Choose: Lore / Arcana / Natural Philosophy.', mechanics: ['Pick a Track. Grants passive benefit and unlocks L7/L13 options.'] },
+      { level: 5, title: 'Methods', body: 'Controlled experiments or systematic research.', mechanics: ['Analyze (action): Int (Investigation) vs DC 10 + CR. Learn one: AC, resistance, vulnerability, or trait. Uses: IB per long rest.'] },
+      { level: 7, title: 'Branch Point: Focus', body: 'Your track splits.', mechanics: ['Pick one L7 Focus within your Track.'] },
+      { level: 10, title: 'Master Scholar I', body: 'Recognized authority.', mechanics: ['Expertise in one Int skill.', 'Downtime research in 75% time (min 50%).'] },
+      { level: 13, title: 'Branch Point: Breakthrough', body: 'Major discoveries.', mechanics: ['Pick one L13 Breakthrough within your Track.'] },
+      { level: 15, title: 'Foundational Work', body: 'Produce ideas others build on.', mechanics: ['Teach (1h): up to IB creatures gain +1d4 on next check within 24h.', 'Analyze learns two facts instead of one.'] },
+      { level: 18, title: 'Reality Modeling', body: 'Predict outcomes reliably.', mechanics: ['Once per short rest: advantage on one d20 roll OR impose disadvantage on one d20 roll (declared before roll).'] },
+      { level: 20, title: 'Living Archive', body: 'Supreme mortal scholar.', mechanics: ['Learn two languages; communicate basic ideas with any creature that has language.', 'Int Expertise skills: treat d20 roll of 9 or lower as 10.'] },
+    ],
+    paths: [
+      { id: 'lore', name: 'Lore', desc: 'History, cultures, languages, truth.',
+        mechanics: ['Proficiency in History (Expertise if already).', 'Gain one additional language.'],
+        options7: [{ id: 'historian', name: 'Historian', desc: 'Context turns facts into power.', mechanics: ['Once per long rest, declare a relevant historical precedent. DM gives one useful fact.', 'Advantage on History checks for ruins, dynasties, legends.'] }, { id: 'linguist', name: 'Linguist', desc: 'Languages, scripts, codes.', mechanics: ['Learn two additional languages.', 'Understand a spoken language for 1 hour after listening 1 minute.', 'Advantage on deciphering codes/scripts.'] }],
+        options13: [{ id: 'losttruths', name: 'Lost Truths', desc: 'Unearth what was erased.', mechanics: ['Once per long rest, after 10 min research, ask DM one question about a hidden truth. DM answers truthfully.'] }, { id: 'recall', name: 'Perfect Recall', desc: 'Near-total retrieval.', mechanics: ['Cannot forget consciously studied information.', 'History/Investigation recall: treat 9 or lower as 10.', 'Immune to nonconsensual memory alteration.'] }]
+      },
+      { id: 'arcana', name: 'Arcana', desc: 'Spell theory, ritual structure, magical models.',
+        mechanics: ['Proficiency in Arcana (Expertise if already).', 'Identify a spell being cast within 60 ft (reaction, Arcana DC 10 + spell level).'],
+        options7: [{ id: 'ritualist', name: 'Ritualist', desc: 'Circles, timing, stability.', mechanics: ['Cast rituals in half time.', 'Learn two 1st-level ritual spells from any list.', 'Advantage on spell mishap checks.'] }, { id: 'theorist', name: 'Theorist', desc: 'Frameworks, new models, proofs.', mechanics: ['Swap one prepared spell after short rest.', 'Change spell damage type to acid/cold/fire/lightning/thunder. Uses: IB per long rest.'] }],
+        options13: [{ id: 'newspell', name: 'New Spell Framework', desc: 'Design spells via repeatable method.', mechanics: ['Spell research time/cost reduced 25%.', 'Once per long rest: modify a spell (range +30 ft, or damage die +1 step, or casting time → bonus action for 3rd level or lower).'] }, { id: 'circles', name: 'Stable Circles', desc: 'Big rituals without catastrophic drift.', mechanics: ['Advantage on Con saves for concentration.', 'Rituals: skip material components ≤50 gp. Uses: IB per long rest.'] }]
+      },
+      { id: 'natural', name: 'Natural Philosophy', desc: 'Medicine, physics, engineering research.',
+        mechanics: ['Proficiency in Medicine (Expertise if already).', 'Advantage on Nature checks related to anatomy and natural processes.'],
+        options7: [{ id: 'physician', name: 'Physician', desc: 'Diagnosis and treatment mastery.', mechanics: ['Healer\'s kit action: heal 1d6 + IB + Knowledge level HP (once per creature per short rest).', 'Stabilize as bonus action.'] }, { id: 'engscholar', name: 'Engineer-Scholar', desc: 'Turn theory into machines.', mechanics: ['Proficiency with Tinker\'s Tools.', 'Advantage to disable traps, understand mechanisms.', 'Improvised Device (10 min): advantage on one check type. Maintain IB devices.', 'Jury-Rig (1 min): temp repair for 1 hour. Uses: IB per long rest.'] }],
+        options13: [{ id: 'surgery', name: 'Miracle Surgery', desc: 'Save lives that should be lost.', mechanics: ['Miracle Surgery (short rest): heal 2 × Knowledge level HP, end one condition (blinded, deafened, poisoned, paralyzed, or 1 exhaustion).', 'Emergency Surgery (1 min): stabilize + 1 HP + IB temp HP. 1/long rest.'] }, { id: 'clockwork', name: 'Clockwork Principles', desc: 'Reliable mechanisms.', mechanics: ['Clockwork Snare (action): 5-ft trap, nearly invisible, restrained + 1d6 piercing on failed Dex save. Maintain IB snares.', 'Clockwork Sentry (10 min): Tiny device watches 30-ft cone, alerts you. Up to 2 sentries.'] }]
+      },
+    ]
+  },
+  { id: 'influence', name: 'Influence & Social Mastery', icon: '\uD83D\uDC51',
+    subtitle: 'Negotiation, leadership, deception, reputation.',
+    core: [
+      { level: 1, title: 'Read the Room', body: 'Basic empathy, tells, timing.', mechanics: ['Proficiency in Insight (Expertise if already).', 'Assess (bonus action): Insight vs Deception. On success, advantage on next Cha check against target within 10 min.'] },
+      { level: 2, title: 'Confident Voice', body: 'People listen more often.', mechanics: ['Proficiency in Persuasion or Intimidation.', 'Add IB to Cha checks influencing groups of up to 6.'] },
+      { level: 3, title: 'Branch Point: Mode', body: 'Choose: Persuasion / Deception / Command.', mechanics: ['Pick a Mode. Grants passive benefit and unlocks L7/L13 options.'] },
+      { level: 5, title: 'Reputation', body: 'Your name carries weight.', mechanics: ['Gain Renown pool = IB. Refresh on long rest.', 'Spend 1 Renown: advantage on Cha check or secure a minor favor.'] },
+      { level: 7, title: 'Branch Point: Specialty', body: 'Mode splits.', mechanics: ['Pick one L7 Specialty within your Mode.'] },
+      { level: 10, title: 'Social Authority', body: 'Steer groups reliably.', mechanics: ['Renown +2.', 'Commanding Presence (action): 30-ft, Wis save or disadvantage on attacks vs anyone but you. Uses: IB per long rest.', '1-min speech to 20 creatures: shift attitude one step for 1 hour.'] },
+      { level: 13, title: 'Signature Play', body: 'Choose your signature social move.', mechanics: ['Pick one L13 Signature within your Mode.'] },
+      { level: 15, title: 'Political Leverage', body: 'Move institutions.', mechanics: ['Renown +1.', 'Pressure Point (1 min): Wis save or advantage on Cha checks vs target for 24h. 1/long rest.'] },
+      { level: 18, title: 'Narrative Control', body: 'Shape what people believe happened.', mechanics: ['Spread a narrative (10 min): advantage on social checks with one faction for 24h. 1/long rest.', 'In combat: force Wis save to redirect attack. 1/short rest.'] },
+      { level: 20, title: 'Legendary Orator', body: 'Peak mortal influence.', mechanics: ['1-min performance: creatures in 60 ft, Wis save or charmed/frightened for 1 min. 1/long rest.'] },
+    ],
+    paths: [
+      { id: 'persuasion', name: 'Persuasion', desc: 'Win consent, align incentives, build trust.',
+        mechanics: ['Add IB to Persuasion checks.', 'On success, improve attitude one step for 1 hour.'],
+        options7: [{ id: 'mediator', name: 'Mediator', desc: 'Resolve conflicts; craft compromise.', mechanics: ['De-escalate (action): 30 ft, Wis save or can\'t take hostile actions until end of next turn. 1/short rest.'] }, { id: 'advocate', name: 'Advocate', desc: 'Convince authorities.', mechanics: ['Reaction: add IB to ally\'s Persuasion check or charm/frighten save within 30 ft. Uses: IB per long rest.'] }],
+        options13: [{ id: 'argument', name: 'Unbreakable Argument', desc: 'Logic and framing that holds.', mechanics: ['Once per long rest: treat Persuasion d20 as 20.', 'Renown + Persuasion: advantage AND +IB.', 'Contested arguments: opponent has disadvantage.'] }, { id: 'inspire', name: 'Inspire Masses', desc: 'Rally groups to action.', mechanics: ['1-min speech: up to IB creatures gain d6 Inspiration die for 1 hour. 1/short rest.'] }]
+      },
+      { id: 'deception', name: 'Deception', desc: 'Misdirection, cover stories, networks.',
+        mechanics: ['Proficiency in Deception (Expertise if already).', 'Add IB to Deception checks maintaining a lie over time.'],
+        options7: [{ id: 'grifter', name: 'Grifter', desc: 'Confidence games.', mechanics: ['Proficiency: Disguise Kit, Forgery Kit.', 'After 1-min conversation, Sleight of Hand with advantage to steal a small item. 1/short rest.'] }, { id: 'spymaster', name: 'Spymaster', desc: 'Information webs.', mechanics: ['Maintain IB Contacts. Once per long rest: advantage on Investigation in a settlement.', 'Coded messages: disadvantage to decipher.'] }],
+        options13: [{ id: 'cover', name: 'Perfect Cover', desc: 'An identity that survives scrutiny.', mechanics: ['Secondary identity with advantage on Deception to maintain.', 'Divination must beat your Imprint DC to pierce cover.'] }, { id: 'web', name: 'Web of Lies', desc: 'Multiple lies that reinforce.', mechanics: ['Succeed Deception by 5+: implant a specific false detail.', '1-min conversation: Wis save or accept fabricated narrative for 1 hour. 1/long rest.'] }]
+      },
+      { id: 'command', name: 'Command', desc: 'Lead groups, impose order, coordinate.',
+        mechanics: ['Proficiency in Intimidation (Expertise if already).', 'Help action as bonus action IB times per long rest.'],
+        options7: [{ id: 'captain', name: 'Captain', desc: 'Small unit leadership.', mechanics: ['Direct (bonus action): ally within 30 ft uses reaction to move half speed or attack. Uses: IB per long rest.'] }, { id: 'warchief', name: 'Warchief', desc: 'Large-scale authority.', mechanics: ['Warcry (bonus action): up to IB allies within 30 ft gain temp HP = Influence level and +IB to next attack. 1/short rest.'] }],
+        options13: [{ id: 'morale', name: 'Absolute Morale', desc: 'Keep allies standing.', mechanics: ['Allies within 30 ft: advantage on frighten saves and death saves.', 'Reaction: ally at 0 HP gets immediate death save with advantage; on success, regain 1 HP. 1/long rest.'] }, { id: 'presence', name: 'Strategic Presence', desc: 'Your arrival changes the room.', mechanics: ['On initiative: up to IB allies add your IB to their initiative.', 'Can\'t be surprised while conscious.'] }]
+      },
+    ]
+  },
+  { id: 'attunement', name: 'Attunement (Magical Affinity)', icon: '\u2728',
+    subtitle: 'Sensing, shaping, resisting, amplifying magic.',
+    core: [
+      { level: 1, title: 'Magical Sensitivity', body: 'Sense ambient magic; minor control.', mechanics: ['Choose Attunement ability: Int, Wis, or Cha.', 'Cast Detect Magic as ritual.', 'Learn one cantrip: Prestidigitation, Thaumaturgy, or Druidcraft.'] },
+      { level: 2, title: 'Focus Channeling', body: 'Hold and direct power without backlash.', mechanics: ['Gain 2 Arcane Charges (refresh on short/long rest).', 'Arcane Shield (reaction): spend 1 charge for +IB AC vs one attack.'] },
+      { level: 3, title: 'Branch Point: Source', body: 'Choose: Elemental / Fey / Shadow.', mechanics: ['Pick a Source. Learn Source cantrip, passive trait, and unlock L7/L13 options.'] },
+      { level: 5, title: 'Safe Casting', body: 'Magic stabilizes.', mechanics: ['Learn two 1st-level spells from Source list. Cast by spending 1 Arcane Charge each.', 'Attunement save DC = 8 + IB + Attunement ability mod.'] },
+      { level: 7, title: 'Branch Point: Method', body: 'Source splits.', mechanics: ['Pick one L7 Method within your Source.'] },
+      { level: 10, title: 'Arcane Adept', body: 'Shape power reliably.', mechanics: ['Arcane Charges increase to 3.', 'Learn two 2nd-level spells (cost: 2 charges each).'] },
+      { level: 13, title: 'Branch Point: Mastery', body: 'Choose mastery expression.', mechanics: ['Pick one L13 Mastery within your Source.'] },
+      { level: 15, title: 'Amplification', body: 'Scale effects without losing control.', mechanics: ['Arcane Charges increase to 4.', 'Learn two 3rd-level spells (cost: 3 charges each).'] },
+      { level: 18, title: 'High Ritual Invocation', body: 'Anchor major magic with preparation.', mechanics: ['Arcane Charges increase to 5.', 'Once per long rest: spend 3 charges + 10 min to cast a 4th-level Source spell.'] },
+      { level: 20, title: 'Archmagus Tier', body: 'Peak mortal attunement.', mechanics: ['Arcane Charges increase to 6.', 'Once per long rest: spend 5 charges to cast a 5th-level Source spell.'] },
+    ],
+    paths: [
+      { id: 'elemental', name: 'Elemental', desc: 'Fire, frost, storm, stone, etc.',
+        mechanics: ['Choose an element: acid, cold, fire, lightning, or thunder.', 'Learn Elemental Bolt cantrip (120 ft, 1d10 of chosen element).', 'Resistance to chosen element while ≥1 Arcane Charge remains.'],
+        options7: [{ id: 'evoker', name: 'Evoker', desc: 'Project power outward.', mechanics: ['+IB to one elemental damage roll.', 'AoE spells: choose up to IB creatures to auto-succeed saves. 1/long rest.'] }, { id: 'warder', name: 'Warder', desc: 'Defenses, barriers.', mechanics: ['Barrier (bonus action): 1 charge for 1d8 + IB temp HP and element resistance for 1 min.', 'Arcane Shield: once per long rest, use without spending a charge. On hit: also reduce damage by IB.'] }],
+        options13: [{ id: 'mastery', name: 'Elemental Mastery', desc: 'Fine control; efficiency.', mechanics: ['Elemental damage ignores resistance (not immunity).', 'Once per short rest: treat one elemental damage die as max.'] }, { id: 'anchor', name: 'Storm Anchor', desc: 'Hold storms/fields in place.', mechanics: ['Elemental Field (action, 2 charges): 20-ft radius, difficult terrain for enemies, 2d6 element damage on entry/start of turn. Move it 20 ft as bonus action. 1 min concentration. 1/short rest.'] }]
+      },
+      { id: 'fey', name: 'Fey', desc: 'Glamour, oaths, growth, trickery.',
+        mechanics: ['Learn Minor Illusion cantrip.', 'Once per short rest: add IB to a Charisma check to influence.'],
+        options7: [{ id: 'glamour', name: 'Glamourist', desc: 'Illusions, charm, perception games.', mechanics: ['On failed save vs your illusion/charm: target has disadvantage on next attack.', 'Glamour Step (bonus action, 1 charge): lightly obscured, attacks against you have disadvantage. Uses: IB per long rest.'] }, { id: 'binder', name: 'Binder', desc: 'Oaths, bargains, bindings.', mechanics: ['Geas-lite (10 min, 2 charges): bind willing creature to a promise. 4d6 psychic if knowingly broken within 24h.', 'Advantage on Insight to detect lies.'] }],
+        options13: [{ id: 'trueglamour', name: 'True Glamour', desc: 'Glamours that resist disbelief.', mechanics: ['Disadvantage on Investigation to disbelieve your illusions.', 'Once per long rest: cast Greater Invisibility for 3 charges.'] }, { id: 'oaths', name: 'Oath Chains', desc: 'Bind promises into consequences.', mechanics: ['Chains (action, 2 charges): Wis save or restrained by spectral chains for 1 min (save at end of each turn). 1/short rest.'] }]
+      },
+      { id: 'shadow', name: 'Shadow', desc: 'Hexes, veils, absence.',
+        mechanics: ['Darkvision 60 ft (or +60 ft).', 'Learn Chill Touch cantrip.'],
+        options7: [{ id: 'hexer', name: 'Hexer', desc: 'Curses, marks, entropy.', mechanics: ['+IB necrotic damage once per turn vs hexed/cursed creatures.', 'Wither (reaction, 1 charge): impose disadvantage on target\'s next save. Uses: IB per long rest.'] }, { id: 'veil', name: 'Veilwalker', desc: 'Concealment and slipping between.', mechanics: ['Veil Step (bonus action, 1 charge): teleport 30 ft to dim light/darkness.', 'Advantage on Stealth in dim light/darkness.'] }],
+        options13: [{ id: 'night', name: 'Night Dominion', desc: 'Control darkness.', mechanics: ['Your Darkness is magical and can\'t be seen through with darkvision.', 'Cast Darkness without charges once per short rest.'] }, { id: 'phase', name: 'Phase Slip', desc: 'Step out of the obvious world.', mechanics: ['Reaction when hit (2 charges): incorporeal until end of turn. Resistance to all damage (except force/psychic). Move through creatures/objects. 1/short rest.'] }]
+      },
+    ]
+  },
+  { id: 'psionics', name: 'Psionics & Mental Mastery', icon: '\uD83E\uDDE0',
+    subtitle: 'Telepathy, telekinesis, willpower, cognitive control.',
+    core: [
+      { level: 1, title: 'Awakened Mind', body: 'Sense thoughts; project surface-level intent.', mechanics: ['Choose Psionic ability: Int, Wis, or Cha.', 'Telepathy 30 ft with willing creature.', 'Proficiency in Insight (Expertise if already).'] },
+      { level: 2, title: 'Mental Fortitude', body: 'Your mind resists intrusion.', mechanics: ['Gain 2 Psi Points (refresh short/long rest).', 'Psychic Ward (reaction, 1 point): +IB to a mental save or reduce psychic damage by 1d8 + IB.'] },
+      { level: 3, title: 'Branch Point: Discipline', body: 'Choose: Telepath / Kineticist / Seer.', mechanics: ['Pick a Discipline. Grants passive ability and unlocks L7/L13 options.', 'Psionic DC = 8 + IB + Psionic ability mod.'] },
+      { level: 5, title: 'Focused Will', body: 'Iron concentration.', mechanics: ['Advantage on saves vs charmed, frightened, and thought-reading effects.', 'Spend 1 Psi Point to auto-succeed a psionic concentration save.'] },
+      { level: 7, title: 'Branch Point: Focus', body: 'Discipline splits.', mechanics: ['Pick one L7 Focus within your Discipline.'] },
+      { level: 10, title: 'Psionic Surge', body: 'Amplify mental output.', mechanics: ['Psi Points increase to 3.', 'Surge (bonus action, 2 points): double telepathic range, +IB psionic damage, advantage on Int checks, +1 Psionic DC until end of next turn. 1/long rest (2/long rest at L15).'] },
+      { level: 13, title: 'Branch Point: Mastery', body: 'Choose mastery expression.', mechanics: ['Pick one L13 Mastery within your Discipline.'] },
+      { level: 15, title: 'Mental Bastion', body: 'Nearly impenetrable mind.', mechanics: ['Psi Points increase to 4.', 'Immune to charmed and frightened conditions.', 'Can\'t be magically put to sleep.'] },
+      { level: 18, title: 'Cognitive Apex', body: 'Powers approach theoretical ceiling.', mechanics: ['Psi Points increase to 5.', 'Overwhelming Presence (3 points): 60 ft, Wis save or stunned until end of next turn. 1/long rest.'] },
+      { level: 20, title: 'Transcendent Mind', body: 'Peak mortal psionic mastery.', mechanics: ['Psi Points increase to 6.', 'Increase Psionic ability by 2 (max 22), another mental score by 1 (max 21).', 'Telepathy 120 ft, maintain IB links simultaneously.'] },
+    ],
+    paths: [
+      { id: 'telepath', name: 'Telepath', desc: 'Read minds, project thoughts, dominate wills.',
+        mechanics: ['Telepathic range increases to 60 ft.', 'Mind Read (action, 1 point): read surface thoughts within 60 ft (Wis save).'],
+        options7: [{ id: 'empath', name: 'Empath', desc: 'Feel and manipulate emotions.', mechanics: ['Emotional Override (action, 1 point): impose calm, fear, or trust on target (Wis save). Uses: IB per long rest.'] }, { id: 'broadcaster', name: 'Broadcaster', desc: 'Project to many minds.', mechanics: ['Telepathy with up to IB creatures simultaneously.', 'Psychic Scream (action, 2 points): 30 ft, Int save, 2d8 psychic + incapacitated. 1/short rest.'] }],
+        options13: [{ id: 'dominator', name: 'Dominator', desc: 'Seize direct control.', mechanics: ['Command Mind (action, 3 points): dictate target\'s action on its next turn (Wis save). Can\'t force self-harm. 1/long rest.'] }, { id: 'mindlink', name: 'Hivemind Link', desc: 'Share senses and coordinate.', mechanics: ['Link (bonus action, 2 points): up to IB willing creatures for 10 min. Share senses, +IB initiative, can\'t be surprised. 1/short rest.'] }]
+      },
+      { id: 'kineticist', name: 'Kineticist', desc: 'Move matter with thought.',
+        mechanics: ['Mage Hand cantrip (invisible, 20 lbs).', 'Kinetic Push (bonus action, 1 point): Str save or pushed 15 ft within 30 ft.'],
+        options7: [{ id: 'striker', name: 'Kinetic Striker', desc: 'Project force as weapon.', mechanics: ['Mind Blade (action, 1 point): ranged psionic attack 60 ft, 2d8 + IB force, push/pull 10 ft. Scales at L10 (3d8) and L15 (4d8).', 'Kinetic Flurry: +1 point for second attack (1d8 + IB, no push/pull).'] }, { id: 'shielder', name: 'Kinetic Shielder', desc: 'Form barriers of pure force.', mechanics: ['Force Barrier (reaction, 1 point): reduce damage by 2d6 + IB. If reduced to 0: deflect IB force damage back.', 'Psionic Wall (action, 2 points): 10×10 ft force wall, AC 20, HP = 5 × Psionics level. 1 min. 1/long rest.'] }],
+        options13: [{ id: 'crush', name: 'Graviton Crush', desc: 'Compress space around a target.', mechanics: ['Graviton Crush (action, 3 points): 15-ft sphere, Str save, 4d6 force + restrained. Area becomes difficult terrain. Sustained: bonus action + 1 point for 2d6 pulse. 1/long rest.'] }, { id: 'flight', name: 'Psychic Levitation', desc: 'Sustained flight.', mechanics: ['Fly 30 ft while ≥1 Psi Point remains. Soft descent if points run out.', 'Bonus action: lift willing creature within 10 ft (fly 30 ft until start of next turn).'] }]
+      },
+      { id: 'seer', name: 'Seer', desc: 'Precognition, probability, danger intuition.',
+        mechanics: ['Passive Perception and Investigation both +IB.', 'Can\'t be surprised; advantage on initiative.'],
+        options7: [{ id: 'oracle', name: 'Oracle', desc: 'See fragments of the future.', mechanics: ['Foresight Flash (reaction, 1 point): impose disadvantage on attack vs you or ally within 30 ft. Uses: IB per long rest.', 'Portent: roll d20 on long rest, replace any d20 roll before next rest.'] }, { id: 'detective', name: 'Psychic Detective', desc: 'Read psychic impressions.', mechanics: ['Psychometry (action, 1 point): sense most significant event involving an object within 7 days (30 days at L13).', '+IB to Investigation for hidden objects/clues.', 'Sense strong emotions within 30 ft; advantage on Insight to detect deception.'] }],
+        options13: [{ id: 'probability', name: 'Probability Collapse', desc: 'Force an outcome.', mechanics: ['Collapse (reaction, 3 points): force any creature\'s d20 reroll, you choose which result is used. 1/long rest.'] }, { id: 'truesight', name: 'Third Eye', desc: 'Perceive what is hidden.', mechanics: ['Third Eye (bonus action, 2 points): 10 min. See invisible creatures/objects 30 ft, see Ethereal Plane 30 ft, detect illusions 30 ft. 1/short rest.'] }]
+      },
+    ]
+  },
+  { id: 'beastmastery', name: 'Beastmastery & Bonding', icon: '\uD83D\uDC3A',
+    subtitle: 'Animal companions, mounted combat, pack tactics.',
+    core: [
+      { level: 1, title: 'Beast Affinity', body: 'Animals trust you; you read body language.', mechanics: ['Proficiency in Animal Handling (Expertise if already).', 'Proficiency in Nature. Beasts have advantage on checks/saves to trust you.'] },
+      { level: 2, title: 'Bonded Companion', body: 'Form a lasting bond with one animal.', mechanics: ['Bond with a Beast of CR 1/4 or lower (1 hour). Acts on your initiative, uses your IB as proficiency.', 'If companion dies: bond a new one after 24h mourning.'] },
+      { level: 3, title: 'Branch Point: Bond', body: 'Choose: Rider / Pack Leader / Symbiont.', mechanics: ['Pick a Bond type. Grants passive benefit and unlocks L7/L13 options.', 'Companion max CR increases to 1/2.'] },
+      { level: 5, title: 'Coordinated Assault', body: 'Fight as one unit.', mechanics: ['On your Attack action, companion uses reaction to attack.', 'Companion gains temp HP = Beastmastery level on initiative. Max CR increases to 1.'] },
+      { level: 7, title: 'Branch Point: Specialty', body: 'Bond deepens.', mechanics: ['Pick one L7 Specialty within your Bond.'] },
+      { level: 10, title: 'Empathic Link', body: 'Share senses and intent.', mechanics: ['See through companion\'s eyes within 1 mile (action, blinded/deafened to own senses).', 'Companion gains +IB to AC and all saves. Max CR increases to 2.'] },
+      { level: 13, title: 'Branch Point: Apex Bond', body: 'Most powerful bond expression.', mechanics: ['Pick one L13 Apex ability within your Bond.'] },
+      { level: 15, title: 'Primal Fury', body: 'Companion unleashes devastating power.', mechanics: ['Primal Fury (bonus action, 1 min): advantage on attacks, +IB damage, resistance to physical damage.', 'Can\'t attack for 1 turn after fury ends. 1/long rest.'] },
+      { level: 18, title: 'Legendary Bond', body: 'Companion transcends species limits.', mechanics: ['Max CR 3. HP max +Beastmastery level × 2.', 'Gain one movement mode: fly 30, climb 30, swim 30, or burrow 15.', 'Disadvantage on attacks vs companion while you\'re within 5 ft.'] },
+      { level: 20, title: 'One Soul, Two Bodies', body: 'The bond is absolute.', mechanics: ['Take companion\'s lethal damage yourself. Uses: IB per long rest.', 'Companion can restore you to 1 HP when you hit 0. 1/long rest.', 'Increase a mental score by 2 (max 22). Companion: physical score +2 (max 22).'] },
+    ],
+    paths: [
+      { id: 'rider', name: 'Rider', desc: 'Mounted mastery, charge, battlefield dominance.',
+        mechanics: ['Companion counts as trained mount. Mount/dismount costs 5 ft.', 'Advantage on melee vs unmounted creatures smaller than mount.', 'Companion: Dash/Disengage as bonus action while mounted.'],
+        options7: [{ id: 'lancer', name: 'Lancer', desc: 'Devastating mounted charges.', mechanics: ['Mounted Charge: 20+ ft straight line, +2d6 damage, Str save or prone. Uses: IB per long rest.'] }, { id: 'outrider', name: 'Outrider', desc: 'Speed, scouting, hit-and-run.', mechanics: ['Mounted companion speed +10 ft.', 'Dash while mounted: no AoO until end of turn.', 'Companion advantage on Dex saves while mounted.'] }],
+        options13: [{ id: 'warhorse', name: 'War-Bonded Mount', desc: 'Terrifying coordination.', mechanics: ['While mounted: companion takes Attack action (not just reaction attack).', 'Companion gains IB temp HP at start of each turn while mounted.'] }, { id: 'trampler', name: 'Trampling Charge', desc: 'Bowl through enemy lines.', mechanics: ['Companion moves through hostiles (if larger): Str save or prone + 2d8 bludgeoning.', 'Prone creatures provoke AoO from you. Uses: IB per long rest.'] }]
+      },
+      { id: 'packleader', name: 'Pack Leader', desc: 'Multiple beasts, swarm tactics.',
+        mechanics: ['Bond with up to 2 Beasts (combined CR ≤ your max).', 'Pack Tactics: advantage on attacks if another companion/ally is within 5 ft of target.'],
+        options7: [{ id: 'swarm', name: 'Swarm Caller', desc: 'More beasts, more pressure.', mechanics: ['Bond with up to 3 Beasts (combined CR still limited).', 'Swarming Strike: 2+ companions hit same target → disadvantage on target\'s next attack.'] }, { id: 'alpha', name: 'Alpha Command', desc: 'Pack moves with precision.', mechanics: ['Command Pack (bonus action): all companions move half speed without AoO.', 'Help action for companion: also +IB to damage.'] }],
+        options13: [{ id: 'wolfpack', name: 'Wolfpack Takedown', desc: 'Coordinated takedowns.', mechanics: ['Takedown (action): target in reach of 2+ companions. Each attacks. If 2+ hit: Str save or prone + grappled, 1d6 piercing/turn. 1/short rest.'] }, { id: 'horde', name: 'Beast Horde', desc: 'Overwhelming numbers.', mechanics: ['Bond up to 5 Beasts.', '3+ companions within 30 ft: +1 AC, companions gain IB temp HP each turn.', 'Companions immune to frightened. Fallen companion auto-stabilizes if ally within 5 ft.', '3+ companions adjacent to enemy: disadvantage on all that enemy\'s attacks.'] }]
+      },
+      { id: 'symbiont', name: 'Symbiont', desc: 'Deep psychic bond \u2014 share pain, share power.',
+        mechanics: ['Telepathic link: communicate with companion over any distance on same plane.', 'Shared Resilience: within 10 ft, both gain +1 to all saves.'],
+        options7: [{ id: 'lifebond', name: 'Lifebond', desc: 'Share vitality.', mechanics: ['Life Transfer (bonus action): transfer up to IB × 2 HP between you and companion.', 'Companion regains +IB from any healing. Uses: IB per long rest.'] }, { id: 'evolve', name: 'Adaptive Evolution', desc: 'Companion adapts to threats.', mechanics: ['Reactive Adaptation (reaction): companion gains damage resistance for 1 min. Uses: IB per long rest.', 'Companion\'s natural weapons count as magical.', 'Teach minor adaptations (gills, thick hide, padded feet, keen senses). Max 2 at a time.'] }],
+        options13: [{ id: 'fusion', name: 'Primal Fusion', desc: 'Merge consciousness with your beast.', mechanics: ['Fusion (action, 1 min, concentration): merge forms. Use companion\'s physical stats, your mental stats + all features.', 'Take your action + companion\'s multiattack each turn.', 'If fused form hits 0 HP: both appear at 0 HP, death saves separately. 1/long rest.'] }, { id: 'soulguard', name: 'Soul Guard', desc: 'Companion anchors your consciousness.', mechanics: ['While companion is conscious within 30 ft: immune to charmed, frightened, stunned.', 'On failed Wis/Cha save: companion can use reaction to re-save for you. Uses: IB per long rest.'] }]
+      },
+    ]
+  },
+];
+
+const ABILITIES = ['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA'];
+const ABILITY_NAMES = { STR: 'Strength', DEX: 'Dexterity', CON: 'Constitution', INT: 'Intelligence', WIS: 'Wisdom', CHA: 'Charisma' };
+const CONDITIONS = [
+  'Blinded', 'Charmed', 'Deafened', 'Exhaustion', 'Frightened',
+  'Grappled', 'Incapacitated', 'Invisible', 'Paralyzed', 'Petrified',
+  'Poisoned', 'Prone', 'Restrained', 'Stunned', 'Unconscious'
+];
+const REGIONS = ['Verdant Wilds', 'Sunscorch Wastes', 'Ironspire Peaks', 'Gloomfen Marsh', 'Hearthstone Keep', 'Wanderer'];
+
+function getIB(level) {
+  if (level >= 17) return 6;
+  if (level >= 13) return 5;
+  if (level >= 9) return 4;
+  if (level >= 5) return 3;
+  return 2;
+}
+function getMod(score) {
+  const s = parseInt(score) || 10;
+  const m = Math.floor((s - 10) / 2);
+  return m >= 0 ? '+' + m : '' + m;
+}
+
+// ============================================================
+// STATE
+// ============================================================
+let char = {
+  name: '', title: '', race: '', background: '', homeland: 'Wanderer', level: 1,
+  abilities: { STR: 10, DEX: 10, CON: 10, INT: 10, WIS: 10, CHA: 10 },
+  hp: { current: 10, max: 10 }, ac: 10, speed: 30, profBonus: 2,
+  domains: {}, conditions: [],
+  equipment: ['', '', '', '', '', ''],
+  inventory: ['', '', '', '', '', '', '', ''],
+  gold: 0, silver: 0, copper: 0, gems: 0,
+  notes: '', backstory: '',
+};
+DOMAINS.forEach(d => { char.domains[d.id] = { level: 0, path: '', opt7: '', opt13: '' }; });
+
+// ============================================================
+// EXPAND STATE — which domains have mechanics visible
+// ============================================================
+let expandedDomains = {};
+let showGlossary = false;
+
+function toggleDomainExpand(domainId) {
+  expandedDomains[domainId] = !expandedDomains[domainId];
+  render();
+}
+
+function renderDomainMechanics(domain, domState, selectedPath) {
+  let html = '';
+  const dlvl = domState.level;
+
+  // Core nodes
+  if (domain.core && domain.core.length) {
+    html += '<div class="mech-section"><div class="mech-section-title">\u25C6 Core Progression</div>';
+    for (const node of domain.core) {
+      const unlocked = dlvl >= node.level;
+      html += `<div class="mech-node ${unlocked ? '' : 'locked-node'}">`;
+      html += `<span class="mech-node-level">L${node.level}</span>`;
+      html += `<span class="mech-node-title">${esc(node.title)}</span>`;
+      if (node.body) html += `<div class="mech-node-body">${esc(node.body)}</div>`;
+      if (node.mechanics) {
+        for (const m of node.mechanics) {
+          html += `<div class="mech-bullet">${esc(m)}</div>`;
+        }
+      }
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+
+  // Selected path
+  if (selectedPath) {
+    html += '<div class="mech-section"><div class="mech-section-title path-title">\u25C6 Path: ' + esc(selectedPath.name) + '</div>';
+    if (selectedPath.mechanics) {
+      html += '<div class="mech-path-block"><div class="mech-path-name">Passive Benefits</div>';
+      for (const m of selectedPath.mechanics) {
+        html += `<div class="mech-bullet">${esc(m)}</div>`;
+      }
+      html += '</div>';
+    }
+    // L7 option details
+    if (domState.opt7 && selectedPath.options7) {
+      const opt = selectedPath.options7.find(o => o.id === domState.opt7);
+      if (opt) {
+        html += `<div class="mech-path-block"><div class="mech-path-name">L7: ${esc(opt.name)}</div>`;
+        if (opt.desc) html += `<div class="mech-node-body">${esc(opt.desc)}</div>`;
+        if (opt.mechanics) {
+          for (const m of opt.mechanics) {
+            html += `<div class="mech-bullet">${esc(m)}</div>`;
+          }
+        }
+        html += '</div>';
+      }
+    }
+    // L13 option details
+    if (domState.opt13 && selectedPath.options13) {
+      const opt = selectedPath.options13.find(o => o.id === domState.opt13);
+      if (opt) {
+        html += `<div class="mech-path-block"><div class="mech-path-name">L13: ${esc(opt.name)}</div>`;
+        if (opt.desc) html += `<div class="mech-node-body">${esc(opt.desc)}</div>`;
+        if (opt.mechanics) {
+          for (const m of opt.mechanics) {
+            html += `<div class="mech-bullet">${esc(m)}</div>`;
+          }
+        }
+        html += '</div>';
+      }
+    }
+    html += '</div>';
+  }
+
+  return html;
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+function render() {
+  const hpPct = char.hp.max > 0 ? Math.max(0, Math.min(100, (char.hp.current / char.hp.max) * 100)) : 100;
+  const hpColor = hpPct <= 25 ? 'var(--hp-red)' : hpPct <= 50 ? 'var(--hp-yellow)' : 'var(--hp-green)';
+  const hpState = hpPct <= 25 ? 'hp-critical' : hpPct <= 50 ? 'hp-wounded' : (hpPct < 100 ? 'hp-healthy' : '');
+
+  // Update document title — the character arrives here too
+  document.title = char.name
+    ? `${char.name}${char.title ? ' — ' + char.title : ''} | Aethermoor`
+    : 'Aethermoor \u2014 Character Ledger';
+
+  const hasName = char.name.trim().length > 0;
+
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    ${hasName ? `
+    <div class="header header-named animate-in">
+      <div class="char-name">${esc(char.name)}</div>
+      ${char.title ? `<div class="char-title">${esc(char.title)}</div>` : ''}
+      <div class="sub">Aethermoor \u2014 Accretion System</div>
+    </div>
+    ` : `
+    <div class="header header-empty animate-in">
+      <h1>Character Ledger</h1>
+      <div class="sub">The Realm of Aethermoor \u2014 Accretion System</div>
+    </div>
+    `}
+
+    <div class="toolbar">
+      <button class="btn" onclick="exportCharacter()">\uD83D\uDCBE Save to File</button>
+      <button class="btn" onclick="document.getElementById('importInput').click()">\uD83D\uDCC2 Load from File</button>
+      <button class="btn" onclick="window.print()">\uD83D\uDDA8 Print Sheet</button>
+      <span class="toolbar-gap"></span>
+      <button class="btn danger" onclick="resetCharacter()">\u2716 New Character</button>
+    </div>
+
+    <div class="divider"><span class="divider-label">Identity</span></div>
+
+    <div class="card">
+      <div class="field-grid cols-3">
+        <div class="field">
+          <span class="field-label">Character Name</span>
+          <input type="text" value="${esc(char.name)}" onchange="char.name=this.value; render()" placeholder="Enter name...">
+        </div>
+        <div class="field">
+          <span class="field-label">Title / Epithet</span>
+          <input type="text" value="${esc(char.title)}" onchange="char.title=this.value; render()" placeholder="The Unbroken, etc.">
+        </div>
+        <div class="field">
+          <span class="field-label">Character Level</span>
+          <input type="number" value="${char.level}" min="1" max="20" onchange="char.level=parseInt(this.value)||1; char.profBonus=Math.ceil(char.level/4)+1; render()">
+        </div>
+        <div class="field">
+          <span class="field-label">Race / Species</span>
+          <input type="text" value="${esc(char.race)}" onchange="char.race=this.value" placeholder="Human, Dwarf, etc.">
+        </div>
+        <div class="field">
+          <span class="field-label">Background</span>
+          <input type="text" value="${esc(char.background)}" onchange="char.background=this.value" placeholder="Soldier, Scholar, etc.">
+        </div>
+        <div class="field">
+          <span class="field-label">Homeland</span>
+          <select onchange="char.homeland=this.value">
+            ${REGIONS.map(r => `<option value="${r}" ${char.homeland === r ? 'selected' : ''}>${r}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"><span class="divider-label">Ability Scores</span></div>
+
+    <div class="field-grid cols-6">
+      ${ABILITIES.map(a => {
+        const shaped = char.abilities[a] !== 10;
+        return `
+        <div class="ability-card ${shaped ? 'shaped' : ''}">
+          <div class="ability-name">${a}</div>
+          <input class="ability-score" type="number" min="1" max="30" value="${char.abilities[a]}"
+            onchange="char.abilities['${a}']=parseInt(this.value)||10; render()">
+          <div class="ability-mod">${getMod(char.abilities[a])}</div>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <div class="divider"><span class="divider-label">Vital Statistics</span></div>
+
+    <div class="field-grid cols-4">
+      <div class="vital-card ${hpState}">
+        <div class="vital-label">Hit Points</div>
+        <div class="vital-value">
+          <input class="vital-input" type="number" min="0" value="${char.hp.current}"
+            onchange="char.hp.current=parseInt(this.value)||0; render()"
+            style="color:${hpColor}">
+          <span class="vital-sep">/</span>
+          <input class="vital-input" type="number" min="1" value="${char.hp.max}"
+            onchange="char.hp.max=parseInt(this.value)||1; render()">
+        </div>
+        <div class="hp-bar-track"><div class="hp-bar-fill" style="width:${hpPct}%;background:${hpColor}"></div></div>
+      </div>
+      <div class="vital-card">
+        <div class="vital-label">Armor Class</div>
+        <div class="vital-value">
+          <input class="vital-input" type="number" min="0" value="${char.ac}" onchange="char.ac=parseInt(this.value)||0">
+        </div>
+      </div>
+      <div class="vital-card">
+        <div class="vital-label">Speed</div>
+        <div class="vital-value">
+          <input class="vital-input" type="number" min="0" step="5" value="${char.speed}" onchange="char.speed=parseInt(this.value)||0">
+          <span style="font-size:11px;color:var(--text-muted);font-weight:500;font-family:var(--serif);letter-spacing:.05em;">ft</span>
+        </div>
+      </div>
+      <div class="vital-card">
+        <div class="vital-label">Prof. Bonus</div>
+        <div class="vital-value">
+          <span class="vital-static">+${char.profBonus}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"><span class="divider-label">Conditions</span></div>
+
+    <div class="card" style="padding:14px 18px;">
+      <div class="conditions-wrap">
+        ${CONDITIONS.map(c => `
+          <span class="cond-tag ${char.conditions.includes(c)?'active':''}" onclick="toggleCondition('${c}')">${c}</span>
+        `).join('')}
+      </div>
+    </div>
+
+    <div class="divider"><span class="divider-label">Accretion Domains</span></div>
+
+    <div style="text-align:center;margin-bottom:12px;">
+      <button class="domain-expand-btn ${showGlossary ? 'open' : ''}" onclick="showGlossary=!showGlossary;render()" style="font-size:11px;padding:4px 14px;">
+        \uD83D\uDCD8 ${showGlossary ? 'Hide' : 'Show'} Rules Glossary
+      </button>
+    </div>
+    ${showGlossary ? `
+    <div class="card" style="margin-bottom:16px;padding:14px 18px;">
+      <div class="inv-section-title" style="margin-bottom:6px;">Accretion Rules &amp; Definitions</div>
+      <div style="font-size:11px;color:var(--text-dim);line-height:1.55;margin-bottom:10px;">
+        Each domain has its own level (1\u201320). <strong style="color:var(--accent)">Imprint Bonus (IB)</strong> scales by domain level: L1-4 +2, L5-8 +3, L9-12 +4, L13-16 +5, L17-20 +6.<br>
+        <strong style="color:var(--accent)">Imprint DC</strong> = 8 + IB + relevant ability modifier. If a feature grants proficiency you already have, upgrade to Expertise.
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:6px;">
+        ${Object.entries(DEFINITIONS).map(([term, def]) => `
+          <div style="font-size:10px;line-height:1.45;padding:4px 8px;background:rgba(237,232,223,.02);border-radius:var(--radius-sm);border:1px solid var(--border);">
+            <strong style="color:var(--info);font-size:10.5px;">${esc(term)}:</strong>
+            <span style="color:var(--text-dim);">${esc(def)}</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>` : ''}
+
+    <div class="domains-grid">
+      ${DOMAINS.map(d => {
+        const dom = char.domains[d.id];
+        const ib = dom.level > 0 ? getIB(dom.level) : 0;
+        const hasLevel = dom.level > 0;
+        const isDeep = dom.level >= 10;
+        const selectedPath = dom.path ? d.paths.find(p => p.id === dom.path) : null;
+        const isExpanded = expandedDomains[d.id];
+
+        return `
+        <div class="domain-card ${hasLevel ? 'has-level' : 'empty'} ${isDeep ? 'deep' : ''} ${isExpanded ? 'expanded' : ''}">
+          <div class="domain-header">
+            <div class="domain-icon">${d.icon}</div>
+            <div class="domain-info">
+              <div class="domain-name">${d.name}</div>
+              <div class="domain-meta">${d.subtitle}</div>
+            </div>
+            <div class="domain-level-wrap">
+              <span class="domain-level-lbl">Lv</span>
+              <input class="domain-level-input" type="number" min="0" max="20" value="${dom.level}"
+                onchange="char.domains['${d.id}'].level=parseInt(this.value)||0; render()">
+            </div>
+          </div>
+          ${hasLevel ? `<span class="domain-ib">IB +${ib}</span>` : ''}
+          ${dom.level >= 3 ? `
+          <div class="domain-path">
+            <div class="domain-path-label">\u25C6 Path</div>
+            <select onchange="char.domains['${d.id}'].path=this.value; char.domains['${d.id}'].opt7=''; char.domains['${d.id}'].opt13=''; render()">
+              <option value="">\u2014 None \u2014</option>
+              ${d.paths.map(p => `<option value="${p.id}" ${dom.path===p.id?'selected':''}>${p.name} \u2014 ${p.desc}</option>`).join('')}
+            </select>
+          </div>` : hasLevel ? '<div class="domain-path-hint">\uD83D\uDD12 Path unlocks at Lv 3</div>' : ''}
+          ${dom.level >= 7 && selectedPath ? `
+          <div class="domain-opt-section">
+            <div class="domain-opt-label">\u25C6 L7 Specialty</div>
+            <select onchange="char.domains['${d.id}'].opt7=this.value">
+              <option value="">\u2014 None \u2014</option>
+              ${selectedPath.options7.map(o => `<option value="${o.id}" ${dom.opt7===o.id?'selected':''}>${o.name}${o.desc ? ' \u2014 '+o.desc : ''}</option>`).join('')}
+            </select>
+          </div>` : dom.level >= 7 && !selectedPath ? '<div class="domain-path-hint">Pick a Path first for L7 options</div>' : ''}
+          ${dom.level >= 13 && selectedPath ? `
+          <div class="domain-opt-section">
+            <div class="domain-opt-label">\u25C6 L13 Mastery</div>
+            <select onchange="char.domains['${d.id}'].opt13=this.value">
+              <option value="">\u2014 None \u2014</option>
+              ${selectedPath.options13.map(o => `<option value="${o.id}" ${dom.opt13===o.id?'selected':''}>${o.name}${o.desc ? ' \u2014 '+o.desc : ''}</option>`).join('')}
+            </select>
+          </div>` : dom.level >= 13 && !selectedPath ? '<div class="domain-path-hint">Pick a Path first for L13 options</div>' : ''}
+
+          <button class="domain-expand-btn ${isExpanded ? 'open' : ''}" onclick="toggleDomainExpand('${d.id}')">
+            ${isExpanded ? '\u25BE Hide Mechanics' : '\u25B8 View Mechanics'}
+          </button>
+
+          ${isExpanded ? `<div class="domain-mechanics">
+            ${renderDomainMechanics(d, dom, selectedPath)}
+          </div>` : ''}
+        </div>`;
+      }).join('')}
+    </div>
+
+    <div class="divider"><span class="divider-label">Resources</span></div>
+
+    <div class="field-grid cols-4">
+      <div class="resource-card">
+        <div class="resource-label">Gold</div>
+        <input class="resource-input" type="number" min="0" value="${char.gold}" onchange="char.gold=parseInt(this.value)||0">
+      </div>
+      <div class="resource-card">
+        <div class="resource-label">Silver</div>
+        <input class="resource-input" type="number" min="0" value="${char.silver}" onchange="char.silver=parseInt(this.value)||0">
+      </div>
+      <div class="resource-card">
+        <div class="resource-label">Copper</div>
+        <input class="resource-input" type="number" min="0" value="${char.copper}" onchange="char.copper=parseInt(this.value)||0">
+      </div>
+      <div class="resource-card">
+        <div class="resource-label">Gems / Other</div>
+        <input class="resource-input" type="number" min="0" value="${char.gems}" onchange="char.gems=parseInt(this.value)||0">
+      </div>
+    </div>
+
+    <div class="divider"><span class="divider-label">Equipment</span></div>
+
+    <div class="field-grid cols-2">
+      <div class="card worn">
+        <div class="inv-section-title">Worn & Wielded</div>
+        <ul class="inv-list">
+          ${char.equipment.map((item, i) => `
+            <li class="inv-item">
+              <span class="inv-bullet">\u25C6</span>
+              <input class="inv-input" type="text" value="${esc(item)}" placeholder="${['Weapon','Shield/Off-hand','Armor','Helm','Cloak','Boots'][i] || 'Slot '+(i+1)}"
+                onchange="char.equipment[${i}]=this.value">
+              ${i >= 6 ? `<button class="inv-remove" onclick="char.equipment.splice(${i},1);render()">\u00D7</button>` : ''}
+            </li>
+          `).join('')}
+        </ul>
+        <button class="add-btn" onclick="char.equipment.push('');render()">+ Add equipment slot</button>
+      </div>
+      <div class="card">
+        <div class="inv-section-title">Inventory & Supplies</div>
+        <ul class="inv-list">
+          ${char.inventory.map((item, i) => `
+            <li class="inv-item">
+              <span class="inv-bullet">\u25C6</span>
+              <input class="inv-input" type="text" value="${esc(item)}" placeholder="Item ${i+1}..."
+                onchange="char.inventory[${i}]=this.value">
+              <button class="inv-remove" onclick="char.inventory.splice(${i},1);render()">\u00D7</button>
+            </li>
+          `).join('')}
+        </ul>
+        <button class="add-btn" onclick="char.inventory.push('');render()">+ Add item</button>
+      </div>
+    </div>
+
+    <div class="divider"><span class="divider-label">Backstory & Notes</span></div>
+
+    <div class="card">
+      <div style="margin-bottom:18px;">
+        <div class="inv-section-title" style="margin-bottom:8px;">Backstory</div>
+        <textarea class="notes-area backstory-area" placeholder="Where did they come from? What do they carry that isn't in the inventory?"
+          onchange="char.backstory=this.value" rows="5">${esc(char.backstory)}</textarea>
+      </div>
+      <div>
+        <div class="inv-section-title" style="margin-bottom:8px;">Session Notes</div>
+        <textarea class="notes-area" placeholder="Track quests, allies, debts, plans..."
+          onchange="char.notes=this.value" rows="4">${esc(char.notes)}</textarea>
+      </div>
+    </div>
+
+    <div class="colophon">
+      The ground is the going. Begin wherever you are.
+    </div>
+  `;
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+function esc(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function toggleCondition(c) {
+  const i = char.conditions.indexOf(c);
+  if (i >= 0) char.conditions.splice(i, 1);
+  else char.conditions.push(c);
+  render();
+}
+
+function exportCharacter() {
+  const data = JSON.stringify(char, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = (char.name || 'character').replace(/[^a-zA-Z0-9]/g, '_') + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importCharacter(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      Object.keys(data).forEach(k => { char[k] = data[k]; });
+      DOMAINS.forEach(d => {
+        if (!char.domains[d.id]) char.domains[d.id] = { level: 0, path: '', opt7: '', opt13: '' };
+        // Migrate old format
+        const dom = char.domains[d.id];
+        if (dom.opt7 === undefined) dom.opt7 = '';
+        if (dom.opt13 === undefined) dom.opt13 = '';
+        // Migrate old path names to IDs
+        if (dom.path && !d.paths.find(p => p.id === dom.path)) {
+          const match = d.paths.find(p => p.name === dom.path);
+          if (match) dom.path = match.id;
+          else dom.path = '';
+        }
+      });
+      render();
+    } catch(err) {
+      alert('Could not read character file. Make sure it is a valid .json file.');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function resetCharacter() {
+  if (!confirm('This character will be gone. Start someone new?')) return;
+  char = {
+    name: '', title: '', race: '', background: '', homeland: 'Wanderer', level: 1,
+    abilities: { STR: 10, DEX: 10, CON: 10, INT: 10, WIS: 10, CHA: 10 },
+    hp: { current: 10, max: 10 }, ac: 10, speed: 30, profBonus: 2,
+    domains: {}, conditions: [],
+    equipment: ['', '', '', '', '', ''],
+    inventory: ['', '', '', '', '', '', '', ''],
+    gold: 0, silver: 0, copper: 0, gems: 0,
+    notes: '', backstory: '',
+  };
+  DOMAINS.forEach(d => { char.domains[d.id] = { level: 0, path: '', opt7: '', opt13: '' }; });
+  render();
+}
+
+// Initial render
+render();
+</script>
+</body>
+</html>
