@@ -17,6 +17,12 @@
       // no-op
     }
   };
+  function useEmbeddedMapArt(img) {
+    if (window.__AETHERMOOR_EMBEDDED_MAP_ART) {
+      img.onerror = null;
+      img.src = window.__AETHERMOOR_EMBEDDED_MAP_ART;
+    }
+  }
 </script>
 <style>
   :root {
@@ -350,6 +356,7 @@
   .tag-desert { background: rgba(196,148,58,0.15); color: #8a6a20; border-color: var(--desert-gold); }
   .tag-mountain { background: rgba(106,110,120,0.15); color: var(--mountain-grey); border-color: var(--mountain-grey); }
   .tag-swamp { background: rgba(74,58,92,0.15); color: var(--swamp-purple); border-color: var(--swamp-purple); }
+  .tag-capital { background: rgba(139,32,32,0.15); color: var(--accent-red); border-color: var(--accent-red); }
 
   .info-panel .divider {
     border: none;
@@ -489,6 +496,225 @@
     .map-art-wrap{ padding: 64px 12px 12px; }
     .map-art{ width: calc(100vw - 24px); max-height: calc(100vh - 92px); }
   }
+
+  /* === ACTIVE MARKER HIGHLIGHT === */
+  .location-marker.active .marker-dot {
+    stroke: var(--accent-red);
+    stroke-width: 2.5;
+    filter: url(#glow);
+  }
+  .location-marker.active .marker-glow {
+    opacity: 0.5;
+  }
+
+  /* === FOCUS STYLES FOR KEYBOARD NAV === */
+  .location-marker:focus {
+    outline: none;
+  }
+  .location-marker:focus .marker-dot {
+    stroke: #fff;
+    stroke-width: 3;
+    filter: url(#glow);
+  }
+  .location-marker:focus .marker-glow {
+    opacity: 0.7;
+  }
+
+  /* === TOOLTIP === */
+  .map-tooltip {
+    position: fixed;
+    padding: 8px 14px;
+    background: linear-gradient(145deg, #f5ecd0 0%, #e8d5a3 100%);
+    border: 1px solid var(--ink-light);
+    box-shadow: 0 4px 16px rgba(44,24,16,0.3);
+    font-family: 'MedievalSharp', serif;
+    font-size: 0.85rem;
+    color: var(--ink);
+    pointer-events: none;
+    z-index: 200;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    white-space: nowrap;
+    max-width: 260px;
+  }
+  .map-tooltip.visible {
+    opacity: 1;
+  }
+  .map-tooltip .tooltip-type {
+    font-family: 'Crimson Text', serif;
+    font-style: italic;
+    font-size: 0.7rem;
+    color: var(--ink-light);
+    display: block;
+    margin-top: 2px;
+  }
+
+  /* === SEARCH BAR === */
+  .search-container {
+    position: absolute;
+    top: 28px;
+    right: 28px;
+    z-index: 15;
+  }
+  .search-toggle {
+    background: rgba(245,236,208,0.9);
+    border: 1px solid var(--ink-light);
+    color: var(--ink);
+    font-family: 'Crimson Text', serif;
+    font-size: 0.85rem;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .search-toggle:hover {
+    background: rgba(245,236,208,1);
+    box-shadow: 0 2px 8px rgba(44,24,16,0.2);
+  }
+  .search-box {
+    display: none;
+    margin-top: 6px;
+    position: relative;
+  }
+  .search-box.open {
+    display: block;
+  }
+  .search-input {
+    width: 220px;
+    padding: 8px 12px;
+    background: rgba(245,236,208,0.95);
+    border: 1px solid var(--ink-light);
+    font-family: 'Crimson Text', serif;
+    font-size: 0.9rem;
+    color: var(--ink);
+    outline: none;
+  }
+  .search-input::placeholder {
+    color: var(--ink-light);
+    font-style: italic;
+  }
+  .search-input:focus {
+    box-shadow: 0 0 0 2px rgba(139,32,32,0.3);
+  }
+  .search-results {
+    background: rgba(245,236,208,0.97);
+    border: 1px solid var(--ink-light);
+    border-top: none;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  .search-result-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    font-family: 'Crimson Text', serif;
+    font-size: 0.85rem;
+    color: var(--ink);
+    transition: background 0.15s;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .search-result-item:hover {
+    background: rgba(196,148,58,0.15);
+  }
+  .search-result-biome {
+    font-size: 0.7rem;
+    color: var(--ink-light);
+    font-style: italic;
+  }
+
+  /* === REGION FILTER BUTTONS === */
+  .filter-bar {
+    position: absolute;
+    top: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 15;
+    display: flex;
+    gap: 4px;
+    background: rgba(245,236,208,0.85);
+    border: 1px solid var(--ink-light);
+    padding: 4px 6px;
+  }
+  .filter-btn {
+    border: 1px solid transparent;
+    padding: 4px 10px;
+    font-family: 'Crimson Text', serif;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    background: transparent;
+    color: var(--ink);
+  }
+  .filter-btn:hover {
+    background: rgba(44,24,16,0.08);
+  }
+  .filter-btn.active {
+    border-color: currentColor;
+    font-weight: 600;
+  }
+  .filter-btn[data-biome="all"] { color: var(--ink); }
+  .filter-btn[data-biome="forest"] { color: var(--forest-green); }
+  .filter-btn[data-biome="desert"] { color: var(--desert-gold); }
+  .filter-btn[data-biome="mountain"] { color: var(--mountain-grey); }
+  .filter-btn[data-biome="swamp"] { color: var(--swamp-purple); }
+  .filter-btn[data-biome="capital"] { color: var(--accent-red); }
+
+  /* === ROAD PATHS STYLING === */
+  .road-group {
+    pointer-events: none;
+  }
+  .road-group.hidden {
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  /* === HIDDEN MARKER (filtered out) === */
+  .location-marker.filtered-out {
+    opacity: 0.12;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  .location-marker:not(.filtered-out) {
+    transition: opacity 0.3s ease;
+  }
+
+  /* === PANEL SCROLL INDICATOR === */
+  .info-panel::after {
+    content: '';
+    position: sticky;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 30px;
+    background: linear-gradient(transparent, #e8d5a3);
+    pointer-events: none;
+    display: block;
+  }
+
+  /* === RESPONSIVE ADJUSTMENTS === */
+  @media (max-width: 768px) {
+    .filter-bar {
+      top: auto;
+      bottom: 52%;
+      left: 50%;
+      transform: translateX(-50%);
+      flex-wrap: wrap;
+      justify-content: center;
+      max-width: 90vw;
+    }
+    .search-container {
+      top: 68px;
+      right: 14px;
+    }
+    .search-input {
+      width: 180px;
+    }
+    .map-tooltip {
+      display: none;
+    }
+  }
 </style>
 </head>
 <body>
@@ -501,6 +727,24 @@
   <div class="corner corner-bl"><svg viewBox="0 0 30 30"><path d="M2,2 L15,2 L15,5 L5,5 L5,15 L2,15 Z" fill="none" stroke="#5a3a28" stroke-width="1.5"/><circle cx="4" cy="4" r="1.5" fill="#5a3a28"/></svg></div>
   <div class="corner corner-br"><svg viewBox="0 0 30 30"><path d="M2,2 L15,2 L15,5 L5,5 L5,15 L2,15 Z" fill="none" stroke="#5a3a28" stroke-width="1.5"/><circle cx="4" cy="4" r="1.5" fill="#5a3a28"/></svg></div>
 
+  <!-- Search -->
+  <div class="search-container">
+    <button class="search-toggle" onclick="toggleSearch()" aria-label="Search locations">Search</button>
+    <div class="search-box" id="searchBox">
+      <input type="text" class="search-input" id="searchInput" placeholder="Search locations..." oninput="filterSearch(this.value)" aria-label="Search for a location">
+      <div class="search-results" id="searchResults"></div>
+    </div>
+  </div>
+
+  <!-- Region Filters -->
+  <div class="filter-bar" role="toolbar" aria-label="Filter locations by region">
+    <button class="filter-btn active" data-biome="all" onclick="filterByBiome('all')">All</button>
+    <button class="filter-btn" data-biome="forest" onclick="filterByBiome('forest')">Forest</button>
+    <button class="filter-btn" data-biome="desert" onclick="filterByBiome('desert')">Desert</button>
+    <button class="filter-btn" data-biome="mountain" onclick="filterByBiome('mountain')">Mountain</button>
+    <button class="filter-btn" data-biome="swamp" onclick="filterByBiome('swamp')">Swamp</button>
+    <button class="filter-btn" data-biome="capital" onclick="filterByBiome('capital')">Capital</button>
+  </div>
   <!-- Map Title -->
   <div class="map-title">
     <h1>The Realm of Aethermoor</h1>
@@ -519,92 +763,119 @@
         </filter>
       </defs>
 
+      <!-- Road/path connections between locations -->
+      <g class="road-group">
+        <!-- Forest roads -->
+        <path class="road-path" data-biome="forest" d="M200,160 Q255,210 310,260" />
+        <path class="road-path" data-biome="forest" d="M200,160 Q170,220 140,280" />
+        <path class="road-path" data-biome="forest" d="M200,160 Q285,165 370,170" />
+        <!-- Forest to Capital -->
+        <path class="road-path" data-biome="forest" d="M310,260 Q425,325 540,390" />
+        <!-- Desert roads -->
+        <path class="road-path" data-biome="desert" d="M870,470 Q825,515 780,560" />
+        <path class="road-path" data-biome="desert" d="M870,470 Q940,505 1010,540" />
+        <path class="road-path" data-biome="desert" d="M870,470 Q900,565 930,660" />
+        <!-- Desert to Capital -->
+        <path class="road-path" data-biome="desert" d="M870,470 Q705,430 540,390" />
+        <!-- Mountain roads -->
+        <path class="road-path" data-biome="mountain" d="M870,160 Q810,200 750,240" />
+        <path class="road-path" data-biome="mountain" d="M870,160 Q945,200 1020,240" />
+        <path class="road-path" data-biome="mountain" d="M870,160 Q925,140 980,120" />
+        <!-- Mountain to Capital -->
+        <path class="road-path" data-biome="mountain" d="M750,240 Q645,315 540,390" />
+        <!-- Swamp roads -->
+        <path class="road-path" data-biome="swamp" d="M280,530 Q225,565 170,600" />
+        <path class="road-path" data-biome="swamp" d="M280,530 Q345,575 410,620" />
+        <path class="road-path" data-biome="swamp" d="M280,530 Q305,605 330,680" />
+        <!-- Swamp to Capital -->
+        <path class="road-path" data-biome="swamp" d="M280,530 Q410,460 540,390" />
+      </g>
       <!-- Clickable markers + labels (overlay) -->
-      <g class="location-marker" data-location="eldergrove" onclick="showLocation('eldergrove')">
+      <g class="location-marker" data-location="eldergrove" data-biome="forest" tabindex="0" role="button" aria-label="Eldergrove - Ancient Settlement" onclick="showLocation('eldergrove')">
       <circle class="marker-glow" cx="200" cy="160" r="14" fill="var(--forest-light)" opacity="0"/>
       <circle class="marker-pulse" cx="200" cy="160" r="4" fill="var(--forest-green)" opacity="0.3"/>
       <circle class="marker-dot" cx="200" cy="160" r="5" fill="var(--forest-green)" stroke="var(--parchment)" stroke-width="1.5"/>
       <text class="location-label" x="200" y="148" text-anchor="middle">Eldergrove</text>
     </g>
-      <g class="location-marker" data-location="thornhollow" onclick="showLocation('thornhollow')">
+      <g class="location-marker" data-location="thornhollow" data-biome="forest" tabindex="0" role="button" aria-label="Thornhollow - Outpost" onclick="showLocation('thornhollow')">
       <circle class="marker-glow" cx="310" cy="260" r="14" fill="var(--forest-light)" opacity="0"/>
       <circle class="marker-dot" cx="310" cy="260" r="4.5" fill="var(--forest-green)" stroke="var(--parchment)" stroke-width="1.5"/>
       <text class="location-label" x="310" y="250" text-anchor="middle">Thornhollow</text>
     </g>
-      <g class="location-marker" data-location="mosswatch" onclick="showLocation('mosswatch')">
+      <g class="location-marker" data-location="mosswatch" data-biome="forest" tabindex="0" role="button" aria-label="Mosswatch Tower - Watchtower" onclick="showLocation('mosswatch')">
       <circle class="marker-glow" cx="140" cy="280" r="14" fill="var(--forest-light)" opacity="0"/>
       <circle class="marker-dot" cx="140" cy="280" r="4" fill="var(--forest-green)" stroke="var(--parchment)" stroke-width="1.5"/>
       <text class="location-label" x="140" y="270" text-anchor="middle">Mosswatch</text>
     </g>
-      <g class="location-marker" data-location="fawnrest" onclick="showLocation('fawnrest')">
+      <g class="location-marker" data-location="fawnrest" data-biome="forest" tabindex="0" role="button" aria-label="Fawnrest Shrine - Sacred Site" onclick="showLocation('fawnrest')">
       <circle class="marker-glow" cx="370" cy="170" r="14" fill="var(--forest-light)" opacity="0"/>
       <circle class="marker-dot" cx="370" cy="170" r="4" fill="var(--forest-green)" stroke="var(--parchment)" stroke-width="1.5"/>
       <text class="location-label" x="370" y="160" text-anchor="middle">Fawnrest</text>
     </g>
-      <g class="location-marker" data-location="sandspire" onclick="showLocation('sandspire')">
+      <g class="location-marker" data-location="sandspire" data-biome="desert" tabindex="0" role="button" aria-label="Sandspire - Trade City" onclick="showLocation('sandspire')">
       <circle class="marker-glow" cx="870" cy="470" r="14" fill="var(--desert-light)" opacity="0"/>
       <circle class="marker-pulse" cx="870" cy="470" r="4" fill="var(--desert-gold)" opacity="0.3"/>
       <circle class="marker-dot" cx="870" cy="470" r="5" fill="var(--desert-gold)" stroke="var(--parchment)" stroke-width="1.5"/>
       <text class="location-label" x="870" y="458" text-anchor="middle">Sandspire</text>
     </g>
-      <g class="location-marker" data-location="dusthaven" onclick="showLocation('dusthaven')">
+      <g class="location-marker" data-location="dusthaven" data-biome="desert" tabindex="0" role="button" aria-label="Dusthaven - Mining Camp" onclick="showLocation('dusthaven')">
       <circle class="marker-glow" cx="780" cy="560" r="14" fill="var(--desert-light)" opacity="0"/>
       <circle class="marker-dot" cx="780" cy="560" r="4.5" fill="var(--desert-gold)" stroke="var(--parchment)" stroke-width="1.5"/>
       <text class="location-label" x="780" y="550" text-anchor="middle">Dusthaven</text>
     </g>
-      <g class="location-marker" data-location="miragewell" onclick="showLocation('miragewell')">
+      <g class="location-marker" data-location="miragewell" data-biome="desert" tabindex="0" role="button" aria-label="Miragewell - Oasis Village" onclick="showLocation('miragewell')">
       <circle class="marker-glow" cx="1010" cy="540" r="14" fill="var(--desert-light)" opacity="0"/>
       <circle class="marker-dot" cx="1010" cy="540" r="4" fill="var(--desert-gold)" stroke="var(--parchment)" stroke-width="1.5"/>
       <text class="location-label" x="1010" y="530" text-anchor="middle">Miragewell</text>
     </g>
-      <g class="location-marker" data-location="scorchgate" onclick="showLocation('scorchgate')">
+      <g class="location-marker" data-location="scorchgate" data-biome="desert" tabindex="0" role="button" aria-label="Scorchgate Ruins - Ancient Ruins" onclick="showLocation('scorchgate')">
       <circle class="marker-glow" cx="930" cy="660" r="14" fill="var(--desert-light)" opacity="0"/>
       <circle class="marker-dot" cx="930" cy="660" r="4" fill="var(--desert-gold)" stroke="var(--parchment)" stroke-width="1.5"/>
       <text class="location-label" x="930" y="650" text-anchor="middle">Scorchgate</text>
     </g>
-      <g class="location-marker" data-location="ironhold" onclick="showLocation('ironhold')">
+      <g class="location-marker" data-location="ironhold" data-biome="mountain" tabindex="0" role="button" aria-label="Ironhold Fortress - Dwarven Stronghold" onclick="showLocation('ironhold')">
       <circle class="marker-glow" cx="870" cy="160" r="14" fill="var(--mountain-light)" opacity="0"/>
       <circle class="marker-pulse" cx="870" cy="160" r="4" fill="var(--mountain-grey)" opacity="0.3"/>
       <circle class="marker-dot" cx="870" cy="160" r="5" fill="var(--mountain-grey)" stroke="var(--parchment)" stroke-width="1.5"/>
       <text class="location-label" x="870" y="148" text-anchor="middle">Ironhold</text>
     </g>
-      <g class="location-marker" data-location="peaksveil" onclick="showLocation('peaksveil')">
+      <g class="location-marker" data-location="peaksveil" data-biome="mountain" tabindex="0" role="button" aria-label="Peak's Veil - Monastery" onclick="showLocation('peaksveil')">
       <circle class="marker-glow" cx="750" cy="240" r="14" fill="var(--mountain-light)" opacity="0"/>
       <circle class="marker-dot" cx="750" cy="240" r="4.5" fill="var(--mountain-grey)" stroke="var(--parchment)" stroke-width="1.5"/>
       <text class="location-label" x="750" y="230" text-anchor="middle">Peak's Veil</text>
     </g>
-      <g class="location-marker" data-location="stormwatch" onclick="showLocation('stormwatch')">
+      <g class="location-marker" data-location="stormwatch" data-biome="mountain" tabindex="0" role="button" aria-label="Stormwatch Outpost - Military Post" onclick="showLocation('stormwatch')">
       <circle class="marker-glow" cx="1020" cy="240" r="14" fill="var(--mountain-light)" opacity="0"/>
       <circle class="marker-dot" cx="1020" cy="240" r="4" fill="var(--mountain-grey)" stroke="var(--parchment)" stroke-width="1.5"/>
       <text class="location-label" x="1020" y="230" text-anchor="middle">Stormwatch</text>
     </g>
-      <g class="location-marker" data-location="frostmere" onclick="showLocation('frostmere')">
+      <g class="location-marker" data-location="frostmere" data-biome="mountain" tabindex="0" role="button" aria-label="Frostmere Lake - Sacred Lake" onclick="showLocation('frostmere')">
       <circle class="marker-glow" cx="980" cy="120" r="14" fill="var(--mountain-light)" opacity="0"/>
       <circle class="marker-dot" cx="980" cy="120" r="4" fill="var(--mountain-grey)" stroke="var(--parchment)" stroke-width="1.5"/>
       <text class="location-label" x="980" y="110" text-anchor="middle">Frostmere</text>
     </g>
-      <g class="location-marker" data-location="bogmire" onclick="showLocation('bogmire')">
+      <g class="location-marker" data-location="bogmire" data-biome="swamp" tabindex="0" role="button" aria-label="Bogmire - Swamp Town" onclick="showLocation('bogmire')">
       <circle class="marker-glow" cx="280" cy="530" r="14" fill="var(--swamp-light)" opacity="0"/>
       <circle class="marker-pulse" cx="280" cy="530" r="4" fill="var(--swamp-purple)" opacity="0.3"/>
       <circle class="marker-dot" cx="280" cy="530" r="5" fill="var(--swamp-purple)" stroke="var(--parchment)" stroke-width="1.5"/>
       <text class="location-label" x="280" y="518" text-anchor="middle">Bogmire</text>
     </g>
-      <g class="location-marker" data-location="rotbridge" onclick="showLocation('rotbridge')">
+      <g class="location-marker" data-location="rotbridge" data-biome="swamp" tabindex="0" role="button" aria-label="Rotbridge - Crossing Point" onclick="showLocation('rotbridge')">
       <circle class="marker-glow" cx="170" cy="600" r="14" fill="var(--swamp-light)" opacity="0"/>
       <circle class="marker-dot" cx="170" cy="600" r="4.5" fill="var(--swamp-purple)" stroke="var(--parchment)" stroke-width="1.5"/>
       <text class="location-label" x="170" y="590" text-anchor="middle">Rotbridge</text>
     </g>
-      <g class="location-marker" data-location="willowmurk" onclick="showLocation('willowmurk')">
+      <g class="location-marker" data-location="willowmurk" data-biome="swamp" tabindex="0" role="button" aria-label="Willowmurk - Hidden Village" onclick="showLocation('willowmurk')">
       <circle class="marker-glow" cx="410" cy="620" r="14" fill="var(--swamp-light)" opacity="0"/>
       <circle class="marker-dot" cx="410" cy="620" r="4" fill="var(--swamp-purple)" stroke="var(--parchment)" stroke-width="1.5"/>
       <text class="location-label" x="410" y="610" text-anchor="middle">Willowmurk</text>
     </g>
-      <g class="location-marker" data-location="misthollow" onclick="showLocation('misthollow')">
+      <g class="location-marker" data-location="misthollow" data-biome="swamp" tabindex="0" role="button" aria-label="Misthollow Ruins - Sunken Ruins" onclick="showLocation('misthollow')">
       <circle class="marker-glow" cx="330" cy="680" r="14" fill="var(--swamp-light)" opacity="0"/>
       <circle class="marker-dot" cx="330" cy="680" r="4" fill="var(--swamp-purple)" stroke="var(--parchment)" stroke-width="1.5"/>
       <text class="location-label" x="330" y="670" text-anchor="middle">Misthollow</text>
     </g>
-      <g class="location-marker" data-location="crossroads" onclick="showLocation('crossroads')">
+      <g class="location-marker" data-location="crossroads" data-biome="capital" tabindex="0" role="button" aria-label="Hearthstone Keep - Capital" onclick="showLocation('crossroads')">
       <circle class="marker-glow" cx="540" cy="390" r="16" fill="var(--accent-red)" opacity="0"/>
       <circle class="marker-pulse" cx="540" cy="390" r="5" fill="var(--accent-red)" opacity="0.2"/>
       <circle class="marker-dot" cx="540" cy="390" r="6" fill="var(--accent-red)" stroke="var(--parchment)" stroke-width="2"/>
@@ -645,7 +916,9 @@
   </div>
 
   <!-- Info Panel -->
-  <div class="info-panel" id="infoPanel">
+  <!-- Hover Tooltip -->
+  <div class="map-tooltip" id="mapTooltip" aria-hidden="true"></div>
+  <div class="info-panel" id="infoPanel" role="dialog" aria-label="Location details" aria-hidden="true">
     <button class="close-btn" onclick="closePanel()">&times;</button>
     <div id="panelContent"></div>
   </div>
@@ -883,11 +1156,24 @@ const locations = {
 };
 
 // ============ PANEL FUNCTIONS ============
+let activeMarkerId = null;
+
 function showLocation(id) {
   const loc = locations[id];
   if (!loc) return;
 
-  const biomeClass = loc.biome === 'capital' ? 'tag-forest' : `tag-${loc.biome}`;
+  // Remove previous active marker highlight
+  if (activeMarkerId) {
+    const prev = document.querySelector(`.location-marker[data-location="${activeMarkerId}"]`);
+    if (prev) prev.classList.remove('active');
+  }
+
+  // Highlight current marker
+  const currentMarker = document.querySelector(`.location-marker[data-location="${id}"]`);
+  if (currentMarker) currentMarker.classList.add('active');
+  activeMarkerId = id;
+
+  const biomeClass = `tag-${loc.biome}`;
 
   let html = `
     <div class="location-type">${loc.type}</div>
@@ -910,24 +1196,187 @@ function showLocation(id) {
     </ul>
   `;
 
+  const panel = document.getElementById('infoPanel');
   document.getElementById('panelContent').innerHTML = html;
-  document.getElementById('infoPanel').classList.add('open');
+  panel.classList.add('open');
+  panel.setAttribute('aria-hidden', 'false');
+  // Scroll panel to top when new location selected
+  panel.scrollTop = 0;
 }
 
 function closePanel() {
-  document.getElementById('infoPanel').classList.remove('open');
+  const panel = document.getElementById('infoPanel');
+  panel.classList.remove('open');
+  panel.setAttribute('aria-hidden', 'true');
+  // Remove active marker highlight
+  if (activeMarkerId) {
+    const prev = document.querySelector(`.location-marker[data-location="${activeMarkerId}"]`);
+    if (prev) prev.classList.remove('active');
+    activeMarkerId = null;
+  }
 }
 
+// ============ TOOLTIP ============
+const tooltip = document.getElementById('mapTooltip');
+
+document.querySelectorAll('.location-marker').forEach(marker => {
+  const locId = marker.getAttribute('data-location');
+
+  marker.addEventListener('mouseenter', function(e) {
+    const loc = locations[locId];
+    if (!loc) return;
+    tooltip.innerHTML = `<strong>${loc.name}</strong><span class="tooltip-type">${loc.type} — ${loc.biomeName}</span>`;
+    tooltip.classList.add('visible');
+  });
+
+  marker.addEventListener('mousemove', function(e) {
+    tooltip.style.left = (e.clientX + 14) + 'px';
+    tooltip.style.top = (e.clientY - 10) + 'px';
+  });
+
+  marker.addEventListener('mouseleave', function() {
+    tooltip.classList.remove('visible');
+  });
+});
+
+// ============ KEYBOARD NAVIGATION ============
+document.querySelectorAll('.location-marker').forEach(marker => {
+  marker.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      const locId = marker.getAttribute('data-location');
+      showLocation(locId);
+    }
+  });
+});
+
+// ============ SEARCH ============
+function toggleSearch() {
+  const box = document.getElementById('searchBox');
+  box.classList.toggle('open');
+  if (box.classList.contains('open')) {
+    document.getElementById('searchInput').focus();
+  } else {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('searchResults').innerHTML = '';
+  }
+}
+
+function filterSearch(query) {
+  const resultsEl = document.getElementById('searchResults');
+  if (!query.trim()) {
+    resultsEl.innerHTML = '';
+    return;
+  }
+  const q = query.toLowerCase();
+  const matches = Object.entries(locations).filter(([id, loc]) =>
+    loc.name.toLowerCase().includes(q) ||
+    loc.type.toLowerCase().includes(q) ||
+    loc.biomeName.toLowerCase().includes(q) ||
+    loc.description.toLowerCase().includes(q)
+  );
+
+  if (matches.length === 0) {
+    resultsEl.innerHTML = '<div class="search-result-item" style="color:var(--ink-light);cursor:default;">No locations found</div>';
+    return;
+  }
+
+  resultsEl.innerHTML = matches.map(([id, loc]) =>
+    `<div class="search-result-item" onclick="selectSearchResult('${id}')">${loc.name}<span class="search-result-biome">${loc.biomeName}</span></div>`
+  ).join('');
+}
+
+function selectSearchResult(id) {
+  showLocation(id);
+  document.getElementById('searchBox').classList.remove('open');
+  document.getElementById('searchInput').value = '';
+  document.getElementById('searchResults').innerHTML = '';
+  // Flash the marker
+  const marker = document.querySelector(`.location-marker[data-location="${id}"]`);
+  if (marker) {
+    marker.classList.add('active');
+    marker.focus();
+  }
+}
+
+// ============ BIOME FILTER ============
+let currentFilter = 'all';
+
+function filterByBiome(biome) {
+  currentFilter = biome;
+
+  // Update active button
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-biome') === biome);
+  });
+
+  // Filter markers
+  document.querySelectorAll('.location-marker').forEach(marker => {
+    const markerBiome = marker.getAttribute('data-biome');
+    if (biome === 'all' || markerBiome === biome) {
+      marker.classList.remove('filtered-out');
+    } else {
+      marker.classList.add('filtered-out');
+    }
+  });
+
+  // Filter road paths
+  document.querySelectorAll('.road-path').forEach(path => {
+    const pathBiome = path.getAttribute('data-biome');
+    if (biome === 'all' || pathBiome === biome) {
+      path.style.opacity = '0.35';
+    } else {
+      path.style.opacity = '0.05';
+    }
+  });
+
+  // Close panel if current location is filtered out
+  if (activeMarkerId) {
+    const loc = locations[activeMarkerId];
+    if (loc && biome !== 'all' && loc.biome !== biome) {
+      closePanel();
+    }
+  }
+}
+
+// ============ EVENT LISTENERS ============
 // Close panel when clicking on map background
 document.querySelector('.map-frame').addEventListener('click', function(e) {
-  if (!e.target.closest('.location-marker') && !e.target.closest('.info-panel')) {
+  if (!e.target.closest('.location-marker') && !e.target.closest('.info-panel') &&
+      !e.target.closest('.search-container') && !e.target.closest('.filter-bar')) {
     closePanel();
   }
 });
 
 // Keyboard support
 document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') closePanel();
+  if (e.key === 'Escape') {
+    const searchBox = document.getElementById('searchBox');
+    if (searchBox.classList.contains('open')) {
+      searchBox.classList.remove('open');
+      document.getElementById('searchInput').value = '';
+      document.getElementById('searchResults').innerHTML = '';
+    } else {
+      closePanel();
+    }
+  }
+  // Ctrl/Cmd+F to open search
+  if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+    e.preventDefault();
+    toggleSearch();
+  }
+});
+
+// Close search when clicking outside
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.search-container')) {
+    const searchBox = document.getElementById('searchBox');
+    if (searchBox.classList.contains('open')) {
+      searchBox.classList.remove('open');
+      document.getElementById('searchInput').value = '';
+      document.getElementById('searchResults').innerHTML = '';
+    }
+  }
 });
 </script>
 </body>
