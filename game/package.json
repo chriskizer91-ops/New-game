@@ -1,0 +1,14 @@
+{
+  "name": "aethermoor-hearth-and-heirloom",
+  "private": true,
+  "type": "module",
+  "description": "Aethermoor: Hearth & Heirloom, a browser JRPG built into one self-contained HTML file.",
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "test": "node --test test/*.test.mjs",
+    "lint": "eslint src test tools"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}
