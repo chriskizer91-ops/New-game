@@ -4,6 +4,8 @@
 import { renderFoe, FOE_ART } from '../../art/foes.js';
 import { renderHero, heroBust, HERO_SIZE } from '../../art/hero-looks.js';
 import { RELIC_ART } from '../../art/item-looks.js';
+import { ITEMS } from '../../data/items.js';
+import { RELICS } from '../../data/relics.js';
 import { toCanvas, crop, alphaBox } from './util.js';
 
 // ---- foes -------------------------------------------------------------------------------------
@@ -35,18 +37,28 @@ export function foeLook(u) {
   return o;
 }
 
-const FOE_FRAMES = [['idle', 0], ['idle', 0.7], ['attack', 0.1], ['attack', 0.6], ['hurt', 0], ['ko', 0]];
-const HERO_FRAMES = [['idle', 0], ['idle', 0.7], ['attack', 0.1], ['attack', 0.6], ['cast', 0], ['hurt', 0], ['ko', 0], ['guard', 0]];
+
+const RIM = 'rgba(236, 223, 195, 0.26)';
 
 const lookKey = o => [o.tier, o.gearTier, o.phase, o.relic || '-', o.relicHeld ? 1 : 0, (o.broken || []).join('+')].join('|');
 
-// Quantised animation key: idle breath (1.6 Hz), blinks, relic glint window, emissive flicker (8 Hz).
-function animKey(pose, t, reduced) {
-  if (reduced) return pose;
-  const q = Math.floor(t * 8);
-  if (pose === 'attack') return `${pose}${t < 0.4 ? 'w' : 's'}`;
-  return `${pose}:${q}`;
+// The art animates from t: idle breath (1.6 Hz), blinks, a relic glint and shine window, and
+// emissive flicker. Composing is the per-frame cost (a 96px boss is ~12 ms on a slow phone), so t
+// is sampled at 2 Hz, and at 12 Hz only inside a glint window or a blink. glint = [period, window].
+function sampleT(t, glint) {
+  if (glint && t % glint[0] < glint[1]) return Math.floor(t * 12) / 12;
+  if (t % 3.7 < 0.16) return Math.floor(t * 12) / 12;
+  return Math.floor(t * 2) / 2;
 }
+function frameKey(pose, t, tq, reduced) {
+  if (reduced) return pose;
+  if (pose === 'attack') return `${pose}${t < 0.4 ? 'w' : 's'}`;
+  return `${pose}:${tq}`;
+}
+const NOW_FOE = [['idle', 0], ['idle', 0.7], ['hurt', 0]];
+const LATER_FOE = [['attack', 0.1], ['attack', 0.6], ['ko', 0]];
+const NOW_HERO = [['idle', 0], ['idle', 0.7]];
+const LATER_HERO = [['attack', 0.1], ['attack', 0.6], ['cast', 0], ['hurt', 0], ['guard', 0], ['ko', 0]];
 
 export class FoeSprite {
   constructor(unit, reduced) {
@@ -71,30 +83,43 @@ export class FoeSprite {
     return true;
   }
   // -> canvas with the composed frame
+  get glint() {
+    const o = this.o;
+    const shows = this.def.relics ? (o.broken || []).length < this.def.relics.length : !!(o.relic && o.relicHeld);
+    return shows ? [2.4, 0.95] : null;
+  }
   frame(pose = 'idle', t = 0, tint = null) {
-    const fk = `${animKey(pose, t, this.reduced)}|${tint ? tint.join(',') : ''}`;
+    const tq = pose === 'attack' ? t : sampleT(t, this.glint);
+    const fk = `${frameKey(pose, t, tq, this.reduced)}|${tint ? tint.join(',') : ''}`;
     if (fk !== this.fk) {
       this.fk = fk;
-      const img = renderFoe(this.key, { ...this.o, pose, t: this.reduced ? 0 : t, reduced: this.reduced, tint: tint || undefined });
-      toCanvas(img, this.canvas);
+      const img = renderFoe(this.key, { ...this.o, pose, t: this.reduced ? 0 : tq, reduced: this.reduced, tint: tint || undefined });
+      this.tmp = toCanvas(img, this.tmp);
+      // a faint rim of light outside the dark outline keeps dark foes readable on dark dens
+      const c = this.canvas;
+      if (c.width !== img.width) c.width = img.width;
+      if (c.height !== img.height) c.height = img.height;
+      const g = c.getContext('2d');
+      g.clearRect(0, 0, c.width, c.height);
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) g.drawImage(this.tmp, dx, dy);
+      g.globalCompositeOperation = 'source-in';
+      g.fillStyle = RIM;
+      g.fillRect(0, 0, c.width, c.height);
+      g.globalCompositeOperation = 'source-over';
+      g.drawImage(this.tmp, 0, 0);
       this.poseAnchors = img.anchors;
     }
     return this.canvas;
   }
-  // prewarm jobs: `now` = every pose of the current look; `later` = the looks it can change into
-  // (boss phases, disarmed, broken pieces), rasterised in the background after the battle starts.
+  // prewarm jobs (each one cold raster): `now` before the fight starts, `later` in idle time
   jobs(unit) {
     const base = foeLook(unit);
-    const later = [];
-    if (this.def.phases) for (let p = 2; p <= this.def.phases; p++) later.push({ ...base, phase: p });
-    if (base.relic && base.relicHeld && (unit.held || []).length) later.push({ ...base, relicHeld: false });
-    if (this.def.relics) {
-      for (let p = 1; p <= (this.def.phases || 1); p++) {
-        for (const b of [[this.def.relics[0]], [this.def.relics[1]], this.def.relics]) later.push({ ...base, phase: p, broken: b });
-      }
-    }
-    const frames = o => FOE_FRAMES.map(([pose, t]) => () => renderFoe(this.key, { ...o, pose, t, reduced: this.reduced }));
-    return { now: frames(base), later: later.flatMap(frames) };
+    const f = list => list.map(([pose, t]) => () => renderFoe(this.key, { ...base, pose, t, reduced: this.reduced }));
+    return { now: f(NOW_FOE), later: f(LATER_FOE) };
+  }
+  // every pose of a look the foe is about to change into (disarmed, broken piece, next phase)
+  lookJobs(o) {
+    return [...NOW_FOE, ...LATER_FOE].map(([pose, t]) => () => renderFoe(this.key, { ...o, pose, t, reduced: this.reduced }));
   }
   // small head portrait for the Initiative Ribbon
   portrait(size = 18) {
@@ -114,6 +139,9 @@ export function heroGear(game, heroId) {
   const inv = game.inventory || [];
   const out = {};
   for (const [slot, uid] of Object.entries(h.gear)) out[slot] = uid ? inv.find(i => i.uid === uid) || null : null;
+  // a two-handed weapon leaves no hand for the off-hand piece
+  const w = out.weapon;
+  if (w && ((ITEMS[w.base] && ITEMS[w.base].hands === 2) || (RELICS[w.base] && RELICS[w.base].weapon && RELICS[w.base].weapon.hands === 2))) out.offhand = null;
   return out;
 }
 
@@ -133,19 +161,24 @@ export class HeroSprite {
     this.w = HERO_SIZE.w;
     this.h = HERO_SIZE.h;
     this.foot = HERO_SIZE.foot;
+    // a relic in hand glints every 2.6 s (hero-looks)
+    const relicIn = gear ? Object.values(gear).some(it => it && RELICS[it.base || it]) : heroId === 'warden';
+    this.glint = relicIn ? [2.6, 0.34] : null;
   }
   frame(pose = 'idle', t = 0, tint = null) {
-    const fk = `${animKey(pose, t, this.reduced)}|${tint ? tint.join(',') : ''}`;
+    const tq = pose === 'attack' ? t : sampleT(t, this.glint);
+    const fk = `${frameKey(pose, t, tq, this.reduced)}|${tint ? tint.join(',') : ''}`;
     if (fk !== this.fk) {
       this.fk = fk;
-      const img = renderHero(this.key, this.gear, { pose, t: this.reduced ? 0 : t, custom: this.custom, reduced: this.reduced, tint: tint || undefined });
+      const img = renderHero(this.key, this.gear, { pose, t: this.reduced ? 0 : tq, custom: this.custom, reduced: this.reduced, tint: tint || undefined });
       toCanvas(img, this.canvas);
       this.anchors = img.anchors;
     }
     return this.canvas;
   }
   jobs() {
-    return HERO_FRAMES.map(([pose, t]) => () => renderHero(this.key, this.gear, { pose, t, custom: this.custom, reduced: this.reduced }));
+    const f = list => list.map(([pose, t]) => () => renderHero(this.key, this.gear, { pose, t, custom: this.custom, reduced: this.reduced }));
+    return { now: f(NOW_HERO), later: f(LATER_HERO) };
   }
   portrait(size = 18) {
     return heroBust(this.key, this.gear, { size, custom: this.custom });
