@@ -28,6 +28,7 @@ export const RELIC_TOTAL = Object.keys(RELICS).length;
 const pad3 = n => String(n).padStart(3, '0');
 export const codexNo = relic => `No. ${pad3(relic.codex)} / ${pad3(RELIC_TOTAL)}`;
 
+const enchantOf = item => (RARITY[item.rarity]?.enchant || 0) + Math.floor((item.temper || 0) / 2);
 export const critText = c => (c <= 1 ? '20' : `${21 - c}-20`);
 
 // Split "Ashwick, the Quiet Oath" into a name and an epithet.
@@ -79,18 +80,23 @@ export function mainStat(item) {
     const sub = [w.hands === 2 ? 'Two-handed' : w.versatile ? `Versatile (${w.versatile} with both hands)` : 'One-handed'];
     if (w.ranged) sub.push('ranged');
     if (w.weight <= -10) sub.push('quick'); else if (w.weight >= 15) sub.push('heavy');
-    const hit = P.stats.hit, dmg = P.stats.dmg;
-    if (hit || dmg) sub.push([hit ? `+${hit} to hit` : '', dmg ? `+${dmg} damage` : ''].filter(Boolean).join(', '));
-    return { k: 'Damage', v, sub: sub.join(' · '), used: ['hit', 'dmg', 'extra'] };
+    // the weapon's own bonus: a relic's fixed numbers, or the rarity enchant (affixes list their own)
+    const ench = relic ? 0 : enchantOf(item);
+    const hit = relic ? relic.stats?.hit || 0 : ench, dmg = relic ? relic.stats?.dmg || 0 : ench;
+    if (hit || dmg) sub.push(hit === dmg ? `+${hit} to hit and damage` : [hit ? `+${hit} to hit` : '', dmg ? `+${dmg} damage` : ''].filter(Boolean).join(', '));
+    return { k: 'Damage', v, sub: sub.join(' · '), used: relic ? ['hit', 'dmg'] : [] };
   }
   if (P.armor) {
-    const a = P.armor, g = P.stats.guard;
+    const a = P.armor, g = relic ? relic.stats?.guard || 0 : enchantOf(item) + (ITEMS[item.base]?.stats?.guard || 0);
     const v = `${a.base} + DEX${a.maxDex < 9 ? ` <span class="dw">(max ${a.maxDex})</span>` : ''}${g ? ` <em>+${g}</em>` : ''}`;
     return { k: 'Guard', v, sub: ARMOR_WORD[a.type] || '', used: ['guard'] };
   }
-  if (item.kind === 'shield' && P.stats.guard) return { k: 'Guard', v: `+${P.stats.guard}`, sub: 'Shield · raised when you Defend', used: ['guard'] };
+  if (item.kind === 'shield') {
+    const g = relic ? relic.stats?.guard || 0 : enchantOf(item) + (ITEMS[item.base]?.stats?.guard || 0);
+    return { k: 'Guard', v: `+${g}`, sub: `Shield${enchantOf(item) && !relic ? ` · ${rarityName(item.rarity)} make +${enchantOf(item)}` : ''}`, used: ['guard'] };
+  }
   const lines = statLines(relic ? relic.stats : ITEMS[item.base]?.stats || {});
-  return { k: 'Bonus', v: esc(lines[0] || 'None'), sub: lines.slice(1).join(' · '), used: [] };
+  return { k: 'Bonus', v: esc(lines[0] || 'None'), sub: '', used: [] };
 }
 
 // Rows under the main stat: rolled affixes (with quality stars) or a relic's fixed traits.
@@ -110,17 +116,18 @@ export function traitRows(item) {
     return rows;
   }
   const base = ITEMS[item.base];
-  if (base?.stats && item.slot !== 'weapon') {
+  if (base?.stats) {
     const s = { ...base.stats }; for (const k of main.used || []) delete s[k];
     const lines = statLines(s);
-    if (!P?.armor && item.kind !== 'shield') lines.shift();
+    if (item.slot !== 'weapon' && !P?.armor && item.kind !== 'shield') lines.shift();
     for (const t of lines) rows.push({ text: t, plain: true });
   }
   const ench = RARITY[item.rarity]?.enchant || 0;
   if (ench && item.slot !== 'weapon' && item.slot !== 'body' && item.kind !== 'shield') rows.push({ text: `+${ench * 3} max HP (${rarityName(item.rarity)} make)`, plain: true });
   for (const a of item.affixes || []) {
     if (item.unidentified) { rows.push({ text: '???', stars: 0, hidden: true }); continue; }
-    rows.push({ text: affixText(a), stars: affixQuality(a, item.rarity, item.ilvl) });
+    const text = affixText(a);
+    if (text) rows.push({ text, stars: affixQuality(a, item.rarity, item.ilvl) });
   }
   return rows;
 }

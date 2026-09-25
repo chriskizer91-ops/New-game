@@ -30,16 +30,16 @@ const TRACKS = {
     parts: [
       { v: 'bell', g: .07, s: 'D5 A5 F#5 A5 D6 A5 F#5 A5 B4 F#5 D5 F#5 B5 F#5 D5 F#5 G4 D5 B4 D5 G5 D5 B4 D5 A4 E5 C#5 E5 A5 E5 C#5 E5 D5 A5 F#5 A5 D6 A5 F#5 A5 B4 F#5 D5 F#5 B5 F#5 D5 F#5 E5 B5 G5 B5 E6 B5 G5 B5 A4 E5 C#5 E5 G5 E5 C#5 A4' },
       { v: 'tri', g: .16, s: 'D3 - - - A2 - - - B2 - - - F#2 - - - G2 - - - D3 - - - A2 - - - E2 - - - D3 - - - A2 - - - B2 - - - F#2 - - - E2 - - - B2 - - - A2 - - - C#3 - - -' },
-      { v: 'pulse', g: .05, lp: 1800, s: '. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . F#5 - - - E5 - D5 - D5 - - - C#5 - B4 - B4 - - - E5 - G5 - F#5 - - - E5 - - -' },
+      { v: 'pulse', g: .065, lp: 1800, s: '. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . F#5 - - - E5 - D5 - D5 - - - C#5 - B4 - B4 - - - E5 - G5 - F#5 - - - E5 - - -' },
     ],
   },
   // adventurous: a marching pulse lead, octave bass, light drums
   road: {
     bpm: 116, sub: 2, loop: true, gain: .8,
     parts: [
-      { v: 'pulse', g: .06, lp: 2600, s: 'G4 - B4 - D5 - - B4 A4 - - - F#4 - A4 - B4 - G4 - E5 - D5 - C5 - - - E5 - D5 C5 B4 - D5 - G5 - - F#5 E5 - D5 - A4 - - - C5 - E5 - G5 - E5 - D5 - - - F#5 - A5 -' },
+      { v: 'pulse', g: .085, lp: 2600, s: 'G4 - B4 - D5 - - B4 A4 - - - F#4 - A4 - B4 - G4 - E5 - D5 - C5 - - - E5 - D5 C5 B4 - D5 - G5 - - F#5 E5 - D5 - A4 - - - C5 - E5 - G5 - E5 - D5 - - - F#5 - A5 -' },
       { v: 'tri', g: .15, s: 'G2 . G3 . G2 . G3 . D2 . D3 . D2 . D3 . E2 . E3 . E2 . E3 . C3 . C4 . C3 . C4 . G2 . G3 . G2 . G3 . D2 . D3 . D2 . D3 . C3 . C4 . C3 . C4 . D2 . D3 . D2 . F#2 .' },
-      { v: 'pluck', g: .035, s: 'B4 D5 G5 D5 . . . . F#4 A4 D5 A4 . . . . G4 B4 E5 B4 . . . . G4 C5 E5 C5 . . . .' },
+      { v: 'pluck', g: .04, s: 'B4 D5 G5 D5 . . . . F#4 A4 D5 A4 . . . . G4 B4 E5 B4 . . . . G4 C5 E5 C5 . . . .' },
       { v: 'drum', g: .5, s: 'k . h . s . h h k . h . s . h h k . h . s . h h k . h k s . h h' },
     ],
   },
@@ -47,7 +47,7 @@ const TRACKS = {
   battle: {
     bpm: 144, sub: 4, loop: true, gain: .8,
     parts: [
-      { v: 'pulse', g: .055, lp: 2800, s: 'A4 - C5 - E5 - A5 - G5 - E5 - C5 - D5 - C5 - - - A4 - C5 - F5 - E5 - D5 - C5 - B4 - D5 - G5 - - - F5 - D5 - B4 - D5 - E5 - - - G#4 - B4 - E5 - - - D5 - B4 -' },
+      { v: 'pulse', g: .08, lp: 2800, s: 'A4 - C5 - E5 - A5 - G5 - E5 - C5 - D5 - C5 - - - A4 - C5 - F5 - E5 - D5 - C5 - B4 - D5 - G5 - - - F5 - D5 - B4 - D5 - E5 - - - G#4 - B4 - E5 - - - D5 - B4 -' },
       { v: 'tri', g: .17, s: 'A2 . A2 . A3 . A2 . A2 . A3 . G2 . A2 . F2 . F2 . F3 . F2 . F2 . F3 . E2 . F2 . G2 . G2 . G3 . G2 . G2 . G3 . F2 . G2 . E2 . E2 . E3 . E2 . E2 . E3 . D2 . E2 .' },
       { v: 'square', g: .022, lp: 1600, s: 'A4 C5 E5 C5 A4 C5 E5 C5 A4 C5 E5 C5 A4 C5 E5 C5 F4 A4 C5 A4 F4 A4 C5 A4 F4 A4 C5 A4 F4 A4 C5 A4 G4 B4 D5 B4 G4 B4 D5 B4 G4 B4 D5 B4 G4 B4 D5 B4 E4 G#4 B4 G#4 E4 G#4 B4 G#4 E4 G#4 B4 G#4 E4 G#4 B4 G#4' },
       { v: 'drum', g: .55, s: 'k . h . s . h . k k h . s . h h' },
@@ -57,9 +57,9 @@ const TRACKS = {
   boss: {
     bpm: 156, sub: 4, loop: true, gain: .85,
     parts: [
-      { v: 'pulse', g: .06, lp: 3000, s: 'D5 - - - A4 - - - D5 - E5 - F5 - - - E5 - D5 - C#5 - D5 - A4 - - - - - - - F5 - - - D5 - Bb4 - F5 - G5 - A5 - - - G#5 - A5 - - - E5 - C#5 - - - A4 - - -' },
+      { v: 'pulse', g: .085, lp: 3000, s: 'D5 - - - A4 - - - D5 - E5 - F5 - - - E5 - D5 - C#5 - D5 - A4 - - - - - - - F5 - - - D5 - Bb4 - F5 - G5 - A5 - - - G#5 - A5 - - - E5 - C#5 - - - A4 - - -' },
       { v: 'tri', g: .18, s: 'D2 . D2 . D3 . D2 . C3 . D2 . A2 . D2 . D2 . D2 . D3 . D2 . F2 . E2 . D2 . C#2 . Bb1 . Bb1 . Bb2 . Bb1 . Bb1 . Bb2 . A1 . Bb1 . A1 . A1 . A2 . A1 . C#3 . A2 . E2 . A1 .' },
-      { v: 'pad', g: .05, s: 'D4+F4+A4 - - - . . . . D4+F4+A4 - . . . . . . D4+F4+A4 - - - . . . . D4+G4+Bb4 - . . C#4+E4+A4 - . . Bb3+D4+F4 - - - . . . . Bb3+D4+F4 - . . . . . . A3+C#4+E4 - - - . . . . A3+C#4+E4 - . . A3+C#4+G4 - . .' },
+      { v: 'pad', g: .035, s: 'D4+F4+A4 - - - . . . . D4+F4+A4 - . . . . . . D4+F4+A4 - - - . . . . D4+G4+Bb4 - . . C#4+E4+A4 - . . Bb3+D4+F4 - - - . . . . Bb3+D4+F4 - . . . . . . A3+C#4+E4 - - - . . . . A3+C#4+E4 - . . A3+C#4+G4 - . .' },
       { v: 'drum', g: .6, s: 'k . h k s . h . k k h . s . h s' },
     ],
   },
@@ -69,7 +69,7 @@ const TRACKS = {
     parts: [
       { v: 'bell', g: .06, s: 'F4 A4 C5 A4 F5 C5 A4 C5 E4 G4 C5 G4 E5 C5 G4 C5 D4 F4 A4 F4 D5 A4 F4 A4 Bb3 D4 F4 D4 Bb4 F4 D4 F4 F4 A4 C5 A4 F5 C5 A4 C5 C4 E4 G4 E4 C5 G4 E4 G4 Bb3 D4 F4 D4 Bb4 F4 D4 F4 C4 E4 G4 E4 C5 G4 E4 G4' },
       { v: 'tri', g: .13, s: 'F2 - - - - - - - E2 - - - - - - - D2 - - - - - - - Bb1 - - - - - - - F2 - - - - - - - C2 - - - - - - - Bb1 - - - - - - - C2 - - - - - - -' },
-      { v: 'flute', g: .045, s: '. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . A5 - - - G5 - F5 - G5 - - - E5 - C5 - D5 - - - F5 - Bb5 - A5 - - - G5 - - -' },
+      { v: 'flute', g: .055, s: '. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . A5 - - - G5 - F5 - G5 - - - E5 - C5 - D5 - - - F5 - Bb5 - A5 - - - G5 - - -' },
       { v: 'drum', g: .5, s: 'c . . . . c . . . . c . . . . . . c . . . . . c . . . c . . . .' },
     ],
   },
@@ -77,7 +77,7 @@ const TRACKS = {
   victory: {
     bpm: 132, sub: 4, loop: false, gain: 1,
     parts: [
-      { v: 'pulse', g: .08, lp: 3200, s: 'G4 . G4 . G4 . C5 - - - - - E5 - G5 - E5 - - - G5 - - - C6 - - - - - - - - - - - - - - -' },
+      { v: 'pulse', g: .1, lp: 3200, s: 'G4 . G4 . G4 . C5 - - - - - E5 - G5 - E5 - - - G5 - - - C6 - - - - - - - - - - - - - - -' },
       { v: 'square', g: .03, lp: 2000, s: 'E4 . E4 . E4 . G4 - - - - - C5 - E5 - C5 - - - E5 - - - G5 - - - - - - - - - - - - - - -' },
       { v: 'tri', g: .17, s: 'C3 - - - - - - - - - - - G2 - - - C3 - - - G2 - - - C3 - - - - - - - - - - - - - - -' },
       { v: 'bell', g: .05, s: '. . . . . . . . . . . . . . . . . . . . . . . . C5+E5+G5+C6 - - - - - - - - - - - - - - -' },
@@ -180,7 +180,7 @@ export function createAudio() {
     confirm(t) { tone(660, t, .08, { type: 'triangle', g: .09 }); tone(990, t + .06, .14, { type: 'triangle', g: .09 }); },
     back(t) { tone(700, t, .07, { type: 'triangle', g: .07 }); tone(470, t + .05, .12, { type: 'triangle', g: .07 }); },
     error(t) { tone(150, t, .18, { type: 'square', g: .05, lp: 800 }); tone(140, t + .1, .2, { type: 'square', g: .05, lp: 800 }); },
-    dice(t) { for (let k = 0; k < 6; k++) { const s = t + k * rnd(.035, .07); noise(s, .04, { type: 'bandpass', f: rnd(1800, 3200), q: 4, g: .18 }); tone(rnd(700, 1100), s, .04, { type: 'triangle', g: .04 }); } },
+    dice(t) { for (let k = 0; k < 6; k++) { const s = t + k * rnd(.035, .07); noise(s, .05, { type: 'bandpass', f: rnd(1800, 3200), q: 3, g: .32 }); tone(rnd(700, 1100), s, .05, { type: 'triangle', g: .07 }); } },
     hit(t) { noise(t, .14, { type: 'lowpass', f: 1600, g: .32 }); tone(170, t, .16, { to: 70, g: .28, type: 'triangle' }); },
     graze(t) { noise(t, .1, { type: 'highpass', f: 2400, g: .12 }); tone(240, t, .08, { to: 150, g: .08, type: 'triangle' }); },
     miss(t) { noise(t, .22, { type: 'bandpass', f: 2200, to: 500, q: 1.4, g: .1 }); },
@@ -240,9 +240,9 @@ export function createAudio() {
     }
   }
   function drum(kind, t, g, out) {
-    if (kind === 'k') { tone(130, t, .16, { to: 45, g: g * .9, type: 'sine', a: .002 }, out); }
-    else if (kind === 's') noise(t, .12, { type: 'bandpass', f: 1800, q: .9, g: g * .45, a: .002 }, out);
-    else if (kind === 'h') noise(t, .04, { type: 'highpass', f: 7000, g: g * .2, a: .001 }, out);
+    if (kind === 'k') { tone(130, t, .16, { to: 45, g: g * .35, type: 'sine', a: .002 }, out); }
+    else if (kind === 's') noise(t, .12, { type: 'bandpass', f: 1800, q: .9, g: g * .3, a: .002 }, out);
+    else if (kind === 'h') noise(t, .04, { type: 'highpass', f: 7000, g: g * .12, a: .001 }, out);
     else if (kind === 'c') { noise(t + Math.random() * .08, .025, { type: 'bandpass', f: 2000 + Math.random() * 1800, q: 3, g: g * .25, a: .001 }, out); }
   }
 
@@ -312,7 +312,7 @@ export function createAudio() {
     get track() { return wanted; },
     sfx(name, opts = {}) {       // opts: { tier } for rarity-scaled sounds
       if (!enabled || !unlocked || !SFX[name] || !ctx()) return;
-      try { SFX[name](AC.currentTime + .005, opts); } catch { /* never let sound break the game */ }
+      try { SFX[name](AC.currentTime + .005, opts); } catch (err) { console.warn('[audio]', name, err); /* never let sound break the game */ }
     },
     music(track) {
       wanted = track && PARSED[track] ? track : null;

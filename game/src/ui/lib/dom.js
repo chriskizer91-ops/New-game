@@ -5,7 +5,13 @@ export const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;'
 // el('div', 'cls', '<b>html</b>') or el('div', { class, text, html, attrs..., on: { click } }, [children])
 export function el(tag, a, b) {
   const e = document.createElement(tag);
-  if (typeof a === 'string') { e.className = a; if (b != null) e.innerHTML = b; return e; }
+  if (typeof a === 'string') {
+    e.className = a;
+    if (Array.isArray(b)) { for (const c of b) if (c) e.append(c); }
+    else if (b instanceof Node) e.append(b);
+    else if (b != null) e.innerHTML = b;
+    return e;
+  }
   if (a) {
     for (const [k, v] of Object.entries(a)) {
       if (v == null || v === false) continue;
