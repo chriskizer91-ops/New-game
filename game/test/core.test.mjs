@@ -26,3 +26,15 @@ test('parseDice reads terms and flat bonus', () => {
   assert.deepEqual(parseDice('2d8+6'), { terms: [{ n: 2, sides: 8 }], flat: 6 });
   assert.deepEqual(parseDice('1d10 + 1d6 - 1'), { terms: [{ n: 1, sides: 10 }, { n: 1, sides: 6 }], flat: -1 });
 });
+
+test('save codes round-trip and a pasted code cannot carry markup', async () => {
+  const { exportCode, importCode } = await import('../src/core/save.js');
+  const game = { version: 1, gold: 50, party: { roster: { warden: { name: 'Wren' } } }, progress: { flags: { day: 2 } } };
+  assert.deepEqual(importCode(exportCode(game)), game);
+  const evil = { ...game, gold: '<img src=x onerror=alert(1)>', bag: { '<b>tonic</b>': 1 } };
+  const back = importCode(exportCode(evil));
+  assert.equal(back.gold, 'img src=x onerror=alert(1)');
+  assert.deepEqual(Object.keys(back.bag), ['btonic/b']);
+  assert.throws(() => importCode('AETH1.bm90IGpzb24='), /damaged/);
+  assert.throws(() => importCode('hello'), /not an Aethermoor save code/);
+});

@@ -20,15 +20,6 @@ const app = createApp(document.getElementById('app'), screens);
 // Services exist before any screen mounts.
 installCardServices(app);
 setReducedGetter(() => app.reduced());
-app.services.applySettings = () => {
-  document.documentElement.classList.toggle('reduce-motion', app.reduced());
-  if (app.audio.setMusicEnabled) app.audio.setMusicEnabled(app.settings.music !== false);
-};
-app.services.applySettings();
-if (window.matchMedia) {
-  const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-  if (mq.addEventListener) mq.addEventListener('change', () => app.services.applySettings());
-}
 
 // Test seam: tools/e2e-flow.mjs defines this before load to watch the app. No-op otherwise.
 if (typeof globalThis.__aethTest === 'function') globalThis.__aethTest(app);

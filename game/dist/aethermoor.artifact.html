@@ -65,7 +65,7 @@ body {
     radial-gradient(
       90% 420px at 50% -120px,
       #3a2112 0%,
-      rgba(58, 33, 18, 0) 70%),
+      rgba(58, 33, 18, 0) 70%) no-repeat,
     var(--soot);
   color: var(--parchment);
   font-family: var(--f-body);
@@ -6423,13 +6423,25 @@ body.ov-open {
     for (let i = 0; i < bytes.length; i += 32768) bin += String.fromCharCode(...bytes.subarray(i, i + 32768));
     return "AETH1." + btoa(bin);
   }
+  var DAMAGED = "The save code is damaged. Copy the whole code and try again.";
+  function scrub(v) {
+    if (typeof v === "string") return v.replace(/[<>]/g, "");
+    if (Array.isArray(v)) return v.map(scrub);
+    if (v && typeof v === "object") return Object.fromEntries(Object.entries(v).map(([k, x]) => [scrub(k), scrub(x)]));
+    return v;
+  }
   function importCode(code) {
     const m = String(code).trim().match(/^AETH1\.([A-Za-z0-9+/=\s]+)$/);
     if (!m) throw new Error("That is not an Aethermoor save code. Codes start with AETH1.");
-    const bin = atob(m[1].replace(/\s+/g, ""));
-    const game = JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0))));
-    if (!game || !game.version || !game.party) throw new Error("The save code is damaged. Copy the whole code and try again.");
-    return game;
+    let game;
+    try {
+      const bin = atob(m[1].replace(/\s+/g, ""));
+      game = JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0))));
+    } catch {
+      throw new Error(DAMAGED);
+    }
+    if (!game || !game.version || !game.party) throw new Error(DAMAGED);
+    return scrub(game);
   }
 
   // src/core/input.js
@@ -7044,7 +7056,14 @@ body.ov-open {
     const motionMQ = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : null;
     let game = loadGame();
     let settings = loadSettings(DEFAULT_SETTINGS);
-    audio.setEnabled(settings.sound);
+    const reduced = () => settings.reducedMotion || !!(motionMQ && motionMQ.matches);
+    const applySettings = () => {
+      audio.setEnabled(settings.sound);
+      if (audio.setMusicEnabled) audio.setMusicEnabled(settings.music !== false);
+      document.documentElement.classList.toggle("reduce-motion", reduced());
+    };
+    applySettings();
+    if (motionMQ && motionMQ.addEventListener) motionMQ.addEventListener("change", applySettings);
     let current2 = null, currentName = null;
     const toastEl = document.createElement("div");
     toastEl.className = "toast";
@@ -7065,12 +7084,12 @@ body.ov-open {
       setSettings(patch) {
         settings = { ...settings, ...patch };
         saveSettings(settings);
-        audio.setEnabled(settings.sound);
+        applySettings();
       },
       audio,
       input,
-      services: {},
-      reduced: () => settings.reducedMotion || !!(motionMQ && motionMQ.matches),
+      services: { applySettings },
+      reduced,
       toast(text, ms = 2200) {
         toastEl.textContent = text;
         toastEl.hidden = false;
@@ -13165,7 +13184,7 @@ body.ov-open {
     const kind = base && !isRelic(item) ? base.name : KIND_NAME[item.kind] || item.kind;
     const bits = [`${rarityName(item.rarity)} ${kind}`];
     if (item.aspect) bits.push(ASPECT_NAME[item.aspect]);
-    bits.push(SLOT_NAME[item.slot]);
+    if (SLOT_NAME[item.slot] && SLOT_NAME[item.slot] !== kind) bits.push(SLOT_NAME[item.slot]);
     return bits.join(" \xB7 ");
   }
   function statLines(stats = {}, { skip = [] } = {}) {
@@ -13860,7 +13879,7 @@ body.ov-open {
     function layout() {
       const cw = stage.clientWidth || 360;
       const k = cw < 560 ? 3 : 4, W2 = Math.floor(cw / k);
-      const H = innerWidth < 900 ? 104 : Math.max(92, Math.min(170, Math.floor((innerHeight - 70) / k)));
+      const H = innerWidth < 900 ? Math.max(104, Math.min(150, Math.floor(innerHeight * 0.5 / k))) : Math.max(92, Math.min(170, Math.floor((innerHeight - 70) / k)));
       Object.assign(SC, { W: W2, H, k, top: Math.ceil((banner.offsetHeight || 90) / k) + 2 });
       cv.width = W2;
       cv.height = H;
@@ -21143,15 +21162,6 @@ body.ov-open {
   var app = createApp(document.getElementById("app"), screens);
   installCardServices(app);
   setReducedGetter(() => app.reduced());
-  app.services.applySettings = () => {
-    document.documentElement.classList.toggle("reduce-motion", app.reduced());
-    if (app.audio.setMusicEnabled) app.audio.setMusicEnabled(app.settings.music !== false);
-  };
-  app.services.applySettings();
-  if (window.matchMedia) {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    if (mq.addEventListener) mq.addEventListener("change", () => app.services.applySettings());
-  }
   if (typeof globalThis.__aethTest === "function") globalThis.__aethTest(app);
   app.go("title");
 })();

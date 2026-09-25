@@ -375,8 +375,8 @@ function chestStage(item, { backdrop = 'hearth-road', title, meta, reduced }) {
   function layout() {
     const cw = stage.clientWidth || 360;
     const k = cw < 560 ? 3 : 4, W = Math.floor(cw / k);
-    // phone: a letterbox above the card; laptop: a tall stage beside it, so the beam has room
-    const H = innerWidth < 900 ? 104 : Math.max(92, Math.min(170, Math.floor((innerHeight - 70) / k)));
+    // phone: half the screen above the card; laptop: a tall stage beside it, so the beam has room
+    const H = innerWidth < 900 ? Math.max(104, Math.min(150, Math.floor(innerHeight * .5 / k))) : Math.max(92, Math.min(170, Math.floor((innerHeight - 70) / k)));
     Object.assign(SC, { W, H, k, top: Math.ceil((banner.offsetHeight || 90) / k) + 2 });
     cv.width = W; cv.height = H; cv.style.width = W * k + 'px'; cv.style.height = H * k + 'px';
     const bg = document.createElement('canvas'); bg.width = W; bg.height = H;

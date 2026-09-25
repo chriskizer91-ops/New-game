@@ -22,7 +22,15 @@ export function createApp(root, screens) {
   const motionMQ = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
   let game = loadGame();
   let settings = loadSettings(DEFAULT_SETTINGS);
-  audio.setEnabled(settings.sound);
+  const reduced = () => settings.reducedMotion || !!(motionMQ && motionMQ.matches);
+  // Settings that act outside any one screen: sound, music, and the reduced-motion class.
+  const applySettings = () => {
+    audio.setEnabled(settings.sound);
+    if (audio.setMusicEnabled) audio.setMusicEnabled(settings.music !== false);
+    document.documentElement.classList.toggle('reduce-motion', reduced());
+  };
+  applySettings();
+  if (motionMQ && motionMQ.addEventListener) motionMQ.addEventListener('change', applySettings);
   let current = null, currentName = null;
 
   const toastEl = document.createElement('div');
@@ -33,11 +41,11 @@ export function createApp(root, screens) {
     get game() { return game; },
     setGame(g) { game = g; if (g) saveGame(g); },
     get settings() { return settings; },
-    setSettings(patch) { settings = { ...settings, ...patch }; saveSettings(settings); audio.setEnabled(settings.sound); },
+    setSettings(patch) { settings = { ...settings, ...patch }; saveSettings(settings); applySettings(); },
     audio,
     input,
-    services: {},
-    reduced: () => settings.reducedMotion || !!(motionMQ && motionMQ.matches),
+    services: { applySettings },
+    reduced,
     toast(text, ms = 2200) {
       toastEl.textContent = text; toastEl.hidden = false;
       clearTimeout(toastTimer); toastTimer = setTimeout(() => { toastEl.hidden = true; }, ms);

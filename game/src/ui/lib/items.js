@@ -43,7 +43,8 @@ export function typeLine(item) {
   const kind = base && !isRelic(item) ? base.name : (KIND_NAME[item.kind] || item.kind);
   const bits = [`${rarityName(item.rarity)} ${kind}`];
   if (item.aspect) bits.push(ASPECT_NAME[item.aspect]);
-  bits.push(SLOT_NAME[item.slot]);
+  // Amulets and rings are their own slot; saying it twice reads as a bug.
+  if (SLOT_NAME[item.slot] && SLOT_NAME[item.slot] !== kind) bits.push(SLOT_NAME[item.slot]);
   return bits.join(' · ');
 }
 

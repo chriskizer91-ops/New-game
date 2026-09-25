@@ -19,7 +19,7 @@
 * { box-sizing: border-box; }
 html, body { height: 100%; }
 body {
-  margin: 0; background: radial-gradient(90% 420px at 50% -120px, #3a2112 0%, rgba(58,33,18,0) 70%), var(--soot);
+  margin: 0; background: radial-gradient(90% 420px at 50% -120px, #3a2112 0%, rgba(58,33,18,0) 70%) no-repeat, var(--soot);
   color: var(--parchment); font-family: var(--f-body); font-size: 16px; line-height: 1.45;
   -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent;
 }
