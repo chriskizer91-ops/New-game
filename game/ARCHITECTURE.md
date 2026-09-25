@@ -60,9 +60,11 @@ HeroState = { id, name, level, xp, hp, mp, surge, base:{STR,DEX,CON,INT,WIS,CHA}
               gear:{ weapon, offhand, head, body, hands, feet, amulet, ring }, // ItemInstance ids or null
               skills:[skillId], domains:{ [domainId]: { level, path, opt7, opt13 } } }
 
-ItemInstance = { uid, base:itemBaseId | relicId, rarity, ilvl, name, affixes:[{id, value}],
-                 gems:[], temper:0, provenance:{ from, where, day }, chronicle:{ kills:0 },
-                 art:{ r:recipeKey, p:{...recipe params} } }   // art params are data, rendered by src/art
+ItemInstance = { uid, base:itemBaseId | relicId, kind, slot, rarity, ilvl, name, aspect|null,
+                 affixes:[{id, value}], gems:[], temper:0, seed,          // seed drives procedural art
+                 provenance:{ from, where, day }, chronicle:{ kills:0 } }
+// Rules never store recipe params. src/art derives the look: RELIC_ART[relicId] for named relics,
+// otherwise itemArt(item) builds params from kind + rarity + aspect + seed (deterministic).
 ```
 
 ## Rarity tiers (from the brief)
@@ -135,6 +137,43 @@ The UI animates events one by one and then renders the returned state.
   A foe's relic is drawn from the same item art params as the card, so the glinting weapon on the
   enemy is visibly the item you will claim.
 - Art keys are the shared vocabulary: data files reference art by key string only.
+
+## Shared vocabulary (ids used across data, rules and art — do not rename)
+
+**Aspects:** `ember` `frost` `storm` `stone` `verdant` `tide` `radiant` `blight`
+(physical kinds `slash` `pierce` `crush`; armor types `hide` `mail` `plate` `chitin`).
+
+**Item kinds by slot** (each has an art recipe):
+- weapon: `sword` `dagger` `axe` `hammer` `mace` `spear` `bow` `staff`
+- offhand: `shield` `focus`
+- head: `hood` `coif` `kettle` `helm` `circlet` `crown`
+- body: `robe` `leather` `mail` `plate` · hands: `gloves` `gauntlets` · feet: `boots`
+- `amulet` · `ring`
+
+**Heroes** (art key = hero id): `warden` (the player's Hearthwarden), `pip` (Pip, Thornhollow
+scout), `bryn` (Bryn the Bark-Reader of Eldergrove), `alondra` (Sister Alondra, the blind
+priestess of Fawnrest).
+
+**Foe art keys** (Verdant Wilds slice): `cutpurse` `briarling` `thornhound` `bandit` `tallyman`
+`rotstag` `oldsnag` (Relic-Bearer boar) `briarmaw` (Champion boss, 3 phases).
+Humanoid foes (`cutpurse`, `bandit`, `tallyman`) show gear tiers 0-3 on the sprite.
+
+**Named relics** (rules own stats/powers; art owns looks via `RELIC_ART[id]`):
+
+| id | kind | aspect | where it comes from |
+|---|---|---|---|
+| `hearthbrand` | sword | ember | starter choice |
+| `stillwater-lance` | spear | frost | starter choice |
+| `cairnmaul` | hammer | stone | starter choice |
+| `wardens-seal` | amulet | radiant | on the Tallyman thief's belt (first fight) |
+| `tallyknife` | dagger | blight | Tallyman veterans |
+| `thornsplitter` | axe | verdant | buried in Old Snag's hide |
+| `rotwood-circlet` | circlet | blight | tangled in the Rot-Stag's antlers |
+| `thornwatch-hood` | hood | verdant | Thornwatch Regalia 1/3, worn by bandit veterans |
+| `thornwatch-jerkin` | leather | verdant | Thornwatch Regalia 2/3 |
+| `thornwatch-boots` | boots | verdant | Thornwatch Regalia 3/3 |
+| `thornwreath` | crown | verdant | Briarmaw's breakable thorn-crown |
+| `briarfang` | dagger | verdant | Briarmaw's breakable fang |
 
 ## Conventions
 
