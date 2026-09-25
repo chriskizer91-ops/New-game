@@ -2,6 +2,7 @@
 import { renderItem, RECIPE } from '../src/art/recipes.js';
 import { compose } from '../src/art/forge.js';
 import { renderFoe, FOE_ART } from '../src/art/foes.js';
+import { ITEMS } from '../src/data/items.js';
 import { diceIcon, DICE, statusIcon, STATUS_KEYS, aspectIcon, gripIcon, digitsImage } from '../src/art/icons.js';
 import { renderBackdrop, backdropLayers, BACKDROP_KEYS, BACKDROPS } from '../src/art/scenes.js';
 import { renderHero, heroBust, HERO_KEYS, HERO_ART, WARDEN_PRESETS } from '../src/art/hero-looks.js';
@@ -83,6 +84,17 @@ if (want('loot')) {
 }
 
 
+
+if (want('bases')) {
+  const s = section('bases', 'Every base item in data/items.js', 'itemArt({ base, kind, rarity, seed }): the base id nudges the look (greatsword vs arming sword, maul vs warhammer, heater and tower shields).');
+  const r = row(s);
+  Object.values(ITEMS).forEach((b, i) => { const item = { base: b.id, kind: b.kind, rarity: RARITY_ORDER[i % 5], aspect: i % 5 >= 2 ? ASPECTS[i % 8] : null, seed: 50 + i }; const f = document.createElement('figure'); fig(f, itemPortrait(item, { t: .8 }), 2); fig(f, itemIcon(item), 2, b.id, '#211a16'); r.appendChild(f); });
+  const r2 = row(s, 'shield shapes on the hero');
+  for (const base of ['buckler', 'heater-shield', 'tower-shield']) fig(r2, renderHero('warden', { weapon: { base: 'longsword', kind: 'sword', rarity: 'tempered', seed: 4 }, offhand: { base, kind: 'shield', rarity: 'runed', aspect: 'frost', seed: 9 }, head: { base: 'great-helm', kind: 'helm', rarity: 'wrought', seed: 2 }, body: { base: 'full-plate', kind: 'plate', rarity: 'tempered', seed: 3 } }, { pose: 'guard' }), 3, base, '#1e1812');
+  fig(r2, renderHero('warden', { weapon: { base: 'maul', kind: 'hammer', rarity: 'storied', aspect: 'stone', seed: 4 }, body: { base: 'brigandine', kind: 'leather', rarity: 'runed', seed: 3 } }, { pose: 'attack', t: .6 }), 3, 'maul', '#1e1812');
+  fig(r2, renderHero('pip', { weapon: { base: 'longbow', kind: 'bow', rarity: 'runed', aspect: 'verdant', seed: 4 } }, { pose: 'attack', t: .1 }), 3, 'longbow', '#1e1812');
+}
+
 /* ---------- heroes ---------- */
 const HERO_POSE_SET = [['idle', 0], ['idle', .7], ['attack', .1], ['attack', .6], ['cast', .3], ['hurt', 0], ['guard', 0], ['ko', 0]];
 const STAGE = '#1e1812';
@@ -135,7 +147,7 @@ function foeSection(id, keys, title, note) {
     }
   }
 }
-foeSection('foes-humanoid', ['cutpurse', 'bandit', 'tallyman'], 'Humanoid foes: gearTier 0-3, every pose', 'renderFoe(key, { gearTier, pose, t }) at 64x64 (2x). They face right toward the party. Tallyman carries the Warden\'s Seal on its belt by default.');
+foeSection('foes-humanoid', ['cutpurse', 'bandit', 'tallyman'], 'Humanoid foes: gearTier 0-3, every pose', 'renderFoe(key, { gearTier, pose, t }) at 64x64 (2x). They face right toward the party. Relics are shown in the next section.');
 if (want('foes-relic')) {
   const s = section('foes-relic', 'Relics on humanoid foes, held and disarmed', 'relic drawn from RELIC_ART (same art as the card); relicHeld:false removes it. Glint frames at t=0 and t=0.1.');
   const cases = [['tallyman', 'wardens-seal', 0], ['tallyman', 'tallyknife', 2], ['bandit', 'thornwatch-hood', 1], ['bandit', 'thornwatch-jerkin', 2], ['bandit', 'thornwatch-boots', 1], ['cutpurse', 'tallyknife', 1]];
@@ -240,14 +252,14 @@ if (want('perf')) {
     lines.push(`${label.padEnd(30)} cold ${med(c).toFixed(1).padStart(6)} ms   warm ${med(w).toFixed(2).padStart(6)} ms`);
   };
   const poses = ['hurt', 'ko', 'cast'];
-  bench('hero warden 64x64', k => renderHero('warden', undefined, { pose: poses[k], t: 0, custom: { hair: ['long', 'pony', 'crop'][k] } }), t => renderHero('warden', undefined, { pose: 'idle', t: t * .1 }));
-  bench('hero with relics 64x64', k => renderHero('pip', { weapon: 'briarfang', head: 'thornwatch-hood', body: 'thornwatch-jerkin' }, { pose: poses[k] }), t => renderHero('pip', { weapon: 'briarfang', head: 'thornwatch-hood', body: 'thornwatch-jerkin' }, { pose: 'idle', t: t * .1 }));
-  bench('humanoid foe bandit 64x64', k => renderFoe('bandit', { gearTier: k, pose: 'hurt' }), t => renderFoe('bandit', { gearTier: 1, t: t * .1 }));
-  bench('briarling 48x48', k => renderFoe('briarling', { gearTier: k, pose: 'hurt' }), t => renderFoe('briarling', { t: t * .1 }));
-  bench('thornhound 64x48', k => renderFoe('thornhound', { gearTier: k, pose: 'hurt' }), t => renderFoe('thornhound', { t: t * .1 }));
-  bench('rotstag 64x64 (relic)', k => renderFoe('rotstag', { gearTier: k, pose: 'hurt' }), t => renderFoe('rotstag', { t }));
-  bench('oldsnag 64x64 (relic)', k => renderFoe('oldsnag', { gearTier: k, pose: 'hurt' }), t => renderFoe('oldsnag', { t }));
-  bench('briarmaw 96x96 (2 relics)', k => renderFoe('briarmaw', { phase: k + 1, pose: 'hurt' }), t => renderFoe('briarmaw', { phase: 2, t }));
+  bench('hero warden 64x64', k => renderHero('warden', undefined, { pose: poses[k], t: 0, flip: true, custom: { hair: ['long', 'pony', 'crop'][k] } }), t => renderHero('warden', undefined, { pose: 'idle', t: t * .1 }));
+  bench('hero with relics 64x64', k => renderHero('pip', { weapon: 'briarfang', head: 'thornwatch-hood', body: 'thornwatch-jerkin' }, { pose: poses[k], flip: true }), t => renderHero('pip', { weapon: 'briarfang', head: 'thornwatch-hood', body: 'thornwatch-jerkin' }, { pose: 'idle', t: t * .1 }));
+  bench('humanoid foe bandit 64x64', k => renderFoe('bandit', { gearTier: k, pose: 'hurt', flip: true }), t => renderFoe('bandit', { gearTier: 1, t: t * .1 }));
+  bench('briarling 48x48', k => renderFoe('briarling', { gearTier: k, pose: 'hurt', flip: true }), t => renderFoe('briarling', { t: t * .1 }));
+  bench('thornhound 64x48', k => renderFoe('thornhound', { gearTier: k, pose: 'hurt', flip: true }), t => renderFoe('thornhound', { t: t * .1 }));
+  bench('rotstag 64x64 (relic)', k => renderFoe('rotstag', { gearTier: k, pose: 'hurt', flip: true }), t => renderFoe('rotstag', { t }));
+  bench('oldsnag 64x64 (relic)', k => renderFoe('oldsnag', { gearTier: k, pose: 'hurt', flip: true }), t => renderFoe('oldsnag', { t }));
+  bench('briarmaw 96x96 (2 relics)', k => renderFoe('briarmaw', { phase: k + 1, pose: 'hurt', flip: true }), t => renderFoe('briarmaw', { phase: 2, t }));
   bench('backdrop 160x96', k => renderBackdrop(BACKDROP_KEYS[k], { w: 160 + k, h: 96, t: 0 }), t => renderBackdrop('verdant-wood', { t }));
   bench('item portrait 64 (relic)', k => itemPortrait({ kind: 'sword', rarity: 'heirloom', aspect: 'ember', seed: 900 + k }, { t: 0 }), t => itemPortrait('hearthbrand', { t }));
   bench('dice icon 20', k => diceIcon(20, { value: 3 + k, size: 20 + k }), t => diceIcon(20, { value: 1 + Math.floor(t * 19) }));

@@ -97,7 +97,7 @@ export const FOE_ART = {
     veteran: { gear: { offhand: paintedShield }, gear3: { offhand: runedShield }, H: { cloak: 'cloakGreen' } },
   },
   tallyman: {
-    name: 'Tallyman', kind: 'humanoid', w: 64, h: 64, foot: [32, 56], defaultTier: 'rabble', beltRelic: true, relic: 'wardens-seal',
+    name: 'Tallyman', kind: 'humanoid', w: 64, h: 64, foot: [32, 56], defaultTier: 'rabble', beltRelic: true,
     H: { build: 'human', skin: 'skinAsh', hairMat: 'hairBlack', hair: 'none', eye: '#1a1a1a', tunic: 'clothGrey', pants: 'clothGrey', boots: 'leatherDark', gloves: 'skinAsh', shade: true, shadeEyes: 'amber', ledger: 'leatherDark', coins: true, buckle: 'blackiron' },
     gear: [
       { weapon: ironKnife, head: A('hood', { look: 'hood', mat: 'clothGrey', tip: 1 }), body: A('robe', { mat: 'clothGrey', trim: 'wool', sash: 'leatherDark' }) },
@@ -565,7 +565,7 @@ export function renderFoe(key, o = {}) {
   return img;
 }
 export function foeAnchors(key, o = {}) { return build(key, o).anchors; }
-export const FOE_KEYS = () => Object.keys(FOE_ART);
+export const FOE_KEYS = Object.keys(FOE_ART);
 export const FOE_POSES = ['idle', 'attack', 'hurt', 'ko'];
 // rasterise every pose frame once for these options (battle start), so later frames only compose
 export function prewarmFoe(key, o = {}) {

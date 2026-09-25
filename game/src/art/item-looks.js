@@ -18,14 +18,14 @@ export const RARITY_ORDER = ['worn', 'wrought', 'tempered', 'runed', 'storied', 
 // rim: rim-light colour on the portrait · aura: silhouette aura colour (tier >= 3) · frame: MAT for card
 // corners · gem: MAT for the corner gem · beam: reveal beam width (px) · rays: rotating rays behind portrait
 export const RARITY_LOOK = Object.freeze({
-  worn: { tier: 0, name: 'Worn', color: '#aca699', ramp: R5('#2e2c28 #5e5a52 #aca699 #dcd6ca #ffffff'), bg: R5('#16151a #1f1d24 #2a2830 #36343c'), rim: '#9a968c', aura: null, frame: 'iron', gem: null, beam: 3, rays: false },
-  wrought: { tier: 1, name: 'Wrought', color: '#f2eee4', ramp: R5('#3a3834 #7c776c #d8d2c4 #f4f0e6 #ffffff'), bg: R5('#17171b #212026 #2d2c33 #3b3a42'), rim: '#e6e0d2', aura: null, frame: 'steel', gem: 'pearl', beam: 4, rays: false },
-  tempered: { tier: 2, name: 'Tempered', color: '#64c85c', ramp: R5('#10331a #2a7a30 #64c85c #b4f0a4 #f2fff0'), bg: R5('#0d1810 #13241a #1b3424 #25482f'), rim: '#5ec85a', aura: null, frame: 'bronze', gem: 'emerald', beam: 5, rays: false },
-  runed: { tier: 3, name: 'Runed', color: '#5299f0', ramp: R5('#0e2a5a #1e5ab0 #5299f0 #a8d4ff #f2f8ff'), bg: R5('#0b1224 #111c38 #182a52 #22396c'), rim: '#4a92ea', aura: '#4a92ea', frame: 'steel', gem: 'sapphire', beam: 6, rays: false },
-  storied: { tier: 4, name: 'Storied', color: '#b774f4', ramp: R5('#2a0e4a #5e2a9a #b774f4 #e2baff #fcf2ff'), bg: R5('#150c22 #1f1234 #2c1a4a #3c2462'), rim: '#b36cf0', aura: '#b36cf0', frame: 'silver', gem: 'amethyst', beam: 8, rays: false },
-  heirloom: { tier: 5, name: 'Heirloom', color: '#f4ad3f', ramp: R5('#4a2008 #a85a14 #f4ad3f #ffe08a #fffbe8'), bg: R5('#1c1008 #2c180a #42240e #5a3212'), rim: '#f2a93b', aura: '#f2a93b', frame: 'gold', gem: 'ruby', beam: 10, rays: true },
-  regalia: { tier: 6, name: 'Regalia', color: '#64e5d3', ramp: R5('#073a34 #137a6c #3cc8b4 #9af0e2 #f0fffb'), bg: R5('#07181a #0c2628 #123a3a #1a5250'), rim: '#5fe3d0', aura: '#5fe3d0', frame: 'bronze', gem: 'seaglass', beam: 11, rays: true },
-  primal: { tier: 7, name: 'Primal', color: '#f4f8ff', ramp: R5('#28304a #6a7eb0 #c4d6f4 #eef4ff #ffffff'), bg: R5('#0b0d15 #131826 #1d2438 #293350'), rim: '#e8f0ff', aura: '#dce8ff', frame: 'silver', gem: 'prism', beam: 12, rays: true, flame: true },
+  worn: { tier: 0, name: 'Worn', color: '#8b8b8b', ramp: R5('#2e2c28 #5e5a52 #aca699 #dcd6ca #ffffff'), bg: R5('#16151a #1f1d24 #2a2830 #36343c'), rim: '#9a968c', aura: null, frame: 'iron', gem: null, beam: 3, rays: false },
+  wrought: { tier: 1, name: 'Wrought', color: '#f4f1e8', ramp: R5('#3a3834 #7c776c #d8d2c4 #f4f0e6 #ffffff'), bg: R5('#17171b #212026 #2d2c33 #3b3a42'), rim: '#e6e0d2', aura: null, frame: 'steel', gem: 'pearl', beam: 4, rays: false },
+  tempered: { tier: 2, name: 'Tempered', color: '#4cbf56', ramp: R5('#10331a #2a7a30 #64c85c #b4f0a4 #f2fff0'), bg: R5('#0d1810 #13241a #1b3424 #25482f'), rim: '#5ec85a', aura: null, frame: 'bronze', gem: 'emerald', beam: 5, rays: false },
+  runed: { tier: 3, name: 'Runed', color: '#4a8fe7', ramp: R5('#0e2a5a #1e5ab0 #5299f0 #a8d4ff #f2f8ff'), bg: R5('#0b1224 #111c38 #182a52 #22396c'), rim: '#4a92ea', aura: '#4a92ea', frame: 'steel', gem: 'sapphire', beam: 6, rays: false },
+  storied: { tier: 4, name: 'Storied', color: '#a35ee8', ramp: R5('#2a0e4a #5e2a9a #b774f4 #e2baff #fcf2ff'), bg: R5('#150c22 #1f1234 #2c1a4a #3c2462'), rim: '#b36cf0', aura: '#b36cf0', frame: 'silver', gem: 'amethyst', beam: 8, rays: false },
+  heirloom: { tier: 5, name: 'Heirloom', color: '#e8b83a', ramp: R5('#4a2008 #a85a14 #f4ad3f #ffe08a #fffbe8'), bg: R5('#1c1008 #2c180a #42240e #5a3212'), rim: '#f2a93b', aura: '#f2a93b', frame: 'gold', gem: 'ruby', beam: 10, rays: true },
+  regalia: { tier: 6, name: 'Regalia', color: '#2fb8a6', ramp: R5('#073a34 #137a6c #3cc8b4 #9af0e2 #f0fffb'), bg: R5('#07181a #0c2628 #123a3a #1a5250'), rim: '#5fe3d0', aura: '#5fe3d0', frame: 'bronze', gem: 'seaglass', beam: 11, rays: true },
+  primal: { tier: 7, name: 'Primal', color: '#fffaf0', ramp: R5('#28304a #6a7eb0 #c4d6f4 #eef4ff #ffffff'), bg: R5('#0b0d15 #131826 #1d2438 #293350'), rim: '#e8f0ff', aura: '#dce8ff', frame: 'silver', gem: 'prism', beam: 12, rays: true, flame: true },
 });
 export const rarityTier = r => (RARITY_LOOK[r] ? RARITY_LOOK[r].tier : 0);
 
@@ -34,14 +34,14 @@ export const ASPECTS = ['ember', 'frost', 'storm', 'stone', 'verdant', 'tide', '
 // glow: emissive MAT for runes/fullers/orbs · gem: MAT for set stones · cloth: MAT for robes/ribbons
 // color: css colour for UI accents · mote: particle behaviour on portraits and casts
 export const ASPECT_LOOK = Object.freeze({
-  ember: { glow: 'ember', gem: 'ruby', cloth: 'cloakRed', color: '#ee7a1c', light: '#ffbe48', mote: 'rise' },
-  frost: { glow: 'frost', gem: 'sapphire', cloth: 'clothBlue', color: '#5cb0e4', light: '#a8e0f8', mote: 'fall' },
-  storm: { glow: 'storm', gem: 'stormglass', cloth: 'clothBlue', color: '#7ab8ff', light: '#fffce0', mote: 'spark' },
-  stone: { glow: 'amber', gem: 'topaz', cloth: 'gambeson', color: '#da9426', light: '#f8c85a', mote: 'dust' },
-  verdant: { glow: 'verdant', gem: 'emerald', cloth: 'hoodGreen', color: '#4ec436', light: '#a6f066', mote: 'spore' },
-  tide: { glow: 'water', gem: 'seaglass', cloth: 'clothTeal', color: '#48a4c6', light: '#94daf0', mote: 'bubble' },
-  radiant: { glow: 'radiant', gem: 'pearl', cloth: 'clothWhite', color: '#f8e27e', light: '#fff8d4', mote: 'sparkle' },
-  blight: { glow: 'blight', gem: 'amethyst', cloth: 'clothGrey', color: '#a8c05a', light: '#eeffa8', mote: 'rise' },
+  ember: { glow: 'ember', gem: 'ruby', cloth: 'cloakRed', color: '#e8622c', light: '#ffbe48', mote: 'rise' },
+  frost: { glow: 'frost', gem: 'sapphire', cloth: 'clothBlue', color: '#8fd3f4', light: '#a8e0f8', mote: 'fall' },
+  storm: { glow: 'storm', gem: 'stormglass', cloth: 'clothBlue', color: '#b9a6ff', light: '#fffce0', mote: 'spark' },
+  stone: { glow: 'amber', gem: 'topaz', cloth: 'gambeson', color: '#a08c6c', light: '#f8c85a', mote: 'dust' },
+  verdant: { glow: 'verdant', gem: 'emerald', cloth: 'hoodGreen', color: '#5dbb4f', light: '#a6f066', mote: 'spore' },
+  tide: { glow: 'water', gem: 'seaglass', cloth: 'clothTeal', color: '#2f7fc1', light: '#94daf0', mote: 'bubble' },
+  radiant: { glow: 'radiant', gem: 'pearl', cloth: 'clothWhite', color: '#ffe9a0', light: '#fff8d4', mote: 'sparkle' },
+  blight: { glow: 'blight', gem: 'amethyst', cloth: 'clothGrey', color: '#7a4f8f', light: '#eeffa8', mote: 'rise' },
 });
 // rune glow when an item has no aspect, by rarity tier
 const TIER_GLOW = [null, null, null, 'frost', 'arcane', 'radiant', 'water', 'primal'];
@@ -186,6 +186,21 @@ const GEN = {
   ring: c => ({ r: 'ring', p: { metal: c.fit(), gem: c.T >= 3 || (c.T >= 1 && c.chance(.7)) ? (c.gem() || c.pick(ANY_GEM)) : null, runes: c.glow } }),
 };
 export const ITEM_KINDS = Object.keys(GEN);
+// base item ids from data/items.js nudge the procedural look toward that base (a maul is bigger than a warhammer)
+const BASE_HINT = {
+  'belt-knife': { p: { shape: 'knife', bladeL: 30 } }, rondel: { p: { shape: 'straight', guard: 'coin', bladeW: 3.8 } },
+  'arming-sword': { p: { bladeL: 42 } }, longsword: { p: { bladeL: 50, gripEnd: 15 } }, greatsword: { p: { bladeL: 54, bladeW: 4.4, gripEnd: 18, guardW: 11 }, k: .4 },
+  'hand-axe': { p: { bladeW: 14, bladeLo: 10, back: 'none' } }, 'bearded-axe': { p: { bladeLo: 16, bladeW: 19 } },
+  maul: { p: { headW: 16, headH: 16, haftR: 2.7, faces: 1 }, k: .4 }, mace: { p: { style: 'knob' } }, 'flanged-mace': { p: { style: 'flanged' } },
+  spear: { p: { wings: 0 } }, 'boar-spear': { p: { wings: 3, headW: 5.6 } },
+  shortbow: { p: { len: 52, bulge: 8 } }, longbow: { p: { len: 64, bulge: 10 } },
+  quarterstaff: { p: { style: 'crook', gem: null } }, 'rowan-staff': { p: { style: 'gnarl', leaves: 'moss' } },
+  buckler: { p: { r: 20, shape: null } }, 'heater-shield': { p: { shape: 'heater' } }, 'tower-shield': { p: { shape: 'tower' } },
+  'holy-symbol': { p: { style: 'sigil' } }, 'rune-focus': { p: { style: 'orb' } },
+  'mail-coif': { p: { mat: 'steel', tex: mailTex, flaps: 1 } }, 'bronze-crown': { p: { metal: 'bronze' } },
+  brigandine: { p: { studs: 'bronze', pauldrons: 'leatherDark' } }, hauberk: { p: { pauldrons: 'steel' } },
+  'ironshod-boots': { p: { greave: 'iron', sole: 'iron' } },
+};
 
 const artCache = lru(4000);
 // itemArt(item) -> { r, p, ... } recipe params. Accepts an ItemInstance ({ base, kind, rarity, aspect, seed }),
@@ -198,7 +213,12 @@ export function itemArt(item) {
   const gen = GEN[item.kind];
   if (!gen) return null;
   const key = `${item.kind}|${item.rarity}|${item.aspect || '-'}|${item.seed ?? 0}`;
-  return artCache.get(key, () => { const a = gen(ctxFor(item)); a.kind = item.kind; a.rarity = item.rarity; a.aspect = item.aspect || null; return a; });
+  return artCache.get(key + '|' + (item.base || ''), () => {
+    const a = gen(ctxFor(item)), h = BASE_HINT[item.base];
+    if (h) { Object.assign(a.p, h.p); if (h.k) a.k = h.k; }
+    a.kind = item.kind; a.rarity = item.rarity; a.aspect = item.aspect || null; a.base = item.base || null;
+    return a;
+  });
 }
 
 /* ==== portraits & icons ==== */
@@ -293,7 +313,7 @@ export function lookFor(slot, art) {
   switch (slot) {
     case 'weapon': { const R = RECIPE[r] || RECIPE.sword; return { id, r, p, k: art.k || (R.hold && R.hold.k) || .36, axis: art.axis || (R.hold && R.hold.axis), cls: R.cls || 'blade', glow: glowOf(p), relic: !!art.relic, aspect: art.aspect || null }; }
     case 'offhand':
-      if (r === 'shield') return { id, look: (p.r || 26) >= 25 ? 'round' : 'buckler', face: p.face, rim: p.rim, boss: p.boss, gem: p.gem, paint: p.paint, paint2: p.paint2 };
+      if (r === 'shield') return { id, look: p.shape === 'heater' || p.shape === 'tower' ? p.shape : (p.r || 26) >= 25 ? 'round' : 'buckler', face: p.face, rim: p.rim, boss: p.boss, gem: p.gem, paint: p.paint, paint2: p.paint2 };
       return { id, look: p.style === 'orb' ? 'orb' : p.style === 'tome' ? 'tome' : p.style === 'rings' ? 'rings' : 'sigil', metal: p.metal, gem: p.gem, glow: p.glow || p.runes, cover: p.cover };
     case 'head': {
       const look = r === 'crown' ? 'crown' : p.look || (r === 'helm' ? 'helm' : r);

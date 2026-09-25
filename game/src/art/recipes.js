@@ -167,7 +167,21 @@ const TX2 = {
   scale: (sz, seed) => scaleTex(sz, seed),
 };
 
+const inset = (pts, cx, cy, f) => pts.map(([x, y]) => [cx + (x - cx) * f, cy + (y - cy) * f]);
+function shapedShieldR(F, X, P) {
+  const heater = P.shape === 'heater', cy = heater ? 28 : 32;
+  const pts = heater ? [[9, 5], [55, 5], [55, 25], [49, 42], [32, 59], [15, 42], [9, 25]] : [[13, 3], [51, 3], [53, 8], [53, 54], [32, 62], [11, 54], [11, 8]];
+  const face = P.paint ? ({ x, y }) => { const dx = x - 32, dy = y - cy; if (P.paint === 'chevron' && Math.abs(dy - Math.abs(dx) * .9 + 2) < 4.5) return { m: P.paint2 || 'paintRed' }; if (P.paint === 'quarter' && (dx > 0) !== (dy > 0)) return { m: P.paint2 || 'paintRed' }; if (P.paint === 'thorn' && Math.abs(dx + Math.sin(dy * .45) * 3) < 2.4) return { m: P.paint2 || 'bramble' }; return (x % 4 === 0 && P.planks ? -1 : 0); } : P.planks ? ({ x }) => (x % 4 === 0 ? -1 : 0) : null;
+  F.add({ X, mat: P.face || 'wood', prof: 'round', bw: 12, hs: .5, grp: 'face', shapes: [X.poly(pts)], tex: face });
+  F.add({ X, mat: P.rim || 'iron', prof: 'round', bw: 2.2, grp: 'rim', shapes: [X.poly(pts)], cuts: [X.poly(inset(pts, 32, cy, heater ? .86 : .88))] });
+  if (!heater) F.add({ X, mat: P.rim || 'iron', prof: 'round', bw: 1.6, grp: 'band', shapes: [X.cap(13, 24, 51, 24, 2), X.cap(13, 42, 51, 42, 2)] });
+  if (P.rivets) { const S = pts.map(([x, y]) => { const q = inset([[x, y]], 32, cy, .93)[0]; return X.circ(q[0], q[1], 1.2); }); F.add({ X, mat: P.rivets, prof: 'round', bw: 1, grp: 'rivets', noShadow: true, detail: true, shapes: S }); }
+  if (P.runes) F.add({ X, mat: P.runes, prof: 'round', bw: .7, grp: 'runes', noShadow: true, detail: true, shapes: [X.cap(20, cy - 10, 26, cy - 14, .7), X.cap(38, cy - 14, 44, cy - 10, .7), X.cap(26, cy + 12, 38, cy + 12, .7)] });
+  F.add({ X, mat: P.boss || 'iron', prof: 'round', bw: 6, grp: 'boss', shapes: [X.circ(32, cy, (P.bossR || 7) * .8)] });
+  if (P.gem) F.add({ X, mat: P.gem, prof: 'round', bw: 4, grp: 'boss', noShadow: true, shapes: [X.circ(32, cy, 3.6)] });
+}
 function shieldR(F, X, P) {
+  if (P.shape === 'heater' || P.shape === 'tower') return shapedShieldR(F, X, P);
   const r = P.r || 26;
   const face = P.paint ? ({ x, y }) => { const dx = x - 32, dy = y - 32; if (P.paint === 'chevron' && Math.abs(dy - Math.abs(dx) * .9 + 4) < 4.5) return { m: P.paint2 || 'paintRed' }; if (P.paint === 'quarter' && (dx > 0) !== (dy > 0)) return { m: P.paint2 || 'paintRed' }; if (P.paint === 'thorn' && Math.abs(dx + Math.sin(dy * .45) * 3) < 2.4) return { m: P.paint2 || 'bramble', dd: 0 }; return (x % 4) === 0 && P.planks ? -1 : 0; } : P.planks ? ({ x }) => ((x % 4) === 0 ? -1 : 0) : P.faceTex || null;
   F.add({ X, mat: P.face || 'wood', prof: 'round', bw: r * .6, hs: .5, grp: 'face', shapes: [X.circ(32, 32, r)], tex: face });

@@ -297,6 +297,14 @@ function offhandParts(F, X, b, o, hand, raised) {
     F.add({ X, mat: o.rim || 'iron', prof: 'round', bw: 1, grp: 'shieldrim', shapes: [X.circ(cx, cy, r)], cuts: [X.circ(cx, cy, r - 1.3)] });
     F.add({ X, mat: o.boss || o.rim || 'iron', prof: 'round', bw: 1.6, grp: 'shieldboss', shapes: [X.circ(cx, cy, o.look === 'round' ? 2 : 1.5)] });
     if (o.gem) F.add({ X, mat: o.gem, prof: 'round', bw: .8, grp: 'shieldboss', noShadow: true, shapes: [X.circ(cx, cy, .9)] });
+  } else if (o.look === 'heater' || o.look === 'tower') {
+    const cx = x + .6, cy = y - 1.4, t = o.look === 'tower', w = t ? 5 : 5.2 + (raised ? .3 : 0);
+    const pts = t ? [[cx - w, cy - 7.5], [cx + w, cy - 7.5], [cx + w, cy + 5.5], [cx, cy + 7.5], [cx - w, cy + 5.5]] : [[cx - w, cy - 5], [cx + w, cy - 5], [cx + w, cy], [cx + w * .6, cy + 3.6], [cx, cy + 6.2], [cx - w * .6, cy + 3.6], [cx - w, cy]];
+    const paint = o.paint ? ({ x: px2, y: py }) => { const dx = px2 - X.ox - cx, dy = py - X.oy - cy; if (o.paint === 'chevron' && Math.abs(dy - Math.abs(dx) * .9) < 1.2) return { m: o.paint2 || 'paintRed' }; if (o.paint === 'quarter' && (dx > 0) !== (dy > 0)) return { m: o.paint2 || 'paintRed' }; if (o.paint === 'thorn' && Math.abs(dx + Math.sin(dy * 1.2)) < .9) return { m: o.paint2 || 'bramble' }; return 0; } : null;
+    F.add({ X, mat: o.face || 'wood', prof: 'round', bw: 2.5, hs: .6, grp: 'shield', shapes: [X.poly(pts)], tex: paint });
+    F.add({ X, mat: o.rim || 'iron', prof: 'round', bw: .8, grp: 'shieldrim', shapes: [X.poly(pts)], cuts: [X.poly(pts.map(([px2, py]) => [cx + (px2 - cx) * .78, cy + (py - cy) * .8]))] });
+    F.add({ X, mat: o.boss || o.rim || 'iron', prof: 'round', bw: 1.2, grp: 'shieldboss', shapes: [X.circ(cx, cy - (t ? 1 : .6), 1.4)] });
+    if (o.gem) F.add({ X, mat: o.gem, prof: 'round', bw: .8, grp: 'shieldboss', noShadow: true, shapes: [X.circ(cx, cy - (t ? 1 : .6), .8)] });
   } else if (o.look === 'sigil') {
     F.add({ X, mat: o.metal || 'gold', prof: 'round', bw: 1, grp: 'sigilchain', shapes: [X.cap(x, y + .5, x + .3, y + 3.5, .55)] });
     F.add({ X, mat: o.metal || 'gold', prof: 'round', bw: 2.4, grp: 'sigil', shapes: [X.circ(x + .3, y + 5.2, 2.6)] });
