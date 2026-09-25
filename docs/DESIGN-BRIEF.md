@@ -76,8 +76,8 @@ The bad guys keep getting stronger, and their gear keeps getting better, so bett
 
 The world map shows both meters side by side as the **Hearth Clock**: your Brands and the world's Waking. You and the world grow stronger together, and you can watch it happen.
 
-**Champions keep pace.** After the Verdant Wilds you choose Sunscorch or Ironspire first:
-- The region you save for later has tougher Champions, but their relics come off already upgraded.
+**Champions keep pace.** After the Verdant Wilds, Sunscorch, Ironspire and Gloomfen open in any order:
+- The regions you save for later have tougher Champions, but their relics come off already upgraded.
 - If you wreck the Tallymen's field forge in Ironhold, every Champion after that re-gears at half speed. That's a real strategic reason to pick one route over the other.
 
 **The Ladder.** A wanted-poster board in the Keep's war room shows every villain as a silhouette. Scouting fills in their faces, their traits and a silhouette card of what they carry. Taunting letters arrive from the Unsmith after each Brand.
@@ -290,12 +290,13 @@ You can save any card as a PNG, sized to print as a real playing card for your t
 
 ## 9. The World & Story
 
-| Act | Region | Gate to get in | Brands |
+| Act | Region | How you get in | Brands |
 |---|---|---|---|
 | Prologue | Hearthstone Keep | — | — |
-| I | Verdant Wilds | Thorn walls | 1–2 (Briarmaw, the Rotwarden) |
-| II | Sunscorch *or* Ironspire first | Captain Mara's writ after 2 Brands; dune-glass / rockslide | 3–6 |
-| II | Gloomfen Marsh | Blackwater crossing | 7–8 |
+| I (guided) | Verdant Wilds | Thorn walls | 1–2 (Briarmaw, the Rotwarden) |
+| II (open, any order) | Sunscorch Wastes | Dune-glass walls, or the caravan road from Sandspire | 2 of 3–8 |
+| II (open, any order) | Ironspire Peaks | The rockslide pass, or Stormwatch's writ | 2 of 3–8 |
+| II (open, any order) | Gloomfen Marsh | The Blackwater crossing, or Willowmurk's safe paths | 2 of 3–8 |
 | III | The Council Hall, then the Hearth Below | All 8 Brands | Finale |
 
 **Act I, the Whispering Rot.**
@@ -366,21 +367,24 @@ It would *never*:
 
 ---
 
-## 12. Decisions for You
+## 12. Decisions (all settled)
 
-1. **Solo hero or party?** ✅ **Decided: a party of 4 in battle** (you + 3 of 7 recruitable companions). You get more sprites to dress up, every drop becomes a "who gets it?" choice, and your hero always leads on the map.
-2. **Art style.** Game Boy Color chunky / **SNES-style 16-bit with rich palettes** / higher-resolution 32px tiles.
-   **We recommend SNES-style**: 16px world tiles with 96px cards. The item card stays the most detailed thing on screen.
-3. **What happens when you lose?** Lose items / **wake at the last Hearthfire, keep everything, lose 10% of your gold, and the enemy becomes a Grudge** / Ironman permadeath.
-   **We recommend the middle option**, with Ironman as a toggle and a "run that back" retry on bosses.
-4. **How grindy?** None at all / **optional**: the story never needs grinding, and grinding pays in loot / grind-heavy.
-   **We recommend optional.**
-5. **AI Dungeon Master?** Never / **later, as an opt-in toggle** / core to the game.
-   **We recommend adding it at the end as an extra.** Do you want it at all?
-6. **Tone.** Grim / **warm epic with bite** (real stakes, with Hodge-style comedy on the side) / lighthearted.
-   **We recommend warm epic with bite.**
-7. **How open is the world?** Fully linear / **a guided start, then pick your region order in Act II** / fully open.
-   **We recommend the guided start.** Open region order is fun, but a fully open world gets hard to balance.
+| # | Question | Decision |
+|---|---|---|
+| 1 | Solo hero or party? | **Party of 4 in battle**: you plus 3 of 7 recruitable companions. Every drop is a "who gets it?" choice. |
+| 2 | Art style | **The Loot Forge look.** SNES-era richness, code-drawn pixel art with 64px+ item card portraits (approved from the prototype). |
+| 3 | When the party wipes | **Wake at the last Hearthfire, keep all gear, lose 10% of gold.** The enemy that beat you becomes a Grudge. |
+| 4 | Grinding | **Optional but beneficial.** The story never requires it; grinding pays out in loot, gold, Codex progress and Domain XP. |
+| 5 | Tone | **Warm epic with an edge.** Real stakes, with Hodge-style comedy on the side. |
+| 6 | World structure | **Guided start, then as open as possible.** See "Open world rules" below. |
+| 7 | AI Dungeon Master | **Optional extra, never required.** Every line it could write has hand-written fallback text, and it never touches numbers, drops or story flags. |
+
+### Open world rules
+- **Act I is guided:** the prologue at Hearthstone Keep and the Verdant Wilds (Brands 1–2) teach the systems.
+- **After Act I, Sunscorch, Ironspire and Gloomfen all open at once,** each with at least two ways in. Take them in any order.
+- **Enemy strength follows the world, not the region.** Each region has a base level, and the whole world gears up as the Waking rises with every Brand you earn. Whichever region you save for last is the hardest and pays the best, so no order is wrong.
+- **Two keys for every lock.** Any obstacle can be passed with a relic's map power or a Domain skill, so no single item bottlenecks the map.
+- **Optional hard areas are visible early** (a glinting Relic-Bearer far above your level). You can try them, and the Grudge system turns a loss into a better prize later.
 
 ---
 
@@ -395,7 +399,7 @@ Every milestone is a new version at the **same private link** and plays on both 
 | Milestone | What you get |
 |---|---|
 | **M0 Engine** | Renderer, touch and keyboard controls, tile maps, saves |
-| **M1 "The Card" sandbox (your first link)** | Press Forge to generate items and watch cards reveal, equip onto a paper doll, see your gear on overworld and battle sprites, save cards as PNG. Also a gallery of 200 cards for art review and a style guide every later build must match. **You judge the art on your real phone before anything else is built.** |
+| **M1 "The Card" sandbox** ✅ done: the Loot Forge prototype | Press Forge to generate items and watch cards reveal, equip onto a paper doll, see your gear on overworld and battle sprites, save cards as PNG. Also a gallery of 200 cards for art review and a style guide every later build must match. **You judge the art on your real phone before anything else is built.** |
 | **M2 Battle** | Initiative Ribbon, dice tray, graze rule, Aspects, grip and claim, Legend Surge, intent dice |
 | **M3 Verdant slice (about 1.5–2 hours)** | Details below |
 | **M4** | Sunscorch, full Codex binder, Hilda's full forge, Grudges |
