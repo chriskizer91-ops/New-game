@@ -51,18 +51,22 @@ parseDice('2d8+6') -> { terms:[{n,sides}], flat }
   version: 1,
   seed, rngState,
   party: { active: ['warden','pip','bryn','alondra'], roster: { [heroId]: HeroState } },
-  inventory: [ItemInstance], gold, codex: { [relicId]: { sighted, claimed, awakened } },
-  progress: { waking: 0, brands: [], lastHearthfire: nodeId, node: nodeId, flags: {} },
+  inventory: [ItemInstance], bag: { [consumableId]: count }, gold,
+  codex: { [relicId]: { sighted, claimed, awakened } },
+  progress: { waking: 0, brands: [], lastHearthfire: nodeId, node: nodeId,
+              flags: { cleared, done, grudges, day, runs } },
   settings: { sound, battleSpeed, reducedMotion }
 }
 
-HeroState = { id, name, level, xp, hp, mp, surge, base:{STR,DEX,CON,INT,WIS,CHA},
+HeroState = { id, name, level, xp, hp, mp, surge, hpRolls:[number], base:{STR,DEX,CON,INT,WIS,CHA},
               gear:{ weapon, offhand, head, body, hands, feet, amulet, ring }, // ItemInstance ids or null
               skills:[skillId], domains:{ [domainId]: { level, path, opt7, opt13 } } }
 
 ItemInstance = { uid, base:itemBaseId | relicId, kind, slot, rarity, ilvl, name, aspect|null,
                  affixes:[{id, value}], gems:[], temper:0, seed,          // seed drives procedural art
-                 provenance:{ from, where, day }, chronicle:{ kills:0 } }
+                 provenance:{ from, where, day }, chronicle:{ kills:0 },
+                 // optional: shattered, unidentified, lore, power (storied), stamp:'grudge-settled'
+               }
 // Rules never store recipe params. src/art derives the look: RELIC_ART[relicId] for named relics,
 // otherwise itemArt(item) builds params from kind + rarity + aspect + seed (deterministic).
 ```
@@ -83,8 +87,20 @@ commands(state, heroId) -> [Command...]            // attack, skills, items, def
 targets(state, command) -> [combatantId...]
 act(state, command) -> { state, events:[Event...] }          // resolves a hero command
 foeTurn(state) -> { state, events:[Event...] }               // resolves the current foe's intent
-outcome(state) -> null | { result:'victory'|'defeat'|'fled', xp, gold, drops:[ItemInstance], claimed:[ItemInstance] }
+outcome(state) -> null | { result:'victory'|'defeat'|'fled', xp, gold, drops:[ItemInstance], claimed:[ItemInstance],
+                          consumables, party, bag, beaten, kills, rounds, turns }
+inspect(state, id)                                 // Analyze panel: weaknesses, resists, grip, queued intents
 ```
+
+- `state.openingEvents` holds the events from battle creation (first intents, first `turn`).
+- `commands()` entries carry `enabled`, `reason` (when disabled) and `targeting`; pass one back to
+  `act()` with `target` (and optionally `relic` to aim grip damage at one breakable piece).
+- `createBattle` takes spawns already escalated for the Waking (`rules/gauntlet.js` does that);
+  its `waking` only raises loot luck. ctx keys: `inventory`, `bag`, `nodeId`, `where`, `day`,
+  `gentle`, `noFlee`, `backdrop`, `patrol`, `ambush`.
+- Game flow lives in `rules/gauntlet.js`: `newGame`, `route`, `currentNode`, `canAdvance`, `advance`,
+  `rest`, `startBattle(game, {nodeId?, patrol?}) -> {game, battle}`, `resolveBattle(game, battle) -> {game, report}`.
+- Full rules, formulas and the balance sim live in `docs/RULES.md`.
 
 `act`/`foeTurn` never mutate their input; they return a new state plus an ordered event list.
 The UI animates events one by one and then renders the returned state.
@@ -107,6 +123,8 @@ The UI animates events one by one and then renders the returned state.
 | `phase` | `foe, phase, text` | boss changes phase |
 | `move` | `actor, name, text` | a named skill or Art is used |
 | `text` | `text` | narration line |
+| `spawn` | `foe, family, from, name, text` | a summon or a Twinned split joins the fight |
+| `escape` | `foe, text` | a foe bolts, or summons wither when their Champion dies |
 | `victory` / `defeat` / `fled` | outcome fields | battle end |
 
 ### Core rules (tunable in data)
@@ -153,6 +171,8 @@ The UI animates events one by one and then renders the returned state.
 **Heroes** (art key = hero id): `warden` (the player's Hearthwarden), `pip` (Pip, Thornhollow
 scout), `bryn` (Bryn the Bark-Reader of Eldergrove), `alondra` (Sister Alondra, the blind
 priestess of Fawnrest).
+
+**Foe tiers:** `rabble` `veteran` `relic-bearer` `champion`.
 
 **Foe art keys** (Verdant Wilds slice): `cutpurse` `briarling` `thornhound` `bandit` `tallyman`
 `rotstag` `oldsnag` (Relic-Bearer boar) `briarmaw` (Champion boss, 3 phases).
