@@ -1,0 +1,54 @@
+/* Aethermoor theme tokens, lifted from the approved Loot Forge prototype.
+   A deliberately single dark theme (a game screen), with every color set explicitly. */
+:root {
+  color-scheme: dark;
+  --soot: #120e0c; --soot-2: #19130f; --iron: #211a16; --iron-2: #2b221d; --iron-3: #352a23;
+  --seam: #3f3229; --seam-2: #5a4838; --ink: #0b0910;
+  --parchment: #ecdfc3; --parchment-2: #c4b294; --ash: #948470;
+  --hearth: #ee8e31; --hearth-hot: #ffcb66; --hearth-deep: #7a3a12;
+  --marsh: #4aa698; --up: #8ad872; --up-deep: #1f4a1a; --down: #ee6c54;
+  /* rarity tiers (ids match data/rarity.js) */
+  --r-worn: #9a968c; --r-wrought: #e8e4da; --r-tempered: #64c85c; --r-runed: #5299f0;
+  --r-storied: #b774f4; --r-heirloom: #f4ad3f; --r-regalia: #4fd1c0; --r-primal: #fff6e0;
+  --f-pixel: "Silkscreen", "Lucida Console", "Courier New", monospace;
+  --f-display: "Cormorant Garamond", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --f-body: "Alegreya Sans", "Gill Sans", "Trebuchet MS", system-ui, sans-serif;
+  --gutter: 16px;
+  --tap: 44px;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0; background: radial-gradient(90% 420px at 50% -120px, #3a2112 0%, rgba(58,33,18,0) 70%), var(--soot);
+  color: var(--parchment); font-family: var(--f-body); font-size: 16px; line-height: 1.45;
+  -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent;
+}
+button { font: inherit; color: inherit; }
+canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; display: block; }
+:focus-visible { outline: 2px dashed var(--hearth-hot); outline-offset: 3px; }
+.app { min-height: 100%; }
+.screen { max-width: 1100px; margin: 0 auto; padding-inline: var(--gutter); padding-block: 12px 48px; }
+[hidden] { display: none !important; }
+
+/* shared controls */
+.btn {
+  min-height: var(--tap); padding: 0 14px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  font-family: var(--f-pixel); font-size: 12px; letter-spacing: .06em; color: var(--parchment);
+  background: var(--iron-2); border: 2px solid var(--seam-2); box-shadow: 0 0 0 2px var(--ink);
+}
+.btn:hover { border-color: var(--hearth); color: var(--hearth-hot); }
+.btn:disabled { cursor: default; color: var(--ash); border-color: var(--seam); }
+.btn.primary {
+  color: #231306; border: 0; background: linear-gradient(180deg, #ffd27a 0, #f09a36 55%, #c86a1c 100%);
+  box-shadow: 0 0 0 3px var(--ink), inset 0 -4px 0 rgba(0,0,0,.25), inset 0 2px 0 rgba(255,255,255,.35);
+}
+.btn.primary:disabled { color: var(--ash); background: var(--iron-2); box-shadow: 0 0 0 3px var(--ink); }
+.panel { background: var(--soot-2); box-shadow: 0 0 0 3px var(--ink), 0 0 0 5px var(--seam); margin: 5px; padding: 12px; }
+.label { font-family: var(--f-pixel); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--ash); }
+.title-display { font-family: var(--f-display); font-weight: 700; line-height: 1.05; text-wrap: balance; }
+.toast {
+  position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 50;
+  max-width: calc(100% - 32px); padding: 10px 14px; background: var(--ink); border: 2px solid var(--seam-2);
+  font-family: var(--f-pixel); font-size: 11px; letter-spacing: .05em; color: var(--parchment);
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }

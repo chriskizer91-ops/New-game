@@ -11,7 +11,7 @@ export default [
         ImageData: 'readonly', matchMedia: 'readonly', innerHeight: 'readonly', innerWidth: 'readonly',
         addEventListener: 'readonly', removeEventListener: 'readonly', scrollBy: 'readonly', getComputedStyle: 'readonly',
         AudioContext: 'readonly', console: 'readonly', process: 'readonly', URL: 'readonly', Blob: 'readonly',
-        structuredClone: 'readonly', globalThis: 'readonly', HTMLCanvasElement: 'readonly', KeyboardEvent: 'readonly',
+        structuredClone: 'readonly', globalThis: 'readonly', TextEncoder: 'readonly', TextDecoder: 'readonly', btoa: 'readonly', atob: 'readonly', Image: 'readonly', PointerEvent: 'readonly', ResizeObserver: 'readonly', getSelection: 'readonly', scrollTo: 'readonly', devicePixelRatio: 'readonly', HTMLCanvasElement: 'readonly', KeyboardEvent: 'readonly',
       },
     },
     rules: { 'no-undef': 'error', 'no-unused-vars': ['warn', { args: 'none' }] },
