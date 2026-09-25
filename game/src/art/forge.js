@@ -47,7 +47,55 @@ const MAT = {
   pants:     { pal: ramp('#0f0d16 #1d1a28 #2e2a3e #443e56 #5e5670 #807896'), ks: 0 },
   wool:      { pal: ramp('#16140f #2e2a20 #4a4434 #6a624a #8c8464 #b0a886'), ks: 0 },
   dark:      { pal: ramp('#07060a #0e0c12 #16131b #1f1b25 #29242f #332d3a'), ks: 0 },
+  // ---- added for the battle layer: aspect glows (emissive) ----
+  storm:     { pal: ramp('#120c34 #2c2a8c #4a62e2 #7ab8ff #d4f2ff #fffce0'), emit: 1, eBase: 3.2 },
+  amber:     { pal: ramp('#2a1404 #5e300a #a05e12 #da9426 #f8c85a #fff2c0'), emit: 1, eBase: 3.1 },
+  verdant:   { pal: ramp('#041c0a #0c4214 #1c8024 #4ec436 #a6f066 #effcc8'), emit: 1, eBase: 3.1 },
+  radiant:   { pal: ramp('#3a2408 #8a6418 #d4ae3a #f8e27e #fff8d4 #ffffff'), emit: 1, eBase: 3.2 },
+  blight:    { pal: ramp('#140620 #3a0e50 #6a2682 #7e8a4c #b4d65a #eaffa8'), emit: 1, eBase: 3.3 },
+  arcane:    { pal: ramp('#1a0830 #3e1470 #6e2ac0 #a45cf0 #d8a8ff #f8eaff'), emit: 1, eBase: 3.1 },
+  primal:    { pal: ramp('#1c2030 #4a5680 #9aaad8 #dce8ff #f6faff #ffffff'), emit: 1, eBase: 3.4 },
+  eyeRed:    { pal: ramp('#300406 #700a0c #b8141a #f03a2a #ff8a60 #ffe0c0'), emit: 1, eBase: 3.4 },
+  // ---- metals / gems ----
+  silver:    { pal: ramp('#15161e #30323e #585c6c #8e94a6 #c8cedc #f6f8fc'), ks: 1.2, shin: 26, contrast: 3.6, metal: 1 },
+  blackiron: { pal: ramp('#08070c #121119 #1c1b26 #2c2c3a #464858 #707486'), ks: 1.1, shin: 22, contrast: 3.6, metal: 1 },
+  topaz:     { pal: ramp('#2a1004 #6a300a #b46414 #ec9e2a #ffd66a #fff6d0'), gem: 1 },
+  stormglass:{ pal: ramp('#0c0a2a #1e1c6a #3a3cb8 #6a78f0 #b0c4ff #f4f6ff'), gem: 1 },
+  granite:   { pal: ramp('#18181c #32302e #504b46 #726a60 #988e80 #c2b8a6'), ks: .2, shin: 6, dither: .35 },
+  // ---- cloth / leather / hair / skin ----
+  rags:      { pal: ramp('#16110d #2e241a #4a3c2a #66543a #82704e #a08c66'), ks: 0, dither: .3 },
+  clothWhite:{ pal: ramp('#24242e #4e4e60 #828296 #b6b6c6 #dcdce6 #fafaff'), ks: 0 },
+  robeBark:  { pal: ramp('#120c09 #261a12 #3e2c1c #574028 #725836 #92744a'), ks: 0 },
+  clothGrey: { pal: ramp('#0e0e12 #1c1c22 #2c2c34 #40404a #585862 #76767e'), ks: 0 },
+  clothBlue: { pal: ramp('#080c1c #101a36 #1a2c56 #284478 #3c629c #5e88bc'), ks: 0 },
+  hoodGreen: { pal: ramp('#07140a #10281a #183e22 #22582c #347838 #58a04c'), ks: 0 },
+  leatherDark:{ pal: ramp('#0c0909 #1a1313 #2a1f1e #3c2c2a #54403a #6e5850'), ks: .35, shin: 8 },
+  parchment: { pal: ramp('#2a2014 #5a4a30 #8a7652 #b8a47a #dccca0 #f6ecd0'), ks: 0 },
+  paintGreen:{ pal: ramp('#08160c #10301a #1a4e26 #2a6e34 #46904a #6cb466'), ks: .2, shin: 6 },
+  paintRed:  { pal: ramp('#1a0606 #3c0e0e #661814 #902a1e #b8462c #d8704a'), ks: .2, shin: 6 },
+  hairBrown: { pal: ramp('#120b08 #2a1810 #45291a #633c24 #845634 #a8784c'), ks: .8, shin: 8 },
+  hairBlond: { pal: ramp('#2a1a08 #58380e #8a6020 #bc9038 #e0bc62 #f6e4a4'), ks: .8, shin: 8 },
+  hairMoss:  { pal: ramp('#0a0f08 #172212 #26361c #384e26 #506a32 #718a44'), ks: .7, shin: 8 },
+  skinPale:  { pal: ramp('#3a2220 #74463c #a8705c #d49c84 #f0c6ae #fff0e2'), ks: .15, shin: 6, contrast: 3.6 },
+  skinAsh:   { pal: ramp('#1e1a1c #3e3438 #62555a #86787a #a89c9a #cac0bc'), ks: .15, shin: 6, contrast: 3.6 },
+  // ---- creatures ----
+  wolfFur:   { pal: ramp('#100e10 #262024 #3e3538 #5c4f4c #847264 #ab9a84'), ks: .25, shin: 6 },
+  wolfPale:  { pal: ramp('#221e1c #4a4038 #766a5a #a29680 #c8bea4 #e6dcc4'), ks: .2, shin: 6 },
+  grizzle:   { pal: ramp('#16120f #2e2721 #4a4038 #6c6052 #928674 #b8ae9a'), ks: .25, shin: 6 },
+  boarHide:  { pal: ramp('#0c0807 #1c1210 #2e1e18 #452e22 #604230 #7e5a40'), ks: .3, shin: 6 },
+  snout:     { pal: ramp('#1e0e10 #42222a #6a3c42 #94605e #b88678 #d6ac98'), ks: .4, shin: 10 },
+  stagWhite: { pal: ramp('#2a2830 #56525c #8a8690 #bcb8bc #e2ded8 #fffcf2'), ks: .2, shin: 6 },
+  rot:       { pal: ramp('#060409 #100b14 #1b1320 #291c2e #3a2940 #4e3a54'), ks: .6, shin: 14 },
+  sap:       { pal: ramp('#040306 #0a0610 #120a18 #1e1024 #2e1a36 #4a2e50'), ks: 2.2, shin: 30, contrast: 3 },
+  bark:      { pal: ramp('#0e0907 #1e140e #322216 #4a331f #66482a #886238'), ks: .2, shin: 6 },
+  rotwood:   { pal: ramp('#08060a #141016 #221a22 #32262e #46343a #5e4848'), ks: .3, shin: 8 },
+  bramble:   { pal: ramp('#0a1008 #152014 #22341c #324a24 #4a662c #6e8a3a'), ks: .3, shin: 8 },
+  thorn:     { pal: ramp('#1c120a #3e2616 #684226 #94683a #c0965a #e8c890'), ks: .7, shin: 12 },
+  moss:      { pal: ramp('#081206 #10240c #1a3a12 #28541a #3e7224 #5e9234'), ks: .1, shin: 6, dither: .3 },
+  flesh:     { pal: ramp('#160406 #34080e #5a1218 #842424 #a8443a #c86a58'), ks: .8, shin: 14 },
+  claw:      { pal: ramp('#141010 #2e2622 #544638 #7e6c52 #aa9876 #d8caa6'), ks: 1, shin: 14 },
 };
+MAT.tide = MAT.water; // aspect alias
 const OUTLINE = hx('#0b0910');
 const L3 = (() => { const v = [-1, -1.15, 1.45], l = Math.hypot(...v); return v.map(a => a / l); })();
 const HV = (() => { const v = [L3[0], L3[1], L3[2] + 1], l = Math.hypot(...v); return v.map(a => a / l); })();
@@ -122,13 +170,15 @@ class Forge {
     if (p.prof === 'flat') return 0;
     return Math.min(d, p.bw) * p.hs;
   }
-  raster() {
-    const { w, h, parts } = this, N = w * h;
+  // raster({ mirror }) mirrors the geometry left-right while keeping the light top-left,
+  // so a sprite authored facing one way can face the other with consistent shading.
+  raster(ro = {}) {
+    const { w, h, parts } = this, N = w * h, mir = !!ro.mirror;
     parts.forEach((p, i) => p.i = i);
     const own = new Int16Array(N).fill(-1), idx = new Int8Array(N), mat = new Array(N), emi = new Uint8Array(N), dist = new Float32Array(N);
     const val = new Float32Array(N);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-      const cx = x + .5, cy = y + .5; let o = -1, d = 0;
+      const cx = mir ? w - x - .5 : x + .5, cy = y + .5; let o = -1, d = 0;
       for (let k = parts.length - 1; k >= 0; k--) {
         const p = parts[k], b = p.bb; if (cx < b[0] - .5 || cy < b[1] - .5 || cx > b[2] + .5 || cy > b[3] + .5) continue;
         const v = this.D(p, cx, cy); if (v > 0) { o = k; d = v; break; }
@@ -137,11 +187,11 @@ class Forge {
       const p = parts[o], i = y * w + x; own[i] = o; dist[i] = d;
       const e = .5;
       const gx = (this.Hh(p, cx + e, cy) - this.Hh(p, cx - e, cy)) / (2 * e), gy = (this.Hh(p, cx, cy + e) - this.Hh(p, cx, cy - e)) / (2 * e);
-      let nx = -gx, ny = -gy, nz = 1; const nl = Math.hypot(nx, ny, nz); nx /= nl; ny /= nl; nz /= nl;
+      let nx = mir ? gx : -gx, ny = -gy, nz = 1; const nl = Math.hypot(nx, ny, nz); nx /= nl; ny /= nl; nz /= nl;
       let mname = p.mat, dd = 0, em = MAT[p.mat].emit;
       if (p.tex) {
         const uv = p.X ? p.X.uv(cx, cy) : [cx, cy];
-        const r = p.tex({ x, y, cx, cy, u: uv[0], v: uv[1], d, nx, ny, nz, k: p.X ? p.X.k : 1 });
+        const r = p.tex({ x: mir ? w - 1 - x : x, y, cx, cy, u: uv[0], v: uv[1], d, nx, ny, nz, k: p.X ? p.X.k : 1 });
         if (typeof r === 'number') dd = r; else if (r) { if (r.m) { mname = r.m; em = MAT[r.m].emit; } dd = r.dd || 0; if (r.e !== undefined) em = r.e; }
       }
       const m = MAT[mname]; let v;
@@ -170,7 +220,7 @@ class Forge {
       }
       idx[i] = v;
     }
-    return { w, h, own, idx, mat, emi, dist, parts };
+    return { w, h, own, idx, mat, emi, dist, parts, mirror: mir };
   }
 }
 
@@ -214,10 +264,12 @@ function compose(R, o = {}) {
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const i = y * w + x; if (own[i] < 0) continue; const p = parts[own[i]]; const pal = palOf(mat[i], o); let v = idx[i];
     if (emi[i] && o.flicker) { const f = hash(x, y, o.flicker | 0); v += f > .82 ? 1 : f < .12 ? -1 : 0; }
-    if (shine && !emi[i] && MAT[mat[i]].metal) { const q = x + y - shine[0]; if (q >= 0 && q < shine[1]) v += 2; else if (q >= -2 && q < shine[1] + 2) v += 1; }
+    if (shine && !emi[i] && (o.shineMask ? o.shineMask(p) : MAT[mat[i]].metal)) { const q = x + y - shine[0]; if (q >= 0 && q < shine[1]) v += 2; else if (q >= -2 && q < shine[1] + 2) v += 1; }
     v = v < 0 ? 0 : v > 5 ? 5 : v; let c = pal[v];
+    if (o.develop !== undefined && hash(x, y, 77) >= o.develop) { put(i, o.silhouette || OUTLINE, 1); continue; }
     // rim light on the shadow side
     if (o.rim && !emi[i] && !p.noOutline && v <= 2 && (!isAny(x + 1, y) || !isAny(x, y + 1)) && isAny(x - 1, y) && isAny(x, y - 1)) c = mix(c, o.rim, .5);
+    if (o.tint) c = mix(c, o.tint, o.tint[3] ?? .5);
     put(i, c, 1);
   }
   if (o.glints) for (const [gx, gy, s] of o.glints) glint(out, w, h, gx, gy, s, put);

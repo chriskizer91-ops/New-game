@@ -1,6 +1,6 @@
 // Ported from prototypes/item-card.html (the approved Loot Forge art pipeline).
 // Art parameter sets for the prototype's hand-made items and starter gear.
-import { vnoise, hash } from './forge.js';
+import { vnoise } from './forge.js';
 import { TX, scaleTex, mailTex } from './recipes.js';
 
 const rimeTex = ({ x, y, nx, ny, d }) => { const n = vnoise(x * .4, y * .4, 5); const up = -(nx + ny); if (n * .7 + up * .7 + (d < 1.3 ? .12 : 0) > .72) return { m: 'rime', dd: n > .75 ? 1 : 0 }; return 0; };

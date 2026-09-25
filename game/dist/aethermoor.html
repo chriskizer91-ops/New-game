@@ -8,6 +8,188 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+Sans:wght@400;500;700;800&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,500&family=Silkscreen&display=swap">
 <style>
+/* src/ui/theme.css */
+:root {
+  color-scheme: dark;
+  --soot: #120e0c;
+  --soot-2: #19130f;
+  --iron: #211a16;
+  --iron-2: #2b221d;
+  --iron-3: #352a23;
+  --seam: #3f3229;
+  --seam-2: #5a4838;
+  --ink: #0b0910;
+  --parchment: #ecdfc3;
+  --parchment-2: #c4b294;
+  --ash: #948470;
+  --hearth: #ee8e31;
+  --hearth-hot: #ffcb66;
+  --hearth-deep: #7a3a12;
+  --marsh: #4aa698;
+  --up: #8ad872;
+  --up-deep: #1f4a1a;
+  --down: #ee6c54;
+  --r-worn: #9a968c;
+  --r-wrought: #e8e4da;
+  --r-tempered: #64c85c;
+  --r-runed: #5299f0;
+  --r-storied: #b774f4;
+  --r-heirloom: #f4ad3f;
+  --r-regalia: #4fd1c0;
+  --r-primal: #fff6e0;
+  --f-pixel:
+    "Silkscreen",
+    "Lucida Console",
+    "Courier New",
+    monospace;
+  --f-display:
+    "Cormorant Garamond",
+    "Iowan Old Style",
+    "Palatino Linotype",
+    Georgia,
+    serif;
+  --f-body:
+    "Alegreya Sans",
+    "Gill Sans",
+    "Trebuchet MS",
+    system-ui,
+    sans-serif;
+  --gutter: 16px;
+  --tap: 44px;
+}
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  height: 100%;
+}
+body {
+  margin: 0;
+  background:
+    radial-gradient(
+      90% 420px at 50% -120px,
+      #3a2112 0%,
+      rgba(58, 33, 18, 0) 70%),
+    var(--soot);
+  color: var(--parchment);
+  font-family: var(--f-body);
+  font-size: 16px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+button {
+  font: inherit;
+  color: inherit;
+}
+canvas.px {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  display: block;
+}
+:focus-visible {
+  outline: 2px dashed var(--hearth-hot);
+  outline-offset: 3px;
+}
+.app {
+  min-height: 100%;
+}
+.screen {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding-inline: var(--gutter);
+  padding-block: 12px 48px;
+}
+[hidden] {
+  display: none !important;
+}
+.btn {
+  min-height: var(--tap);
+  padding: 0 14px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--f-pixel);
+  font-size: 12px;
+  letter-spacing: .06em;
+  color: var(--parchment);
+  background: var(--iron-2);
+  border: 2px solid var(--seam-2);
+  box-shadow: 0 0 0 2px var(--ink);
+}
+.btn:hover {
+  border-color: var(--hearth);
+  color: var(--hearth-hot);
+}
+.btn:disabled {
+  cursor: default;
+  color: var(--ash);
+  border-color: var(--seam);
+}
+.btn.primary {
+  color: #231306;
+  border: 0;
+  background:
+    linear-gradient(
+      180deg,
+      #ffd27a 0,
+      #f09a36 55%,
+      #c86a1c 100%);
+  box-shadow:
+    0 0 0 3px var(--ink),
+    inset 0 -4px 0 rgba(0, 0, 0, .25),
+    inset 0 2px 0 rgba(255, 255, 255, .35);
+}
+.btn.primary:disabled {
+  color: var(--ash);
+  background: var(--iron-2);
+  box-shadow: 0 0 0 3px var(--ink);
+}
+.panel {
+  background: var(--soot-2);
+  box-shadow: 0 0 0 3px var(--ink), 0 0 0 5px var(--seam);
+  margin: 5px;
+  padding: 12px;
+}
+.label {
+  font-family: var(--f-pixel);
+  font-size: 10px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ash);
+}
+.title-display {
+  font-family: var(--f-display);
+  font-weight: 700;
+  line-height: 1.05;
+  text-wrap: balance;
+}
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 50;
+  max-width: calc(100% - 32px);
+  padding: 10px 14px;
+  background: var(--ink);
+  border: 2px solid var(--seam-2);
+  font-family: var(--f-pixel);
+  font-size: 11px;
+  letter-spacing: .05em;
+  color: var(--parchment);
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+  }
+}
 
 </style>
 </head>
@@ -16,9 +198,3096 @@
 <div id="app" class="app"></div>
 <script>
 (() => {
+  var __defProp = Object.defineProperty;
+  var __export = (target, all) => {
+    for (var name in all)
+      __defProp(target, name, { get: all[name], enumerable: true });
+  };
+
+  // src/core/save.js
+  var KEY = "aethermoor.save.v1";
+  var SETTINGS_KEY = "aethermoor.settings.v1";
+  function safeGet(key) {
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  }
+  function safeSet(key, value) {
+    try {
+      localStorage.setItem(key, value);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  function loadGame() {
+    const raw = safeGet(KEY);
+    if (!raw) return null;
+    try {
+      const g = JSON.parse(raw);
+      return g && g.version ? g : null;
+    } catch {
+      return null;
+    }
+  }
+  var saveGame = (game) => safeSet(KEY, JSON.stringify(game));
+  function loadSettings(defaults) {
+    try {
+      return { ...defaults, ...JSON.parse(safeGet(SETTINGS_KEY) || "{}") };
+    } catch {
+      return { ...defaults };
+    }
+  }
+  var saveSettings = (s) => safeSet(SETTINGS_KEY, JSON.stringify(s));
+
+  // src/core/input.js
+  var KEYMAP = {
+    ArrowUp: "up",
+    KeyW: "up",
+    ArrowDown: "down",
+    KeyS: "down",
+    ArrowLeft: "left",
+    KeyA: "left",
+    ArrowRight: "right",
+    KeyD: "right",
+    Enter: "confirm",
+    Space: "confirm",
+    KeyZ: "confirm",
+    Escape: "back",
+    KeyX: "back",
+    Backspace: "back",
+    Tab: null,
+    KeyM: "menu",
+    KeyF: "fast"
+  };
+  function createInput(target = window) {
+    const subs = /* @__PURE__ */ new Set();
+    const onKey = (e) => {
+      if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
+      const el = e.target;
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return;
+      let action = KEYMAP[e.code];
+      if (!action && /^Digit[1-9]$/.test(e.code)) action = "pick" + e.code.slice(5);
+      if (!action) return;
+      for (const fn of [...subs]) if (fn(action, e) === true) {
+        e.preventDefault();
+        break;
+      }
+    };
+    target.addEventListener("keydown", onKey);
+    return {
+      // fn(action, event) -> return true when handled (prevents default and stops other handlers)
+      onAction(fn) {
+        subs.add(fn);
+        return () => subs.delete(fn);
+      },
+      destroy() {
+        target.removeEventListener("keydown", onKey);
+        subs.clear();
+      }
+    };
+  }
+
+  // src/core/audio.js
+  function createAudio() {
+    let enabled = true;
+    return {
+      unlock() {
+      },
+      // call from a click/tap handler
+      setEnabled(on) {
+        enabled = !!on;
+      },
+      get enabled() {
+        return enabled;
+      },
+      sfx(name, opts) {
+      },
+      // opts: { tier } for rarity-scaled sounds
+      music(track) {
+      }
+    };
+  }
+
+  // src/ui/app.js
+  var DEFAULT_SETTINGS = { sound: true, music: true, battleSpeed: 1, reducedMotion: false };
+  function createApp(root, screens2) {
+    const input = createInput();
+    const audio = createAudio();
+    const motionMQ = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : null;
+    let game = loadGame();
+    let settings = loadSettings(DEFAULT_SETTINGS);
+    audio.setEnabled(settings.sound);
+    let current2 = null, currentName = null;
+    const toastEl = document.createElement("div");
+    toastEl.className = "toast";
+    toastEl.setAttribute("role", "status");
+    toastEl.hidden = true;
+    let toastTimer = 0;
+    const ctx = {
+      get game() {
+        return game;
+      },
+      setGame(g) {
+        game = g;
+        if (g) saveGame(g);
+      },
+      get settings() {
+        return settings;
+      },
+      setSettings(patch) {
+        settings = { ...settings, ...patch };
+        saveSettings(settings);
+        audio.setEnabled(settings.sound);
+      },
+      audio,
+      input,
+      services: {},
+      reduced: () => settings.reducedMotion || !!(motionMQ && motionMQ.matches),
+      toast(text, ms = 2200) {
+        toastEl.textContent = text;
+        toastEl.hidden = false;
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => {
+          toastEl.hidden = true;
+        }, ms);
+      },
+      go(name, params = {}) {
+        const screen = screens2[name];
+        if (!screen) throw new Error(`Unknown screen ${name}`);
+        if (current2 && current2.unmount) current2.unmount();
+        if (current2 && current2.off) current2.off();
+        root.replaceChildren();
+        root.dataset.screen = name;
+        root.appendChild(toastEl);
+        const host = document.createElement("main");
+        host.className = `screen screen-${name}`;
+        root.prepend(host);
+        currentName = name;
+        current2 = screen.mount(host, ctx, params) || {};
+        if (current2.onAction) current2.off = input.onAction(current2.onAction);
+        window.scrollTo(0, 0);
+      },
+      get screen() {
+        return currentName;
+      }
+    };
+    const unlock = () => {
+      audio.unlock();
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+    window.addEventListener("pointerdown", unlock);
+    window.addEventListener("keydown", unlock);
+    return ctx;
+  }
+
+  // src/ui/screens/battle.js
+  var battle_exports = {};
+  __export(battle_exports, {
+    mount: () => mount
+  });
+
+  // src/core/rng.js
+  function hashSeed(seed) {
+    if (typeof seed === "number") return seed >>> 0;
+    let h = 2166136261;
+    for (const ch of String(seed)) {
+      h ^= ch.charCodeAt(0);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+  function createRng(seed = 1) {
+    let a = hashSeed(seed);
+    const next = () => {
+      a = a + 1831565813 | 0;
+      let t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+    const rng = {
+      next,
+      int: (lo, hi) => lo + Math.floor(next() * (hi - lo + 1)),
+      pick: (arr) => arr[Math.floor(next() * arr.length)],
+      chance: (p) => next() < p,
+      fork: (label) => createRng((hashSeed(label) ^ Math.floor(next() * 4294967296)) >>> 0),
+      getState: () => a,
+      setState: (s) => {
+        a = s | 0;
+      }
+    };
+    return rng;
+  }
+
+  // src/core/dice.js
+  function rollD20(rng, { adv = false, dis = false } = {}) {
+    const both = adv !== dis;
+    const rolls = both ? [rng.int(1, 20), rng.int(1, 20)] : [rng.int(1, 20)];
+    const kept = !both ? rolls[0] : adv ? Math.max(...rolls) : Math.min(...rolls);
+    return { rolls, kept, nat: kept };
+  }
+  function parseDice(str) {
+    const terms = [];
+    let flat = 0;
+    for (const part of String(str).replace(/\s+/g, "").replace(/-/g, "+-").split("+")) {
+      if (!part) continue;
+      const m = part.match(/^(-?)(\d*)d(\d+)$/i);
+      if (m) terms.push({ n: (m[2] ? +m[2] : 1) * (m[1] ? -1 : 1), sides: +m[3] });
+      else flat += +part;
+    }
+    return { terms, flat };
+  }
+
+  // src/core/freeze.js
+  function deepFreeze(o) {
+    if (o && typeof o === "object" && !Object.isFrozen(o)) {
+      Object.freeze(o);
+      for (const v of Object.values(o)) deepFreeze(v);
+    }
+    return o;
+  }
+
+  // src/data/skills.js
+  var SKILLS = deepFreeze({
+    // ---- Hearthwarden: relic arts (granted by the starter) ----------------------------------
+    "kindle-strike": {
+      id: "kindle-strike",
+      name: "Kindle Strike",
+      domain: "combat",
+      mp: 3,
+      delay: 1,
+      target: "enemy",
+      text: "Hearthbrand flares: weapon attack +1d6 ember that sets the foe Burning.",
+      effects: [{ type: "attack", weapon: true, bonusDice: [{ dice: "1d6", aspect: "ember" }], riders: [{ type: "status", status: "burning" }] }]
+    },
+    "stillwater-thrust": {
+      id: "stillwater-thrust",
+      name: "Stillwater Thrust",
+      domain: "combat",
+      mp: 3,
+      delay: 1,
+      target: "enemy",
+      text: "A thrust as cold as the lake: weapon attack +1d6 frost, 2 stacks of Chilled.",
+      effects: [{ type: "attack", weapon: true, bonusDice: [{ dice: "1d6", aspect: "frost" }], riders: [{ type: "status", status: "chilled", stacks: 2 }] }]
+    },
+    "sunder": {
+      id: "sunder",
+      name: "Sunder",
+      domain: "physical",
+      mp: 3,
+      delay: 1.2,
+      target: "enemy",
+      text: "Cairnmaul comes down like a rockslide: crushing weapon attack, +1d8 grip damage, Staggers.",
+      effects: [{ type: "attack", weapon: true, kind: "crush", grip: "1d8", bonusDice: [{ dice: "1d6", aspect: "stone" }], riders: [{ type: "status", status: "staggered" }] }]
+    },
+    // ---- Hearthwarden: levels ----------------------------------------------------------------
+    "challenge": {
+      id: "challenge",
+      name: "Challenge",
+      domain: "combat",
+      mp: 2,
+      delay: 0.8,
+      target: "enemy",
+      text: "Plant your feet and call it out. The foe is Provoked into attacking you, and you Guard.",
+      effects: [{ type: "status", status: "provoked" }, { type: "status", status: "guarding", self: true }]
+    },
+    "wrench": {
+      id: "wrench",
+      name: "Wrench Free",
+      domain: "physical",
+      mp: 2,
+      delay: 1,
+      target: "enemy",
+      text: "Grab the relic and twist: half-damage weapon attack, 2d6 + STR grip damage.",
+      effects: [{ type: "attack", weapon: true, mult: 0.5, grip: "2d6", gripStat: "STR" }]
+    },
+    "rally": {
+      id: "rally",
+      name: "Rally the Hearth",
+      domain: "influence",
+      mp: 4,
+      delay: 1,
+      target: "all-allies",
+      text: "A Warden's shout: every ally heals 1d6 + CHA, shakes off fear and gains Legend Surge.",
+      effects: [{ type: "heal", dice: "1d6", stat: "CHA", diceEvery: 4 }, { type: "cleanse", statuses: ["frightened"] }, { type: "surge", amount: 10 }]
+    },
+    // ---- Pip, Thornhollow scout (Survival) -----------------------------------------------------
+    "disarm": {
+      id: "disarm",
+      name: "Disarm",
+      domain: "survival",
+      mp: 2,
+      delay: 1,
+      target: "enemy",
+      text: "An arrow for the strap, not the heart: half-damage attack, 2d6 + DEX grip damage.",
+      effects: [{ type: "attack", weapon: true, mult: 0.5, grip: "2d6", gripStat: "DEX" }]
+    },
+    "mark-prey": {
+      id: "mark-prey",
+      name: "Mark Prey",
+      domain: "survival",
+      mp: 2,
+      delay: 0.6,
+      target: "enemy",
+      text: "Pip calls the weak spot. The foe is Marked: attacks have advantage and deal +2.",
+      effects: [{ type: "status", status: "marked" }]
+    },
+    "knife-work": {
+      id: "knife-work",
+      name: "Knife Work",
+      domain: "survival",
+      mp: 1,
+      delay: 0.6,
+      target: "enemy",
+      text: "Quick as a wren: a belt-knife cut (1d4 + DEX, +1 to hit) that leaves it Bleeding.",
+      effects: [{ type: "attack", dice: "1d4", kind: "pierce", stat: "DEX", hit: 1, riders: [{ type: "status", status: "bleeding" }] }]
+    },
+    "volley": {
+      id: "volley",
+      name: "Volley",
+      domain: "survival",
+      mp: 4,
+      delay: 1.1,
+      target: "all-enemies",
+      text: "Three arrows in the air at once: an attack against every foe at 60% damage.",
+      effects: [{ type: "attack", weapon: true, mult: 0.6 }]
+    },
+    // ---- Bryn the Bark-Reader (Knowledge) ------------------------------------------------------
+    "analyze": {
+      id: "analyze",
+      name: "Analyze",
+      domain: "knowledge",
+      mp: 2,
+      delay: 0.7,
+      target: "enemy",
+      text: "Bryn reads it like bark: reveals weaknesses, grip and its next intent, and Exposes it (-2 Guard).",
+      effects: [{ type: "reveal", ahead: 1 }, { type: "status", status: "exposed" }]
+    },
+    "rootbind": {
+      id: "rootbind",
+      name: "Rootbind",
+      domain: "knowledge",
+      mp: 3,
+      delay: 1,
+      target: "enemy",
+      text: "Roots erupt: 1d6 + INT verdant damage, and the foe is Rooted unless it makes a STR save.",
+      effects: [{ type: "damage", dice: "1d6", stat: "INT", kind: "verdant", aspect: "verdant", diceEvery: 5 }, { type: "status", status: "rooted", save: "STR" }]
+    },
+    "read-the-rings": {
+      id: "read-the-rings",
+      name: "Read the Rings",
+      domain: "knowledge",
+      mp: 5,
+      delay: 1,
+      target: "all-allies",
+      text: "The rings of the old wood say what comes next: every ally is Hasted and every foe's next intent is revealed.",
+      effects: [{ type: "status", status: "hasted" }, { type: "reveal", ahead: 1, all: true }]
+    },
+    "heartwood-splinters": {
+      id: "heartwood-splinters",
+      name: "Heartwood Splinters",
+      domain: "knowledge",
+      mp: 4,
+      delay: 1.1,
+      target: "all-enemies",
+      text: "A burst of ironwood shards: 1d8 + INT verdant to every foe, DEX save for half.",
+      effects: [{ type: "damage", dice: "1d8", stat: "INT", kind: "pierce", aspect: "verdant", diceEvery: 5, save: "DEX" }]
+    },
+    // ---- Sister Alondra of Fawnrest (Attunement) -----------------------------------------------
+    "mend": {
+      id: "mend",
+      name: "Mend",
+      domain: "attunement",
+      mp: 3,
+      delay: 1,
+      target: "ally",
+      text: "Warm light knits flesh: heal 1d8 + WIS (one more d8 every 3 levels).",
+      effects: [{ type: "heal", dice: "1d8", stat: "WIS", diceEvery: 3 }]
+    },
+    "radiant-lance": {
+      id: "radiant-lance",
+      name: "Radiant Lance",
+      domain: "attunement",
+      mp: 3,
+      delay: 1,
+      target: "enemy",
+      text: "A spear of shrine-light: WIS spell attack for 2d6 radiant (one more d6 every 4 levels).",
+      effects: [{ type: "attack", dice: "2d6", kind: "radiant", aspect: "radiant", stat: "WIS", diceEvery: 4, noMod: true, ranged: true }]
+    },
+    "ward": {
+      id: "ward",
+      name: "Ward",
+      domain: "attunement",
+      mp: 3,
+      delay: 0.8,
+      target: "ally",
+      text: "A shimmer that soaks 2d6 + WIS damage for 3 turns.",
+      effects: [{ type: "status", status: "warded", value: { dice: "2d6", stat: "WIS", diceEvery: 4 } }]
+    },
+    "revive": {
+      id: "revive",
+      name: "Revive",
+      domain: "attunement",
+      mp: 6,
+      delay: 1.2,
+      target: "ally-ko",
+      text: "Alondra calls them back by name. A fallen ally rises with 30% HP.",
+      effects: [{ type: "revive", pct: 0.3 }]
+    },
+    "dawnsong": {
+      id: "dawnsong",
+      name: "Dawnsong",
+      domain: "attunement",
+      mp: 7,
+      delay: 1.2,
+      target: "all-allies",
+      text: "The Fawnrest hymn: every ally heals 1d8 + WIS and sheds one harmful status.",
+      effects: [{ type: "heal", dice: "1d8", stat: "WIS", diceEvery: 4 }, { type: "cleanse", harmful: 1 }]
+    },
+    // ---- relic arts claimed from holders --------------------------------------------------------
+    "hew": {
+      id: "hew",
+      name: "Hew the Hedge",
+      domain: "physical",
+      mp: 3,
+      delay: 1.1,
+      target: "all-enemies",
+      text: "Thornsplitter sweeps wide: a weapon attack against every foe at 75% damage.",
+      effects: [{ type: "attack", weapon: true, mult: 0.75 }]
+    },
+    "tally-cut": {
+      id: "tally-cut",
+      name: "Tally Cut",
+      domain: "combat",
+      mp: 2,
+      delay: 0.7,
+      target: "enemy",
+      text: "One more notch on the spine: a quick weapon attack that leaves 2 stacks of Poisoned.",
+      effects: [{ type: "attack", weapon: true, riders: [{ type: "status", status: "poisoned", stacks: 2 }] }]
+    }
+  });
+
+  // src/data/statuses.js
+  var STATUSES = deepFreeze({
+    burning: {
+      id: "burning",
+      name: "Burning",
+      harmful: true,
+      turns: 3,
+      maxStacks: 1,
+      tick: { dice: "1d6", kind: "ember", aspect: "ember" },
+      text: "Takes 1d6 ember damage at the start of each turn."
+    },
+    chilled: {
+      id: "chilled",
+      name: "Chilled",
+      harmful: true,
+      turns: 3,
+      maxStacks: 3,
+      atMax: "frozen",
+      delayPerStack: 0.1,
+      text: "Each stack slows it. Three stacks and it freezes solid."
+    },
+    frozen: {
+      id: "frozen",
+      name: "Frozen",
+      harmful: true,
+      turns: 1,
+      skipTurn: true,
+      attackersAdv: true,
+      crushMult: 1.5,
+      shatter: true,
+      text: "Loses its next turn. Attacks against it have advantage; crush shatters the ice for 1.5x."
+    },
+    poisoned: {
+      id: "poisoned",
+      name: "Poisoned",
+      harmful: true,
+      turns: 4,
+      maxStacks: 3,
+      tick: { dice: "1d4", kind: "blight", aspect: "blight", perStack: true },
+      text: "Takes 1d4 blight damage per stack at the start of each turn."
+    },
+    bleeding: {
+      id: "bleeding",
+      name: "Bleeding",
+      harmful: true,
+      turns: 3,
+      maxStacks: 3,
+      tick: { dice: "1d4", kind: "pierce", aspect: null, perStack: true },
+      text: "Takes 1d4 damage per stack at the start of each turn."
+    },
+    staggered: {
+      id: "staggered",
+      name: "Staggered",
+      harmful: true,
+      until: "turn-start",
+      push: 35,
+      breaksCharge: true,
+      guard: -1,
+      text: "Knocked back on the Initiative Ribbon. A charging move is cancelled."
+    },
+    frightened: {
+      id: "frightened",
+      name: "Frightened",
+      harmful: true,
+      turns: 2,
+      attackDis: true,
+      text: "Attacks with disadvantage."
+    },
+    rooted: {
+      id: "rooted",
+      name: "Rooted",
+      harmful: true,
+      turns: 2,
+      attackersAdv: true,
+      delayMult: 1.2,
+      text: "Held fast by roots: attacks against it have advantage and it acts later."
+    },
+    marked: {
+      id: "marked",
+      name: "Marked",
+      harmful: true,
+      turns: 3,
+      attackersAdv: true,
+      bonusDmg: 2,
+      text: "Hunted: attacks against it have advantage and deal +2 damage."
+    },
+    exposed: {
+      id: "exposed",
+      name: "Exposed",
+      harmful: true,
+      turns: 3,
+      guard: -2,
+      text: "Its weak points are known: -2 Guard."
+    },
+    provoked: {
+      id: "provoked",
+      name: "Provoked",
+      harmful: true,
+      turns: 2,
+      forceTarget: true,
+      text: "Must strike at whoever provoked it."
+    },
+    warded: {
+      id: "warded",
+      name: "Warded",
+      harmful: false,
+      turns: 3,
+      absorb: true,
+      text: "A shimmer of light soaks up damage before HP."
+    },
+    hasted: {
+      id: "hasted",
+      name: "Hasted",
+      harmful: false,
+      turns: 2,
+      delayMult: 0.7,
+      text: "Acts sooner on the Initiative Ribbon."
+    },
+    regenerating: {
+      id: "regenerating",
+      name: "Regenerating",
+      harmful: false,
+      turns: 3,
+      tickHeal: true,
+      text: "Heals at the start of each turn."
+    },
+    guarding: {
+      id: "guarding",
+      name: "Guarding",
+      harmful: false,
+      until: "turn-start",
+      damageMult: 0.5,
+      guard: 2,
+      text: "Defending: +2 Guard and half damage until its next turn."
+    }
+  });
+
+  // src/data/items.js
+  var W = (id, name, kind, dice, dmg, o = {}) => ({
+    id,
+    name,
+    kind,
+    slot: "weapon",
+    dice,
+    dmg,
+    hands: 1,
+    weight: 0,
+    ability: ["STR"],
+    minIlvl: 1,
+    stats: {},
+    ...o
+  });
+  var A = (id, name, kind, slot, o = {}) => ({ id, name, kind, slot, minIlvl: 1, stats: {}, ...o });
+  var ITEMS = deepFreeze({
+    // ---- weapons ----------------------------------------------------------------------------
+    "belt-knife": W("belt-knife", "Belt Knife", "dagger", "1d4", "pierce", { ability: ["STR", "DEX"], weight: -20, text: "1d4 piercing, finesse, light" }),
+    "rondel": W("rondel", "Rondel Dagger", "dagger", "1d4", "pierce", { ability: ["STR", "DEX"], weight: -15, minIlvl: 4, stats: { hit: 1 }, text: "1d4 piercing, finesse, light, +1 to hit" }),
+    "arming-sword": W("arming-sword", "Arming Sword", "sword", "1d6", "slash", { ability: ["STR", "DEX"], weight: -5, versatile: "1d8", text: "1d6 slashing, finesse, versatile (1d8)" }),
+    "longsword": W("longsword", "Longsword", "sword", "1d8", "slash", { weight: 5, versatile: "1d10", minIlvl: 3, text: "1d8 slashing, versatile (1d10)" }),
+    "greatsword": W("greatsword", "Greatsword", "sword", "2d6", "slash", { hands: 2, weight: 20, minIlvl: 6, text: "2d6 slashing, two-handed, heavy" }),
+    "hand-axe": W("hand-axe", "Hand Axe", "axe", "1d6", "slash", { text: "1d6 slashing, light" }),
+    "bearded-axe": W("bearded-axe", "Bearded Axe", "axe", "1d8", "slash", { weight: 10, versatile: "1d10", minIlvl: 3, text: "1d8 slashing, versatile (1d10)" }),
+    "warhammer": W("warhammer", "Warhammer", "hammer", "1d8", "crush", { weight: 15, versatile: "1d10", text: "1d8 crushing, versatile (1d10)" }),
+    "maul": W("maul", "Maul", "hammer", "2d6", "crush", { hands: 2, weight: 30, minIlvl: 4, text: "2d6 crushing, two-handed, heavy" }),
+    "mace": W("mace", "Mace", "mace", "1d6", "crush", { ability: ["STR", "WIS"], weight: 5, text: "1d6 crushing; a priest may swing it with Wisdom" }),
+    "flanged-mace": W("flanged-mace", "Flanged Mace", "mace", "1d8", "crush", { ability: ["STR", "WIS"], weight: 10, minIlvl: 4, text: "1d8 crushing; a priest may swing it with Wisdom" }),
+    "spear": W("spear", "Spear", "spear", "1d6", "pierce", { ability: ["STR", "DEX"], weight: 5, versatile: "1d8", text: "1d6 piercing, versatile (1d8), reach" }),
+    "boar-spear": W("boar-spear", "Boar Spear", "spear", "1d10", "pierce", { hands: 2, weight: 15, minIlvl: 3, text: "1d10 piercing, two-handed, reach" }),
+    "shortbow": W("shortbow", "Shortbow", "bow", "1d6", "pierce", { ability: ["DEX"], hands: 2, ranged: true, text: "1d6 piercing, ranged, two-handed" }),
+    "longbow": W("longbow", "Longbow", "bow", "1d8", "pierce", { ability: ["DEX"], hands: 2, ranged: true, weight: 10, minIlvl: 4, text: "1d8 piercing, ranged, two-handed, heavy draw" }),
+    "quarterstaff": W("quarterstaff", "Quarterstaff", "staff", "1d6", "crush", { ability: ["STR", "INT", "WIS"], versatile: "1d8", text: "1d6 crushing, versatile (1d8), a focus for the learned" }),
+    "rowan-staff": W("rowan-staff", "Rowan Staff", "staff", "1d6", "crush", { ability: ["STR", "INT", "WIS"], versatile: "1d8", minIlvl: 3, stats: { mp: 4 }, text: "1d6 crushing, versatile (1d8), +4 MP" }),
+    // ---- offhand ----------------------------------------------------------------------------
+    "buckler": A("buckler", "Buckler", "shield", "offhand", { stats: { guard: 1 }, text: "+1 Guard" }),
+    "heater-shield": A("heater-shield", "Heater Shield", "shield", "offhand", { stats: { guard: 2 }, text: "+2 Guard" }),
+    "tower-shield": A("tower-shield", "Tower Shield", "shield", "offhand", { minIlvl: 5, stats: { guard: 3, speed: -1 }, text: "+3 Guard, -1 speed" }),
+    "holy-symbol": A("holy-symbol", "Holy Symbol", "focus", "offhand", { stats: { healBonus: 15 }, text: "+15% healing" }),
+    "rune-focus": A("rune-focus", "Rune Focus", "focus", "offhand", { stats: { mp: 4 }, text: "+4 MP" }),
+    // ---- head -------------------------------------------------------------------------------
+    "hood": A("hood", "Hood", "hood", "head", { stats: { speed: 1 }, text: "+1 speed" }),
+    "mail-coif": A("mail-coif", "Mail Coif", "coif", "head", { stats: { guard: 1 }, text: "+1 Guard" }),
+    "kettle-helm": A("kettle-helm", "Kettle Helm", "kettle", "head", { stats: { guard: 1, hp: 2 }, text: "+1 Guard, +2 HP" }),
+    "great-helm": A("great-helm", "Great Helm", "helm", "head", { minIlvl: 4, stats: { guard: 2, speed: -1 }, text: "+2 Guard, -1 speed" }),
+    "circlet": A("circlet", "Circlet", "circlet", "head", { stats: { mp: 3 }, text: "+3 MP" }),
+    "bronze-crown": A("bronze-crown", "Bronze Crown", "crown", "head", { minIlvl: 6, stats: { hp: 4, surgeGain: 10 }, text: "+4 HP, +10% Legend Surge" }),
+    // ---- body -------------------------------------------------------------------------------
+    "robe": A("robe", "Robe", "robe", "body", { armor: { base: 10, maxDex: 9, type: "none" }, stats: { mp: 2 }, text: "Guard 10 + DEX, +2 MP" }),
+    "jerkin": A("jerkin", "Leather Jerkin", "leather", "body", { armor: { base: 11, maxDex: 9, type: "hide" }, text: "Guard 11 + DEX" }),
+    "brigandine": A("brigandine", "Brigandine", "leather", "body", { minIlvl: 4, armor: { base: 12, maxDex: 9, type: "hide" }, text: "Guard 12 + DEX" }),
+    "chain-shirt": A("chain-shirt", "Chain Shirt", "mail", "body", { armor: { base: 13, maxDex: 2, type: "mail" }, text: "Guard 13 + DEX (max 2)" }),
+    "hauberk": A("hauberk", "Hauberk", "mail", "body", { minIlvl: 4, armor: { base: 14, maxDex: 1, type: "mail" }, stats: { speed: -1 }, text: "Guard 14 + DEX (max 1), -1 speed" }),
+    "half-plate": A("half-plate", "Half Plate", "plate", "body", { minIlvl: 5, armor: { base: 15, maxDex: 2, type: "plate" }, stats: { speed: -1 }, needs: { STR: 13 }, text: "Guard 15 + DEX (max 2), -1 speed, STR 13" }),
+    "full-plate": A("full-plate", "Full Plate", "plate", "body", { minIlvl: 8, armor: { base: 17, maxDex: 0, type: "plate" }, stats: { speed: -2 }, needs: { STR: 15 }, text: "Guard 17, -2 speed, STR 15" }),
+    // ---- hands / feet / jewellery -------------------------------------------------------------
+    "gloves": A("gloves", "Riding Gloves", "gloves", "hands", { stats: { gripDmg: 1 }, text: "+1 grip damage" }),
+    "gauntlets": A("gauntlets", "Gauntlets", "gauntlets", "hands", { stats: { guard: 1 }, text: "+1 Guard" }),
+    "boots": A("boots", "Travel Boots", "boots", "feet", { stats: { speed: 1 }, text: "+1 speed" }),
+    "ironshod-boots": A("ironshod-boots", "Ironshod Boots", "boots", "feet", { minIlvl: 4, stats: { guard: 1 }, text: "+1 Guard" }),
+    "amulet": A("amulet", "Copper Amulet", "amulet", "amulet", { stats: { hp: 4 }, text: "+4 HP" }),
+    "ring": A("ring", "Iron Band", "ring", "ring", { stats: { mp: 2 }, text: "+2 MP" })
+  });
+  var SLOTS = Object.freeze(["weapon", "offhand", "head", "body", "hands", "feet", "amulet", "ring"]);
+  var KINDS_BY_SLOT = deepFreeze({
+    weapon: ["sword", "dagger", "axe", "hammer", "mace", "spear", "bow", "staff"],
+    offhand: ["shield", "focus"],
+    head: ["hood", "coif", "kettle", "helm", "circlet", "crown"],
+    body: ["robe", "leather", "mail", "plate"],
+    hands: ["gloves", "gauntlets"],
+    feet: ["boots"],
+    amulet: ["amulet"],
+    ring: ["ring"]
+  });
+  var CONSUMABLES = deepFreeze({
+    "hearth-tonic": {
+      id: "hearth-tonic",
+      name: "Hearth Tonic",
+      target: "ally",
+      price: 20,
+      delay: 0.8,
+      effects: [{ type: "heal", dice: "2d4", pct: 0.25 }],
+      text: "Warm as the Keep kitchen. Heals 2d4 + 25% of max HP."
+    },
+    "ember-salts": {
+      id: "ember-salts",
+      name: "Ember Salts",
+      target: "ally-ko",
+      price: 60,
+      delay: 1,
+      effects: [{ type: "revive", pct: 0.25 }],
+      text: "One sniff and the fallen sit up swearing. Revives at 25% HP."
+    },
+    "frost-draught": {
+      id: "frost-draught",
+      name: "Frost Draught",
+      target: "ally",
+      price: 15,
+      delay: 0.8,
+      effects: [{ type: "cleanse", statuses: ["burning"] }, { type: "heal", dice: "1d6" }],
+      text: "Numbs the throat and douses the burn. Cures Burning, heals 1d6."
+    },
+    "bitterroot": {
+      id: "bitterroot",
+      name: "Bitterroot Poultice",
+      target: "ally",
+      price: 15,
+      delay: 0.8,
+      effects: [{ type: "cleanse", statuses: ["poisoned", "bleeding"] }, { type: "heal", dice: "1d6" }],
+      text: "Tastes like regret. Cures Poisoned and Bleeding, heals 1d6."
+    }
+  });
+
+  // src/data/tuning.js
+  var TUNING = deepFreeze({
+    attack: {
+      grazeWindow: 3,
+      // missing Guard by this much or less still lands
+      grazeMult: 0.5,
+      // ...for half damage (riders do not apply)
+      critDiceMult: 2,
+      // Legend Strike doubles the number of damage dice
+      fumbleDelay: 25,
+      // a natural 1 costs extra ribbon time
+      minCritRange: 17
+      // gear can widen crits to 17-20 at most
+    },
+    ribbon: {
+      baseDelay: 100,
+      // one "round" of ribbon time
+      speedDelay: 4,
+      // each point of speed above 10 shaves this much delay
+      minDelay: 45,
+      initBase: 64,
+      // first turn lands at initBase - initPerPoint * (d20 + DEX mod)
+      initPerPoint: 2,
+      staggerPush: 35,
+      // staggered: pushed back on the ribbon
+      ambushDelay: 40,
+      // an ambushed party's first turns come this much later
+      ambushChance: 0.25,
+      // patrols (grinding) sometimes ambush
+      preview: 8
+    },
+    surge: {
+      // Legend Surge gauge 0-100
+      max: 100,
+      hit: 5,
+      graze: 2,
+      crit: 20,
+      kill: 8,
+      takenPct: 50,
+      // taking 100% of max HP in damage would add this much
+      healGiven: 3
+    },
+    grip: {
+      crushMult: 0.6,
+      // crush damage wears grip by 60% of the damage dealt
+      critPct: 0.25
+      // a Legend Strike on a holder jars 25% of max grip loose
+    },
+    foe: {
+      hpPerLevel: 0.24,
+      // +24% of base HP per level above 1
+      atkEvery: 2,
+      // +1 attack per 2 levels
+      guardEvery: 3,
+      // +1 Guard per 3 levels
+      dmgEvery: 2,
+      // +1 flat damage per 2 levels
+      diceEvery: 3,
+      // foe attack/damage dice: +1 die per 3 levels (1d6 at L1, 3d6 at L7)
+      saveEvery: 3,
+      gearHp: 0.12,
+      // humanoid gear tiers: +12% HP, +1 Guard, +1 attack per tier
+      omenHp: 0.1,
+      // each Omen adds 10% HP and 20% rewards
+      omenReward: 0.2
+    },
+    waking: {
+      // "stronger and stronger": per Waking step
+      levels: 6,
+      gearTier: 1,
+      omens: 1,
+      // extra Omens on veterans and above (rabble get waking-1)
+      luck: 1
+      // loot luck
+    },
+    rest: {
+      breatherHp: 0.2,
+      // after a won fight each hero catches their breath
+      breatherMp: 0.25
+    },
+    wipe: {
+      goldLoss: 0.1,
+      // settled decision: wake at the last Hearthfire, keep gear, lose 10% gold
+      lessonXp: 0.25,
+      // "never a wall": a wipe still teaches 25% of the fight's XP
+      grudgeOmens: { champion: 1, other: 2 }
+      // cap on Omens a Grudge can add
+    },
+    xp: {
+      base: 30,
+      exp: 1.55,
+      // xp to go from level L to L+1 = base * L^exp
+      tier: { rabble: 7, veteran: 16, "relic-bearer": 48, champion: 110 }
+      // per foe level
+    },
+    gold: { tier: { rabble: 3, veteran: 8, "relic-bearer": 25, champion: 60 } },
+    // per foe level
+    drops: {
+      rabbleChance: 0.3,
+      // rabble sometimes drop random worn/wrought gear
+      rabbleWornChance: 0.35,
+      // humanoid rabble drop the exact weapon they carry
+      luck: { rabble: 0, veteran: 1, "relic-bearer": 2, champion: 3 },
+      extra: { rabble: 0, veteran: 0, "relic-bearer": 1, champion: 2 },
+      // bonus random items
+      luckCurve: 0.7,
+      // weight of rank i is scaled by (1 + luck)^(i * luckCurve)
+      consumable: { rabble: 0.06, veteran: 0.15, "relic-bearer": 0.5, champion: 1 },
+      // chance per foe
+      consumableWeights: { "hearth-tonic": 5, "frost-draught": 2, bitterroot: 2, "ember-salts": 1 }
+    },
+    flee: { dc: 10, tierDc: { rabble: 0, veteran: 3, "relic-bearer": 6, champion: 99 } },
+    shop: { reforgePerIlvl: 12 }
+  });
+
+  // src/data/heroes.js
+  var HEROES = deepFreeze({
+    warden: {
+      id: "warden",
+      name: "Hearthwarden",
+      title: "the Hearthwarden",
+      race: "human",
+      role: "Balanced frontliner",
+      base: { STR: 16, DEX: 12, CON: 14, INT: 10, WIS: 11, CHA: 13 },
+      hpDie: 10,
+      mp: { base: 6, perLevel: 2, stat: "CHA" },
+      domain: "combat",
+      secondary: ["physical", "influence"],
+      prof: {
+        weapons: ["sword", "dagger", "axe", "hammer", "mace", "spear"],
+        armor: ["robe", "leather", "mail", "plate"],
+        offhand: ["shield"]
+      },
+      asi: [["STR", "CON"], ["STR", "DEX"], ["CON", "CHA"]],
+      skills: [{ level: 1, id: "challenge" }, { level: 3, id: "wrench" }, { level: 5, id: "rally" }],
+      gear: {
+        weapon: "starter",
+        body: { base: "chain-shirt", rarity: "worn" },
+        feet: { base: "boots", rarity: "worn" }
+      },
+      traits: [{ id: "hearthborn", name: "Hearthborn", text: "Raised by the Keep fire: +10% Legend Surge gain.", stats: { surgeGain: 10 } }],
+      blurb: "A young Hearthwarden of the Keep. Their moves come from the relic they carry."
+    },
+    pip: {
+      id: "pip",
+      name: "Pip",
+      title: "Thornhollow scout",
+      race: "halfling",
+      role: "Scout and relic-thief",
+      base: { STR: 10, DEX: 16, CON: 12, INT: 12, WIS: 14, CHA: 11 },
+      hpDie: 8,
+      mp: { base: 6, perLevel: 2, stat: "WIS" },
+      domain: "survival",
+      secondary: ["combat"],
+      prof: {
+        weapons: ["dagger", "sword", "bow", "spear", "axe"],
+        armor: ["robe", "leather"],
+        offhand: []
+      },
+      asi: [["DEX", "WIS"], ["DEX", "CON"]],
+      skills: [{ level: 1, id: "disarm" }, { level: 1, id: "mark-prey" }, { level: 2, id: "knife-work" }, { level: 4, id: "volley" }],
+      gear: {
+        weapon: { base: "shortbow", rarity: "wrought" },
+        head: { base: "hood", rarity: "worn" },
+        body: { base: "jerkin", rarity: "worn" },
+        feet: { base: "boots", rarity: "worn" }
+      },
+      traits: [{ id: "secret-paths", name: "Secret Paths", text: "Knows every deer-track: +1 speed.", stats: { speed: 1 } }],
+      blurb: "A young scout who knows the secret paths of the Verdant Wilds, and exactly where a relic's strap is weakest."
+    },
+    bryn: {
+      id: "bryn",
+      name: "Bryn",
+      title: "the Bark-Reader of Eldergrove",
+      race: "human",
+      role: "Lore and control",
+      base: { STR: 9, DEX: 12, CON: 13, INT: 16, WIS: 14, CHA: 10 },
+      hpDie: 8,
+      mp: { base: 10, perLevel: 3, stat: "INT" },
+      domain: "knowledge",
+      secondary: ["attunement"],
+      prof: {
+        weapons: ["staff", "mace", "dagger", "spear"],
+        armor: ["robe", "leather"],
+        offhand: ["focus"]
+      },
+      asi: [["INT", "CON"], ["INT", "WIS"]],
+      skills: [{ level: 1, id: "analyze" }, { level: 1, id: "rootbind" }, { level: 3, id: "read-the-rings" }, { level: 5, id: "heartwood-splinters" }],
+      gear: {
+        weapon: { base: "quarterstaff", rarity: "wrought" },
+        head: { base: "circlet", rarity: "worn" },
+        body: { base: "jerkin", rarity: "worn" }
+      },
+      traits: [{ id: "bark-reader", name: "Bark-Reader", text: "Reads a foe's grain at a glance: always sees its aspect.", stats: { mp: 2 } }],
+      blurb: "Reads the rings of the eldest trees the way others read letters. Lately the rings say something is wrong."
+    },
+    alondra: {
+      id: "alondra",
+      name: "Sister Alondra",
+      title: "the blind priestess of Fawnrest",
+      race: "human",
+      role: "Healer",
+      base: { STR: 10, DEX: 10, CON: 13, INT: 12, WIS: 16, CHA: 14 },
+      hpDie: 8,
+      mp: { base: 10, perLevel: 3, stat: "WIS" },
+      domain: "attunement",
+      secondary: ["influence"],
+      prof: {
+        weapons: ["mace", "hammer", "staff"],
+        armor: ["robe", "leather", "mail"],
+        offhand: ["shield", "focus"]
+      },
+      asi: [["WIS", "CON"], ["WIS", "CHA"]],
+      skills: [{ level: 1, id: "mend" }, { level: 1, id: "radiant-lance" }, { level: 2, id: "ward" }, { level: 3, id: "revive" }, { level: 6, id: "dawnsong" }],
+      gear: {
+        weapon: { base: "mace", rarity: "worn" },
+        offhand: { base: "holy-symbol", rarity: "wrought" },
+        body: { base: "chain-shirt", rarity: "worn" }
+      },
+      traits: [{ id: "blind-sight", name: "Blind Sight", text: "Cannot be blinded by pocket sand or frightened by what she cannot see.", immune: ["frightened"] }],
+      refuses: { kinds: ["sword", "dagger", "axe"], text: "Sister Alondra will not take up a blade." },
+      blurb: "The blind priestess of Fawnrest. She dreams of four Sleepers, and she hears a lie before it is finished."
+    }
+  });
+  var HERO_IDS = Object.freeze(["warden", "pip", "bryn", "alondra"]);
+  var STARTERS = deepFreeze({
+    hearthbrand: { relic: "hearthbrand", offhand: { base: "heater-shield", rarity: "worn" }, text: "Sword and shield. Burns." },
+    "stillwater-lance": { relic: "stillwater-lance", offhand: { base: "buckler", rarity: "wrought" }, text: "Spear and buckler. Chills, then freezes." },
+    cairnmaul: { relic: "cairnmaul", offhand: null, text: "Two-handed hammer. Staggers, and breaks grips." }
+  });
+  var STARTING_BAG = deepFreeze({ "hearth-tonic": 3, "ember-salts": 1, "frost-draught": 1, "bitterroot": 1 });
+
+  // src/data/relics.js
+  var RELICS = deepFreeze({
+    hearthbrand: {
+      id: "hearthbrand",
+      codex: 1,
+      name: "Hearthbrand",
+      kind: "sword",
+      slot: "weapon",
+      aspect: "ember",
+      rarity: "heirloom",
+      ilvl: 1,
+      holder: "The Keep reliquary (starter)",
+      starter: true,
+      dormant: true,
+      weapon: { dice: "1d8", dmg: "slash", hands: 1, versatile: "1d10", weight: 0, ability: ["STR", "DEX"], extra: [{ dice: "1d4", aspect: "ember" }] },
+      stats: { hit: 1, dmg: 1, resist: { ember: 20 } },
+      grants: ["kindle-strike"],
+      power: {
+        id: "hearthfall",
+        name: "Hearthfall",
+        target: "all-enemies",
+        text: "The sword remembers the hearth: 3d8 ember to every foe, and all of them Burn.",
+        effects: [{ type: "damage", dice: "3d8", kind: "ember", aspect: "ember", diceEvery: 6, riders: [{ type: "status", status: "burning" }] }]
+      },
+      mapPower: { id: "kindle", name: "Kindle", text: "Lights cold hearths and burns frost-sealed doors open." },
+      lore: "Forged in the Keep's own coals. It had never once gone cold, until the night the hearth flickered."
+    },
+    "stillwater-lance": {
+      id: "stillwater-lance",
+      codex: 2,
+      name: "Stillwater Lance",
+      kind: "spear",
+      slot: "weapon",
+      aspect: "frost",
+      rarity: "heirloom",
+      ilvl: 1,
+      holder: "The Keep reliquary (starter)",
+      starter: true,
+      dormant: true,
+      weapon: { dice: "1d8", dmg: "pierce", hands: 1, versatile: "1d10", weight: 0, ability: ["STR", "DEX"], extra: [{ dice: "1d4", aspect: "frost" }] },
+      stats: { hit: 1, dmg: 1, speed: 1, resist: { frost: 20 } },
+      grants: ["stillwater-thrust"],
+      power: {
+        id: "stillwater",
+        name: "Stillwater",
+        target: "enemy",
+        text: "The lake holds its breath: 4d8 frost, and the foe is Frozen solid.",
+        effects: [{ type: "damage", dice: "4d8", kind: "frost", aspect: "frost", diceEvery: 6, riders: [{ type: "status", status: "frozen" }] }]
+      },
+      mapPower: { id: "still-the-water", name: "Still the Water", text: "Freezes streams and millraces into bridges." },
+      lore: "Cut from Frostmere ice the winter the lake held its breath. The point still remembers the stillness."
+    },
+    cairnmaul: {
+      id: "cairnmaul",
+      codex: 3,
+      name: "Cairnmaul",
+      kind: "hammer",
+      slot: "weapon",
+      aspect: "stone",
+      rarity: "heirloom",
+      ilvl: 1,
+      holder: "The Keep reliquary (starter)",
+      starter: true,
+      dormant: true,
+      weapon: { dice: "1d12", dmg: "crush", hands: 2, weight: 20, ability: ["STR"], extra: [{ dice: "1d4", aspect: "stone" }] },
+      stats: { hit: 1, dmg: 2, gripDmg: 3, hp: 4, resist: { storm: 20 } },
+      grants: ["sunder"],
+      power: {
+        id: "cairnfall",
+        name: "Cairnfall",
+        target: "enemy",
+        text: "A rockslide on a haft: 4d10 crushing, 4d6 grip damage, and the foe Staggers.",
+        effects: [{ type: "damage", dice: "4d10", kind: "crush", aspect: "stone", diceEvery: 6, riders: [{ type: "status", status: "staggered" }] }, { type: "grip", dice: "4d6" }]
+      },
+      mapPower: { id: "break-the-cairn", name: "Break the Cairn", text: "Shatters cracked boulders and clears rockslides." },
+      lore: "A cairn-stone from the Old Road, bound to an ash haft by a smith who wanted something that would not break. It hasn't."
+    },
+    "wardens-seal": {
+      id: "wardens-seal",
+      codex: 4,
+      name: "The Warden's Seal",
+      kind: "amulet",
+      slot: "amulet",
+      aspect: "radiant",
+      rarity: "storied",
+      ilvl: 1,
+      holder: "On the Tallyman thief's belt",
+      grip: 10,
+      stats: { hp: 5, guard: 1, CHA: 1, resist: { blight: 15 } },
+      power: {
+        id: "seal-of-the-keep",
+        name: "Seal of the Keep",
+        target: "all-allies",
+        text: "The Keep's oath, pressed in light: every ally is Warded for 2d6 + CHA and sheds one harmful status.",
+        effects: [{ type: "status", status: "warded", value: { dice: "2d6", stat: "CHA", diceEvery: 5 } }, { type: "cleanse", harmful: 1 }]
+      },
+      mapPower: { id: "wardens-writ", name: "Warden's Writ", text: "Keep guards and gatekeepers wave you through." },
+      lore: "Pressed into the wax of every oath the Keep has sworn. The Tallymen wanted it for the oaths, not the silver."
+    },
+    tallyknife: {
+      id: "tallyknife",
+      codex: 5,
+      name: "Tallyknife",
+      kind: "dagger",
+      slot: "weapon",
+      aspect: "blight",
+      rarity: "storied",
+      ilvl: 4,
+      holder: "Tallyman veterans",
+      grip: 14,
+      weapon: { dice: "1d4", dmg: "pierce", hands: 1, weight: -15, ability: ["STR", "DEX"], extra: [{ dice: "1d4", aspect: "blight" }] },
+      stats: { hit: 1, crit: 1, speed: 1 },
+      grants: ["tally-cut"],
+      power: {
+        id: "final-tally",
+        name: "Final Tally",
+        target: "enemy",
+        text: "Every debt comes due at once: 3d6 blight and 3 stacks of Poisoned.",
+        effects: [{ type: "damage", dice: "3d6", kind: "blight", aspect: "blight", diceEvery: 6, riders: [{ type: "status", status: "poisoned", stacks: 3 }] }]
+      },
+      mapPower: { id: "cut-the-tally", name: "Cut the Tally", text: "Slits Tallyman ledger-seals and opens their strongboxes." },
+      lore: "Every notch on the spine is a debt. The Tallymen swear it has never once been wrong about what you owe."
+    },
+    thornsplitter: {
+      id: "thornsplitter",
+      codex: 6,
+      name: "Thornsplitter Hatchet",
+      kind: "axe",
+      slot: "weapon",
+      aspect: "verdant",
+      rarity: "heirloom",
+      ilvl: 5,
+      holder: "Buried in Old Snag's hide",
+      grip: 26,
+      weapon: { dice: "1d8", dmg: "slash", hands: 1, weight: 0, ability: ["STR", "DEX"], extra: [{ dice: "1d6", aspect: "verdant" }] },
+      stats: { hit: 2, dmg: 1, gripDmg: 2 },
+      grants: ["hew"],
+      power: {
+        id: "cleave-the-wildwood",
+        name: "Cleave the Wildwood",
+        target: "all-enemies",
+        text: "One swing clears a road: 2d10 slashing verdant to every foe, and they Stagger.",
+        effects: [{ type: "damage", dice: "2d10", kind: "slash", aspect: "verdant", diceEvery: 6, riders: [{ type: "status", status: "staggered" }] }]
+      },
+      mapPower: { id: "cut-the-thornwall", name: "Cut the Thornwall", text: "Cuts through the enchanted thorn walls that close the Verdant roads." },
+      lore: "A Thornwatch ranger buried it in Old Snag's hide and never came back for it. Snag has carried the grudge ever since."
+    },
+    "rotwood-circlet": {
+      id: "rotwood-circlet",
+      codex: 7,
+      name: "Rotwood Circlet",
+      kind: "circlet",
+      slot: "head",
+      aspect: "blight",
+      rarity: "heirloom",
+      ilvl: 4,
+      holder: "Tangled in the Rot-Stag's antlers",
+      grip: 24,
+      stats: { mp: 6, WIS: 1, INT: 1, healBonus: 10, resist: { blight: 25 } },
+      power: {
+        id: "rot-remembers",
+        name: "The Rot Remembers",
+        target: "all-enemies",
+        text: "Black sap answers the crown: 2d8 blight to every foe and 2 stacks of Poisoned.",
+        effects: [{ type: "damage", dice: "2d8", kind: "blight", aspect: "blight", diceEvery: 6, riders: [{ type: "status", status: "poisoned", stacks: 2 }] }]
+      },
+      mapPower: { id: "hear-the-rot", name: "Hear the Rot", text: "Reveals the Whispering Rot's sap-trails through the eldest trees." },
+      lore: "Grown, not made: a crown of Eldergrove heartwood gone black at the core. The Rot-Stag wore it like it was born to."
+    },
+    "thornwatch-hood": {
+      id: "thornwatch-hood",
+      codex: 8,
+      name: "Thornwatch Hood",
+      kind: "hood",
+      slot: "head",
+      aspect: "verdant",
+      rarity: "regalia",
+      ilvl: 3,
+      holder: "Worn by a bandit veteran on the Hearth Road",
+      set: "thornwatch",
+      stats: { speed: 1, hit: 1, resist: { verdant: 15 } },
+      mapPower: { id: "watchful", name: "Watchful", text: "Glinting holders show on the map from farther away." },
+      lore: "Captain Dael's rangers wore these when the Thornwatch still had thirty names on its roll. The bandits wear them now."
+    },
+    "thornwatch-jerkin": {
+      id: "thornwatch-jerkin",
+      codex: 9,
+      name: "Thornwatch Jerkin",
+      kind: "leather",
+      slot: "body",
+      aspect: "verdant",
+      rarity: "regalia",
+      ilvl: 4,
+      holder: "Worn by a bandit veteran at the Tallyman camp",
+      set: "thornwatch",
+      armor: { base: 12, maxDex: 9, type: "hide" },
+      stats: { hp: 6, resist: { verdant: 15 } },
+      mapPower: { id: "thorn-thread", name: "Thorn-Thread", text: "Walk through bramble without a scratch." },
+      lore: "Stitched with thorn-thread that knits itself closed. It has been stabbed more often than anyone who wore it."
+    },
+    "thornwatch-boots": {
+      id: "thornwatch-boots",
+      codex: 10,
+      name: "Thornwatch Boots",
+      kind: "boots",
+      slot: "feet",
+      aspect: "verdant",
+      rarity: "regalia",
+      ilvl: 5,
+      holder: "Worn by a bandit veteran in the bramble-deep",
+      set: "thornwatch",
+      stats: { speed: 2, guard: 1 },
+      mapPower: { id: "trackless", name: "Trackless", text: "Leaves no trail the forest will tell. Weak foes lose your scent." },
+      lore: "They leave no trail the forest will tell, which is why nobody could say where the last Thornwatch patrol went."
+    },
+    thornwreath: {
+      id: "thornwreath",
+      codex: 11,
+      name: "Thornwreath",
+      kind: "crown",
+      slot: "head",
+      aspect: "verdant",
+      rarity: "heirloom",
+      ilvl: 7,
+      holder: "Briarmaw's breakable thorn-crown",
+      grip: 30,
+      stats: { hp: 8, guard: 1, surgeGain: 15, resist: { verdant: 25 } },
+      power: {
+        id: "crown-of-briars",
+        name: "Crown of Briars",
+        target: "all-enemies",
+        text: "The bramble answers its crown: 2d8 verdant to every foe and all of them are Rooted.",
+        effects: [{ type: "damage", dice: "2d8", kind: "pierce", aspect: "verdant", diceEvery: 6, riders: [{ type: "status", status: "rooted" }] }]
+      },
+      mapPower: { id: "briar-crown", name: "Briar Crown", text: "The bramble parts for whoever wears it." },
+      lore: "It grew around Briarmaw's skull the night the hearth flickered, and it has not stopped growing since."
+    },
+    briarfang: {
+      id: "briarfang",
+      codex: 12,
+      name: "Briarfang",
+      kind: "dagger",
+      slot: "weapon",
+      aspect: "verdant",
+      rarity: "heirloom",
+      ilvl: 7,
+      holder: "Briarmaw's breakable fang",
+      grip: 26,
+      weapon: { dice: "1d6", dmg: "pierce", hands: 1, weight: -10, ability: ["STR", "DEX"], extra: [{ dice: "1d4", aspect: "verdant" }] },
+      stats: { hit: 2, crit: 1, dmg: 1 },
+      power: {
+        id: "bleeding-thorn",
+        name: "Bleeding Thorn",
+        target: "enemy",
+        text: "The fang goes in and stays in: 3d8 piercing and 3 stacks of Bleeding.",
+        effects: [{ type: "damage", dice: "3d8", kind: "pierce", aspect: "verdant", diceEvery: 6, riders: [{ type: "status", status: "bleeding", stacks: 3 }] }]
+      },
+      mapPower: { id: "bloodtrail", name: "Bloodtrail", text: "Follow any wounded beast's trail to its lair." },
+      lore: "A fang the length of a knife and sharp as a debt. Pried loose, it still bleeds."
+    }
+  });
+  var SETS = deepFreeze({
+    thornwatch: {
+      id: "thornwatch",
+      name: "Thornwatch Regalia",
+      pieces: ["thornwatch-hood", "thornwatch-jerkin", "thornwatch-boots"],
+      bonuses: [
+        { n: 2, text: "Regrow 5% of max HP at the start of each turn.", stats: { regenPct: 5 } },
+        { n: 3, text: "Your party can never be ambushed, and you move first: +2 speed.", stats: { speed: 2, ambushImmune: 1 } }
+      ]
+    }
+  });
+  var STORIED_POWERS = deepFreeze({
+    ember: { id: "last-ember", name: "Last Ember", target: "enemy", text: "3d6 ember and Burning.", effects: [{ type: "damage", dice: "3d6", kind: "ember", aspect: "ember", diceEvery: 6, riders: [{ type: "status", status: "burning" }] }] },
+    frost: { id: "held-breath", name: "Held Breath", target: "enemy", text: "3d6 frost and 2 stacks of Chilled.", effects: [{ type: "damage", dice: "3d6", kind: "frost", aspect: "frost", diceEvery: 6, riders: [{ type: "status", status: "chilled", stacks: 2 }] }] },
+    storm: { id: "first-thunder", name: "First Thunder", target: "all-enemies", text: "1d12 storm to every foe.", effects: [{ type: "damage", dice: "1d12", kind: "storm", aspect: "storm", diceEvery: 6 }] },
+    stone: { id: "old-road", name: "The Old Road", target: "enemy", text: "3d6 crushing, 2d6 grip damage, Staggers.", effects: [{ type: "damage", dice: "3d6", kind: "crush", aspect: "stone", diceEvery: 6, riders: [{ type: "status", status: "staggered" }] }, { type: "grip", dice: "2d6" }] },
+    verdant: { id: "green-return", name: "The Green Returns", target: "all-allies", text: "Every ally Regenerates 1d6 a turn.", effects: [{ type: "status", status: "regenerating", value: { dice: "1d6", diceEvery: 6 } }] },
+    tide: { id: "turning-tide", name: "The Turning Tide", target: "all-allies", text: "Every ally heals 1d8 and sheds a harmful status.", effects: [{ type: "heal", dice: "1d8", diceEvery: 5 }, { type: "cleanse", harmful: 1 }] },
+    radiant: { id: "lamplight", name: "Lamplight", target: "all-allies", text: "Every ally is Warded for 1d10.", effects: [{ type: "status", status: "warded", value: { dice: "1d10", diceEvery: 5 } }] },
+    blight: { id: "slow-rot", name: "Slow Rot", target: "enemy", text: "2d6 blight and 3 stacks of Poisoned.", effects: [{ type: "damage", dice: "2d6", kind: "blight", aspect: "blight", diceEvery: 6, riders: [{ type: "status", status: "poisoned", stacks: 3 }] }] },
+    none: { id: "told-and-retold", name: "Told and Retold", target: "enemy", text: "A strike from the old stories: 3d8 damage.", effects: [{ type: "damage", dice: "3d8", kind: "slash", diceEvery: 6 }] }
+  });
+  var HEROIC_SURGE = deepFreeze({
+    id: "heroic-strike",
+    name: "Heroic Strike",
+    target: "enemy",
+    text: "Everything you have, in one blow: a weapon strike that cannot miss, dice doubled.",
+    effects: [{ type: "attack", weapon: true, autoCrit: true }]
+  });
+
+  // src/data/affixes.js
+  var ARMOR = ["head", "body", "hands", "feet", "offhand"];
+  var JEWEL = ["amulet", "ring"];
+  var ANY = ["weapon", "offhand", "head", "body", "hands", "feet", "amulet", "ring"];
+  var P = (id, name, region, stat, range, slots, o = {}) => ({ id, name, type: "prefix", region, stat, range, slots, minTier: 1, perLevel: 0, ...o });
+  var S = (id, name, domain, stat, range, slots, o = {}) => ({ id, name, type: "suffix", domain, stat, range, slots, minTier: 1, perLevel: 0, ...o });
+  var AFFIXES = deepFreeze({
+    // ---- prefixes: regions ----------------------------------------------------------------
+    thornwoven: P("thornwoven", "Thornwoven", "Thornhollow", "regen", [1, 2], ["body", "feet", ...JEWEL], { perLevel: 0.15, text: "Regrow {v} HP at the start of each turn" }),
+    eldergrown: P("eldergrown", "Eldergrown", "Eldergrove", "hp", [4, 8], ["head", "body", "offhand", ...JEWEL], { perLevel: 0.8, text: "+{v} max HP" }),
+    mossbound: P("mossbound", "Mossbound", "Mosswatch", "guard", [1, 1], ARMOR, { group: "guard", text: "+{v} Guard" }),
+    ironhold: P("ironhold", "Ironhold", "Ironspire", "guard", [1, 2], ["body", "offhand", "head"], { minTier: 2, group: "guard", text: "+{v} Guard" }),
+    fawnlit: P("fawnlit", "Fawnlit", "Fawnrest", "healBonus", [10, 20], ["weapon", "offhand", ...JEWEL], { text: "+{v}% healing done" }),
+    scorchgate: P("scorchgate", "Scorchgate", "Sunscorch", "extraDice", [2, 4], ["weapon"], { aspect: "ember", group: "extra", text: "+1d{d} ember damage on hit" }),
+    frostmere: P("frostmere", "Frostmere", "Ironspire", "extraDice", [2, 4], ["weapon"], { aspect: "frost", group: "extra", text: "+1d{d} frost damage on hit" }),
+    stormwatch: P("stormwatch", "Stormwatch", "Ironspire", "extraDice", [2, 4], ["weapon"], { aspect: "storm", group: "extra", text: "+1d{d} storm damage on hit" }),
+    bogmire: P("bogmire", "Bogmire", "Gloomfen", "extraDice", [2, 4], ["weapon"], { aspect: "blight", group: "extra", text: "+1d{d} blight damage on hit" }),
+    blackwater: P("blackwater", "Blackwater", "Gloomfen", "extraDice", [2, 4], ["weapon"], { aspect: "tide", group: "extra", text: "+1d{d} tide damage on hit" }),
+    sandspire: P("sandspire", "Sandspire", "Sunscorch", "resist", [10, 20], ARMOR, { aspect: "ember", perLevel: 0.5, group: "resist", text: "Resist ember {v}%" }),
+    willowmurk: P("willowmurk", "Willowmurk", "Gloomfen", "resist", [10, 20], ARMOR, { aspect: "blight", perLevel: 0.5, group: "resist", text: "Resist blight {v}%" }),
+    misthollow: P("misthollow", "Misthollow", "Gloomfen", "resist", [10, 20], ARMOR, { aspect: "verdant", perLevel: 0.5, group: "resist", text: "Resist verdant {v}%" }),
+    dusthaven: P("dusthaven", "Dusthaven", "Sunscorch", "speed", [1, 2], ["weapon", "feet", "hands", ...JEWEL], { group: "speed", text: "+{v} speed" }),
+    hearthstone: P("hearthstone", "Hearthstone", "Hearthstone Keep", "surgeGain", [10, 25], ANY, { text: "+{v}% Legend Surge gain" }),
+    veilkissed: P("veilkissed", "Veilkissed", "Peak's Veil", "mp", [3, 6], ["head", "offhand", "weapon", ...JEWEL], { perLevel: 0.4, text: "+{v} MP" }),
+    // ---- suffixes: Domains ------------------------------------------------------------------
+    titan: S("titan", "of the Titan", "physical", "STR", [1, 2], ["weapon", "hands", ...JEWEL], { group: "ability", text: "+{v} STR" }),
+    unyielding: S("unyielding", "of the Unyielding", "physical", "CON", [1, 2], ["body", "head", ...JEWEL], { group: "ability", text: "+{v} CON" }),
+    sprinter: S("sprinter", "of the Sprinter", "physical", "DEX", [1, 2], ["feet", "hands", "weapon", ...JEWEL], { group: "ability", text: "+{v} DEX" }),
+    duelist: S("duelist", "of the Duelist", "combat", "hit", [1, 2], ["weapon", "hands", "ring"], { text: "+{v} to hit" }),
+    executioner: S("executioner", "of the Executioner", "combat", "vsHurt", [2, 4], ["weapon"], { group: "vs", text: "+1d{d} damage vs foes at half HP or less" }),
+    guardian: S("guardian", "of the Guardian", "combat", "guard", [1, 1], ["offhand", "body", "amulet"], { minTier: 2, text: "+{v} Guard" }),
+    stalker: S("stalker", "of the Stalker", "survival", "vsUnaware", [2, 4], ["weapon"], { group: "vs", text: "+1d{d} damage vs marked, rooted, frozen or staggered foes" }),
+    pathfinder: S("pathfinder", "of the Pathfinder", "survival", "speed", [1, 1], ["feet", "head", "body"], { group: "speed", text: "+{v} speed" }),
+    smith: S("smith", "of the Smith", "craft", "gripDmg", [2, 4], ["weapon", "hands"], { text: "+{v} grip damage" }),
+    forge: S("forge", "of the Forge", "craft", "dmg", [1, 2], ["weapon", "hands"], { text: "+{v} damage" }),
+    scholar: S("scholar", "of the Scholar", "knowledge", "INT", [1, 2], ["head", "offhand", "weapon", ...JEWEL], { group: "ability", text: "+{v} INT" }),
+    herald: S("herald", "of the Herald", "influence", "CHA", [1, 2], ["head", "body", ...JEWEL], { group: "ability", text: "+{v} CHA" }),
+    attuned: S("attuned", "of the Attuned", "attunement", "WIS", [1, 2], ["head", "offhand", "weapon", ...JEWEL], { group: "ability", text: "+{v} WIS" }),
+    mender: S("mender", "of the Mender", "attunement", "healBonus", [10, 20], ["offhand", "weapon", "amulet"], { text: "+{v}% healing done" }),
+    seer: S("seer", "of the Seer", "psionics", "crit", [1, 1], ["weapon", "ring", "hands"], { minTier: 3, text: "Legend Strike range +{v}" }),
+    ironwill: S("ironwill", "of the Iron Will", "psionics", "mpRegen", [1, 1], ["head", "amulet", "ring"], { minTier: 2, text: "Regain {v} MP at the start of each turn" }),
+    wolffriend: S("wolffriend", "of the Wolf-Friend", "beastmastery", "hp", [3, 6], ["body", "feet", "amulet"], { perLevel: 0.6, text: "+{v} max HP" })
+  });
+
+  // src/data/rarity.js
+  var RARITY_ORDER = Object.freeze(["worn", "wrought", "tempered", "runed", "storied", "heirloom", "regalia", "primal"]);
+  var RARITY = deepFreeze({
+    worn: {
+      id: "worn",
+      rank: 0,
+      name: "Worn",
+      color: "#8b8b8b",
+      accent: "#5a5a5a",
+      frame: "iron",
+      affixes: 0,
+      statMult: 1,
+      enchant: 0,
+      dropWeight: 100,
+      gemSlots: 0,
+      chime: "thud",
+      text: "Base stats only."
+    },
+    wrought: {
+      id: "wrought",
+      rank: 1,
+      name: "Wrought",
+      color: "#f4f1e8",
+      accent: "#bdb6a4",
+      frame: "iron-rivet",
+      affixes: 1,
+      statMult: 1,
+      enchant: 0,
+      dropWeight: 55,
+      gemSlots: 0,
+      chime: "note",
+      text: "One bonus trait."
+    },
+    tempered: {
+      id: "tempered",
+      rank: 2,
+      name: "Tempered",
+      color: "#4cbf56",
+      accent: "#2a7a32",
+      frame: "steel",
+      affixes: 2,
+      statMult: 1.1,
+      enchant: 1,
+      dropWeight: 22,
+      gemSlots: 0,
+      chime: "two-note",
+      text: "Two bonus traits."
+    },
+    runed: {
+      id: "runed",
+      rank: 3,
+      name: "Runed",
+      color: "#4a8fe7",
+      accent: "#23508f",
+      frame: "silver",
+      affixes: 3,
+      statMult: 1.2,
+      enchant: 1,
+      dropWeight: 7,
+      gemSlots: 1,
+      chime: "chord",
+      text: "Three bonus traits and a gem slot."
+    },
+    storied: {
+      id: "storied",
+      rank: 4,
+      name: "Storied",
+      color: "#a35ee8",
+      accent: "#5e2f96",
+      frame: "silver-filigree",
+      affixes: 3,
+      statMult: 1.35,
+      enchant: 2,
+      dropWeight: 1.5,
+      gemSlots: 1,
+      chime: "arpeggio",
+      named: true,
+      unidentified: true,
+      text: "A generated name, a lore line and a minor power. Drops unidentified."
+    },
+    heirloom: {
+      id: "heirloom",
+      rank: 5,
+      name: "Heirloom",
+      color: "#e8b83a",
+      accent: "#8a5a12",
+      frame: "gold-filigree",
+      affixes: 0,
+      statMult: 1.5,
+      enchant: 2,
+      dropWeight: 0,
+      gemSlots: 2,
+      chime: "bell-arpeggio",
+      named: true,
+      handmade: true,
+      text: "Hand-designed, named, a signature power and often a map power."
+    },
+    regalia: {
+      id: "regalia",
+      rank: 6,
+      name: "Regalia",
+      color: "#2fb8a6",
+      accent: "#11685c",
+      frame: "verdigris",
+      affixes: 0,
+      statMult: 1.5,
+      enchant: 2,
+      dropWeight: 0,
+      gemSlots: 1,
+      chime: "bell-arpeggio",
+      named: true,
+      handmade: true,
+      set: true,
+      text: "Set pieces. Wear more of the set for set bonuses."
+    },
+    primal: {
+      id: "primal",
+      rank: 7,
+      name: "Primal",
+      color: "#fffaf0",
+      accent: "#ffcf6b",
+      frame: "living-flame",
+      affixes: 0,
+      statMult: 1.8,
+      enchant: 3,
+      dropWeight: 0,
+      gemSlots: 3,
+      chime: "choir",
+      named: true,
+      handmade: true,
+      text: "Endgame and world-boss relics. White flame."
+    }
+  });
+  var RANDOM_RARITIES = Object.freeze(["worn", "wrought", "tempered", "runed", "storied"]);
+
+  // src/data/domains.js
+  var DOMAINS = deepFreeze({
+    physical: { id: "physical", name: "Physical Mastery", ability: "STR", paths: ["power", "speed", "fortitude"] },
+    combat: { id: "combat", name: "Predation & Conflict", ability: "STR", paths: ["precision", "aggression", "control"] },
+    survival: { id: "survival", name: "Survival & Adaptation", ability: "WIS", paths: ["scout", "forager", "shadow"] },
+    craft: { id: "craft", name: "Craft & Creation", ability: "INT", paths: ["forge", "alchemy", "construction"] },
+    knowledge: { id: "knowledge", name: "Knowledge & Research", ability: "INT", paths: [] },
+    influence: { id: "influence", name: "Influence & Social Mastery", ability: "CHA", paths: [] },
+    attunement: { id: "attunement", name: "Attunement (Magical Affinity)", ability: "WIS", paths: [] },
+    psionics: { id: "psionics", name: "Psionics & Mental Mastery", ability: "INT", paths: [] },
+    beastmastery: { id: "beastmastery", name: "Beastmastery & Bonding", ability: "WIS", paths: [] }
+  });
+  var DOMAIN_IDS = Object.freeze(Object.keys(DOMAINS));
+
+  // src/rules/util.js
+  var clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  function rngFrom(state) {
+    const rng = createRng(0);
+    rng.setState(state);
+    return rng;
+  }
+  function scaledTerms(expr, level = 1, every = 0) {
+    const { terms, flat } = parseDice(expr);
+    const extra = every ? Math.floor((Math.max(1, level) - 1) / every) : 0;
+    return { terms: terms.map((t, i) => i === 0 ? { ...t, n: t.n + extra } : { ...t }), flat };
+  }
+  function rollTerms(rng, terms, mult = 1) {
+    const dice = [];
+    let total = 0;
+    for (const t of terms) {
+      const n = Math.abs(t.n) * mult;
+      for (let i = 0; i < n; i++) {
+        const value = rng.int(1, t.sides);
+        dice.push({ sides: t.sides, value });
+        total += t.n < 0 ? -value : value;
+      }
+    }
+    return { dice, total };
+  }
+  function rollExpr(rng, expr, level = 1, every = 0) {
+    const { terms, flat } = scaledTerms(expr, level, every);
+    const r = rollTerms(rng, terms);
+    return { dice: r.dice, flat, total: r.total + flat };
+  }
+  function weightedPick(rng, entries) {
+    const total = entries.reduce((a, e) => a + Math.max(0, e.w), 0);
+    if (total <= 0) return entries[0]?.v;
+    let r = rng.next() * total;
+    for (const e of entries) {
+      r -= Math.max(0, e.w);
+      if (r < 0) return e.v;
+    }
+    return entries[entries.length - 1].v;
+  }
+
+  // src/rules/stats.js
+  var UNARMED = Object.freeze({ dice: "1d4", dmg: "crush", hands: 1, weight: 0, ability: ["STR"], extra: [] });
+  var POWERS = Object.freeze(Object.fromEntries([
+    ...Object.values(RELICS).filter((r) => r.power).map((r) => [r.power.id, r.power]),
+    ...Object.values(STORIED_POWERS).map((p) => [p.id, p]),
+    [HEROIC_SURGE.id, HEROIC_SURGE]
+  ]));
+
+  // src/data/foes.js
+  var FOE_TIERS = deepFreeze({
+    rabble: { id: "rabble", name: "Rabble", die: 6 },
+    veteran: { id: "veteran", name: "Veteran", die: 8 },
+    "relic-bearer": { id: "relic-bearer", name: "Relic-Bearer", die: 12 },
+    champion: { id: "champion", name: "Champion", die: 20 }
+  });
+  var DIE_STEPS = Object.freeze([6, 8, 12, 20]);
+  var atk = (dice, kind, o = {}) => ({ type: "attack", dice, kind, ...o });
+  var status = (id, o = {}) => ({ type: "status", status: id, ...o });
+  var FOES = deepFreeze({
+    cutpurse: {
+      id: "cutpurse",
+      name: "Cutpurse",
+      art: "cutpurse",
+      tier: "rabble",
+      humanoid: true,
+      hp: 16,
+      guard: 14,
+      atk: 3,
+      dmg: 2,
+      speed: 12,
+      armor: "hide",
+      aspect: null,
+      saves: { STR: 0, DEX: 2, CON: 0, WIS: 0 },
+      moves: {
+        stab: { name: "Stab", target: "enemy", text: "A quick knife in the ribs.", effects: [atk("1d4", "pierce", { weapon: true })] },
+        "pocket-sand": { name: "Pocket Sand", target: "enemy", text: "A fistful of grit to the eyes. DEX save or Frightened.", effects: [status("frightened", { save: "DEX" })] },
+        bolt: { name: "Bolt", target: "self", when: { hpBelow: 0.5 }, fallback: "stab", text: "It breaks and runs for the trees.", effects: [{ type: "escape" }] }
+      },
+      table: [[1, 3, "stab"], [4, 5, "pocket-sand"], [6, 6, "bolt"]],
+      gear: [
+        [{ base: "belt-knife" }, { base: "hood" }],
+        [{ base: "belt-knife" }, { base: "hood" }, { base: "jerkin" }],
+        [{ base: "rondel" }, { base: "mail-coif" }, { base: "jerkin" }],
+        [{ base: "rondel" }, { base: "mail-coif" }, { base: "brigandine" }]
+      ],
+      text: "Road-rats of the Hearth Road. They run when it goes badly."
+    },
+    briarling: {
+      id: "briarling",
+      name: "Briarling",
+      art: "briarling",
+      tier: "rabble",
+      kind: "plant",
+      hp: 13,
+      guard: 13,
+      atk: 3,
+      dmg: 1,
+      speed: 10,
+      armor: "hide",
+      aspect: "verdant",
+      saves: { STR: 0, DEX: 1, CON: 1, WIS: 0 },
+      moves: {
+        "thorn-jab": { name: "Thorn Jab", target: "enemy", text: "A whip of thorns.", effects: [atk("1d6", "pierce")] },
+        "seed-spit": { name: "Seed Spit", target: "enemy", text: "A spray of bitter seeds that leave you Poisoned.", effects: [atk("1d4", "pierce", { aspect: "verdant", riders: [status("poisoned")] })] },
+        tangle: { name: "Tangle", target: "enemy", text: "Runners wrap your ankles. STR save or Rooted.", effects: [status("rooted", { save: "STR" })] }
+      },
+      table: [[1, 3, "thorn-jab"], [4, 5, "seed-spit"], [6, 6, "tangle"]],
+      text: "Bramble that learned to walk the night the hearth flickered."
+    },
+    thornhound: {
+      id: "thornhound",
+      name: "Thornhound",
+      art: "thornhound",
+      tier: "rabble",
+      kind: "beast",
+      hp: 18,
+      guard: 14,
+      atk: 4,
+      dmg: 1,
+      speed: 13,
+      armor: "hide",
+      aspect: null,
+      saves: { STR: 1, DEX: 2, CON: 1, WIS: 0 },
+      moves: {
+        bite: { name: "Bite", target: "enemy", text: "Teeth like blackthorn.", effects: [atk("1d6", "pierce")] },
+        lunge: { name: "Lunge", target: "enemy", charge: true, text: "It crouches, charging a lunge for the throat.", effects: [atk("1d10", "pierce")] },
+        howl: { name: "Pack Howl", target: "all-allies", text: "The pack answers: every foe is Hasted.", effects: [status("hasted")] }
+      },
+      table: [[1, 3, "bite"], [4, 5, "lunge"], [6, 6, "howl"]],
+      text: "Lean hunting dogs gone feral in the bramble, burrs matted into their hides."
+    },
+    bandit: {
+      id: "bandit",
+      name: "Bandit",
+      art: "bandit",
+      tier: "veteran",
+      humanoid: true,
+      hp: 26,
+      guard: 15,
+      atk: 4,
+      dmg: 2,
+      speed: 10,
+      armor: "hide",
+      aspect: null,
+      saves: { STR: 2, DEX: 1, CON: 1, WIS: 0 },
+      names: ["Skarn", "Mother Brisk", "Hobb Two-Knives", "Red Aldo", "Jessamy Crook", "Old Tam"],
+      moves: {
+        hack: { name: "Hack", target: "enemy", text: "A workmanlike chop.", effects: [atk("1d6", "slash", { weapon: true })] },
+        "shield-bash": { name: "Shield Bash", target: "enemy", text: "Rim to the jaw: Staggers.", effects: [atk("1d4", "crush", { riders: [status("staggered")] })] },
+        "dirty-trick": { name: "Dirty Trick", target: "enemy", text: "A knee where it counts. Frightened.", effects: [atk("1d4", "crush", { riders: [status("frightened")] })] },
+        "heavy-swing": { name: "Heavy Swing", target: "enemy", charge: true, text: "Winds up a two-handed swing.", effects: [atk("1d6", "slash", { weapon: true, bonusDice: [{ dice: "1d8" }] })] },
+        "second-wind": { name: "Second Wind", target: "self", when: { hpBelow: 0.5 }, fallback: "hack", text: "Spits, steadies, keeps coming.", effects: [{ type: "heal", dice: "1d8", diceEvery: 3 }] }
+      },
+      table: [[1, 3, "hack"], [4, 4, "shield-bash"], [5, 5, "dirty-trick"], [6, 7, "heavy-swing"], [8, 8, "second-wind"]],
+      gear: [
+        [{ base: "hand-axe" }, { base: "hood" }, { base: "jerkin" }],
+        [{ base: "hand-axe" }, { base: "kettle-helm" }, { base: "jerkin" }, { base: "buckler" }],
+        [{ base: "bearded-axe" }, { base: "kettle-helm" }, { base: "chain-shirt" }, { base: "buckler" }],
+        [{ base: "bearded-axe" }, { base: "great-helm" }, { base: "hauberk" }, { base: "heater-shield" }]
+      ],
+      text: "Thornhollow deserters and worse. Every Waking they come back better armed."
+    },
+    tallyman: {
+      id: "tallyman",
+      name: "Tallyman",
+      art: "tallyman",
+      tier: "veteran",
+      humanoid: true,
+      hp: 24,
+      guard: 15,
+      atk: 4,
+      dmg: 2,
+      speed: 12,
+      armor: "hide",
+      aspect: null,
+      saves: { STR: 0, DEX: 2, CON: 1, WIS: 2 },
+      names: ["Sneck", "Quill", "Ledger-Maud", "Hollis Fairweight", "Dun the Counter"],
+      moves: {
+        cut: { name: "Cut", target: "enemy", text: "A clerk's neat, nasty cut.", effects: [atk("1d4", "pierce", { weapon: true })] },
+        "tally-mark": { name: "Tally Mark", target: "enemy", text: "Chalks your name in the ledger. You are Marked.", effects: [status("marked")] },
+        "smoke-pot": { name: "Smoke Pot", target: "all-enemies", text: "Stinking smoke. WIS save or Frightened.", effects: [status("frightened", { save: "WIS" })] },
+        "cheats-cut": { name: "Cheat's Cut", target: "enemy", requires: "tallyknife", fallback: "cut", text: "The Tallyknife collects: 2 stacks of Poisoned.", effects: [atk("1d4", "pierce", { weapon: true, aspect: "blight", bonusDice: [{ dice: "1d4", aspect: "blight" }], riders: [status("poisoned", { stacks: 2 })] })] },
+        "seal-flash": { name: "Seal Flash", target: "all-enemies", requires: "wardens-seal", fallback: "cut", text: "The stolen Seal blazes. 1d6 radiant, DEX save for half.", effects: [{ type: "damage", dice: "1d6", kind: "radiant", aspect: "radiant", save: "DEX" }] }
+      },
+      table: [[1, 3, "cut"], [4, 4, "tally-mark"], [5, 5, "smoke-pot"], [6, 8, "cheats-cut"]],
+      variants: {
+        thief: {
+          name: "Tallyman Thief",
+          hp: 20,
+          guard: 13,
+          atk: 3,
+          table: [[1, 4, "cut"], [5, 6, "tally-mark"], [7, 8, "seal-flash"]]
+        }
+      },
+      gear: [
+        [{ base: "belt-knife" }, { base: "hood" }, { base: "jerkin" }],
+        [{ base: "rondel" }, { base: "hood" }, { base: "jerkin" }],
+        [{ base: "rondel" }, { base: "mail-coif" }, { base: "brigandine" }],
+        [{ base: "rondel" }, { base: "mail-coif" }, { base: "brigandine" }, { base: "gloves" }]
+      ],
+      text: "A relic-thief cult with ink-stained fingers. They keep accounts of everything they steal."
+    },
+    rotstag: {
+      id: "rotstag",
+      name: "The Rot-Stag",
+      art: "rotstag",
+      tier: "relic-bearer",
+      kind: "beast",
+      unique: true,
+      hp: 120,
+      guard: 15,
+      atk: 5,
+      dmg: 2,
+      speed: 11,
+      armor: "hide",
+      aspect: "blight",
+      saves: { STR: 3, DEX: 1, CON: 3, WIS: 1 },
+      relics: ["rotwood-circlet"],
+      moves: {
+        gore: { name: "Gore", target: "enemy", text: "Black antlers, low and fast.", effects: [atk("2d8", "pierce")] },
+        trample: { name: "Trample", target: "all-enemies", text: "It goes through the party like a falling tree.", effects: [atk("1d8", "crush")] },
+        "rot-bellow": { name: "Rot Bellow", target: "all-enemies", text: "A bellow that smells of grave-sap. CON save or Poisoned.", effects: [status("poisoned", { save: "CON" })] },
+        "antler-charge": { name: "Antler Charge", target: "enemy", charge: true, text: "It lowers its head, charging.", effects: [atk("3d8", "pierce", { riders: [status("staggered")] })] },
+        "rotwood-crown": { name: "Rotwood Crown", target: "all-enemies", requires: "rotwood-circlet", fallback: "gore", text: "Black sap weeps from the circlet: 2d6 blight to all, CON save for half, and the Stag drinks it.", effects: [{ type: "damage", dice: "2d6", kind: "blight", aspect: "blight", save: "CON" }, { type: "heal", dice: "1d8", diceEvery: 2, self: true }] }
+      },
+      table: [[1, 4, "gore"], [5, 6, "trample"], [7, 8, "rot-bellow"], [9, 10, "antler-charge"], [11, 12, "rotwood-crown"]],
+      text: "Once the white stag of Fawnrest. The Rot got into its antlers, and something tangled a crown there."
+    },
+    oldsnag: {
+      id: "oldsnag",
+      name: "Old Snag",
+      art: "oldsnag",
+      tier: "relic-bearer",
+      kind: "beast",
+      unique: true,
+      hp: 76,
+      guard: 15,
+      atk: 5,
+      dmg: 3,
+      speed: 10,
+      armor: "hide",
+      aspect: null,
+      resist: ["pierce"],
+      saves: { STR: 4, DEX: 0, CON: 4, WIS: 1 },
+      relics: ["thornsplitter"],
+      moves: {
+        tusk: { name: "Tusk", target: "enemy", text: "A hooking rip of yellow tusk.", effects: [atk("2d8", "slash")] },
+        trample: { name: "Trample", target: "all-enemies", text: "Four hundredweight of boar, going through.", effects: [atk("1d8", "crush")] },
+        bristle: { name: "Bristle", target: "self", text: "Hackles up, head down: it Guards.", effects: [status("guarding")] },
+        wallow: { name: "Wallow", target: "self", when: { hpBelow: 0.6 }, fallback: "tusk", text: "It rolls in the black mud and the wounds close: Regenerating.", effects: [status("regenerating", { value: { dice: "1d6", diceEvery: 3 } })] },
+        "splitting-charge": { name: "Splitting Charge", target: "enemy", requires: "thornsplitter", fallback: "tusk", charge: true, text: "The hatchet in its hide catches the light. It is charging.", effects: [atk("3d8", "slash", { aspect: "verdant", riders: [status("bleeding", { stacks: 2 })] })] }
+      },
+      table: [[1, 4, "tusk"], [5, 6, "trample"], [7, 7, "bristle"], [8, 8, "wallow"], [9, 12, "splitting-charge"]],
+      text: "A boar the size of a cart with a ranger's hatchet buried in its shoulder. It has not forgotten the ranger."
+    },
+    briarmaw: {
+      id: "briarmaw",
+      name: "Briarmaw",
+      art: "briarmaw",
+      tier: "champion",
+      kind: "beast",
+      unique: true,
+      hp: 182,
+      guard: 16,
+      atk: 6,
+      dmg: 3,
+      speed: 12,
+      armor: "chitin",
+      aspect: "verdant",
+      saves: { STR: 4, DEX: 1, CON: 4, WIS: 2 },
+      relics: ["thornwreath", "briarfang"],
+      noFlee: true,
+      moves: {
+        maul: { name: "Maul", target: "enemy", text: "Bark-clad claws the size of shovels.", effects: [atk("2d6", "slash")] },
+        "thorn-volley": { name: "Thorn Volley", target: "all-enemies", text: "It shakes, and thorns fly like arrows.", effects: [atk("1d6", "pierce")] },
+        "call-the-briars": { name: "Call the Briars", target: "self", requires: "thornwreath", fallback: "maul", text: "The thorn-crown pulses and a Briarling tears up out of the floor.", effects: [{ type: "summon", family: "briarling", count: 1, max: 2, levelDelta: -2 }] },
+        "fang-rake": { name: "Fang Rake", target: "enemy", requires: "briarfang", fallback: "maul", text: "The great fang opens you up: Bleeding.", effects: [atk("1d8", "pierce", { riders: [status("bleeding", { stacks: 2 })] })] },
+        "bramble-wall": { name: "Bramble Wall", target: "self", text: "Bramble knits over its hide: Warded.", effects: [status("warded", { value: { dice: "3d6", diceEvery: 3 } })] },
+        rootquake: { name: "Rootquake", target: "all-enemies", text: "The den floor heaves: 2d6 verdant, STR save for half, and you are Rooted.", effects: [{ type: "damage", dice: "2d6", kind: "verdant", aspect: "verdant", save: "STR", riders: [status("rooted")] }] },
+        devour: { name: "Devour", target: "enemy", charge: true, text: "It opens its whole bramble-maw, charging.", effects: [atk("3d8", "pierce")] },
+        thornstorm: { name: "Thornstorm", target: "all-enemies", text: "A storm of thorns: everyone Bleeds.", effects: [atk("1d8", "pierce", { riders: [status("bleeding")] })] }
+      },
+      phases: [
+        { at: 1, text: "Briarmaw uncoils from the den wall.", table: [[1, 7, "maul"], [8, 11, "thorn-volley"], [12, 15, "call-the-briars"], [16, 20, "fang-rake"]] },
+        { at: 0.66, text: "Briarmaw tears itself free of the den wall. The roots under your feet begin to move.", table: [[1, 5, "maul"], [6, 8, "thorn-volley"], [9, 11, "rootquake"], [12, 13, "bramble-wall"], [14, 16, "call-the-briars"], [17, 20, "fang-rake"]] },
+        { at: 0.33, text: "The thorn-crown blazes green. Briarmaw stops holding anything back.", table: [[1, 4, "maul"], [5, 8, "thornstorm"], [9, 12, "devour"], [13, 15, "call-the-briars"], [16, 20, "fang-rake"]] }
+      ],
+      text: "The beast on Captain Dael's bounty board that nobody could name. It wears a crown of thorns that grew there."
+    }
+  });
+  var FOE_IDS = Object.freeze(Object.keys(FOES));
+
+  // src/data/omens.js
+  var OMENS = deepFreeze({
+    emberblooded: {
+      id: "emberblooded",
+      name: "Emberblooded",
+      color: "#e8622c",
+      text: "Its hits set you Burning. Resists ember.",
+      riders: [{ type: "status", status: "burning" }],
+      resist: ["ember"]
+    },
+    thornskinned: {
+      id: "thornskinned",
+      name: "Thornskinned",
+      color: "#5dbb4f",
+      text: "Reflects a quarter of melee damage back at the attacker.",
+      reflect: 0.25
+    },
+    twinned: {
+      id: "twinned",
+      name: "Twinned",
+      color: "#b9a6ff",
+      text: "Splits into two at half health.",
+      split: 0.5,
+      notFor: ["champion"]
+    },
+    frenzied: {
+      id: "frenzied",
+      name: "Frenzied",
+      color: "#d23b3b",
+      text: "Below a quarter of its health it acts twice as often.",
+      frenzyBelow: 0.25
+    },
+    ironclad: {
+      id: "ironclad",
+      name: "Ironclad",
+      color: "#9aa4ad",
+      text: "+2 Guard, and its grip is half again as strong.",
+      guard: 2,
+      gripMult: 1.5
+    },
+    swift: {
+      id: "swift",
+      name: "Swift",
+      color: "#f4d35e",
+      text: "+4 speed: it acts sooner and more often.",
+      speed: 4
+    }
+  });
+  var OMEN_IDS = Object.freeze(Object.keys(OMENS));
+
+  // src/rules/foe.js
+  var GEAR_RARITY = Object.freeze(["worn", "wrought", "tempered", "runed"]);
+  function familyOf(spawn) {
+    const fam = FOES[spawn.family];
+    if (!fam) throw new Error(`Unknown foe family: ${spawn.family}`);
+    const v = spawn.variant && fam.variants?.[spawn.variant];
+    return v ? { ...fam, ...v } : fam;
+  }
+  var scale = (base, every, level) => base + Math.floor((level - 1) / every);
+  function visibleGear(fam, spawn) {
+    if (!fam.gear) return [];
+    const tier = Math.min(3, spawn.gearTier || 0);
+    const rarity = GEAR_RARITY[tier];
+    const gear = fam.gear[tier].map((g) => ({ base: g.base, kind: ITEMS[g.base].kind, slot: ITEMS[g.base].slot, rarity }));
+    const worn = spawn.wears && RELICS[spawn.wears];
+    if (worn) {
+      const i = gear.findIndex((g) => g.slot === worn.slot);
+      const piece = { base: worn.id, kind: worn.kind, slot: worn.slot, rarity: worn.rarity, relic: worn.id };
+      if (i >= 0) gear[i] = piece;
+      else gear.push(piece);
+    }
+    return gear;
+  }
+  function heldPieces(fam, spawn) {
+    const L = spawn.level;
+    const ironclad = (spawn.omens || []).reduce((m, o) => m * (OMENS[o]?.gripMult || 1), 1);
+    const gripFor = (base) => Math.round(base * (1 + 0.1 * (L - 1)) * ironclad);
+    const list = spawn.held || (spawn.relic ? [spawn.relic] : fam.relics || []).map((relic) => ({ relic }));
+    return list.map((h) => {
+      const max = gripFor(h.relic ? RELICS[h.relic].grip || 20 : 20);
+      return { relic: h.relic || null, item: h.item || null, grip: max, max, held: true };
+    });
+  }
+  function buildFoe(spawn, { id, seq = 0, name } = {}) {
+    const fam = familyOf(spawn);
+    const L = Math.max(1, spawn.level || 1);
+    const F = TUNING.foe;
+    const omens = [...spawn.omens || []];
+    const gt = fam.humanoid ? Math.min(3, spawn.gearTier || 0) : 0;
+    const om = omens.map((o) => OMENS[o]).filter(Boolean);
+    const gear = visibleGear(fam, spawn);
+    const weaponBase = gear.find((g) => g.slot === "weapon" && ITEMS[g.base]);
+    const bodyBase = gear.find((g) => g.slot === "body");
+    const bodyArmor = bodyBase && (ITEMS[bodyBase.base]?.armor || RELICS[bodyBase.base]?.armor);
+    const hp = Math.round(fam.hp * (1 + F.hpPerLevel * (L - 1)) * (1 + F.gearHp * gt) * (1 + F.omenHp * om.length));
+    const rewards = 1 + F.omenReward * om.length;
+    const saves = {};
+    for (const [k, v] of Object.entries(fam.saves || {})) saves[k] = scale(v, F.saveEvery, L);
+    const speed = fam.speed + om.reduce((a, o) => a + (o.speed || 0), 0);
+    const R2 = TUNING.ribbon;
+    const displayName = [name || spawn.name || fam.name, spawn.title].filter(Boolean).join(" ");
+    return {
+      id,
+      seq,
+      side: "foe",
+      family: fam.id,
+      variant: spawn.variant || null,
+      art: fam.art,
+      name: displayName,
+      tier: fam.tier,
+      level: L,
+      gearTier: gt,
+      omens,
+      hp,
+      maxHp: hp,
+      guard: scale(fam.guard, F.guardEvery, L) + gt + om.reduce((a, o) => a + (o.guard || 0), 0),
+      atk: scale(fam.atk, F.atkEvery, L) + gt,
+      dmg: scale(fam.dmg, F.dmgEvery, L),
+      speed,
+      delay: Math.max(R2.minDelay, R2.baseDelay - (speed - 10) * R2.speedDelay),
+      armor: bodyArmor?.type || fam.armor || "none",
+      aspect: fam.aspect || null,
+      weak: [...fam.weak || []],
+      resist: [...fam.resist || [], ...om.flatMap((o) => o.resist || [])],
+      immune: [...fam.immune || []],
+      saves,
+      statuses: [],
+      next: 0,
+      ko: false,
+      gone: false,
+      die: FOE_TIERS[fam.tier].die,
+      intent: null,
+      queue: [],
+      held: heldPieces(fam, spawn),
+      phase: 1,
+      gear,
+      weapon: weaponBase ? { dice: ITEMS[weaponBase.base].dice, dmg: ITEMS[weaponBase.base].dmg } : null,
+      xp: Math.round(TUNING.xp.tier[fam.tier] * L * rewards),
+      gold: Math.round(TUNING.gold.tier[fam.tier] * L * rewards),
+      grudge: spawn.grudge || null,
+      wears: spawn.wears || null,
+      summonedBy: spawn.summonedBy || null,
+      noLoot: !!spawn.noLoot,
+      spawnIndex: spawn.spawnIndex ?? null
+    };
+  }
+
+  // src/rules/ai.js
+  var alive = (u) => u && !u.ko && !u.gone;
+  var unitsOf = (s, side) => s.order.map((id) => s.units[id]).filter((u) => u.side === side);
+  var hasStatus = (u, id) => u.statuses.some((st) => st.id === id);
+  function familyData(foe) {
+    const fam = FOES[foe.family];
+    const v = foe.variant && fam.variants?.[foe.variant];
+    return v ? { ...fam, ...v } : fam;
+  }
+  function foeTable(foe) {
+    const fam = familyData(foe);
+    return fam.phases ? fam.phases[(foe.phase || 1) - 1].table : fam.table;
+  }
+  var holds = (foe, relicId) => foe.held.some((p) => p.held && (p.relic === relicId || p.item?.base === relicId));
+  function usable(s, foe, move) {
+    if (!move) return false;
+    if (move.requires && !holds(foe, move.requires)) return false;
+    if (move.when?.hpBelow && foe.hp / foe.maxHp >= move.when.hpBelow) return false;
+    const summon = move.effects.find((e) => e.type === "summon");
+    if (summon) {
+      const up = Object.values(s.units).filter((u) => alive(u) && u.summonedBy === foe.id).length;
+      if (up >= summon.max) return false;
+    }
+    return true;
+  }
+  function resolveMoveId(s, foe, moveId) {
+    const moves = familyData(foe).moves;
+    let id = moveId;
+    for (let i = 0; i < 4 && !usable(s, foe, moves[id]); i++) id = moves[id]?.fallback || Object.keys(moves)[0];
+    return id;
+  }
+  function stepDownDie(die) {
+    const i = DIE_STEPS.indexOf(die);
+    return i > 0 ? DIE_STEPS[i - 1] : die;
+  }
+  function chooseTarget(s, foe, move, rng) {
+    if (move.target === "self") return foe.id;
+    if (move.target === "all-enemies" || move.target === "all-allies") return null;
+    if (move.target === "ally") {
+      const allies = unitsOf(s, "foe").filter(alive);
+      return allies.sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0]?.id || foe.id;
+    }
+    const heroes = unitsOf(s, "hero").filter(alive);
+    if (!heroes.length) return null;
+    const prov = foe.statuses.find((st) => st.id === "provoked");
+    if (prov && heroes.some((h) => h.id === prov.source)) return prov.source;
+    const entries = heroes.map((h) => {
+      let w = 1;
+      const frac2 = h.hp / h.maxHp;
+      if (frac2 < 0.35) w *= 2.5;
+      else if (frac2 < 0.6) w *= 1.4;
+      if (HEROES[h.heroId]?.skills.some((sk) => sk.id === "mend")) w *= 1.4;
+      if (hasStatus(h, "marked")) w *= 3;
+      if (hasStatus(h, "guarding")) w *= 0.5;
+      return { v: h.id, w };
+    });
+    return weightedPick(rng, entries);
+  }
+  function intentText(face, move, target) {
+    return `${face}: ${move.name}${move.charge ? ", charging" : ""}${target ? ` at ${target}` : ""}`;
+  }
+  function rollIntent(s, foe, rng) {
+    const face = rng.int(1, foe.die);
+    const row = foeTable(foe).find(([lo, hi]) => face >= lo && face <= hi) || foeTable(foe)[0];
+    const moveId = resolveMoveId(s, foe, row[2]);
+    const move = familyData(foe).moves[moveId];
+    const target = chooseTarget(s, foe, move, rng);
+    const targetName = target && target !== foe.id ? s.units[target]?.name : null;
+    return {
+      die: foe.die,
+      face,
+      move: moveId,
+      name: move.name,
+      target,
+      charging: !!move.charge,
+      text: intentText(face, move, targetName)
+    };
+  }
+  function intentEvent(foe) {
+    const it = foe.intent;
+    return { t: "intent", foe: foe.id, die: it.die, face: it.face, move: it.move, name: it.name, text: it.text, target: it.target, charging: it.charging };
+  }
+  function refreshIntent(s, foe, intent, rng) {
+    const moveId = resolveMoveId(s, foe, intent.move);
+    const move = familyData(foe).moves[moveId];
+    let target = intent.target;
+    const needsTarget = move.target === "enemy";
+    if (moveId !== intent.move || needsTarget && !alive(s.units[target])) target = chooseTarget(s, foe, move, rng);
+    const targetName = target && target !== foe.id ? s.units[target]?.name : null;
+    return { ...intent, move: moveId, name: move.name, target, charging: !!move.charge, text: intentText(intent.face, move, targetName) };
+  }
+
+  // src/data/aspects.js
+  var ASPECT_IDS = Object.freeze(["ember", "frost", "storm", "stone", "verdant", "tide", "radiant", "blight"]);
+  var ASPECTS = deepFreeze({
+    ember: {
+      id: "ember",
+      name: "Ember",
+      color: "#e8622c",
+      beats: ["frost", "verdant"],
+      why: { frost: "Fire melts ice.", verdant: "Fire eats the green." },
+      text: "Hearth-heat and forge-fire. Burns."
+    },
+    frost: {
+      id: "frost",
+      name: "Frost",
+      color: "#8fd3f4",
+      beats: ["stone", "storm"],
+      why: { stone: "Ice in a crack splits the rock.", storm: "A hard freeze stills the sky." },
+      text: "Stillwater cold. Chills, then freezes."
+    },
+    storm: {
+      id: "storm",
+      name: "Storm",
+      color: "#b9a6ff",
+      beats: ["tide", "radiant"],
+      why: { tide: "Lightning runs through water.", radiant: "Stormcloud swallows the sun." },
+      text: "Wind and lightning off the Ironspire."
+    },
+    stone: {
+      id: "stone",
+      name: "Stone",
+      color: "#a08c6c",
+      beats: ["ember", "storm"],
+      why: { ember: "Stone smothers flame.", storm: "Stone grounds the lightning." },
+      text: "Cairn-weight. Staggers and breaks grips."
+    },
+    verdant: {
+      id: "verdant",
+      name: "Verdant",
+      color: "#5dbb4f",
+      beats: ["stone", "tide"],
+      why: { stone: "Roots split rock.", tide: "Roots drink the flood." },
+      text: "Root, thorn and green growing things."
+    },
+    tide: {
+      id: "tide",
+      name: "Tide",
+      color: "#2f7fc1",
+      beats: ["ember", "blight"],
+      why: { ember: "Water quenches fire.", blight: "The tide washes rot clean." },
+      text: "Blackwater and the pull of the deep."
+    },
+    radiant: {
+      id: "radiant",
+      name: "Radiant",
+      color: "#ffe9a0",
+      beats: ["blight", "frost"],
+      why: { blight: "Light sears rot.", frost: "The sun thaws the ice." },
+      text: "Holy light of the Fawnrest shrine."
+    },
+    blight: {
+      id: "blight",
+      name: "Blight",
+      color: "#7a4f8f",
+      beats: ["verdant", "radiant"],
+      why: { verdant: "Rot eats the green.", radiant: "Rot gutters holy light." },
+      text: "The Whispering Rot. Poisons."
+    }
+  });
+  var ASPECT_MULT = Object.freeze({ strong: 1.5, weak: 0.5, same: 0.5 });
+  var PHYSICAL_KINDS = Object.freeze(["slash", "pierce", "crush"]);
+  var ARMOR_TYPES = Object.freeze(["none", "hide", "mail", "plate", "chitin"]);
+  var ARMOR_CHART = deepFreeze({
+    slash: { none: 1, hide: 1.25, mail: 0.75, plate: 0.75, chitin: 1 },
+    pierce: { none: 1, hide: 1, mail: 1.25, plate: 1, chitin: 0.75 },
+    crush: { none: 1, hide: 0.75, mail: 1, plate: 1.25, chitin: 1.25 }
+  });
+
+  // src/rules/combat.js
+  var T = TUNING;
+  var TIER_DC = { rabble: 0, veteran: 1, "relic-bearer": 2, champion: 3 };
+  var statusOf = (u, id) => u.statuses.find((st) => st.id === id);
+  var anyStatus = (u, key) => u.statuses.some((st) => STATUSES[st.id]?.[key]);
+  var levelOf = (u) => u.level || 1;
+  var modOf = (u, stat) => stat && u.mods ? u.mods[stat] || 0 : 0;
+  function effGuard(u) {
+    return u.guard + u.statuses.reduce((a, st) => a + (STATUSES[st.id]?.guard || 0), 0);
+  }
+  function saveDC(u) {
+    return u.side === "hero" ? u.stats.dc : 10 + Math.floor(u.level / 2) + (TIER_DC[u.tier] || 0);
+  }
+  function saveBonus(u, ability) {
+    return u.side === "hero" ? modOf(u, ability) + u.stats.prof : u.saves?.[ability] || 0;
+  }
+  function aspectMult(attack, defend) {
+    if (!attack || !defend || !ASPECTS[attack] || !ASPECTS[defend]) return 1;
+    if (ASPECTS[attack].beats.includes(defend)) return ASPECT_MULT.strong;
+    if (ASPECTS[defend].beats.includes(attack) || attack === defend) return ASPECT_MULT.weak;
+    return 1;
+  }
+  function damageMult(t, kind, aspect) {
+    let m = 1;
+    if (PHYSICAL_KINDS.includes(kind)) m *= ARMOR_CHART[kind][t.armor || "none"] ?? 1;
+    m *= aspectMult(aspect, t.aspect);
+    for (const k of new Set([kind, aspect].filter(Boolean))) {
+      if (t.immune?.includes(k)) return 0;
+      if (t.weak?.includes(k)) m *= 1.5;
+      if (t.resist?.includes(k)) m *= 0.5;
+    }
+    const pct = t.side === "hero" ? (t.stats.resist[aspect] || 0) + (aspect !== kind ? t.stats.resist[kind] || 0 : 0) : 0;
+    return m * (1 - clamp(pct, 0, 60) / 100);
+  }
+  var effLabel = (m) => m === 0 ? "immune" : m > 1.05 ? "weak" : m < 0.95 ? "resist" : "normal";
+  function addSurge(B, u, amount) {
+    if (!u || u.side !== "hero" || !amount) return;
+    const gain = amount * (1 + (u.stats.surgeGain || 0) / 100);
+    u.surge = clamp(Math.round(u.surge + gain), 0, T.surge.max);
+    B.touched.add(u.id);
+  }
+  function addStatus(B, t, id, { stacks = 1, turns, value, source } = {}) {
+    const def = STATUSES[id];
+    if (!def || !alive(t)) return false;
+    if (t.stats?.immune?.includes(id) || t.immune?.includes(id)) {
+      B.ev.push({ t: "text", text: `${t.name} shrugs off ${def.name}.` });
+      return false;
+    }
+    const dur = turns ?? def.turns ?? null;
+    let st = statusOf(t, id);
+    if (st) {
+      st.stacks = Math.min(def.maxStacks || 1, st.stacks + stacks);
+      st.turns = dur == null ? null : Math.max(st.turns ?? 0, dur);
+      if (value != null) st.value = Math.max(st.value || 0, value);
+      if (source) st.source = source;
+    } else {
+      st = { id, stacks: Math.min(def.maxStacks || 1, stacks), turns: dur, value: value ?? null, source: source || null };
+      t.statuses.push(st);
+    }
+    B.ev.push({ t: "status", target: t.id, status: id, op: "add", stacks: st.stacks, turns: st.turns, value: st.value });
+    if (def.atMax && st.stacks >= def.maxStacks) {
+      removeStatus(B, t, id);
+      addStatus(B, t, def.atMax, { source });
+    }
+    if (def.push) t.next += def.push;
+    if (def.breaksCharge && t.intent?.charging && !t.intent.cancelled) {
+      t.intent.cancelled = true;
+      B.ev.push({ t: "text", text: `${t.name}'s ${t.intent.name} is broken off!` });
+    }
+    return true;
+  }
+  function removeStatus(B, t, id, op = "remove") {
+    const i = t.statuses.findIndex((st2) => st2.id === id);
+    if (i < 0) return;
+    const [st] = t.statuses.splice(i, 1);
+    B.ev.push({ t: "status", target: t.id, status: id, op, stacks: 0, turns: 0, was: st.stacks });
+  }
+  function applyHeal(B, t, amount, extra = {}) {
+    if (!alive(t) || amount <= 0) return 0;
+    const before = t.hp;
+    t.hp = Math.min(t.maxHp, t.hp + amount);
+    B.ev.push({ t: "heal", target: t.id, amount: t.hp - before, hp: t.hp, ...extra });
+    return t.hp - before;
+  }
+  function knockOut(B, t, src) {
+    t.hp = 0;
+    t.ko = true;
+    t.statuses = [];
+    B.ev.push({ t: "ko", target: t.id });
+    if (src && src.side === "hero" && t.side === "foe") {
+      addSurge(B, src, T.surge.kill);
+      B.s.kills[src.id] = (B.s.kills[src.id] || 0) + 1;
+    }
+  }
+  function dealDamage(B, src, t, raw, info) {
+    let amount = Math.max(0, Math.round(raw));
+    const guarding = statusOf(t, "guarding");
+    if (guarding && amount) amount = Math.ceil(amount * STATUSES.guarding.damageMult);
+    const frozen = statusOf(t, "frozen");
+    if (frozen && info.kind === "crush" && amount) {
+      amount = Math.round(amount * STATUSES.frozen.crushMult);
+      removeStatus(B, t, "frozen", "trigger");
+    }
+    let absorbed = 0;
+    const ward = statusOf(t, "warded");
+    if (ward && amount) {
+      absorbed = Math.min(ward.value || 0, amount);
+      ward.value -= absorbed;
+      amount -= absorbed;
+      if (ward.value <= 0) removeStatus(B, t, "warded");
+    }
+    t.hp = Math.max(0, t.hp - amount);
+    B.ev.push({
+      t: "damage",
+      target: t.id,
+      actor: src?.id || null,
+      amount,
+      dice: info.dice || [],
+      flat: info.flat || 0,
+      aspect: info.aspect || null,
+      kind: info.kind || "crush",
+      eff: info.eff || "normal",
+      crit: !!info.crit,
+      graze: !!info.graze,
+      absorbed,
+      hp: t.hp
+    });
+    if (t.side === "hero" && amount) addSurge(B, t, T.surge.takenPct * amount / t.maxHp);
+    if (t.hp === 0) knockOut(B, t, src);
+    else if (t.side === "foe") afterFoeHurt(B, t);
+    return amount;
+  }
+  function afterFoeHurt(B, t) {
+    const phases = familyData(t).phases;
+    if (phases) {
+      const frac2 = t.hp / t.maxHp;
+      let p = (t.phase || 1) - 1;
+      while (p + 1 < phases.length && frac2 <= phases[p + 1].at) p++;
+      if (p + 1 > (t.phase || 1)) {
+        t.phase = p + 1;
+        B.ev.push({ t: "phase", foe: t.id, phase: t.phase, text: phases[p].text });
+      }
+    }
+    if (t.omens.includes("twinned") && !t.split && t.hp <= t.maxHp * OMENS.twinned.split) splitTwin(B, t);
+  }
+  function splitTwin(B, t) {
+    t.split = true;
+    t.omens = t.omens.filter((o) => o !== "twinned");
+    const s = B.s;
+    const id = `f${++s.nextId}`;
+    const twin = { ...structuredClone(t), id, seq: s.seq++, held: [], gear: [], noLoot: true, xp: Math.round(t.xp / 2), gold: 0 };
+    twin.name = `${t.name} (twin)`;
+    twin.next = s.time + Math.round(twin.delay * 0.5);
+    twin.queue = [];
+    s.units[id] = twin;
+    s.order.push(id);
+    twin.intent = rollIntent(s, twin, B.rng);
+    B.ev.push({ t: "spawn", foe: id, family: twin.family, from: t.id, name: twin.name, text: `${t.name} splits in two!` });
+    B.ev.push(intentEvent(twin));
+  }
+  function pickPiece(t, relic) {
+    const held = (t.held || []).filter((p) => p.held);
+    return held.find((p) => relic && (p.relic === relic || p.item?.base === relic)) || held[0] || null;
+  }
+  var pieceName = (p) => p.relic ? RELICS[p.relic].name : p.item?.name || "relic";
+  function applyGrip(B, src, t, { crush = 0, dice = null, stat = null, crit = false, relic = null }) {
+    const piece = alive(t) ? pickPiece(t, relic) : null;
+    if (!piece) return;
+    let g = Math.floor(crush * T.grip.crushMult);
+    if (dice) g += rollExpr(B.rng, dice).total + modOf(src, stat);
+    if (crit) g += Math.ceil(piece.max * T.grip.critPct);
+    if (g <= 0) return;
+    g += src?.stats?.gripDmg || 0;
+    const from = piece.grip;
+    piece.grip = Math.max(0, from - g);
+    B.ev.push({ t: "grip", target: t.id, relic: piece.relic || piece.item?.base, from, to: piece.grip, max: piece.max });
+    if (piece.grip === 0) disarm(B, src, t, piece);
+  }
+  function disarm(B, src, t, piece) {
+    piece.held = false;
+    piece.by = src?.id || null;
+    const relic = piece.relic || piece.item?.base;
+    B.ev.push({ t: "disarm", target: t.id, relic });
+    const moves = familyData(t).moves;
+    const arts = Object.values(moves).filter((m) => m.requires === relic).map((m) => m.name);
+    B.ev.push({ t: "text", text: `${pieceName(piece)} clatters loose!${arts.length ? ` ${t.name} loses ${arts.join(" and ")}.` : ""}` });
+    if (t.tier === "relic-bearer") t.die = stepDownDie(t.die);
+    if (t.intent && moves[t.intent.move]?.requires === relic) {
+      t.intent = rollIntent(B.s, t, B.rng);
+      B.ev.push(intentEvent(t));
+    }
+    t.queue = t.queue.map((q) => refreshIntent(B.s, t, q, B.rng));
+  }
+  function attackBonus(a, eff) {
+    if (a.side === "foe") return a.atk + (eff.hit || 0);
+    if (eff.weapon) return a.stats.weapon.hit + (eff.hit || 0);
+    return a.stats.prof + modOf(a, eff.stat) + a.stats.hitOther + (eff.hit || 0);
+  }
+  function foeWeaponDice(a) {
+    const relicWeapon = a.held.find((p) => p.held && p.relic && RELICS[p.relic].weapon);
+    return relicWeapon ? RELICS[relicWeapon.relic].weapon.dice : a.weapon?.dice;
+  }
+  function attackParts(a, t, eff) {
+    const hero = a.side === "hero";
+    const w = hero ? a.stats.weapon : null;
+    const parts = [];
+    const base = eff.weapon ? hero ? w.dice : foeWeaponDice(a) || eff.dice : eff.dice;
+    parts.push({ expr: base || "1d4", every: eff.diceEvery || (hero ? 0 : T.foe.diceEvery) });
+    for (const b of eff.bonusDice || []) parts.push({ expr: b.dice, aspect: b.aspect });
+    if (hero && eff.weapon) for (const x of w.extra) parts.push({ expr: x.dice, aspect: x.aspect });
+    if (hero && t.hp <= t.maxHp / 2) for (const d of a.stats.vsHurt) parts.push({ expr: d });
+    if (hero && ["marked", "rooted", "frozen", "staggered"].some((id) => statusOf(t, id))) for (const d of a.stats.vsUnaware) parts.push({ expr: d });
+    return parts;
+  }
+  function attackFlat(a, eff) {
+    if (a.side === "foe") return a.dmg;
+    if (eff.weapon) return a.stats.weapon.flat;
+    return (eff.noMod ? 0 : modOf(a, eff.stat)) + a.stats.dmgOther;
+  }
+  function attackKindAspect(a, eff) {
+    const w = a.side === "hero" ? a.stats.weapon : null;
+    const kind = eff.kind || (eff.weapon && w ? w.dmg : null) || "crush";
+    const aspect = eff.aspect || eff.bonusDice?.find((b) => b.aspect)?.aspect || (eff.weapon && w ? w.aspect : null) || null;
+    return { kind, aspect };
+  }
+  function rollAttack(B, a, t, eff) {
+    const adv = !!eff.adv || anyStatus(t, "attackersAdv");
+    const dis = anyStatus(a, "attackDis");
+    const r = rollD20(B.rng, { adv, dis });
+    const bonus = attackBonus(a, eff);
+    const vs = effGuard(t);
+    const total = r.kept + bonus;
+    const critAt = a.side === "hero" ? a.stats.critRange : 20;
+    let result;
+    if (r.kept === 1) result = "fumble";
+    else if (r.kept >= critAt) result = "crit";
+    else if (total >= vs) result = "hit";
+    else if (vs - total <= T.attack.grazeWindow) result = "graze";
+    else result = "miss";
+    B.ev.push({ t: "roll", actor: a.id, target: t.id, purpose: "attack", die: 20, rolls: r.rolls, kept: r.kept, bonus, total, vs, result, adv, dis });
+    return result;
+  }
+  function resolveAttack(B, a, t, eff) {
+    const result = eff.autoCrit ? "crit" : rollAttack(B, a, t, eff);
+    if (result === "fumble") {
+      a.fumbled = true;
+      B.ev.push({ t: "text", text: `${a.name} fumbles and loses their footing.` });
+    }
+    if (result === "miss" || result === "fumble") return result;
+    const crit = result === "crit";
+    const graze = result === "graze";
+    const { kind, aspect } = attackKindAspect(a, eff);
+    const dice = [];
+    let sum = 0;
+    for (const p of attackParts(a, t, eff)) {
+      const r = rollTerms(B.rng, scaledTerms(p.expr, levelOf(a), p.every).terms, crit ? T.attack.critDiceMult : 1);
+      for (const d of r.dice) dice.push(p.aspect ? { ...d, aspect: p.aspect } : d);
+      sum += r.total;
+    }
+    const flat = attackFlat(a, eff) + (statusOf(t, "marked") ? STATUSES.marked.bonusDmg : 0);
+    let raw = Math.max(1, sum + flat) * (eff.mult || 1);
+    if (graze) raw *= T.attack.grazeMult;
+    const m = damageMult(t, kind, aspect);
+    const final = m === 0 ? 0 : Math.max(1, Math.round(raw * m));
+    const dealt = dealDamage(B, a, t, final, { dice, flat, kind, aspect, eff: effLabel(m), crit, graze });
+    if (a.side === "hero") addSurge(B, a, crit ? T.surge.crit : graze ? T.surge.graze : T.surge.hit);
+    if (kind === "crush" || eff.grip || crit) applyGrip(B, a, t, { crush: kind === "crush" ? dealt : 0, dice: eff.grip, stat: eff.gripStat, crit, relic: B.relic });
+    if (!graze && alive(t)) {
+      for (const rider of eff.riders || []) applyEffect(B, a, t, rider);
+      if (a.side === "foe") for (const o of a.omens) for (const rider of OMENS[o]?.riders || []) applyEffect(B, a, t, rider);
+    }
+    reflectThorns(B, a, t, eff, dealt);
+    return result;
+  }
+  function reflectThorns(B, a, t, eff, dealt) {
+    if (!dealt || !t.omens?.includes("thornskinned") || !alive(a)) return;
+    const ranged = eff.ranged || a.side === "hero" && eff.weapon && a.stats.weapon.ranged;
+    if (ranged) return;
+    const back = Math.max(1, Math.floor(dealt * OMENS.thornskinned.reflect));
+    dealDamage(B, t, a, back, { kind: "pierce", aspect: "verdant", eff: "normal" });
+  }
+  function savingThrow(B, t, ability, dc, src) {
+    const r = rollD20(B.rng);
+    const bonus = saveBonus(t, ability);
+    const total = r.kept + bonus;
+    const ok = r.kept === 20 || r.kept !== 1 && total >= dc;
+    B.ev.push({ t: "roll", actor: t.id, target: src?.id || null, purpose: "save", ability, die: 20, rolls: r.rolls, kept: r.kept, bonus, total, vs: dc, result: ok ? "save" : "fail", adv: false, dis: false });
+    return ok;
+  }
+  function resolveDamage(B, a, t, eff) {
+    const saved = eff.save ? savingThrow(B, t, eff.save, saveDC(a), a) : false;
+    const r = rollExpr(B.rng, eff.dice, levelOf(a), eff.diceEvery || (a.side === "hero" ? 0 : T.foe.diceEvery));
+    const flat = a.side === "hero" ? modOf(a, eff.stat) : Math.floor((a.dmg || 0) / 2);
+    let raw = Math.max(1, r.total + flat);
+    if (saved) raw = Math.floor(raw / 2);
+    const kind = eff.kind || eff.aspect || "crush";
+    const m = damageMult(t, kind, eff.aspect);
+    const final = m === 0 ? 0 : Math.max(1, Math.round(raw * m));
+    const dealt = dealDamage(B, a, t, final, { dice: r.dice.map((d) => ({ ...d, aspect: eff.aspect || void 0 })), flat, kind, aspect: eff.aspect, eff: effLabel(m) });
+    if (a.side === "hero") addSurge(B, a, T.surge.graze);
+    if (kind === "crush") applyGrip(B, a, t, { crush: dealt, relic: B.relic });
+    if (!saved && alive(t)) for (const rider of eff.riders || []) applyEffect(B, a, t, rider);
+  }
+  function resolveHeal(B, a, t, eff) {
+    const r = eff.dice ? rollExpr(B.rng, eff.dice, levelOf(a), eff.diceEvery) : { total: 0, dice: [] };
+    let amt = r.total + modOf(a, eff.stat) + (eff.pct ? Math.round(t.maxHp * eff.pct) : 0);
+    if (a.side === "hero") amt = Math.round(amt * (1 + (a.stats.healBonus || 0) / 100));
+    const healed = applyHeal(B, t, Math.max(1, amt), { dice: r.dice, actor: a.id });
+    if (a.side === "hero" && a !== t && healed) addSurge(B, a, T.surge.healGiven);
+  }
+  function resolveStatus(B, a, t, eff) {
+    if (eff.save && savingThrow(B, t, eff.save, saveDC(a), a)) return;
+    let value;
+    if (eff.value) value = rollExpr(B.rng, eff.value.dice, levelOf(a), eff.value.diceEvery).total + modOf(a, eff.value.stat);
+    addStatus(B, t, eff.status, { stacks: eff.stacks || 1, turns: eff.turns, value, source: a.id });
+  }
+  function resolveCleanse(B, t, eff) {
+    const ids = eff.statuses || t.statuses.filter((st) => STATUSES[st.id]?.harmful).slice(0, eff.harmful || 1).map((st) => st.id);
+    for (const id of ids) if (statusOf(t, id)) removeStatus(B, t, id);
+  }
+  function resolveRevive(B, t, eff) {
+    if (!t.ko || t.gone) return;
+    t.ko = false;
+    t.hp = Math.max(1, Math.round(t.maxHp * (eff.pct || 0.25)));
+    t.statuses = [];
+    t.next = B.s.time + Math.round(t.delay * 0.5);
+    B.ev.push({ t: "revive", target: t.id, hp: t.hp });
+    B.ev.push({ t: "heal", target: t.id, amount: t.hp, hp: t.hp });
+  }
+  function resolveReveal(B, t, eff) {
+    const foes = eff.all ? B.s.order.map((id) => B.s.units[id]).filter((u) => u.side === "foe" && alive(u)) : [t];
+    for (const f of foes) {
+      if (f.side !== "foe") continue;
+      f.analyzed = true;
+      while (f.queue.length < (eff.ahead || 1)) {
+        f.queue.push(rollIntent(B.s, f, B.rng));
+        B.ev.push({ ...intentEvent({ ...f, intent: f.queue[f.queue.length - 1] }), queued: true, index: f.queue.length });
+      }
+    }
+  }
+  function resolveSummon(B, a, eff) {
+    const s = B.s;
+    for (let i = 0; i < (eff.count || 1); i++) {
+      const up = Object.values(s.units).filter((u2) => alive(u2) && u2.summonedBy === a.id).length;
+      if (up >= (eff.max || 2)) return;
+      const id = `f${++s.nextId}`;
+      const u = buildFoe({ family: eff.family, level: Math.max(1, a.level + (eff.levelDelta || 0)), gearTier: 0, omens: [], summonedBy: a.id, noLoot: true }, { id, seq: s.seq++ });
+      u.xp = 0;
+      u.gold = 0;
+      u.next = s.time + Math.round(u.delay * 0.6);
+      s.units[id] = u;
+      s.order.push(id);
+      u.intent = rollIntent(s, u, B.rng);
+      B.ev.push({ t: "spawn", foe: id, family: u.family, from: a.id, name: u.name, text: `A ${u.name} tears up out of the floor.` });
+      B.ev.push(intentEvent(u));
+    }
+  }
+  function applyEffect(B, a, t, eff) {
+    switch (eff.type) {
+      case "attack":
+        return resolveAttack(B, a, t, eff);
+      case "damage":
+        return resolveDamage(B, a, t, eff);
+      case "heal":
+        return resolveHeal(B, a, t, eff);
+      case "status":
+        return resolveStatus(B, a, t, eff);
+      case "cleanse":
+        return resolveCleanse(B, t, eff);
+      case "revive":
+        return resolveRevive(B, t, eff);
+      case "grip":
+        return applyGrip(B, a, t, { dice: eff.dice, stat: eff.stat, relic: B.relic });
+      case "reveal":
+        return resolveReveal(B, t, eff);
+      case "surge":
+        return addSurge(B, t, eff.amount);
+      case "mp":
+        t.mp = Math.min(t.maxMp, t.mp + eff.amount);
+        return void 0;
+      case "summon":
+        return resolveSummon(B, a, eff);
+      case "escape":
+        a.gone = true;
+        B.ev.push({ t: "escape", foe: a.id, text: `${a.name} breaks and runs.` });
+        return void 0;
+      default:
+        return void 0;
+    }
+  }
+  function runEffects(B, a, effects, targets2) {
+    for (const eff of effects) {
+      const list = eff.self || eff.type === "summon" || eff.type === "escape" ? [a.id] : targets2;
+      for (const id of list) {
+        const t = B.s.units[id];
+        if (!t || t.gone) continue;
+        if (eff.type === "revive" ? !t.ko : t.ko) continue;
+        applyEffect(B, a, t, eff);
+      }
+    }
+  }
+
+  // src/data/names.js
+  var NAMES = deepFreeze({
+    // Worn items get one of these in front of the base name ("Rust-Pitted Hand Axe").
+    worn: ["Rust-Pitted", "Patched", "Notched", "Scuffed", "Hand-Me-Down", "Road-Worn", "Dented", "Frayed"],
+    // Storied proper names are built from two halves ("Ashwick", "Thornsong").
+    first: ["Ash", "Brier", "Cinder", "Dusk", "Ember", "Fen", "Gall", "Hollow", "Iron", "Moss", "Oath", "Rime", "Rook", "Sorrow", "Thorn", "Wick", "Wren", "Yew"],
+    second: ["wick", "song", "fall", "mourn", "ward", "bite", "mere", "thorn", "keep", "call", "hollow", "tooth", "shade", "reach", "vow", "brand"],
+    epithet: ["the Patient", "the Unpaid", "the Last Word", "the Long Road", "the Quiet Oath", "the Second Chance", "the Late Harvest", "the Unforgiven"],
+    places: ["the Hearth Road", "Thornhollow", "Eldergrove", "Mosswatch", "Fawnrest", "the Verdant Wilds", "Briarmaw's den", "the Waymarker Stones"],
+    lore: [
+      "It was somebody's best. It still thinks it is.",
+      "Whoever carried it last carved a name on it, then scratched the name out.",
+      "It hums when the hearth-coals are near, like it remembers being warm.",
+      "Three owners, two graves, one very long walk home.",
+      "It has been lost in the bramble twice and found both times, which says something.",
+      'The Tallymen had it in a ledger under "not yet collected".',
+      "Old Garret swears he saw it in the Mosswatch signal-fire once.",
+      "It is heavier than it looks, and so is the story."
+    ]
+  });
+
+  // src/rules/loot.js
+  var T2 = TUNING.drops;
+  var rankOf = (id) => RARITY_ORDER.indexOf(id);
+  var SLOT_WEIGHT = { weapon: 3, body: 2, head: 2, offhand: 1.5, hands: 1, feet: 1, amulet: 0.8, ring: 0.8 };
+  function newUid(rng) {
+    return `i${rng.int(0, 2 ** 31 - 1).toString(36)}${rng.int(0, 2 ** 31 - 1).toString(36)}`;
+  }
+  function rarityWeights(luck = 0) {
+    return RANDOM_RARITIES.map((id, i) => ({ v: id, w: RARITY[id].dropWeight * Math.pow(1 + Math.max(0, luck), i * T2.luckCurve) }));
+  }
+  function rollRarity(rng, luck = 0, { min = "worn", max = "storied" } = {}) {
+    const lo = rankOf(min), hi = Math.min(rankOf(max), rankOf("storied"));
+    const entries = rarityWeights(luck).filter((e) => rankOf(e.v) >= lo && rankOf(e.v) <= hi);
+    return weightedPick(rng, entries.length ? entries : [{ v: min, w: 1 }]);
+  }
+  function bumpRarity(id, n = 1) {
+    const r = rankOf(id);
+    if (r >= rankOf("storied")) return id;
+    return RARITY_ORDER[Math.min(rankOf("storied"), r + n)];
+  }
+  function pickBase(rng, { slot, kind, ilvl = 1 } = {}) {
+    const chosenSlot = slot || (kind ? null : weightedPick(rng, Object.entries(SLOT_WEIGHT).map(([v, w]) => ({ v, w }))));
+    const pool = Object.values(ITEMS).filter((b) => (!chosenSlot || b.slot === chosenSlot) && (!kind || b.kind === kind) && b.minIlvl <= Math.max(1, ilvl));
+    return weightedPick(rng, pool.map((b) => ({ v: b.id, w: 1 + b.minIlvl / 3 }))) || "belt-knife";
+  }
+  function affixValue(rng, a, rarityId, ilvl) {
+    const roll = rng.int(a.range[0], a.range[1]);
+    let v = Math.round(roll * RARITY[rarityId].statMult) + Math.floor(ilvl * (a.perLevel || 0));
+    if (["extraDice", "vsHurt", "vsUnaware"].includes(a.stat)) v = Math.min(v, 6);
+    return v;
+  }
+  function rollAffixes(rng, base, rarityId, ilvl) {
+    const rank = rankOf(rarityId);
+    const want = RARITY[rarityId].affixes;
+    const out = [];
+    const groups = /* @__PURE__ */ new Set();
+    const count = { prefix: 0, suffix: 0 };
+    for (let k = 0; k < want; k++) {
+      const pool = Object.values(AFFIXES).filter((a2) => a2.slots.includes(base.slot) && a2.minTier <= rank && !out.some((o) => o.id === a2.id) && !(a2.group && groups.has(a2.group)) && count[a2.type] < 2);
+      if (!pool.length) break;
+      const a = rng.pick(pool);
+      out.push({ id: a.id, value: affixValue(rng, a, rarityId, ilvl) });
+      if (a.group) groups.add(a.group);
+      count[a.type]++;
+    }
+    return out;
+  }
+  function itemAspect(base, affixes) {
+    for (const { id } of affixes) {
+      const a = AFFIXES[id];
+      if (a.aspect && (a.stat === "extraDice" || a.stat === "resist" && base.slot !== "weapon")) return a.aspect;
+    }
+    return null;
+  }
+  function itemName(rng, base, rarityId, affixes) {
+    if (rarityId === "worn") return `${rng.pick(NAMES.worn)} ${base.name}`;
+    if (rarityId === "storied") return `${rng.pick(NAMES.first)}${rng.pick(NAMES.second)}, ${rng.pick(NAMES.epithet)}`;
+    const pre = affixes.map((x) => AFFIXES[x.id]).find((a) => a.type === "prefix");
+    const suf = affixes.map((x) => AFFIXES[x.id]).find((a) => a.type === "suffix");
+    return [pre?.name, base.name, suf?.name].filter(Boolean).join(" ");
+  }
+  function generateItem(rng, { base, slot, kind, rarity, ilvl = 1, luck = 0, provenance = {}, stamp } = {}) {
+    const b = ITEMS[base] || ITEMS[pickBase(rng, { slot, kind, ilvl })];
+    const r = rarity || rollRarity(rng, luck);
+    const affixes = rollAffixes(rng, b, r, ilvl);
+    const aspect = itemAspect(b, affixes);
+    const item = {
+      uid: newUid(rng),
+      base: b.id,
+      kind: b.kind,
+      slot: b.slot,
+      rarity: r,
+      ilvl,
+      name: itemName(rng, b, r, affixes),
+      aspect,
+      affixes,
+      gems: [],
+      temper: 0,
+      seed: rng.int(1, 2 ** 31 - 1),
+      provenance: { from: provenance.from || null, where: provenance.where || null, day: provenance.day || 1 },
+      chronicle: { kills: 0 }
+    };
+    if (r === "storied") {
+      item.unidentified = true;
+      item.lore = `Taken from ${provenance.from || "a stranger"} at ${provenance.where || rng.pick(NAMES.places)}. ${rng.pick(NAMES.lore)}`;
+      item.power = STORIED_POWERS[aspect || "none"].id;
+    }
+    if (stamp) item.stamp = stamp;
+    return item;
+  }
+  function relicItem(relicId, rng, provenance = {}) {
+    const r = RELICS[relicId];
+    return {
+      uid: newUid(rng),
+      base: r.id,
+      kind: r.kind,
+      slot: r.slot,
+      rarity: r.rarity,
+      ilvl: r.ilvl,
+      name: r.name,
+      aspect: r.aspect || null,
+      affixes: [],
+      gems: [],
+      temper: 0,
+      seed: rng.int(1, 2 ** 31 - 1),
+      provenance: { from: provenance.from || null, where: provenance.where || null, day: provenance.day || 1 },
+      chronicle: { kills: 0 }
+    };
+  }
+  function gearDrop(rng, g, ilvl, prov, bumpChance = 0) {
+    if (g.relic) return relicItem(g.relic, rng, prov);
+    const rarity = rng.chance(bumpChance) ? bumpRarity(g.rarity) : g.rarity;
+    return generateItem(rng, { base: g.base, rarity, ilvl, provenance: prov });
+  }
+  function randomDrop(rng, foe, luck, prov, min = "worn", max = "storied") {
+    const rarity = rollRarity(rng, luck, { min, max });
+    return generateItem(rng, { rarity, ilvl: foe.level, provenance: prov });
+  }
+  function foeLuck(foe, waking) {
+    return T2.luck[foe.tier] + waking * TUNING.waking.luck + 0.5 * foe.omens.length + (foe.grudge ? 1 : 0);
+  }
+  function foeDrops(rng, foe, waking, prov) {
+    const out = [];
+    const luck = foeLuck(foe, waking);
+    const weapon = foe.gear.find((g) => g.slot === "weapon");
+    if (foe.tier === "rabble") {
+      if (weapon && rng.chance(T2.rabbleWornChance)) out.push(gearDrop(rng, weapon, foe.level, prov));
+      else if (rng.chance(T2.rabbleChance)) out.push(randomDrop(rng, foe, luck, prov, "worn", RARITY_ORDER[Math.min(4, 1 + waking)]));
+    } else if (foe.tier === "veteran") {
+      const worn = foe.gear.find((g) => g.relic) || (foe.gear.length ? rng.pick(foe.gear) : null);
+      out.push(worn ? gearDrop(rng, worn, foe.level, prov, 0.35) : randomDrop(rng, foe, luck, prov));
+    }
+    const min = foe.tier === "champion" ? "tempered" : foe.tier === "relic-bearer" ? "wrought" : "worn";
+    const extra = (T2.extra[foe.tier] || 0) + (foe.grudge ? 1 : 0);
+    for (let i = 0; i < extra; i++) out.push(randomDrop(rng, foe, luck, prov, min));
+    if (foe.grudge) return out.map((it) => RELICS[it.base] ? it : { ...it, rarity: bumpRarity(it.rarity), stamp: "grudge-settled" });
+    return out;
+  }
+  function battleLoot(s, rng) {
+    const drops = [], claimed = [], consumables = {};
+    for (const id of s.order) {
+      const f = s.units[id];
+      if (f.side !== "foe" || f.summonedBy) continue;
+      const prov = { from: f.name, where: s.ctx.where || null, day: s.ctx.day || 1 };
+      for (const piece of f.held) {
+        const item = piece.item ? { ...piece.item, provenance: prov } : relicItem(piece.relic, rng, prov);
+        if (!piece.held) claimed.push(item);
+        else if (f.ko) drops.push(s.ctx.gentle ? item : { ...item, shattered: true });
+      }
+      if (f.ko && !f.noLoot) {
+        drops.push(...foeDrops(rng, f, s.waking || 0, prov));
+        if (rng.chance(T2.consumable[f.tier] || 0)) {
+          const id2 = weightedPick(rng, Object.entries(T2.consumableWeights).map(([v, w]) => ({ v, w })));
+          consumables[id2] = (consumables[id2] || 0) + 1;
+        }
+      }
+    }
+    return { drops, claimed, consumables };
+  }
+
+  // src/rules/battle.js
+  var R = TUNING.ribbon;
+  function statusDelayMult(u) {
+    let m = 1;
+    for (const st of u.statuses) {
+      const def = STATUSES[st.id];
+      if (def?.delayMult) m *= def.delayMult;
+      if (def?.delayPerStack) m *= 1 + def.delayPerStack * st.stacks;
+    }
+    return m;
+  }
+  var frenzyMult = (u) => u.side === "foe" && u.omens.includes("frenzied") && u.hp < u.maxHp * OMENS.frenzied.frenzyBelow ? 0.5 : 1;
+  function unitDelay(u, actionMult = 1) {
+    return Math.max(R.minDelay * 0.5, Math.round(u.delay * actionMult * statusDelayMult(u) * frenzyMult(u)));
+  }
+  var byTurnOrder = (a, b) => a.next - b.next || a.seq - b.seq;
+  function nextUnit(s) {
+    return s.order.map((id) => s.units[id]).filter(alive).sort(byTurnOrder)[0] || null;
+  }
+  var current = (state) => state.ended ? null : state.actor;
+  function startTurn(B, u) {
+    for (const st of [...u.statuses]) if (STATUSES[st.id]?.until === "turn-start") removeStatus(B, u, st.id);
+    for (const st of [...u.statuses]) {
+      const tick = STATUSES[st.id]?.tick;
+      if (!tick || !alive(u)) continue;
+      const r = rollExpr(B.rng, tick.dice);
+      const raw = r.total * (tick.perStack ? st.stacks : 1);
+      const m = damageMult(u, tick.kind, tick.aspect);
+      B.ev.push({ t: "status", target: u.id, status: st.id, op: "tick", stacks: st.stacks, turns: st.turns });
+      dealDamage(B, null, u, m === 0 ? 0 : Math.max(1, Math.round(raw * m)), { dice: r.dice, kind: tick.kind, aspect: tick.aspect, eff: effLabel(m) });
+    }
+    if (!alive(u)) return false;
+    upkeepHeal(B, u);
+    const skip = u.statuses.find((st) => STATUSES[st.id]?.skipTurn);
+    if (skip) {
+      B.ev.push({ t: "status", target: u.id, status: skip.id, op: "trigger", stacks: skip.stacks, turns: skip.turns });
+      B.ev.push({ t: "text", text: `${u.name} is frozen solid and loses the turn.` });
+      return false;
+    }
+    return true;
+  }
+  function upkeepHeal(B, u) {
+    let heal = 0;
+    if (u.side === "hero") heal += u.stats.regen + Math.round(u.maxHp * (u.stats.regenPct || 0) / 100);
+    const regen = statusOf(u, "regenerating");
+    if (regen) {
+      heal += regen.value || 0;
+      B.ev.push({ t: "status", target: u.id, status: "regenerating", op: "tick", stacks: 1, turns: regen.turns });
+    }
+    if (heal > 0 && u.hp < u.maxHp) applyHeal(B, u, heal);
+    if (u.side === "hero" && u.stats.mpRegen) u.mp = Math.min(u.maxMp, u.mp + u.stats.mpRegen);
+  }
+  function finishTurn(B, u, actionMult = 1) {
+    if (!alive(u)) return;
+    for (const st of [...u.statuses]) {
+      if (st.turns == null || STATUSES[st.id]?.until) continue;
+      st.turns -= 1;
+      if (st.turns <= 0) removeStatus(B, u, st.id);
+    }
+    let delay = unitDelay(u, actionMult);
+    if (u.fumbled) {
+      delay += TUNING.attack.fumbleDelay;
+      u.fumbled = false;
+    }
+    u.next = B.s.time + delay;
+    if (u.side === "foe") {
+      u.intent = u.queue.length ? refreshIntent(B.s, u, u.queue.shift(), B.rng) : rollIntent(B.s, u, B.rng);
+      B.ev.push(intentEvent(u));
+    }
+  }
+  function advance(B) {
+    for (let guard = 0; guard < 200; guard++) {
+      if (checkEnd(B)) return;
+      const u = nextUnit(B.s);
+      B.s.time = u.next;
+      B.s.actor = u.id;
+      B.s.turn += 1;
+      B.ev.push({ t: "turn", actor: u.id, time: u.next });
+      if (startTurn(B, u)) return;
+      if (alive(u)) finishTurn(B, u, 1);
+    }
+  }
+  function checkEnd(B) {
+    const s = B.s;
+    if (s.ended) return true;
+    const foes = unitsOf(s, "foe");
+    if (foes.filter(alive).every((f) => f.summonedBy)) {
+      for (const f of foes.filter(alive)) {
+        f.gone = true;
+        B.ev.push({ t: "escape", foe: f.id, text: `${f.name} withers back into the ground.` });
+      }
+      const { drops, claimed, consumables } = battleLoot(s, B.rng);
+      const beaten = foes.filter((f) => f.ko);
+      s.ended = {
+        result: "victory",
+        drops,
+        claimed,
+        consumables,
+        xp: beaten.reduce((a, f) => a + f.xp, 0),
+        gold: beaten.reduce((a, f) => a + f.gold, 0)
+      };
+      B.ev.push({ t: "victory", ...s.ended });
+      return true;
+    }
+    if (unitsOf(s, "hero").every((h) => !alive(h))) {
+      s.ended = { result: "defeat", xp: 0, gold: 0, drops: [], claimed: [], consumables: {} };
+      B.ev.push({ t: "defeat", ...s.ended });
+      return true;
+    }
+    return false;
+  }
+  function outcome(state) {
+    if (!state.ended) return null;
+    const party = unitsOf(state, "hero").map((h) => ({ id: h.id, hp: h.hp, maxHp: h.maxHp, mp: h.mp, maxMp: h.maxMp, surge: h.surge, ko: h.ko }));
+    const beaten = unitsOf(state, "foe").filter((f) => f.ko && !f.summonedBy).map((f) => ({ id: f.id, family: f.family, name: f.name, tier: f.tier, spawnIndex: f.spawnIndex, grudge: f.grudge }));
+    return { ...state.ended, party, bag: { ...state.bag }, beaten, kills: { ...state.kills }, rounds: Math.round(state.time / R.baseDelay * 10) / 10, turns: state.turn };
+  }
+  function enemiesOf(s, u) {
+    return unitsOf(s, u.side === "hero" ? "foe" : "hero").filter(alive);
+  }
+  function alliesOf(s, u) {
+    return unitsOf(s, u.side).filter(alive);
+  }
+  function targets(state, command) {
+    const u = state.units[command.actor ?? state.actor];
+    if (!u) return [];
+    switch (command.targeting || targetingOf(command)) {
+      case "enemy":
+      case "all-enemies":
+        return enemiesOf(state, u).map((t) => t.id);
+      case "ally":
+      case "all-allies":
+        return alliesOf(state, u).map((t) => t.id);
+      case "ally-ko":
+        return unitsOf(state, u.side).filter((t) => t.ko && !t.gone).map((t) => t.id);
+      case "self":
+        return [u.id];
+      default:
+        return [];
+    }
+  }
+  function targetingOf(cmd) {
+    if (cmd.type === "attack") return "enemy";
+    if (cmd.type === "skill") return SKILLS[cmd.skill]?.target;
+    if (cmd.type === "item") return CONSUMABLES[cmd.item]?.target;
+    if (cmd.type === "defend") return "self";
+    if (cmd.type === "surge") return POWERS[cmd.power]?.target;
+    return "none";
+  }
+  function surgePower(u) {
+    return u.powers[0] || { uid: u.weaponItem?.uid || null, power: "heroic-strike", item: u.weaponItem, relic: null };
+  }
+  function commands(state, heroId) {
+    const u = state.units[heroId];
+    if (!u || u.side !== "hero") return [];
+    const ready = !state.ended && state.actor === heroId && alive(u);
+    const withTargets = (c) => {
+      const n = targets(state, { ...c, actor: heroId }).length;
+      const noTarget = c.targeting !== "none" && n === 0;
+      const enabled = ready && !c.reason && !noTarget;
+      return { ...c, actor: heroId, enabled, reason: c.reason || (noTarget ? "No valid target" : ready ? null : "Not your turn") };
+    };
+    const list = [{ type: "attack", id: "attack", name: "Attack", targeting: "enemy", text: `${u.stats.weapon.name}: ${u.stats.weapon.dice} ${u.stats.weapon.dmg}` }];
+    for (const id of u.skills) {
+      const sk = SKILLS[id];
+      if (!sk) continue;
+      list.push({ type: "skill", id, skill: id, name: sk.name, mp: sk.mp, targeting: sk.target, domain: sk.domain, text: sk.text, reason: u.mp < sk.mp ? "Not enough MP" : null });
+    }
+    for (const [id, count] of Object.entries(state.bag)) {
+      const c = CONSUMABLES[id];
+      if (c && count > 0) list.push({ type: "item", id, item: id, name: c.name, count, targeting: c.target, text: c.text });
+    }
+    list.push({ type: "defend", id: "defend", name: "Defend", targeting: "self", text: "Guard (+2 Guard, half damage) until your next turn and recover 2 MP." });
+    const sp = surgePower(u);
+    const power = POWERS[sp.power];
+    list.push({
+      type: "surge",
+      id: "surge",
+      name: `Legend Surge: ${power.name}`,
+      power: sp.power,
+      uid: sp.uid,
+      relic: sp.relic,
+      targeting: power.target,
+      text: power.text,
+      surge: u.surge,
+      reason: u.surge < TUNING.surge.max ? "The Legend Surge gauge is not full" : null
+    });
+    list.push({ type: "flee", id: "flee", name: "Flee", targeting: "none", text: "Try to break away (DEX check).", reason: state.ctx.noFlee ? "There is no running from this one" : null });
+    return list.map(withTargets);
+  }
+  function snapshotSurge(s) {
+    return Object.fromEntries(unitsOf(s, "hero").map((h) => [h.id, h.surge]));
+  }
+  function flushSurge(B, before) {
+    for (const id of B.touched) {
+      const u = B.s.units[id];
+      if (before[id] !== u.surge) B.ev.push({ t: "surge", actor: id, from: before[id], to: u.surge });
+    }
+    B.touched.clear();
+  }
+  function pickTargets(s, u, targeting, chosen) {
+    const valid = targets(s, { actor: u.id, targeting });
+    if (targeting.startsWith("all-")) return valid;
+    if (targeting === "self") return [u.id];
+    if (chosen && valid.includes(chosen)) return [chosen];
+    throw new Error(`Invalid target ${chosen} for ${targeting}`);
+  }
+  function doFlee(B, u) {
+    const s = B.s;
+    const heroes = unitsOf(s, "hero").filter(alive);
+    const bonus = Math.max(...heroes.map((h) => h.mods.DEX)) + u.stats.prof;
+    const dc = TUNING.flee.dc + Math.max(0, ...unitsOf(s, "foe").filter(alive).map((f) => TUNING.flee.tierDc[f.tier] || 0));
+    const r = rollD20(B.rng);
+    const ok = r.kept !== 1 && r.kept + bonus >= dc;
+    B.ev.push({ t: "roll", actor: u.id, target: null, purpose: "flee", die: 20, rolls: r.rolls, kept: r.kept, bonus, total: r.kept + bonus, vs: dc, result: ok ? "save" : "fail", adv: false, dis: false });
+    if (!ok) {
+      B.ev.push({ t: "text", text: "No way through. The foes close in." });
+      return;
+    }
+    const beaten = unitsOf(s, "foe").filter((f) => f.ko && !f.summonedBy);
+    s.ended = { result: "fled", xp: beaten.reduce((a, f) => a + f.xp, 0), gold: beaten.reduce((a, f) => a + f.gold, 0), drops: [], claimed: [], consumables: {} };
+    B.ev.push({ t: "fled", ...s.ended });
+  }
+  function resolveCommand(B, u, cmd) {
+    const s = B.s;
+    B.relic = cmd.relic || null;
+    switch (cmd.type) {
+      case "attack":
+        runEffects(B, u, [{ type: "attack", weapon: true }], pickTargets(s, u, "enemy", cmd.target));
+        return 1;
+      case "skill": {
+        const sk = SKILLS[cmd.skill];
+        if (!sk || !u.skills.includes(cmd.skill)) throw new Error(`${u.name} does not know ${cmd.skill}`);
+        if (u.mp < sk.mp) throw new Error(`${u.name} lacks MP for ${sk.name}`);
+        const tg = pickTargets(s, u, sk.target, cmd.target);
+        u.mp -= sk.mp;
+        B.ev.push({ t: "move", actor: u.id, name: sk.name, text: sk.text, skill: sk.id, mp: sk.mp });
+        runEffects(B, u, sk.effects, tg);
+        return sk.delay || 1;
+      }
+      case "item": {
+        const c = CONSUMABLES[cmd.item];
+        if (!c || !(s.bag[cmd.item] > 0)) throw new Error(`No ${cmd.item} in the bag`);
+        const tg = pickTargets(s, u, c.target, cmd.target);
+        s.bag[cmd.item] -= 1;
+        B.ev.push({ t: "move", actor: u.id, name: c.name, text: c.text, item: c.id });
+        runEffects(B, u, c.effects, tg);
+        return c.delay || 1;
+      }
+      case "defend":
+        addStatus(B, u, "guarding", { source: u.id });
+        u.mp = Math.min(u.maxMp, u.mp + 2);
+        return 0.8;
+      case "surge": {
+        if (u.surge < TUNING.surge.max) throw new Error("Legend Surge is not full");
+        const sp = surgePower(u);
+        const power = POWERS[sp.power];
+        const tg = pickTargets(s, u, power.target, cmd.target);
+        addSurge(B, u, -u.surge);
+        B.ev.push({ t: "legend", actor: u.id, item: sp.item || null, power: power.id, name: power.name, text: power.text });
+        runEffects(B, u, power.effects, tg);
+        return 1;
+      }
+      case "flee":
+        if (s.ctx.noFlee) throw new Error("Cannot flee this battle");
+        doFlee(B, u);
+        return 1;
+      default:
+        throw new Error(`Unknown command type ${cmd.type}`);
+    }
+  }
+  function begin(state) {
+    const s = structuredClone(state);
+    return { s, rng: rngFrom(s.rngState), ev: [], touched: /* @__PURE__ */ new Set(), before: snapshotSurge(s) };
+  }
+  function finish(B) {
+    flushSurge(B, B.before);
+    B.s.rngState = B.rng.getState();
+    return { state: B.s, events: B.ev };
+  }
+  function act(state, command) {
+    if (state.ended) throw new Error("The battle is over");
+    const actorId = command.actor ?? state.actor;
+    if (actorId !== state.actor) throw new Error(`It is ${state.actor}'s turn, not ${actorId}'s`);
+    const B = begin(state);
+    const u = B.s.units[actorId];
+    if (!u || u.side !== "hero") throw new Error("act() resolves hero commands; use foeTurn() for foes");
+    const mult = resolveCommand(B, u, command);
+    if (!checkEnd(B)) {
+      finishTurn(B, u, mult);
+      flushSurge(B, B.before);
+      B.before = snapshotSurge(B.s);
+      advance(B);
+    }
+    return finish(B);
+  }
+  function foeTargets(s, f, move) {
+    switch (move.target) {
+      case "self":
+        return [f.id];
+      case "all-enemies":
+        return unitsOf(s, "hero").filter(alive).map((h) => h.id);
+      case "all-allies":
+        return unitsOf(s, "foe").filter(alive).map((x) => x.id);
+      default:
+        return [f.intent.target].filter((id) => alive(s.units[id]));
+    }
+  }
+  function foeTurn(state) {
+    if (state.ended) throw new Error("The battle is over");
+    const B = begin(state);
+    const f = B.s.units[B.s.actor];
+    if (!f || f.side !== "foe") throw new Error("foeTurn() needs a foe to be current");
+    let mult = 1;
+    if (f.intent?.cancelled) {
+      B.ev.push({ t: "text", text: `${f.name} staggers and the ${f.intent.name} comes to nothing.` });
+    } else {
+      f.intent = refreshIntent(B.s, f, f.intent || rollIntent(B.s, f, B.rng), B.rng);
+      const move = familyData(f).moves[f.intent.move];
+      const prov = f.statuses.find((st) => st.id === "provoked");
+      if (prov && move.target === "enemy" && alive(B.s.units[prov.source])) f.intent.target = prov.source;
+      B.ev.push({ t: "move", actor: f.id, name: move.name, text: move.text, move: f.intent.move });
+      runEffects(B, f, move.effects, foeTargets(B.s, f, move));
+      mult = move.delay || 1;
+    }
+    if (!checkEnd(B)) {
+      finishTurn(B, f, mult);
+      flushSurge(B, B.before);
+      B.before = snapshotSurge(B.s);
+      advance(B);
+    }
+    return finish(B);
+  }
+
+  // src/rules/autoplay.js
+  var frac = (u) => u.hp / u.maxHp;
+  var holding = (f) => f.held?.some((p) => p.held);
+  var gripLeft = (f) => f.held.filter((p) => p.held).reduce((a, p) => a + p.grip, 0);
+  var elite = (f) => f.tier !== "rabble";
+  function usable2(cmds, id) {
+    return cmds.find((c) => c.id === id && c.enabled) || null;
+  }
+  function priorityTarget(s, hero) {
+    const foes = unitsOf(s, "foe").filter(alive);
+    const others = foes.filter((f) => !holding(f));
+    const pool = others.length ? others : foes;
+    const w = hero.stats.weapon;
+    const score = (f) => (1 - frac(f)) * 2 + damageMult(f, w.dmg, w.aspect) + (f.summonedBy ? 0.6 : 0) - (elite(f) ? 0 : 0.2) + (f.maxHp < 20 ? 0.3 : 0);
+    return pool.sort((a, b) => score(b) - score(a) || a.hp - b.hp)[0];
+  }
+  function bossOf(s) {
+    return unitsOf(s, "foe").filter(alive).sort((a, b) => b.maxHp - a.maxHp)[0];
+  }
+  function healPlan(s, cmds, opts) {
+    const heroes = unitsOf(s, "hero");
+    const down = heroes.filter((h) => h.ko && !h.gone);
+    const hurt = heroes.filter(alive).sort((a, b) => frac(a) - frac(b));
+    const revive = usable2(cmds, "revive");
+    if (down.length && revive) return { ...revive, target: down[0].id };
+    const dawn = usable2(cmds, "dawnsong");
+    if (dawn && hurt.filter((h) => frac(h) < 0.6).length >= 3) return dawn;
+    const mend = usable2(cmds, "mend");
+    if (mend && hurt[0] && frac(hurt[0]) < opts.healAt) return { ...mend, target: hurt[0].id };
+    return null;
+  }
+  function itemPlan(s, hero, cmds) {
+    const heroes = unitsOf(s, "hero");
+    const healerUp = heroes.some((h) => alive(h) && h.skills.includes("mend") && h.mp >= SKILLS.mend.mp);
+    const down = heroes.filter((h) => h.ko && !h.gone);
+    const reviverUp = heroes.some((h) => alive(h) && h.skills.includes("revive") && h.mp >= SKILLS.revive.mp);
+    const salts = usable2(cmds, "ember-salts");
+    if (down.length && salts && !reviverUp) return { ...salts, target: down[0].id };
+    const tonic = usable2(cmds, "hearth-tonic");
+    const worst = heroes.filter(alive).sort((a, b) => frac(a) - frac(b))[0];
+    if (tonic && worst && frac(worst) < (healerUp ? 0.2 : 0.35)) return { ...tonic, target: worst.id };
+    return null;
+  }
+  function gripPlan(s, cmds) {
+    const holder = unitsOf(s, "foe").filter((f) => alive(f) && holding(f)).sort((a, b) => gripLeft(a) - gripLeft(b))[0];
+    if (!holder) return null;
+    for (const id of ["disarm", "sunder", "wrench"]) {
+      const c = usable2(cmds, id);
+      if (c) return { ...c, target: holder.id };
+    }
+    return null;
+  }
+  function controlPlan(s, hero, cmds) {
+    const boss = bossOf(s);
+    const foes = unitsOf(s, "foe").filter(alive);
+    if (!boss) return null;
+    const splinters = usable2(cmds, "heartwood-splinters");
+    if (splinters && foes.length >= 3) return splinters;
+    const volley = usable2(cmds, "volley");
+    if (volley && foes.length >= 3) return volley;
+    const analyze = usable2(cmds, "analyze");
+    if (analyze && elite(boss) && !hasStatus(boss, "exposed")) return { ...analyze, target: boss.id };
+    const mark = usable2(cmds, "mark-prey");
+    if (mark && elite(boss) && !hasStatus(boss, "marked") && boss.hp > 30) return { ...mark, target: boss.id };
+    const rings = usable2(cmds, "read-the-rings");
+    if (rings && elite(boss) && !unitsOf(s, "hero").some((h) => hasStatus(h, "hasted"))) return rings;
+    const root = usable2(cmds, "rootbind");
+    if (root && elite(boss) && !hasStatus(boss, "rooted")) return { ...root, target: boss.id };
+    return null;
+  }
+  function artPlan(s, hero, cmds) {
+    const t = priorityTarget(s, hero);
+    if (!t) return null;
+    for (const id of ["kindle-strike", "stillwater-thrust", "sunder", "tally-cut", "knife-work"]) {
+      const c = usable2(cmds, id);
+      if (c && hero.mp >= c.mp + 2 && (elite(t) || t.hp > 12)) return { ...c, target: t.id };
+    }
+    const hew = usable2(cmds, "hew");
+    if (hew && unitsOf(s, "foe").filter(alive).length >= 2) return hew;
+    const lance = usable2(cmds, "radiant-lance");
+    if (lance && damageMult(t, "radiant", "radiant") > 1 && hero.mp >= 8) return { ...lance, target: t.id };
+    return null;
+  }
+  function surgePlan(s, hero, cmds) {
+    const c = usable2(cmds, "surge");
+    if (!c) return null;
+    if (c.targeting === "enemy") return { ...c, target: (bossOf(s) || priorityTarget(s, hero)).id };
+    if (c.targeting === "ally") return { ...c, target: hero.id };
+    return c;
+  }
+  function autoCommand(state, heroId, opts = {}) {
+    const o = { healAt: 0.45, ...opts };
+    const hero = state.units[heroId];
+    const cmds = commands(state, heroId);
+    const plan = surgePlan(state, hero, cmds) || healPlan(state, cmds, o) || itemPlan(state, hero, cmds) || gripPlan(state, cmds) || controlPlan(state, hero, cmds) || artPlan(state, hero, cmds);
+    if (plan) return plan;
+    const t = priorityTarget(state, hero);
+    return { ...usable2(cmds, "attack"), target: t?.id };
+  }
+
+  // src/ui/screens/battle.js
+  function mount(root, ctx, { battle, returnTo = "road" }) {
+    root.innerHTML = '<p class="label">Battle (placeholder)</p><p>Auto-resolving\u2026</p>';
+    let s = battle, guard = 0;
+    while (current(s) && guard++ < 2e3) {
+      const id = current(s);
+      s = (s.units[id].side === "hero" ? act(s, autoCommand(s, id)) : foeTurn(s)).state;
+    }
+    const t = setTimeout(() => ctx.go("aftermath", { battle: s, returnTo, result: outcome(s) }), 50);
+    return { unmount() {
+      clearTimeout(t);
+    } };
+  }
+
   // src/main.js
-  var app = document.getElementById("app");
-  app.textContent = "Aethermoor is loading\u2026";
+  var screens = {
+    battle: battle_exports,
+    title: {
+      mount(root) {
+        root.innerHTML = '<h1 class="title-display">Aethermoor</h1><p>Hearth &amp; Heirloom is being assembled.</p>';
+      }
+    }
+  };
+  var app = createApp(document.getElementById("app"), screens);
+  app.go("title");
 })();
 
 </script>
