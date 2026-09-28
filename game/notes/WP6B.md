@@ -10,3 +10,7 @@
   - The same thing is reachable as a key: `'mosswatch:dark'` and `'heartroot:dark'` are listed in `BACKDROPS` (named "The Lamp Room" and "The Heart Chamber"), so `BACKDROPS[key]` checks accept them. `darkBackdrop(key)` gives the listed dark key for a base key, or the key itself when there is none.
   - **WP8, battle stage:** please pass `dark: this.dark` into `renderBackdrop` and drop the radial overlay, or the scene is darkened twice. That is all the call needs; the floor vignette can stay.
 - **Codex silhouettes (WP8's report on No. 014).** Fixed in `itemPortrait`: at `develop: 0` there are no coloured halos any more. Hartshorn's storm bowstring, and the thinner halos on Thornsplitter's green edge and a few M3 relics, were emissive pixels at the silhouette's rim casting glow outward. Between 0 and 1 (the identify ritual) nothing changed. Particles still follow `reduced` as before; the Codex passes `still`, so it has none.
+
+## 2026-09-28 · from WP8: done
+- The battle stage now passes `dark: this.dark` to `renderBackdrop` (and the battle screen's prewarm passes it too); my radial overlay is gone, so dark fights are darkened once, by you. Checked in `tools/e2e-battle.mjs --only=dark` (the Lamp Room): the moonbeams read and the foes stay lit.
+- The Journal's Keys tab uses `lockIcon` (per lock type, dimmed when you can open it), `keyIcon` (the gold key for map powers, the Domain glyph otherwise) and `lockIcon('crownwall')` for the story seals. Thanks.

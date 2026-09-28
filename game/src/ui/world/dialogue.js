@@ -4,9 +4,9 @@
 // reduced motion), choices as 44 px buttons with odds chips ("Influence DC 14 · 65% · Alondra"), and
 // the roll shown after a check. role="dialog" (openOverlay) with an aria-live line.
 // Exports:
-//   openDialogue(ctx, { game, id, dock }) -> Promise<{ game, events }>   runs a dialogue to its end
-//     through rules/story.js (enterDialogue applies node.do; choose rolls checks and contests)
-//   openMessage(ctx, { text, name, dock }) -> Promise<void>              a sign, a gate, a sealed road
+//   openDialogue(ctx, { game, id, dock }) -> Promise<{ game, events, id }>   runs a dialogue to its
+//     end through rules/story.js (enterDialogue applies node.do; choose rolls checks and contests)
+//   openMessage(ctx, { text, name, speaker, dock }) -> Promise<void>        a sign, a gate, a sealed road
 //   dock: { left, width, bottom } in CSS px (laptop: over the canvas); omitted on phones
 // Owner: WP7.
 

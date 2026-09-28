@@ -13,12 +13,15 @@
 //
 // rigSheet(H, looks, { meta, frames, rows, key }) -> ImageData   the same rig for any identity H
 //   (heroes.js vocabulary) and gear looks; map-sprites.js uses it for NPCs and humanoid foes.
-// resolveGear(gear, fallback) -> { L, M, sig }   looks + per-slot meta { heirloom, temper, relic }
+// resolveGear(gear) -> { L, M, sig }   looks + per-slot meta { heirloom, temper, relic, edge }
+//   heirloom (relic or heirloom-and-up) -> a 1-px glint at the weapon tip / on one worn piece; temper >= 1 -> a
+//   1-px glint mid-blade; temper 3 (look.edge) -> the weapon's outline takes the aspect colour. Tempered +2/+3
+//   materials ('steel^', 'steel^frost') are registered in MAT by item-looks.js and draw like any other.
 // Owner: WP5.
 
 import { Forge, compose, MAT, hx } from './forge.js';
 import { HERO_ART } from './hero-looks.js';
-import { itemArt, lookFor, SLOTS } from './item-looks.js';
+import { itemArt, lookFor, SLOTS, rarityTier } from './item-looks.js';
 import { lru } from './cache.js';
 
 export const WALKER_W = 16, WALKER_H = 24, WALKER_FRAMES = 3;
@@ -511,6 +514,16 @@ function setPx(img, x, y, c, a = 1) {
 }
 const alphaAt = (img, x, y) => (x < 0 || y < 0 || x >= img.width || y >= img.height ? 0 : img.data[(y * img.width + x) * 4 + 3]);
 const GLINT = [255, 250, 226];
+// temper +3: the weapon's outline pixels take the aspect colour (look.edge, a CSS colour from lookFor)
+function edgeWeapon(img, R, c) {
+  const { w, h, own, parts } = R, d = img.data;
+  const wpn = (x, y) => x >= 0 && y >= 0 && x < w && y < h && own[y * w + x] >= 0 && parts[own[y * w + x]].weapon;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = y * w + x;
+    if (own[i] >= 0 || !d[i * 4 + 3]) continue;
+    if (wpn(x - 1, y) || wpn(x + 1, y) || wpn(x, y - 1) || wpn(x, y + 1)) { d[i * 4] = c[0]; d[i * 4 + 1] = c[1]; d[i * 4 + 2] = c[2]; d[i * 4 + 3] = 255; }
+  }
+}
 function paintFrame(img, r, H, M, mirror) {
   const { J, face, anchors } = r, mx = x => (mirror ? WALKER_W - 1 - x : x);
   const [cx, cy] = J.hc, eyeY = Math.round(cy + 1.3), dir = J.dir;
@@ -562,6 +575,7 @@ export function rigSheet(H, L = {}, { meta = {}, frames = WALKER_FRAMES, rows = 
       // at 16x24 the Forge's 1-px contact shadows would sink small parts to the darkest step
       for (let i = 0; i < R.idx.length; i++) if (R.own[i] >= 0 && R.idx[i] < 1) R.idx[i] = 1;
       const img = compose(R, { glow: false });
+      if (meta.weapon && meta.weapon.edge) edgeWeapon(img, R, hx(meta.weapon.edge));
       paintFrame(img, r, H, meta, mirror);
       const s = img.data, ox = k * W, oy = ri * Hh;
       for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) {
@@ -588,8 +602,13 @@ export function resolveGear(gear) {
     // a lantern focus reads as a sigil in lookFor; the walker can draw the lantern itself
     if (s === 'offhand' && art && art.p && art.p.style === 'lantern' && look.look === 'sigil') look = Object.assign({}, look, { look: 'lantern' });
     const rarity = typeof v === 'object' && v.rarity ? v.rarity : art && art.rarity;
-    const heirloom = !!(look.glint || look.relic || (art && art.relic) || typeof v === 'string' || rarity === 'heirloom' || rarity === 'primal');
-    L[s] = look; M[s] = { relic: !!(look.relic || (art && art.relic)), temper: look.temper || (typeof v === 'object' && v.temper) || 0, heirloom };
+    const temper = look.temper || (typeof v === 'object' && v.temper) || 0;
+    // lookFor marks a tempered weapon relic and every tempered piece glint, so from a bare look only an
+    // untempered glint says heirloom; with the item (or look.heirloom, when given) it is exact
+    const relic = art ? !!art.relic : !!look.relic && !(s === 'weapon' && temper);
+    const heirloom = look.heirloom !== undefined ? !!look.heirloom
+      : !!(relic || typeof v === 'string' || rarityTier(rarity) >= 5 || (!art && look.glint && !temper));
+    L[s] = look; M[s] = { relic, temper, heirloom, edge: temper >= 3 && look.edge ? look.edge : null };
   }
   const sig = SLOTS.map(s => (L[s] ? `${L[s].id || '?'}${M[s].temper ? '+' + M[s].temper : ''}${M[s].heirloom ? '*' : ''}` : '-')).join('|');
   return { L, M, sig };

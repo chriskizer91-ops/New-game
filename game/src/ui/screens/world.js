@@ -1,5 +1,8 @@
 // The world screen (M3 spec §5.2-5.5): the overworld map, walking, talking, locks, packs and the
-// hand-off to battles. mount(root, ctx, params) with params { arrive?: 'new', result?, brand?, wokeAt? }.
+// hand-off to battles. mount(root, ctx, params) with params { arrive?: 'new'|'continue'|'carry'|'load'|
+// 'travel' } from the menus (new, load and carry drop the old Walk; the rest re-enter at
+// game.progress.pos unless the Walk already stands there), or the aftermath's
+// { result, brand, wokeAt, yield, rematch, enc }.
 //
 // The engine is rules/world.js (§4.5) and rules/story.js (§4.4), driven by events: every move, tick
 // and interaction returns an ordered event list; sync ones (turn, step, bump, alert, roam, sighted,
