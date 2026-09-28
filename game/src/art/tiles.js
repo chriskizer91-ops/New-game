@@ -427,6 +427,8 @@ function paintEdge(F, fam, mask, Pl, f) {
   }
   if (fam === 'cliff') {
     if (mask & 1) { F.add({ mat: Pl.grass, prof: 'flat', grp: 'lip', lo: 1, hi: 3, shapes: [band('n', t => 2.8 + wob(t, 5, .7))], tex: q => gDD(Pl, q) + (q.d < 1 ? -.8 : 0) }); }
+    // a dune's slip face: a bright crest, then shaded sand falling away with streaks of sliding sand
+    if (mask & 4 && Pl.cliffK === 'slip') F.add({ mat: Pl.cliff, prof: 'flat', grp: 'slip', noShadow: true, lo: 1, hi: 4, shapes: [band('s', t => 7.6 + wob(t, 6, .7))], tex: q => (q.d < 1 ? .9 : -1.5 - (q.y - 8) * .06) + ((q.x * 5 + (q.y >> 2) * 3) % 7 === 0 ? -.5 : 0) + bayer(q.x, q.y) * .3 });
     if (mask & 4) F.add({ mat: 'dark', prof: 'flat', grp: 'foot', noShadow: true, noOutline: true, lo: 1, hi: 2, shapes: [band('s', t => 2.2 + wob(t, 8, .6))], tex: q => (q.y > 14 ? -2 : -1) + bayer(q.x, q.y) * .5 });
     if (mask & 8) F.add({ mat: Pl.cliff, prof: 'flat', grp: 'cw', lo: 1, hi: 4, shapes: [band('w', t => 1.4 + wob(t, 3, .4))], tex: () => .5 });
     if (mask & 2) F.add({ mat: Pl.cliffDark, prof: 'flat', grp: 'ce', noShadow: true, lo: 1, hi: 2, shapes: [band('e', t => 1.3 + wob(t, 4, .4))], tex: () => -1.5 });
@@ -593,15 +595,17 @@ function sunSand(F, Pl, v) {
 function sunRidges(F, Pl, v) {
   const k = Pl.ridgeK, g = Pl.grass, D = decals();
   if (k === 'ripple') {
-    // two wind ripples per tile on sine crests of period 16 (so tiles join): a lit crest, the lee in shadow
-    const ph = v * 5, amp = 1.1 + v * .3;
+    // three short wind ripples per tile, staggered and kept inside the tile so a field of them never lines
+    // up into planks: a lit crest over its lee in shadow
+    const R = [[4.6, 3.6, 3.4], [11.2, 8.4, 3.8], [5.4, 12.8, 3.2]].map(([x, y, h], i) => { const w = h - (i === v % 3 ? .8 : 0); return [Math.min(15.4 - w, Math.max(.6 + w, x + (rnd(i, v, 54) - .5) * 3)), y + (rnd(i, v, 55) - .5) * 1.6, w]; });
     for (const [x, y] of spots(2, 5400 + v)) D.set(x, y, g, -2);
     sunGround(F, Pl, D, (x, y) => {
-      for (let r = 0; r < 2; r++) {
-        const d = y + .5 - (3.5 + r * 8 + amp * Math.sin(((x + ph + r * 5) / 16) * Math.PI * 2));
+      for (const [cx, cy, w] of R) {
+        const t = (x + .5 - cx) / w;
+        if (t < -1 || t > 1) continue;
+        const d = y + .5 - (cy + Math.sin(t * 2.6) * .9 + t * t * .8);
         if (d >= -.5 && d < .5) return 0;
         if (d >= .5 && d < 1.5) return -2;
-        if (d >= 1.5 && d < 2.5) return -1.3;
       }
       return undefined;
     });
@@ -810,7 +814,7 @@ function sunWall(F, Pl, v, face) {
     if (lx === 0 || ly === 0) return { m: 'dark', dd: -1.8 };
     return -1 + (lx === 1 || ly === 1 ? .6 : 0) + (lx === 7 || ly === 7 ? -.8 : 0) + (rnd(x, y, 22) < .1 ? -1 : 0) + (burnt ? -.8 : 0) + bayer(x, y) * .3;
   } });
-  if (vault) part(F, 'bronze', [RECT(-2, 7.2, 18, 8.6)], { prof: 'flat', grp: 'inlay', noShadow: true, noOutline: true, hi: 3 });
+  if (vault && v) part(F, 'bronze', [O([4, 4], .9)], { prof: 'flat', grp: 'stud', noShadow: true, noOutline: true, hi: 3, tex: () => -1 });
 }
 /* ---- 'H' roofs: terracotta with an awning valance, striped tents, palm thatch, burnt beams, stone slabs ---- */
 function sunRoof(F, Pl, v, mask) {
@@ -885,9 +889,17 @@ function sunDoor(F, Pl, v) {
   part(F, Pl.stone, [RECT(3, 14.6, 13, 16.6)], { prof: 'bevel', bw: .6, grp: 'sill', hi: 3 });
 }
 /* ---- '^' layered cliffs and 'v' ledges ---- */
+const SLIP_RIPPLES = [[2, 1.2, 0, .5, 1.3], [7.4, .9, 5, .4, 3.1], [12.7, 1.3, 10, .3, 4.7]]; // [y, amplitude, phase, 2nd amplitude, 2nd phase]
 function sunCliff(F, Pl, v) {
-  if (Pl.cliffK === 'slip') { // a dune's slip face: smooth sand falling away, darker toward the foot, streaks of sliding sand
-    F.add({ mat: Pl.cliff, prof: 'flat', grp: 'face', noShadow: true, lo: 1, hi: 3, shapes: [FULL], tex: q => -1.1 + pnoise(q.x / 4, q.y / 2, 4, 160 + v, 8) * .7 + ((q.x * 3 + (q.y >> 1) * 5 + v * 2) % 9 === 0 ? -.8 : 0) + bayer(q.x, q.y) * .3 });
+  if (Pl.cliffK === 'slip') { // a dune's sunlit back, paler than the flats: its slip face is the south edge (paintEdge)
+    F.add({ mat: Pl.cliff, prof: 'flat', grp: 'face', noShadow: true, lo: 1, hi: 4, shapes: [FULL], tex: q => {
+      for (const [c, a, p, b, s] of SLIP_RIPPLES) { // three wind ripples, each its own wave (period 16 both ways, so tiles join)
+        const d = (((q.y + .5 - c - a * Math.sin(((q.x + .5 + p) / 16) * Math.PI * 2) - b * Math.sin(((q.x + .5) / 8) * Math.PI * 2 + s)) % 16) + 16) % 16;
+        if (d < 1) return pnoise(q.x / 4, q.y / 4, 4, 160 + c, 4) > .3 ? .9 : .2;
+        if (d < 2) return pnoise(q.x / 4, q.y / 4, 4, 170 + c, 4) > .22 ? -.9 : -.3;
+      }
+      return -.05 + pnoise(q.x / 8, q.y / 8, 2, 161 + v) * .3 + bayer(q.x, q.y) * .3;
+    } });
     return;
   }
   // a rock wall of angular chunks (each lit on its top-left, a dark crack between them) over soft strata
@@ -914,6 +926,16 @@ function sunLedge(F, Pl, v) {
   sunGround(F, Pl, D);
   F.add({ mat: Pl.cliff, prof: 'flat', grp: 'lipface', noShadow: true, noOutline: true, lo: 1, hi: 3, shapes: [RECT(-2, 11.5, 18, 15.5)], tex: q => (q.y <= 12 ? -.3 : q.y >= 15 ? -2.2 : -1.2) + ((q.x + v * 2) % 5 === 0 ? -.8 : 0) + bayer(q.x, q.y) * .3 });
   F.add({ mat: Pl.grass, prof: 'flat', grp: 'lip', noShadow: true, noOutline: true, lo: 1, hi: 3, shapes: [P([[-2, 10], [18, 10], [18, 11.6], [14, 12.4], [10, 11.7], [6, 12.5], [2, 11.8], [-2, 12.4]])], tex: q => (q.y <= 10 ? .2 : -.6) });
+}
+/* ---- 'k' cave floors (one seamless field, so a whole cave floor never shows the grid): packed grit with
+   ore dust in the mine, glass grit in the crystal cave, cracked basalt in the vaults ---- */
+function sunDarkFloor(F, Pl, v) {
+  const D = decals(), k = Pl.decK, [x, y] = spots(1, 3150 + v, 4)[0];
+  for (const [px, py] of spots(2, 3100 + v * 5)) pebble(D, px, py, Pl.stone);
+  if (k === 'shaft') { if (v) D.set(x, y, 'amber', -1.4); if (v === 2) { D.set(x + 3, y + 1, 'amber', -1.8); for (let i = -2; i <= 2; i++) D.set(x + i, y + 4, 'dark', -1); } }
+  else if (k === 'cave') { D.set(x, y, 'seaglass', -.6); D.set(x + 1, y + 1, 'seaglass', -1.6); if (v) D.set(x + 4, y - 2, 'seaglass', -1); }
+  else if (v) for (let i = 0; i < 6; i++) D.set(x + i - 2, y + (i >> 1), 'dark', -1.2);
+  ground(F, Pl.darkFloor, SEEDS['dark-floor'] + (Pl.seed || 0), D, { lo: -1.55, hi: -.65, dith: .3 });
 }
 /* ---- 'm' cracked clay, wet mud, ash drifts, mine slurry ---- */
 function sunMud(F, Pl, v) {
@@ -1047,6 +1069,7 @@ const SUN_SPEC = {
   'first-root': { n: 2, paint: sunPillar },
   'root-wall': { n: 2, faces: true, paint: (F, Pl, v) => sunCave(F, Pl, v >> 1, !(v & 1)) },
   floor: { n: 3, paint: sunFloor },
+  'dark-floor': { n: 3, paint: sunDarkFloor },
   flagstone: { n: 3, paint: (F, Pl, v) => paintFlagstone(F, Object.assign({}, Pl, { stone: Pl.paver || Pl.stone }), v) },
 };
 
