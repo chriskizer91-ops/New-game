@@ -6,6 +6,8 @@ import { ITEMS, CONSUMABLES } from '../data/items.js';
 import { RELICS } from '../data/relics.js';
 import { TUNING } from '../data/tuning.js';
 import { deriveHero } from './stats.js';
+import { pageBonus } from './codex.js';
+import { temper as forgeTemper, temperCost as forgeTemperCost } from './forge.js';
 import { indexItems } from './util.js';
 
 const HERO_WORD = h => HEROES[h.id]?.name || h.id;
@@ -75,19 +77,29 @@ export function equip(game, heroId, uid) {
     const other = g.party.roster[prev.heroId];
     g = setHero(g, { ...other, gear: { ...other.gear, [prev.slot]: null } });
   }
-  g = setHero(g, clampVitals({ ...g.party.roster[heroId], gear: plan.gear }, g.inventory));
+  g = bear(g, uid, heroId);
+  g = setHero(g, clampVitals({ ...g.party.roster[heroId], gear: plan.gear }, g.inventory, pageBonus(g)));
   return { game: g, ok: true, reason: null, displaced: plan.displaced };
 }
 
 export function unequip(game, heroId, slot) {
   const hero = game.party.roster[heroId];
   if (!hero || !hero.gear[slot]) return game;
-  return setHero(game, clampVitals({ ...hero, gear: { ...hero.gear, [slot]: null } }, game.inventory));
+  return setHero(game, clampVitals({ ...hero, gear: { ...hero.gear, [slot]: null } }, game.inventory, pageBonus(game)));
 }
 
-function clampVitals(hero, inventory) {
-  const d = deriveHero(hero, inventory);
+function clampVitals(hero, inventory, bonus = null) {
+  const d = deriveHero(hero, inventory, bonus);
   return { ...hero, hp: Math.min(hero.hp ?? d.maxHp, d.maxHp), mp: Math.min(hero.mp ?? d.maxMp, d.maxMp) };
+}
+
+// M4 (the Chronicle, spec §4.4): whoever equips a piece joins the list of those who have carried it.
+function bear(game, uid, heroId) {
+  const it = game.inventory.find(i => i.uid === uid);
+  const bearers = it?.chronicle?.bearers || [];
+  if (!it || bearers.includes(heroId)) return game;
+  const next = { ...it, chronicle: { ...it.chronicle, bearers: [...bearers, heroId] } };
+  return { ...game, inventory: game.inventory.map(i => (i.uid === uid ? next : i)) };
 }
 
 function summary(d) {
@@ -97,15 +109,16 @@ function summary(d) {
   };
 }
 
-// Stat deltas if `hero` equipped `item`: positive = green arrow, negative = red.
-export function compare(hero, item, inventory) {
+// Stat deltas if `hero` equipped `item`: positive = green arrow, negative = red. `bonus` is the
+// party-wide stats block (rules/codex.js pageBonus), so the absolute numbers match the Party screen.
+export function compare(hero, item, inventory, bonus = null) {
   const byId = { ...indexItems(inventory), [item.uid]: item };
   const can = canUse(hero, item);
-  const before = summary(deriveHero(hero, byId));
+  const before = summary(deriveHero(hero, byId, bonus));
   if (!can.ok) return { ok: false, reason: can.reason, slot: item.slot, current: hero.gear[item.slot] || null, before, after: before, deltas: {} };
   const plan = gearAfter(hero, item, byId);
   if (!plan.gear) return { ok: false, reason: plan.reason, slot: item.slot, current: hero.gear[item.slot] || null, before, after: before, deltas: {} };
-  const after = summary(deriveHero({ ...hero, gear: plan.gear }, byId));
+  const after = summary(deriveHero({ ...hero, gear: plan.gear }, byId, bonus));
   const deltas = {};
   for (const k of Object.keys(before)) if (after[k] !== before[k]) deltas[k] = Math.round((after[k] - before[k]) * 10) / 10;
   return { ok: true, reason: null, slot: item.slot, current: hero.gear[item.slot] || null, displaced: plan.displaced, before, after, deltas };
@@ -145,29 +158,18 @@ export function reforge(game, uid) {
 }
 
 // ---- M3: Hilda's Temper and the shops (spec §3.9, §4.7) --------------------------------------------
+// M4: the forge lives in rules/forge.js (Temper to +10 with materials); these keep M3's names and
+// M3's shape, where a cost is its gold.
 
-// Gold to temper `item` one step: base x ceil(ilvl / 2) x mult[temper] (a relic uses its data ilvl).
-// null when it is already at the maximum.
+// Gold for the next step, or null when it is as far as it goes (or shattered).
 export function temperCost(item) {
-  const T = TUNING.temper, t = item?.temper || 0;
-  if (!item || t >= T.max) return null;
-  const ilvl = RELICS[item.base]?.ilvl ?? item.ilvl ?? 1;
-  return T.base * Math.ceil(Math.max(1, ilvl) / 2) * T.mult[t];
+  return forgeTemperCost(item)?.gold ?? null;
 }
 
 // Temper one step (+1 enchant each, spec D10). Returns { game, ok, cost, reason }.
 export function temper(game, uid) {
-  const item = game.inventory.find(i => i.uid === uid);
-  if (!item) return { game, ok: false, cost: null, reason: 'Nothing to temper' };
-  if (item.shattered) return { game, ok: false, cost: null, reason: 'Shattered. Reforge it first.' };
-  const cost = temperCost(item);
-  if (cost == null) return { game, ok: false, cost: null, reason: `Tempered as far as it goes (+${TUNING.temper.max}).` };
-  if (game.gold < cost) return { game, ok: false, cost, reason: `Needs ${cost} gold` };
-  const tempered = { ...item, temper: (item.temper || 0) + 1 };
-  let g = { ...game, gold: game.gold - cost, inventory: game.inventory.map(i => (i.uid === uid ? tempered : i)) };
-  const who = wearerOf(g, uid);
-  if (who) g = setHero(g, clampVitals(g.party.roster[who.heroId], g.inventory));
-  return { game: g, ok: true, cost, reason: null };
+  const r = forgeTemper(game, uid);
+  return { ...r, cost: r.cost ? r.cost.gold : null };
 }
 
 // Buy n of a consumable at its price. Returns { game, ok, reason }.

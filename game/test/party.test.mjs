@@ -95,28 +95,45 @@ test('reforge restores a shattered relic for gold', () => {
 
 // ---- M3: Hilda's Temper and the shops (spec §3.9, D10) -------------------------------------------------
 
-test('temper: cost by item level, +1 enchant per step (1:1), at most +3; buy fills the bag', async () => {
+test('temper: cost by item level, +1 enchant per step (1:1), silver from +4, embers from +7, at most +10; buy fills the bag', async () => {
   const { temper, temperCost, buy } = await import('../src/rules/party.js');
   const { game } = party();
   const uid = game.party.roster.warden.gear.weapon;
   const blade = game.inventory.find(i => i.uid === uid);
   assert.equal(temperCost(blade), 30 * Math.ceil(1 / 2) * 1);
-  let g = { ...game, gold: 10000 };
+  let g = { ...game, gold: 100000 };
   const hit0 = deriveHero(g.party.roster.warden, g.inventory).weapon.hit;
   const costs = [];
-  for (let k = 1; k <= 3; k++) {
+  const step = k => {
     const r = temper(g, uid);
     assert.equal(r.ok, true, r.reason);
     costs.push(r.cost);
     g = r.game;
     assert.equal(g.inventory.find(i => i.uid === uid).temper, k);
     assert.equal(deriveHero(g.party.roster.warden, g.inventory).weapon.hit, hit0 + k, 'one enchant per step');
-  }
+  };
+  for (let k = 1; k <= 3; k++) step(k);
   assert.deepEqual(costs, [30, 60, 120]);
-  assert.equal(g.gold, 10000 - 210);
+  assert.equal(g.gold, 100000 - 210);
+  // M4 (spec §4.2): +4 to +6 need silver, +7 to +10 embers; without them the forge says what is missing
+  const noSilver = temper(g, uid);
+  assert.equal(noSilver.ok, false);
+  assert.match(noSilver.reason, /1 silver/);
+  g = { ...g, materials: { scrap: 0, silver: 6, embers: 6 } };
+  for (let k = 4; k <= 6; k++) step(k);
+  assert.equal(g.materials.silver, 0, '1 + 2 + 3 silver');
+  for (let k = 7; k <= 9; k++) step(k);
+  const noEmbers = temper(g, uid);
+  assert.equal(noEmbers.ok, false);
+  assert.match(noEmbers.reason, /4 embers/);
+  g = { ...g, materials: { ...g.materials, embers: g.materials.embers + 4 } };
+  step(10);
+  assert.equal(g.materials.embers, 0, '1 + 2 + 3 + 4 embers');
+  assert.deepEqual(costs, [30, 60, 120, 180, 240, 330, 420, 540, 690, 900], 'base x ceil(ilvl / 2) x mult');
+  assert.equal(temperCost(g.inventory.find(i => i.uid === uid)), null);
   const maxed = temper(g, uid);
   assert.equal(maxed.ok, false);
-  assert.match(maxed.reason, /\+3/);
+  assert.match(maxed.reason, /\+10/);
   assert.equal(temper({ ...game, gold: 5 }, uid).ok, false, 'needs the gold');
   const ring = generateItem(createRng(5), { base: 'ring', rarity: 'runed', ilvl: 9 });
   assert.equal(temperCost(ring), 30 * 5);

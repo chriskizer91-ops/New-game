@@ -7,6 +7,9 @@
 // verbatim, and never read.
 //   newGame, spawnsFor, startBattle(game, { nodeId } | { patrol: { spawns, where, backdrop, dark } },
 //   { ambush, firstStrike }), resolveBattle, routPack, rest(game, hfId), travel, partyLevel, uniqueBrands
+// M4 (spec §4.3-§4.6): resolveBattle also marks relic deeds (report.deeds, .kindled, .ready), writes
+// the Chronicle, settles Grudges for good (flags.settled, provenance.grudge), pays Sunscorch spoils
+// (report.materials, .gems) and records finished Codex pages (report.pages); a Rout marks `rout`.
 // The M2 road helpers (route, currentNode, canAdvance, advance, isCleared, road patrols) are gone
 // with the road screen (spec §4.6).
 // Import direction (A6): never import rules/world.js, story.js or cond.js here.
@@ -24,7 +27,8 @@ import { escalateSpawn, addOmens, buildFoe } from './foe.js';
 import { deriveHero } from './stats.js';
 import { grantXp } from './progression.js';
 import { generateItem, relicItem, routSpoils } from './loot.js';
-import { rngFrom } from './util.js';
+import { pageBonus, markPages, relicDeeds, deedsOf, stageOf } from './codex.js';
+import { rngFrom, indexItems, addCounts } from './util.js';
 
 const START = GAUNTLET[0]; // 'hearthstone-keep', the Eternal Hearth
 const TIER_RANK = { rabble: 0, veteran: 1, 'relic-bearer': 2, champion: 3 };
@@ -49,6 +53,7 @@ function startingHero(id, rng, inventory, { name, starter, base }) {
   for (const [slot, g] of Object.entries(spec)) {
     if (!g) continue;
     const item = g === 'starter' ? relicItem(starter, rng, prov) : generateItem(rng, { base: g.base, rarity: g.rarity, ilvl: 1, provenance: prov });
+    item.chronicle = { ...item.chronicle, bearers: [id] };
     inventory.push(item);
     hero.gear[slot] = item.uid;
   }
@@ -69,12 +74,13 @@ export function newGame({ name = 'Wren', starter = 'hearthbrand', seed = 1, base
   return {
     version: 3, seed, rngState: rng.getState(),
     party: { active: [...HERO_IDS], roster },
-    inventory, gold: 50, codex,
+    inventory, gold: 50, codex, materials: { scrap: 0, silver: 0, embers: 0 }, gems: {},
     progress: {
       waking: 0, brands: [], lastHearthfire: START, pos: { ...START_AT }, act: 1,
       flags: {
         cleared: {}, done: {}, grudges: {}, day: 1, runs: 0,
         story: { starter }, unlocked: {}, opened: {}, kindled: { [START]: true }, visits: {}, quests: {}, scouted: {}, seen: {}, worn: {}, beaten: {},
+        pages: {}, settled: {},
       },
     },
     settings: { sound: true, battleSpeed: 1, reducedMotion: false },
@@ -124,11 +130,12 @@ export function routPack(game, { nodeId = null, spawns = null, where = null } = 
   const xp = Math.round(foes.reduce((a, f) => a + f.xp, 0) * TUNING.rout.xp);
   const place = where || (nodeId && ENCOUNTERS[nodeId]?.place) || null;
   const { drops, consumables } = routSpoils(rng, foes, g.progress.waking, { where: place, day: g.progress.flags.day });
-  const report = { result: 'rout', xp, gold, drops, consumables, levelUps: {} };
+  const report = { result: 'rout', xp, gold, drops, consumables, levelUps: {}, deeds: [], kindled: [], ready: [] };
   g.gold += gold;
   g.inventory.push(...drops);
   for (const [id, n] of Object.entries(consumables)) g.bag[id] = (g.bag[id] || 0) + n;
   awardXp(g, xp, rng, report);
+  for (const { item } of wornBy(g, g.party.active)) markDeed(g, item, 'rout', report); // M4: the Rout deed
   if (nodeId) {
     const f = g.progress.flags;
     f.beaten = { ...(f.beaten || {}), [nodeId]: (f.beaten?.[nodeId] || 0) + 1 };
@@ -141,8 +148,9 @@ export function routPack(game, { nodeId = null, spawns = null, where = null } = 
 
 function healAll(game) {
   const roster = {};
+  const bonus = pageBonus(game);
   for (const [id, h] of Object.entries(game.party.roster)) {
-    const d = deriveHero(h, game.inventory);
+    const d = deriveHero(h, game.inventory, bonus);
     roster[id] = { ...h, hp: d.maxHp, mp: d.maxMp };
   }
   return { ...game, party: { ...game.party, roster } };
@@ -226,7 +234,7 @@ export function startBattle(game, { nodeId = null, patrol = null } = {}, { ambus
     heroes: game.party.active.map(id => game.party.roster[id]),
     foes, seed, waking: game.progress.waking,
     ctx: {
-      inventory: game.inventory, bag: game.bag, nodeId, where: node.place, day: flags.day,
+      inventory: game.inventory, bag: game.bag, nodeId, where: node.place, day: flags.day, bonus: pageBonus(game),
       gentle: !!node.gentle, backdrop: node.backdrop, patrol: false, ambush,
       ...(firstStrike ? { firstStrike } : {}),
       ...(node.forewarned && story.forewarned ? { warded: TUNING.forewarned.ward } : {}),
@@ -248,7 +256,7 @@ function startPatrol(game, { spawns, where = 'The Wilds', backdrop = 'verdant-wo
     heroes: game.party.active.map(id => game.party.roster[id]),
     foes: spawns.map((s, i) => ({ ...s, spawnIndex: s.spawnIndex ?? i })), seed, waking: game.progress.waking,
     ctx: {
-      inventory: game.inventory, bag: game.bag, nodeId: null, where, day: game.progress.flags.day,
+      inventory: game.inventory, bag: game.bag, nodeId: null, where, day: game.progress.flags.day, bonus: pageBonus(game),
       gentle: false, backdrop, patrol: true, ambush, ...(firstStrike ? { firstStrike } : {}), ...(dark ? { dark: true } : {}),
     },
   });
@@ -295,9 +303,10 @@ function claimToCodex(g, items) {
 
 function breather(g) {
   const R = TUNING.rest;
+  const bonus = pageBonus(g);
   for (const id of g.party.active) {
     const h = g.party.roster[id];
-    const d = deriveHero(h, g.inventory);
+    const d = deriveHero(h, g.inventory, bonus);
     const hp = Math.max(1, h.hp) + Math.round(d.maxHp * R.breatherHp);
     g.party.roster[id] = { ...h, hp: Math.min(d.maxHp, hp), mp: Math.min(d.maxMp, h.mp + Math.round(d.maxMp * R.breatherMp)) };
   }
@@ -314,20 +323,27 @@ function awardXp(g, xp, rng, report) {
 
 function winBattle(g, battle, out, rng, report) {
   const node = ENCOUNTERS[battle.ctx.nodeId];
+  const f0 = g.progress.flags;
   awardXp(g, out.xp, rng, report);
   g.gold += out.gold;
-  g.inventory.push(...out.claimed, ...out.drops);
-  claimToCodex(g, [...out.claimed, ...out.drops]);
-  for (const [id, n] of Object.entries(out.consumables || {})) g.bag[id] = (g.bag[id] || 0) + n;
-  recordKills(g, out.kills);
-  breather(g);
-  for (const b of out.beaten) {
+  // A Grudge settled (M4, spec §4.6): gone from the hunt for good, and every piece from the fight says so
+  for (const b of battle.ctx.patrol ? [] : out.beaten) {
     const key = `${battle.ctx.nodeId}#${b.spawnIndex}`;
-    if (b.grudge && g.progress.flags.grudges[key]) {
-      report.grudgeSettled = g.progress.flags.grudges[key].name;
-      delete g.progress.flags.grudges[key];
+    if (b.grudge && f0.grudges[key]) {
+      report.grudgeSettled = f0.grudges[key].name;
+      f0.settled = { ...(f0.settled || {}), [key]: { day: f0.day, name: f0.grudges[key].name } };
+      delete f0.grudges[key];
     }
   }
+  const stamp = it => (report.grudgeSettled ? { ...it, provenance: { ...it.provenance, grudge: report.grudgeSettled } } : it);
+  report.claimed = out.claimed.map(stamp);
+  report.drops = out.drops.map(stamp);
+  g.inventory.push(...report.claimed, ...report.drops);
+  claimToCodex(g, [...report.claimed, ...report.drops]);
+  for (const [id, n] of Object.entries(out.consumables || {})) g.bag[id] = (g.bag[id] || 0) + n;
+  if (out.log) chronicle(g, out.log.felled, out.party.map(p => p.id));
+  else recordKills(g, out.kills);
+  breather(g);
   if (battle.ctx.patrol) return;
   const f = g.progress.flags;
   f.cleared[node.id] = true;
@@ -337,13 +353,99 @@ function winBattle(g, battle, out, rng, report) {
   if (node.brand) earnBrand(g, node, report);
 }
 
-// Each kill goes on the Chronicle of the weapon that made it.
+// Each kill goes on the Chronicle of the weapon that made it (a battle state from before M4's log).
 function recordKills(g, kills = {}) {
   for (const [heroId, n] of Object.entries(kills)) {
     const uid = g.party.roster[heroId]?.gear.weapon;
     const it = uid && g.inventory.find(i => i.uid === uid);
     if (it) it.chronicle = { ...it.chronicle, kills: (it.chronicle?.kills || 0) + n };
   }
+}
+
+// ---- M4: the Chronicle, deeds and spoils (spec §4.3, §4.4, §3.7) ---------------------------------
+
+// What the given heroes wear: [{ heroId, item }] (the live inventory objects of a cloned game; a
+// shattered relic carries nothing).
+function wornBy(g, heroIds) {
+  const byId = indexItems(g.inventory);
+  const out = [];
+  for (const id of heroIds) {
+    for (const uid of Object.values(g.party.roster[id]?.gear || {})) {
+      const it = uid && byId[uid];
+      if (it && !it.shattered) out.push({ heroId: id, item: it });
+    }
+  }
+  return out;
+}
+
+// Each foe knocked out goes on the Chronicle of the hero who struck it: their weapon and every relic
+// they wear count it, and remember the mightiest. Everyone who fought is on their gear's bearers.
+function chronicle(g, felled = [], heroIds) {
+  const worn = wornBy(g, heroIds);
+  for (const { heroId, item } of worn) {
+    const c = item.chronicle || {};
+    if (!(c.bearers || []).includes(heroId)) item.chronicle = { ...c, bearers: [...(c.bearers || []), heroId] };
+  }
+  for (const k of felled) {
+    const gear = g.party.roster[k.by]?.gear || {};
+    for (const { heroId, item } of worn) {
+      if (heroId !== k.by || !(item.uid === gear.weapon || RELICS[item.base])) continue;
+      const c = item.chronicle || {};
+      const best = c.mightiest && c.mightiest.level >= k.level ? c.mightiest : { name: k.name, level: k.level };
+      item.chronicle = { ...c, kills: (c.kills || 0) + 1, mightiest: best };
+    }
+  }
+}
+
+// Mark one deed done on a relic (if it is one of its three), with what it changed on the report.
+function markDeed(g, item, deed, report) {
+  if (!RELICS[item.base] || item.deeds?.[deed] || !relicDeeds(item.base).includes(deed)) return;
+  const was = stageOf(item);
+  item.deeds = { ...(item.deeds || {}), [deed]: g.progress.flags.day };
+  report.deeds.push({ uid: item.uid, relic: item.base, deed });
+  if (was === 'dormant') report.kindled.push(item.uid);
+  if (was !== 'awakened' && deedsOf(item).every(d => d.done)) report.ready.push(item.uid);
+}
+
+// The deeds a finished fight did for `item`, worn by `heroId` (spec §4.3), whether or not they are
+// among the item's own three: markDeed keeps only those. Exported for the tests.
+export function fightDeedIds(battle, out, report, heroId, item) {
+  const log = out.log || {};
+  const won = out.result === 'victory';
+  const foes = battle.order.map(id => battle.units[id]).filter(u => u.side === 'foe' && !u.summonedBy);
+  const done = [];
+  if (won) done.push('first-blood');
+  if (won && foes.some(f => f.tier === 'relic-bearer' || (f.held || []).length || (f.gear || []).some(x => x.relic))) done.push('fell-holder');
+  if (won && foes.some(f => f.tier === 'champion')) done.push('fell-champion');
+  if (log.nat20?.[heroId]) done.push('legend-strike');
+  if ((log.surged || []).some(x => x.uid === item.uid)) done.push('surge');
+  if ((out.pried || []).length) done.push('claim');
+  if (report.grudgeSettled) done.push('settle');
+  if (report.brand) done.push('brand');
+  if (won && (battle.waking || 0) >= 2 && log.downs === 0) done.push('untouched');
+  if ((item.chronicle?.kills || 0) >= 50) done.push('hundred');
+  return done;
+}
+
+// Every relic worn by a hero who fought gets the deeds the fight did.
+function fightDeeds(g, battle, out, report) {
+  for (const { heroId, item } of wornBy(g, out.party.map(p => p.id))) {
+    if (!RELICS[item.base]) continue;
+    for (const deed of fightDeedIds(battle, out, report, heroId, item)) markDeed(g, item, deed, report);
+  }
+}
+
+// Won Sunscorch fights pay forge materials by the tier of each foe beaten; Scorchgate's pay Ash Garnets.
+function spoils(g, node, out, report) {
+  if (!node || (node.region || 'verdant') !== 'sunscorch') return;
+  const F = TUNING.forge;
+  let materials = {};
+  for (const b of out.beaten) materials = addCounts(materials, F.spoils[b.tier] || {});
+  const gems = F.garnets[node.id] ? { 'ash-garnet': F.garnets[node.id] } : {};
+  g.materials = addCounts(g.materials, materials);
+  g.gems = addCounts(g.gems, gems);
+  report.materials = materials;
+  report.gems = gems;
 }
 
 // Beating a Brand-holder (spec D5, §4.6). A Brand you already hold is a rematch: no Brand, no
@@ -395,8 +497,9 @@ function yieldDuel(g, battle, node, rng, report) {
 }
 
 function clampParty(g) {
+  const bonus = pageBonus(g);
   for (const [id, h] of Object.entries(g.party.roster)) {
-    const d = deriveHero(h, g.inventory);
+    const d = deriveHero(h, g.inventory, bonus);
     g.party.roster[id] = { ...h, hp: Math.min(d.maxHp, Math.max(0, h.hp)), mp: Math.min(d.maxMp, Math.max(0, h.mp)) };
   }
 }
@@ -412,11 +515,15 @@ export function resolveBattle(game, battle) {
     result: out.result, xp: out.xp, gold: out.gold, drops: out.drops, claimed: out.claimed, rounds: out.rounds,
     consumables: out.consumables || {},
     levelUps: {}, goldLost: 0, grudge: null, grudgeSettled: null, brand: null, wokeAt: null, yield: false, rematch: false,
+    deeds: [], kindled: [], ready: [], pages: [], materials: {}, gems: {},
   };
   setRosterVitals(g, out.party);
   g.bag = { ...out.bag };
   const node = battle.ctx.nodeId ? ENCOUNTERS[battle.ctx.nodeId] : null;
-  if (out.result === 'victory') winBattle(g, battle, out, rng, report);
+  if (out.result === 'victory') {
+    winBattle(g, battle, out, rng, report);
+    if (!battle.ctx.patrol) spoils(g, node, out, report);
+  }
   else if (out.result === 'defeat' && node?.duel && !battle.ctx.patrol) yieldDuel(g, battle, node, rng, report);
   else if (out.result === 'defeat') wipe(g, battle, rng, report);
   else {
@@ -424,6 +531,8 @@ export function resolveBattle(game, battle) {
     g.gold += out.gold;
     report.grudge = recordGrudge(g, battle, true);
   }
+  fightDeeds(g, battle, out, report);
+  report.pages = markPages(g);
   clampParty(g);
   g.rngState = rng.getState();
   return { game: g, report };

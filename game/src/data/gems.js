@@ -1,6 +1,7 @@
-// Gems (M4 spec §4.5): regional stones set into sockets at Hilda's forge. A gem in a weapon adds its
-// `weapon` stats; in anything else, its `other` stats (the same keys as affix stats, rules/stats.js).
-// `price` is Idris's price in Sandspire (null: never sold; the Ash Garnet only drops in Scorchgate).
+// Gems (M4 spec §4.5) and forge materials (§3.7). Gems are regional stones set into sockets at
+// Hilda's forge. A gem in a weapon adds its `weapon` stats; in anything else, its `other` stats (the
+// same keys as affix stats, rules/stats.js). `price` is Idris's price in Sandspire (null: never sold;
+// the Ash Garnet only drops in Scorchgate).
 // Owner: P1 (M4).
 
 import { deepFreeze } from '../core/freeze.js';
@@ -15,3 +16,15 @@ export const GEMS = deepFreeze({
 });
 
 export const GEM_IDS = Object.freeze(Object.keys(GEMS));
+
+// Forge materials (M4 spec §3.7, §4.2): from Salvage, Sunscorch chests and the spoils of Sunscorch
+// fights (TUNING.forge.spoils). game.materials = { scrap, silver, embers }.
+const M = (id, name, text) => ({ id, name, text });
+
+export const MATERIALS = deepFreeze({
+  scrap: M('scrap', 'Scrap', 'Iron and brass from gear Hilda melted down. Rerolls wrought and tempered pieces.'),
+  silver: M('silver', 'Silver', 'Clean silver for the middle tempers (+4 to +6) and for rerolling runed and storied pieces.'),
+  embers: M('embers', 'Embers', 'Coals that never cool, from the Sunscorch. The high tempers (+7 to +10) and the Awakening need them.'),
+});
+
+export const MATERIAL_IDS = Object.freeze(Object.keys(MATERIALS));

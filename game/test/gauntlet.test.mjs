@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRng } from '../src/core/rng.js';
-import { newGame, startBattle, resolveBattle, rest, spawnsFor, travel, routPack, partyLevel, uniqueBrands } from '../src/rules/gauntlet.js';
+import { newGame, startBattle, resolveBattle, rest, spawnsFor, travel, routPack, partyLevel, uniqueBrands, fightDeedIds } from '../src/rules/gauntlet.js';
 import { SAVE_VERSION } from '../src/rules/migrate.js';
 import { xpToNext, xpForLevel, levelForXp, grantXp, MAX_LEVEL } from '../src/rules/progression.js';
 import { equip, bestHeroFor } from '../src/rules/party.js';
@@ -9,6 +9,10 @@ import { deriveHero } from '../src/rules/stats.js';
 import { ENCOUNTERS, GAUNTLET } from '../src/data/encounters.js';
 import { HEARTHS, START_AT, CRITICAL_PATH } from '../src/data/world.js';
 import { familyOf } from '../src/rules/foe.js';
+import { relicDeeds, relicsOn, stageOf } from '../src/rules/codex.js';
+import { generateItem } from '../src/rules/loot.js';
+import { RELICS } from '../src/data/relics.js';
+import { TUNING } from '../src/data/tuning.js';
 import { deepFreeze } from '../src/core/freeze.js';
 import { playOut } from './helpers.mjs';
 
@@ -316,4 +320,145 @@ test('battle ctx: first strike and ambush from the world, Forewarned wards, dark
 
 test('the critical path is made of real encounters and Hearthfires', () => {
   for (const id of CRITICAL_PATH) assert.ok(ENCOUNTERS[id], id);
+});
+
+// ---- M4: deeds, the Chronicle, settled Grudges, spoils and Codex pages (spec §4.3-§4.6, §3.7) -------
+
+// A won fight against `nodeId` with every foe at 1 HP; `tweak(state)` edits the finished battle.
+function wonFight(game, nodeId, tweak = () => {}) {
+  const { game: g, battle } = startBattle(game, { nodeId });
+  const b = structuredClone(battle);
+  for (const u of Object.values(b.units)) if (u.side === 'foe') u.hp = 1;
+  for (const u of Object.values(b.units)) if (u.side === 'hero') { u.hp = u.maxHp = 500; }
+  const played = structuredClone(playOut(b).state);
+  assert.equal(played.ended.result, 'victory');
+  tweak(played);
+  return { before: g, played, ...resolveBattle(g, played) };
+}
+
+test('fightDeedIds: what a fight did, deed by deed (spec §4.3)', () => {
+  const battle = {
+    order: ['f1', 'f2'], waking: 2,
+    units: { f1: { side: 'foe', tier: 'rabble', held: [], gear: [] }, f2: { side: 'foe', tier: 'veteran', held: [], gear: [{ relic: 'thornwatch-hood' }] } },
+  };
+  const item = { uid: 'u1', base: 'hearthbrand', chronicle: { kills: 50 } };
+  const out = { result: 'victory', log: { nat20: { warden: 1 }, surged: [{ uid: 'u1' }], downs: 0, felled: [] }, pried: [{ relic: 'tallyknife' }], party: [] };
+  const report = { grudgeSettled: 'Skarn the Party-Breaker', brand: { id: 'brand-of-briars' } };
+  assert.deepEqual(fightDeedIds(battle, out, report, 'warden', item).sort(),
+    ['brand', 'claim', 'fell-holder', 'first-blood', 'hundred', 'legend-strike', 'settle', 'surge', 'untouched']);
+  const champ = { ...battle, units: { ...battle.units, f1: { side: 'foe', tier: 'champion', held: [], gear: [] } } };
+  assert.ok(fightDeedIds(champ, out, {}, 'warden', item).includes('fell-champion'));
+  const held = { ...battle, units: { f1: { side: 'foe', tier: 'veteran', held: [{ relic: 'tallyknife', held: true }], gear: [] } }, order: ['f1'] };
+  assert.ok(fightDeedIds(held, out, {}, 'warden', item).includes('fell-holder'), 'a named holder');
+  const lost = { result: 'defeat', log: { nat20: { pip: 1 }, surged: [{ uid: 'u2' }], downs: 3, felled: [] }, pried: [], party: [] };
+  assert.deepEqual(fightDeedIds({ ...battle, waking: 0 }, lost, {}, 'warden', { ...item, chronicle: { kills: 49 } }), [], 'nothing for a lost fight');
+  assert.deepEqual(fightDeedIds(battle, { ...lost, log: { ...lost.log, nat20: { warden: 2 } }, pried: [{}] }, {}, 'warden', item).sort(),
+    ['claim', 'hundred', 'legend-strike'], 'a Legend Strike, a pry and fifty felled count even in a lost fight');
+  assert.ok(!fightDeedIds({ ...battle, waking: 1 }, out, {}, 'warden', item).includes('untouched'), 'Waking 2 or more');
+  assert.ok(!fightDeedIds(battle, { ...out, log: { ...out.log, downs: 1 } }, {}, 'warden', item).includes('untouched'), 'nobody down');
+});
+
+test('a fight marks a relic\'s own deeds (never others), kindles it, and writes the Chronicle', () => {
+  const g0 = at(newGame({ seed: 12 }), 'bramble-toll', 'milestone-fire');
+  g0.progress = { ...g0.progress, waking: 2 };
+  const uid = g0.party.roster.warden.gear.weapon;
+  g0.inventory = g0.inventory.map(i => (i.uid === uid ? { ...i, chronicle: { ...i.chronicle, kills: 50 } } : i));
+  const { played, game, report } = wonFight(g0, 'bramble-toll', b => {
+    b.log.nat20 = { warden: 1 };
+    b.log.surged = [{ hero: 'warden', uid, power: 'kindle' }];
+    b.log.downs = 0;
+  });
+  // Skarn wears the Thornwatch Hood (a holder); the warden rolled a 20 and surged; fifty felled; Waking 2
+  const fought = new Set(['first-blood', 'fell-holder', 'legend-strike', 'surge', 'hundred', 'untouched']);
+  const own = relicDeeds('hearthbrand');
+  const want = own.filter(d => fought.has(d));
+  const blade = game.inventory.find(i => i.uid === uid);
+  assert.deepEqual(Object.keys(blade.deeds || {}).sort(), [...want].sort());
+  for (const d of want) assert.equal(blade.deeds[d], game.progress.flags.day);
+  assert.deepEqual(report.deeds, want.map(d => ({ uid, relic: 'hearthbrand', deed: d })));
+  assert.deepEqual(report.kindled, want.length ? [uid] : []);
+  assert.deepEqual(report.ready, want.length === 3 ? [uid] : []);
+  assert.equal(stageOf(blade), want.length ? 'kindled' : 'dormant');
+  // the Chronicle: each foe felled by a hero goes on their weapon (and relics), with the mightiest
+  const felled = played.log.felled;
+  assert.ok(felled.length >= 1);
+  for (const id of game.party.active) {
+    const w = game.inventory.find(i => i.uid === game.party.roster[id].gear.weapon);
+    const mine = felled.filter(k => k.by === id);
+    const was = g0.inventory.find(i => i.uid === w.uid).chronicle?.kills || 0;
+    assert.equal(w.chronicle.kills, was + mine.length, `${id}'s weapon`);
+    if (mine.length) assert.equal(w.chronicle.mightiest.level, Math.max(...mine.map(k => k.level)));
+    assert.ok(w.chronicle.bearers.includes(id), 'everyone who fought is a bearer');
+  }
+  // a Rout marks `rout` on the relics the active heroes wear
+  const r = routPack(newGame({ seed: 12 }), { nodeId: 'hearth-road' });
+  assert.deepEqual(r.report.deeds, own.includes('rout') ? [{ uid, relic: 'hearthbrand', deed: 'rout' }] : []);
+});
+
+test('settling a Grudge: flags.settled keeps its name and day, and every piece from the fight says so', () => {
+  let g = at(newGame({ seed: 13 }), 'bramble-toll', 'milestone-fire');
+  const { game: lostGame, battle } = startBattle(g, { nodeId: 'bramble-toll' });
+  g = resolveBattle(lostGame, ended(battle, 'fled')).game;
+  const name = g.progress.flags.grudges['bramble-toll#0'].name;
+  const { game, report } = wonFight(g, 'bramble-toll');
+  assert.equal(report.grudgeSettled, name);
+  assert.deepEqual(game.progress.flags.settled, { 'bramble-toll#0': { day: game.progress.flags.day, name } });
+  const items = [...report.claimed, ...report.drops];
+  assert.ok(items.length > 0);
+  for (const it of items) {
+    assert.equal(it.provenance.grudge, name);
+    assert.equal(game.inventory.find(i => i.uid === it.uid).provenance.grudge, name);
+  }
+  if (relicDeeds('hearthbrand').includes('settle')) assert.ok(report.deeds.some(d => d.deed === 'settle'));
+});
+
+test('Sunscorch fights pay forge materials by tier; Scorchgate\'s pay Ash Garnets; the Wilds pay none', () => {
+  const g0 = { ...newGame({ seed: 14 }), progress: { ...newGame({ seed: 14 }).progress, waking: 2 } };
+  const { played, game, report } = wonFight(g0, 'sr-toll');
+  let want = {};
+  for (const u of Object.values(played.units)) {
+    if (u.side !== 'foe' || !u.ko || u.summonedBy) continue;
+    for (const [k, n] of Object.entries(TUNING.forge.spoils[u.tier] || {})) want[k] = (want[k] || 0) + n;
+  }
+  assert.deepEqual(report.materials, want);
+  for (const k of ['scrap', 'silver', 'embers']) assert.equal(game.materials[k], g0.materials[k] + (want[k] || 0), k);
+  assert.deepEqual(report.gems, {});
+  const cap = wonFight(g0, 'sg-captain');
+  assert.deepEqual(cap.report.gems, { 'ash-garnet': TUNING.forge.garnets['sg-captain'] });
+  assert.equal(cap.game.gems['ash-garnet'], TUNING.forge.garnets['sg-captain']);
+  const wilds = wonFight(g0, 'hearth-road');
+  assert.deepEqual([wilds.report.materials, wilds.report.gems], [{}, {}]);
+  assert.deepEqual(wilds.game.materials, g0.materials);
+});
+
+test('the fight that finishes a Codex page records it once (the aftermath banner)', () => {
+  const g0 = newGame({ seed: 15 });
+  const need = relicsOn('verdant').filter(id => !RELICS[id].starter);
+  const g = { ...g0, codex: { ...g0.codex, ...Object.fromEntries(need.map(id => [id, { sighted: true, claimed: true, awakened: false }])) } };
+  const first = wonFight(g, 'hearth-road');
+  assert.deepEqual(first.report.pages, ['verdant']);
+  assert.equal(first.game.progress.flags.pages.verdant, first.game.progress.flags.day);
+  assert.deepEqual(wonFight(first.game, 'hearth-road').report.pages, [], 'only once');
+  // the page's +5% max HP reaches the battle's heroes and their clamp afterwards
+  const { battle } = startBattle(first.game, { nodeId: 'hearth-road' });
+  const w = battle.units.warden;
+  assert.equal(w.maxHp, Math.round(deriveHero(first.game.party.roster.warden, first.game.inventory).maxHp * 1.05));
+});
+
+test('a new game starts on version 3 with an empty purse and pouch, and its gear knows who carries it', () => {
+  const g = newGame({ seed: 16 });
+  assert.deepEqual(g.materials, { scrap: 0, silver: 0, embers: 0 });
+  assert.deepEqual(g.gems, {});
+  assert.deepEqual([g.progress.flags.pages, g.progress.flags.settled], [{}, {}]);
+  for (const id of g.party.active) {
+    for (const uid of Object.values(g.party.roster[id].gear).filter(Boolean)) {
+      assert.deepEqual(g.inventory.find(i => i.uid === uid).chronicle.bearers, [id]);
+    }
+  }
+  const knife = generateItem(createRng(3), { base: 'belt-knife', rarity: 'wrought', ilvl: 1 });
+  const onPip = equip({ ...g, inventory: [...g.inventory, knife] }, 'pip', knife.uid);
+  assert.equal(onPip.ok, true, onPip.reason);
+  const moved = equip(onPip.game, 'warden', knife.uid);
+  assert.equal(moved.ok, true, moved.reason);
+  assert.deepEqual(moved.game.inventory.find(i => i.uid === knife.uid).chronicle.bearers, ['pip', 'warden'], 'equipping adds the bearer');
 });

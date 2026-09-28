@@ -86,8 +86,29 @@ export const TUNING = deepFreeze({
     spawnDistance: 8,                    // roamers spawn at least this far (Chebyshev) from you
     hazardPct: 0.04,                     // soft ichor: max HP lost per step without a key
     darkRadius: 2,                       // soft darkness: sight radius without a key
+    hunterSight: 3,                      // M4: a Grudge pack hunts you: it sees this much farther (spec §4.6)
+    longsight: 4,                        // M4: Saltglass's Longsight widens the Sighted range by this much
   },
   rout: { xp: 0.5 },                     // a Rout pays full gold and this share of XP
   forewarned: { ward: '2d6+4' },         // the dream of the four Sleepers: every hero starts the Rotwarden fight Warded
-  temper: { max: 3, base: 30, mult: [1, 2, 4] }, // cost = base * ceil(ilvl / 2) * mult[temper]
+  // ---- M4: Hilda's full forge (read by rules/forge.js; spec §4.2, §4.3, §3.7) ----
+  // The step from +t to +t+1 costs base * ceil(ilvl / 2) * mult[t] gold, plus silver[t] silver and
+  // embers[t] embers (the higher tempers are paced by Sunscorch loot). Each step is +1 enchant.
+  temper: {
+    max: 10, base: 30,
+    mult: [1, 2, 4, 6, 8, 11, 14, 18, 23, 30],
+    silver: [0, 0, 0, 1, 2, 3, 0, 0, 0, 0],
+    embers: [0, 0, 0, 0, 0, 0, 1, 2, 3, 4],
+  },
+  forge: {
+    // Reroll one trait: base * ceil(ilvl / 2) * (1 + rerolls so far) gold, plus one of the material
+    reroll: { base: 40, material: { wrought: 'scrap', tempered: 'scrap', runed: 'silver', storied: 'silver' } },
+    salvage: { worn: { scrap: 1 }, wrought: { scrap: 2 }, tempered: { silver: 1, scrap: 1 }, runed: { silver: 2 }, storied: { embers: 1, silver: 1 } },
+    socket: 20,                            // gold per ceil(ilvl / 2) to set a gem
+    awaken: { embers: 2, gold: 150 },      // Hilda's rite: the embers plus gold * ceil(ilvl / 2)
+    kindled: { hit: 1, guard: 1, hp: 5 },  // a Kindled relic: +1 hit (weapons), +1 Guard (armour, shields), +5 max HP (the rest)
+    // Won Sunscorch fights pay materials per foe beaten, by tier; Ash Garnets only come from Scorchgate
+    spoils: { veteran: { scrap: 1 }, 'relic-bearer': { silver: 1 }, champion: { silver: 2, embers: 2 } },
+    garnets: { 'sg-captain': 1, 'vault-guard': 1, 'ashen-warden': 2 },
+  },
 });

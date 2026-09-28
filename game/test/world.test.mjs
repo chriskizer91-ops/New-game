@@ -10,6 +10,7 @@ import { spawnsFor } from '../src/rules/gauntlet.js';
 import { relicItem } from '../src/rules/loot.js';
 import { createRng } from '../src/core/rng.js';
 import { MINI } from './fixtures/map-mini.mjs';
+import { MAPS } from '../src/data/maps/index.js';
 
 registerMap(MINI);
 const fresh = () => deepFreeze(migrate(newGame({ name: 'Tess', seed: 5 })));
@@ -342,4 +343,89 @@ test('ichor never lifts a fallen hero back to 1 HP', () => {
   for (let i = 0; i < 6; i++) { const m = move(g, w, i % 2 ? 'n' : 's'); g = m.game; w = m.walk; }
   assert.equal(g.party.roster.pip.hp, 0, 'Pip stays down');
   assert.ok(g.party.roster.warden.hp < game.party.roster.warden.hp, 'the others still burn');
+});
+
+// ---- M4: Grudge hunters, Longsight, chest materials, the Keep's south-east gate (spec §4.6, §4.7) ----
+
+const grudged = game => deepFreeze({ ...game, progress: { ...game.progress, flags: { ...game.progress.flags, grudges: {
+  'waymarker-stones#0': { key: 'waymarker-stones#0', nodeId: 'waymarker-stones', wins: 1, flees: 0, omens: [], title: 'the Party-Breaker', name: 'Thornhound the Party-Breaker' },
+} } } });
+
+test('a Grudge pack hunts: seeded as a hunter, never weak, sees 3 farther, a red "!", and no leash on its chase', () => {
+  const plain = withLevel(fresh(), 20);
+  const game = grudged(plain);
+  const seeded = enterMap(game, { map: 'field', anchor: 'start' }).walk.roamers.find(r => r.enc === 'waymarker-stones');
+  assert.equal(seeded.hunter, true);
+  assert.equal(seeded.weak, false, 'a hunter never flees, even from a party this strong');
+  assert.equal(isWeak(plain, seeded.spawns), true, '...though the same pack would');
+  assert.equal(enterMap(plain, { map: 'field', anchor: 'start' }).walk.roamers.find(r => r.enc === 'waymarker-stones').hunter, undefined);
+  // sight: 8 tiles away along a clear row (5 + 3)
+  const far = tick(game, onField(game, [pack(game, { hunter: true })], 12, 10, 'e'));
+  const alert = far.events.find(e => e.t === 'alert');
+  assert.deepEqual(alert, { t: 'alert', id: 'waymarker-stones', hunter: true });
+  assert.equal(tick(game, onField(game, [pack(game)], 12, 10, 'e')).events.some(e => e.t === 'alert'), false, 'a plain pack does not see that far');
+  // the chase: far past leash + 6 from home, a plain pack turns back; a hunter keeps coming
+  const low = grudged(fresh());
+  const lost = pack(low, { x: 6, y: 10, mood: 'chase', face: 'w' });
+  assert.equal(tick(low, onField(low, [lost], 3, 10, 'e')).walk.roamers[0].mood, 'return');
+  let w = onField(low, [{ ...lost, hunter: true }], 3, 10, 'e');
+  let met = null;
+  for (let i = 0; i < 6 && !met; i++) { const t = tick(low, w); met = t.events.find(e => e.t === 'contact'); w = t.walk; assert.equal(w.roamers[0].mood, 'chase'); }
+  assert.ok(met, 'it runs you down');
+  // walking into it is a fight, never a Rout
+  const hit = move(game, onField(game, [pack(game, { x: 16, y: 10, hunter: true, face: 'e' })], 15, 10, 'e'), 'e').events[0];
+  assert.equal(hit.t, 'contact');
+});
+
+const SIGHT = deepFreeze({
+  ...FIELD, id: 'm4-field', zone: null, roam: { max: 0, rects: [] },
+  entities: [
+    { id: 'm4-toll', kind: 'encounter', enc: 'bramble-toll', mode: 'block', at: [24, 10], face: 'w' },
+    { id: 'm4-chest', kind: 'chest', at: [2, 2], loot: { gold: 1, materials: { silver: 2, embers: 1 }, gems: { 'ash-garnet': 1 } } },
+  ],
+});
+registerMap(SIGHT);
+
+test('Longsight (Saltglass) widens the Sighted range by 4', () => {
+  const game = fresh();
+  const walk = { ...at(14, 10, 'e'), map: 'm4-field' };
+  assert.equal(move(game, walk, 'e').events.some(e => e.t === 'sighted'), false, '9 tiles: out of range');
+  const bow = deepFreeze({ ...game, inventory: [...game.inventory, relicItem('saltglass', createRng(8))] });
+  assert.deepEqual(move(bow, walk, 'e').events.filter(e => e.t === 'sighted').map(e => e.relic), ['thornwatch-hood']);
+});
+
+test('a chest can hold forge materials and gems', () => {
+  const game = deepFreeze({ ...fresh(), materials: { scrap: 1, silver: 0, embers: 0 } });
+  const r = openChest(game, 'm4-chest');
+  assert.equal(r.ok, true);
+  assert.deepEqual([r.materials, r.gems], [{ silver: 2, embers: 1 }, { 'ash-garnet': 1 }]);
+  assert.deepEqual(r.game.materials, { scrap: 1, silver: 2, embers: 1 });
+  assert.deepEqual(r.game.gems, { 'ash-garnet': 1 });
+  assert.equal(openChest(r.game, 'm4-chest').ok, false, 'once');
+});
+
+test('the Keep\'s south-east gate: sealed until Act I is done, then the way into the Sunscorch', () => {
+  const keep = MAPS.keep;
+  const exit = keep.exits.find(e => e.id === 'keep-se');
+  assert.ok(exit?.gate && exit.to === 'sun-road', 'a gated exit to the Sunward Road');
+  // stand on a walkable tile next to the gate and step into it
+  let from = null;
+  for (let y = exit.area[1]; y <= exit.area[3] && !from; y++) {
+    for (let x = exit.area[0]; x <= exit.area[2] && !from; x++) {
+      for (const [dir, [dx, dy]] of Object.entries({ n: [0, -1], s: [0, 1], e: [1, 0], w: [-1, 0] })) {
+        const sx = x - dx, sy = y - dy;
+        const inside = sx >= exit.area[0] && sx <= exit.area[2] && sy >= exit.area[1] && sy <= exit.area[3];
+        if (!inside && canWalk(fresh(), 'keep', sx, sy)) { from = { x: sx, y: sy, dir }; break; }
+      }
+    }
+  }
+  assert.ok(from, 'the gate can be walked up to');
+  const walk = { map: 'keep', visit: 1, x: from.x, y: from.y, face: from.dir, tick: 0, rng: 1, grace: 0, gone: {}, roamers: [] };
+  const before = move(fresh(), walk, from.dir).events[0];
+  assert.deepEqual([before.t, before.id, before.nextChapter], ['sealed', 'keep-se', false]);
+  const game = fresh();
+  const done = { ...game, progress: { ...game.progress, flags: { ...game.progress.flags, story: { ...game.progress.flags.story, 'act1-complete': true } } } };
+  const after = move(done, walk, from.dir).events[0];
+  assert.deepEqual([after.t, after.to, after.anchor], ['exit', 'sun-road', exit.anchor]);
+  assert.ok(enterMap(done, { map: 'sun-road', anchor: exit.anchor }).walk, 'and the anchor is real');
 });

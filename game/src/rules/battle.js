@@ -3,7 +3,8 @@
 //   createBattle({ heroes, foes, seed, waking, ctx }) -> BattleState
 //   timeline(state, n) / current(state) / commands(state, heroId) / targets(state, command)
 //   act(state, command) / foeTurn(state) -> { state, events }      (inputs are never mutated)
-//   outcome(state) -> null | { result, xp, gold, drops, claimed, consumables, party, bag, beaten, kills, rounds }
+//   outcome(state) -> null | { result, xp, gold, drops, claimed, consumables, party, bag, beaten, kills, rounds,
+//                              log, pried }   (M4: log = { felled, nat20, surged, downs } for deeds and the Chronicle)
 //
 // Flow: the ribbon always points at a combatant who is ready to act. Start-of-turn upkeep
 // (burn/poison ticks, regen, frozen skips) happens when a turn begins, at the end of the
@@ -29,8 +30,8 @@ const R = TUNING.ribbon;
 
 // ---- creation ------------------------------------------------------------------------------
 
-function heroUnit(hero, items, seq) {
-  const d = deriveHero(hero, items);
+function heroUnit(hero, items, seq, bonus = null) {
+  const d = deriveHero(hero, items, bonus);
   const byId = indexItems(items);
   const hp = hero.hp == null ? d.maxHp : clamp(hero.hp, 0, d.maxHp);
   return {
@@ -54,12 +55,14 @@ function heroUnit(hero, items, seq) {
 // Spawns are used as given: apply rules/foe.js escalateSpawn for the Waking beforehand
 // (rules/gauntlet.js does). `waking` here only raises loot luck.
 // ctx = { inventory, bag, nodeId, where, day, gentle, noFlee, backdrop, patrol, ambush,
-//         firstStrike, warded, dark, duel }   (M3: spec §4.7; warded is a dice expression, e.g. '2d6+4')
+//         firstStrike, warded, dark, duel, bonus }   (M3: spec §4.7; warded is a dice expression, e.g. '2d6+4';
+//         M4: bonus is the party-wide stats block, rules/codex.js pageBonus)
 export function createBattle({ heroes = [], foes = [], seed = 1, waking = 0, ctx = {} } = {}) {
   const rng = createRng(seed);
   const items = ctx.inventory || ctx.items || [];
   const s = {
     v: 1, seed, waking, time: 0, turn: 0, seq: 0, nextId: 0, actor: null, ended: null, kills: {},
+    log: { felled: [], nat20: {}, surged: [], downs: 0 }, // M4: what the relics saw (deeds, the Chronicle)
     units: {}, order: [], bag: { ...(ctx.bag || {}) }, rngState: 0, openingEvents: [],
     ctx: {
       nodeId: ctx.nodeId || null, where: ctx.where || null, day: ctx.day || 1, gentle: !!ctx.gentle,
@@ -68,7 +71,7 @@ export function createBattle({ heroes = [], foes = [], seed = 1, waking = 0, ctx
     },
   };
   for (const h of heroes) {
-    const u = heroUnit(h, items, s.seq++);
+    const u = heroUnit(h, items, s.seq++, ctx.bonus || null);
     s.units[u.id] = u;
     s.order.push(u.id);
   }
@@ -266,7 +269,9 @@ export function outcome(state) {
   if (!state.ended) return null;
   const party = unitsOf(state, 'hero').map(h => ({ id: h.id, hp: h.hp, maxHp: h.maxHp, mp: h.mp, maxMp: h.maxMp, surge: h.surge, ko: h.ko }));
   const beaten = unitsOf(state, 'foe').filter(f => f.ko && !f.summonedBy).map(f => ({ id: f.id, family: f.family, name: f.name, tier: f.tier, spawnIndex: f.spawnIndex, grudge: f.grudge }));
-  return { ...state.ended, party, bag: { ...state.bag }, beaten, kills: { ...state.kills }, rounds: Math.round(state.time / R.baseDelay * 10) / 10, turns: state.turn };
+  const log = structuredClone(state.log || { felled: [], nat20: {}, surged: [], downs: 0 });
+  const pried = unitsOf(state, 'foe').flatMap(f => (f.held || []).filter(p => !p.held).map(p => ({ foe: f.id, relic: p.relic || p.item?.base || null, by: p.by || null })));
+  return { ...state.ended, party, bag: { ...state.bag }, beaten, kills: { ...state.kills }, rounds: Math.round(state.time / R.baseDelay * 10) / 10, turns: state.turn, log, pried };
 }
 
 // ---- inspection (Analyze panel, tooltips) ----------------------------------------------------------
@@ -421,6 +426,7 @@ function resolveCommand(B, u, cmd) {
       const power = POWERS[sp.power];
       const tg = pickTargets(s, u, power.target, cmd.target);
       addSurge(B, u, -u.surge);
+      s.log?.surged.push({ hero: u.id, uid: sp.uid || null, power: power.id });
       B.ev.push({ t: 'legend', actor: u.id, item: sp.item || null, power: power.id, name: power.name, text: power.text });
       runEffects(B, u, power.effects, tg);
       return 1;

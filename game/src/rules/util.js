@@ -69,3 +69,14 @@ export function indexItems(items) {
   if (Array.isArray(items)) return Object.fromEntries(items.map(it => [it.uid, it]));
   return items;
 }
+
+// M4: add a { key: n } count map into another (the materials purse, the gem pouch). Returns a new map;
+// a count never drops below 0.
+export function addCounts(into, add) {
+  const out = { ...(into && typeof into === 'object' ? into : {}) };
+  for (const [k, n] of Object.entries(add || {})) {
+    if (!Number.isFinite(n) || !n) continue;
+    out[k] = Math.max(0, (Number.isFinite(out[k]) ? out[k] : 0) + n);
+  }
+  return out;
+}

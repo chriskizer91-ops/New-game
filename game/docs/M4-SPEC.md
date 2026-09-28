@@ -249,7 +249,7 @@ Brand of Ash.
 - **Idris the Gemwright** (`idris`): the Dusthaven Sunstone, Moss Agate and Glass Pearl (never the Ash Garnet, which only drops in Scorchgate).
 - **The Pithead store** (`ode`): the M3 consumables.
 - **Gems** (`data/gems.js`, §4.5): `sunstone`, `moss-agate`, `glass-pearl`, `ash-garnet`.
-- **Materials** (`data/tuning.js` `forge`): `scrap`, `silver`, `embers`, from Salvage and from Sunscorch chests and Relic-Bearer spoils.
+- **Materials** (`data/gems.js` `MATERIALS`; numbers in `data/tuning.js` `forge`): `scrap`, `silver`, `embers`, from Salvage, from Sunscorch chests (a chest's `loot` may carry `materials` and `gems`) and from the spoils of won Sunscorch fights, by the tier of each foe beaten (`TUNING.forge.spoils`: veteran 1 scrap, Relic-Bearer 1 silver, Champion 2 silver and 2 embers). Ash Garnets come only from Scorchgate fights (`TUNING.forge.garnets`) and chests. Quest rewards and dialogue effects may pay `gems` and `materials` too.
 
 ## 4. Systems (rules, pure; P1)
 
@@ -259,9 +259,9 @@ Brand of Ash.
 game.materials = { scrap: 0, silver: 0, embers: 0 }     // salvage and loot
 game.gems = { [gemId]: count }                           // the pouch
 game.progress.flags.pages = { [pageId]: day }            // finished Codex pages (their bonus is permanent)
-game.progress.flags.settled = { [grudgeKey]: day }       // Grudges settled
+game.progress.flags.settled = { [grudgeKey]: { day, name } }   // Grudges settled (the Journal names them)
 item.gems = [gemId | null, ...]                          // one entry per socket (M2 items already carry gems: [])
-item.chronicle = { felled, mightiest: { name, level } | null, bearers: [heroId] }   // optional
+item.chronicle = { kills, mightiest: { name, level } | null, bearers: [heroId] }   // optional; `kills` is M2's field ("foes felled")
 item.deeds = { [deedId]: day }                           // optional; relics only
 item.awakened = branchId                                 // optional; relics only
 item.rerolls = n                                         // optional
@@ -286,7 +286,10 @@ stageOf(item)                    -> 'dormant' | 'kindled' | 'awakened' | null (n
 deedsOf(item)                    -> [{ id, name, text, done }]
 awakenOptions(game, uid)         -> { ready, cost, branches: [{ id, name, text, enabled, why }] }
 awaken(game, uid, branchId)      -> { game, ok, cost, reason }
+buyGem(game, gemId, n)           -> { game, ok, cost, reason }    (Idris; data/gems.js prices)
+awakenCost(item), bestDomainOf(hero), pathOf(hero) -> 'a' | 'b', PATHS
 ```
+Costs are `{ gold, materials }`; refusals say what is missing ("Needs 1 silver", "Needs 4 embers"). `rules/stats.js` `heroStats(game, heroId)` is `deriveHero` with the Codex pages' bonus: the UI uses it wherever it shows a hero's numbers.
 - **Temper** +1…+10: gold = `base × ceil(ilvl/2) × mult[t]`, `mult = [1, 2, 4, 6, 8, 11, 14, 18, 23, 30]`; +4…+6 also cost 1/2/3 silver, +7…+10 cost 1/2/3/4 embers. Each step is +1 enchant (M3 D10). M3's `rules/party.js` `temper`/`temperCost` become thin wrappers over `forge.js`.
 - **Reroll**: one affix, replaced by a new affix eligible for the slot and rarity, never one whose `group` is already on the item, rolled fresh (quality stars included). Gold `40 × ceil(ilvl/2) × (1 + rerolls)`, plus 1 scrap (wrought, tempered) or 1 silver (runed, storied).
 - **Salvage**: worn → 1 scrap; wrought → 2 scrap; tempered → 1 silver + 1 scrap; runed → 2 silver; storied → 1 embers + 1 silver; socketed gems come back.
@@ -310,8 +313,9 @@ awaken(game, uid, branchId)      -> { game, ok, cost, reason }
 | `hundred` | its Chronicle reaches 50 foes felled |
 | `untouched` | a won fight at Waking 2+ in which no hero was knocked out |
 
-- **Stages:** Dormant (no deed), **Kindled** (1–2 deeds: +1 to hit on weapons, +1 Guard on armour and shields, +5 max HP on jewels), **Awakened** (all 3 deeds, then Hilda's rite: 2 embers + `150 × ceil(ilvl/2)` gold).
-- **Branches:** `awaken: { a: { name, text, stats, power? }, b: { … } }`. Branch **a** (the Hand) is open when the bearer's best Domain is physical, combat, survival or beastmastery; branch **b** (the Heart) when it is craft, knowledge, influence, attunement or psionics. The forge shows both; the one the bearer's path does not lead to says whose path would ("Equip it on someone whose path is the Heart"). An awakened relic: its branch stats apply on top, its Legend Surge gains `power` changes if given, `codex[id].awakened = true`, and its card is repainted (§6.3).
+- **Stages:** Dormant (no deed), **Kindled** (1–2 deeds: +1 to hit on weapons, +1 Guard on armour and shields, +5 max HP on the rest), **Awakened** (all 3 deeds, then Hilda's rite: 2 embers + `150 × ceil(ilvl/2)` gold). A relic that is ready but not yet awakened stays Kindled; an Awakened one keeps the Kindled bonus.
+- **Which results count:** `legend-strike`, `surge`, `claim` and `hundred` count whatever the fight's result (the moment happened); the others need a won fight. `untouched` reads the Waking the fight was fought at. `rules/gauntlet.js` `fightDeedIds` is the table in code.
+- **Branches:** `awaken: { a: { name, text, stats, power? }, b: { … } }`. Branch **a** (the Hand) is open when the bearer's best Domain is physical, combat, survival or beastmastery; branch **b** (the Heart) when it is craft, knowledge, influence, attunement or psionics. The forge shows both; the one the bearer's path does not lead to says whose path would ("Equip it on someone whose path is the Heart"). An awakened relic: its branch stats apply on top, its Legend Surge gains `power` changes if given (the branch's `power` is laid over the relic's own; its id is `power.id` or `<relicId>:<branch>`), `codex[id].awakened = true`, and its card is repainted (§6.3).
 - Hand-named branches for the three starters, Cinderfang (Sunmarrow / Glassline) and the Champions' pieces; templated names are fine for the rest ("Tallyknife, Awakened: the Quick Hand").
 
 ### 4.4 The Codex binder
@@ -325,9 +329,9 @@ awaken(game, uid, branchId)      -> { game, ok, cost, reason }
 | III | ironspire | sealed | — |
 | IV | gloomfen | sealed | — |
 
-`pagesDone(game)`, `pageBonus(game)` in `rules/codex.js`; `resolveBattle` and the claim paths set `flags.pages[id] = day` the moment a page completes (the aftermath shows a banner). `pageBonus` stats reach every hero through the stats pipeline (`deriveHero(hero, inventory, extra)`; P1 threads `extra` through battle setup and the Party screen).
+A page needs every relic on it except the starters you did not choose: they stay on their pedestals in the Keep reliquary (you carry one starter, and Tamsin's is only ever lent), so Page I needs your starter and the other 21. `pageProgress`, `pagesDone(game)`, `pageBonus(game)` and `markPages` in `rules/codex.js`; `resolveBattle` and the claim paths set `flags.pages[id] = day` the moment a page completes (the aftermath shows a banner). `pageBonus` stats reach every hero through the stats pipeline (`deriveHero(hero, inventory, extra)`; P1 threads `extra` through battle setup and the Party screen).
 
-**The Chronicle:** `resolveBattle` credits each foe knocked out to the hero who struck it: that hero's weapon (and every relic they wear) gets `felled += 1` and `mightiest` when the foe's level beats the record. Equipping adds the hero to `bearers`.
+**The Chronicle:** `resolveBattle` credits each foe knocked out to the hero who struck it: that hero's weapon (and every relic they wear) gets `kills += 1` and `mightiest` when the foe's level beats the record (victories only, as in M3). Equipping, and fighting with it, adds the hero to `bearers`.
 
 ### 4.5 Gems (`data/gems.js`)
 
@@ -343,7 +347,7 @@ Prices at Idris: 90 / 70 / 110 gold. Gem stats join the item's stats in `rules/s
 ### 4.6 Grudges
 
 - **Hunters:** a `pack` encounter with an unsettled Grudge seeds as a hunter: `sight + 3`, never weak (it never flees), its chase ignores the leash until you leave the map, and its "!" is red. Lairs and blocks keep M3's title plate and one-tile pace.
-- **Settled:** winning a fight against a Grudge sets `flags.settled[key] = day`, stamps every item from that fight with `provenance.grudge` (the card shows **Grudge settled**), and counts as the `settle` deed.
+- **Settled:** winning a fight against a Grudge sets `flags.settled[key] = { day, name }`, stamps every item from that fight with `provenance.grudge = name` (the card shows **Grudge settled**), and counts as the `settle` deed.
 - The Journal's **Grudges** tab lists the unsettled ones (name, title, where, Omens) and the settled ones (day).
 
 ### 4.7 World engine additions (`rules/world.js`)

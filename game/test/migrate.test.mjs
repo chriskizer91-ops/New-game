@@ -92,15 +92,29 @@ function shim() {
 }
 
 for (const f of FIX) {
-  test(`migrate ${f} to the current version: the M3 game plus the version, whether it comes from M2 or from M3`, () => {
+  test(`migrate ${f} to the current version: the M3 game plus the version and M4's empty purse, pouch, pages and settled Grudges, whether it comes from M2 or from M3`, () => {
     const v1 = deepFreeze(load(f));
     const now = migrate(v1), m3 = deepFreeze(toV2(v1));
     assert.equal(now.version, SAVE_VERSION);
-    assert.deepEqual({ ...now, version: 2 }, m3, 'nothing but the version changes on the way to M4');
+    const expected = structuredClone(m3);
+    Object.assign(expected, { version: 3, materials: { scrap: 0, silver: 0, embers: 0 }, gems: {} });
+    Object.assign(expected.progress.flags, { pages: {}, settled: {} });
+    assert.deepEqual(now, expected, 'nothing else changes on the way to M4 (spec §4.1)');
     assert.deepEqual(migrate(m3), now, 'an M3 save and the M2 save it came from give the same game');
     assert.deepEqual(migrate(now), now, 'idempotent');
   });
 }
+
+test('toV3 fills only what is missing: a partial purse keeps its counts, a pouch and pages stay as they are', () => {
+  const g = migrate(newGame({ name: 'Tess', seed: 5 }));
+  const partial = { ...g, materials: { silver: 3 }, gems: { sunstone: 1 }, progress: { ...g.progress, flags: { ...g.progress.flags, pages: { verdant: 4 }, settled: { 'x#0': { day: 2, name: 'X' } } } } };
+  const m = migrate(deepFreeze(partial));
+  assert.deepEqual(m.materials, { scrap: 0, silver: 3, embers: 0 });
+  assert.deepEqual(m.gems, { sunstone: 1 });
+  assert.deepEqual(m.progress.flags.pages, { verdant: 4 });
+  assert.deepEqual(m.progress.flags.settled, { 'x#0': { day: 2, name: 'X' } });
+  assert.deepEqual(migrate(m), m, 'idempotent');
+});
 
 test('save (M4): its own key; the M2 and M3 saves are only read, offered newest first, and exported byte for byte', async () => {
   const S = await import('../src/core/save.js');
@@ -195,5 +209,15 @@ test('a pasted code must have the shape the game walks on: every real save passe
   assert.ok(broken(g => { g.gold = '12'; }).includes('its gold'));
   assert.ok(broken(g => { g.progress.pos = { map: 'nowhere', x: 1, y: 1 }; }).includes('where you stand'));
   assert.ok(broken(g => { g.progress.pos.x = 9999; }).includes('where you stand'));
+  // M4 (spec §4.1): the purse, the pouch, the pages, the settled Grudges and each item's sockets
+  assert.ok(broken(g => { g.materials = { scrap: 'lots' }; }).includes('its forge materials'));
+  assert.ok(broken(g => { g.materials = { silver: -1 }; }).includes('its forge materials'));
+  assert.ok(broken(g => { delete g.materials; }).includes('its forge materials'));
+  assert.ok(broken(g => { g.gems = ['sunstone']; }).includes('its gems'));
+  assert.ok(broken(g => { g.progress.flags.pages = 3; }).includes('its pages flags'));
+  assert.ok(broken(g => { g.progress.flags.settled = null; }).includes('its settled flags'));
+  assert.ok(broken(g => { g.inventory[0].gems = 'sunstone'; }).includes('its items'));
+  assert.ok(broken(g => { g.inventory[0].gems = [{ id: 'sunstone' }]; }).includes('its items'));
+  assert.deepEqual(broken(g => { g.inventory[0].gems = ['sunstone', null]; g.gems = { sunstone: 2 }; }), [], 'sockets hold gem ids or nothing');
   assert.deepEqual(saveProblems(null), ['it is not a save']);
 });

@@ -3,7 +3,7 @@
 //
 // Walk   = { map, visit, x, y, face, tick, rng, grace, gone: {}, roamers: [Roamer] }
 // Roamer = { id, enc|null, zone|null, spawns, lead: { family, variant, art, gearTier, count }, x, y, home: [x, y],
-//            leash, face, mood: 'wander'|'alert'|'chase'|'return'|'flee'|'stunned', wait, weak, trackless }
+//            leash, face, mood: 'wander'|'alert'|'chase'|'return'|'flee'|'stunned', wait, weak, trackless, hunter }
 //
 // enterMap(game, { map, anchor } | { map, at: [x, y], face }) -> { game, walk, events }
 // move(game, walk, dir, { run = false } = {}) -> { game, walk, events }      dir 'n'|'e'|'s'|'w'
@@ -18,7 +18,8 @@
 // threat(game, encId) -> { level, party, rating: 'easy'|'fair'|'hard'|'deadly', tier, spawns, held, wears, grudge }
 // keys(game) -> { powers: { [powerId]: relicId }, domains: { [domainId]: { level, heroId } } }
 // lockStatus(game, lockType) -> { open, soft, by, keys: [{ kind: 'power'|'domain', id, label, have, detail }] }
-// openLock(game, entityId) -> { game, ok, by }        openChest(game, entityId) -> { game, ok, items, gold, bag }
+// openLock(game, entityId) -> { game, ok, by }
+// openChest(game, entityId) -> { game, ok, items, gold, bag, materials, gems }   (M4: loot.materials, loot.gems)
 // sightEncounter(game, encId) -> game                 light(game, walk) -> 2 | Infinity
 // isWeak(game, spawns) -> boolean
 //
@@ -27,7 +28,7 @@
 //   encounter { id }  gate { id, text, guard }  lock { id, lock, status }  trigger { id, dialogue }
 //   sighted { relic, enc }  hazard { pct, hurt: { heroId: hp lost } }  talk { npc, dialogue, enc? }
 //   sign { text }  use { kind, id }  chest { id, lock? }  hearthfire { id }  enter { map }
-//   alert { id }                        a roamer noticed you ("!")
+//   alert { id, hunter? }               a roamer noticed you ("!"; M4: a Grudge's hunter shows a red one)
 //   roam { moves: [[id, x, y, face]] }  roamers that moved this tick
 //   contact { id, enc, by: 'player'|'roamer', firstStrike, ambush }   a battle with roamer `id`
 //   rout { id, enc }                    you walked into a weak pack: it scatters (gauntlet.routPack)
@@ -40,6 +41,9 @@
 // flee instead, on 4 of every 5 ticks, and walking into one is a Rout. Walking into a pack's back is
 // a First Strike; a pack walking into yours is an ambush. They never enter exits, doors, stairs,
 // lock or gate areas, Hearthfire stands, entity tiles or 1-wide corridors.
+// M4 (spec §4.6): a pack with an unsettled Grudge is a hunter: it sees TUNING.world.hunterSight
+// farther, is never weak (never flees, never Routs), and its chase ignores the leash until you leave
+// the map. Saltglass's Longsight widens the Sighted range (spec §4.7).
 // registerMap() lets tests use test/fixtures/map-mini.mjs.
 // Import direction (A6): world -> story -> cond -> gauntlet.
 // Owner: WP1.
@@ -60,6 +64,8 @@ import { spawnsFor, partyLevel } from './gauntlet.js';
 import { familyOf, escalateSpawn } from './foe.js';
 import { generateItem } from './loot.js';
 import { deriveHero } from './stats.js';
+import { pageBonus } from './codex.js';
+import { addCounts } from './util.js';
 import { aStar, DIRS, DIR_KEYS } from './path.js';
 
 const TW = TUNING.world;
@@ -240,9 +246,10 @@ export function move(game, walk, dir, { run = false } = {}) {
 function burn(game, pct, events) {
   const g = structuredClone(game);
   const hurt = {};
+  const bonus = pageBonus(g);
   for (const id of g.party.active) {
     const h = g.party.roster[id];
-    const max = deriveHero(h, g.inventory).maxHp;
+    const max = deriveHero(h, g.inventory, bonus).maxHp;
     const cur = h.hp ?? max;
     if (cur <= 0) continue;
     const hp = Math.max(1, cur - Math.max(1, Math.round(max * pct)));
@@ -256,6 +263,7 @@ function burn(game, pct, events) {
 function sightHolders(game, walk, events) {
   const T = TW;
   let range = ownedRelics(game).has('thornwatch-hood') ? T.sightRelicWatchful : T.sightRelic;
+  if (powerOwned(game, 'longsight')) range += T.longsight;
   if (light(game, walk) !== Infinity) range = Math.min(range, T.darkRadius);
   let g = game;
   for (const e of present(game, walk.map)) {
@@ -402,20 +410,24 @@ export function openChest(game, entityId) {
   const hit = findEntity(entityId);
   const e = hit?.entity;
   const f = flagsOf(game);
-  if (!e || e.kind !== 'chest' || f.opened?.[e.id]) return { game, ok: false, items: [], gold: 0, bag: {} };
-  if (e.lock && !lockStatus(game, e.lock).open) return { game, ok: false, items: [], gold: 0, bag: {} };
+  const none = { game, ok: false, items: [], gold: 0, bag: {}, materials: {}, gems: {} };
+  if (!e || e.kind !== 'chest' || f.opened?.[e.id]) return none;
+  if (e.lock && !lockStatus(game, e.lock).open) return none;
   const g = structuredClone(game);
   const rng = createRng(`chest:${game.seed}:${e.id}`);
   const ilvl = (mapOf(hit.map).level || 1) + 6 * (game.progress.waking || 0);
   const items = (e.loot.items || []).map(spec => generateItem(rng, { ...spec, ilvl: spec.ilvl || ilvl, provenance: { from: 'a hidden cache', where: mapOf(hit.map).name, day: f.day } }));
   const gold = e.loot.gold || 0, bag = { ...(e.loot.bag || {}) };
+  const materials = { ...(e.loot.materials || {}) }, gems = { ...(e.loot.gems || {}) };
   g.inventory.push(...items);
   g.gold += gold;
   for (const [id, n] of Object.entries(bag)) g.bag[id] = (g.bag[id] || 0) + n;
+  g.materials = addCounts(g.materials, materials);
+  g.gems = addCounts(g.gems, gems);
   const gf = g.progress.flags;
   gf.opened = { ...(gf.opened || {}), [e.id]: true };
   if (e.loot.story) gf.story = { ...(gf.story || {}), [e.loot.story]: true };
-  return { game: g, ok: true, items, gold, bag };
+  return { game: g, ok: true, items, gold, bag, materials, gems };
 }
 
 // ---- sighting, light, weakness ------------------------------------------------------------------------
@@ -511,9 +523,11 @@ function leadOf(spawns) {
 }
 
 function makeRoamer(game, { id, enc, zone, spawns, x, y, leash, face }) {
+  const hunter = !!enc && spawns.some(s => s.grudge);
   return {
     id, enc, zone, spawns, lead: leadOf(spawns), x, y, home: [x, y], leash, face: face || 's',
-    mood: 'wander', wait: 0, weak: isWeak(game, spawns), trackless: spawns.every(s => familyOf(s).tier === 'rabble'),
+    mood: 'wander', wait: 0, weak: !hunter && isWeak(game, spawns), trackless: spawns.every(s => familyOf(s).tier === 'rabble'),
+    ...(hunter ? { hunter: true } : {}),
   };
 }
 
@@ -552,7 +566,7 @@ function seedRoamers(game, map, walk, rng) {
 // You walk into (or talk to) a roamer: a weak pack is Routed; otherwise a fight, with First Strike
 // when you came at its back.
 function touch(game, r, dir) {
-  if (isWeak(game, r.spawns)) return { t: 'rout', id: r.id, enc: r.enc };
+  if (!r.hunter && isWeak(game, r.spawns)) return { t: 'rout', id: r.id, enc: r.enc };
   return { t: 'contact', id: r.id, enc: r.enc, by: 'player', firstStrike: r.face === dir && r.mood !== 'chase' && r.mood !== 'alert', ambush: false };
 }
 
@@ -580,9 +594,9 @@ function tickRoamers(game, walk, events) {
   };
   for (const r of roamers) {
     if (contact) break;
-    r.weak = isWeak(game, r.spawns);
+    r.weak = !r.hunter && isWeak(game, r.spawns);
     const d = cheb(r.x, r.y, px, py);
-    const sees = d <= sight && seesTiles(map, r.x, r.y, px, py);
+    const sees = d <= sight + (r.hunter ? TW.hunterSight : 0) && seesTiles(map, r.x, r.y, px, py);
     if (r.mood === 'stunned') {
       r.wait -= 1;
       if (r.wait <= 0) { r.mood = 'return'; r.wait = 0; }
@@ -612,7 +626,7 @@ function tickRoamers(game, walk, events) {
       continue;
     }
     if (r.mood === 'chase') {
-      if (cheb(r.x, r.y, r.home[0], r.home[1]) > r.leash + 6) { r.mood = 'return'; continue; }
+      if (!r.hunter && cheb(r.x, r.y, r.home[0], r.home[1]) > r.leash + 6) { r.mood = 'return'; continue; }
       if (walk.tick % 3 === 2) continue;
       const next = toward(r, px, py, true);
       if (!next) continue;
@@ -636,7 +650,7 @@ function tickRoamers(game, walk, events) {
       r.mood = 'alert';
       r.wait = alertWait;
       r.face = faceTo(r.x, r.y, px, py);
-      events.push({ t: 'alert', id: r.id });
+      events.push({ t: 'alert', id: r.id, ...(r.hunter ? { hunter: true } : {}) });
       continue;
     }
     if (rng.int(0, 2) !== 0) continue;

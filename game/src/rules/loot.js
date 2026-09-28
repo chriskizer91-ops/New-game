@@ -85,7 +85,7 @@ export function affixText(affix) {
   return a ? a.text.replace('{v}', affix.value).replace('{d}', affix.value * 2) : '';
 }
 
-function itemAspect(base, affixes) {
+export function itemAspect(base, affixes) {
   for (const { id } of affixes) {
     const a = AFFIXES[id];
     if (a.aspect && (a.stat === 'extraDice' || (a.stat === 'resist' && base.slot !== 'weapon'))) return a.aspect;
@@ -93,12 +93,36 @@ function itemAspect(base, affixes) {
   return null;
 }
 
+// A wrought, tempered or runed piece is named for its traits: "Mossbound Arming Sword of the Hunt".
+export function affixedName(base, affixes) {
+  const pre = affixes.map(x => AFFIXES[x.id]).find(a => a?.type === 'prefix');
+  const suf = affixes.map(x => AFFIXES[x.id]).find(a => a?.type === 'suffix');
+  return [pre?.name, base.name, suf?.name].filter(Boolean).join(' ');
+}
+
 function itemName(rng, base, rarityId, affixes) {
   if (rarityId === 'worn') return `${rng.pick(NAMES.worn)} ${base.name}`;
   if (rarityId === 'storied') return `${rng.pick(NAMES.first)}${rng.pick(NAMES.second)}, ${rng.pick(NAMES.epithet)}`;
-  const pre = affixes.map(x => AFFIXES[x.id]).find(a => a.type === 'prefix');
-  const suf = affixes.map(x => AFFIXES[x.id]).find(a => a.type === 'suffix');
-  return [pre?.name, base.name, suf?.name].filter(Boolean).join(' ');
+  return affixedName(base, affixes);
+}
+
+// M4 (Hilda's Reroll, spec §4.2): a fresh trait for item.affixes[index], eligible for the slot and the
+// rarity, never the trait it replaces, never a group another trait already holds, and at most two
+// prefixes and two suffixes. null when nothing fits.
+export function rerollAffix(rng, item, index) {
+  const base = ITEMS[item?.base];
+  const old = item?.affixes?.[index];
+  if (!base || !old) return null;
+  const rank = rankOf(item.rarity);
+  const others = item.affixes.filter((_, i) => i !== index).map(o => AFFIXES[o.id]).filter(Boolean);
+  const groups = new Set(others.map(a => a.group).filter(Boolean));
+  const count = { prefix: 0, suffix: 0 };
+  for (const a of others) count[a.type]++;
+  const pool = Object.values(AFFIXES).filter(a => a.slots.includes(base.slot) && a.minTier <= rank && a.id !== old.id
+    && !others.some(o => o.id === a.id) && !(a.group && groups.has(a.group)) && count[a.type] < 2);
+  if (!pool.length) return null;
+  const a = rng.pick(pool);
+  return { id: a.id, value: affixValue(rng, a, item.rarity, item.ilvl || 1) };
 }
 
 // A random ItemInstance. `seed` drives the procedural art in src/art.

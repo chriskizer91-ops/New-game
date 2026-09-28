@@ -52,12 +52,17 @@ export function toV2(save) {
   return v;                         // cleared, done, grudges, day, runs, waking, brands and node are untouched
 }
 
-// M4: a Milestone 3 save walks on unchanged; version 3 marks it as this milestone's. Only fills what
-// is missing, so it is idempotent.
+// M4 (spec §4.1): a Milestone 3 save walks on unchanged, with the forge's purse, the gem pouch, the
+// finished Codex pages and the settled Grudges added empty; version 3 marks it as this milestone's.
+// Only fills what is missing, so it is idempotent. Item fields (gems, deeds, awakened, rerolls, the
+// Chronicle's mightiest and bearers, provenance.grudge) stay optional: absent means none.
+const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
 export function toV3(save) {
-  const v = toV2(save);
-  if (v.version >= 3) return v;
-  v.version = 3;
+  const v = toV2(save), f = v.progress.flags;
+  v.materials = isObj(v.materials) ? { scrap: 0, silver: 0, embers: 0, ...v.materials } : { scrap: 0, silver: 0, embers: 0 };
+  if (!isObj(v.gems)) v.gems = {};
+  for (const k of ['pages', 'settled']) if (!isObj(f[k])) f[k] = {};
+  if (v.version < 3) v.version = 3;
   return v;
 }
 
@@ -72,7 +77,8 @@ export function saveProblems(g) {
   if (!obj(g)) return ['it is not a save'];
   const out = [];
   if (g.version !== SAVE_VERSION) out.push('its version');
-  if (!Array.isArray(g.inventory) || !g.inventory.every(it => obj(it) && typeof it.uid === 'string' && typeof it.base === 'string')) out.push('its items');
+  if (!Array.isArray(g.inventory) || !g.inventory.every(it => obj(it) && typeof it.uid === 'string' && typeof it.base === 'string'
+    && (it.gems == null || (Array.isArray(it.gems) && it.gems.every(x => x == null || typeof x === 'string'))))) out.push('its items');
   const roster = g.party?.roster, active = g.party?.active;
   if (!obj(roster) || !obj(roster.warden)) out.push('its party');
   else {
@@ -85,10 +91,13 @@ export function saveProblems(g) {
   }
   if (!num(g.gold)) out.push('its gold');
   if (!obj(g.codex)) out.push('its codex');
+  const counts = v => obj(v) && Object.values(v).every(n => num(n) && n >= 0);
+  if (!counts(g.materials)) out.push('its forge materials');
+  if (!counts(g.gems)) out.push('its gems');
   const p = g.progress, f = p?.flags;
   if (!obj(p) || !obj(f)) out.push('its progress');
   else {
-    for (const k of ['cleared', 'done', 'grudges', ...NEW_FLAGS]) if (!obj(f[k])) out.push(`its ${k} flags`);
+    for (const k of ['cleared', 'done', 'grudges', ...NEW_FLAGS, 'pages', 'settled']) if (!obj(f[k])) out.push(`its ${k} flags`);
     if (!Array.isArray(p.brands ?? [])) out.push('its Brands');
     if (!num(p.waking ?? 0)) out.push('its Waking');
     const pos = p.pos, map = obj(pos) ? MAPS[pos.map] : null;

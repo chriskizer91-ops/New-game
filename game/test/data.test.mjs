@@ -186,10 +186,10 @@ test('M3 foes: the Rotwarden has three phases whose Arts need its breakable reli
   for (const id of ['gloamwing', 'mirelord']) assert.equal(FOES[id].tier, 'relic-bearer');
 });
 
-test('shops sell consumables with prices; the temper table has three steps', async () => {
+test('shops sell consumables with prices; the temper table has ten steps (M4 spec §4.2)', async () => {
   const { TUNING } = await import('../src/data/tuning.js');
   for (const id of ['hearth-tonic', 'bitterroot', 'frost-draught', 'ember-salts']) assert.ok(CONSUMABLES[id].price > 0, id);
-  assert.equal(TUNING.temper.max, 3);
-  assert.equal(TUNING.temper.mult.length, 3);
+  assert.equal(TUNING.temper.max, 10);
+  assert.equal(TUNING.temper.mult.length, 10);
   assert.equal(TUNING.waking.rabbleLevels, 2);
 });

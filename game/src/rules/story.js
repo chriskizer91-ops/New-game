@@ -17,6 +17,9 @@
 // pendingLetter(game) -> brandId | null                     a held Brand whose Unsmith letter is unread
 // readLetter(game, brandId) -> game                         marks it read (story['letter:<brandId>'])
 // Events: { t: 'fight', enc } { t: 'open', screen } { t: 'item', item } { t: 'gold', n } { t: 'letter', id } { t: 'end', act }
+//         M4: { t: 'gems', gems } { t: 'materials', materials } { t: 'page', id } (a gift finished a Codex page)
+// M4 effects: { gems: { [gemId]: n } }, { materials: { scrap?, silver?, embers? } }; quest rewards may
+// carry `gems` and `materials` too.
 // Import direction (A6): world -> story -> cond -> gauntlet. Never import world here.
 // Owner: WP1.
 
@@ -30,7 +33,8 @@ import { DOMAINS } from '../data/domains.js';
 import { check, questState, bountyState, flagsOf, storyOf } from './cond.js';
 import { deriveHero } from './stats.js';
 import { generateItem, relicItem } from './loot.js';
-import { mod, ibFor, rngFrom } from './util.js';
+import { pageBonus, markPages } from './codex.js';
+import { mod, ibFor, rngFrom, addCounts } from './util.js';
 
 // ---- talking ------------------------------------------------------------------------------------
 
@@ -108,8 +112,9 @@ export function dialogueView(game, id) {
 // ---- effects ------------------------------------------------------------------------------------
 
 function healAll(g) {
+  const bonus = pageBonus(g);
   for (const [id, h] of Object.entries(g.party.roster)) {
-    const d = deriveHero(h, g.inventory);
+    const d = deriveHero(h, g.inventory, bonus);
     g.party.roster[id] = { ...h, hp: d.maxHp, mp: d.maxMp };
   }
 }
@@ -126,12 +131,15 @@ function apply(g, effects, rng, events) {
       g.inventory.push(item);
       g.codex[e.give] = { sighted: true, awakened: false, ...g.codex[e.give], claimed: true };
       events.push({ t: 'item', item });
+      for (const id of markPages(g)) events.push({ t: 'page', id });
     } else if ('item' in e) {
       const item = generateItem(rng, { ...e.item, ilvl: e.item.ilvl || 1, provenance: { from: 'a gift', day: f.day } });
       g.inventory.push(item);
       events.push({ t: 'item', item });
     } else if ('gold' in e) { g.gold += e.gold; events.push({ t: 'gold', n: e.gold }); }
     else if ('bag' in e) for (const [id, n] of Object.entries(e.bag)) g.bag[id] = (g.bag[id] || 0) + n;
+    else if ('gems' in e) { g.gems = addCounts(g.gems, e.gems); events.push({ t: 'gems', gems: { ...e.gems } }); }
+    else if ('materials' in e) { g.materials = addCounts(g.materials, e.materials); events.push({ t: 'materials', materials: { ...e.materials } }); }
     else if ('unlock' in e) f.unlocked = { ...(f.unlocked || {}), [e.unlock]: true };
     else if ('heal' in e) healAll(g);
     else if ('fight' in e) events.push({ t: 'fight', enc: e.fight });
@@ -217,6 +225,7 @@ function claimInto(g, id, rng, events) {
   apply(g, [
     ...(r.gold ? [{ gold: r.gold }] : []), ...(r.relic ? [{ give: r.relic }] : []),
     ...(r.item ? [{ item: r.item }] : []), ...(r.set ? [{ set: r.set }] : []),
+    ...(r.gems ? [{ gems: r.gems }] : []), ...(r.materials ? [{ materials: r.materials }] : []),
   ], rng, events);
 }
 

@@ -127,7 +127,9 @@ function knockOut(B, t, src) {
   if (src && src.side === 'hero' && t.side === 'foe') {
     addSurge(B, src, T.surge.kill);
     B.s.kills[src.id] = (B.s.kills[src.id] || 0) + 1; // for the weapon's Chronicle
+    B.s.log?.felled.push({ by: src.id, name: t.name, level: t.level || 1, tier: t.tier || null }); // M4: the Chronicle
   }
+  if (t.side === 'hero' && B.s.log) B.s.log.downs += 1; // M4: the Untouched deed
 }
 
 // Guarding halves, frozen shatters under crush, warded soaks, then HP.
@@ -286,6 +288,7 @@ function rollAttack(B, a, t, eff) {
   else if (vs - total <= T.attack.grazeWindow) result = 'graze';
   else result = 'miss';
   B.ev.push({ t: 'roll', actor: a.id, target: t.id, purpose: 'attack', die: 20, rolls: r.rolls, kept: r.kept, bonus, total, vs, result, adv, dis });
+  if (a.side === 'hero' && r.kept === 20 && B.s.log) B.s.log.nat20[a.id] = (B.s.log.nat20[a.id] || 0) + 1; // M4: the Legend Strike deed
   return result;
 }
 
