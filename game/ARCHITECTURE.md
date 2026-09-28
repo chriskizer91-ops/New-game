@@ -14,7 +14,7 @@ npm test             # node --test test/*.test.mjs (rules and data only; no DOM)
 npm run lint         # eslint (no-undef is an error)
 ```
 
-`tools/build.mjs` bundles `src/main.js` with esbuild (IIFE, not minified), collects CSS imported
+`tools/build.mjs` bundles `src/main.js` with esbuild (IIFE, whitespace-minified; identifiers kept), collects CSS imported
 from JS, and inlines both into `src/index.html`. No other runtime dependencies, no network
 requests except Google Fonts. Everything (art, music, data) is generated or embedded.
 

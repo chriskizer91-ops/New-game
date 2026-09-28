@@ -85,6 +85,14 @@ function makeBot(starter) {
           return 'battle';
         }
         case 'fight': log(`fight ${e.enc}`); battleWon(forceWin(s.game, { nodeId: e.enc })); return 'battle';
+        case 'gate':
+          // a guarded gate (the Bramble Toll chain): walking into it calls out its guard
+          if (e.guard && !s.game.progress.flags.cleared[e.guard] && !s.game.progress.flags.done[e.guard]) {
+            log(`gate ${e.id}: fight ${e.guard}`);
+            battleWon(forceWin(s.game, { nodeId: e.guard }));
+            return 'battle';
+          }
+          break;
         case 'talk': log(`talk ${e.dialogue}`); dialogue(e.dialogue); return 'talk';
         case 'exit': log(`exit ${e.id}`); enter({ map: e.to, anchor: e.anchor }); return 'exit';
         case 'sealed': stuck(`walked into sealed exit ${e.id}`); break;
@@ -164,6 +172,7 @@ function makeBot(starter) {
 
   function face(tx, ty) {
     const dir = dirTo([s.walk.x, s.walk.y], [tx, ty]);
+    if (!dir) return null; // it moved away (a roamer): approach again
     const r = move(s.game, s.walk, dir);
     s.game = r.game; s.walk = r.walk;
     return handle(r.events);
@@ -208,6 +217,13 @@ function makeBot(starter) {
       for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
         const d = Math.abs(s.walk.x - x) + Math.abs(s.walk.y - y);
         if (!best || d < best.d) best = { x, y, d };
+      }
+      // a block you cannot reach may be the guard of a gate: walk into the gate instead
+      const gate = present(s.game, s.walk.map).find(g => g.kind === 'gate' && g.guard === id && g.state === 'closed');
+      if (gate && !findPath(s.game, s.walk, [best.x, best.y], { max: 400, adjacent: true })) {
+        const [gx0, gy0] = gate.area || gate.at;
+        if (walkTo(gx0, gy0, { adjacent: true }) === true) face(gx0, gy0);
+        continue;
       }
       const res = walkTo(best.x, best.y, { adjacent: true });
       if (res !== true) continue;

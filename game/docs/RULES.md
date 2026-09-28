@@ -147,6 +147,22 @@ relic-bearer 48, champion 110), gold likewise (3/8/25/60), each Omen +20%.
 | Old Snag L6 | 167 | 16 | +7 | 288 | thornsplitter 39 |
 | Briarmaw L7 | 444 | 18 | +9 | 770 | thornwreath 48, briarfang 42 |
 
+**M3 foes** (the Verdant Wilds after the Brand; levels are Waking 0, met at Waking 1):
+- Rabble: smuggler (humanoid, caltrops and a bolt), boglurcher (tide, resists crush), glowcap
+  (spores, Glow ward), rotgrub (blight, Latch bleeds, Ichor Spit poisons).
+- Veterans: feral-druid (Barkskin, calls a briarling), hollowed-ranger (Rot-Arrow; under 30% HP it
+  says its own name and loses the turn), sapwight (Sap Leech heals what it drains).
+- Relic-Bearers: the Gloamwing (Dawnbell: Bell-Hum), Gorrow the Mire-King (Mire Pearl: Undertow),
+  and the named humanoid variants (Mags, Haskett, Hollis, Dun, Oda, Corra; Vesper is a veteran),
+  whose relic Art is their d12's high faces.
+- The Rotwarden (Champion, blight, plate): three phases on a d20 like Briarmaw. Its Ichor Mask
+  powers Blacken the Sap, Ichor Rain and Unmaking; its First Seed powers Graft (summons
+  sapwights) and Heartroot Bloom. Break a piece and those Arts fall back (Rain and Unmaking
+  become Grief). Forewarned (the Fawnrest dream) starts every hero Warded 2d6+4.
+- Tamsin (the rival duel; relic-bearer, party level + 5, no Waking): Riposte cuts twice, Cheap
+  Shot frightens, Showboat hastes her, Parry guards, and her lent counter-starter's Art is 8-11
+  on her d12 (Kindled Cut, Still Point or Cairn Swing). Not Like This heals her once she is low.
+
 **Omens** (stack on elites; the Waking and Grudges add them): emberblooded (hits Burn, resists
 ember), thornskinned (reflects 25% of melee damage), twinned (splits in two at half HP; never on
 Champions), frenzied (acts twice as often under 25%), ironclad (+2 Guard, grip ×1.5), swift
@@ -167,6 +183,8 @@ A holder shows a grip meter per relic: `max = relic grip × (1 + 0.1(L−1))` (�
   shatters.
 - A relic you already own comes back on its holder as an **Echo** (a generated runed/storied
   item of the same kind), still with a grip meter.
+- A **lent** relic (M3: Tamsin's counter-starter) can be disarmed like any other, but it is never
+  claimed and never shatters: it goes home with its owner.
 
 ## 7. Legend Surge
 
@@ -218,6 +236,7 @@ Briarmaw): level 1 to 6 at Briarmaw's door, 7 after it, 8 with a little grinding
 | primal | #fffaf0 white flame | endgame | | | never random |
 
 Enchant is +hit/+damage on weapons, +Guard on body armour and shields, +3 HP per point elsewhere.
+Hilda's temper (M3) adds +1 enchant per step, up to +3, on any item including relics.
 **Luck** bends the curve: weight of rank *i* × (1 + luck)^(0.7 *i*). Luck = tier (rabble 0,
 veteran 1, relic-bearer 2, champion 3) + Waking + ½ per Omen + 1 for a Grudge.
 
@@ -233,6 +252,9 @@ veteran 1, relic-bearer 2, champion 3) + Waking + ½ per Omen + 1 for a Grudge.
   random worn piece at its gear-tier rarity, 35% chance one tier higher).
 - **Relic-bearers:** their relic if disarmed (else shattered) + 1 random item (min wrought).
 - **Champions:** every broken piece + 2 random items (min tempered).
+- **Worn relics** (M3): a relic a relic-bearer or champion visibly wears drops when it falls, as
+  a veteran's does (Tamsin's Vale Gauntlets).
+- **Routs** (M3): each routed foe leaves the normal rabble drop roll and consumable chance.
 - **Consumables** (so the bag can refill): 6% per rabble, 15% per veteran, 50% per relic-bearer,
   always from a Champion (Hearth Tonic 5 : Frost Draught 2 : Bitterroot 2 : Ember Salts 1).
 - **Grudges:** a settled Grudge always adds a bonus item, and all its gear drops are one rarity
@@ -247,44 +269,62 @@ veteran 1, relic-bearer 2, champion 3) + Waking + ½ per Omen + 1 for a Grudge.
 **Thornwatch Regalia** (hood, jerkin, boots, worn by three bandit veterans): 2 pieces regrow 5%
 HP per turn; 3 pieces give +2 speed and the party can never be ambushed.
 
-## 10. Game flow (the Gauntlet)
+## 10. Game flow (M3: the Verdant Wilds)
 
-Fourteen nodes from Hearthstone Keep to Briarmaw's den: the Keep hearth, the tutorial vault
-(Tallyman thief with the Warden's Seal), two rabble fights, the Milestone Fire (Hearthfire),
-the Bramble Toll (Skarn wearing the Thornwatch Hood), the Verdant Edge, the Rot-Stag,
-Thornhollow (Hearthfire), the Tallyman camp (Tallyknife + Thornwatch Jerkin), Old Snag, the
-Bramble-Deep (Thornwatch Boots), the Last Coals (Hearthfire), Briarmaw.
+The M2 road became a walkable land: 14 maps, 10 Hearthfires (4 start cold), visible roaming packs,
+and 5 sealed exits toward the regions of Act II. `docs/M3-SPEC.md` is the contract.
 
-- **Hearthfire rest:** full HP/MP, the fallen rise, save point set, a new day.
+- **Hearthfire rest:** full HP/MP, the fallen rise, save point set, a new day, and the fire is
+  kindled (fast travel from the Atlas goes to kindled fires only). A cold Hearthfire is a lock
+  (Kindle or Lamplight, or Attunement 3).
 - **After a won fight:** the fallen rise at 1 HP, everyone recovers 20% HP and 25% MP.
-- **Party wipe:** wake at the last Hearthfire at full health, keep all gear, lose 10% of gold,
-  and learn 25% of the fight's XP anyway (so a loss is never a wall). The strongest elite
-  standing becomes a **Grudge**: a title ("Skarn the Party-Breaker", "Skarn the Twice-Fled" after
-  two escapes) and +1 Omen (at most 1 extra on a Champion, 2 on others). Fleeing an elite also
-  makes a Grudge. Beating it pays one rarity tier higher.
-- **Grinding (optional):** `startBattle(game, { patrol: true })` at any node spawns a rabble
-  patrol at the strongest rabble level so far (25% ambush chance).
-- **Brand and the Waking:** beating Briarmaw earns the Brand of Briars, raises the Waking by 1
-  and resets the route (the tutorial is not replayed). Every spawn re-gears each Waking step:
-  **+6 levels, +1 gear tier, +1 Omen on elites** (rabble get Omens from Waking 2), and loot luck
-  +1. Relics already claimed return as Echoes. This loops forever.
+- **Party wipe:** wake on the last Hearthfire's stand at full health, keep all gear, lose 10% of
+  gold, and learn 25% of the fight's XP anyway. The strongest elite standing becomes a **Grudge**
+  (a title and +1 Omen; at most 1 extra on a Champion, 2 on others). Fleeing an elite also makes a
+  Grudge. Beating it pays one rarity tier higher.
+- **The duel:** losing to Tamsin is a **yield**: no gold lost, no Grudge, a breather heal where you
+  stand, the lesson XP, and the Eldest Tree door opens anyway. She stays for a rematch.
+- **Roaming packs:** authored packs and zone patrols walk the maps. They notice you within 5 tiles
+  (with line of sight), pause for 2 ticks (the "!"), chase on 2 of every 3 ticks and give up 6
+  tiles past their leash. Walking into a pack's back is a **First Strike** (every foe's first turn
+  comes 40 later); a pack walking into your back is an **ambush** (the Thornwatch set still
+  cancels it). After any fight you get 6 ticks of grace; a pack you fled from is stunned 12 ticks.
+- **Rout:** a **weak** pack (all rabble, no relic held or worn, top level at least 3 below the
+  party, 2 with the Dawnbell) flees on 4 of every 5 ticks. Walking into one Routs it: full gold,
+  half XP, the rabble drop roll, never a Grudge.
+- **Locks:** every lock has two keys: a relic's map power (owned and not shattered) or a Domain
+  level of the best active hero (a primary Domain equals the hero's level, a secondary one is half,
+  rounded up). Darkness and ichor are soft: without a key you see 2 tiles, and ichor burns 4% of
+  max HP a step (never below 1). Crownwalls are story seals that fall with Briarmaw.
+- **The Waking:** every Brand raises the Waking by 1 and re-arms every non-`once` encounter of its
+  region (there is no teleport). Veterans and up gain **+6 levels**, rabble only **+2** (so the
+  old roads' rabble start to flee); spawns may override this (`wakeLevels`) or skip it (`noWaking`).
+  Each step adds +1 gear tier, +1 Omen on elites (rabble get Omens from Waking 2) and loot luck
+  +1. A Brand you already hold is an **Echo rematch**: no Waking, no Brand. Both Verdant Brands
+  complete Act I.
+- **Temper (Hilda):** +1 to +3, each step +1 enchant; cost `30 x ceil(ilvl/2) x [1, 2, 4][step]` gold.
+- **Shops (Marta, Nell):** Hearth Tonic 20, Bitterroot 15, Frost Draught 15, Ember Salts 60 gold.
+- **Chests:** contents roll from `chest:<seed>:<id>` at the map level + 6 per Waking, once each.
 
 ## 11. API cheat-sheet for the UI
 
 ```js
 // rules/gauntlet.js (game flow)
 newGame({ name, starter, seed, base })          // starter: hearthbrand | stillwater-lance | cairnmaul
-route(game) / currentNode(game) / canAdvance(game) / advance(game) / rest(game)
-startBattle(game, { nodeId?, patrol? }) -> { game, battle }
-resolveBattle(game, battle) -> { game, report }  // report: result xp gold drops claimed consumables
-                                                 //   levelUps{heroId:[gain]} goldLost grudge grudgeSettled brand wokeAt rounds
-spawnsFor(game, nodeId)                          // escalated spawns (Waking, Grudges, Echoes)
+startBattle(game, { nodeId } | { patrol: { spawns, where, backdrop, dark } }, { ambush, firstStrike }) -> { game, battle }
+resolveBattle(game, battle) -> { game, report }  // report: result xp gold drops claimed consumables levelUps
+                                                 //   goldLost grudge grudgeSettled brand rematch yield wokeAt rounds
+routPack(game, { nodeId } | { spawns, where }) -> { game, report }
+rest(game, hfId) / travel(game, hfId) / spawnsFor(game, encId) / partyLevel(game) / uniqueBrands(game)
+// rules/world.js (the overworld; see ARCHITECTURE.md "World")
+enterMap move interact tick afterBattle commit present canWalk findPath threat keys lockStatus openLock openChest
+// rules/story.js: talkTo dialogueView enterDialogue choose questLog nextObjective claimQuest bounties ladder
+//   afterDialogue restDialogue pendingLetter readLetter
 // rules/battle.js (contract) + inspect(state, id) for the Analyze panel
 // rules/autoplay.js: autoCommand(state, heroId) -> a ready-to-act command ("Auto" button)
-// rules/party.js: canUse(hero, item) equip(game, heroId, uid) unequip(game, heroId, slot)
-//   compare(hero, item, inventory) bestHeroFor(game, item) reforge(game, uid)
+// rules/party.js: canUse equip unequip compare bestHeroFor reforge temperCost temper buy
 // rules/stats.js: deriveHero(hero, inventory) itemProfile(item) POWERS
-// rules/loot.js: generateItem relicItem identifyItem affixText affixQuality
+// rules/loot.js: generateItem relicItem identifyItem affixText affixQuality routSpoils
 // rules/progression.js: xpToNext xpForLevel levelForXp grantXp levelUp xpTable
 ```
 

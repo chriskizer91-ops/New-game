@@ -19,7 +19,9 @@ import { deepStrictEqual } from 'node:assert/strict';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { newGame, startBattle, resolveBattle, advance, rest, currentNode, canAdvance, spawnsFor } from '../src/rules/gauntlet.js';
+// A namespace import: the M2 road helpers (advance, currentNode, canAdvance, rest without an id) are
+// gone from M3 sources, and the guard below must still get to say so instead of failing to link.
+import * as G from '../src/rules/gauntlet.js';
 import { current, act, foeTurn, commands } from '../src/rules/battle.js';
 import { autoCommand } from '../src/rules/autoplay.js';
 import { equip, bestHeroFor } from '../src/rules/party.js';
@@ -50,13 +52,15 @@ const HERO_HP = 500;
 // ---- guard: M2 sources only ----------------------------------------------------------------------
 
 {
-  const probe = newGame({ seed: SEED });
+  const probe = G.newGame({ seed: SEED });
   if (probe.version !== 1 || !exportCode(probe).startsWith('AETH1.')) {
     console.error('make-v1-fixtures: src/ no longer makes M2 (version 1) saves. The fixtures on disk are the frozen record;\n'
       + 'regenerate them only from the M2 sources (the tree that built dist/aethermoor-m2.html).');
     process.exit(1);
   }
 }
+
+const { newGame, startBattle, resolveBattle, advance, rest, currentNode, canAdvance, spawnsFor } = G;
 
 // ---- a new game, the way the M2 new-game screen makes one -------------------------------------------
 

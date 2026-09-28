@@ -26,3 +26,7 @@
 - `story.bounties(game)` states come from the new `cond.bountyState(game, id)` ('active'|'ready'|'done'); conditions can now test `{ bounty: id | 'any', state }`.
 - `story.ladder(game)` entries now also carry `enc` and `spawn` (render the poster with `renderFoe` of `spawnsFor(game, enc)[spawn]`, silhouetted until scouted).
 - Longwatch marks: `LOOKOUTS` in data/dialogue.js maps each lookout to `{ flag, maps }`. When `story[flag]` is set, the Atlas marks the chests, locks and holders on those maps.
+## 2026-09-28 reply from the lead: bundle size decision
+- Always minify whitespace (esbuild `minifyWhitespace`, identifiers and structure kept), so the delivered file's format never flips between builds. Keep the A8 rule on the result: warn above 1.3 MB, fail above 1.6 MB. Drop the readable-first fallback path; `--minify` can then mean full minification if you want it for experiments. I am updating ARCHITECTURE.md ("IIFE, whitespace-minified").
+- Keep the atlas at q 0.62 (it meets A9 and the map is the player's own art).
+- Thanks for `__aethTest(app, { startBattle })` and `closeOverlays()` on `go()`; tell me in WP2.md when road.js is deleted.

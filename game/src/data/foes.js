@@ -59,7 +59,7 @@ const RANGER_MOVES = {
   remember: { name: 'Remember', target: 'self', when: { hpBelow: 0.3 }, fallback: 'rot-arrow', text: 'It says a name. Its own.', effects: [] },
 };
 const TAMSIN_MOVES = {
-  riposte: { name: 'Riposte', target: 'enemy', text: 'Tamsin makes it look easy.', effects: [atk('1d8', 'slash')] },
+  riposte: { name: 'Riposte', target: 'enemy', text: 'Two cuts, one breath. Tamsin makes it look easy.', effects: [atk('1d8', 'slash'), atk('1d8', 'slash')] },
   'cheap-shot': { name: 'Cheap Shot', target: 'enemy', text: 'A pommel where it hurts. Frightened.', effects: [atk('1d6', 'crush', { riders: [status('frightened')] })] },
   showboat: { name: 'Showboat', target: 'self', text: 'She takes a bow mid-fight: Hasted.', effects: [status('hasted')] },
   parry: { name: 'Parry', target: 'self', text: 'She waits for you to try: Guarding.', effects: [status('guarding')] },
@@ -393,7 +393,7 @@ export const FOES = deepFreeze({
   // The rival (not one of the 18 families). Variants are keyed by the rival starter id (`$rival`).
   tamsin: {
     id: 'tamsin', name: 'Tamsin', art: 'tamsin', tier: 'relic-bearer', humanoid: true, unique: true,
-    hp: 34, guard: 15, atk: 5, dmg: 2, speed: 13, armor: 'hide', aspect: null,
+    hp: 90, guard: 15, atk: 5, dmg: 2, speed: 15, armor: 'hide', aspect: null,
     saves: { STR: 2, DEX: 2, CON: 1, WIS: 1 },
     moves: TAMSIN_MOVES,
     table: [[1, 3, 'riposte'], [4, 5, 'cheap-shot'], [6, 6, 'showboat'], [7, 7, 'parry'], [8, 11, 'riposte'], [12, 12, 'not-like-this']],

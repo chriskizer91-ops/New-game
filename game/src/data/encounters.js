@@ -118,7 +118,7 @@ export const ENCOUNTERS = deepFreeze({
   },
   'mire-shrine': {
     id: 'mire-shrine', type: 'fight', name: 'The Mire Shrine', place: 'Mossfall', backdrop: 'mossfall', region: 'verdant',
-    spawns: [S('mirelord', 5), S('boglurcher', 8), S('boglurcher', 8)],
+    spawns: [S('mirelord', 4), S('boglurcher', 5), S('boglurcher', 5)],
     text: 'Gorrow the Mire-King sits in the drowned shrine, and the Mire Pearl glows in his crown of reeds.',
   },
   'mw-stair': {
@@ -128,7 +128,7 @@ export const ENCOUNTERS = deepFreeze({
   },
   'mw-lantern': {
     id: 'mw-lantern', type: 'fight', name: 'The Lamp Room', place: 'Mosswatch Tower', backdrop: 'mosswatch', region: 'verdant', dark: true,
-    spawns: [S('tallyman', 5, { variant: 'signalmaster', relic: 'mosswatch-lantern', name: 'Hollis Fairweight' }), S('tallyman', 4)],
+    spawns: [S('tallyman', 8, { variant: 'signalmaster', relic: 'mosswatch-lantern', name: 'Hollis Fairweight' }), S('tallyman', 4)],
     text: 'The lights at midnight: Hollis Fairweight, signalling someone with the tower\'s own Lantern.',
   },
   'hw-glowcaps': {
@@ -143,7 +143,7 @@ export const ENCOUNTERS = deepFreeze({
   },
   'gloamwing-hollow': {
     id: 'gloamwing-hollow', type: 'fight', name: 'The Gloamwing\'s Hollow', place: 'The Hindwood', backdrop: 'verdant-wood', region: 'verdant',
-    spawns: [S('gloamwing', 5)],
+    spawns: [S('gloamwing', 10)],
     text: 'Pale trees, pale silk, and a moth the size of a cart. The Fawnrest bell hums on its thorax.',
   },
   'vesper-stall': {
@@ -153,13 +153,13 @@ export const ENCOUNTERS = deepFreeze({
   },
   'grove-circle': {
     id: 'grove-circle', type: 'fight', name: 'The Grove Circle', place: 'Eldergrove', backdrop: 'eldergrove', region: 'verdant',
-    spawns: [S('feral-druid', 5, { variant: 'thornmother', relic: 'rootsong', name: 'Oda the Thornmother' }), S('feral-druid', 4), S('briarling', 8)],
+    spawns: [S('feral-druid', 4, { variant: 'thornmother', relic: 'rootsong', name: 'Oda the Thornmother' }), S('feral-druid', 3), S('briarling', 6)],
     text: 'Oda the Thornmother sings in the stone ring, and Rootsong answers her instead of the trees.',
   },
   'tamsin-duel': {
     id: 'tamsin-duel', type: 'fight', name: 'Tamsin at the Eldest Tree', place: 'Eldergrove', backdrop: 'eldergrove', region: 'verdant',
     once: true, duel: true, yields: 'tamsin-yielded', talk: 'tamsin-door',
-    spawns: [S('tamsin', 'party', { partyDelta: 1, variant: '$rival', relic: '$rival', lend: true, wears: 'vale-gauntlets', noWaking: true, name: 'Tamsin' })],
+    spawns: [S('tamsin', 'party', { partyDelta: 5, gearTier: 2, variant: '$rival', relic: '$rival', lend: true, wears: 'vale-gauntlets', noWaking: true, name: 'Tamsin' })],
     text: 'Tamsin, at the Eldest Tree door, with the starter you did not choose. Losing is a yield.',
   },
   'hr1-grubs': {
@@ -169,7 +169,7 @@ export const ENCOUNTERS = deepFreeze({
   },
   'hr1-sapwight': {
     id: 'hr1-sapwight', type: 'fight', name: 'The Sapwight', place: 'The Heartroot', backdrop: 'heartroot', region: 'verdant',
-    spawns: [S('sapwight', 5), S('rotgrub', 8), S('rotgrub', 8)],
+    spawns: [S('sapwight', 4), S('rotgrub', 8), S('rotgrub', 8)],
     text: 'Bark and black sap in the shape of a person, and the grubs that feed on it.',
   },
   'hollowed-patrol': {
@@ -185,7 +185,7 @@ export const ENCOUNTERS = deepFreeze({
   'rotwarden-heart': {
     id: 'rotwarden-heart', type: 'fight', name: 'The Heart Chamber', place: 'The Heartroot', backdrop: 'heartroot', region: 'verdant',
     brand: 'brand-of-the-heartroot', forewarned: true, dark: true,
-    spawns: [S('rotwarden', 7)],
+    spawns: [S('rotwarden', 4)],
     text: 'GREEN WAS A MISTAKE. THE MASK SAYS SO.',
   },
 

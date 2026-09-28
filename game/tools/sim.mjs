@@ -18,11 +18,15 @@
 //               Rotwarden first-try wipe <= 45%.
 //   first-lead  m2, then each lead's lair as the first thing done at Waking 1: 15-25% first-try wipe.
 // Every mode: zero stuck runs. A duel lost is a yield (not retried); the door opens anyway.
+// Crossing a zone map costs a fight with one of its roaming patrols ('patrol:<zone>' in a route);
+// a weak one is Routed instead. The m2 mode has none, to compare with M2.
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { newGame, startBattle, resolveBattle, rest, spawnsFor, partyLevel } from '../src/rules/gauntlet.js';
+import { newGame, startBattle, resolveBattle, rest, spawnsFor, partyLevel, routPack } from '../src/rules/gauntlet.js';
+import { isWeak } from '../src/rules/world.js';
+import { ZONES } from '../src/data/world.js';
 import { migrate } from '../src/rules/migrate.js';
 import { escalateSpawn, familyOf } from '../src/rules/foe.js';
 import { current, act, foeTurn, outcome } from '../src/rules/battle.js';
@@ -42,15 +46,15 @@ const MD = args.includes('--md');
 const ALL_MODES = ['m2', 'direct', 'leads2', 'leads-all', 'looper-w2', 'first-lead'];
 const ONLY = arg('modes', ALL_MODES.join(',')).split(',');
 const STARTERS = ['hearthbrand', 'stillwater-lance', 'cairnmaul'];
-const MAX_TRIES = 6;
+const MAX_TRIES = 8; // a player who keeps wiping grinds a level each time; eight tries is 'stuck'
 
 // Routes: hearthfire ids rest; fight ids are fought until cleared (duels once).
-const AFTER_BRAND = ['eldergrove-hearth', 'tamsin-duel', 'hr1-grubs', 'hr1-sapwight', 'last-green-coal', 'rotwarden-heart'];
+const AFTER_BRAND = ['patrol:thornway', 'eldergrove-hearth', 'tamsin-duel', 'patrol:heartroot', 'hr1-grubs', 'patrol:heartroot', 'hr1-sapwight', 'last-green-coal', 'rotwarden-heart'];
 const LEAD_ROUTES = {
-  mosswatch: ['thornhollow', 'mossfall-cairn', 'mw-stair', 'mw-lantern', 'mosswatch-fire'],
-  mire: ['thornhollow', 'mossfall-cairn', 'mf-smugglers', 'mire-shrine', 'mossfall-cairn'],
-  bell: ['thornhollow', 'hindwood-cairn', 'hw-glowcaps', 'gloamwing-hollow', 'fawnrest-stone', 'dream'],
-  grove: ['eldergrove-hearth', 'grove-circle', 'eldergrove-hearth'],
+  mosswatch: ['thornhollow', 'patrol:mossfall', 'mossfall-cairn', 'mw-stair', 'mw-lantern', 'mosswatch-fire'],
+  mire: ['thornhollow', 'patrol:mossfall', 'mossfall-cairn', 'mf-smugglers', 'mire-shrine', 'mossfall-cairn'],
+  bell: ['thornhollow', 'patrol:hindwood', 'hindwood-cairn', 'hw-glowcaps', 'gloamwing-hollow', 'fawnrest-stone', 'dream'],
+  grove: ['patrol:thornway', 'eldergrove-hearth', 'grove-circle', 'eldergrove-hearth'],
   roots: ['last-green-coal', 'hollowed-patrol', 'hr1-tappers', 'last-green-coal'],
 };
 const LEAD_LAIRS = { mosswatch: 'mw-lantern', mire: 'mire-shrine', bell: 'gloamwing-hollow', grove: 'grove-circle' };
@@ -119,9 +123,30 @@ function grind(g, levels, stats, ctx) {
 }
 
 // Play a route from `g`. Returns { g, done } (done: the route's last fight was won or yielded).
+// One roaming zone patrol, as the world seeds them (rules/world.js seedRoamers): a weak one is Routed.
+function patrolFight(g, zoneId, stats, ctx) {
+  const zone = ZONES[zoneId];
+  const set = ctx.rng.pick(PATROLS[zone.sets]);
+  const level = zone.level + ctx.rng.int(0, 1);
+  const spawns = set.map((sp, i) => ({ ...escalateSpawn({ ...sp, level }, g.progress.waking, `sim:${zoneId}:${i}`), spawnIndex: i }));
+  const ns = nodeStats(stats, `patrol:${zoneId}`);
+  ns.first++;
+  ns.level.push(partyLevel(g));
+  if (isWeak(g, spawns)) { ns.routs = (ns.routs || 0) + 1; ns.firstWins++; ns.wins++; return routPack(g, { spawns }).game; }
+  const started = startBattle(g, { patrol: { spawns, where: zoneId, backdrop: zone.backdrop } });
+  const b = fight(started.battle, stats);
+  const res = resolveBattle(started.game, b);
+  ns.tries++;
+  ns.rounds.push(res.report.rounds);
+  if (res.report.result === 'victory') { ns.wins++; ns.firstWins++; ns.hpLeft.push(hpLeft(b)); recordDrops(stats, res.report.drops); return equipDrops(res.game, res.report.drops); }
+  if (res.report.result === 'defeat') { ns.wipes++; return grind(rest(res.game, res.game.progress.lastHearthfire), 1, stats, ctx); }
+  return res.game;
+}
+
 function playRoute(g, route, stats, ctx) {
   for (const id of route) {
     if (id === 'dream') { g = { ...g, progress: { ...g.progress, flags: { ...g.progress.flags, story: { ...g.progress.flags.story, 'bell-rung': true, forewarned: true } } } }; continue; }
+    if (id.startsWith('patrol:')) { g = patrolFight(g, id.slice(7), stats, ctx); continue; }
     const node = ENCOUNTERS[id];
     if (node.type === 'hearthfire') { g = rest(g, id); continue; }
     const f = g.progress.flags;
@@ -232,7 +257,7 @@ function report(all) {
     const st = all[k];
     out.push('', `### ${LABELS[k]}`, '');
     const rows = Object.entries(st.nodes).filter(([, n]) => n.first).map(([id, n]) => [
-      id, ENCOUNTERS[id].spawns.map(s => s.family).join('+'), f1(avg(n.level)), pct(n.firstWins, n.first), f1(avg(n.rounds)),
+      id, id.startsWith('patrol:') ? `(zone patrol${n.routs ? `, ${pct(n.routs, n.first)} routed` : ''})` : ENCOUNTERS[id].spawns.map(s => s.family).join('+'), f1(avg(n.level)), pct(n.firstWins, n.first), f1(avg(n.rounds)),
       pct(avg(n.hpLeft), 1), pct(n.first - n.firstWins - n.yields, n.first), n.yields ? pct(n.yields, n.first) : '', n.wipes, n.claims || '', n.shatters || '', n.stuck || '',
     ]);
     out.push(table(rows, ['node', 'foes', 'lvl', 'win 1st', 'rounds', 'hp left', 'wipe 1st', 'yield', 'wipes', 'claimed', 'shattered', 'stuck']));

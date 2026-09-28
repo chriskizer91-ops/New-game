@@ -248,10 +248,10 @@ test('losing the Tamsin duel is a yield: no gold lost, no Grudge, breath back, t
   assert.equal(g.progress.flags.done['tamsin-duel'], undefined, 'she stays for a rematch');
 });
 
-test('Tamsin: party level +1, the rival starter lent, the Vale Gauntlets worn, no Waking', () => {
+test('Tamsin: above the party level, the rival starter lent, the Vale Gauntlets worn, no Waking', () => {
   const g = v2At(newGame({ seed: 24, starter: 'hearthbrand' }), { waking: 2 });
   const [t] = spawnsFor(g, 'tamsin-duel');
-  assert.equal(t.level, partyLevel(g) + 1);
+  assert.equal(t.level, partyLevel(g) + ENCOUNTERS['tamsin-duel'].spawns[0].partyDelta);
   assert.equal(t.variant, 'cairnmaul');
   assert.deepEqual(t.held, [{ relic: 'cairnmaul', lend: true }]);
   assert.equal(t.wears, 'vale-gauntlets');
