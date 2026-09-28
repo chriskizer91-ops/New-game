@@ -8,7 +8,7 @@ import { equip, bestHeroFor } from '../src/rules/party.js';
 import { deriveHero } from '../src/rules/stats.js';
 import { ENCOUNTERS, GAUNTLET } from '../src/data/encounters.js';
 import { HEARTHS, START_AT, CRITICAL_PATH } from '../src/data/world.js';
-import { familyOf } from '../src/rules/foe.js';
+import { familyOf, buildFoe } from '../src/rules/foe.js';
 import { relicDeeds, relicsOn, stageOf } from '../src/rules/codex.js';
 import { generateItem } from '../src/rules/loot.js';
 import { RELICS } from '../src/data/relics.js';
@@ -461,4 +461,17 @@ test('a new game starts on version 3 with an empty purse and pouch, and its gear
   const moved = equip(onPip.game, 'warden', knife.uid);
   assert.equal(moved.ok, true, moved.reason);
   assert.deepEqual(moved.game.inventory.find(i => i.uid === knife.uid).chronicle.bearers, ['pip', 'warden'], 'equipping adds the bearer');
+});
+
+test('a foe\'s look has its own tier: Tamsin\'s kindled kit at 4, beasts re-gear with the Waking; stats stay capped', () => {
+  const g = { ...newGame({ seed: 17 }), progress: { ...newGame({ seed: 17 }).progress, waking: 2 } };
+  const tamsin = buildFoe(spawnsFor(g, 'tamsin-scorchgate')[0], { id: 't' });
+  assert.equal(tamsin.artTier, 4, 'the kindled look');
+  assert.equal(tamsin.gearTier, 3, 'her stats use the capped tier');
+  const beast = spawnsFor(g, 'wyrm-lair')[0];
+  const wyrm = buildFoe(beast, { id: 'w' });
+  assert.equal(familyOf(beast).humanoid, undefined);
+  assert.equal(wyrm.gearTier, 0, 'beasts gain no gear stats');
+  assert.equal(wyrm.artTier, beast.gearTier, 'but they look the part of the Waking');
+  assert.ok(wyrm.artTier >= 2);
 });

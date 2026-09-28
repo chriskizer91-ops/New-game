@@ -109,6 +109,9 @@ export function buildFoe(spawn, { id, seq = 0, name } = {}) {
   return {
     id, seq, side: 'foe', family: fam.id, variant: spawn.variant || null, art: fam.art, name: displayName,
     tier: fam.tier, level: L, gearTier: gt, omens,
+    // M4: the look's tier (uncapped, beasts too): the Waking re-gear the art draws, and Tamsin's kindled
+    // kit at 4. Stats use gearTier.
+    artTier: Math.max(0, Math.floor(spawn.gearTier || 0)),
     hp, maxHp: hp,
     guard: scale(fam.guard, F.guardEvery, L) + gt + om.reduce((a, o) => a + (o.guard || 0), 0),
     atk: scale(fam.atk, F.atkEvery, L) + gt,

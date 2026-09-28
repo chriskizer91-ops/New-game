@@ -1,7 +1,7 @@
 // UI-side art helpers: turn game state into canvases using the art API in src/art.
 import {
   itemPortrait, itemIcon, cardCorner, RARITY_LOOK, rarityTier, renderHero, heroBust, renderBackdrop,
-  renderFoe, Forge, Xf, compose, hx,
+  renderFoe, Forge, Xf, compose, hx, itemArt,
 } from '../../art/index.js';
 import { chestR } from '../../art/recipes.js';
 import { toCanvas } from './dom.js';
@@ -18,6 +18,16 @@ export function itemsById(game) {
   for (const it of game?.inventory || []) m[it.uid] = it;
   return m;
 }
+// M4: what a hero sprite is drawn with. The hero art's look cache keys an item by its base and seed, so
+// a forged piece (temper, gems, Kindled, Awakened) keeps its old look unless the sprite gets the item's
+// art object, which is its own for each of those. Plain gear draws exactly the same either way.
+export function gearArt(gear) {
+  if (!gear || typeof gear !== 'object') return gear;
+  const out = {};
+  for (const [s, it] of Object.entries(gear)) out[s] = it && typeof it === 'object' && it.uid && !it.r ? itemArt(it) || it : it;
+  return out;
+}
+
 // { slot: ItemInstance | null } for a hero; override replaces slots (a try-on preview)
 export function gearOf(game, heroId, override) {
   const h = game.party.roster[heroId], by = itemsById(game), g = {};
@@ -38,7 +48,7 @@ export function heroSprite(game, heroId, { scale = 3, gear, pose = 'idle', custo
   cv.setAttribute('aria-label', `${name}, wearing their gear`);
   const draw = t => {
     const reduced = isReduced();
-    const img = renderHero(heroId, state.gear, { pose, t: reduced ? .2 : t, custom: state.custom, reduced });
+    const img = renderHero(heroId, gearArt(state.gear), { pose, t: reduced ? .2 : t, custom: state.custom, reduced });
     const fx = state.fx;
     if (fx) {
       const e = (performance.now() / 1000 - fx.t0) / .8;
@@ -65,7 +75,7 @@ export function heroSprite(game, heroId, { scale = 3, gear, pose = 'idle', custo
 }
 
 export function bustCanvas(game, heroId, { size = 24, scale = 2, gear } = {}) {
-  const img = heroBust(heroId, gear || gearOf(game, heroId), { size, custom: customOf(game, heroId) });
+  const img = heroBust(heroId, gearArt(gear || gearOf(game, heroId)), { size, custom: customOf(game, heroId) });
   const cv = toCanvas(img, null, scale);
   cv.setAttribute('aria-hidden', 'true');
   return cv;

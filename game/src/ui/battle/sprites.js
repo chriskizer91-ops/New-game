@@ -7,6 +7,7 @@ import { RELIC_ART } from '../../art/item-looks.js';
 import { ITEMS } from '../../data/items.js';
 import { RELICS } from '../../data/relics.js';
 import { toCanvas, crop, alphaBox } from './util.js';
+import { gearArt } from '../lib/art.js';
 
 // ---- foes -------------------------------------------------------------------------------------
 
@@ -15,7 +16,7 @@ import { toCanvas, crop, alphaBox } from './util.js';
 export function foeLook(u) {
   const def = FOE_ART[u.art] || FOE_ART.cutpurse;
   const held = u.held || [];
-  const o = { tier: u.tier, gearTier: u.gearTier || 0, phase: u.phase || 1 };
+  const o = { tier: u.tier, gearTier: u.artTier ?? u.gearTier ?? 0, phase: u.phase || 1 };
   if (def.relics) {
     // multi-relic champion: pieces snap off one by one
     o.broken = held.filter(p => !p.held).map(p => p.relic || p.echoOf).filter(Boolean);
@@ -153,7 +154,7 @@ export function heroCustom(game, heroId) {
 export class HeroSprite {
   constructor(heroId, gear, custom, reduced) {
     this.key = heroId;
-    this.gear = gear;
+    this.gear = gearArt(gear); // M4: forged pieces look forged (ui/lib/art.js gearArt)
     this.custom = custom;
     this.reduced = reduced;
     this.canvas = document.createElement('canvas');
