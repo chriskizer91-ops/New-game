@@ -1,6 +1,6 @@
 // The Sunward Road (M4 spec §2.1, §2.3). From the Keep's south-east postern a causeway-bridge crosses
 // the lake (rows 0-6) to a reedy shore, where a signpost points the way. The caravan road then runs
-// south through green scrub and acacias (the north third), past the Waystone Fire in its ring of old
+// south through green scrub and cacti (the north third), past the Waystone Fire in its ring of old
 // paving beside a standing stone (16,20), and out into the sand. West of the road a rocky outcrop hides
 // a hollow whose only way in is a fused dune-glass wall (7,30), with a cache inside. Two-thirds of the
 // way down the scarps close in to a rocky neck: Rasa the Dune-Rider has strung a chain across the road
@@ -9,9 +9,9 @@
 // between two sandstone milestones to Sandspire's north ramp.
 // Layout notes: the toll is M3's Bramble Toll pattern: the chain opens for good once Rasa is beaten
 // (flags.beaten), so the Brand of Glass's re-armed Echo stands beside the road, never across it.
-// Tiles (desert): '.' sand, ',' pebbles and scrub, '"' dry grass, 'm' dune ripples, '=' the caravan
-// road, 'T' acacias, 't' thornbush, 'o' rock, '^' scarp, '~' the lake, 'b' the causeway, 'H' a tent or
-// a wagon's canopy, '#' a sandstone milestone, ':' old paving.
+// Tiles (desert): '.' sand, ',' sand ripples, '"' green scrub, '=' the caravan road, 'T' cacti, 't'
+// thornbush, 'o' rock, '^' scarp, '~' the lake, 'b' the causeway, 'H' a tent or a wagon's canopy, '#' a
+// sandstone milestone, ':' old paving.
 // Format: src/data/maps/index.js. Owner: M4 P2.
 import { deepFreeze } from '../../core/freeze.js';
 
@@ -48,37 +48,37 @@ export default deepFreeze({
     'T.....t..===..,....o...,.T', // 24
     'To...,...===....,......o.T', // 25
     'o....o....===.....,....o.o', // 26
-    '^^^^^^^o..===..m.....o...^', // 27
-    '^..m..^^..===.....mm.....^', // 28
-    '^.....^^..===..o...mmm...^', // 29
-    '^.m.....m..===....m.....o^', // 30
-    '^^....^^...===..,....mm..^', // 31
-    '^^^^^^^o...===.o.....m...^', // 32
-    'o.....m....===....o......^', // 33
-    '^...m.......===..m...,...^', // 34
-    '^..mm...,...===...mm....o^', // 35
-    '^o.....m....===.,.....m..^', // 36
+    '^^^^^^^o..===..,.....o...^', // 27
+    '^..,..^^..===.....,,.....^', // 28
+    '^.....^^..===..o...,,,...^', // 29
+    '^.,.....,..===....,.....o^', // 30
+    '^^....^^...===..,....,,..^', // 31
+    '^^^^^^^o...===.o.....,...^', // 32
+    'o.....,....===....o......^', // 33
+    '^...,.......===..,...,...^', // 34
+    '^..,,...,...===...,,....o^', // 35
+    '^o.....,....===.,.....,..^', // 36
     '^^..o.......===....o.....^', // 37
-    '^^^^...m...o===...HH..o^^^', // 38
+    '^^^^...,...o===...HH..o^^^', // 38
     '^^^^^^^^^^..===..oHH^^^^^^', // 39
     '^^^^^^^^^^^o===..^^^^^^^^^', // 40
     '^^^^^^^^^^^^===..^^^^^^^^^', // 41
     '^^^^^^^^^^^.===.o^^^^^^^^^', // 42
     '^^^^^^^^^...===...^^^^^^^^', // 43
-    '^^^^.....m.===.....m...^^^', // 44
-    '^^...mm....===..o.....m.^^', // 45
-    '^...mmm...o===......,....^', // 46
-    '^..o..m....===..mm.......^', // 47
-    '^..........===.mmm...o...^', // 48
-    '^^..m......===..mm.......^', // 49
-    '^...mm..o..===.......m..o^', // 50
-    '^..o......===..m....mm...^', // 51
-    '^.HH.....m===......m.....^', // 52
-    '^o.,......===...o....m...^', // 53
-    '^^...m....===.......mm...^', // 54
-    '^...mm....===...,........^', // 55
+    '^^^^.....,.===.....,...^^^', // 44
+    '^^...,,....===..o.....,.^^', // 45
+    '^...,,,...o===......,....^', // 46
+    '^..o..,....===..,,.......^', // 47
+    '^..........===.,,,...o...^', // 48
+    '^^..,......===..,,.......^', // 49
+    '^...,,..o..===.......,..o^', // 50
+    '^..o......===..,....,,...^', // 51
+    '^.HH.....,===......,.....^', // 52
+    '^o.,......===...o....,...^', // 53
+    '^^...,....===.......,,...^', // 54
+    '^...,,....===...,........^', // 55
     '^^.....o..===......o....^^', // 56
-    '^^^..m.....===..m......^^^', // 57
+    '^^^..,.....===..,......^^^', // 57
     '^^^^.......===.......o.^^^', // 58
     '^^^^^^.....===......^^^^^^', // 59
     '^^^^^^^...#===#...^^^^^^^^', // 60
@@ -89,7 +89,7 @@ export default deepFreeze({
   entities: [
     { id: 'sr-gate-sign', kind: 'sign', at: [14, 8], look: 'post', text: 'Sandspire, three days by caravan.' },
     { id: 'waystone', kind: 'hearthfire', at: [16, 20], stand: [16, 21, 'n'] },
-    { id: 'sr-standing-stone', kind: 'sign', at: [17, 19], look: 'stone', text: 'A standing stone taller than a rider, carved with a sun above a road. Scratched under it: WATER AT SANDSPIRE.' },
+    { id: 'sr-standing-stone', kind: 'sign', at: [17, 19], look: 'monolith', text: 'A standing stone taller than a rider, carved with a sun above a road. Scratched under it: WATER AT SANDSPIRE.' },
     { id: 'sr-glass-wall', kind: 'lock', lock: 'dune-glass', at: [7, 30] },
     { id: 'sr-glass-cache', kind: 'chest', at: [2, 29], loot: { items: [{ rarity: 'runed', slot: 'feet' }], materials: { silver: 1 } } },
     { id: 'sr-toll-chain', kind: 'gate', area: [12, 41, 14, 41], look: 'chain', open: { beaten: 'sr-toll' }, guard: 'sr-toll', text: 'A chain across the road, hung with empty water-skins. Rasa the Dune-Rider takes her toll in water.' },

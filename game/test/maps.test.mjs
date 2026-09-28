@@ -1,8 +1,12 @@
-// Map data tests (M3 spec §2, §4.2, §6.1 WP3) over all 14 maps. Owner: WP3.
+// Map data tests (M3 spec §2, §4.2, §6.1 WP3; M4 spec §2, §8) over all 25 maps. Owner: WP3; M4 P2.
 // Shape, bounds, exits, anchors, placements and locks, then the flood fills: every CRITICAL_PATH
 // target is reachable with only the guaranteed keys (per starter), every chest with all keys, every
 // hard lock and story gate really is the only way through to what it guards. The flood fills run
 // through the engine (rules/world.js canWalk / present / lockStatus / interact) on synthetic games.
+// M4: the Sunscorch opens through the Keep's south-east gate after Act I and not before, every SUN_PATH
+// target is reachable from an Act-I-complete party with only its starter relic, no hard lock but the
+// Vault door stands on that path, the re-armed fights never shut the way home, and the maps hold what
+// spec §2.3 puts on them.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { MAPS, MAP_IDS, ENTITY_OF, anchor, v1Anchor } from '../src/data/maps/index.js';
@@ -11,8 +15,9 @@ import { LOCKS } from '../src/data/locks.js';
 import { RELICS } from '../src/data/relics.js';
 import { DOMAINS } from '../src/data/domains.js';
 import { STARTERS } from '../src/data/heroes.js';
-import { ENCOUNTERS, GAUNTLET, PATROLS } from '../src/data/encounters.js';
-import { HEARTHS, START_AT, CRITICAL_PATH, LEADS, ZONES, REGIONS, LORE } from '../src/data/world.js';
+import { ENCOUNTERS, GAUNTLET, PATROLS, BRANDS } from '../src/data/encounters.js';
+import { HEARTHS, START_AT, CRITICAL_PATH, LEADS, ZONES, REGIONS, LORE, SUN_PATH, SUN_LEADS } from '../src/data/world.js';
+import { GEMS, MATERIALS } from '../src/data/gems.js';
 import { newGame } from '../src/rules/gauntlet.js';
 import { levelUp } from '../src/rules/progression.js';
 import { createRng } from '../src/core/rng.js';
@@ -250,9 +255,13 @@ function beat(g, id) {
   if (e.once) f.done[id] = true;
   if (e.opens) f.unlocked[e.opens] = true;
   if (e.brand && !g.progress.brands.includes(e.brand)) {
+    // as gauntlet.earnBrand: the Waking rises and every non-`once` fight of the Brand's region re-arms
     g.progress.brands.push(e.brand);
     g.progress.waking += 1;
-    for (const [k, x] of Object.entries(ENCOUNTERS)) if ((x.region || 'verdant') === 'verdant' && !x.once) delete f.cleared[k];
+    const region = BRANDS[e.brand].region;
+    for (const [k, x] of Object.entries(ENCOUNTERS)) if ((x.region || 'verdant') === region && !x.once) delete f.cleared[k];
+    if (REGIONS.verdant.brands.every(b => g.progress.brands.includes(b))) f.story['act1-complete'] = true;
+    if (REGIONS.sunscorch.brands.every(b => g.progress.brands.includes(b))) f.story['sunscorch-complete'] = true;
   }
 }
 
@@ -262,13 +271,14 @@ function openHeldLocks(g, except = null) {
   return g;
 }
 
-// Flood fill from START_AT over every map through canWalk; exits are portals, sealed exits dead ends.
-// An exit's `unlock` (the rope kicked down behind you) applies once the fill has used it.
-function flood(game, { noUnlock = null } = {}) {
+// Flood fill from START_AT (or `from`: [map, x, y]) over every map through canWalk; exits are portals,
+// sealed exits dead ends. An exit's `unlock` (the rope kicked down behind you) applies once the fill
+// has used it.
+function flood(game, { noUnlock = null, from = [START_AT.map, START_AT.x, START_AT.y] } = {}) {
   let g = game;
   for (;;) {
-    const seen = new Set([`${START_AT.map}:${START_AT.x},${START_AT.y}`]);
-    const q = [[START_AT.map, START_AT.x, START_AT.y]];
+    const seen = new Set([`${from[0]}:${from[1]},${from[2]}`]);
+    const q = [[...from]];
     const used = new Set(), unlocks = [];
     while (q.length) {
       const [mid, x, y] = q.pop();
@@ -433,4 +443,169 @@ test('story gates: the north gate, the toll chain, the crownwalls and the Eldest
     const seen = mapsOf(flood(openHeldLocks(g)));
     assert.ok(seen.has('eldergrove') && !seen.has('heartroot-1') && !seen.has('heartroot-2'), 'eldest-door holds until the duel or a yield');
   }
+});
+
+// ---- M4: the Sunscorch Wastes (spec §2, §8) ------------------------------------------------------------
+
+const SP = SUN_PATH;
+const SUN = MAP_IDS.filter(id => MAPS[id].region === 'sunscorch');
+const mapsOf = r => new Set([...r.seen].map(k => k.split(':')[0]));
+const nextTo = (g, map, e) => cellsOf(e).flatMap(([x, y]) => Object.values(DIRS).map(([dx, dy]) => [x + dx, y + dy])).find(([x, y]) => canWalk(g, map, x, y));
+
+// An Act-I-complete party (spec §2.2, §8): the whole M3 critical path behind it (both Verdant Brands, the
+// Waking at 2, act1-complete), at level 8, the worst case the M3 tests allow once the Brand is won
+// (nothing says it has levelled since), with only its starter relic. Then the first i SUN_PATH targets
+// are beaten (a Sunscorch Brand re-arms the region, as the rules do); `keys` opens every lock whose key
+// the party holds.
+function sunStage(starter, i, { keys = true } = {}) {
+  const g = structuredClone(newGame({ name: 'Map', starter, seed: 11 }));
+  setLevels(g, 8);
+  for (const id of CP) beat(g, id);
+  for (let j = 0; j < i; j++) beat(g, SP[j]);
+  return keys ? openHeldLocks(g) : g;
+}
+
+test('the Sunscorch opens through the Keep\'s south-east gate once Act I is done, and not before', () => {
+  const se = MAPS.keep.exits.find(x => x.id === 'keep-se');
+  assert.deepEqual(se.gate, { flag: 'act1-complete' });
+  assert.equal(se.to, 'sun-road');
+  assert.equal(se.sealed.region, 'sunscorch');
+  assert.equal(SUN.length, 10);
+  const open = openHeldLocks(allKeys({ brand: true }));
+  const r = flood(open);
+  assert.ok(r.used.has('keep-se'), 'the fill goes through keep-se');
+  for (const id of SUN) assert.ok(mapsOf(r).has(id), `${id} is reachable once Act I is done`);
+  const shut = structuredClone(open);
+  delete shut.progress.flags.story['act1-complete'];
+  const seen = mapsOf(flood(shut));
+  for (const id of SUN) assert.ok(!seen.has(id), `${id} stays sealed before Act I, even with every key`);
+  // keep-se is the only way in: every Sunscorch exit stays in the Sunscorch, but the road home to it
+  for (const id of SUN) {
+    for (const x of MAPS[id].exits) {
+      assert.ok(x.to && !x.sealed, `${id}/${x.id} is a way through`);
+      if (MAPS[x.to].region !== 'sunscorch') assert.ok(x.to === 'keep' && id === 'sun-road' && anchor('keep', x.anchor), `${id}/${x.id} leaves the Sunscorch only for the Keep's south-east gate`);
+    }
+  }
+  const home = anchor('keep', 'from-sun-road');
+  assert.ok(cellsOf({ area: se.area }).some(([x, y]) => Math.abs(x - home.x) + Math.abs(y - home.y) === 1), 'the road home lands beside keep-se');
+});
+
+for (const starter of Object.keys(STARTERS)) {
+  test(`reachability (${starter}): every SUN_PATH target from an Act-I-complete party, with only the starter relic at the worst-case level`, () => {
+    for (let i = 0; i < SP.length; i++) {
+      const g = sunStage(starter, i);
+      const hit = ENTITY_OF[SP[i]];
+      assert.ok(hit, `${SP[i]} is placed`);
+      assert.equal(MAPS[hit.map].region, 'sunscorch', `${SP[i]} is in the Sunscorch`);
+      const live = present(g, hit.map).find(e => e.id === hit.entity.id);
+      assert.ok(live, `${SP[i]} is present when it is next (stage ${i})`);
+      assert.ok(reaches(flood(g), hit.map, hit.entity), `${SP[i]} (${hit.map}) is reachable at stage ${i} (level 8)`);
+    }
+  });
+}
+
+test('no hard lock stands on the Sunscorch path but the Vault door, and the Ash-Captain\'s Scorchgate Key opens it (spec §2.2)', () => {
+  const key = SP.indexOf('sg-captain');
+  for (let i = 0; i < SP.length; i++) {
+    const g = sunStage('cairnmaul', i, { keys: false });            // every hard lock shut
+    if (i > key) g.progress.flags.unlocked['sg-vault-door'] = true; // opened with the key the path just won
+    const hit = ENTITY_OF[SP[i]];
+    assert.ok(reaches(flood(g), hit.map, hit.entity), `${SP[i]} needs no key but the path's own (stage ${i})`);
+  }
+  // the roads east to Miragewell and south to Scorchgate are open without a key (spec §2.3)
+  const r = flood(sunStage('cairnmaul', SP.length, { keys: false }));
+  for (const id of ['well-fire', 'last-watchfire']) assert.ok(reaches(r, HEARTHS[id].map, ENTITY_OF[id].entity), `${id} is on an open road`);
+  // the key: a new party (Knowledge 1) holding only the Scorchgate Key opens the seal, and the Ash-Captain holds it
+  const g = structuredClone(newGame({ name: 'Map', starter: 'cairnmaul', seed: 11 }));
+  g.inventory.push({ uid: 'map-key', base: 'scorchgate-key', kind: RELICS['scorchgate-key'].kind, slot: RELICS['scorchgate-key'].slot });
+  const st = lockStatus(g, 'vault-seal');
+  assert.ok(st.open && st.by === 'scorchgate-key', 'the Scorchgate Key opens the vault seal');
+  const holds = s => s.relic === 'scorchgate-key' || s.wears === 'scorchgate-key' || (s.held || []).some(h => h.relic === 'scorchgate-key');
+  assert.ok(ENCOUNTERS['sg-captain'].spawns.some(holds), 'sg-captain holds the Scorchgate Key');
+});
+
+test('after each Sunscorch Brand, the re-armed fights never shut the way home from the Brand\'s lair', () => {
+  for (const id of ['kharzul-heart', 'ashen-warden']) {
+    const g = sunStage('hearthbrand', SP.indexOf(id) + 1);          // the Brand is won: the region re-arms
+    assert.ok(present(g, 'sun-road').some(e => e.id === 'sr-toll'), `after ${id} Rasa is back at her toll`);
+    const hit = ENTITY_OF[id];
+    const from = nextTo(g, hit.map, hit.entity);
+    assert.ok(from, `${id} can be stood beside`);
+    const r = flood(g, { from: [hit.map, ...from] });
+    for (const fire of ['hearthstone-keep', ...Object.keys(HEARTHS).filter(h => MAPS[HEARTHS[h].map].region === 'sunscorch')]) {
+      assert.ok(reaches(r, HEARTHS[fire].map, ENTITY_OF[fire].entity), `after ${id}, ${fire} is still reachable from the lair`);
+    }
+  }
+});
+
+test('world tables: SUN_PATH is spec §2.2\'s route and SUN_LEADS its leads, each placed once in the Sunscorch and reachable', () => {
+  assert.deepEqual([...SP], ['waystone', 'sr-toll', 'spire-hearth', 'dt-scorpions', 'dust-cairn', 'pithead', 'ds-crew', 'shaft-lamp',
+    'kharzul-heart', 'gf-raiders', 'last-watchfire', 'sg-captain', 'tamsin-scorchgate', 'vault-guard', 'ashen-warden']);
+  assert.deepEqual(JSON.parse(JSON.stringify(SUN_LEADS)), { caravan: ['gf-caravan'], wyrm: ['wyrm-lair'], gnash: ['gnash-camp'], well: ['wisp-queen'], aqueduct: ['dt-aqueduct'] });
+  const r = flood(openHeldLocks(allKeys({ brand: true })));
+  for (const id of [...SP, ...Object.values(SUN_LEADS).flat()]) {
+    assert.ok(ENCOUNTERS[id] && ENCOUNTERS[id].region === 'sunscorch', `${id} is a Sunscorch encounter`);
+    assert.equal(MAPS[ENTITY_OF[id].map].region, 'sunscorch', `${id} is placed in the Sunscorch`);
+    if (Object.values(SUN_LEADS).flat().includes(id)) assert.ok(reaches(r, ENTITY_OF[id].map, ENTITY_OF[id].entity), `the lead ${id} is reachable with every key`);
+  }
+  for (const id of Object.keys(ENCOUNTERS).filter(k => ENCOUNTERS[k].region === 'sunscorch')) assert.equal(MAPS[ENTITY_OF[id].map].region, 'sunscorch', `${id} sits on a Sunscorch map`);
+});
+
+// What spec §2.3 (with §2.5, §3.1, §3.3) puts on each map: its biome, its Hearthfires (true = cold), its
+// fights and their modes, at least this many locks of each type, and its people.
+const SUN_SPEC = {
+  'sun-road': { biome: 'desert', fires: { waystone: false }, fights: { 'sr-skinks': 'pack', 'sr-toll': 'block' }, locks: { 'dune-glass': 1 }, npcs: [] },
+  sandspire: { biome: 'desert-town', fires: { 'spire-hearth': false }, fights: {}, locks: { 'barred-gate': 1 }, npcs: ['zara', 'qasim', 'idris', 'spire-guard', 'water-seller'] },
+  'dust-trail': { biome: 'canyon', fires: { 'dust-cairn': true }, fights: { 'dt-skinks': 'pack', 'dt-scorpions': 'pack', 'dt-aqueduct': 'block', 'wyrm-lair': 'lair' }, locks: { quicksand: 1, boulder: 1 }, npcs: [] },
+  dusthaven: { biome: 'mine-camp', fires: { pithead: false }, fights: {}, locks: {}, npcs: ['luma', 'ode', 'miner'] },
+  'deep-shaft-1': { biome: 'mine', fires: { 'shaft-lamp': true }, fights: { 'ds-crew': 'block', 'ds-scorpions': 'pack' }, locks: { 'dune-glass': 1 }, npcs: [] },
+  'deep-shaft-2': { biome: 'crystal', fires: {}, fights: { 'kharzul-heart': 'lair' }, locks: {}, npcs: [] },
+  'glass-flats': { biome: 'dunes', fires: {}, fights: { 'gf-raiders': 'pack', 'gf-wisps': 'pack', 'gf-caravan': 'block', 'gnash-camp': 'lair' }, locks: { 'dune-glass': 2, mirage: 1, quicksand: 1 }, npcs: [] },
+  miragewell: { biome: 'oasis', fires: { 'well-fire': false }, fights: { 'wisp-queen': 'lair' }, locks: { mirage: 1 }, npcs: ['sabah', 'pilgrim-mw'] },
+  scorchgate: { biome: 'ash', fires: { 'last-watchfire': true }, fights: { 'sg-wights': 'pack', 'sg-captain': 'block', 'tamsin-scorchgate': 'block' }, locks: { 'vault-seal': 1 }, npcs: ['cinder'] },
+  'scorchgate-vaults': { biome: 'vault', fires: {}, fights: { 'vault-guard': 'block', 'ashen-warden': 'lair' }, locks: {}, npcs: [] },
+};
+
+test('the Sunscorch maps hold what spec §2.3 puts on them', () => {
+  assert.deepEqual(Object.keys(SUN_SPEC).sort(), [...SUN].sort());
+  for (const [id, want] of Object.entries(SUN_SPEC)) {
+    const m = MAPS[id], of = k => m.entities.filter(e => e.kind === k);
+    assert.equal(m.biome, want.biome, `${id} biome`);
+    assert.ok(m.lore.length >= 1, `${id} has lore for the Atlas`);
+    assert.deepEqual(Object.fromEntries(of('hearthfire').map(e => [e.id, !!e.cold])), want.fires, `${id} Hearthfires`);
+    assert.deepEqual(Object.fromEntries(of('encounter').map(e => [e.id, e.mode])), want.fights, `${id} fights`);
+    for (const [type, n] of Object.entries(want.locks)) assert.ok(of('lock').filter(e => e.lock === type).length >= n, `${id}: ${n} ${type}`);
+    for (const npc of want.npcs) assert.ok(of('npc').some(e => e.npc === npc), `${id}: ${npc}`);
+  }
+  const on = (map, id) => MAPS[map].entities.find(e => e.id === id);
+  assert.equal(on('sandspire', 'ss-cistern')?.lock, 'barred-gate', 'the cistern is a barred gate');
+  assert.equal(on('sandspire', 'ss-board')?.opens, 'bounties', 'the Sandspire bounty board');
+  assert.equal(on('sandspire', 'ss-lookout')?.kind, 'lookout', 'the lookout on the mesa edge');
+  assert.equal(on('sandspire', 'crate-cradle')?.kind, 'sign', 'the empty crate cradle');
+  assert.equal(on('sun-road', 'sr-glass-cache')?.kind, 'chest', 'the dune-glass hollow\'s cache');
+  assert.ok(on('sun-road', 'sr-toll').area[2] - on('sun-road', 'sr-toll').area[0] === 1, 'Rasa\'s toll is two tiles wide');
+  // the Vault door is the way down: the exit lies straight through it
+  const door = on('scorchgate', 'sg-vault-door'), down = MAPS.scorchgate.exits.find(x => x.to === 'scorchgate-vaults');
+  assert.equal(door.lock, 'vault-seal');
+  assert.ok(cellsOf(down).every(([x, y]) => cellsOf(door).some(([dx, dy]) => dx === x && dy === y - 1)), 'the stair down is behind the Vault door');
+  // Kharzul's champion lair is 3 by 2; every big lair carries its sprite foot inside its footprint
+  const [kx0, ky0, kx1, ky1] = on('deep-shaft-2', 'kharzul-heart').area;
+  assert.deepEqual([kx1 - kx0 + 1, ky1 - ky0 + 1], [3, 2], 'Kharzul\'s footprint');
+  for (const id of SUN) for (const e of MAPS[id].entities) if (e.kind === 'encounter' && e.area) assert.ok(covers(e, e.at[0], e.at[1]), `${id}/${e.id} stands in its footprint`);
+  // the dark places (M3's soft darkness): the Deep Shaft and the Vaults
+  assert.deepEqual(SUN.filter(id => MAPS[id].dark).sort(), ['deep-shaft-1', 'scorchgate-vaults']);
+  assert.equal(MAPS['glass-flats'].entities.filter(e => e.kind === 'hearthfire').length, 0, 'no Hearthfire on the Glass Flats');
+});
+
+test('Sunscorch chests: a little silver, gems and materials by real ids, embers well hidden, Ash Garnets only in Scorchgate', () => {
+  const chests = SUN.flatMap(id => MAPS[id].entities.filter(e => e.kind === 'chest').map(e => ({ map: id, e })));
+  assert.ok(chests.length >= 10, `${chests.length} chests`);
+  for (const { map, e } of chests) {
+    for (const [k, n] of Object.entries(e.loot.materials || {})) assert.ok(MATERIALS[k] && n >= 1 && n <= 2, `${map}/${e.id}: ${k} x${n}`);
+    for (const [k, n] of Object.entries(e.loot.gems || {})) assert.ok(GEMS[k] && n >= 1 && n <= 2, `${map}/${e.id}: ${k} x${n}`);
+    if (e.loot.gems?.['ash-garnet']) assert.ok(['scorchgate', 'scorchgate-vaults'].includes(map), `${e.id}: the Ash Garnet only drops in Scorchgate`);
+    if (e.loot.materials?.embers) assert.ok(e.hidden || e.lock, `${e.id}: embers are well hidden`);
+  }
+  assert.ok(chests.filter(({ e }) => e.loot.materials?.silver).length * 2 >= chests.length, 'most hold a little silver');
+  assert.ok(chests.filter(({ e }) => e.loot.materials?.embers).length >= 1, 'somewhere, an ember');
 });

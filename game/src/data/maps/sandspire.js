@@ -9,7 +9,7 @@
 // city grew round it) and the terrace on the mesa edge with the lookout (15,23).
 // Tiles (desert-town): '^' mesa cliff, '#' sandstone walls, 'H' roofs and awnings, ':' paving, '='
 // streets, '.' sand, '~' cistern and fountain water, '_' the cistern ledge, '*' gate torches, 'T' palms,
-// 'o' crates, '+' the palace door (decoration: Qasim stands in it).
+// 'o' crates, 't' jars, '+' the palace door (decoration: Qasim stands in it).
 // Format: src/data/maps/index.js. Owner: M4 P2.
 import { deepFreeze } from '../../core/freeze.js';
 
@@ -28,7 +28,7 @@ export default deepFreeze({
     '^#:o::::::o:..==.#~__###+####^', //  6
     '^#::::::::::#.==.##:#:::::::#^', //  7
     '^#####::#####.==...:.:::::::#^', //  8
-    '^#HHH.T.HHH:::==:::HHH.T.HHH#^', //  9
+    '^#HHHtT.HHH:::==:::HHH.T.HHH#^', //  9
     '^####HH::::::::::::::::HH####^', // 10
     '^*...::::::::::::::::::::...*^', // 11
     '=====::::::::::::::::::::=====', // 12
@@ -51,14 +51,14 @@ export default deepFreeze({
     { id: 'spire-guard', kind: 'npc', npc: 'spire-guard', at: [13, 3], face: 's' },
     { id: 'zara', kind: 'npc', npc: 'zara', at: [6, 5], face: 's' },
     { id: 'crate-cradle', kind: 'sign', at: [9, 5], look: 'cradle', if: { not: { flag: 'crate-returned' } }, text: 'An empty cradle of rope and straw, the shape of a crate. The straw is scorched in rings, as if something in it hummed.' },
-    { id: 'crate-cradle-full', kind: 'sign', at: [9, 5], look: 'cradle', if: { flag: 'crate-returned' }, text: 'The crate is back in its cradle, empty and quiet now. Zara has hung a water-skin over it, for luck.' },
+    { id: 'crate-cradle-full', kind: 'sign', at: [9, 5], look: 'cradle-full', if: { flag: 'crate-returned' }, text: 'The crate is back in its cradle, empty and quiet now. Zara has hung a water-skin over it, for luck.' },
     { id: 'qasim', kind: 'npc', npc: 'qasim', at: [24, 7], face: 's' },
     { id: 'ss-cistern', kind: 'lock', lock: 'barred-gate', at: [19, 7] },
     { id: 'ss-cistern-cache', kind: 'chest', at: [20, 5], loot: { gold: 120, gems: { 'glass-pearl': 1 }, materials: { silver: 1 } } },
     { id: 'ss-board', kind: 'board', at: [12, 10], opens: 'bounties' },
     { id: 'water-seller', kind: 'npc', npc: 'water-seller', at: [20, 14], face: 's' },
     { id: 'idris', kind: 'npc', npc: 'idris', at: [8, 18], face: 'n' },
-    { id: 'ss-spire', kind: 'sign', at: [18, 20], look: 'stone', text: 'The Spire: a finger of red rock the city grew round. Carved at its foot: THE SAND REMEMBERS.' },
+    { id: 'ss-spire', kind: 'sign', at: [18, 20], look: 'spire', text: 'The Spire: a finger of red rock the city grew round. Carved at its foot: THE SAND REMEMBERS.' },
     { id: 'ss-lookout', kind: 'lookout', at: [15, 23] },
   ],
   exits: [

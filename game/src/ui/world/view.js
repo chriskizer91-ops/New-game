@@ -108,8 +108,10 @@ function remember(id, B) {
 const LOCK_KIND = {
   thornwall: 'thornwall', bramble: 'bramble', boulder: 'boulder', 'barred-gate': 'barred-gate',
   'rope-ledge': 'rope', 'tally-seal': 'tally-seal', 'rot-knot': 'rot-knot',
+  // M4: the Sunscorch locks (art/map-sprites.js draws them under the same names)
+  'dune-glass': 'dune-glass', mirage: 'mirage', quicksand: 'quicksand', 'vault-seal': 'vault-seal',
 };
-const GATE_KIND = { gate: 'gate', chain: 'chain', crownwall: 'crownwall', door: 'door' };
+const GATE_KIND = { gate: 'gate', chain: 'chain', crownwall: 'crownwall', door: 'door', 'vault-door': 'vault-door' };
 const FORD_BY = { 'stillwater-lance': 'ice', rootsong: 'roots' };
 const areaOf = e => e.area || [e.at[0], e.at[1], e.at[0], e.at[1]];
 

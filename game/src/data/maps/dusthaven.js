@@ -4,9 +4,10 @@
 // east along the main street to the trail. The Pithead Fire burns in its paved yard beside the shaft
 // (9,5). Luma's assay shed stands under the north-east cliff with Luma at its door (16,6); Old Ode keeps
 // the Pithead store in the south-west (4,15); miners loaf by the fire and the tents.
-// Tiles (mine-camp): '^' canyon walls, '.' packed earth, '=' the rails, '|' timber (the headframe and
-// fences), 's' the shaft stair, 'H' tents and roofs, '#' timber walls, '+' doors (decoration: the NPCs
-// stand in them), ':' the fire yard, 'o' ore piles and crates, ',' spoil, '~' a water trough.
+// Tiles (mine-camp): '^' canyon walls, '.' packed earth, 'r' the rails, '=' the camp's road, '|' timber
+// (the headframe and fences), 's' the shaft stair, 'H' tents and roofs, '#' timber walls, '+' doors
+// (decoration: the NPCs stand in them), ':' the fire yard, 'o' ore piles and crates, ',' spoil, '~' a
+// water trough.
 // Format: src/data/maps/index.js. Owner: M4 P2.
 import { deepFreeze } from '../../core/freeze.js';
 
@@ -19,15 +20,15 @@ export default deepFreeze({
     '^^^^^^^^^^^^^^^^^^^^^^^^', //  0
     '^^^^^^^^^^^^^^^^^^^^^^^^', //  1
     '^^^^|ss|^^^^^^^^^^^^^^^^', //  2
-    '^^^.|==|o.^^..HHHHHH.^^^', //  3
-    '^^.o.==.:::,..HHHHHH..^^', //  4
-    '^^.o.==.:::.,.##+###..^^', //  5
-    '^^...==.:::..........|^^', //  6
-    '^^...==.....HH....o..|^^', //  7
-    '^^|..==.....HH.,.....|^^', //  8
-    '^^|..==.......o....,..^^', //  9
-    '^^...===================', // 10
-    '^^...===================', // 11
+    '^^^.|r=|o.^^..HHHHHH.^^^', //  3
+    '^^.o.r=.:::,..HHHHHH..^^', //  4
+    '^^.o.r=.:::.,.##+###..^^', //  5
+    '^^...r=.:::..........|^^', //  6
+    '^^...r=.....HH....o..|^^', //  7
+    '^^|..r=.....HH.,.....|^^', //  8
+    '^^|..r=.......o....,..^^', //  9
+    '^^...r==================', // 10
+    '^^...rrrrrrrrrrrrrrrrrrr', // 11
     '^^....................^^', // 12
     '^^HHHHH...~......,.HH.^^', // 13
     '^^##+##.....HH.....HH.^^', // 14

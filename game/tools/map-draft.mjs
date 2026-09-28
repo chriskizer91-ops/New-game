@@ -26,7 +26,8 @@
 //
 // Lint: entities, anchors and exits under a tree canopy (the tile just above a 'T'), 1-wide
 // corridors (roamers never enter them), pack homes outside the roam rects, walkable tiles no key
-// can reach. Owner: WP3.
+// can reach. M4: the fill walks through a gated exit (the Keep's south-east gate) once its gate holds, the
+// four Sunscorch locks have short names, and the Sunscorch biomes draw as sand, ash or stone. Owner: WP3; M4 P2.
 import { createRequire } from 'node:module';
 import { execSync } from 'node:child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';

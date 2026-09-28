@@ -9,7 +9,7 @@
 // entities keep the upper half lit, Brask's lantern glows until he is beaten, and kindling the Shaft
 // Lamp lights the chamber round it. Brask's crew stands off the main shaft, so the Brand of Glass's
 // re-armed Echo never closes the way back up.
-// Tiles (mine): 'R' rock, 'k' the tunnel floor, '=' rails, '|' timber props, 'f' glowing sunstone
+// Tiles (mine): 'R' rock, 'k' the tunnel floor, 'r' rails, '|' timber props, 'f' glowing sunstone
 // veins, 'o' ore and rubble, 'x' the chasm, 'b' the plank bridge, 's' stairs.
 // Format: src/data/maps/index.js. Owner: M4 P2.
 import { deepFreeze } from '../../core/freeze.js';
@@ -21,28 +21,28 @@ export default deepFreeze({
   w: 24, h: 24,
   rows: [
     'RRRRRRRRRRRssRRRRRRRRRRR', //  0
-    'RRRRRRRRRR|==|RRRRRRRRRR', //  1
-    'RRRRRRRRRR|==|RRRRRRRRRR', //  2
-    'RRR|kkkk|kk==kk|kkkk|RRR', //  3
-    'RRkkkkkkkkk==kkkkkkkkRRR', //  4
-    'RRkkkkkkkkk==kkkkkkkkkRR', //  5
-    'RRRkkkkkkkk==kkkkkkkkkRR', //  6
-    'RRRRkRRRRRk==kRkkkokkfRR', //  7
-    'RRkkkfRRRRk==kRkkkkkkkRR', //  8
-    'RRkkkkRRRRk==kRkkkkkkkRR', //  9
-    'RRfkkkRRokk==kkkkkkkkfRR', // 10
-    'RRRRRRRRkkk==kkkfkkkfRRR', // 11
-    'RRRRRkkkkkk==kkkRRRRRRRR', // 12
+    'RRRRRRRRRR|kr|RRRRRRRRRR', //  1
+    'RRRRRRRRRR|kr|RRRRRRRRRR', //  2
+    'RRR|kkkk|kkkrkk|kkkk|RRR', //  3
+    'RRkkkkkkkkkkrkkkkkkkkRRR', //  4
+    'RRkkkkkkkkkkrkkkkkkkkkRR', //  5
+    'RRRkkkkkkkkkrkkkkkkkkkRR', //  6
+    'RRRRkRRRRRkkrkRkkkokkfRR', //  7
+    'RRkkkfRRRRkkrkRkkkkkkkRR', //  8
+    'RRkkkkRRRRkkrkRkkkkkkkRR', //  9
+    'RRfkkkRRokkkrkkkkkkkkfRR', // 10
+    'RRRRRRRRkkkkrkkkfkkkfRRR', // 11
+    'RRRRRkkkkkkkrkkkRRRRRRRR', // 12
     'RRRRRkkkkkkkkkkoRRRRRRRR', // 13
     'RRRkkkkkkRRRRRRRRRRRRRRR', // 14
     'RRkkkkkfkkRRRRRRkkkkkRRR', // 15
     'RRkkokkkkkRRRRRkkkkkfkRR', // 16
     'RRkfkkkkkkRRxxxkkkkokkRR', // 17
     'RRkkkkkkokkkxxxkkkkkkkRR', // 18
-    'RRRkkkkkkkkkbbbkkkkkkkRR', // 19
-    'RRRRRRRRRkkkbbbkkkkkkkRR', // 20
-    'RRRRRRRRRRRRxxxkfkkkkRRR', // 21
-    'RRRRRRRRRRRRRRRRRRkkRRRR', // 22
+    'RRRkkkkkkrrrbbbrrrrkkkRR', // 19
+    'RRRRRRRRRkkkbbbkkkrkkkRR', // 20
+    'RRRRRRRRRRRRxxxkfkrkkRRR', // 21
+    'RRRRRRRRRRRRRRRRRRrkRRRR', // 22
     'RRRRRRRRRRRRRRRRRRssRRRR', // 23
   ],
   entities: [

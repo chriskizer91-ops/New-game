@@ -1,13 +1,14 @@
 // The Dust Trail (M4 spec §2.1, §2.3). A red canyon from Sandspire's west gate (E) to Dusthaven (W).
-// The mine-cart rails are the trail: they wind down the middle through a rock cutting (x10-16), where
-// the sand-skinks nest. Along the north wall runs Sandspire's aqueduct, a stone-lipped channel from the
+// The mine-cart rails run beside the trail, winding down the middle through a rock cutting (x10-16),
+// where the sand-skinks nest. Along the north wall runs Sandspire's aqueduct, a stone-lipped channel from the
 // spring at the canyon head; at (29,4) a glass-scorpion nest has choked it with shed shells, and the
 // channel runs dry from there to the city. The Dust Cairn stands on a paved rise north of the rails
 // (22,8), the glass scorpions hunt mid-canyon, and south of the rails a ring of rock round a sinkhole
-// of loose sand hides the Sand Wyrm (33,17): the only way in is across the quicksand at its mouth
+// of loose sand hides the Sand Wyrm (33,18): the only way in is across the quicksand at its mouth
 // (32-33,13-14). In the south-west a boulder (5,16) closes the ramp up to a ledge with a cache.
-// Tiles (canyon): '^' canyon walls, '.' canyon floor, 'm' loose sand, '=' the rails, '~' the aqueduct,
-// '#' its stone lip, ',' shell litter and scree, 'o' boulders, ':' the cairn's paving.
+// Tiles (canyon): '^' canyon walls, '.' canyon floor, ',' rippled sand and shell litter, 'r' the rails,
+// '=' the trail, 'm' the dry, cracked aqueduct bed, '~' the aqueduct, '#' its stone lip, 'o' boulders,
+// ':' paving.
 // Format: src/data/maps/index.js. Owner: M4 P2.
 import { deepFreeze } from '../../core/freeze.js';
 
@@ -25,18 +26,18 @@ export default deepFreeze({
     '^^.##########################...............^^', //  5
     '^^..o........,^^..............o......^^o...o^^', //  6
     '^^.......o.....^....o:::o..........,..^.....^^', //  7
-    '^^o.............o..o.:::.o.......mm.......o.^^', //  8
-    '^^.....,...mm........:::................m...^^', //  9
-    '^..........................==========........^', // 10
-    '==========.o.o.o.=============================', // 11
-    '============================........==========', // 12
-    '^........=========............^^mm^^.........^', // 13
-    '^..,......o.o...o...o........^^mmmm^^.......o^', // 14
-    '^.......o......mm.........,..^mmmmmm^...o....^', // 15
-    '^^^^^.^^.........m..........^^mmmmmm^^.......^', // 16
-    '^.....^^............^.......^mmmmmmmm^.^.mm..^', // 17
-    '^.....^...,........^^.o....m^^mmmmmm^^.^^...^^', // 18
-    '^^^^^^^^.^^..o....o^^^..mm.^^^^^mm^^^^^o^^^^^^', // 19
+    '^^o.............o..o.:::.o.......,,.......o.^^', //  8
+    '^^.....,...,,........:::................,...^^', //  9
+    '^.........................============.......^', // 10
+    '===========o.o.o===========rrrrrrrrrr=========', // 11
+    'rrrrrrrrrr=======rrrrrrrrrrr........rrrrrrrrrr', // 12
+    '^........rrrrrrrrr............^^,,^^.........^', // 13
+    '^..,......o.o...o...o........^^,,,,^^.......o^', // 14
+    '^.......o......,,.........,..^,,,,,,^...o....^', // 15
+    '^^^^^.^^.........,..........^^,,,,,,^^.......^', // 16
+    '^.....^^............^.......^,,,,,,,,^.^.,,..^', // 17
+    '^.....^...,........^^.o....,^^,,,,,,^^.^^...^^', // 18
+    '^^^^^^^^.^^..o....o^^^..,,.^^^^^,,^^^^^o^^^^^^', // 19
     '^^^^^^^^^^^^...^^^^^^^^^..^^^^^^^^^^^^^^^^^^^^', // 20
     '^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^', // 21
     '^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^', // 22
@@ -49,7 +50,7 @@ export default deepFreeze({
     { id: 'dt-skinks', kind: 'encounter', enc: 'dt-skinks', mode: 'pack', at: [12, 16], face: 'n' },
     { id: 'dt-scorpions', kind: 'encounter', enc: 'dt-scorpions', mode: 'pack', at: [24, 16], face: 'n' },
     { id: 'dt-quicksand', kind: 'lock', lock: 'quicksand', area: [32, 13, 33, 14] },
-    { id: 'wyrm-lair', kind: 'encounter', enc: 'wyrm-lair', mode: 'lair', at: [33, 17], area: [32, 16, 34, 17], face: 'n' },
+    { id: 'wyrm-lair', kind: 'encounter', enc: 'wyrm-lair', mode: 'lair', at: [33, 18], area: [32, 17, 34, 18], face: 'n' },
     { id: 'dt-boulder', kind: 'lock', lock: 'boulder', at: [5, 16] },
     { id: 'dt-ledge-cache', kind: 'chest', at: [2, 18], loot: { items: [{ rarity: 'tempered', kind: 'bow' }], materials: { silver: 2 } } },
   ],

@@ -35,10 +35,10 @@ export default deepFreeze({
     'RRRRRRRRRRRRRRRRRR', // 17
   ],
   entities: [
-    { id: 'gh-glass-1', kind: 'prop', prop: 'pedestal', at: [5, 6], solid: true },
-    { id: 'gh-glass-2', kind: 'prop', prop: 'pedestal', at: [12, 6], solid: true },
-    { id: 'gh-glass-3', kind: 'prop', prop: 'pedestal', at: [4, 12], solid: true },
-    { id: 'gh-glass-4', kind: 'prop', prop: 'pedestal', at: [13, 12], solid: true },
+    { id: 'gh-glass-1', kind: 'prop', prop: 'glass-spire', at: [5, 6], solid: true },
+    { id: 'gh-glass-2', kind: 'prop', prop: 'glass-spire', at: [12, 6], solid: true },
+    { id: 'gh-glass-3', kind: 'prop', prop: 'glass-spire', at: [4, 12], solid: true },
+    { id: 'gh-glass-4', kind: 'prop', prop: 'glass-spire', at: [13, 12], solid: true },
     { id: 'kharzul-heart', kind: 'encounter', enc: 'kharzul-heart', mode: 'lair', at: [8, 13], area: [7, 12, 9, 13], face: 'n' },
     { id: 'gh-shard-cache', kind: 'chest', at: [7, 16], hidden: true, loot: { gold: 150, materials: { embers: 1, silver: 1 } } },
   ],

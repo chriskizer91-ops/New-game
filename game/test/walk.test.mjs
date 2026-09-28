@@ -3,16 +3,22 @@
 // battle wins (foes at 1 HP), and must never get stuck. It follows CRITICAL_PATH: walk to each
 // target (across maps by their exits), rest at Hearthfires, fight blocks, lairs and packs, open
 // the locks it holds a key for, and play every trigger's dialogue on the way. Owner: WP1.
+// M4 (spec §2.2, §8; owner M4 P2): the same bot walks SUN_PATH from an Act-I-complete save (both Verdant
+// Brands, act1-complete, at the Keep, level 8 with only its starter relic) through the Keep's south-east
+// gate, then comes home to the Great Hall for the second council.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { newGame, startBattle, resolveBattle, routPack, rest } from '../src/rules/gauntlet.js';
 import { enterMap, move, interact, findPath, present, lockStatus, openLock, afterBattle } from '../src/rules/world.js';
 import { enterDialogue, choose, dialogueView } from '../src/rules/story.js';
-import { START_AT, CRITICAL_PATH, HEARTHS } from '../src/data/world.js';
+import { START_AT, CRITICAL_PATH, SUN_PATH, HEARTHS } from '../src/data/world.js';
 import { MAPS, ENTITY_OF } from '../src/data/maps/index.js';
 import { ENCOUNTERS } from '../src/data/encounters.js';
 import { DIALOGUE } from '../src/data/dialogue.js';
 import { dirTo } from '../src/rules/path.js';
+import { check } from '../src/rules/cond.js';
+import { levelUp } from '../src/rules/progression.js';
+import { createRng } from '../src/core/rng.js';
 import { playOut } from './helpers.mjs';
 
 class Stuck extends Error {}
@@ -28,8 +34,10 @@ function forceWin(game, where) {
   return resolveBattle(g, played);
 }
 
-function makeBot(starter) {
-  const s = { game: newGame({ name: 'Tess', seed: 9, starter }), walk: null, log: [], steps: 0 };
+// `game` (a save to start from), `path` (the targets, in order) and `start` (where to enter) default to
+// M3's long walk: newGame, CRITICAL_PATH, the Great Hall.
+function makeBot(starter, { game = null, path = CRITICAL_PATH, start = null } = {}) {
+  const s = { game: game || newGame({ name: 'Tess', seed: 9, starter }), walk: null, log: [], steps: 0 };
   const log = m => { s.log.push(m); if (s.log.length > 40) s.log.shift(); };
   const where = () => `${s.walk?.map} (${s.walk?.x},${s.walk?.y})`;
   const stuck = m => { throw new Stuck(`${starter}: ${m} at ${where()}\n  ${s.log.slice(-12).join('\n  ')}`); };
@@ -144,7 +152,8 @@ function makeBot(starter) {
       const m = q.shift();
       if (m === target) break;
       for (const ex of MAPS[m].exits) {
-        if (ex.sealed || prev[ex.to] !== undefined) continue;
+        // M4: a gated exit (the Keep's south-east gate) is a way through once its gate holds (rules/world.js move)
+        if ((ex.sealed && !(ex.to && ex.gate && check(s.game, ex.gate))) || prev[ex.to] !== undefined) continue;
         prev[ex.to] = { m, ex };
         q.push(ex.to);
       }
@@ -200,7 +209,9 @@ function makeBot(starter) {
       log(`rest ${id}`);
       return;
     }
-    const settled = () => s.game.progress.flags.cleared[id] || s.game.progress.flags.done[id] || (node.duel && s.game.progress.flags.story['tamsin-yielded']);
+    // a Brand re-arms its own Champion (the rules' rematch): once its Brand is held, the target is done
+    const settled = () => s.game.progress.flags.cleared[id] || s.game.progress.flags.done[id] || (node.duel && s.game.progress.flags.story[node.yields || 'tamsin-yielded'])
+      || (node.brand && s.game.progress.brands.includes(node.brand));
     if (settled()) return;
     for (let tries = 0; tries < 30 && !settled(); tries++) {
       if (s.walk.map !== hit.map) goToMap(hit.map);
@@ -235,10 +246,12 @@ function makeBot(starter) {
 
   return {
     run() {
-      enter({ map: START_AT.map, at: [START_AT.x, START_AT.y], face: START_AT.face });
-      for (const id of CRITICAL_PATH) { log(`-> ${id}`); reach(id); }
+      enter(start || { map: START_AT.map, at: [START_AT.x, START_AT.y], face: START_AT.face });
+      for (const id of path) { log(`-> ${id}`); reach(id); }
       return s;
     },
+    // walk (across maps) into `mapId`
+    home(mapId) { log(`-> home to ${mapId}`); goToMap(mapId); return s; },
   };
 }
 
@@ -249,5 +262,52 @@ for (const starter of ['hearthbrand', 'stillwater-lance', 'cairnmaul']) {
     assert.equal(new Set(s.game.progress.brands).size, 2);
     assert.ok(s.game.progress.flags.story['intro-done'], 'the intro played');
     assert.ok(s.steps > 100, `${s.steps} steps`);
+  });
+}
+
+// ---- M4: the Sunscorch walk (spec §2.2, §8) ------------------------------------------------------------
+
+// An Act-I-complete save: the M3 critical path behind it (both Verdant Brands, the Waking at 2, the first
+// council sat), standing in the Keep's courtyard, every hero at level 8 (the worst case the map tests
+// allow after the Brand) and only the starter relic in the pack.
+function actOneSave(starter) {
+  const g = structuredClone(newGame({ name: 'Tess', seed: 9, starter }));
+  const rng = createRng('walk-act-one');
+  for (const id of g.party.active) {
+    let h = g.party.roster[id];
+    while (h.level < 8) h = levelUp(h, rng).hero;
+    g.party.roster[id] = h;
+  }
+  g.progress.brands = ['brand-of-briars', 'brand-of-the-heartroot'];
+  g.progress.waking = 2;
+  const f = g.progress.flags;
+  for (const id of CRITICAL_PATH) {
+    const e = ENCOUNTERS[id];
+    if (e.type === 'hearthfire') { f.kindled[id] = true; continue; }
+    f.beaten[id] = 1;
+    if (e.once) f.done[id] = true;
+    if (e.opens) f.unlocked[e.opens] = true;
+  }
+  Object.assign(f.story, { 'intro-done': true, 'tamsin-yielded': true, 'act1-complete': true, 'council-done': true });
+  g.progress.pos = { map: 'keep', x: 15, y: 6, face: 's' };
+  return g;
+}
+
+for (const starter of ['hearthbrand', 'stillwater-lance', 'cairnmaul']) {
+  test(`the Sunscorch walk (${starter}): from an Act-I-complete save through the south-east gate, SUN_PATH to both Brands, then home`, () => {
+    const bot = makeBot(starter, { game: actOneSave(starter), path: SUN_PATH, start: { map: 'keep', anchor: 'from-hall' } });
+    const s = bot.run();
+    const f = s.game.progress.flags;
+    assert.ok(s.game.progress.brands.includes('brand-of-glass') && s.game.progress.brands.includes('brand-of-ash'), 'both Sunscorch Brands');
+    assert.equal(f.story['sunscorch-complete'], true);
+    for (const id of SUN_PATH) {
+      if (HEARTHS[id]) assert.ok(f.kindled[id], `${id} kindled`);
+      else assert.ok(f.beaten[id] || f.story[ENCOUNTERS[id].yields], `${id} fought`);
+    }
+    // the way home from the Vault of Ash is open (the Vaults are underground: no Hearthfire travel)
+    bot.home('keep-hall');
+    assert.equal(s.walk.map, 'keep-hall');
+    assert.equal(f.story['council-2-done'] || s.game.progress.flags.story['council-2-done'], true, 'the second council plays in the Great Hall');
+    assert.ok(s.steps > 300, `${s.steps} steps`);
   });
 }
