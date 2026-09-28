@@ -28,3 +28,7 @@ Lairs draw the battle sprite at 1× (Old Snag is about 64 px, i.e. 4 tiles wide)
 An `area` that covers the sprite's footprint (as `briarmaw-den` has) would make collision match what the player sees. Something like 3×1 or 3×2 centred under the sprite would do.
 
 Taps and holds already use the whole sprite, so this is only about walking. Not blocking.
+- **Later changes (all tests still green):**
+  - `vesper-stall` moved 1 tile south to (16,13). WP5's roof lint caught that the awning (`H`, drawn overhead) hid his head. He now stands in front of his stall.
+  - After WP7's note, my big lairs carry an `area` footprint next to `at`: `gloamwing-hollow` [21,11,23,12], `grove-circle` [4,5,4,6], `mw-lantern` [6,4,6,5].
+  - `map-draft --lint` on my 7 maps now lists only the expected notes: 1-wide spots in maps without roamers or outside the roam rects, and the three Eldergrove doors. The Hindwood lints clean.
