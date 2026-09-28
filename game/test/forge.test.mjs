@@ -234,7 +234,27 @@ test('awakening: the three deeds first, then Hilda\'s rite; the path follows the
   assert.equal(F.awaken(g0, 'nope', 'a').reason, 'Only relics awaken.');
 });
 
-test('the rite: Hearthbrand, ready, on the Warden (the Hand); the Heart says whose path would open it', () => {
+test('the rite: the path is the bearer\'s, and advice names only heroes who can carry the relic', () => {
+  const g0 = start();
+  // an amulet anyone can wear: on the Warden (the Hand) its Heart branch waits for Bryn or Alondra
+  const glass = relicItem('mirage-glass', createRng(1234));
+  const ready = it => ({ ...it, deeds: Object.fromEntries(relicDeeds(it.base).map(d => [d, 2])) });
+  let g = equip(give(g0, ready(glass)), 'warden', glass.uid).game;
+  const o = F.awakenOptions(g, glass.uid);
+  assert.equal(o.ready, true);
+  const [a, b] = ['a', 'b'].map(id => o.branches.find(x => x.id === id));
+  assert.deepEqual([a.enabled, a.path, a.note], [true, 'the Hand', null]);
+  assert.equal(b.enabled, false);
+  assert.match(b.why, /the Heart \(Bryn, Sister Alondra\)/);
+  assert.equal(F.awaken({ ...g, gold: 5000, materials: { embers: 2 } }, glass.uid, 'b').reason, b.why);
+  // on Bryn (the Heart) it is the other way round
+  g = equip(g, 'bryn', glass.uid).game;
+  const ob = F.awakenOptions(g, glass.uid);
+  assert.deepEqual(ob.branches.map(x => x.enabled), [false, true]);
+  assert.match(ob.branches[0].why, /the Hand \(Tess, Pip\)/);
+});
+
+test('the rite: a branch no carrier\'s path reaches opens for the bearer (Hearthbrand, a sword only the Hand holds)', () => {
   const g0 = start();
   const uid = g0.party.roster.warden.gear.weapon;
   const A = RELICS.hearthbrand.awaken;
@@ -245,10 +265,9 @@ test('the rite: Hearthbrand, ready, on the Warden (the Hand); the Heart says who
   assert.equal(o.ready, true);
   assert.equal(o.why, null);
   const [a, b] = ['a', 'b'].map(id => o.branches.find(x => x.id === id));
-  assert.deepEqual([a.enabled, a.name, a.path], [true, A.a.name, 'the Hand']);
-  assert.equal(b.enabled, false);
-  assert.match(b.why, /the Heart \(Bryn, Sister Alondra\)/);
-  assert.equal(F.awaken(ready, uid, 'b').reason, b.why);
+  assert.deepEqual([a.enabled, a.name, a.path, a.note], [true, A.a.name, 'the Hand', null]);
+  assert.deepEqual([b.enabled, b.why], [true, null], 'neither Bryn nor Alondra can hold a sword');
+  assert.match(b.note, /Nobody who can carry it walks the Heart/);
   assert.equal(F.awaken(ready, uid, 'a').reason, 'Needs 2 embers');
   const before = deriveHero(ready.party.roster.warden, ready.inventory);
   const r = F.awaken({ ...ready, materials: { embers: 2 } }, uid, 'a');
@@ -257,6 +276,7 @@ test('the rite: Hearthbrand, ready, on the Warden (the Hand); the Heart says who
   assert.equal(blade.awakened, 'a');
   assert.equal(F.stageOf(blade), 'awakened');
   assert.equal(r.game.codex.hearthbrand.awakened, true);
+  assert.equal(r.game.codex.hearthbrand.claimed, true);
   assert.equal(r.game.materials.embers, 0);
   assert.equal(r.game.gold, 1000 - 150 * Math.ceil(RELICS.hearthbrand.ilvl / 2));
   const after = deriveHero(r.game.party.roster.warden, r.game.inventory);
@@ -271,6 +291,20 @@ test('the rite: Hearthbrand, ready, on the Warden (the Hand); the Heart says who
   // off the Warden, nobody carries it: both paths say to equip it
   const bag = { ...ready, party: { ...ready.party, roster: { ...ready.party.roster, warden: { ...ready.party.roster.warden, gear: { ...ready.party.roster.warden.gear, weapon: null } } } } };
   for (const x of F.awakenOptions(bag, uid).branches) assert.match(x.why, /^Equip it on the one who will carry it/);
+});
+
+test('every relic\'s two branches can be taken by someone in the party (no dead branch)', () => {
+  const g0 = start();
+  for (const r of Object.values(RELICS)) {
+    const it = { ...relicItem(r.id, createRng(1)), deeds: Object.fromEntries(relicDeeds(r.id).map(d => [d, 1])) };
+    const open = new Set();
+    for (const id of g0.party.active) {
+      const g = equip(give(g0, it), id, it.uid);
+      if (!g.ok) continue;
+      for (const b of F.awakenOptions(g.game, it.uid).branches) if (b.enabled) open.add(b.id);
+    }
+    assert.deepEqual([...open].sort(), ['a', 'b'], `${r.id}: branches someone can take`);
+  }
 });
 
 test('every relic has three deeds and both branches, and an awakened Surge resolves to a real power', () => {
@@ -337,4 +371,32 @@ test('a gift that finishes a page says so (story event) and records it', () => {
   assert.ok(r.events.some(e => e.t === 'page' && e.id === 'verdant'));
   assert.equal(r.game.progress.flags.pages.verdant, r.game.progress.flags.day);
   assert.equal(enterDialogue(g, 'garret-won').events.some(e => e.t === 'page'), false);
+});
+
+test('reforging a shattered relic Claims it: its page can finish, and its holder carries an Echo from then on', async () => {
+  const { reforge } = await import('../src/rules/party.js');
+  const { spawnsFor } = await import('../src/rules/gauntlet.js');
+  const g0 = start();
+  const others = relicsOn('verdant').filter(id => !RELICS[id].starter && id !== 'thornsplitter');
+  const shard = { ...relicItem('thornsplitter', createRng(4321)), shattered: true };
+  const g = deepFreeze({ ...claimAll(give(g0, shard), others), gold: 9999, codex: { ...claimAll(g0, others).codex, thornsplitter: { sighted: true, claimed: false, awakened: false } } });
+  assert.equal(pageProgress(g, 'verdant').done, false, 'one short while it is in pieces');
+  const r = reforge(g, shard.uid);
+  assert.equal(r.ok, true, r.reason);
+  assert.equal(r.game.codex.thornsplitter.claimed, true);
+  assert.deepEqual(r.pages, ['verdant']);
+  assert.equal(r.game.progress.flags.pages.verdant, r.game.progress.flags.day);
+  assert.equal(g.progress.flags.pages?.verdant, undefined, 'the input is untouched');
+  const snag = spawnsFor(r.game, 'snag-wallow').find(s => s.family === 'oldsnag');
+  assert.ok(snag.held.every(h => h.item && !h.relic), 'Old Snag carries an Echo now');
+});
+
+test('the rite Claims the relic even where the Codex says otherwise', () => {
+  const g0 = start();
+  const uid = g0.party.roster.warden.gear.weapon;
+  const g = { ...g0, gold: 5000, materials: { embers: 2 }, codex: { ...g0.codex, hearthbrand: { sighted: true, claimed: false, awakened: false } },
+    inventory: g0.inventory.map(i => (i.uid === uid ? { ...i, deeds: Object.fromEntries(relicDeeds('hearthbrand').map(d => [d, 2])) } : i)) };
+  const r = F.awaken(g, uid, 'a');
+  assert.equal(r.ok, true, r.reason);
+  assert.deepEqual([r.game.codex.hearthbrand.claimed, r.game.codex.hearthbrand.awakened], [true, true]);
 });

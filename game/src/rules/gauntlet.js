@@ -329,16 +329,25 @@ function winBattle(g, battle, out, rng, report) {
   const f0 = g.progress.flags;
   awardXp(g, out.xp, rng, report);
   g.gold += out.gold;
-  // A Grudge settled (M4, spec §4.6): gone from the hunt for good, and every piece from the fight says so
+  // A Grudge settled (M4, spec §4.6): gone from the hunt for good, and every piece from the fight says so:
+  // a settled foe's own drops carry its name, the rest the first Grudge settled here
+  const settled = [];
   for (const b of battle.ctx.patrol ? [] : out.beaten) {
     const key = `${battle.ctx.nodeId}#${b.spawnIndex}`;
     if (b.grudge && f0.grudges[key]) {
-      report.grudgeSettled = f0.grudges[key].name;
-      f0.settled = { ...(f0.settled || {}), [key]: { day: f0.day, name: f0.grudges[key].name } };
+      const name = f0.grudges[key].name;
+      settled.push({ name, foe: b.name });
+      f0.settled = { ...(f0.settled || {}), [key]: { day: f0.day, name } };
       delete f0.grudges[key];
     }
   }
-  const stamp = it => (report.grudgeSettled ? { ...it, provenance: { ...it.provenance, grudge: report.grudgeSettled } } : it);
+  report.grudgeSettled = settled[0]?.name || null;
+  report.grudgesSettled = settled.map(x => x.name);
+  const stamp = it => {
+    if (!settled.length) return it;
+    const own = settled.find(x => x.foe === it.provenance?.from);
+    return { ...it, provenance: { ...it.provenance, grudge: (own || settled[0]).name } };
+  };
   report.claimed = out.claimed.map(stamp);
   report.drops = out.drops.map(stamp);
   g.inventory.push(...report.claimed, ...report.drops);
@@ -387,7 +396,8 @@ function chronicle(g, felled = [], heroIds) {
   const worn = wornBy(g, heroIds);
   for (const { heroId, item } of worn) {
     const c = item.chronicle || {};
-    if (!(c.bearers || []).includes(heroId)) item.chronicle = { ...c, bearers: [...(c.bearers || []), heroId] };
+    const bearers = Array.isArray(c.bearers) ? c.bearers : [];
+    if (!bearers.includes(heroId)) item.chronicle = { ...c, bearers: [...bearers, heroId] };
   }
   for (const k of felled) {
     const gear = g.party.roster[k.by]?.gear || {};
@@ -395,7 +405,7 @@ function chronicle(g, felled = [], heroIds) {
       if (heroId !== k.by || !(item.uid === gear.weapon || RELICS[item.base])) continue;
       const c = item.chronicle || {};
       const best = c.mightiest && c.mightiest.level >= k.level ? c.mightiest : { name: k.name, level: k.level };
-      item.chronicle = { ...c, kills: (c.kills || 0) + 1, mightiest: best };
+      item.chronicle = { ...c, kills: (Number.isFinite(c.kills) ? c.kills : 0) + 1, mightiest: best };
     }
   }
 }
@@ -438,12 +448,13 @@ function fightDeeds(g, battle, out, report) {
   }
 }
 
-// Won Sunscorch fights pay forge materials by the tier of each foe beaten; Scorchgate's pay Ash Garnets.
-function spoils(g, node, out, report) {
+// Won Sunscorch fights pay forge materials by the tier of each foe beaten (a Twinned foe's twin pays
+// nothing, as it drops nothing); Scorchgate's pay Ash Garnets.
+function spoils(g, battle, node, out, report) {
   if (!node || (node.region || 'verdant') !== 'sunscorch') return;
   const F = TUNING.forge;
   let materials = {};
-  for (const b of out.beaten) materials = addCounts(materials, F.spoils[b.tier] || {});
+  for (const b of out.beaten) if (!battle.units[b.id]?.noLoot) materials = addCounts(materials, F.spoils[b.tier] || {});
   const gems = F.garnets[node.id] ? { 'ash-garnet': F.garnets[node.id] } : {};
   g.materials = addCounts(g.materials, materials);
   g.gems = addCounts(g.gems, gems);
@@ -517,7 +528,7 @@ export function resolveBattle(game, battle) {
   const report = {
     result: out.result, xp: out.xp, gold: out.gold, drops: out.drops, claimed: out.claimed, rounds: out.rounds,
     consumables: out.consumables || {},
-    levelUps: {}, goldLost: 0, grudge: null, grudgeSettled: null, brand: null, wokeAt: null, yield: false, rematch: false,
+    levelUps: {}, goldLost: 0, grudge: null, grudgeSettled: null, grudgesSettled: [], brand: null, wokeAt: null, yield: false, rematch: false,
     deeds: [], kindled: [], ready: [], pages: [], materials: {}, gems: {},
   };
   setRosterVitals(g, out.party);
@@ -525,7 +536,7 @@ export function resolveBattle(game, battle) {
   const node = battle.ctx.nodeId ? ENCOUNTERS[battle.ctx.nodeId] : null;
   if (out.result === 'victory') {
     winBattle(g, battle, out, rng, report);
-    if (!battle.ctx.patrol) spoils(g, node, out, report);
+    if (!battle.ctx.patrol) spoils(g, battle, node, out, report);
   }
   else if (out.result === 'defeat' && node?.duel && !battle.ctx.patrol) yieldDuel(g, battle, node, rng, report);
   else if (out.result === 'defeat') wipe(g, battle, rng, report);

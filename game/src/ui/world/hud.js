@@ -12,7 +12,7 @@
 import { MAPS } from '../../data/maps/index.js';
 import { BRAND_TOTAL } from '../../data/world.js';
 import { uniqueBrands } from '../../rules/gauntlet.js';
-import { deriveHero } from '../../rules/stats.js';
+import { heroStats } from '../../rules/stats.js';
 import { el } from '../lib/dom.js';
 import { bustCanvas } from '../lib/art.js';
 
@@ -22,7 +22,7 @@ const pct = (v, m) => (m ? Math.max(0, Math.min(100, (v / m) * 100)) : 0);
 function vitals(game, id) {
   const h = game.party.roster[id];
   let d = { maxHp: h.hp || 1, maxMp: h.mp || 0 };
-  try { d = deriveHero(h, game.inventory); } catch { /* keep the fallback */ }
+  try { d = heroStats(game, id); } catch { /* keep the fallback */ } // M4: the Codex pages' bonus included
   return { h, hp: Math.max(0, h.hp ?? d.maxHp), mp: Math.max(0, h.mp ?? d.maxMp), maxHp: d.maxHp, maxMp: d.maxMp };
 }
 

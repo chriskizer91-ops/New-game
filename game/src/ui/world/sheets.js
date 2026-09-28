@@ -838,6 +838,7 @@ export function openForge(ctx, { game, tab = 'temper' } = {}) {
       const lines = blockLines(b.stats);
       if (lines.length) c.append(text('span', 'awb-stats', lines.join(' · ')));
       if (!b.enabled && b.why && b.why !== opt.why) c.append(text('span', 'awb-why', b.why));
+      else if (b.note) c.append(text('span', 'awb-why', b.note));
       c.addEventListener('click', () => {
         if (!b.enabled) { ctx.audio.sfx('error'); ctx.toast(b.why || 'Not yet'); return; }
         ctx.audio.sfx('select'); st.branch = b.id; render();

@@ -1,41 +1,16 @@
 // Equipment rules: who can use what, equip/unequip, and stat comparisons for the UI's
 // green/red arrows. All functions return new game objects; inputs are never mutated.
 
-import { HEROES } from '../data/heroes.js';
-import { ITEMS, CONSUMABLES } from '../data/items.js';
-import { RELICS } from '../data/relics.js';
+import { CONSUMABLES } from '../data/items.js';
 import { TUNING } from '../data/tuning.js';
 import { deriveHero } from './stats.js';
-import { pageBonus } from './codex.js';
+import { pageBonus, markPages } from './codex.js';
 import { temper as forgeTemper, temperCost as forgeTemperCost } from './forge.js';
+import { canUse, handsOf } from './gear.js';
 import { indexItems } from './util.js';
 
-const HERO_WORD = h => HEROES[h.id]?.name || h.id;
-
-function baseOf(item) {
-  return RELICS[item.base] || ITEMS[item.base] || null;
-}
-
-const handsOf = item => (RELICS[item.base]?.weapon?.hands || ITEMS[item.base]?.hands || 1);
-
-// Can this hero use this item? Returns { ok, reason }.
-export function canUse(hero, item) {
-  const data = HEROES[hero.id];
-  const base = item && baseOf(item);
-  if (!data || !base) return { ok: false, reason: 'Unknown item' };
-  if (item.shattered) return { ok: false, reason: 'Shattered. Hilda can reforge it.' };
-  if (data.refuses?.kinds.includes(item.kind)) return { ok: false, reason: data.refuses.text };
-  const slot = item.slot;
-  if (slot === 'weapon' && !data.prof.weapons.includes(item.kind)) {
-    return { ok: false, reason: item.kind === 'bow' ? `Bows need training. ${HERO_WORD(hero)} never learned.` : `${HERO_WORD(hero)} is not trained with ${item.kind}s.` };
-  }
-  if (slot === 'offhand' && !data.prof.offhand.includes(item.kind)) return { ok: false, reason: `${HERO_WORD(hero)} cannot use a ${item.kind}.` };
-  if (slot === 'body' && !data.prof.armor.includes(item.kind)) return { ok: false, reason: `${HERO_WORD(hero)} cannot move in ${item.kind} armour.` };
-  for (const [ab, need] of Object.entries(base.needs || {})) {
-    if ((hero.base?.[ab] ?? 10) < need) return { ok: false, reason: `Needs ${ab} ${need}.` };
-  }
-  return { ok: true, reason: null };
-}
+// canUse lives in rules/gear.js (M4: rules/forge.js asks it too); re-exported here for the UI.
+export { canUse };
 
 function setHero(game, hero) {
   return { ...game, party: { ...game.party, roster: { ...game.party.roster, [hero.id]: hero } } };
@@ -96,7 +71,7 @@ function clampVitals(hero, inventory, bonus = null) {
 // M4 (the Chronicle, spec §4.4): whoever equips a piece joins the list of those who have carried it.
 function bear(game, uid, heroId) {
   const it = game.inventory.find(i => i.uid === uid);
-  const bearers = it?.chronicle?.bearers || [];
+  const bearers = Array.isArray(it?.chronicle?.bearers) ? it.chronicle.bearers : [];
   if (!it || bearers.includes(heroId)) return game;
   const next = { ...it, chronicle: { ...it.chronicle, bearers: [...bearers, heroId] } };
   return { ...game, inventory: game.inventory.map(i => (i.uid === uid ? next : i)) };
@@ -149,12 +124,20 @@ export function reforgeCost(item) {
 
 export function reforge(game, uid) {
   const item = game.inventory.find(i => i.uid === uid);
-  if (!item?.shattered) return { game, ok: false, reason: 'Not shattered' };
+  if (!item?.shattered) return { game, ok: false, reason: 'Not shattered', pages: [] };
   const cost = reforgeCost(item);
-  if (game.gold < cost) return { game, ok: false, reason: `Needs ${cost} gold` };
+  if (game.gold < cost) return { game, ok: false, reason: `Needs ${cost} gold`, pages: [] };
   const fixed = { ...item };
   delete fixed.shattered;
-  return { game: { ...game, gold: game.gold - cost, inventory: game.inventory.map(i => (i.uid === uid ? fixed : i)) }, ok: true, cost };
+  // M4: whole again and yours, so the relic is Claimed (its Codex page can finish; its holder now
+  // carries an Echo), and a page it finishes is recorded
+  const g = {
+    ...game, gold: game.gold - cost, inventory: game.inventory.map(i => (i.uid === uid ? fixed : i)),
+    codex: { ...game.codex, [item.base]: { sighted: true, awakened: false, ...game.codex?.[item.base], claimed: true } },
+    progress: { ...game.progress, flags: { ...game.progress.flags } },
+  };
+  const pages = markPages(g);
+  return { game: g, ok: true, cost, pages };
 }
 
 // ---- M3: Hilda's Temper and the shops (spec §3.9, §4.7) --------------------------------------------

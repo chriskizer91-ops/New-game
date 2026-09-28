@@ -116,6 +116,17 @@ test('toV3 fills only what is missing: a partial purse keeps its counts, a pouch
   assert.deepEqual(migrate(m), m, 'idempotent');
 });
 
+test('toV3 Claims a whole relic in the bag that the Codex missed (M2 and M3 reforged without saying so); never a shattered one', () => {
+  const g = migrate(newGame({ name: 'Tess', seed: 5 }));
+  const whole = { ...g.inventory[0], uid: 'x-whole', base: 'thornsplitter', kind: 'axe', slot: 'weapon', rarity: 'heirloom' };
+  const broken = { ...whole, uid: 'x-broken', base: 'dawnbell', kind: 'mace', shattered: true };
+  const old = deepFreeze({ ...g, version: 2, inventory: [...g.inventory, whole, broken], codex: { ...g.codex, thornsplitter: { sighted: true, claimed: false, awakened: false } } });
+  const m = migrate(old);
+  assert.deepEqual(m.codex.thornsplitter, { sighted: true, claimed: true, awakened: false });
+  assert.equal(m.codex.dawnbell, undefined, 'a shattered relic is not Claimed until it is reforged');
+  assert.deepEqual(migrate(m), m, 'idempotent');
+});
+
 test('save (M4): its own key; the M2 and M3 saves are only read, offered newest first, and exported byte for byte', async () => {
   const S = await import('../src/core/save.js');
   const store = shim();
@@ -219,5 +230,11 @@ test('a pasted code must have the shape the game walks on: every real save passe
   assert.ok(broken(g => { g.inventory[0].gems = 'sunstone'; }).includes('its items'));
   assert.ok(broken(g => { g.inventory[0].gems = [{ id: 'sunstone' }]; }).includes('its items'));
   assert.deepEqual(broken(g => { g.inventory[0].gems = ['sunstone', null]; g.gems = { sunstone: 2 }; }), [], 'sockets hold gem ids or nothing');
+  // the forge and the Chronicle read these; a malformed one would throw or corrupt the save (review, M4)
+  for (const [k, v] of [['temper', 1.5], ['temper', 11], ['temper', '3'], ['rerolls', '1'], ['rerolls', -1], ['deeds', 'all'], ['awakened', 'c'],
+    ['chronicle', 'long'], ['chronicle', { kills: 'many' }], ['chronicle', { bearers: 3 }], ['chronicle', { bearers: [{ id: 'pip' }] }]]) {
+    assert.ok(broken(g => { g.inventory[0][k] = v; }).includes('its items'), `${k}: ${JSON.stringify(v)}`);
+  }
+  assert.deepEqual(broken(g => { Object.assign(g.inventory[0], { temper: 10, rerolls: 2, deeds: { rout: 3 }, awakened: 'b', chronicle: { kills: 4, bearers: ['pip'], mightiest: null } }); }), [], 'well-formed M4 fields pass');
   assert.deepEqual(saveProblems(null), ['it is not a save']);
 });

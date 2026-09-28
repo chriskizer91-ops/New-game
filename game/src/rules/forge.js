@@ -14,7 +14,9 @@
 //   buyGem(game, gemId, n = 1) -> { game, ok, cost, reason }         Idris's prices (data/gems.js)
 //   stageOf(item), deedsOf(item)                     (from rules/codex.js)
 //   awakenCost(item) -> cost
-//   awakenOptions(game, uid) -> { ready, why, cost, bearer, path, branches: [{ id, name, text, stats, path, enabled, why }] }
+//   awakenOptions(game, uid) -> { ready, why, cost, bearer, path, branches: [{ id, name, text, stats, path, enabled, why, note }] }
+//     a branch opens for a bearer whose path it is; a branch that no hero able to carry the relic walks
+//     (a sword only the Hand's heroes can hold has no Heart-path carrier) opens for its bearer too
 //   awaken(game, uid, branchId) -> { game, ok, cost, reason }
 //   bestDomainOf(hero) -> domainId                   pathOf(hero) -> 'a' (the Hand) | 'b' (the Heart)
 // Owner: P1 (M4).
@@ -29,6 +31,7 @@ import { TUNING } from '../data/tuning.js';
 import { deriveHero, gemsIn } from './stats.js';
 import { pageBonus, stageOf, deedsOf } from './codex.js';
 import { rerollAffix, affixedName, itemAspect } from './loot.js';
+import { canUse } from './gear.js';
 import { rngFrom, addCounts } from './util.js';
 
 export { stageOf, deedsOf };
@@ -80,8 +83,10 @@ function pay(game, cost) {
 
 // ---- Temper (+1 to +10) ---------------------------------------------------------------------------------
 
+const count = v => (Number.isInteger(v) && v > 0 ? v : 0);
+
 export function temperCost(item) {
-  const T = TUNING.temper, t = item?.temper || 0;
+  const T = TUNING.temper, t = count(item?.temper);
   if (!item || item.shattered || t >= T.max) return null;
   const materials = {};
   if (T.silver[t]) materials.silver = T.silver[t];
@@ -97,7 +102,7 @@ export function temper(game, uid) {
   if (!cost) return { game, ok: false, cost: null, reason: `Tempered as far as it goes (+${TUNING.temper.max}).` };
   const short = shortOf(game, cost);
   if (short) return { game, ok: false, cost, reason: short };
-  return { game: replaceItem(pay(game, cost), { ...item, temper: (item.temper || 0) + 1 }), ok: true, cost, reason: null };
+  return { game: replaceItem(pay(game, cost), { ...item, temper: count(item.temper) + 1 }), ok: true, cost, reason: null };
 }
 
 // ---- Reroll one trait -----------------------------------------------------------------------------------
@@ -106,7 +111,7 @@ export function rerollCost(item) {
   const R = TUNING.forge.reroll;
   const mat = item && R.material[item.rarity];
   if (!mat || RELICS[item.base] || !ITEMS[item.base] || !item.affixes?.length) return null;
-  return { gold: R.base * half(item) * (1 + (item.rerolls || 0)), materials: { [mat]: 1 } };
+  return { gold: R.base * half(item) * (1 + count(item.rerolls)), materials: { [mat]: 1 } };
 }
 
 export function reroll(game, uid, affixIndex) {
@@ -126,7 +131,7 @@ export function reroll(game, uid, affixIndex) {
   if (!after) return no('No other trait fits it.', cost);
   const affixes = item.affixes.map((a, i) => (i === affixIndex ? after : a));
   const base = ITEMS[item.base];
-  const next = { ...item, affixes, rerolls: (item.rerolls || 0) + 1, aspect: itemAspect(base, affixes) };
+  const next = { ...item, affixes, rerolls: count(item.rerolls) + 1, aspect: itemAspect(base, affixes) };
   if (NAMED.has(item.rarity)) next.name = affixedName(base, affixes);
   const g = replaceItem(pay(game, cost), next);
   return { game: { ...g, rngState: rng.getState() }, ok: true, cost, reason: null, before, after };
@@ -248,11 +253,15 @@ export function awakenOptions(game, uid) {
     : stageOf(item) === 'awakened' ? 'It is already awake.'
       : done < deeds.length ? `${done} of ${deeds.length} deeds done.` : null;
   const ready = !why;
+  // who could carry it at all (a whole copy of it: the shattered flag is the forge's business, not the path's)
+  const carriers = game.party.active.map(h => game.party.roster[h]).filter(h => h && canUse(h, { ...item, shattered: false }).ok);
   const branches = Object.entries(relic.awaken || {}).map(([id, b]) => {
-    const names = game.party.active.map(h => game.party.roster[h]).filter(h => h && pathOf(h) === id).map(h => h.name);
+    const names = carriers.filter(h => pathOf(h) === id).map(h => h.name);
+    const open = !!bearer && (path === id || !names.length);
     const wrong = !bearer ? `Equip it on the one who will carry it${names.length ? ` (${PATHS[id]}: ${names.join(', ')})` : ''}.`
-      : path !== id ? `Equip it on someone whose path is ${PATHS[id]}${names.length ? ` (${names.join(', ')})` : ''}.` : null;
-    return { id, name: b.name, text: b.text, stats: b.stats || {}, path: PATHS[id] || id, enabled: ready && !wrong, why: why || wrong };
+      : open ? null : `Equip it on someone whose path is ${PATHS[id]} (${names.join(', ')}).`;
+    const note = open && path !== id ? `Nobody who can carry it walks ${PATHS[id]}, so its bearer may choose it.` : null;
+    return { id, name: b.name, text: b.text, stats: b.stats || {}, path: PATHS[id] || id, enabled: ready && !wrong, why: why || wrong, note };
   });
   return { ready, why, cost, bearer: bearer?.id || null, path, branches };
 }
@@ -266,6 +275,6 @@ export function awaken(game, uid, branchId) {
   if (short) return { game, ok: false, cost: opt.cost, reason: short };
   const item = findItem(game, uid);
   const paid = pay(game, opt.cost);
-  const g = { ...paid, codex: { ...paid.codex, [item.base]: { sighted: true, claimed: true, ...paid.codex?.[item.base], awakened: true } } };
+  const g = { ...paid, codex: { ...paid.codex, [item.base]: { sighted: true, ...paid.codex?.[item.base], claimed: true, awakened: true } } };
   return { game: replaceItem(g, { ...item, awakened: branchId }), ok: true, cost: opt.cost, reason: null };
 }

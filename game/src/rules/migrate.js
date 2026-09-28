@@ -3,12 +3,13 @@
 // core/ imports nothing game-specific.
 //   toV2(save)   v1 (M2) -> v2 (M3), M3 spec §4.9, exact
 //   toV3(save)   v2 (M3) -> v3 (M4)
-// Imports data only (A6): encounters, heroes, world, maps/index.
+// Imports data only (A6): encounters, heroes, world, relics, maps/index.
 // Owner: WP2.
 
 import { GAUNTLET, ENCOUNTERS } from '../data/encounters.js';
 import { STARTERS } from '../data/heroes.js';
 import { HEARTHS } from '../data/world.js';
+import { RELICS } from '../data/relics.js';
 import { MAPS, v1Anchor } from '../data/maps/index.js';
 
 const NEW_FLAGS = ['story', 'unlocked', 'opened', 'kindled', 'visits', 'quests', 'scouted', 'seen', 'worn', 'beaten'];
@@ -62,6 +63,14 @@ export function toV3(save) {
   v.materials = isObj(v.materials) ? { scrap: 0, silver: 0, embers: 0, ...v.materials } : { scrap: 0, silver: 0, embers: 0 };
   if (!isObj(v.gems)) v.gems = {};
   for (const k of ['pages', 'settled']) if (!isObj(f[k])) f[k] = {};
+  // a whole relic in the bag is Claimed (M2 and M3 reforged a shattered relic without saying so, which
+  // left its Codex page one short for good)
+  if (isObj(v.codex)) {
+    for (const it of Array.isArray(v.inventory) ? v.inventory : []) {
+      if (!isObj(it) || !RELICS[it.base] || it.shattered || v.codex[it.base]?.claimed) continue;
+      v.codex[it.base] = { sighted: true, awakened: false, ...(isObj(v.codex[it.base]) ? v.codex[it.base] : {}), claimed: true };
+    }
+  }
   if (v.version < 3) v.version = 3;
   return v;
 }
@@ -77,8 +86,21 @@ export function saveProblems(g) {
   if (!obj(g)) return ['it is not a save'];
   const out = [];
   if (g.version !== SAVE_VERSION) out.push('its version');
-  if (!Array.isArray(g.inventory) || !g.inventory.every(it => obj(it) && typeof it.uid === 'string' && typeof it.base === 'string'
-    && (it.gems == null || (Array.isArray(it.gems) && it.gems.every(x => x == null || typeof x === 'string'))))) out.push('its items');
+  const int = (v, lo, hi = Infinity) => Number.isInteger(v) && v >= lo && v <= hi;
+  const strings = a => Array.isArray(a) && a.every(x => typeof x === 'string');
+  const itemOk = it => {
+    if (!obj(it) || typeof it.uid !== 'string' || typeof it.base !== 'string') return false;
+    if (it.gems != null && !(Array.isArray(it.gems) && it.gems.every(x => x == null || typeof x === 'string'))) return false;
+    // M4's optional fields: absent, or the shape the forge and the Chronicle read
+    if (it.temper != null && !int(it.temper, 0, 10)) return false;
+    if (it.rerolls != null && !int(it.rerolls, 0)) return false;
+    if (it.deeds != null && !obj(it.deeds)) return false;
+    if (it.awakened != null && it.awakened !== 'a' && it.awakened !== 'b') return false;
+    const c = it.chronicle;
+    if (c != null && !(obj(c) && (c.kills == null || num(c.kills)) && (c.bearers == null || strings(c.bearers)))) return false;
+    return true;
+  };
+  if (!Array.isArray(g.inventory) || !g.inventory.every(itemOk)) out.push('its items');
   const roster = g.party?.roster, active = g.party?.active;
   if (!obj(roster) || !obj(roster.warden)) out.push('its party');
   else {

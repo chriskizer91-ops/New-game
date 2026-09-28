@@ -488,3 +488,40 @@ test('a Grudge never Twins a named holder with a relic in hand (only the Twinned
   assert.ok(report.grudge, 'a Grudge is born');
   assert.ok(!report.grudge.omens.includes('twinned'), `no Twinned Omen (${report.grudge.omens.join(', ')})`);
 });
+
+test('two Grudges settled in one fight: both recorded, each foe\'s own drops stamped with its own name', () => {
+  const base = newGame({ seed: 19 });
+  const grudge = (key, name, title) => ({ key, nodeId: 'gnash-camp', wins: 1, flees: 0, omens: [], title, name: `${name} ${title}` });
+  const g0 = { ...base, progress: { ...base.progress, flags: { ...base.progress.flags, grudges: {
+    'gnash-camp#0': grudge('gnash-camp#0', 'Gnash the Raider-King', 'the Party-Breaker'),
+    'gnash-camp#1': grudge('gnash-camp#1', 'Dune Raider', 'the Once-Fled'),
+  } } } };
+  const { game, report } = wonFight(g0, 'gnash-camp');
+  const names = ['Gnash the Raider-King the Party-Breaker', 'Dune Raider the Once-Fled'];
+  assert.deepEqual([...report.grudgesSettled].sort(), [...names].sort());
+  assert.equal(report.grudgeSettled, report.grudgesSettled[0]);
+  assert.deepEqual(Object.keys(game.progress.flags.settled).sort(), ['gnash-camp#0', 'gnash-camp#1']);
+  const items = [...report.claimed, ...report.drops];
+  assert.ok(items.length > 0);
+  for (const it of items) {
+    const own = names.find(n => n === it.provenance.from);
+    assert.equal(it.provenance.grudge, own || report.grudgesSettled[0], `${it.name} from ${it.provenance.from}`);
+  }
+  assert.ok(items.some(it => it.provenance.from === names[0] && it.provenance.grudge === names[0]), 'Gnash\'s own drops carry his name');
+});
+
+test('a Twinned foe\'s twin pays no forge spoils (it drops nothing)', () => {
+  const g0 = { ...newGame({ seed: 20 }), progress: { ...newGame({ seed: 20 }).progress, waking: 2 } };
+  const { game, battle } = startBattle(g0, { nodeId: 'dt-scorpions' });
+  const b = structuredClone(battle);
+  const foes = Object.values(b.units).filter(u => u.side === 'foe');
+  for (const f of foes) { f.hp = 0; f.ko = true; }
+  const twin = { ...structuredClone(foes[0]), id: 'twin', seq: 99, held: [], gear: [], noLoot: true, gold: 0 };
+  b.units.twin = twin;
+  b.order.push('twin');
+  b.ended = { result: 'victory', xp: 0, gold: 0, drops: [], claimed: [], consumables: {} };
+  const { report } = resolveBattle(game, b);
+  let want = {};
+  for (const f of foes) for (const [k, n] of Object.entries(TUNING.forge.spoils[f.tier] || {})) want[k] = (want[k] || 0) + n;
+  assert.deepEqual(report.materials, want, 'the twin is not paid for');
+});
