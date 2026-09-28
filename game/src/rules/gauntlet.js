@@ -1,7 +1,7 @@
 // Game flow (no DOM): new game, Hearthfire rests and travel, battles in and out, Routs, party
 // wipes and the duel yield, Grudges, Brands and the Waking.
 //
-// M3 (spec §4.6; owner WP2) keeps this file name for import stability. newGame makes version 2
+// M3 (spec §4.6; owner WP2) keeps this file name for import stability. newGame makes version 3
 // games that start in the Great Hall (START_AT); where you are is progress.pos, and the world
 // (rules/world.js) decides what you can reach. progress.node is only kept on migrated M2 saves,
 // verbatim, and never read.
@@ -67,7 +67,7 @@ export function newGame({ name = 'Wren', starter = 'hearthbrand', seed = 1, base
   const codex = {};
   for (const r of Object.keys(STARTERS)) codex[r] = { sighted: true, claimed: r === starter, awakened: false };
   return {
-    version: 2, seed, rngState: rng.getState(),
+    version: 3, seed, rngState: rng.getState(),
     party: { active: [...HERO_IDS], roster },
     inventory, gold: 50, codex,
     progress: {

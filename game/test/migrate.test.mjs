@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { migrate, starterOf, saveProblems } from '../src/rules/migrate.js';
+import { migrate, toV2, SAVE_VERSION, starterOf, saveProblems } from '../src/rules/migrate.js';
 import { canWalk, present } from '../src/rules/world.js';
 import { spawnsFor, newGame, uniqueBrands } from '../src/rules/gauntlet.js';
 import { v1Anchor, MAP_IDS } from '../src/data/maps/index.js';
@@ -28,7 +28,7 @@ test('there are 18 M2 fixtures', () => { assert.equal(FIX.length, 18); });
 for (const f of FIX) {
   test(`migrate ${f}: version 2 at its v1 anchor, M2 fields untouched, idempotent, input frozen`, () => {
     const v1 = deepFreeze(load(f));
-    const v2 = migrate(v1);
+    const v2 = toV2(v1); // the M3 step (spec §4.9), exactly as M3 shipped it
     assert.equal(v2.version, 2);
     assert.equal(v2.migratedFrom, 1);
     for (const k of KEPT) assert.deepEqual(v2[k], v1[k], k);
@@ -37,7 +37,7 @@ for (const f of FIX) {
     const a = v1Anchor(v1.progress.node);
     assert.deepEqual(v2.progress.pos, { map: a.map, x: a.x, y: a.y, face: a.face });
     assert.ok(canWalk(v2, a.map, a.x, a.y), 'the v1 anchor is walkable');
-    assert.deepEqual(migrate(v2), v2, 'migrating twice changes nothing');
+    assert.deepEqual(toV2(v2), v2, 'migrating twice changes nothing');
     const looped = v1.progress.flags.runs > 0 || v1.progress.brands.length > 0;
     const crown = present(v2, 'thornhollow').find(e => e.id === 'th-crown-w');
     assert.equal(crown.state, looped ? 'open' : 'closed', 'crownwalls open for loopers only');
@@ -91,56 +91,82 @@ function shim() {
   return m;
 }
 
-test('save v2: never writes v1, marks the migration, AETH2 codes, AETH1 accepted, v1 exported byte for byte', async () => {
+for (const f of FIX) {
+  test(`migrate ${f} to the current version: the M3 game plus the version, whether it comes from M2 or from M3`, () => {
+    const v1 = deepFreeze(load(f));
+    const now = migrate(v1), m3 = deepFreeze(toV2(v1));
+    assert.equal(now.version, SAVE_VERSION);
+    assert.deepEqual({ ...now, version: 2 }, m3, 'nothing but the version changes on the way to M4');
+    assert.deepEqual(migrate(m3), now, 'an M3 save and the M2 save it came from give the same game');
+    assert.deepEqual(migrate(now), now, 'idempotent');
+  });
+}
+
+test('save (M4): its own key; the M2 and M3 saves are only read, offered newest first, and exported byte for byte', async () => {
   const S = await import('../src/core/save.js');
   const store = shim();
-  const raw = readFileSync(path.join(dir, 'v1-grudges.json'), 'utf8').trim();
-  store.set('aethermoor.save.v1', raw);
+  const raw1 = readFileSync(path.join(dir, 'v1-grudges.json'), 'utf8').trim();
+  const raw2 = JSON.stringify(toV2(load('v1-node-thornhollow.json')));
+  store.set('aethermoor.save.v1', raw1);
+  store.set('aethermoor.save.v2', raw2);
   const loaded = S.loadGame(migrate);
-  assert.equal(loaded.from, 'v1');
-  assert.equal(loaded.game.version, 2);
-  assert.equal(store.get('aethermoor.save.v1'), raw, 'loading writes nothing');
-  assert.equal(store.has('aethermoor.save.v2'), false);
+  assert.equal(loaded.from, 'v2', 'the Milestone 3 save is offered before the M2 one');
+  assert.equal(loaded.game.version, SAVE_VERSION);
+  assert.equal(store.get('aethermoor.save.v1'), raw1, 'loading writes nothing');
+  assert.equal(store.get('aethermoor.save.v2'), raw2, 'loading writes nothing');
+  assert.equal(store.has('aethermoor.save.m4'), false);
+  assert.equal(S.isStarted(), false);
   assert.equal(S.saveGame(loaded.game), true);
-  assert.equal(store.get('aethermoor.save.v1'), raw, 'saving a v2 game never writes v1');
-  assert.equal(store.get('aethermoor.v1.migrated'), '1');
-  assert.equal(S.loadGame(migrate).from, 'v2');
+  assert.equal(store.get('aethermoor.save.v1'), raw1, 'saving never writes the M2 key');
+  assert.equal(store.get('aethermoor.save.v2'), raw2, 'saving never writes the Milestone 3 key');
+  assert.equal(store.get('aethermoor.m4.started'), '1');
+  assert.equal(S.loadGame(migrate).from, 'live');
   const code = S.exportCode(loaded.game);
-  assert.match(code, /^AETH2\./);
+  assert.match(code, new RegExp(`^AETH${SAVE_VERSION}\\.`));
   assert.deepEqual(S.importCode(code, migrate), loaded.game);
-  const v1code = S.exportV1Code();
+  const decode = c => new TextDecoder().decode(Uint8Array.from(atob(c.slice(6)), ch => ch.charCodeAt(0)));
+  const v1code = S.exportV1Code(), v2code = S.exportV2Code();
   assert.match(v1code, /^AETH1\./);
-  assert.equal(new TextDecoder().decode(Uint8Array.from(atob(v1code.slice(6)), c => c.charCodeAt(0))), raw);
-  assert.equal(S.importCode(v1code, migrate).version, 2);
+  assert.match(v2code, /^AETH2\./);
+  assert.equal(decode(v1code), raw1, 'the M2 save, byte for byte');
+  assert.equal(decode(v2code), raw2, 'the Milestone 3 save, byte for byte');
+  assert.equal(S.importCode(v1code, migrate).version, SAVE_VERSION);
+  assert.deepEqual(S.importCode(v2code, migrate), migrate(JSON.parse(raw2)));
   assert.equal(S.backupGame(), true);
   assert.equal(S.hasBackup(), true);
-  store.delete('aethermoor.save.v2');
-  assert.equal(S.loadGame(migrate), null, 'the marker stops the M2 save from coming back');
+  store.delete('aethermoor.save.m4');
+  assert.equal(S.loadGame(migrate), null, 'the started marker stops the older saves from coming back');
+  assert.equal(store.get('aethermoor.save.v1'), raw1);
+  assert.equal(store.get('aethermoor.save.v2'), raw2);
   delete globalThis.localStorage;
 });
 
-test('save v2: clearGame keeps the M2 save and the backup; restoreBackup migrates; hasSave means v2', async () => {
+test('save (M4): an M2 save alone is offered; clearGame keeps the older saves and the backup; restoreBackup migrates', async () => {
   const S = await import('../src/core/save.js');
   const store = shim();
   const raw = readFileSync(path.join(dir, 'v1-node-thornhollow.json'), 'utf8').trim();
   store.set('aethermoor.save.v1', raw);
   assert.equal(S.hasSave(), false, 'an M2 save alone is not a live save');
   assert.equal(S.hasV1(), true);
-  assert.equal(S.isMigrated(), false);
-  const g = S.loadGame(migrate).game;
+  assert.equal(S.hasV2(), false);
+  assert.equal(S.isStarted(), false);
+  const first = S.loadGame(migrate);
+  assert.equal(first.from, 'v1');
+  const g = first.game;
   S.saveGame(g);
   assert.equal(S.hasSave(), true);
   assert.equal(S.backupGame(), true);
   S.clearGame();
   assert.equal(S.hasSave(), false);
   assert.equal(store.get('aethermoor.save.v1'), raw, 'clearGame never touches the M2 save');
+  assert.equal(store.has('aethermoor.save.v2'), false, 'nor writes a Milestone 3 one');
   assert.equal(S.hasBackup(), true);
   const back = S.restoreBackup(migrate);
   assert.deepEqual(back, g);
   assert.equal(S.hasSave(), true);
-  assert.equal(S.loadGame(migrate).from, 'v2');
-  store.set('aethermoor.save.v2', '{broken');
-  assert.equal(S.loadGame(migrate), null, 'a corrupt live save reads as none (the marker stops v1)');
+  assert.equal(S.loadGame(migrate).from, 'live');
+  store.set('aethermoor.save.m4', '{broken');
+  assert.equal(S.loadGame(migrate), null, 'a corrupt live save reads as none (the marker stops the M2 save)');
   assert.equal(store.get('aethermoor.save.v1'), raw);
   delete globalThis.localStorage;
 });

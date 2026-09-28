@@ -1,5 +1,8 @@
-// The v1 -> v2 save migration (M3 spec §4.9, exact). Pure: never mutates its input. Injected into
-// core/save.js as loadGame(migrate) / importCode(code, migrate), so core/ imports nothing game-specific.
+// Save migrations, pure: never mutate their input. migrate() runs a save of any version up to
+// SAVE_VERSION and is injected into core/save.js as loadGame(migrate) / importCode(code, migrate), so
+// core/ imports nothing game-specific.
+//   toV2(save)   v1 (M2) -> v2 (M3), M3 spec §4.9, exact
+//   toV3(save)   v2 (M3) -> v3 (M4)
 // Imports data only (A6): encounters, heroes, world, maps/index.
 // Owner: WP2.
 
@@ -19,7 +22,9 @@ export function starterOf(g) {
   return STARTERS[it?.base] ? it.base : (claimed[0] || 'hearthbrand');
 }
 
-export function migrate(save) {
+export const SAVE_VERSION = 3;
+
+export function toV2(save) {
   if (!save || typeof save !== 'object' || !save.version) throw new Error('Not an Aethermoor save');
   if (!save.party?.roster?.warden || !save.progress?.flags) throw new Error('The save is missing its party or progress');
   const v = structuredClone(save), p = v.progress, f = p.flags;
@@ -47,6 +52,18 @@ export function migrate(save) {
   return v;                         // cleared, done, grudges, day, runs, waking, brands and node are untouched
 }
 
+// M4: a Milestone 3 save walks on unchanged; version 3 marks it as this milestone's. Only fills what
+// is missing, so it is idempotent.
+export function toV3(save) {
+  const v = toV2(save);
+  if (v.version >= 3) return v;
+  v.version = 3;
+  return v;
+}
+
+// Any save, of any version so far, as the current version.
+export const migrate = save => toV3(save);
+
 // A pasted code is untrusted: before it replaces the journey on this device, check that the migrated
 // save has the shape the game walks on (not its balance). Returns what is wrong, [] when it is sound.
 export function saveProblems(g) {
@@ -54,7 +71,7 @@ export function saveProblems(g) {
   const num = v => typeof v === 'number' && Number.isFinite(v);
   if (!obj(g)) return ['it is not a save'];
   const out = [];
-  if (g.version !== 2) out.push('its version');
+  if (g.version !== SAVE_VERSION) out.push('its version');
   if (!Array.isArray(g.inventory) || !g.inventory.every(it => obj(it) && typeof it.uid === 'string' && typeof it.base === 'string')) out.push('its items');
   const roster = g.party?.roster, active = g.party?.active;
   if (!obj(roster) || !obj(roster.warden)) out.push('its party');

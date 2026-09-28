@@ -1,9 +1,10 @@
 // Title: the Keep at dusk with the party on the road, the name, and the way in (M3 spec §5.7).
 //   - a live save: "Continue", sub-line "Wren · Thornhollow · Day 4 · Lv 5 · 9/24 relics"
-//   - only an M2 save: "Continue from the Gauntlet" -> the carry-over card -> "Walk on" ->
-//     ctx.adopt(game) (held in memory; the world writes it on the first step)
+//   - no live save yet, but an earlier milestone's: "Continue from Milestone 3" (or, with only an M2
+//     save, "Continue from the Gauntlet") -> the carry-over card -> "Walk on" -> ctx.adopt(game) (held
+//     in memory; the world writes it, to this milestone's own key, on the first step)
 //   - "New game" over any journey asks first; newgame's Begin backs the old save up (ctx.replaceGame)
-//   - the "M3 · Verdant Wilds" tag
+//   - the milestone tag (TAG)
 // Owner: WP8.
 import { renderBackdrop, renderHero } from '../../art/index.js';
 import { el, esc, button, toCanvas } from '../lib/dom.js';
@@ -12,6 +13,8 @@ import { gearOf, customOf } from '../lib/art.js';
 import { screenNav } from '../lib/keys.js';
 import { openCarryCard } from '../lib/carry.js';
 import { saveLine } from '../lib/carry-facts.js';
+
+const TAG = '<span>M4</span> · Sunscorch';
 
 export function mount(root, ctx) {
   const game = ctx.game || null, carry = game ? null : ctx.carry;
@@ -25,7 +28,7 @@ export function mount(root, ctx) {
     el('p', 'realm', 'A pixel JRPG of stolen legends'),
     el('h1', 'title-display game-title', 'Aethermoor'),
     el('p', 'title-sub', 'Hearth &amp; Heirloom'),
-    el('p', 'title-ver', '<span>M3</span> · Verdant Wilds'),
+    el('p', 'title-ver', TAG),
     el('p', 'title-tag', 'The Eternal Hearth has flickered. Every legend in the land is in someone else’s hands. Go and take them back, one fight at a time.'),
   );
   const menu = el('div', 'title-menu');
@@ -33,10 +36,12 @@ export function mount(root, ctx) {
   if (game) {
     menu.append(button(`Continue<small>${esc(saveLine(game))}</small>`, 'btn primary big title-continue', go('world', { arrive: 'continue' }), { 'data-primary': '' }));
   } else if (carry) {
-    const cont = button(`Continue from the Gauntlet<small>${esc(saveLine(carry))}</small>`, 'btn primary big title-carry', async () => {
+    const m3 = ctx.carryFrom === 'v2';
+    const cont = button(`${m3 ? 'Continue from Milestone 3' : 'Continue from the Gauntlet'}<small>${esc(saveLine(carry))}</small>`, 'btn primary big title-carry', async () => {
       ctx.audio.unlock(); ctx.audio.sfx('select');
       const ok = await openCarryCard(ctx, carry, {
-        kind: 'm2', note: 'Your M2 save is never touched: the old page keeps playing it. Nothing is saved here until you take your first step.',
+        kind: m3 ? 'm3' : 'm2',
+        note: `Your ${m3 ? 'Milestone 3' : 'M2'} save is never touched: the old ${m3 ? 'file' : 'page'} keeps playing it. This milestone keeps its own save, and nothing is saved here until you take your first step.`,
       });
       if (!ok) { cont.focus(); return; }
       ctx.adopt(carry);
@@ -52,7 +57,7 @@ export function mount(root, ctx) {
     ask.append(
       el('p', '', game
         ? `A new Hearthwarden replaces ${esc(w.name)}’s journey on this device once you begin. It is kept as a backup, and Settings can bring it back.`
-        : `A new Hearthwarden starts fresh instead of carrying ${esc(w.name)}’s Gauntlet journey over. The M2 save itself is never touched, and Settings can still carry it over later.`),
+        : `A new Hearthwarden starts fresh instead of carrying ${esc(w.name)}’s journey over. The old save itself is never touched, and Settings can still carry it over later.`),
       el('div', 'row-btns', [button('Start fresh', 'btn danger', go('newgame')), button('Keep my journey', 'btn', () => { ctx.audio.sfx('back'); ask.hidden = true; ng.hidden = false; ng.focus(); })]),
     );
     menu.append(ng, ask);

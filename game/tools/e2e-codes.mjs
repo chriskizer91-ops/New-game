@@ -1,8 +1,9 @@
 // The migration checklist (M3 spec §7), automated: paste every real M2 code in test/fixtures/v1/ into
 // the built game through the title's Settings → Load a code, in Chromium at phone (360x740, touch)
 // and laptop (1280x800) sizes. For each code: the carry-over card opens, "Walk on" reaches the
-// world, the party walks, Party, Codex, Journal and Atlas open, the v2 save is the migrated game,
-// the v1 key is never written, nothing scrolls sideways, and there is no console error.
+// world, the party walks, Party, Codex, Journal and Atlas open, this milestone's own save is the
+// migrated game, the M2 and Milestone 3 keys are never written, nothing scrolls sideways, and there is
+// no console error.
 //
 //   node tools/e2e-codes.mjs                  # build into dist/, then run
 //   node tools/e2e-codes.mjs --no-build       # reuse dist/
@@ -15,6 +16,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
+import { SAVE_VERSION } from '../src/rules/migrate.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = Object.fromEntries(process.argv.slice(2).map(a => { const [k, v] = a.replace(/^--/, '').split('='); return [k, v ?? true]; }));
@@ -73,9 +75,9 @@ for (const V of VIEWPORTS) {
         await b.click().catch(() => {});
         await page.waitForTimeout(180);
       }
-      const st = await page.evaluate(() => ({ v1: localStorage.getItem('aethermoor.save.v1'), v2: localStorage.getItem('aethermoor.save.v2') }));
-      const g = st.v2 ? JSON.parse(st.v2) : null;
-      if (!g || g.version !== 2 || g.migratedFrom !== 1) problems.push('the v2 save is not the migrated game');
+      const st = await page.evaluate(() => ({ live: localStorage.getItem('aethermoor.save.m4') }));
+      const g = st.live ? JSON.parse(st.live) : null;
+      if (!g || g.version !== SAVE_VERSION || g.migratedFrom !== 1) problems.push('the live save is not the migrated game');
       if (g && g.gold !== v1.gold) problems.push(`gold ${g.gold} is not the code's ${v1.gold}`);
       // walk: every tile the party stands on counts
       const tiles = new Set();
@@ -87,7 +89,9 @@ for (const V of VIEWPORTS) {
         await here();
       }
       if (tiles.size < 2) problems.push('the party did not walk');
-      if (await page.evaluate(() => localStorage.getItem('aethermoor.save.v1')) !== null) problems.push('the v1 key was written');
+      const old = await page.evaluate(() => [localStorage.getItem('aethermoor.save.v1'), localStorage.getItem('aethermoor.save.v2')]);
+      if (old[0] !== null) problems.push('the M2 key was written');
+      if (old[1] !== null) problems.push('a Milestone 3 key was written');
       for (const name of ['party', 'codex', 'journal', 'atlas']) {
         await page.evaluate(n => window.__app.go(n, { from: 'world' }), name);
         await page.waitForTimeout(400);

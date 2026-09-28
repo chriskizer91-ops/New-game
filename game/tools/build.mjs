@@ -1,7 +1,8 @@
 // Bundles src/main.js (plus any CSS it imports) and inlines both into src/index.html.
-// Outputs a full document for local play, a fragment for publishing as a claude.ai page, and the
-// M3 download (aethermoor-m3.html, the same full document). dist/aethermoor-m2.html is a frozen copy
-// of the M2 build and is never written here.
+// Outputs a full document for local play, a fragment for publishing as a claude.ai page, and this
+// milestone's download (DELIVERY, the same full document). Every earlier milestone's file in dist/
+// (aethermoor-m2.html, aethermoor-m3.html) is the frozen build the player got, and is never written
+// here: each milestone is a new file, never an overwrite.
 //
 //   node tools/build.mjs                 # into dist/
 //   node tools/build.mjs --out /tmp/x    # into a private folder (parallel builders; A5)
@@ -21,6 +22,9 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const argv = process.argv.slice(2);
 const outArg = argv.find(a => a.startsWith('--out='))?.slice(6) ?? (argv.includes('--out') ? argv[argv.indexOf('--out') + 1] : null);
 const out = outArg ? path.resolve(outArg) : path.join(root, 'dist');
+const DELIVERY = 'aethermoor-m4.html';
+const FROZEN = ['aethermoor-m2.html', 'aethermoor-m3.html'];
+if (FROZEN.includes(DELIVERY)) throw new Error(`${DELIVERY} is an earlier milestone's frozen file`);
 
 const tpl = await readFile(path.join(root, 'src/index.html'), 'utf8');
 const [head, body] = tpl.split('<!--BODY-->');
@@ -66,6 +70,6 @@ await mkdir(out, { recursive: true });
 const rel = f => path.relative(process.cwd(), path.join(out, f)) || f;
 await writeFile(path.join(out, 'aethermoor.html'), full);
 await writeFile(path.join(out, 'aethermoor.artifact.html'), fragment);
-await writeFile(path.join(out, 'aethermoor-m3.html'), full);
-console.log(`built ${rel('aethermoor.html')} (${kb(bytes)}${fullMinify ? ', fully minified' : ''}), ${rel('aethermoor.artifact.html')} (${kb(Buffer.byteLength(fragment))}), ${rel('aethermoor-m3.html')}`);
+await writeFile(path.join(out, DELIVERY), full);
+console.log(`built ${rel('aethermoor.html')} (${kb(bytes)}${fullMinify ? ', fully minified' : ''}), ${rel('aethermoor.artifact.html')} (${kb(Buffer.byteLength(fragment))}), ${rel(DELIVERY)}`);
 if (bytes > WARN) console.warn(`build WARNING: ${kb(bytes)} is over 1.3 MB (M3 spec A8 warns here; fails above 1.6 MB)`);

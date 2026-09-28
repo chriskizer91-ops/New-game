@@ -1,18 +1,22 @@
 // Save/load. The game must run when storage is blocked, so every access is guarded.
 // Export codes let a player move a save between phone and laptop by copy/paste.
 //
-// M3 (spec §4.8; owner WP2). This module still imports nothing game-specific: the v1 -> v2
-// migration is injected (loadGame(migrate), importCode(code, migrate), restoreBackup(migrate)).
-//   aethermoor.save.v2       the live save
-//   aethermoor.save.v1       the M2 save: read only, never written, never removed (the M2 page
-//                            still plays from it)
-//   aethermoor.save.v2.bak   backup of the previous v2 save
-//   aethermoor.v1.migrated   '1' once v1 has been carried over or declined
+// Every milestone keeps its own save, so a new build never overwrites the last one's (the player's
+// rule, M4): each earlier milestone's key is read only here, never written, never removed.
+// This module imports nothing game-specific: the migration to the current save version is injected
+// (loadGame(migrate), importCode(code, migrate), restoreBackup(migrate)).
+//   aethermoor.save.m4       the live save (Milestone 4)
+//   aethermoor.save.m4.bak   backup of the previous live save
+//   aethermoor.m4.started    '1' once this milestone has a journey of its own (carried over, new,
+//                            loaded or started over): the older saves are then no longer offered
+//   aethermoor.save.v2       the Milestone 3 save: read only (the M3 file still plays from it)
+//   aethermoor.save.v1       the M2 save: read only (the M2 page still plays from it)
 
 const KEY_V1 = 'aethermoor.save.v1';
 const KEY_V2 = 'aethermoor.save.v2';
-const KEY_BAK = 'aethermoor.save.v2.bak';
-const KEY_MARK = 'aethermoor.v1.migrated';
+const KEY_LIVE = 'aethermoor.save.m4';
+const KEY_BAK = 'aethermoor.save.m4.bak';
+const KEY_MARK = 'aethermoor.m4.started';
 const SETTINGS_KEY = 'aethermoor.settings.v1';
 
 function safeGet(key) { try { return localStorage.getItem(key); } catch { return null; } }
@@ -25,34 +29,38 @@ function parse(raw) {
 
 const same = g => g;
 
-// loadGame(migrate) -> { game, from: 'v2' | 'v1' } | null
-//   v2 if present; else v1 if present and not yet marked migrated, migrated in memory (nothing
-//   written: the world screen commits it on the first step).
+// loadGame(migrate) -> { game, from: 'live' | 'v2' | 'v1' } | null
+//   The live save if present. Otherwise, until this milestone has a journey of its own, the newest
+//   earlier save, migrated in memory (nothing written: the world commits it on the first step):
+//   the Milestone 3 save (v2), else the M2 save (v1).
 export function loadGame(migrate = same) {
   if (typeof migrate !== 'function') migrate = same;
-  const v2 = parse(safeGet(KEY_V2));
-  if (v2) { try { return { game: migrate(v2), from: 'v2' }; } catch { return null; } }
+  const live = parse(safeGet(KEY_LIVE));
+  if (live) { try { return { game: migrate(live), from: 'live' }; } catch { return null; } }
   if (safeGet(KEY_MARK) === '1') return null;
-  const v1 = readV1();
-  if (!v1) return null;
-  try { return { game: migrate(v1), from: 'v1' }; } catch { return null; }
+  for (const [from, raw] of [['v2', safeGet(KEY_V2)], ['v1', safeGet(KEY_V1)]]) {
+    const old = parse(raw);
+    if (!old) continue;
+    try { return { game: migrate(old), from }; } catch { /* a broken old save: try the next */ }
+  }
+  return null;
 }
 
-// Writes v2 only, never v1 (and the migrated marker for a carried-over M2 save).
+// Writes the live save only, never an earlier milestone's key; marks this milestone started.
 export function saveGame(game) {
   if (!game) return false;
-  const ok = safeSet(KEY_V2, JSON.stringify(game));
-  if (ok && game.migratedFrom === 1) markMigrated();
+  const ok = safeSet(KEY_LIVE, JSON.stringify(game));
+  if (ok && !isStarted()) markStarted();
   return ok;
 }
-// Removes the live save only: the M2 save and the backup stay.
-export const clearGame = () => { safeDel(KEY_V2); };
-// A live (v2) save exists. An M2 save waiting to be carried over is hasV1() && !isMigrated().
-export const hasSave = () => !!parse(safeGet(KEY_V2));
+// Removes the live save only: the earlier milestones' saves and the backup stay.
+export const clearGame = () => { safeDel(KEY_LIVE); };
+// A live save exists. An earlier save waiting to be carried over is (hasV2() || hasV1()) && !isStarted().
+export const hasSave = () => !!parse(safeGet(KEY_LIVE));
 
-// The previous v2 save, kept before a New Game, an import or a restore.
+// The previous live save, kept before a New Game, an import or a restore.
 export function backupGame() {
-  const raw = safeGet(KEY_V2);
+  const raw = safeGet(KEY_LIVE);
   return raw ? safeSet(KEY_BAK, raw) : false;
 }
 export const hasBackup = () => !!parse(safeGet(KEY_BAK));
@@ -61,22 +69,24 @@ export function restoreBackup(migrate) {
   if (!bak) return null;
   let game;
   try { game = typeof migrate === 'function' ? migrate(bak) : bak; } catch { return null; }
-  safeSet(KEY_V2, JSON.stringify(game));
+  safeSet(KEY_LIVE, JSON.stringify(game));
   return game;
 }
 
-// The untouched M2 save.
+// The untouched earlier saves: M2 (v1) and Milestone 3 (v2).
 export const hasV1 = () => !!parse(safeGet(KEY_V1));
 export const readV1 = () => parse(safeGet(KEY_V1));
-export const markMigrated = () => safeSet(KEY_MARK, '1');
-export const isMigrated = () => safeGet(KEY_MARK) === '1';
+export const hasV2 = () => !!parse(safeGet(KEY_V2));
+export const readV2 = () => parse(safeGet(KEY_V2));
+export const markStarted = () => safeSet(KEY_MARK, '1');
+export const isStarted = () => safeGet(KEY_MARK) === '1';
 
 export function loadSettings(defaults) {
   try { return { ...defaults, ...(JSON.parse(safeGet(SETTINGS_KEY) || '{}')) }; } catch { return { ...defaults }; }
 }
 export const saveSettings = s => safeSet(SETTINGS_KEY, JSON.stringify(s));
 
-// Export code: "AETH2." + base64(utf8 JSON). Long but copy/paste friendly.
+// Export code: "AETH<save version>." + base64(utf8 JSON). Long but copy/paste friendly.
 function b64(text) {
   const bytes = new TextEncoder().encode(text);
   let bin = '';
@@ -84,12 +94,17 @@ function b64(text) {
   return btoa(bin);
 }
 export function exportCode(game) {
-  return 'AETH2.' + b64(JSON.stringify(game));
+  return `AETH${game?.version || 1}.` + b64(JSON.stringify(game));
 }
-// The stored M2 save exactly as it is on disk (byte for byte), as an AETH1 code, or null.
+// The stored earlier saves exactly as they are on disk (byte for byte), as codes, or null:
+// M2 as AETH1, Milestone 3 as AETH2.
 export function exportV1Code() {
   const raw = safeGet(KEY_V1);
   return raw && parse(raw) ? 'AETH1.' + b64(raw) : null;
+}
+export function exportV2Code() {
+  const raw = safeGet(KEY_V2);
+  return raw && parse(raw) ? 'AETH2.' + b64(raw) : null;
 }
 const DAMAGED = 'The save code is damaged. Copy the whole code and try again.';
 
@@ -102,10 +117,11 @@ function scrub(v) {
   return v;
 }
 
-// importCode(code, migrate?) accepts AETH1. and AETH2. codes; scrub(), then migrate() when given.
+// importCode(code, migrate?) accepts the codes of every milestone so far (AETH1. M2, AETH2. M3,
+// AETH3. M4); scrub(), then migrate() when given.
 export function importCode(code, migrate) {
-  const m = String(code).trim().match(/^AETH[12]\.([A-Za-z0-9+/=\s]+)$/);
-  if (!m) throw new Error('That is not an Aethermoor save code. Codes start with AETH1. or AETH2.');
+  const m = String(code).trim().match(/^AETH[123]\.([A-Za-z0-9+/=\s]+)$/);
+  if (!m) throw new Error('That is not an Aethermoor save code. Codes start with AETH and a number, like AETH3.');
   let game;
   try {
     const bin = atob(m[1].replace(/\s+/g, ''));

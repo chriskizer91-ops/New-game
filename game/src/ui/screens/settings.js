@@ -1,10 +1,11 @@
 // Settings (M3 spec §5.7): sound, music, battle speed, reduced motion; the world's touch controls,
-// always-run and map zoom; save codes out (AETH2.) and in (AETH1. or AETH2., through the carry-over
-// card); the M2 save (export it as AETH1, or carry it over again) while one exists; the previous
-// save while a backup exists; and start over.
+// always-run and map zoom; save codes out (AETH3.) and in (any milestone's: AETH1. M2, AETH2.
+// Milestone 3, AETH3., through the carry-over card); each earlier milestone's save while one exists
+// (export it as its code, or carry it over); the previous save while a backup exists; and start over.
+// Every milestone keeps its own save: nothing here ever writes an earlier milestone's.
 // mount(root, ctx, { from }): Back returns to `from` ('world' with a journey, else 'title').
 // Owner: WP8.
-import { exportCode, importCode, exportV1Code, readV1, hasV1, hasBackup, backupGame, restoreBackup, saveGame } from '../../core/save.js';
+import { exportCode, importCode, exportV1Code, exportV2Code, readV1, hasV1, readV2, hasV2, hasBackup, backupGame, restoreBackup, saveGame } from '../../core/save.js';
 import { el, esc, button } from '../lib/dom.js';
 import { screenNav } from '../lib/keys.js';
 import { openCarryCard } from '../lib/carry.js';
@@ -95,7 +96,7 @@ export function mount(root, ctx, params = {}) {
     box.hidden = true;
     return { box, show(code) { ta.value = code; box.hidden = false; ta.focus(); ta.select(); } };
   };
-  const out = codeBox('Your save code', 'code-v2');
+  const out = codeBox('Your save code', 'code-live');
   const mk = button('Make a save code', 'btn primary', () => {
     if (!ctx.game) return;
     out.show(exportCode(ctx.game));
@@ -107,20 +108,20 @@ export function mount(root, ctx, params = {}) {
   if (!ctx.game) saves.append(el('p', 'small', 'No journey yet on this device. Start one, or load a code below.'));
 
   const inBox = el('div', 'code-in');
-  const inTa = el('textarea', { class: 'code', rows: '4', placeholder: 'Paste a code that starts with AETH1. or AETH2.', 'aria-label': 'Paste a save code', spellcheck: 'false', autocomplete: 'off' });
+  const inTa = el('textarea', { class: 'code', rows: '4', placeholder: 'Paste a save code: it starts with AETH and a number.', 'aria-label': 'Paste a save code', spellcheck: 'false', autocomplete: 'off' });
   const err = el('p', { class: 'err', role: 'alert' });
   const load = button('Load this save', 'btn', async () => {
     err.textContent = '';
     const code = inTa.value.trim();
-    if (!code) { err.textContent = 'Paste a save code first. It starts with AETH1. or AETH2.'; ctx.audio.sfx('error'); return; }
+    if (!code) { err.textContent = 'Paste a save code first. It starts with AETH and a number, like AETH3.'; ctx.audio.sfx('error'); return; }
     let g;
     try { g = importCode(code, ctx.migrate); } catch (e) { err.textContent = e.message || 'That code could not be read.'; ctx.audio.sfx('error'); return; }
     // a damaged code never replaces your journey
     const bad = saveProblems(g);
     if (bad.length) { err.textContent = `That code is damaged (${bad.slice(0, 3).join(', ')}). Nothing was changed.`; ctx.audio.sfx('error'); return; }
-    const m2 = /^AETH1\./.test(code);
+    const kind = /^AETH1\./.test(code) ? 'm2' : /^AETH2\./.test(code) ? 'm3' : 'code';
     const ok = await openCarryCard(ctx, g, {
-      kind: m2 ? 'm2' : 'code',
+      kind,
       note: saved() ? `${name(ctx.game)}’s current journey is kept as a backup: Restore previous save brings it back.` : null,
     });
     if (!ok) return;
@@ -134,36 +135,51 @@ export function mount(root, ctx, params = {}) {
   saves.append(inBox);
   root.append(saves);
 
-  // ---- the M2 save (read only, never written or removed) ----
-  if (hasV1()) {
-    const m2 = el('section', 'set-m2 panel');
-    const v1 = readV1();
-    m2.append(el('h2', 'label', 'Your M2 save'));
-    m2.append(el('p', 'small', `${esc(name(v1))}’s Gauntlet journey is still on this device, untouched: the M2 page keeps playing it. You can copy it out as an AETH1 code, or carry it into the Wilds again.`));
-    const v1Out = codeBox('Your M2 save code', 'code-v1');
-    const exp = button('Export M2 backup (AETH1)', 'btn', () => {
-      const code = exportV1Code();
-      if (!code) { ctx.toast('The M2 save could not be read.'); return; }
-      v1Out.show(code);
+  // ---- the earlier milestones' saves (read only, never written or removed) ----
+  // each one: copy it out as its own code, or carry it into this milestone (the live save is backed up)
+  const earlier = ({ cls, title, blurb, codeLabel, codeCls, exportLabel, carryLabel, read, exportOld, kind, who }) => {
+    const sec = el('section', `${cls} panel`);
+    const old = read();
+    sec.append(el('h2', 'label', title));
+    sec.append(el('p', 'small', `${esc(name(old))}’s ${blurb}`));
+    const box = codeBox(codeLabel, codeCls);
+    const exp = button(exportLabel, 'btn', () => {
+      const code = exportOld();
+      if (!code) { ctx.toast(`The ${who} save could not be read.`); return; }
+      box.show(code);
       ctx.audio.sfx('page');
     });
-    const restore = button('Restore my M2 save', 'btn', async () => {
+    const carryOver = button(carryLabel, 'btn', async () => {
       let g;
-      try { g = ctx.migrate(readV1()); } catch { ctx.toast('The M2 save could not be read.'); ctx.audio.sfx('error'); return; }
+      try { g = ctx.migrate(read()); } catch { ctx.toast(`The ${who} save could not be read.`); ctx.audio.sfx('error'); return; }
       const ok = await openCarryCard(ctx, g, {
-        kind: 'm2',
-        note: saved() ? `${name(ctx.game)}’s current journey is kept as a backup: Restore previous save brings it back.` : 'Your M2 save itself is never touched.',
+        kind,
+        note: saved() ? `${name(ctx.game)}’s current journey is kept as a backup: Restore previous save brings it back.` : `Your ${who} save itself is never touched.`,
       });
       if (!ok) return; // "Not yet" leaves the live save and the backup exactly as they were
       ctx.replaceGame(g); // backs the live save up first
       ctx.audio.sfx('reveal', { tier: 2 });
       ctx.go('world', { arrive: 'load' });
     });
-    m2.append(el('div', 'row-btns', [exp, restore]), v1Out.box);
-    root.append(m2);
+    sec.append(el('div', 'row-btns', [exp, carryOver]), box.box);
+    root.append(sec);
+  };
+  if (hasV2()) {
+    earlier({
+      cls: 'set-m3', title: 'Your Milestone 3 save', who: 'Milestone 3', kind: 'm3', read: readV2, exportOld: exportV2Code,
+      blurb: 'Verdant Wilds journey is still on this device, untouched: the Milestone 3 file keeps playing it. You can copy it out as an AETH2 code, or carry it into this milestone.',
+      codeLabel: 'Your Milestone 3 save code', codeCls: 'code-v2', exportLabel: 'Export M3 backup (AETH2)', carryLabel: 'Carry over my M3 save',
+    });
+  }
+  if (hasV1()) {
+    earlier({
+      cls: 'set-m2', title: 'Your M2 save', who: 'M2', kind: 'm2', read: readV1, exportOld: exportV1Code,
+      blurb: 'Gauntlet journey is still on this device, untouched: the M2 page keeps playing it. You can copy it out as an AETH1 code, or carry it into this milestone.',
+      codeLabel: 'Your M2 save code', codeCls: 'code-v1', exportLabel: 'Export M2 backup (AETH1)', carryLabel: 'Restore my M2 save',
+    });
   }
 
-  // ---- the previous save (aethermoor.save.v2.bak) ----
+  // ---- the previous save (the live save's .bak) ----
   if (hasBackup()) {
     const prev = el('section', 'set-prev panel');
     prev.append(el('h2', 'label', 'The previous save'), el('p', 'small', 'A backup is kept every time a new game, a loaded code or a restore replaces your journey.'));

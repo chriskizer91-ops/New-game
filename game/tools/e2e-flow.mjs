@@ -8,24 +8,32 @@
 //   node tools/e2e-flow.mjs --out=/tmp/x     # write screenshots somewhere else
 //
 // Per viewport, a fresh profile:
-//   A. title (no Continue, the M3 tag) -> new game (name, look, 4d6, starter, prologue or "Skip to
-//      the Keep") -> world; the v2 save is written and the v1 key never is; every sound and track plays
+//   A. title (no Continue, the M4 tag) -> new game (name, look, 4d6, starter, prologue or "Skip to
+//      the Keep") -> world; this milestone's own save (aethermoor.save.m4) is written, and the M2 and
+//      Milestone 3 keys never are; every sound and track plays
 //   B. the pause menu (WP7's, or go() until the world has one) to Party (equip from the bag), Codex
 //      (cards, out of 24), Journal (all four tabs) and Settings, each back to the world
 //   C. the first real fight (keep-vault) on Auto -> aftermath -> every chest -> back to the world
 //   D. a forced wipe -> aftermath -> the party wakes at the Hearthfire stand; a Tamsin duel lost is a yield
 //   E. the Atlas: both views, 44 px markers that do not overlap, travel to a kindled Hearthfire,
 //      view only underground, the parchment when the painting fails
-//   F. settings: export gives AETH2.; importing it round-trips through the card (.bak kept); the
+//   F. settings: export gives AETH3.; importing it round-trips through the card (.bak kept); the
 //      new world settings; reduced motion
 //   G. Briarmaw forced: the Brand, then an Echo rematch
 //   H. reload: the title's Continue sub-line; New game over a journey asks first
 // And an M2 profile (a v1 save seeded in localStorage):
 //   I. "Continue from the Gauntlet" -> the carry-over card -> Walk on (nothing written) -> the first
-//      step commits v2 and the marker; Settings -> Load a code with test/fixtures/v1/v1-grudges.code.txt
+//      step commits this milestone's save and its started marker; Settings -> Load a code with
+//      test/fixtures/v1/v1-grudges.code.txt
 //      -> the card; Export M2 backup; Restore previous save (a swap); Restore my M2 save then "Not yet"
 //      (nothing changes); Start over; Restore my M2 save.
-//      aethermoor.save.v1 stays byte-identical throughout.
+//      aethermoor.save.v1 stays byte-identical throughout, and no Milestone 3 save is ever written.
+// And a Milestone 3 profile (the M2 save and an M3 save, aethermoor.save.v2, seeded):
+//   J. "Continue from Milestone 3" (offered before the M2 save) -> the Milestone 3 card -> Walk on
+//      (nothing written) -> the first step writes this milestone's own save; Settings lists both old
+//      saves; Export M3 backup is the M3 save byte for byte; Carry over my M3 save, "Not yet" changes
+//      nothing, then carries it over again with a backup; after a reload the title continues it.
+//      Both old saves stay byte-identical throughout (every milestone keeps its own save).
 // Fails on any console error, page exception or [audio] warning. The world screen is WP7's: this
 // test drives it only through go() and the window.__world seam, and checks the shell's own screens.
 // Playwright is not a project dependency: it comes from the global npm root.
@@ -38,6 +46,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { HEARTHS } from '../src/data/world.js';
 import { MAPS } from '../src/data/maps/index.js';
+import { SAVE_VERSION, toV2 } from '../src/rules/migrate.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = Object.fromEntries(process.argv.slice(2).map(a => { const [k, v] = a.replace(/^--/, '').split('='); return [k, v ?? true]; }));
@@ -47,6 +56,14 @@ const outDir = args.out ? path.resolve(args.out) : path.join(root, 'tools/shots/
 rmSync(outDir, { recursive: true, force: true });
 mkdirSync(outDir, { recursive: true });
 const V1_SAVE = JSON.stringify(JSON.parse(readFileSync(path.join(root, 'test/fixtures/v1/v1-node-thornhollow.json'), 'utf8')));
+// a Milestone 3 save (aethermoor.save.v2): that fixture as M3 carried it over, then played on to the Thornway
+const V2_SAVE = (() => {
+  const g = toV2(JSON.parse(V1_SAVE)), h = Object.entries(HEARTHS).find(([, x]) => x.map === 'thornway');
+  g.gold = 777;
+  g.progress.pos = { map: h[1].map, x: h[1].x, y: h[1].y, face: h[1].face };
+  g.progress.flags.kindled[h[0]] = true;
+  return JSON.stringify(g);
+})();
 const V1_CODE = readFileSync(path.join(root, 'test/fixtures/v1/v1-grudges.code.txt'), 'utf8').trim();
 const V1_CODE_GAME = JSON.parse(readFileSync(path.join(root, 'test/fixtures/v1/v1-grudges.json'), 'utf8'));
 const stand = id => { const h = HEARTHS[id]; return { map: h.map, x: h.x, y: h.y, face: h.face }; };
@@ -100,7 +117,7 @@ const SFX = ['select', 'confirm', 'back', 'dice', 'hit', 'graze', 'miss', 'crit'
   'bump', 'alert', 'rout', 'door', 'blip', 'unlock', 'chime'];
 const TRACKS = ['road', 'wilds', 'town', 'dungeon', 'battle', 'boss', 'hearth', 'victory', 'title'];
 
-async function openPage(V, { seedV1 = null } = {}) {
+async function openPage(V, { seedV1 = null, seedV2 = null } = {}) {
   const context = await browser.newContext({ viewport: V.viewport, deviceScaleFactor: V.deviceScaleFactor, isMobile: !!V.isMobile, hasTouch: !!V.hasTouch, ignoreHTTPSErrors: true });
   if (fonts) {
     await context.route('https://fonts.googleapis.com/**', r => r.fulfill({ status: 200, contentType: 'text/css', body: fonts.css }));
@@ -132,8 +149,10 @@ async function openPage(V, { seedV1 = null } = {}) {
         return go(name, p);
       };
     };
-    if (seed) { try { if (!localStorage.getItem('aethermoor.save.v1')) localStorage.setItem('aethermoor.save.v1', seed); } catch { /* storage blocked */ } }
-  }, seedV1);
+    for (const [key, raw] of [['aethermoor.save.v1', seed?.v1], ['aethermoor.save.v2', seed?.v2]]) {
+      if (raw) { try { if (!localStorage.getItem(key)) localStorage.setItem(key, raw); } catch { /* storage blocked */ } }
+    }
+  }, { v1: seedV1, v2: seedV2 });
   const page = await context.newPage();
   const errors = [], failed = [];
   page.on('console', m => { if (m.type() === 'error' || /^\[audio\]/.test(m.text())) errors.push(`console: ${m.text()}`); });
@@ -162,8 +181,9 @@ async function run(V) {
   const lastGo = name => page.evaluate(nm => [...window.__goLog].reverse().find(g => g.name === nm) || null, name);
   const game = () => page.evaluate(() => window.__app.game);
   const store = () => page.evaluate(() => ({
-    v1: localStorage.getItem('aethermoor.save.v1'), v2: localStorage.getItem('aethermoor.save.v2'),
-    bak: localStorage.getItem('aethermoor.save.v2.bak'), mark: localStorage.getItem('aethermoor.v1.migrated'),
+    v1: localStorage.getItem('aethermoor.save.v1'), m3: localStorage.getItem('aethermoor.save.v2'),
+    live: localStorage.getItem('aethermoor.save.m4'), bak: localStorage.getItem('aethermoor.save.m4.bak'),
+    mark: localStorage.getItem('aethermoor.m4.started'),
   }));
   const setGame = fn => page.evaluate(src => { const g = structuredClone(window.__app.game); (0, eval)(src)(g); window.__app.setGame(g); }, `(${fn})`);
   // the world's pause menu when WP7 has built it, else go() straight to the screen
@@ -230,7 +250,7 @@ async function run(V) {
   await shot('title-new', false);
   await noHScroll('title');
   check(await page.locator('.title-continue, .title-carry').count() === 0, `${V.name}: no Continue without a save`);
-  check(/M3/.test(await page.locator('.title-ver').innerText()) && /Verdant Wilds/i.test(await page.locator('.title-ver').innerText()), `${V.name}: the title shows the M3 · Verdant Wilds tag`);
+  check(/M4/.test(await page.locator('.title-ver').innerText()) && /Sunscorch/i.test(await page.locator('.title-ver').innerText()), `${V.name}: the title shows the M4 · Sunscorch tag`);
   await click('.title-menu >> text=New game');
   await waitScreen('newgame');
   const audio = await page.evaluate(async ([sfx, tracks]) => {
@@ -255,7 +275,7 @@ async function run(V) {
   await click('button:has-text("Begin with")');
   await page.waitForSelector('.prologue');
   let s0 = await store();
-  check(!!s0.v2 && JSON.parse(s0.v2).version === 2 && s0.v1 === null, `${V.name}: Begin writes a version 2 save (and no v1 key)`);
+  check(!!s0.live && JSON.parse(s0.live).version === SAVE_VERSION && s0.v1 === null && s0.m3 === null, `${V.name}: Begin writes this milestone's own save at version ${SAVE_VERSION} (and no M2 or Milestone 3 key)`);
   if (V.name === 'phone') {
     for (let i = 0; i < 4; i++) { await click('.prologue button:has-text("Continue")'); await page.waitForTimeout(120); }
     await shot('prologue', false);
@@ -430,8 +450,8 @@ async function run(V) {
   check(await page.evaluate(() => document.documentElement.classList.contains('reduce-motion')), `${V.name}: reduced motion applies`);
   await click('.switch[data-key="reducedMotion"]');
   await click('button:has-text("Make a save code")');
-  const code = await page.locator('.code-v2 textarea').inputValue();
-  check(/^AETH2\./.test(code), `${V.name}: the save code starts with AETH2.`);
+  const code = await page.locator('.code-live textarea').inputValue();
+  check(new RegExp(`^AETH${SAVE_VERSION}\\.`).test(code), `${V.name}: the save code starts with AETH${SAVE_VERSION}.`);
   await page.fill('.code-in textarea', 'not a code');
   await click('button:has-text("Load this save")');
   check((await page.locator('.err').innerText()).length > 10, `${V.name}: a bad code shows clear error text`);
@@ -446,14 +466,14 @@ async function run(V) {
   let s1 = await store();
   // the code holds exactly the save, byte for byte once parsed
   const inCode = await page.evaluate(c => new TextDecoder().decode(Uint8Array.from(atob(c.slice(6).replace(/\s+/g, '')), ch => ch.charCodeAt(0))), code);
-  check(JSON.stringify(JSON.parse(inCode)) === JSON.stringify(JSON.parse(s0.v2)), `${V.name}: an AETH2 code holds exactly the save`);
+  check(JSON.stringify(JSON.parse(inCode)) === JSON.stringify(JSON.parse(s0.live)), `${V.name}: a save code holds exactly the save`);
   // walking back in is a visit (spec §4.5: enterMap counts visits[map], and plays the map's arrival
   // lines once), so the world's arrival bookkeeping is the only thing allowed to differ after the load
   const paths = (a, b, p = '') => (JSON.stringify(a) === JSON.stringify(b) ? []
     : a && b && typeof a === 'object' && typeof b === 'object' ? [...new Set([...Object.keys(a), ...Object.keys(b)])].flatMap(k => paths(a[k], b[k], `${p}.${k}`)) : [p]);
-  const moved = paths(JSON.parse(s0.v2), JSON.parse(s1.v2));
-  check(moved.every(p => /^\.progress\.flags\.(visits\.[\w-]+|seen\.arrive:[\w-]+)$/.test(p)), `${V.name}: an AETH2 code round-trips (the save is unchanged but for the arrival's own bookkeeping${moved.length ? `: ${moved.join(', ')}` : ''})`);
-  check(s1.bak === s0.v2 && s1.v1 === null, `${V.name}: loading a code backs the old save up to .bak first`);
+  const moved = paths(JSON.parse(s0.live), JSON.parse(s1.live));
+  check(moved.every(p => /^\.progress\.flags\.(visits\.[\w-]+|seen\.arrive:[\w-]+)$/.test(p)), `${V.name}: a save code round-trips (the save is unchanged but for the arrival's own bookkeeping${moved.length ? `: ${moved.join(', ')}` : ''})`);
+  check(s1.bak === s0.live && s1.v1 === null, `${V.name}: loading a code backs the old save up to .bak first`);
 
   // ======== G. Briarmaw (forced): the Brand, then an Echo rematch ========
   await startFight('briarmaw-den', { result: 'victory', xp: 770, gold: 60 });
@@ -510,11 +530,12 @@ async function runM2(V) {
   const waitScreen = async (name, timeout = 15000) => { await page.waitForFunction(s => document.getElementById('app').dataset.screen === s, name, { timeout }); await page.waitForTimeout(200); };
   const click = async sel => { const l = page.locator(sel).first(); await l.scrollIntoViewIfNeeded(); await l.click(); };
   const store = () => page.evaluate(() => ({
-    v1: localStorage.getItem('aethermoor.save.v1'), v2: localStorage.getItem('aethermoor.save.v2'),
-    bak: localStorage.getItem('aethermoor.save.v2.bak'), mark: localStorage.getItem('aethermoor.v1.migrated'),
+    v1: localStorage.getItem('aethermoor.save.v1'), m3: localStorage.getItem('aethermoor.save.v2'),
+    live: localStorage.getItem('aethermoor.save.m4'), bak: localStorage.getItem('aethermoor.save.m4.bak'),
+    mark: localStorage.getItem('aethermoor.m4.started'),
   }));
   const settings = async () => { await page.evaluate(() => window.__app.go('settings', { from: 'world' })); await waitScreen('settings'); };
-  const v1Same = async label => check((await store()).v1 === V1_SAVE, `${V.name}: aethermoor.save.v1 is byte-identical (${label})`);
+  const v1Same = async label => { const st = await store(); check(st.v1 === V1_SAVE && st.m3 === null, `${V.name}: aethermoor.save.v1 is byte-identical and no Milestone 3 save is written (${label})`); };
 
   await page.goto(pathToFileURL(file).href);
   await page.waitForSelector('.title-menu');
@@ -531,19 +552,19 @@ async function runM2(V) {
   await click('.carry-go');
   await waitScreen('world');
   let s = await store();
-  check(s.v2 === null && s.mark === null && await page.evaluate(() => window.__app.adopting), `${V.name}: "Walk on" holds the migrated game in memory (nothing written)`);
+  check(s.live === null && s.mark === null && await page.evaluate(() => window.__app.adopting), `${V.name}: "Walk on" holds the migrated game in memory (nothing written)`);
   const pos0 = await page.evaluate(() => window.__app.game.progress.pos);
   check(pos0.map === 'thornhollow', `${V.name}: the M2 party wakes in Thornhollow (${JSON.stringify(pos0)})`);
   // the world commits on its first successful step (WP7); drive one step through the seam
   await page.evaluate(() => { if (window.__world) { for (const d of ['s', 'n', 'e', 'w']) { const ev = window.__world.step(d, 1); if (ev.some(e => e.t === 'step')) break; } } });
   await page.waitForTimeout(400);
   s = await store();
-  if (s.v2 === null) {
+  if (s.live === null) {
     note(`${V.name}: the world did not commit the adopted game on its first step yet (WP7); committing through ctx.commitAdopted()`);
     await page.evaluate(() => window.__app.commitAdopted());
     s = await store();
   }
-  check(!!s.v2 && JSON.parse(s.v2).migratedFrom === 1 && s.mark === '1' && !(await page.evaluate(() => window.__app.adopting)), `${V.name}: commitAdopted writes v2 and the migrated marker`);
+  check(!!s.live && JSON.parse(s.live).migratedFrom === 1 && s.mark === '1' && s.m3 === null && !(await page.evaluate(() => window.__app.adopting)), `${V.name}: commitAdopted writes this milestone's save and its started marker (never a Milestone 3 key)`);
   await v1Same('after the carry-over');
 
   // Settings -> Load a code with a real M2 code
@@ -561,9 +582,9 @@ async function runM2(V) {
   await click('.carry-go');
   await waitScreen('world');
   s = await store();
-  const loaded = JSON.parse(s.v2);
-  check(loaded.migratedFrom === 1 && loaded.progress.node === V1_CODE_GAME.progress.node && loaded.gold === V1_CODE_GAME.gold, `${V.name}: the pasted M2 code is now the live save (v2)`);
-  check(s.bak === before.v2, `${V.name}: the previous save went to .bak first`);
+  const loaded = JSON.parse(s.live);
+  check(loaded.migratedFrom === 1 && loaded.progress.node === V1_CODE_GAME.progress.node && loaded.gold === V1_CODE_GAME.gold, `${V.name}: the pasted M2 code is now the live save`);
+  check(s.bak === before.live, `${V.name}: the previous save went to .bak first`);
   await v1Same('after Load a code');
 
   // Export M2 backup: the untouched v1 save as an AETH1 code
@@ -580,7 +601,7 @@ async function runM2(V) {
   await waitScreen('world');
   const swapped = await store();
   const idOf = raw => { const x = raw && JSON.parse(raw); return x ? `${x.progress.node}/${x.gold}` : null; };
-  check(idOf(swapped.v2) === idOf(s.bak) && idOf(swapped.bak) === idOf(s.v2) && idOf(s.v2) !== idOf(s.bak), `${V.name}: restoring the previous save swaps it with the live one (${idOf(swapped.v2)} <-> ${idOf(swapped.bak)})`);
+  check(idOf(swapped.live) === idOf(s.bak) && idOf(swapped.bak) === idOf(s.live) && idOf(s.live) !== idOf(s.bak), `${V.name}: restoring the previous save swaps it with the live one (${idOf(swapped.live)} <-> ${idOf(swapped.bak)})`);
   await v1Same('after Restore previous save');
   // "Restore my M2 save", then "Not yet": the live save and the backup stay exactly as they were
   await settings();
@@ -590,7 +611,7 @@ async function runM2(V) {
   await click('.carry-no');
   await page.waitForTimeout(300);
   const still = await store();
-  check(!!kept.bak && still.v2 === kept.v2 && still.bak === kept.bak, `${V.name}: "Not yet" on "Restore my M2 save" keeps the live save and the backup`);
+  check(!!kept.bak && still.live === kept.live && still.bak === kept.bak, `${V.name}: "Not yet" on "Restore my M2 save" keeps the live save and the backup`);
   await v1Same('after Restore my M2 save, Not yet');
 
   // Start over keeps v1, and the M2 save does not come back by itself
@@ -599,7 +620,7 @@ async function runM2(V) {
   await click('.confirm-box button:has-text("Yes, erase it")');
   await waitScreen('title');
   s = await store();
-  check(s.v2 === null && s.mark === '1' && await page.locator('.title-continue, .title-carry').count() === 0, `${V.name}: after Start over no Gauntlet save comes back`);
+  check(s.live === null && s.mark === '1' && await page.locator('.title-continue, .title-carry').count() === 0, `${V.name}: after Start over no Gauntlet save comes back`);
   await v1Same('after Start over');
   // Restore my M2 save
   await click('.title-menu >> text=Settings');
@@ -609,7 +630,7 @@ async function runM2(V) {
   await click('.carry-go');
   await waitScreen('world');
   s = await store();
-  check(!!s.v2 && JSON.parse(s.v2).progress.node === 'thornhollow' && JSON.parse(s.v2).migratedFrom === 1, `${V.name}: "Restore my M2 save" carries the M2 save over again`);
+  check(!!s.live && JSON.parse(s.live).progress.node === 'thornhollow' && JSON.parse(s.live).migratedFrom === 1, `${V.name}: "Restore my M2 save" carries the M2 save over again`);
   await v1Same('after Restore my M2 save');
 
   const fontOnly = failed.length && failed.every(u => /fonts\.(googleapis|gstatic)\.com/.test(u));
@@ -618,8 +639,77 @@ async function runM2(V) {
   await context.close();
 }
 
+// ======== J. a Milestone 3 profile: an M3 save (and the M2 save before it) on the device ========
+async function runM3(V) {
+  console.log(`\n== ${V.name} Milestone 3 profile`);
+  const { context, page, errors, failed } = await openPage(V, { seedV1: V1_SAVE, seedV2: V2_SAVE });
+  const waitScreen = async (name, timeout = 15000) => { await page.waitForFunction(x => document.getElementById('app').dataset.screen === x, name, { timeout }); await page.waitForTimeout(200); };
+  const click = async sel => { const l = page.locator(sel).first(); await l.scrollIntoViewIfNeeded(); await l.click(); };
+  const store = () => page.evaluate(() => ({
+    v1: localStorage.getItem('aethermoor.save.v1'), m3: localStorage.getItem('aethermoor.save.v2'),
+    live: localStorage.getItem('aethermoor.save.m4'), bak: localStorage.getItem('aethermoor.save.m4.bak'),
+    mark: localStorage.getItem('aethermoor.m4.started'),
+  }));
+  const untouched = async label => { const st = await store(); check(st.v1 === V1_SAVE && st.m3 === V2_SAVE, `${V.name}: the M2 and Milestone 3 saves are byte-identical (${label})`); };
+  const shot = async name => { await page.waitForTimeout(250); await page.screenshot({ path: path.join(outDir, `${V.name}-m3-${name}.png`) }); };
+
+  await page.goto(pathToFileURL(file).href);
+  await page.waitForSelector('.title-menu');
+  await page.waitForTimeout(600);
+  check(await page.locator('.title-carry').count() === 1 && /Continue from Milestone 3/.test(await page.locator('.title-carry').innerText()), `${V.name}: a Milestone 3 save is offered first ("Continue from Milestone 3")`);
+  await shot('title');
+  await click('.title-carry');
+  await page.waitForSelector('.carry-card');
+  const card = await page.locator('.carry-card').innerText();
+  check(/Milestone 3 journey carries over/i.test(card) && /The Wilds go with you/.test(card) && /\b777\b/.test(card) && /Thornway/.test(card), `${V.name}: the card is the Milestone 3 one, with its gold and where you wake`);
+  await shot('carry-card');
+  await click('.carry-go');
+  await waitScreen('world');
+  let s = await store();
+  check(s.live === null && s.mark === null && await page.evaluate(() => window.__app.adopting), `${V.name}: "Walk on" holds the carried game in memory (nothing written)`);
+  await page.evaluate(() => { for (const d of ['s', 'n', 'e', 'w']) { const ev = window.__world.step(d, 1); if (ev.some(e => e.t === 'step')) break; } });
+  await page.waitForTimeout(400);
+  s = await store();
+  const live = s.live && JSON.parse(s.live);
+  check(!!live && live.version === SAVE_VERSION && live.gold === 777 && s.mark === '1', `${V.name}: the first step writes this milestone's own save from the Milestone 3 one`);
+  await untouched('after the carry-over');
+
+  // Settings: the Milestone 3 save can be copied out byte for byte, or carried over again
+  await page.evaluate(() => window.__app.go('settings', { from: 'world' }));
+  await waitScreen('settings');
+  check(await page.locator('.set-m3').count() === 1 && await page.locator('.set-m2').count() === 1, `${V.name}: Settings lists the Milestone 3 save and the M2 save`);
+  await click('.set-m3 button:has-text("Export M3 backup (AETH2)")');
+  const m3code = await page.locator('.code-v2 textarea').inputValue();
+  const decoded = await page.evaluate(c => new TextDecoder().decode(Uint8Array.from(atob(c.slice(6)), ch => ch.charCodeAt(0))), m3code);
+  check(/^AETH2\./.test(m3code) && decoded === V2_SAVE, `${V.name}: "Export M3 backup" gives the Milestone 3 save byte for byte`);
+  const kept = await store();
+  await click('.set-m3 button:has-text("Carry over my M3 save")');
+  await page.waitForSelector('.carry-card');
+  await click('.carry-no');
+  await page.waitForTimeout(300);
+  const still = await store();
+  check(still.live === kept.live && still.bak === kept.bak, `${V.name}: "Not yet" on "Carry over my M3 save" changes nothing`);
+  await click('.set-m3 button:has-text("Carry over my M3 save")');
+  await page.waitForSelector('.carry-card');
+  await click('.carry-go');
+  await waitScreen('world');
+  s = await store();
+  check(s.bak === kept.live && JSON.parse(s.live).gold === 777, `${V.name}: carrying it over again backs the live save up first`);
+  await untouched('after carrying it over again');
+  // reload: this milestone's own save is the one that continues
+  await page.goto(pathToFileURL(file).href);
+  await page.waitForSelector('.title-menu');
+  await page.waitForTimeout(400);
+  check(await page.locator('.title-continue').count() === 1 && await page.locator('.title-carry').count() === 0, `${V.name}: after a reload the title continues this milestone's save`);
+
+  const fontOnly = failed.length && failed.every(u => /fonts\.(googleapis|gstatic)\.com/.test(u));
+  const real = errors.filter(e => !/favicon/i.test(e) && !(fontOnly && /Failed to load resource/.test(e)));
+  check(real.length === 0, `${V.name}: no console errors in the Milestone 3 profile (${real.join(' | ')})`);
+  await context.close();
+}
+
 for (const V of VIEWPORTS) {
-  for (const fn of [run, runM2]) {
+  for (const fn of [run, runM2, runM3]) {
     try { await fn(V); } catch (e) { fails.push(`${V.name}: ${e.message.split('\n')[0]}`); console.log('  ERROR', e.message.split('\n').slice(0, 6).join('\n')); }
   }
 }

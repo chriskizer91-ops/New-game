@@ -28,7 +28,7 @@ import * as W from '../../rules/world.js';
 import * as G from '../../rules/gauntlet.js';
 import * as Story from '../../rules/story.js';
 import { check } from '../../rules/cond.js';
-import { migrate } from '../../rules/migrate.js';
+import { migrate, SAVE_VERSION } from '../../rules/migrate.js';
 import { relicItem } from '../../rules/loot.js';
 import { dirTo, DIRS } from '../../rules/path.js';
 import * as Art from '../../art/index.js';
@@ -103,10 +103,10 @@ export function mount(root, ctx, params = {}) {
 
   // ---- the game and the Walk -------------------------------------------------------------------------
   let game = ctx.game;
-  // An M2-shaped game reached the world: migrate it in memory and adopt it (ctx.adopt keeps setGame in
-  // memory until the first step). Without ctx.adopt, nothing is written before the first step.
+  // An older milestone's game reached the world: migrate it in memory and adopt it (ctx.adopt keeps
+  // setGame in memory until the first step). Without ctx.adopt, nothing is written before the first step.
   let legacy = false;
-  if ((game.version || 1) < 2) {
+  if ((game.version || 1) < SAVE_VERSION) {
     try { game = (ctx.migrate || migrate)(game); } catch (err) { console.error(err); }
     if (typeof ctx.adopt === 'function') { ctx.adopt(game); lastSet = ctx.game; } else legacy = true;
   }

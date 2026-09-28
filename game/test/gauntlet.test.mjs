@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRng } from '../src/core/rng.js';
 import { newGame, startBattle, resolveBattle, rest, spawnsFor, travel, routPack, partyLevel, uniqueBrands } from '../src/rules/gauntlet.js';
+import { SAVE_VERSION } from '../src/rules/migrate.js';
 import { xpToNext, xpForLevel, levelForXp, grantXp, MAX_LEVEL } from '../src/rules/progression.js';
 import { equip, bestHeroFor } from '../src/rules/party.js';
 import { deriveHero } from '../src/rules/stats.js';
@@ -47,8 +48,8 @@ test('new game follows the ARCHITECTURE game-state shape', () => {
   assert.equal(w.gear.offhand, null, 'a two-handed starter has no shield');
   assert.equal(g.codex.cairnmaul.claimed, true);
   assert.equal(g.codex.hearthbrand.claimed, false);
-  // M3 (spec §4.6, §4.8): a version 2 game in the Great Hall, with no road node
-  assert.equal(g.version, 2);
+  // M3 (spec §4.6, §4.8): a game in the Great Hall, with no road node; M4: at the current save version
+  assert.equal(g.version, SAVE_VERSION);
   assert.equal(g.progress.node, undefined);
   assert.deepEqual(g.progress.pos, { ...START_AT });
   assert.equal(g.progress.lastHearthfire, 'hearthstone-keep');
