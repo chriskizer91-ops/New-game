@@ -3,7 +3,7 @@
 This is for a fresh session with none of the earlier conversation. Read it top to bottom, then read `CLAUDE.md`, and you can start milestone 5 without re-exploring.
 
 - **Branch:** `claude/cool-ptolemy-uc93gg`. It contains the whole history of the earlier branch `claude/dnd-game-prototype-bsv3xb`. If your session names a different branch, use that one and carry this history over. Never create a PR unless the player asks for one.
-- **State at handoff:** **M4 is done; its delivery is the last step:** the download `game/dist/aethermoor-m4.html`, sent together with `aethermoor-m3.html` (the player asked for both). Every gate is green: 276/276 tests, lint, build (about 1.77 MB), `e2e-world` (19 scenarios), `e2e-flow`, `e2e-battle` (18) and `e2e-codes` (18 M2 + 3 M3 codes) at both sizes, the balance sim on target. A final review found 6 issues (one blocker: reforged relics were never Claimed); all are fixed with regression tests. The full record is `game/docs/M4-STATUS.md`. **M5 has not started.**
+- **State at handoff:** **M4 is done and delivered** as the download `game/dist/aethermoor-m4.html`, sent together with `aethermoor-m3.html` (the player asked for both as downloads). Every gate is green: 276/276 tests, lint, build (about 1.77 MB), `e2e-world` (19 scenarios), `e2e-flow`, `e2e-battle` (18) and `e2e-codes` (18 M2 + 3 M3 codes) at both sizes, the balance sim on target. A final review found 6 issues (one blocker: reforged relics were never Claimed); all are fixed with regression tests. The full record is `game/docs/M4-STATUS.md`. **M5 has not started.**
 
 ---
 

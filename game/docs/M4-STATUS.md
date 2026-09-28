@@ -110,7 +110,10 @@ named holder. Each fix has a test that fails without it; the suite is **276/276*
 5. **Relics Nos. 1-12 wake late.** Their deeds are Act II ones (Untouched, Fifty Felled, Grudge Settled,
    Rout) so they do not Kindle in their first fight and change M3's curve; Hearthbrand's are Untouched,
    Grudge Settled and Fifty Felled.
-6. The stretch items above.
+6. **One unreproduced e2e failure.** The e2e-flow check "after a reload the title continues this
+   milestone's save" (laptop, Milestone 3 profile) failed once in four laptop runs and never at phone
+   size; it did not reproduce. The check now prints what the title showed and which saves were present.
+7. The stretch items above.
 
 ## 4. Reproduce
 

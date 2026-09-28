@@ -1,4 +1,2 @@
 node_modules/
 tools/shots/
-# the M4 download is committed at delivery; until then every build rewrites it
-dist/aethermoor-m4.html
