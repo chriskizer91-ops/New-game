@@ -205,8 +205,152 @@ node tools/gallery.mjs --only=focus --fk=briarmaw,rotstag --ph=3   # 4x close-up
 ```
 
 Sections: `relics`, `kinds-weapons`, `kinds-head`, `kinds-body`, `loot`, `bases`, `heroes`, `heroes-gear`,
-`foes-humanoid`, `foes-relic`, `foes-beasts`, `foes-bearers`, `foes-boss`, `scenes`, `icons`, `perf`.
+`foes-humanoid`, `foes-relic`, `foes-beasts`, `foes-bearers`, `foes-boss`, `scenes`, `icons`, `perf`, and the
+World sections `world-tiles`, `world-npcs`, `world-foes`, `world-objects`, `world-walkers`, `world-perf` (see
+"World" below).
 Playwright is loaded from the global npm root and the preinstalled Chromium is used when present.
+
+
+## World (M3 overworld) · `tiles.js`, `walkers.js`, `map-sprites.js`
+
+The walkable world uses its own small sprites, built with the same Forge pipeline (lit MAT ramps, selective
+outline, top-left light) at map scale. Nothing here downscales battle art. Everything is `ImageData`, and every
+builder is cached for the session.
+
+### Tilesets · `tiles.js`
+
+```js
+tileAtlas(biome) -> atlas              // sync, cached; biomes keep wilds town grove fen tower roots den (else wilds)
+tileAtlasAsync(biome, { sliceMs = 6 }) -> Promise<atlas>    // bakes ~sliceMs per frame (requestAnimationFrame)
+tileAtlasSteps(biome)                  // the generator behind both (yields progress 0..1); all three share one cache
+buildTileAtlas(biome)                  // uncached fresh build (tools and the perf gallery only)
+atlas.img                              // ImageData, 256 px wide (16 cells per row), larger overhead images below
+atlas.cell(rows, x, y, frame) -> { ground: [op], over: [op] }   // op = [sx, sy, w, h, dx, dy] from the tile's top-left
+atlas.at(tileId, variant, frame) -> [sx, sy]      atlas.variants(tileId)      atlas.frames(tileId) -> 1 | 2
+atlas.edge(tileId, mask, frame) -> [sx, sy] | null   // mask bits N=1 E=2 S=4 W=8, set where the neighbour differs
+atlas.over(tileId, variant) -> [sx, sy, w, h, dx, dy] | null      atlas.pick(tileId, x, y)      atlas.ms, atlas.cells
+TILE_PX = 16   BIOMES   EDGE_BITS
+```
+
+- **Use `cell()`.** It is the whole recipe for a map cell:
+  - the base cell, a hash-picked variant (2-4 for ground)
+  - the 4-bit edge overlay: water and ford shores, road verges, cliff lips and feet, wall and root-wall rims, bridge rails, ichor rims
+  - inner-corner nubs
+  - the "faces" that depend on the tile below: a wall or root wall with open ground below shows its face, otherwise its top; a palisade under another palisade has no tips; a bridge's planks lie across the way
+  - First-Age roots follow their mass: a trunk runs north-south, a root runs east-west, a knot where it ends
+  - the overhead parts: a tree canopy (24x26 at (-4, -16)), roofs with eaves, ridges and gables from their neighbours, and tall-grass tops
+- **Baking chunks:**
+  - Ground ops stay inside the tile.
+  - Over ops reach at most 16 px up and 4 px to either side, so a chunk baker also visits the row below its bottom edge and one column each side.
+  - Animated tiles (water, ford, torch-wall, fungus, ichor) have 2 frames.
+- **Value rules:**
+  - Walkable ground uses ramp steps 1-3 only.
+  - Scenery (walls, rocks, trees, roofs) goes up to step 4.
+  - Only light sources (torch flames, fungus caps, ichor glints) reach the top of their ramps.
+  - That keeps outlined, full-ramp sprites readable on every biome.
+- **Seamless tiling.** Ground noise is periodic over one tile (`pnoise` with a 16 px period), so any two variants join.
+  - Decals (tufts, pebbles, flowers, ripples) stay 2 px inside the border.
+  - Flagstones and planks put their joints only on the top and left edges.
+- **Biome palettes** live in `PAL` (roles such as `grass`, `soil`, `stone`, `wall`, `roof`, `water`, `canopy`, mapped to MAT names). To add a biome, add a `PAL` row and a `BIOMES` entry. To add a tile id, add a `SPEC` row: `{ n, paint, anim?, faces?, over?, roof? }`.
+- **Flat raster.** Most tile parts are flat, so `renderCell` uses `rasterFlat()`, which gives the Forge's lit value for an up-facing normal and the same 1-px occlusion rule without the gradient samples. Any cell with a shaped part (`round`, `bevel`, `ridge`) goes through `Forge.raster()`.
+
+### Walkers · `walkers.js`
+
+```js
+walkerSheet(heroId, gear, { custom }) -> { img 48x96, w: 16, h: 24, foot: [8, 23], head: [8, 3] }
+rigSheet(H, looks, { meta, frames = 3, rows = ['s','n','e','w'], pick }) -> ImageData    // any identity through the rig
+resolveGear(gear) -> { L: looks by slot, M: { heirloom, temper, relic } by slot, sig }
+WALKER_W = 16, WALKER_H = 24, WALKER_FRAMES = 3, WALKER_ROWS = ['s', 'n', 'e', 'w'], WALKER_FOOT = [8, 23]
+```
+
+- **Sheet layout.** Columns are stand, stepA and stepB; rows are s, n, e and w. The west row is the east rig rastered mirrored, so the light stays top-left.
+  - Step frames lift one foot, swing the arms and bob the body 1 px.
+  - Cached in its own `lru(96)` by hero, identity and gear signature.
+- **Gear input.** `gear` is `gearLooks(heroGear(game, id))`, the raw `heroGear` map, `undefined` (the starter kit) or `null` (bare). Heirloom and temper glints come from the looks' `glint` and `temper` flags, or from the item's rarity and temper.
+- **Identity** is `HERO_ART[hero].H` from the frozen `hero-looks.js`: build, skin, hair style and colour, beard, ears, blindfold, cloak, mantle, tabard, quiver, freckles. The Hearthwarden's `custom` look (the new-game presets) replaces skin, hair, hair colour, beard and eye colour. Eyes are 2 hand-placed pixels (1 in profile).
+- **Proportions** (`BUILDS`: human, youth, brute, dwarf):
+  - The head is about 10 px wide, rows 3-11.
+  - The torso is 8 px, rows 12-18.
+  - Legs are 2 px with a dark gap, boots rows 20-22.
+- **Gear layers:**
+  - **Body.** `body.kind` and its material: mail (a sparse dot grid), leather, plate (courses, faulds, pauldrons), or robe (a skirt to the ankles with a hem trim). Also a tabard, mantle, sash or belt.
+  - **Head.** The headgear draws by look: kettle (wide brim), helm (visor slit, glowing eyes if `eyes`), the ichor mask (`style: 'mask'`), hood and coif (face opening, bangs showing), circlet (rotwood with thorns and a blight gem), and crown (thorn or regal).
+  - **Hands, feet, amulet.** Gloves and gauntlets on the hands. Boots with cuff or greave. The amulet is one gem pixel on the chest, with a metal pixel above it for relics.
+  - **Off-hand.** A shield on the off arm (buckler, round, heater or tower, in face, rim and boss materials). A focus in the off hand: orb, tome, rings, sigil or lantern.
+  - **Weapon.** A class silhouette in the item's own materials. Spears, staves and bows stand upright beside the body. Swords, daggers, axes, hammers and maces are carried low, blade or head down. Glow materials (fullers, runes, heat) run along the blade.
+  - **Glints.** One pixel at the weapon tip for an heirloom or relic, one on the blade for temper +1, and at most one on an heirloom worn piece.
+- **Shading at this size.** Every sprite pixel is clamped to ramp step 1 or higher, because the Forge's contact shadows would otherwise sink 2-px parts to black. Thin overlay parts (belts, trims, mantles, tabards) are `noShadow`.
+
+### NPCs, map foes, objects and emotes · `map-sprites.js`
+
+```js
+npcSheet(artKey) -> { img 48x96, w: 16, h: 24, foot: [8, 23], head: [8, 3] }        NPC_LOOKS[artKey] = { H, gear }
+mapFoeSheet(artKey, { gearTier = 0, variant, relic }) -> { img, w, h, foot, frames: 2, rows: 4, head }   MAP_FOE_SIZE
+objectSprite(kind, state, { frame, relic, id, look }) -> ImageData (.anchors.foot, .frames)   OBJECT_KINDS  OBJECT_STATES  HEARTH_LOOKS
+emote(kind, { frame }) -> ImageData (.anchors.foot, .frames)    EMOTES = ['!', 'sweat', '?', 'sparkle', '...']
+```
+
+- **NPCs.**
+  - Every art key in `data/npcs.js` has a look: fenwick, isolde, marta, refugee, gate-guard, hilda, dael, nell, corra, garret, miravel, nan, ivo, pilgrim, tamsin, vesper and rotwarden.
+  - A look is written in the heroes' vocabulary (`H` identity plus gear art objects or looks) and drawn by the walker rig.
+  - An unknown key reuses a humanoid foe's look, or gets a villager hashed from the key.
+- **Map foes: humanoids.**
+  - These are cutpurse, bandit, tallyman, smuggler, feral-druid, hollowed-ranger, tamsin and the named holders.
+  - They go through `foeLooks(key, { gearTier })` from `foes.js` and the walker rig, so the Waking re-gear shows.
+  - `relic` (an id) is drawn in its slot with a glint. For `tamsin`, `variant` is her lent starter, and she always wears the Vale Gauntlets.
+  - A data variant id of a family key resolves to the variant's art (`bandit` + `poacher` gives Haskett).
+  - The two columns are the two steps of the gait; hold column 0 when standing.
+- **Map foes: beasts.** Each beast has dedicated front, back and side views (the west view is mirrored) with a 2-frame gait. `gearTier` adds thorns and rot, and red eyes from tier 2.
+
+  | key | size | silhouette |
+  |---|---|---|
+  | `briarling` | 16x16 | bramble ball, thorn crown, glowing eyes |
+  | `thornhound` | 24x16 | wolf with a thorn spine |
+  | `boglurcher` | 24x16 | mud mound on eye stalks |
+  | `glowcap` | 16x16 | mushroom with a glowing gill (halo) |
+  | `rotgrub` | 16x12 | segmented grub with mandibles |
+  | `rotstag` | 32x32 | white stag, huge rack, the Rotwood Circlet on an antler |
+  | `oldsnag` | 32x24 | hump with the Thornsplitter buried in it (a wound when `relic: null`) |
+  | `briarmaw` | 32x32 | thorn beast, the crown and the fang |
+  | `gloamwing` | 32x32 | moth with eyed wings flapping, the Dawnbell on the thorax, a dithered ground shadow |
+  | `mirelord` | 32x32 | frog-king, crown of reeds and the Mire Pearl |
+  | `sapwight` | 16x24 | bark ghoul |
+  | `rotwarden` | 32x32 | bark-through-plate giant with the Ichor Mask and the First Seed |
+
+- **Objects.** Every object's `foot` is `[8, h-1]`: put it on the bottom-centre of the entity's tile, and tall objects rise into the tile above. Area entities (gates, thornwalls) draw one sprite per tile, and the pieces join sideways. Kinds and states (the first state is the default):
+  - `chest`: closed, open, locked, sealed
+  - `hearth`: lit, cold; pass `{ id }` to get the place's look (hall fireplace, campfire ring, cairn, brazier, the Dreaming Stone, the green coal)
+  - `gate`: closed, open; `chain`: closed, post, open; `crownwall` (pulsing green heart-knot): closed, open
+  - `thornwall`, `bramble`, `boulder`: closed, open
+  - `ford-ice`: ice, stream, roots; `stream` (the rapids over a shut stream lock)
+  - `pedestal`: unlit, lit; with `{ relic }` (an id or an ItemInstance) its 12 px icon floats above
+  - `board`: bounties, ladder; `sign`: post, stone, plaque; `bellframe`: empty, rung; `lookout` (16x32)
+  - `rope`: closed, open; `deer`: graze, alert; `ichor`
+  - `door`, `table`, `tally-seal`, `barred-gate`, `rot-knot`
+- **Frames.** Lit hearths, crownwalls, ichor, stream and grazing deer have 2 frames.
+- **Emotes** are bubbles or glyphs. `foot` is the bubble's tail: put it on a sprite's `head`.
+
+### Review and timings
+
+```
+node tools/gallery.mjs --only=world-tiles --bio=wilds,keep     # sample scene per biome (frame 0, frame 1) + the raw atlas
+node tools/gallery.mjs --only=world-walkers                   # 4 heroes x 3 gear states, sheets at 3x, close-ups at 6x
+node tools/gallery.mjs --only=world-npcs,world-foes,world-objects
+node tools/gallery.mjs --only=world-zoom --fk=pip,rotstag,obj:hearth   # 6x close-ups: walkers, beasts, objects
+node tools/gallery.mjs --only=world-perf                      # timings (also in timings.json)
+```
+
+The build machine was heavily shared during this measurement (load average about 10 on 4 CPUs), so wall times are
+2-3x high. The intrinsic cost of a tile atlas (the minimum per cell over repeated builds, summed) is about
+24-27 ms per biome.
+
+| what | cost |
+|---|---|
+| `tileAtlas` per biome, about 250 cells (budget 150 ms) | 50-150 ms wall under load; the first build in a page, including JIT warm-up, 180-420 ms |
+| `walkerSheet` cold (12 frames) | about 11-13 ms; cached after that |
+| `npcSheet` / humanoid `mapFoeSheet` cold | about 7-8 ms |
+| beast `mapFoeSheet` cold (32x32) | about 21 ms |
+| `objectSprite` cold | about 0.5 ms |
 
 ## Adding a foe
 

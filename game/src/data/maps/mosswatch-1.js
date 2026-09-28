@@ -1,6 +1,8 @@
-// Mosswatch Tower (M3 spec §2.1, §2.3). The ground floor: Garret's kitchen, the stair up, and the locked ledger room in the north-east.
-// SCAFFOLD DRAFT: exits, anchors, encounters, Hearthfires and the other entities sit at their spec
-// coordinates; the tiles are a simple walkable draft (no pockets or barriers enforce the locks yet).
+// Mosswatch Tower, the ground floor (M3 spec §2.1, §2.3). A round watchtower gone green: moss and
+// ferns over the flags, a sapling through the floor, rain puddles, torches in the wall, and Garret's
+// kitchen hearth in the west wall. The stair up (7,2) is walled in, so the smugglers' block at its
+// mouth (7,4) is the only way to it. The ledger room (x10-12, y1-5) opens only through its
+// tally-seal door (10,6). Every entity sits at its spec coordinates.
 // Format: src/data/maps/index.js. Owner: WP3B.
 import { deepFreeze } from '../../core/freeze.js';
 
@@ -10,22 +12,22 @@ export default deepFreeze({
   lore: [[140, 280, 7, 8]],
   w: 14, h: 16,
   rows: [
-    '##############', // 0
-    '#________#___#', // 1
-    '#______s_#___#', // 2
-    '#________#___#', // 3
-    '#________#___#', // 4
-    '#________#___#', // 5
-    '#________#_###', // 6
-    '#____________#', // 7
-    '#____________#', // 8
-    '#____________#', // 9
-    '#____________#', // 10
-    '#____________#', // 11
-    '#____________#', // 12
-    '#____________#', // 13
-    '#____________#', // 14
-    '######++######', // 15
+    'xxx########xxx', // 0
+    'xx#.._####_#xx', // 1
+    'x#."._#s##__#x', // 2
+    '#_.___#_##,__#', // 3
+    '#t___o___#_,_#', // 4
+    '#_.___oo_#,__#', // 5
+    '*_______.#_###', // 6
+    '#.__________"#', // 7
+    '#"._______T."*', // 8
+    '#t.__"_______#', // 9
+    '*::_..__ww___#', // 10
+    '*::_.___ww_.t#', // 11
+    '#o:__________#', // 12
+    'x#t..______.#x', // 13
+    'xx#___..___#xx', // 14
+    'xxx#*#++#*#xxx', // 15
   ],
   entities: [
     { id: 'garret', kind: 'npc', npc: 'garret', at: [4, 11], face: 'e' },

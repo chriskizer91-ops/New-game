@@ -1,5 +1,8 @@
 // New game: name your Hearthwarden, pick a look, roll ability scores, choose a starter heirloom,
-// then the prologue and the road.
+// then the prologue and the Great Hall (M3: go('world', { arrive: 'new' }); "Skip to the Keep"
+// skips the prologue text). Begin writes the new game through ctx.replaceGame, which backs the old
+// save up to .bak first and marks an M2 save declined.
+// Owner: WP8.
 import { renderHero, HERO_ART, WARDEN_PRESETS, MAT, diceIcon, aspectIcon, renderBackdrop } from '../../art/index.js';
 import { newGame } from '../../rules/gauntlet.js';
 import { relicItem } from '../../rules/loot.js';
@@ -276,7 +279,7 @@ export function mount(root, ctx) {
       const seed = ((Date.now() % 2147483647) ^ Math.floor(Math.random() * 2147483647)) >>> 0;
       const g = newGame({ name: S.name.trim() || 'Wren', starter: S.starter, seed, base: { ...S.scores } });
       const warden = { ...g.party.roster.warden, look: { ...S.look } };
-      ctx.setGame({ ...g, party: { ...g.party, roster: { ...g.party.roster, warden } } });
+      ctx.replaceGame({ ...g, party: { ...g.party, roster: { ...g.party.roster, warden } } });
       ctx.audio.sfx('confirm');
       S.step = 4; render();
     }
@@ -290,7 +293,7 @@ export function mount(root, ctx) {
       { t: 'Mid-sentence, it gutters. Every torch in the hall goes blue. Nobody finishes the sentence.', blue: true },
       { t: 'Fenwick the hearthkeeper is on his feet first. He does not look surprised. He looks caught.', blue: true },
       { t: `He unlocks the reliquary and puts ${starter.name} in your hands. “It woke up a little just now. So did everything else.” Tamsin already has ${taken.name} over her shoulder.` },
-      { t: 'Then the vault door bangs. A Tallyman thief is running for the gate with the Warden’s Seal swinging on his belt. You can see it glint from here.' },
+      { t: 'Then the vault door bangs. A Tallyman thief is backing out of the vault with the Warden’s Seal swinging on his belt. You can see it glint from here.' },
     ];
     let i = 0;
     const wrap = el('section', 'prologue');
@@ -299,7 +302,8 @@ export function mount(root, ctx) {
     scene.append(cv);
     const text = el('p', { class: 'pro-text', 'aria-live': 'polite' });
     const btn = button('Continue', 'btn primary big', () => step(), { 'data-primary': '' });
-    const skip = button('Skip to the road', 'btn ghost', () => { ctx.go('road'); });
+    const enter = () => ctx.go('world', { arrive: 'new' });
+    const skip = button('Skip to the Keep', 'btn ghost', () => { ctx.audio.sfx('confirm'); enter(); });
     wrap.append(scene, text, el('div', 'ng-acts', [btn, skip]));
     body.append(wrap);
     let W = 0, H = 80;
@@ -317,13 +321,13 @@ export function mount(root, ctx) {
       if (L.blue && i === 1) ctx.audio.sfx('phase');
       text.classList.remove('in'); await sleep(isReduced() ? 0 : 60);
       text.textContent = L.t; text.classList.add('in');
-      btn.textContent = i === LINES.length - 1 ? 'Take the road' : 'Continue';
+      btn.textContent = i === LINES.length - 1 ? 'Into the Great Hall' : 'Continue';
       skip.hidden = i === LINES.length - 1;
     };
     function step() {
       if (i < LINES.length - 1) { i++; ctx.audio.sfx('page'); show(); return; }
       ctx.audio.sfx('confirm');
-      ctx.go('road');
+      enter();
     }
     show();
   }

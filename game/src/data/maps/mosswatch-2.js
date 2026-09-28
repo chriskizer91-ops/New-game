@@ -1,6 +1,7 @@
-// The Lamp Room (M3 spec §2.1, §2.3). The dark top floor. Hollis's lantern is the only light until the signal fire is lit.
-// SCAFFOLD DRAFT: exits, anchors, encounters, Hearthfires and the other entities sit at their spec
-// coordinates; the tiles are a simple walkable draft (no pockets or barriers enforce the locks yet).
+// The Lamp Room (M3 spec §2.1, §2.3), the dark top of Mosswatch Tower. The signal fire (6,2) stands
+// on a raised platform behind a parapet whose one gap (6,4) is where Hollis (6,5) keeps the Lantern
+// lit, so the fire is reached past him. The lookout (10,2) sits in the north-east window bay; the
+// stair down is in the south wall. Every entity sits at its spec coordinates.
 // Format: src/data/maps/index.js. Owner: WP3B.
 import { deepFreeze } from '../../core/freeze.js';
 
@@ -10,21 +11,21 @@ export default deepFreeze({
   lore: [[140, 280, 6, 6]],
   w: 12, h: 12,
   rows: [
-    '############', // 0
-    '#__________#', // 1
-    '#__________#', // 2
-    '#__________#', // 3
-    '#__________#', // 4
-    '#__________#', // 5
-    '#__________#', // 6
-    '#__________#', // 7
-    '#__________#', // 8
-    '#__________#', // 9
-    '#__________#', // 10
-    '######s#####', // 11
+    'xxx######xxx', // 0
+    'xx#::::::##x', // 1
+    'x##::::::#:#', // 2
+    '#_#::::::#_#', // 3
+    '#.####:###_#', // 4
+    '#_______o_.#', // 5
+    '#_.____"___#', // 6
+    '#o_______oo#', // 7
+    '#_________o#', // 8
+    'x#._______#x', // 9
+    'xx#..____#xx', // 10
+    'xxx###s##xxx', // 11
   ],
   entities: [
-    { id: 'mw-lantern', kind: 'encounter', enc: 'mw-lantern', mode: 'lair', at: [6, 5], face: 's' },
+    { id: 'mw-lantern', kind: 'encounter', enc: 'mw-lantern', mode: 'lair', at: [6, 5], face: 's', area: [6, 4, 6, 5] },
     { id: 'mw-lantern-light', kind: 'light', at: [6, 5], radius: 3, if: { not: { beaten: 'mw-lantern' } } },
     { id: 'mosswatch-fire', kind: 'hearthfire', at: [6, 2], stand: [6, 3, 'n'], cold: true },
     { id: 'mw-lookout', kind: 'lookout', at: [10, 2] },

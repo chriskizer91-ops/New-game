@@ -1,11 +1,13 @@
 // Item looks for the battle layer.
 //  - RARITY_LOOK / ASPECT_LOOK: shared styling tables (colours, frame materials, glow materials).
-//  - RELIC_ART: hand-made recipe params for the 12 named relics.
+//  - RELIC_ART: hand-made recipe params for the 24 named relics (RELIC_IDS in codex order).
 //  - itemArt(item): deterministic recipe params for ANY rolled item from { kind, rarity, aspect, seed }.
 //  - itemPortrait / itemIcon / cardCorner: the card portrait (prototype treatment) and bag icon.
 //  - lookFor / gearLooks: turn item art into the layer "looks" the hero sprite draws, so the
 //    sword on the card is visibly the sword in the hero's hand.
-import { MAT, hx, hsl, bayer, hash, vnoise, compose, Forge, Xf } from './forge.js';
+//  - Temper (M3): an ItemInstance with temper 1-3 gets tempered art: +1 a glint, +2 the metal lifted one ramp
+//    step (as MAT variants from temperMat), +3 an aspect-coloured edge. Temper 0 renders exactly as before.
+import { MAT, hx, hsl, bayer, hash, vnoise, compose, Forge, Xf, mix } from './forge.js';
 import { RECIPE, renderItem, TX, TX2, mailTex, scaleTex } from './recipes.js';
 import { rimeTex } from './item-art.js';
 import { createRng } from '../core/rng.js';
@@ -61,11 +63,30 @@ const surfTex = (aspect, seed) => {
 };
 const verdTex = seed => ({ x, y, nx, ny, d }) => { const n = vnoise(x * .45, y * .45, seed); return ((nx + ny) > .08 || d < .9) && n > .5 ? { m: 'verdigris', dd: n > .74 ? 1 : 0 } : 0; };
 
-/* ==== the 12 named relics ==== */
+/* ==== the named relics ==== */
 const emberVeins = TX2.cracks(31, 'ember', .036);
 const stoneHead = ({ x, y }) => { const n = vnoise(x * .3, y * .3, 12); const c = Math.abs(vnoise(x * .2, y * .2, 5) - .5); if (c < .035) return { m: 'amber', dd: 0 }; return n > .7 ? -1 : n < .2 ? 1 : (hash(x, y, 3) < .1 ? -1 : 0); };
 const rotSpots = ({ x, y }) => { const n = vnoise(x * .38, y * .38, 17); return n > .74 ? { m: 'rot', dd: 1 } : 0; };
 const mossBlade = ({ x, y, nx, ny }) => (vnoise(x * .5, y * .5, 23) > .74 && (nx + ny) < .1 ? { m: 'moss', dd: 1 } : 0);
+// textures for the M3 relics
+// frost thread stitched down the middle of each finger, as far as the glove reaches
+const LF_FINGERS = [[20, 22, 18, 7], [28, 22, 28, 4], [36, 22, 38, 6], [44, 25, 49, 13], [15, 36, 7, 27]];
+const frostStitch = ({ x, y, u: px, v: py }) => {
+  for (const [a, b, c, d] of LF_FINGERS) { const ex = (c - a) * .64, ey = (d - b) * .64, u = Math.max(.12, Math.min(.95, ((px - a) * ex + (py - b) * ey) / (ex * ex + ey * ey))), qx = a + ex * u - px, qy = b + ey * u - py; if (qx * qx + qy * qy < .3) return (x + y) & 1 ? { m: 'frost', dd: -1 } : -1; }
+  return (x * 3 + y) % 7 === 0 ? -1 : 0;
+};
+const antlerTex = ({ x, y }) => { const n = vnoise(x * .55, y * .55, 71); return n > .7 ? -1 : n < .18 ? 1 : (hash(x, y, 72) < .06 ? -1 : 0); };
+const verdSpots = ({ x, y, nx, ny }) => (vnoise(x * .5, y * .5, 81) > .66 && (nx + ny) > -.2 ? { m: 'verdigris', dd: 0 } : 0);
+const verdBand = ({ x, y }) => (vnoise(x * .42, y * .42, 101) > .62 ? { m: 'verdigris', dd: 0 } : 0);
+const bellPatina = ({ x, y, nx, ny }) => (vnoise(x * .5, y * .5, 91) > .8 && (nx + ny) > .2 ? { m: 'verdigris', dd: 0 } : 0);
+const hailDents = (() => {
+  const D = []; for (let k = 0; k < 16; k++) D.push([13 + hash(k, 1, 61) * 38, 16 + hash(k, 2, 61) * 25, 1.3 + hash(k, 3, 61) * 1.5]);
+  return ({ x, y, u, v }) => { for (const [cx, cy, r] of D) { const dx = u - cx, dy = v - cy, d = dx * dx + dy * dy; if (d < r * r) return d < r * r * .3 ? 0 : dx + dy < 0 ? -1 : 1; } return vnoise(x * .3, y * .9, 62) > .8 ? { m: 'rust', dd: 0 } : 0; };
+})();
+const oathStone = q => TX2.cracks(41, 'amber', .026)(q) || TX2.granite(7)(q);
+// corrosion on the Ichor Mask: dark tarnish, and a few spots where the rot has eaten into the iron
+const maskTarnish = ({ x, y }) => { const n = vnoise(x * .38, y * .38, 17); return n > .8 ? { m: 'rot', dd: -1 } : n > .72 ? { m: 'blackiron', dd: 0 } : 0; };
+const seedTex = ({ x, y, u, v }) => { const g = ((u - 32) * 1.3 + Math.sin(v * .3) * 1.5) % 5; return Math.abs(g) < .7 ? -1 : vnoise(x * .4, y * .4, 83) > .74 ? -1 : 0; };
 export const RELIC_ART = Object.freeze({
   hearthbrand: { r: 'sword', relic: true, fx: 'rise', aspect: 'ember', p: { heat: 1, gripEnd: 15.5, guardT: 4.2, bladeW: 4.2, bladeL: 50, tipL: 9, taper: .86, blade: 'steel', bladeTex: emberVeins, fuller: 'ember', fullerR: 1.15, guard: 'flame', guardMat: 'gold', gem: 'ruby', grip: 'leatherRed', gripR: 2.15, pommel: 'gold', pommelR: 3.6, pommelGem: 'ember' } },
   'stillwater-lance': { r: 'spear', relic: true, fx: 'fall', aspect: 'frost', p: { headT: 58, headL: 24, headW: 4.6, wings: 2.6, haft: 'bone', butt: 'silver', wrap: 'clothBlue', wrapA: 25, wrapB: 37, bands: [21, 40, 51], bandMat: 'silver', socket: 'silver', head: 'steel', headTex: rimeTex, fuller: 'frost', gem: 'sapphire', ribbon: 'clothBlue', haftR: 1.8 } },
@@ -79,6 +100,19 @@ export const RELIC_ART = Object.freeze({
   'thornwatch-boots': { r: 'boots', relic: true, fx: 'spore', aspect: 'verdant', set: 'thornwatch', p: { mat: 'leather', trim: 'hoodGreen', fold: true, vine: 'bramble', buckle: 'bronze', leaf: true, gem: 'verdant', straps: 'leatherDark' } },
   thornwreath: { r: 'crown', relic: true, fx: 'spore', aspect: 'verdant', p: { style: 'thorn', mat: 'bramble', mat2: 'bark', thorn: 'thorn', buds: 'verdant', berries: 'ruby', leaves: 'moss' } },
   briarfang: { r: 'dagger', relic: true, fx: 'spore', aspect: 'verdant', p: { shape: 'fang', curve: 8, gripEnd: 13, guardT: 2.6, bladeL: 41, bladeW: 6.4, blade: 'bone', vein: 'verdant', guard: 'thorn', guardMat: 'bark', thornMat: 'thorn', guardW: 6, grip: 'bramble', gripR: 2.3, pommel: 'bark', pommelShape: 'knot', pommelR: 3.4, pommelGem: 'emerald' } },
+  // ---- M3: the twelve heirlooms of the Verdant Wilds (codex 13-24) ----
+  lightfingers: { r: 'gloves', relic: true, fx: 'fall', aspect: 'frost', p: { mat: 'leatherDark', cuffMat: 'leatherDark', tex: frostStitch, tips: 'skinPale', tipCut: .66, fray: 'leather', trim: 'silver', sigil: 'frost', cuffBand: 'silver', cuffGem: 'sapphire', cuffSet: 'silver', coin: 'gold', coinAt: [27.4, 21.2], coinR: [5, 3.3, .18] } },
+  hartshorn: { r: 'bow', relic: true, fx: 'spark', aspect: 'storm', p: { len: 62, bulge: 10.5, limbR: 3.3, tipR: 1.5, limb: 'stagWhite', limbTex: antlerTex, antler: 'stagWhite', nock: 'silver', grip: 'leatherDark', bindings: [.4, .6], bindMat: 'silver', gem: 'stormglass', gemMat: 'silver', tassel: 'wolfPale', spark: 'storm' } },
+  'mosswatch-lantern': { r: 'focus', relic: true, fx: 'rise', aspect: 'ember', p: { style: 'lantern', metal: 'bronze', frame: 'blackiron', glass: 'topaz', glow: 'ember', core: 'radiant', gem: 'ember', capGem: 'ruby', moss: 'moss', capTex: verdSpots } },
+  'watchkeepers-kettle': { r: 'kettle', relic: true, fx: 'fall', aspect: 'storm', p: { look: 'kettle', mat: 'iron', tex: hailDents, trim: 'bronze', runes: 'storm', gem: 'stormglass', vane: 'bronze', spark: 'storm', rivets: 'bronze' } },
+  'mire-pearl': { r: 'ring', relic: true, fx: 'bubble', aspect: 'tide', p: { style: 'pearl', metal: 'bronze', tex: verdBand, gem: 'pearl', pearlR: 11, sheen: 'seaglass', blush: 'skinPale', toes: 'drake', pads: 'verdigris', reeds: 'seaweed', drips: 'water' } },
+  dawnbell: { r: 'mace', relic: true, fx: 'sparkle', aspect: 'radiant', p: { style: 'bell', headT: 30, bellL: 27, bellR: 12, haft: 'wood', haftR: 2.1, wrap: 'leatherRed', wrapEnd: 16, bands: [20], bandMat: 'gold', pommelMat: 'gold', bell: 'bronze', bellTex: bellPatina, trim: 'gold', glow: 'radiant', clapper: 'gold', sun: 'radiant' } },
+  rootsong: { r: 'staff', relic: true, fx: 'bubble', aspect: 'tide', p: { style: 'song', headT: 54, haft: 'wood', haftR: 2.3, wobble: .6, spiral: 'bark', holes: 'dark', holeRim: 'thorn', foot: 'bronze', bands: [], orb: 'water', orbR: 6.4, roots: 'bark', leaves: 'moss', berries: 'ruby', thorns: 'rotwood' } },
+  oathshield: { r: 'shield', relic: true, fx: 'dust', aspect: 'stone', p: { style: 'oath', shape: 'heater', face: 'granite', faceTex: oathStone, rim: 'bronze', rivets: 'bronze', chief: 'bronze', inscribe: 'amber', notches: 'dark', wreath: 'bronze', boss: 'bronze', gem: 'topaz' } },
+  'isoldes-oath': { r: 'sword', relic: true, fx: 'fall', aspect: 'frost', p: { gripEnd: 15, guardT: 3.6, bladeW: 3.9, bladeL: 50, tipL: 10, taper: .9, blade: 'steel', bladeTex: rimeTex, fuller: 'frost', fullerR: 1.05, guard: 'oath', guardMat: 'silver', guardW: 10.5, gem: 'sapphire', grip: 'clothBlue', gripR: 2.15, pommel: 'silver', pommelR: 3.5, pommelGem: 'sapphire', ribbon: 'cloakRed' } },
+  'ichor-mask': { r: 'helm', relic: true, fx: 'rise', aspect: 'blight', p: { look: 'helm', style: 'mask', mat: 'iron', tex: maskTarnish, trim: 'bronze', eyes: 'blight', ichor: 'sap', bark: 'bark', stamp: 'gold', strap: 'leatherDark', crest: false } },
+  'first-seed': { r: 'amulet', relic: true, fx: 'spore', aspect: 'verdant', p: { style: 'seed', scale: 1.2, chain: 'wood', metal: 'gold', seed: 'thorn', seedTex, glow: 'verdant', veins: 1, gem: 'emerald', leaf: 'moss', bud: 'verdant', stem: 'moss' } },
+  'vale-gauntlets': { r: 'gauntlets', relic: true, fx: 'spark', aspect: 'storm', p: { mat: 'silver', plate: 1, cuffMat: 'silver', flare: 1, trim: 'gold', cuffBand: 'gold', knuckles: 'gold', engrave: 'blackiron', bolt: 'storm', cuffGem: 'stormglass' } },
 });
 export const RELIC_IDS = Object.keys(RELIC_ART);
 
@@ -203,22 +237,102 @@ const BASE_HINT = {
 };
 
 const artCache = lru(4000);
-// itemArt(item) -> { r, p, ... } recipe params. Accepts an ItemInstance ({ base, kind, rarity, aspect, seed }),
+// itemArt(item) -> { r, p, ... } recipe params. Accepts an ItemInstance ({ base, kind, rarity, aspect, seed, temper }),
 // a relic id string, or an art object (returned as-is). Deterministic: same inputs, same look.
+// An item with temper 1-3 gets its own tempered art object (art.temper = n); temper 0 returns the plain art.
 export function itemArt(item) {
   if (!item) return null;
   if (typeof item === 'string') return RELIC_ART[item] || null;
   if (item.r && item.p) return item;
-  for (const k of [item.base, item.relic, item.id]) if (k && RELIC_ART[k]) return RELIC_ART[k];
+  const n = temperOf(item);
+  for (const k of [item.base, item.relic, item.id]) if (k && RELIC_ART[k]) return n ? tempered(RELIC_ART[k], n) : RELIC_ART[k];
   const gen = GEN[item.kind];
   if (!gen) return null;
   const key = `${item.kind}|${item.rarity}|${item.aspect || '-'}|${item.seed ?? 0}`;
-  return artCache.get(key + '|' + (item.base || ''), () => {
+  const art = artCache.get(key + '|' + (item.base || ''), () => {
     const a = gen(ctxFor(item)), h = BASE_HINT[item.base];
     if (h) { Object.assign(a.p, h.p); if (h.k) a.k = h.k; }
     a.kind = item.kind; a.rarity = item.rarity; a.aspect = item.aspect || null; a.base = item.base || null;
     return a;
   });
+  return n ? tempered(art, n) : art;
+}
+
+/* ==== temper (M3 spec §3.9): +1 adds a glint, +2 lifts the metal one ramp step, +3 adds an aspect-coloured edge ====
+   Each step keeps the ones below it. Temper 0 (every M2 item) never reaches this code. */
+export const TEMPER_MAX = 3;
+export function temperOf(item) {
+  const n = item && typeof item === 'object' ? Math.floor(+item.temper || 0) : 0;
+  return n < 0 ? 0 : n > TEMPER_MAX ? TEMPER_MAX : n;
+}
+const edgeGlow = aspect => (ASPECT_LOOK[aspect] ? ASPECT_LOOK[aspect].glow : 'radiant');
+// temperMat(mat, n, aspect, any) -> a material key. At n >= 2 a metal (or, with `any`, any non-glowing material)
+// becomes a variant registered in MAT: its ramp lifted one step, and at n >= 3 its two darkest steps tinted by the
+// aspect's glow. Registering the variants in MAT lets the hero sprite and walkers draw them by name like any other.
+export function temperMat(m, n, aspect, any = false) {
+  const b = MAT[m];
+  if (n < 2 || !b || b.emit || b.temper || !(b.metal || any)) return m;
+  const edge = n >= 3 ? edgeGlow(aspect) : '', key = `${m}^${edge}`;
+  if (!MAT[key]) {
+    const p = b.pal, pal = [p[1], p[2], p[3], p[4], p[5], mix(p[5], [255, 255, 255], .45)];
+    if (edge) { const g = MAT[edge].pal; pal[0] = mix(g[1], p[1], .3); pal[1] = mix(g[2], p[2], .45); }
+    MAT[key] = Object.assign({}, b, { pal: pal.map(c => c.map(Math.round)), temper: n, of: m });
+  }
+  return key;
+}
+// recipe params that hold names but are not materials
+const NOT_MAT = new Set(['look', 'style', 'shape', 'paint', 'guard', 'pommelShape', 'back', 'glyphShape']);
+// What brightens: the metal, when metal is at least a fifth of the item at 64px; otherwise (a leather jerkin with
+// one buckle, a bow, a robe) every material that does not glow. Decided once per item, so card, icon, hero and
+// walker agree.
+const shareCache = lru(600);
+const mostlySoft = art => shareCache.get(objId(art), () => { const R = itemRaster(art, 64); let all = 0, metal = 0; for (let i = 0; i < R.own.length; i++) if (R.own[i] >= 0) { all++; if (MAT[R.mat[i]].metal) metal++; } return metal < all * .2; });
+function temperArt(art, n) {
+  const p = art.p, q = Object.assign({}, p), any = mostlySoft(art);
+  if (n >= 2) for (const k of Object.keys(p)) if (!NOT_MAT.has(k) && typeof p[k] === 'string' && MAT[p[k]]) q[k] = temperMat(p[k], n, art.aspect, any);
+  return Object.assign({}, art, { p: q, temper: n, temperAll: any });
+}
+const temperCache = lru(600);
+const tempered = (art, n) => temperCache.get(objId(art) + '|' + n, () => temperArt(art, n));
+// the raster with every metal pixel on its tempered variant (materials the recipe picks by default included)
+const tRasterCache = lru(300);
+function temperedRaster(art, size) {
+  return tRasterCache.get(objId(art) + '@' + size, () => {
+    const R = itemRaster(art, size);
+    if (art.temper < 2) return R;
+    const mat = R.mat.slice();
+    for (let i = 0; i < mat.length; i++) if (mat[i]) mat[i] = temperMat(mat[i], art.temper, art.aspect, !!art.temperAll);
+    return Object.assign({}, R, { mat });
+  });
+}
+// the +1 glint: a second bright point on the metal, about a third of the item away from the first
+const glint2Cache = lru(300);
+function temperGlint(art, size) {
+  return glint2Cache.get(objId(art) + '@' + size, () => {
+    const R = itemRaster(art, size), g = glintPoint(art, size), { w, h, own, idx, mat } = R, want = size * .3;
+    let best = null, bs = -1e9;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = y * w + x; if (own[i] < 0 || idx[i] < 3) continue; const m = MAT[mat[i]]; if (!m.metal && !m.gem) continue;
+      const d = g ? Math.hypot(x - g[0], y - g[1]) : want, s = idx[i] * 2 - Math.abs(d - want) * .6;
+      if (s > bs) { bs = s; best = [x, y]; }
+    }
+    return best || g;
+  });
+}
+// the +3 edge: the outline around tempered metal takes the aspect's glow, with a soft second ring on portraits
+function temperEdge(img, R, art, soft) {
+  const { w, h, own, mat } = R, d = img.data, g = MAT[edgeGlow(art.aspect)].pal, c1 = g[3], c2 = g[2];
+  const hot = (x, y) => x >= 0 && y >= 0 && x < w && y < h && own[y * w + x] >= 0 && (MAT[mat[y * w + x]].temper || 0) >= 3;
+  const ring = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { if (own[y * w + x] >= 0) continue; if (hot(x - 1, y) || hot(x + 1, y) || hot(x, y - 1) || hot(x, y + 1)) ring[y * w + x] = 1; }
+  for (let i = 0; i < w * h; i++) {
+    if (ring[i]) { const j = i * 4; d[j] = c1[0]; d[j + 1] = c1[1]; d[j + 2] = c1[2]; d[j + 3] = 255; continue; }
+    if (!soft || own[i] >= 0) continue;
+    const x = i % w, y = (i / w) | 0;
+    if (!((x > 0 && ring[i - 1]) || (x < w - 1 && ring[i + 1]) || (y > 0 && ring[i - w]) || (y < h - 1 && ring[i + w]))) continue;
+    const j = i * 4, a = .38 * (d[j + 3] ? 1 : .8);
+    d[j] = d[j] * (1 - a) + c2[0] * a; d[j + 1] = d[j + 1] * (1 - a) + c2[1] * a; d[j + 2] = d[j + 2] * (1 - a) + c2[2] * a; d[j + 3] = Math.max(d[j + 3], 150);
+  }
 }
 
 /* ==== portraits & icons ==== */
@@ -273,7 +387,7 @@ export function motes(kind, t, w, h, n, rampCols) {
 export function itemPortrait(item, o = {}) {
   const art = itemArt(item); if (!art) return null;
   const size = o.size || 64, t = o.reduced ? 0 : (o.t || 0), rar = o.rarity || item.rarity || art.rarity || (art.relic ? 'heirloom' : 'worn');
-  const L = RARITY_LOOK[rar] || RARITY_LOOK.worn, R = itemRaster(art, size), k = size / 64;
+  const L = RARITY_LOOK[rar] || RARITY_LOOK.worn, R = art.temper ? temperedRaster(art, size) : itemRaster(art, size), k = size / 64;
   const hue = o.hue ?? (170 + t * 30) % 360;
   const oo = { bg: portraitBg(rar, t, size), shadow: [Math.max(1, Math.round(2 * k)), Math.max(1, Math.round(2 * k)), [0, 0, 0], .35], rim: hx(L.rim), hue };
   if (L.tier >= 3) oo.aura = [L.gem === 'prism' ? hsl(hue, .8, .62) : hx(L.aura), Math.max(1, Math.round(2 * k)), .32 + (o.reduced ? 0 : Math.sin(t * 2.2) * .06)];
@@ -281,16 +395,24 @@ export function itemPortrait(item, o = {}) {
   if (!o.reduced && L.tier >= 3) oo.flicker = Math.floor(t * 8);
   const g = glintPoint(art, size), gp = (t % 3.2) / 3.2;
   if (g && (o.reduced || gp < .16 || L.tier >= 5)) oo.glints = [[g[0], g[1], o.reduced ? 1 : gp < .05 || gp > .11 ? 1 : 2]];
+  if (art.temper) { const g2 = temperGlint(art, size), gq = ((t + 1.1) % 2.3) / 2.3; if (g2) (oo.glints || (oo.glints = [])).push([g2[0], g2[1], o.reduced ? 1 : gq < .1 ? 2 : 1]); }
   const asp = art.aspect || item.aspect, fx = art.fx || (asp && ASPECT_LOOK[asp] ? ASPECT_LOOK[asp].mote : null);
   if (!o.reduced && fx && (L.tier >= 3 || art.relic)) { const glowMat = asp ? ASPECT_LOOK[asp].glow : 'ember'; oo.particles = motes(fx, t, size, size, Math.round((6 + L.tier) * k), MAT[glowMat].pal); }
-  if (o.develop !== undefined) { oo.develop = o.develop; oo.silhouette = hx(o.silhouette || '#0b0910'); }
-  return compose(R, oo);
+  // develop 0 is a pure silhouette (the Codex's unsighted relics, unidentified cards): no coloured halos round it
+  if (o.develop !== undefined) { oo.develop = o.develop; oo.silhouette = hx(o.silhouette || '#0b0910'); if (o.develop <= 0) oo.glow = false; }
+  if (!(art.temper >= 3) || (o.develop !== undefined && o.develop < 1)) return compose(R, oo);
+  const img = compose(R, oo); temperEdge(img, R, art, true); return img;
 }
-// itemIcon(itemOrArt, { size=16 }) -> ImageData (bag icon; no halos)
+// itemIcon(itemOrArt, { size=16 }) -> ImageData (bag icon; no halos). Tempered items keep a glint and their edge.
 export function itemIcon(item, o = {}) {
   const art = itemArt(item); if (!art) return null;
   const size = o.size || 16;
-  return iconCache.get(objId(art) + '@' + size, () => compose(itemRaster(art, size), { glow: false, hue: 170 }));
+  if (!art.temper) return iconCache.get(objId(art) + '@' + size, () => compose(itemRaster(art, size), { glow: false, hue: 170 }));
+  return iconCache.get(objId(art) + '@' + size, () => {
+    const R = temperedRaster(art, size), g = glintPoint(art, size), img = compose(R, { glow: false, hue: 170, glints: g ? [[g[0], g[1], 1]] : null });
+    if (art.temper >= 3) temperEdge(img, R, art, false);
+    return img;
+  });
 }
 // cardCorner(rarity) -> 16x16 ImageData corner ornament for the rarity frame (top-left; mirror for others)
 const cornerCache = lru(16);
@@ -307,7 +429,21 @@ export function cardCorner(rar) {
 /* ==== item art -> hero sprite layer looks ==== */
 export const SLOTS = ['weapon', 'offhand', 'head', 'body', 'hands', 'feet', 'amulet', 'ring'];
 const glowOf = p => p && (p.fuller || p.runes || p.edge || p.vein || p.tally || p.glow || (p.heat ? 'ember' : null) || null);
+// A tempered item's look draws through its tempered materials (+2, +3) and carries temper: n. A tempered weapon
+// also sets relic, which makes the battle sprite glint it (+1). glint marks what a small sprite should give a
+// 1-px glint: relics, heirloom-and-up items and anything tempered. At +3, edge is the CSS colour of the
+// aspect-coloured edge, for rigs that draw their own outline.
 export function lookFor(slot, art) {
+  const L = lookOf(slot, art);
+  if (!L) return L;
+  if (art.relic || rarityTier(art.rarity) >= 5 || art.temper) L.glint = true;
+  if (art.temper) {
+    L.temper = art.temper; if (slot === 'weapon') L.relic = true;
+    if (art.temper >= 3) L.edge = '#' + MAT[edgeGlow(art.aspect)].pal[3].map(v => v.toString(16).padStart(2, '0')).join('');
+  }
+  return L;
+}
+function lookOf(slot, art) {
   if (!art || !art.p) return null;
   const { r, p } = art, id = objId(art);
   switch (slot) {

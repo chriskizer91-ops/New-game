@@ -6,7 +6,8 @@
   "scripts": {
     "build": "node tools/build.mjs",
     "test": "node --test test/*.test.mjs",
-    "lint": "eslint src test tools"
+    "lint": "eslint src test tools",
+    "atlas": "node tools/make-atlas.mjs"
   },
   "devDependencies": {
     "esbuild": "0.28.2"

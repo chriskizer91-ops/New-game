@@ -1,6 +1,11 @@
-// The Heartroot (M3 spec §2.1, §2.3). Under the Eldest Tree: two ichor pools, the sap-tappers, the missing patrol, and a rot-knot side passage.
-// SCAFFOLD DRAFT: exits, anchors, encounters, Hearthfires and the other entities sit at their spec
-// coordinates; the tiles are a simple walkable draft (no pockets or barriers enforce the locks yet).
+// The Heartroot (M3 spec §2.1, §2.3). Root tunnels under the Eldest Tree. From the tree door (12,23)
+// the direct way north crosses the ichor lake (pool a), which fills its chamber wall to wall. The
+// walled tunnels either side are the long way round: west past the sapwight, east past the missing
+// patrol (19,11), who stands in the tunnel's only gap. The upper cavern holds the sap-tappers at the
+// tapped roots (north-west) and pool b in its alcove (north-east), the chest on a root hump in the
+// middle. The rot-knot (2,12) is the only way into the crack up to the cache (1,9). The Last Green
+// Coal glows in its hollow (south-west), the grubs nest in root-mulch (south-east), and the way on to
+// the Heart Chamber darkens (12,0). Every entity sits at its spec coordinates.
 // Format: src/data/maps/index.js. Owner: WP3B.
 import { deepFreeze } from '../../core/freeze.js';
 
@@ -10,29 +15,29 @@ export default deepFreeze({
   lore: [[192, 152, 12, 12]],
   w: 24, h: 24,
   rows: [
-    'RRRRRRRRRRRRrRRRRRRRRRRR', // 0
-    'RrrrrrrrrrrrrrrrrrrrrrrR', // 1
-    'RrrrrrrrrrrrrrrrrrrrrrrR', // 2
-    'RrrfrrrrrrrrrrrrrrrrrrrR', // 3
-    'RrrrrrrrrrrrrrrrrrrrfrrR', // 4
-    'RrrrrrrrrrrrrrrrrrrrrrrR', // 5
-    'RrrrrrrrrrrrrrrriiiirrrR', // 6
-    'RrrrrrrrrrrrrrrriiiirrrR', // 7
-    'RrrrrrrrrrfrrrrriiiirrrR', // 8
-    'RrrrrrrrrrrrrrrrrrrrrrrR', // 9
-    'RrrrrrrrrrrrrrrrrrrrrrrR', // 10
-    'RrrrrrrrrrrrrrrrrrrrrrrR', // 11
-    'RrrrrrrriiiiiiiirrrrrrrR', // 12
-    'RrrrrrrriiiiiiiirrrrrrrR', // 13
-    'RrrrrrrriiiiiiiirrrrrrrR', // 14
-    'RrrrrrrrrrrrrrrrrrrrrrrR', // 15
-    'RrrrrrrrrrrrrrrrrrrrrrrR', // 16
-    'RrrrrrrrrrrrrrrrrrrrrrrR', // 17
-    'RrrrrrfrrrrrrrrrrrrrrrrR', // 18
-    'RrrrrrrrrrrrrrrrrrrrrrrR', // 19
-    'RrrrrrrrrrrrrrrrrrfrrrrR', // 20
-    'RrrrrrrrrrrrrrrrrrrrrrrR', // 21
-    'RrrrrrrrrrrrrrrrrrrrrrrR', // 22
+    'RRRRRRRRRRRRkRRRRRRRRRRR', // 0
+    'RRRRRRRRRRRkkkRRRRRRRRRR', // 1
+    'RRRRRRRRRRrkkkrRRRRRRRRR', // 2
+    'RRRRYYRRRrrrkrrrRRRRRRRR', // 3
+    'RRRrrrrrrrrrrrrfRRRRRRRR', // 4
+    'RRYrrrrrrrrrrrrrRRRRRRRR', // 5
+    'RRYrrrrrYrrYrrrriiiiRRRR', // 6
+    'RRYrrrrrYrrYrrrririiRRRR', // 7
+    'RRRRrrrrfrrrrrrriiiiRRRR', // 8
+    'RrRRRrrrrrrrrYfrrrrRRRRR', // 9
+    'RrRRRrrYrrrrrrrrrrrRRRRR', // 10
+    'RrRrrrRRrrrfrrrrRrrrrrRR', // 11
+    'RrrrrrRRiiiiiiiiRRRrrrRR', // 12
+    'RRRrrrRRiiiiiiiiRRRrfrRR', // 13
+    'RRRfrrRRiiiiiiiiRRRrrrRR', // 14
+    'RRRrrrRRrrrrrrrrRRRrrrRR', // 15
+    'RRRrrrrrrrrfrrrrrmmrrrRR', // 16
+    'RRRrrrrrrYrrrYrrmmmmrRRR', // 17
+    'RRrrrrRrrrrrrrrmmmmmrRRR', // 18
+    'RRfrrrrrrrrrrrrrmmmmrRRR', // 19
+    'RRrrrrrrfrrrrrrrrmmrrRRR', // 20
+    'RRrrrrrRRRRrrrRRRRRRRRRR', // 21
+    'RRRRRRRRRRRrrrRRRRRRRRRR', // 22
     'RRRRRRRRRRRRrRRRRRRRRRRR', // 23
   ],
   entities: [

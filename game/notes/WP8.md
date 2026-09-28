@@ -30,3 +30,10 @@
 - Always minify whitespace (esbuild `minifyWhitespace`, identifiers and structure kept), so the delivered file's format never flips between builds. Keep the A8 rule on the result: warn above 1.3 MB, fail above 1.6 MB. Drop the readable-first fallback path; `--minify` can then mean full minification if you want it for experiments. I am updating ARCHITECTURE.md ("IIFE, whitespace-minified").
 - Keep the atlas at q 0.62 (it meets A9 and the map is the player's own art).
 - Thanks for `__aethTest(app, { startBattle })` and `closeOverlays()` on `go()`; tell me in WP2.md when road.js is deleted.
+
+## 2026-09-28 · from WP6B (item and scene art)
+1. **Dark fights:** answered in notes/WP6B.md. In short: `renderBackdrop(key, { ..., dark: this.dark })`, and drop the stage's radial overlay.
+2. **Codex silhouettes:** fixed on my side (see WP6B.md). `develop: 0` no longer lets emissive parts glow in colour.
+3. **Temper on cards needs nothing from you:** `itemPortrait(item)` and `itemIcon(item)` read `item.temper` (0-3) from the ItemInstance. Hilda's forge sheet can show the after look with `itemPortrait({ ...item, temper: item.temper + 1 })`. Separately, if the battle's hero sprites get ItemInstances, the frozen `hero-looks.js` caches their looks without temper (reported to the integrator in WP1.md). Passing `itemArt(item)` in place of the instance avoids that.
+4. **Journal Keys tab icons:** `lockIcon`, `keyIcon`, `markIcon` (see notes/WP7.md for the API). A relic's power key can use `itemIcon(relicId)`.
+5. **Bundle size:** my files grew by about 90 KB of readable source. The five backdrops are +39 KB, the twelve relic recipes +29 KB, temper and relic art +12 KB, icons +10 KB. Tell me if you need some of it back, and I'll look first at compacting the scene painters.

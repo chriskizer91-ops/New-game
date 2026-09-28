@@ -1,9 +1,10 @@
 // Dev harness for the battle screen (bundled by tools/dev-battle.mjs into tools/shots/dev-battle.html).
-// Starts any Gauntlet node or a patrol from a fresh or levelled newGame, via the URL hash:
+// Starts any encounter or a roaming patrol from a fresh or levelled newGame, via the URL hash:
 //
-//   #node=oldsnag&level=5            node id or alias (tallyman, rabble, hounds, toll, edge, rotstag,
-//                                    camp, oldsnag, deep, briarmaw) and party level
-//   &patrol=1                        a rabble patrol at that node instead of its fight
+//   #node=oldsnag&level=5            encounter id or alias (tallyman, rabble, hounds, toll, edge, rotstag,
+//                                    camp, oldsnag, deep, briarmaw; lantern, duel, rotwarden) and party level
+//   &patrol=1                        a roaming rabble patrol (M3 startBattle { patrol: { spawns, where,
+//                                    backdrop } }) from that node's backdrop instead of its fight
 //   &seed=7 &starter=cairnmaul       newGame seed and starter relic
 //   &speed=4 &auto=1 &reduced=1      battle settings
 //   &surge=100                       pre-fill every hero's Legend Surge gauge
@@ -11,20 +12,24 @@
 //   &hooks=1                         enable window.__btPauseOn / __btResume (e2e screenshots)
 //   &pause=legend,phase              event types to pause on from the very start (with hooks=1)
 //
-// Not part of the game build.
+// Not part of the game build. Owner: WP8.
 import '../src/ui/theme.css';
 import { createApp } from '../src/ui/app.js';
 import * as battleScreen from '../src/ui/screens/battle.js';
 import { newGame, startBattle } from '../src/rules/gauntlet.js';
+import { escalateSpawn } from '../src/rules/foe.js';
 import { grantXp, xpForLevel } from '../src/rules/progression.js';
 import { deriveHero } from '../src/rules/stats.js';
 import { createRng } from '../src/core/rng.js';
-import { ENCOUNTERS, GAUNTLET } from '../src/data/encounters.js';
+import { ENCOUNTERS, GAUNTLET, PATROLS } from '../src/data/encounters.js';
+import { FOES } from '../src/data/foes.js';
 
 const ALIAS = {
   tallyman: 'keep-vault', vault: 'keep-vault', rabble: 'hearth-road', road: 'hearth-road', hounds: 'waymarker-stones',
   toll: 'bramble-toll', edge: 'verdant-edge', rotstag: 'rotstag-glade', stag: 'rotstag-glade', camp: 'tally-camp',
   oldsnag: 'snag-wallow', snag: 'snag-wallow', deep: 'bramble-deep', briarmaw: 'briarmaw-den', boss: 'briarmaw-den',
+  // M3: a fight in the dark (battle.ctx.dark), the Tamsin duel (ctx.duel), the Rotwarden
+  lantern: 'mw-lantern', dark: 'mw-lantern', duel: 'tamsin-duel', tamsin: 'tamsin-duel', rotwarden: 'rotwarden-heart',
 };
 
 const params = Object.fromEntries(window.location.hash.replace(/^#/, '').split('&').filter(Boolean).map(kv => {
@@ -65,16 +70,25 @@ function levelParty(game, lvl, surge) {
   return game;
 }
 
+// A roaming rabble patrol for this node's backdrop, at the level of the strongest rabble on the
+// Gauntlet up to it (what the M2 road's patrols used), escalated for the Waking.
+function patrolFor(game, id) {
+  const node = ENCOUNTERS[id];
+  const upTo = Math.max(0, GAUNTLET.indexOf(id));
+  const levels = GAUNTLET.slice(0, upTo + 1).flatMap(n => (ENCOUNTERS[n].spawns || []).filter(s => FOES[s.family].tier === 'rabble').map(s => s.level));
+  const lvl = Math.max(1, ...levels);
+  const sets = PATROLS[node.backdrop] || PATROLS['hearth-road'];
+  const set = sets[seed % sets.length];
+  const spawns = set.map((sp, i) => escalateSpawn({ ...sp, level: lvl }, game.progress.waking, `dev-patrol#${i}`));
+  return { spawns, where: node.place, backdrop: node.backdrop };
+}
+
 function makeBattle() {
   let game = newGame({ name: params.name || 'Wren', starter: params.starter || 'hearthbrand', seed });
   game = levelParty(game, level, params.surge != null ? Number(params.surge) : null);
   if (!ENCOUNTERS[nodeId]) throw new Error(`Unknown node ${nodeId}`);
-  if (params.patrol) {
-    game.progress.node = nodeId;
-    return startBattle(game, { patrol: true });
-  }
+  if (params.patrol) return startBattle(game, { patrol: patrolFor(game, nodeId) });
   if (ENCOUNTERS[nodeId].type !== 'fight') throw new Error(`${nodeId} is not a fight`);
-  game.progress.node = nodeId;
   return startBattle(game, { nodeId });
 }
 
@@ -96,12 +110,12 @@ const aftermath = {
     root.append(h, pre, again);
   },
 };
-const road = { mount(root) { root.textContent = 'Road (stub)'; } };
+const world = { mount(root) { root.textContent = 'World (stub)'; } };
 
 const settings = { battleSpeed: Number(params.speed) || 1, battleAuto: params.auto === '1', reducedMotion: params.reduced === '1', sound: false };
 try { localStorage.setItem('aethermoor.settings.v1', JSON.stringify(settings)); } catch { /* storage blocked */ }
 
-const ctx = createApp(document.getElementById('app'), { battle: battleScreen, aftermath, road });
+const ctx = createApp(document.getElementById('app'), { battle: battleScreen, aftermath, world }, { aliases: { road: 'world' } });
 if (params.svc) {
   window.__svcCalls = [];
   ctx.services.cardSlam = (item, o) => { window.__svcCalls.push(['cardSlam', item?.name, o?.name]); return new Promise(r => setTimeout(r, 300)); };
@@ -111,7 +125,7 @@ try {
   const { game, battle } = makeBattle();
   ctx.setGame(game);
   window.__battleStart = { node: nodeId, level, seed, foes: battle.order.filter(id => battle.units[id].side === 'foe').map(id => battle.units[id].name) };
-  ctx.go('battle', { battle, returnTo: 'road' });
+  ctx.go('battle', { battle, returnTo: 'world' });
 } catch (e) {
   document.getElementById('app').textContent = `Dev harness error: ${e.message}. Nodes: ${GAUNTLET.join(', ')}`;
   throw e;

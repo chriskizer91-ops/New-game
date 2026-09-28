@@ -7,6 +7,11 @@ import { diceIcon, DICE, statusIcon, STATUS_KEYS, aspectIcon, gripIcon, digitsIm
 import { renderBackdrop, backdropLayers, BACKDROP_KEYS, BACKDROPS } from '../src/art/scenes.js';
 import { renderHero, heroBust, HERO_KEYS, HERO_ART, WARDEN_PRESETS } from '../src/art/hero-looks.js';
 import { RELIC_ART, RELIC_IDS, RARITY_ORDER, RARITY_LOOK, ASPECTS, itemArt, itemPortrait, itemIcon, cardCorner, ITEM_KINDS } from '../src/art/item-looks.js';
+import { walkerSheet, WALKER_ROWS } from '../src/art/walkers.js';
+import { tileAtlas, buildTileAtlas, BIOMES, TILE_PX } from '../src/art/tiles.js';
+import { TILE_IDS } from '../src/data/tiles.js';
+import { npcSheet, mapFoeSheet, objectSprite, emote, OBJECT_KINDS, OBJECT_STATES, HEARTH_LOOKS, EMOTES, MAP_FOE_SIZE } from '../src/art/map-sprites.js';
+import { NPCS } from '../src/data/npcs.js';
 
 const app = document.getElementById('app');
 const only = (window.location.hash.match(/only=([^&]+)/) || [])[1];
@@ -238,6 +243,190 @@ if (want('icons')) {
   fig(r5, digitsImage('0123456789', { color: '#ecdfc3' }), 4, '3x5'); fig(r5, digitsImage('0123456789', { font: '4x6', color: '#ffcb66' }), 4, '4x6'); fig(r5, digitsImage('-12', { font: '4x6', color: '#ee6c54', outline: true }), 4, 'outlined');
 }
 
+
+/* ======================================================================
+   M3 overworld art (WP5): tilesets, walkers, NPCs, map foes, objects, emotes
+   ====================================================================== */
+function crop(img, x, y, w, h) {
+  const out = new ImageData(w, h), s = img.data, d = out.data;
+  for (let yy = 0; yy < h; yy++) for (let xx = 0; xx < w; xx++) {
+    const X = x + xx, Y = y + yy; if (X < 0 || Y < 0 || X >= img.width || Y >= img.height) continue;
+    const i = (Y * img.width + X) * 4, j = (yy * w + xx) * 4; d[j] = s[i]; d[j + 1] = s[i + 1]; d[j + 2] = s[i + 2]; d[j + 3] = s[i + 3];
+  }
+  return out;
+}
+const GROUND_BG = '#2c3a24';
+// gear states for the walker review: starter kit, mid-game rolled gear, late relics
+const WALKER_KITS = {
+  warden: [
+    ['starter', undefined],
+    ['mid: Stillwater + rolled', { weapon: 'stillwater-lance', head: { kind: 'kettle', rarity: 'tempered', aspect: 'frost', seed: 9 }, body: { kind: 'mail', rarity: 'runed', seed: 2 }, hands: { kind: 'gloves', rarity: 'wrought', seed: 1 }, feet: { kind: 'boots', rarity: 'tempered', seed: 1 }, amulet: { kind: 'amulet', rarity: 'runed', aspect: 'frost', seed: 3 } }],
+    ['late: Hearthbrand, Seal, runed helm, plate', { weapon: { base: 'hearthbrand', kind: 'sword', rarity: 'heirloom', aspect: 'ember', temper: 2, seed: 1 }, offhand: { kind: 'shield', rarity: 'heirloom', aspect: 'stone', seed: 11 }, amulet: 'wardens-seal', head: { kind: 'helm', rarity: 'runed', aspect: 'ember', seed: 3 }, body: { kind: 'plate', rarity: 'storied', aspect: 'ember', seed: 4 }, hands: { kind: 'gauntlets', rarity: 'runed', seed: 2 }, feet: { kind: 'boots', rarity: 'tempered', seed: 5 } }],
+  ],
+  pip: [
+    ['starter', undefined],
+    ['mid: Tallyknife + rolled', { weapon: 'tallyknife', head: { kind: 'circlet', rarity: 'storied', aspect: 'blight', seed: 1 }, body: { kind: 'leather', rarity: 'runed', aspect: 'blight', seed: 5 }, feet: { kind: 'boots', rarity: 'tempered', seed: 5 }, hands: { kind: 'gloves', rarity: 'tempered', seed: 6 } }],
+    ['late: Thornwatch Regalia + Briarfang', { weapon: 'briarfang', head: 'thornwatch-hood', body: 'thornwatch-jerkin', feet: 'thornwatch-boots', hands: { kind: 'gloves', rarity: 'tempered', seed: 6 } }],
+  ],
+  bryn: [
+    ['starter', undefined],
+    ['mid: rolled staff + Rotwood Circlet', { weapon: { kind: 'staff', rarity: 'regalia', aspect: 'verdant', seed: 5 }, head: 'rotwood-circlet', body: { kind: 'robe', rarity: 'runed', aspect: 'blight', seed: 8 }, feet: { kind: 'boots', rarity: 'wrought', seed: 2 } }],
+    ['late: Thornsplitter + Thornwreath', { weapon: 'thornsplitter', head: 'thornwreath', body: { kind: 'robe', rarity: 'heirloom', aspect: 'verdant', seed: 3 }, feet: { kind: 'boots', rarity: 'wrought', seed: 2 } }],
+  ],
+  alondra: [
+    ['starter', undefined],
+    ['mid: Cairnmaul + rolled', { weapon: 'cairnmaul', head: { kind: 'hood', rarity: 'tempered', aspect: 'radiant', seed: 4 }, body: { kind: 'robe', rarity: 'runed', aspect: 'radiant', seed: 6 }, feet: { kind: 'boots', rarity: 'wrought', seed: 3 }, amulet: { kind: 'amulet', rarity: 'tempered', seed: 2 } }],
+    ['late: storied mace, heirloom focus, Seal', { weapon: { kind: 'mace', rarity: 'storied', aspect: 'radiant', seed: 5 }, offhand: { kind: 'focus', rarity: 'heirloom', aspect: 'radiant', seed: 2 }, amulet: 'wardens-seal', body: { kind: 'robe', rarity: 'primal', aspect: 'radiant', seed: 1 }, head: { kind: 'circlet', rarity: 'heirloom', aspect: 'radiant', seed: 4 }, feet: { kind: 'boots', rarity: 'storied', seed: 2 } }],
+  ],
+};
+
+// sample scenes per biome, drawn exactly as the world renderer bakes them: atlas.cell() ground ops
+// row by row, then y-sorted sprites, then the overhead ops
+const SCENES = {
+  keep: ['~~~~~~~~~bb~~~~~~~~~~~', '~####*###bb###*#####~~', '~#::::::::::::::::.T#~', '~#:HHHHHHHH:::::....#~', '~#:HHHHHHHH:::,,,...#~', '~#:###*+*##:::,T,:..#~', '~#:::::::::::::::::::b', '~#.T..:::::_____::::#~', '~#....:::::_____:::t#~', '~#,,..:::::_____::::#~', '~####+############*##~', '~~~~bb~~~~~~~~~~~~~~~~'],
+  wilds: ['TTTTTTT....."""..TTTTTT', 'TTTTT.....====....TTTTT', 'TT,..."".==..,=....TTTT', 'T..o..."".=....==......', '...t....==......==...o.', '^^^^^^vv^=^^^^^^^=^^^^^', '.......==..,,....==....', '..~~~~~bb~~~~~~~ww~~~..', '..~~~~~bb~~~~~~~ww~~~..', '...,...==....m...==.t..', '..T....==...mm....=....', '.TT..,.==.........==.TT'],
+  town: ['||||||||||==||||||||||', '|.........==.........|', '|.HHHH....==...HHHH..|', '|.HHHH....==...HHHH..|', '|.#*+#....==...#+*#..|', '|.........==.....,,..|', '|..T.....::::.....T..|', '=========::::========|', '|........::::........|', '|.,,.....==....HHHH..|', '|..t.....==....#+##..|', '||||||||||==||||||||||'],
+  grove: ['TTTTTTTTTTTTTTTTTTTTTT', 'TT...,,...TTT....f..TT', 'T..:::::...T...###*##T', 'T.:::::::......#+####T', 'T.::,,,::.......""...T', 'T..:::::...==========T', 'T.........==....,,...T', 'TYYY.....==...ff.....T', 'T.f.YY..==..~~~~~....T', 'T.......==..~~ww~~...T', 'TT..,,..==...........T', 'TTTTTTTT==TTTTTTTTTTTT'],
+  fen: ['""""..mm.......TT..""""', '"~~~~..mm...,..T..~~~~"', '"~~~~~.mmm......."~~~~"', '~~~~~~~.bbbbbbbb.~~~~~~', '~~~~~~~.bbbbbbbb.~~~~~~', '"~~~~.....mm...."~~~~~"', '"".~~..T..mmm...."~~~""', '...t...""...mm..T.....', 'mm.....""......~~~~...', 'mmm..o...,,...~~ww~~..', '..mm.......".~~~~~~~..', 'T..mm....T.."""""..T..'],
+  tower: ['xxxx##############xxxx', 'xxx#*____#s#____*#xxx', 'xx#______#_#______#xx', 'x#__________________#x', '#____kkk_______o_____#', '*____kkk____________*', '#___________________##', '#__"_____####___t____#', '#________#__#________#', 'x#_______#__+_______#x', 'xx#_________________#x', 'xxx###*###++###*###xxx'],
+  roots: ['RRRRRRRRRRRRRRRRRRRRRR', 'RRrrrrrrRRRRrrrrrrrRRR', 'Rrrrfrrrrr##rrrriiiirR', 'RrrYYYrrrrrrrrrriiiirR', 'RrrrrrrrrkkkkrrrriirrR', 'RRrrrffrrkkkkrrrrrrrRR', 'Rrrrrrrrrrrrrrrr.rrrrR', 'RrrrrrYYYrrrrrfrrrrrrR', 'Rriiirrrrrrr~~rrrrrrRR', 'RriiiirrrrrrrrrrrYYrrR', 'RRrrrrrrrrs+rrrrrrrrRR', 'RRRRRRRRRRRRRRRRRRRRRR'],
+  den: ['RRRRRRRRRRRRRRRRRRRRRR', 'RRmmmmmRRRRRRmmmmmmRRR', 'Rmmmtmmmmmmmmmmmiimm.R', 'Rmm..mmmmmmmmmmiiiimmR', 'Rmm.....o.....mmiimmmR', 'RRm............mmmmRRR', 'Rmm..........t....mmR', 'Rmmmii.....mmmm...mmmR', 'Rmmiiii...mmmmmm..mmRR', 'RRmmii.....mmmm..tmmmR', 'RRRmmmmmmm++mmmmmmmRRR', 'RRRRRRRRRRRRRRRRRRRRRR'],
+};
+function sceneCanvas(biome, rows, sprites = [], frame = 0) {
+  const A = tileAtlas(biome), src = document.createElement('canvas');
+  src.width = A.img.width; src.height = A.img.height; src.getContext('2d').putImageData(A.img, 0, 0);
+  const w = Math.max(...rows.map(r => r.length)), h = rows.length, c = document.createElement('canvas');
+  const pad = rows.map(r => r.padEnd(w, r[r.length - 1]));
+  c.width = w * TILE_PX; c.height = h * TILE_PX; const g = c.getContext('2d');
+  const over = [];
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const ops = A.cell(pad, x, y, frame);
+    for (const [sx, sy, sw, shh, dx, dy] of ops.ground) g.drawImage(src, sx, sy, sw, shh, x * TILE_PX + dx, y * TILE_PX + dy, sw, shh);
+    for (const o of ops.over) over.push([o, x, y]);
+  }
+  sprites.slice().sort((a, b) => a.y - b.y).forEach(sp => { const t2 = document.createElement('canvas'); t2.width = sp.img.width; t2.height = sp.img.height; t2.getContext('2d').putImageData(sp.img, 0, 0); g.drawImage(t2, sp.sx || 0, sp.sy || 0, sp.w, sp.h, Math.round(sp.x * TILE_PX + 8 - sp.foot[0]), Math.round(sp.y * TILE_PX + 15 - sp.foot[1]), sp.w, sp.h); });
+  for (const [[sx, sy, sw, shh, dx, dy], x, y] of over) g.drawImage(src, sx, sy, sw, shh, x * TILE_PX + dx, y * TILE_PX + dy, sw, shh);
+  return c;
+}
+function figCanvas(parent, c, scale, cap) {
+  const f = document.createElement('figure'); c.style.width = c.width * scale * ZOOM + 'px'; c.style.height = c.height * scale * ZOOM + 'px'; f.appendChild(c);
+  if (cap) { const fc = document.createElement('figcaption'); fc.textContent = cap; f.appendChild(fc); }
+  parent.appendChild(f); return c;
+}
+const walkerSprite = (key, gear, dir, frame, x, y) => { const sh = walkerSheet(key, gear); return { img: sh.img, sx: frame * 16, sy: WALKER_ROWS.indexOf(dir) * 24, w: 16, h: 24, foot: sh.foot, x, y }; };
+if (want('world-tiles')) {
+  const bio = ((window.location.hash.match(/bio=([^&]+)/) || [])[1] || BIOMES.join(',')).split(',');
+  const s = section('world-tiles', 'World: tilesets by biome', 'tileAtlas(biome): each scene is composed with atlas.cell(rows, x, y, frame) (hash variants, 4-bit edges, inner corners, canopies, roofs, tall-grass tops) at 3x, frame 0 and frame 1, then the raw atlas at 2x.');
+  for (const biome of bio) {
+    const rows = SCENES[biome];
+    const t = time('tileAtlas ' + biome + ' (cold)', () => tileAtlas(biome));
+    T['tileAtlas ' + biome + ' (build ms)'] = t.ms;
+    const r = row(s, `${biome}: atlas built in ${t.ms.toFixed(1)} ms`);
+    const party = biome === 'wilds' ? [walkerSprite('warden', undefined, 's', 0, 9, 3), walkerSprite('pip', undefined, 's', 1, 9, 2), walkerSprite('bryn', undefined, 'e', 2, 8, 6), walkerSprite('alondra', undefined, 'n', 0, 7, 9)] : biome === 'keep' ? [walkerSprite('warden', undefined, 's', 0, 12, 6), walkerSprite('pip', undefined, 'e', 1, 10, 6)] : [walkerSprite('bryn', undefined, 's', 0, 11, 5), walkerSprite('alondra', undefined, 'w', 1, 12, 6)];
+    figCanvas(r, sceneCanvas(biome, rows, party, 0), 3, biome + ' frame 0');
+    figCanvas(r, sceneCanvas(biome, rows, [], 1), 2, 'frame 1');
+    if (!only || only.includes('atlas')) fig(r, t.img, 2, 'atlas ' + t.img.width + 'x' + t.img.height, '#ff00ff');
+  }
+}
+
+if (want('world-npcs')) {
+  const s = section('world-npcs', 'World: NPCs', 'npcSheet(artKey) for every NPC art key in data/npcs.js: full sheets at 3x (stand, stepA, stepB x s, n, e, w), then the front stand frame at 6x.');
+  const keys = [...new Set(Object.values(NPCS).map(n => n.art))];
+  const r = row(s, keys.join(' · '));
+  for (const k of keys) fig(r, time('npcSheet (cold)', () => npcSheet(k)).img, 3, k, GROUND_BG);
+  const r2 = row(s, 'front, 6x');
+  for (const k of keys) fig(r2, crop(npcSheet(k).img, 0, 0, 16, 24), 6, k, GROUND_BG);
+}
+const MAP_FOE_KEYS = ['cutpurse', 'bandit', 'tallyman', 'smuggler', 'feral-druid', 'hollowed-ranger', 'tamsin', 'mags', 'haskett', 'hollis', 'dun', 'vesper', 'oda', 'corra'];
+if (want('world-foes')) {
+  const s = section('world-foes', 'World: map foes', 'mapFoeSheet(artKey, { gearTier, variant, relic }): 2 gait frames x rows s, n, e, w. Humanoids reuse the walker rig via foeLooks (gearTier 0-3 shown); named holders carry their relic; beasts are dedicated 16-32 px sprites.');
+  const r = row(s, 'humanoids at gearTier 0 and 3 (3x)');
+  for (const k of MAP_FOE_KEYS) { fig(r, time('mapFoeSheet humanoid (cold)', () => mapFoeSheet(k, { gearTier: 0 })).img, 3, k + ' g0', GROUND_BG); fig(r, mapFoeSheet(k, { gearTier: 3 }).img, 3, 'g3', GROUND_BG); }
+  const r1 = row(s, 'Tamsin with each lent starter; bandit + poacher variant resolves to Haskett (6x, front)');
+  for (const v of ['hearthbrand', 'stillwater-lance', 'cairnmaul']) fig(r1, crop(mapFoeSheet('tamsin', { variant: v }).img, 0, 0, 16, 24), 6, 'tamsin ' + v, GROUND_BG);
+  fig(r1, crop(mapFoeSheet('bandit', { variant: 'poacher' }).img, 0, 0, 16, 24), 6, 'bandit/poacher', GROUND_BG);
+  for (const k of ['mags', 'hollis', 'dun', 'oda', 'corra']) fig(r1, crop(mapFoeSheet(k).img, 0, 48, 16, 24), 6, k + ' e', GROUND_BG);
+  for (const key of Object.keys(MAP_FOE_SIZE)) {
+    const r2 = row(s, `${key} (${MAP_FOE_SIZE[key].join('x')}), gearTier 0 and 3, at 4x`);
+    fig(r2, time('mapFoeSheet beast (cold)', () => mapFoeSheet(key, { gearTier: 0 })).img, 4, 'g0', GROUND_BG);
+    fig(r2, mapFoeSheet(key, { gearTier: 3 }).img, 4, 'g3', GROUND_BG);
+  }
+}
+if (want('world-objects')) {
+  const s = section('world-objects', 'World: objects and emotes', 'objectSprite(kind, state, { frame, relic, id }) for every kind and state at 4x (animated ones show both frames); hearthfire looks by id; emote(kind, { frame }) at 6x.');
+  for (const kind of OBJECT_KINDS) {
+    const r = row(s, kind);
+    for (const st of OBJECT_STATES[kind]) {
+      const a = time('objectSprite (cold)', () => objectSprite(kind, st, { relic: kind === 'pedestal' ? 'hearthbrand' : null }));
+      fig(r, a, 4, st, GROUND_BG);
+      if (a.frames > 1) fig(r, objectSprite(kind, st, { frame: 1, relic: kind === 'pedestal' ? 'hearthbrand' : null }), 4, st + ' f1', GROUND_BG);
+    }
+    if (kind === 'hearth') for (const id of Object.keys(HEARTH_LOOKS)) { fig(r, objectSprite('hearth', 'lit', { id }), 4, id, GROUND_BG); fig(r, objectSprite('hearth', 'cold', { id }), 4, 'cold', GROUND_BG); }
+  }
+  const r = row(s, 'emotes');
+  for (const k of EMOTES) { const e = emote(k); fig(r, e, 6, k, GROUND_BG); if (e.frames > 1) fig(r, emote(k, { frame: 1 }), 6, k + ' f1', GROUND_BG); }
+  const r2 = row(s, 'every tile id in the wilds atlas: ' + TILE_IDS.length + ' ids');
+  const A = tileAtlas('wilds');
+  for (const id of TILE_IDS) { const [sx, sy] = A.at(id, 0, 0); fig(r2, crop(A.img, sx, sy, 16, 16), 3, id); }
+}
+if (want('world-walkers')) {
+  const s = section('world-walkers', 'World: hero walkers (16x24 rig)', 'walkerSheet(heroId, gear, { custom }) → 3 frames (stand, stepA, stepB) × rows s, n, e, w. Each hero in 3 gear states: starter kit, mid-game, late relics. Sheets at 3x; the front stand frame and a side step at 6x.');
+  for (const key of HERO_KEYS) {
+    const r = row(s, HERO_ART[key].name);
+    for (const [label, gear] of WALKER_KITS[key]) {
+      const sh = time('walkerSheet (cold)', () => walkerSheet(key, gear));
+      fig(r, sh.img, 3, label, GROUND_BG);
+    }
+    for (const [label, gear] of WALKER_KITS[key]) {
+      const sh = walkerSheet(key, gear);
+      fig(r, crop(sh.img, 0, 0, 16, 24), 6, label.split(':')[0] + ' s', GROUND_BG);
+      fig(r, crop(sh.img, 16, 48, 16, 24), 6, 'e step', GROUND_BG);
+    }
+  }
+  const r = row(s, 'Hearthwarden presets (custom look) with the starter kit');
+  const P = WARDEN_PRESETS;
+  for (let k = 0; k < 8; k++) {
+    const custom = { skin: P.skin[k % 4], hairMat: P.hairMat[(k * 5) % 6], hair: P.hair[k % 6], beard: k === 3 || k === 6, eye: P.eye[k % 4] };
+    fig(r, crop(walkerSheet('warden', null, { custom }).img, 0, 0, 48, 24), 4, `${custom.skin} ${custom.hair}${custom.beard ? ' beard' : ''}`, GROUND_BG);
+  }
+}
+
+// close-up review: node tools/gallery.mjs --only=world-zoom --fk=pip  (full sheets at 6x)
+if (only && only.includes('world-zoom')) {
+  const s = section('world-zoom', 'World close-up');
+  const keys = ((window.location.hash.match(/fk=([^&]+)/) || [])[1] || 'warden').split(',');
+  for (const key of keys) {
+    const r = row(s, key);
+    if (MAP_FOE_SIZE[key] || MAP_FOE_KEYS.includes(key)) { for (const gT of [0, 3]) fig(r, mapFoeSheet(key, { gearTier: gT }).img, 6, key + ' g' + gT, GROUND_BG); continue; }
+    if (key.startsWith('obj:')) { const k = key.slice(4); for (const st of OBJECT_STATES[k] || ['closed']) { const a = objectSprite(k, st, { relic: k === 'pedestal' ? 'isoldes-oath' : null }); fig(r, a, 6, st, GROUND_BG); if (a.frames > 1) fig(r, objectSprite(k, st, { frame: 1 }), 6, 'f1', GROUND_BG); } if (k === 'hearth') for (const id of Object.keys(HEARTH_LOOKS)) fig(r, objectSprite('hearth', 'lit', { id }), 6, id, GROUND_BG); continue; }
+    for (const [label, gear] of WALKER_KITS[key] || [['starter', undefined]]) fig(r, walkerSheet(key, gear).img, 6, label, GROUND_BG);
+  }
+}
+
+if (want('world-perf')) {
+  const s = section('world-perf', 'World: render cost', 'Build time in this browser. tileAtlas: "first" is the first build in the page (includes JIT warm-up of the Forge paths), then a fresh rebuild of every biome (buildTileAtlas, uncached) and the median of 3. Sheets: cold = first build of a new key, warm = the cached lookup. Budget: tileAtlas <= 150 ms per biome.');
+  const pre = document.createElement('pre'); s.appendChild(pre);
+  const lines = [], med = a => a.slice().sort((x, y) => x - y)[a.length >> 1];
+  const t0 = performance.now(); buildTileAtlas('keep'); const first = performance.now() - t0;
+  T['tileAtlas first build (keep, JIT)'] = first;
+  lines.push(`tileAtlas first build in page (keep, JIT warm-up) ${first.toFixed(1).padStart(7)} ms`);
+  for (const b of BIOMES) {
+    const runs = []; let cells = 0;
+    for (let k = 0; k < 3; k++) { const a = performance.now(); const A = buildTileAtlas(b); runs.push(performance.now() - a); cells = A.cells; }
+    T['tileAtlas ' + b + ' (median ms)'] = med(runs); T['tileAtlas ' + b + ' (min ms)'] = Math.min(...runs);
+    lines.push(`tileAtlas ${b.padEnd(6)} ${cells} cells   median ${med(runs).toFixed(1).padStart(6)} ms   min ${Math.min(...runs).toFixed(1).padStart(6)} ms   (runs ${runs.map(r => r.toFixed(0)).join(', ')})`);
+  }
+  const sheet = (label, mk, n) => { const c = []; for (let k = 0; k < n; k++) { const a = performance.now(); mk(k); c.push(performance.now() - a); } T[label] = med(c); lines.push(`${label.padEnd(44)} median ${med(c).toFixed(2).padStart(7)} ms over ${n}`); };
+  const P = WARDEN_PRESETS;
+  sheet('walkerSheet cold (new custom look each)', k => walkerSheet('warden', undefined, { custom: { skin: P.skin[k % 4], hairMat: P.hairMat[k % 6], hair: P.hair[(k >> 1) % 6], beard: !!(k & 1), eye: P.eye[k % 4] } }), 12);
+  sheet('walkerSheet cold, late relic kit', k => walkerSheet(HERO_KEYS[k % 4], WALKER_KITS[HERO_KEYS[k % 4]][2][1], { custom: k > 3 ? { skin: P.skin[k % 4], hair: P.hair[k % 6] } : undefined }), 8);
+  sheet('walkerSheet warm (cached)', () => walkerSheet('warden', undefined), 50);
+  sheet('npcSheet cold', k => npcSheet('villager-' + k), 8);
+  sheet('mapFoeSheet humanoid cold', k => mapFoeSheet(['cutpurse', 'bandit', 'tallyman', 'smuggler'][k % 4], { gearTier: (k >> 2) % 4, relic: k === 7 ? 'tallyknife' : undefined }), 8);
+  sheet('mapFoeSheet beast cold (32x32)', k => mapFoeSheet(['rotstag', 'gloamwing', 'mirelord', 'rotwarden'][k % 4], { gearTier: 1 + (k >> 2) }), 8);
+  sheet('objectSprite cold', k => objectSprite(OBJECT_KINDS[k % OBJECT_KINDS.length], 'closed', { frame: 1 }), OBJECT_KINDS.length);
+  pre.textContent = lines.join('\n');
+}
 
 /* ---------- performance ---------- */
 if (want('perf')) {

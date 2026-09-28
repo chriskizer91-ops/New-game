@@ -8,6 +8,13 @@
 // aspectIcon(aspect, { size=12 }) -> ImageData   keys: the 8 aspects (a coloured token with a sigil)
 // gripIcon({ size=12, broken }) -> ImageData   a chain link for relic grip meters
 // digitsImage(text, { color, font='3x5'|'4x6', outline }) -> ImageData; drawDigits(img, text, x, y, color, font)
+// M3 (lock prompt, Journal Keys tab):
+// lockIcon(id, { size=12, dim }) -> ImageData   ids: LOCK_ICON_KEYS (every LOCKS type, plus 'crownwall');
+//   an unknown id draws a padlock; dim greys it (a lock already opened)
+// keyIcon(kind, { size=12, dim }) -> ImageData  kinds: KEY_ICON_KEYS ('power' = a relic's map power, then the
+//   Domain ids); an unknown kind draws a plain token
+// markIcon(ok, { size=12 }) -> ImageData        a green check (ok) or a red cross
+// statusIcon draws a neutral token for a status key it has no icon for.
 import { MAT, hx, mix } from './forge.js';
 import { lru } from './cache.js';
 
@@ -138,10 +145,12 @@ const AS = {
   radiant: ['#6a4e10', '#c89a2e', C => { fillDisc(C, 6, 6, 2.2, raw('#fff8d4')); for (let a = 0; a < 8; a++) { const t = a / 8 * Math.PI * 2; stroke(C, [[6 + Math.cos(t) * 3.2, 6 + Math.sin(t) * 3.2], [6 + Math.cos(t) * 4.4, 6 + Math.sin(t) * 4.4]], .4, raw('#ffe8a0')); } }],
   blight: ['#2a0e3a', '#5e2272', C => { fillDisc(C, 6, 5.4, 3.2, raw('#b4d65a')); fillPoly(C, [[4, 7], [8, 7], [7.6, 9.6], [4.4, 9.6]], raw('#b4d65a')); fillDisc(C, 4.7, 5.4, .9, raw('#1a0826')); fillDisc(C, 7.3, 5.4, .9, raw('#1a0826')); px(C, 5.4, 8.4, raw('#1a0826')); px(C, 6.6, 8.4, raw('#1a0826')); }],
 };
-const iconCache = lru(200);
+const iconCache = lru(400);
+// a neutral token for statuses added after this table
+const ST_OTHER = C => { fillPoly(C, [[6, .8], [11.2, 6], [6, 11.2], [.8, 6]], col('#7c7894')); fillPoly(C, [[6, 3.2], [8.8, 6], [6, 8.8], [3.2, 6]], col('#b0acc6')); fillDisc(C, 6, 6, .9, raw('#ffffff')); };
 export function statusIcon(key, o = {}) {
   const size = o.size || 12;
-  return iconCache.get('s' + key + size, () => { const C = canvas(size, size / 12); if (ST[key]) ST[key](C); return finish(C); });
+  return iconCache.get('s' + key + size, () => { const C = canvas(size, size / 12); if (ST[key]) ST[key](C); else if (key) ST_OTHER(C); return finish(C); });
 }
 export function aspectIcon(aspect, o = {}) {
   const size = o.size || 12;
@@ -150,6 +159,145 @@ export function aspectIcon(aspect, o = {}) {
     if (A) { fillDisc(C, 6, 6, 5.4, hx(A[1])); fillDisc(C, 6.4, 6.4, 4.6, hx(A[0])); A[2](C); }
     return finish(C);
   });
+}
+/* ---------- lock types, keys and marks (M3; 12-unit space) ---------- */
+const thorns = (C, list, c) => { for (const [x, y, dx, dy] of list) { const nx = -dy * .45, ny = dx * .45; fillPoly(C, [[x - nx, y - ny], [x + dx, y + dy], [x + nx, y + ny]], c); } };
+const LK = {
+  thornwall: C => {
+    const v = col('#3e6a2a'), d = col('#27401c'), t = col('#d8b070');
+    stroke(C, [[.6, 3.8], [3, 2.8], [6, 4], [9, 3], [11.4, 3.8]], 1.05, v); stroke(C, [[.6, 8.4], [3, 9.4], [6, 8.2], [9, 9.2], [11.4, 8.4]], 1.05, v);
+    for (const [a, b] of [[2.6, 3.4], [6.2, 5.6], [9.4, 8.8]]) stroke(C, [[a, 3.2], [b, 9]], .72, d);
+    thorns(C, [[1.6, 3, -.4, -1.6], [4.6, 2.9, .3, -1.7], [7.8, 3, -.2, -1.7], [10.6, 3, .5, -1.5], [2, 9.8, -.4, 1.5], [5, 9.2, .3, 1.7], [8, 9.8, -.2, 1.5], [10.7, 9.2, .5, 1.5]], t);
+  },
+  bramble: C => {
+    fillDisc(C, 6, 7.2, 4.4, col('#2c5a22')); fillDisc(C, 3.6, 5.4, 2.6, col('#3a7030')); fillDisc(C, 8.4, 5.2, 2.8, col('#3a7030')); fillDisc(C, 6.2, 3.4, 2, col('#468038'));
+    stroke(C, [[1.6, 9.8], [4, 6.8], [6.4, 7.8], [8.6, 5.6], [10.4, 8.4]], .42, raw('#1a3414'));
+    thorns(C, [[4, 6.8, -.6, -1], [8.6, 5.6, .5, -1], [6.4, 7.8, .2, 1.1]], raw('#d8b070'));
+    fillDisc(C, 7.8, 9, .95, raw('#c8283a')); fillDisc(C, 4.2, 9.4, .85, raw('#c8283a')); px(C, 7.5, 8.6, raw('#ff9a90'));
+  },
+  stream: C => {
+    fillPoly(C, [[.6, 3.2], [11.4, 3.2], [11.4, 9.8], [.6, 9.8]], col('#1f5f86'));
+    stroke(C, [[1.2, 5], [2.8, 4.2], [4.4, 5], [6, 5.8], [7.6, 5], [9.2, 4.2], [10.8, 5]], .45, raw('#94daf0'));
+    stroke(C, [[1.2, 7.8], [2.8, 7], [4.4, 7.8], [6, 8.6], [7.6, 7.8], [9.2, 7], [10.8, 7.8]], .45, raw('#e6fbff'));
+  },
+  boulder: C => {
+    fillPoly(C, [[1.4, 10.8], [.8, 7.2], [2.4, 3.8], [5.4, 1.8], [8.8, 2.4], [11, 5.4], [11.2, 9.2], [10, 10.8]], col('#8c8478'));
+    stroke(C, [[5.6, 2.4], [6.6, 5.2], [5.2, 7.4], [6.2, 10.4]], .42, raw('#3a3632')); stroke(C, [[6.6, 5.2], [9, 6.4]], .36, raw('#3a3632'));
+    fillPoly(C, [[2.6, 4.6], [4.4, 3], [4.2, 5.2]], raw('#c2baac'));
+  },
+  'cold-hearth': C => {
+    fillPoly(C, [[1, 7.4], [11, 7.4], [10, 11.2], [2, 11.2]], col('#5c5852'));
+    for (const x of [2.4, 4.8, 7.2, 9.6]) fillDisc(C, x, 7.6, 1.35, col('#7c766c'));
+    fillDisc(C, 4.8, 6.4, 1.2, col('#3c3c44')); fillDisc(C, 7.2, 6.2, 1.3, col('#46464e'));
+    stroke(C, [[6, 5], [5.2, 3.4], [6.6, 2], [5.8, .6]], .45, raw('#90a8c0'));
+  },
+  'tally-seal': C => {
+    const w = col('#a8202a');
+    for (let a = 0; a < 14; a++) { const t = a / 14 * Math.PI * 2; fillDisc(C, 6 + Math.cos(t) * 4.3, 6 + Math.sin(t) * 4.3, 1.25, w); }
+    fillDisc(C, 6, 6, 4.4, w);
+    const m = raw('#560a10'); for (const x of [3.9, 5.3, 6.7, 8.1]) stroke(C, [[x, 3.8], [x, 8.2]], .36, m); stroke(C, [[3, 7.8], [9, 4.2]], .36, m);
+  },
+  'barred-gate': C => {
+    for (const x of [2.2, 4.8, 7.4, 10]) fillPoly(C, [[x - 1.1, 1.8], [x, 1], [x + 1.1, 1.8], [x + 1.1, 11.2], [x - 1.1, 11.2]], col('#7c5432'));
+    fillPoly(C, [[.4, 5], [11.6, 5], [11.6, 7.1], [.4, 7.1]], col('#6c7282'));
+    fillDisc(C, 1.4, 6, .75, raw('#2a2c34')); fillDisc(C, 10.6, 6, .75, raw('#2a2c34'));
+  },
+  darkness: C => {
+    fillDisc(C, 6, 6, 5.4, col('#3c3466')); fillDisc(C, 7.2, 4.9, 4.9, raw('#07060c'));
+    px(C, 5.2, 6.6, raw('#d8d0f4')); px(C, 7.4, 6.6, raw('#d8d0f4'));
+  },
+  'rot-knot': C => {
+    const r = col('#5a402c'), d = col('#3a281c');
+    for (let a = 0; a < 36; a++) { const t = a / 36 * Math.PI * 2; fillDisc(C, 6 + Math.cos(t) * 3.4, 6.2 + Math.sin(t) * 3, .95, r); }
+    stroke(C, [[.8, 10.8], [3.6, 8], [8.6, 4], [11.2, 1.2]], .9, d); stroke(C, [[1.2, 2.6], [3.4, 4.2]], .7, d); stroke(C, [[8.8, 8.4], [10.8, 10.8]], .7, d);
+    fillDisc(C, 6, 6.2, 1.6, raw('#2a0a3a')); px(C, 5.6, 5.8, raw('#b4d65a'));
+  },
+  'rope-ledge': C => {
+    fillPoly(C, [[.4, 1], [11.6, 1], [11.6, 3.6], [8.4, 4.4], [4.6, 3.8], [.4, 4.6]], col('#80786c'));
+    const rp = col('#c8a468'); stroke(C, [[6, 3.8], [5.4, 6.2], [6.4, 8.4], [5.8, 10]], .6, rp);
+    for (let a = 0; a < 18; a++) { const t = a / 18 * Math.PI * 2; fillDisc(C, 7.6 + Math.cos(t) * 2.3, 10 + Math.sin(t) * 1.2, .5, rp); }
+    for (const y of [5, 7.2]) stroke(C, [[5, y], [6.6, y + .6]], .28, raw('#7a5a2e'));
+  },
+  ichor: C => {
+    fillPoly(C, [[6, .8], [8.6, 5], [9.6, 7.6], [8.8, 10], [6, 11.4], [3.2, 10], [2.4, 7.6], [3.4, 5]], col('#1c1024'));
+    stroke(C, [[7.4, 6.2], [8.2, 8.8]], .38, raw('#7a2c96')); fillDisc(C, 4.6, 7.4, .9, raw('#b4d65a')); px(C, 4.3, 6.8, raw('#eaffa8'));
+  },
+  crownwall: C => {
+    fillPoly(C, [[.8, 11], [1.4, 5], [3.2, 7.4], [4.4, 2], [6, 6.2], [7.6, 2], [8.8, 7.4], [10.6, 5], [11.2, 11]], col('#2c4c20'));
+    stroke(C, [[1.4, 9], [4, 8.2], [8, 8.2], [10.6, 9]], .45, raw('#18300f'));
+    fillDisc(C, 6, 8.8, 1.9, col('#4ec436')); px(C, 5.5, 8.2, raw('#effcc8'));
+  },
+  lock: C => {
+    stroke(C, [[3.6, 6], [3.6, 3.6], [6, 1.4], [8.4, 3.6], [8.4, 6]], .75, col('#8c96ac'));
+    fillPoly(C, [[2, 5.6], [10, 5.6], [10, 11.2], [2, 11.2]], col('#c89a2e'));
+    fillDisc(C, 6, 7.9, .95, raw('#2a1a08')); stroke(C, [[6, 8.2], [6, 10]], .4, raw('#2a1a08'));
+  },
+};
+export const LOCK_ICON_KEYS = Object.keys(LK).filter(k => k !== 'lock');
+const KY = {
+  power: C => {
+    const g = col('#d99328');
+    stroke(C, [[4.8, 6.2], [11.2, 6.2]], .8, g); stroke(C, [[9.2, 6.2], [9.2, 9]], .62, g); stroke(C, [[10.9, 6.2], [10.9, 8.4]], .62, g);
+    fillDisc(C, 3.4, 6.2, 2.9, g); fillDisc(C, 3.4, 6.2, 1.35, raw('#93162e')); px(C, 3, 5.6, raw('#ff7866'));
+  },
+  physical: C => {
+    fillPoly(C, [[2.2, 4.2], [9.8, 4.2], [10.4, 8.4], [8.8, 11.2], [3.2, 11.2], [2, 8.4]], col('#d8a080'));
+    for (const x of [4.1, 6.1, 8.1]) stroke(C, [[x, 4.4], [x, 6.4]], .3, raw('#8a5238'));
+    fillPoly(C, [[2, 6.6], [5.6, 6.6], [6, 8.4], [2.4, 8.6]], col('#e8b89c'));
+    fillPoly(C, [[3.2, 11], [8.8, 11], [8.8, 12], [3.2, 12]], col('#7c4528'));
+  },
+  survival: C => {
+    fillPoly(C, [[1.8, 10.6], [2.6, 5.6], [6, 2], [10.6, 1.4], [10, 5.8], [6.8, 9.2]], col('#4e9a3a'));
+    stroke(C, [[2, 10.4], [8.6, 3.4]], .42, raw('#28561c')); stroke(C, [[4.4, 7.6], [3.8, 5.4]], .3, raw('#28561c')); stroke(C, [[6.4, 5.4], [8, 6.8]], .3, raw('#28561c'));
+  },
+  attunement: C => {
+    fillPoly(C, [[.6, 6], [3.2, 3], [6, 2.2], [8.8, 3], [11.4, 6], [8.8, 9], [6, 9.8], [3.2, 9]], col('#e8e0f4'));
+    fillDisc(C, 6, 6, 2.5, raw('#8c3cc4')); fillDisc(C, 6, 6, 1, raw('#1a0830')); px(C, 5.2, 5.1, raw('#ffffff'));
+  },
+  knowledge: C => {
+    fillPoly(C, [[.6, 2.8], [5.6, 3.6], [5.6, 10.8], [.6, 10]], col('#dccca0')); fillPoly(C, [[6.4, 3.6], [11.4, 2.8], [11.4, 10], [6.4, 10.8]], col('#ece0b8'));
+    stroke(C, [[6, 3.6], [6, 11]], .45, raw('#6a4a2a'));
+    for (const y of [5.4, 7, 8.6]) { stroke(C, [[1.6, y - .2], [4.8, y + .2]], .25, raw('#8a7652')); stroke(C, [[7.2, y + .2], [10.4, y - .2]], .25, raw('#8a7652')); }
+  },
+  influence: C => {
+    fillPoly(C, [[.8, 1.8], [11.2, 1.8], [11.2, 8.4], [5.6, 8.4], [2.8, 11], [3.2, 8.4], [.8, 8.4]], col('#f0e6c8'));
+    for (const x of [3.6, 6, 8.4]) fillDisc(C, x, 5.1, .8, raw('#6a5230'));
+  },
+  combat: C => {
+    const s = col('#b8c6d4'), h = col('#8a5a2c');
+    stroke(C, [[1.8, 1.8], [8.6, 8.6]], .62, s); stroke(C, [[10.2, 1.8], [3.4, 8.6]], .62, s);
+    stroke(C, [[7.2, 10.2], [10.2, 7.2]], .5, h); stroke(C, [[1.8, 7.2], [4.8, 10.2]], .5, h);
+  },
+  craft: C => {
+    stroke(C, [[2.6, 10.6], [7.4, 5.2]], .72, col('#8a5a2c'));
+    fillPoly(C, [[5.4, 1.6], [10.8, 6.8], [9, 8.6], [3.6, 3.4]], col('#8c96ac'));
+  },
+  beastmastery: C => { const c = col('#a8683c'); fillDisc(C, 6, 8, 2.6, c); fillDisc(C, 2.6, 5, 1.25, c); fillDisc(C, 4.7, 2.8, 1.25, c); fillDisc(C, 7.3, 2.8, 1.25, c); fillDisc(C, 9.4, 5, 1.25, c); },
+  psionics: C => { const pts = []; for (let k = 0; k < 30; k++) { const a = k * .44, r = .3 + k * .17; pts.push([6 + Math.cos(a) * r, 6 + Math.sin(a) * r]); } stroke(C, pts, .5, col('#c47ee8')); },
+};
+export const KEY_ICON_KEYS = Object.keys(KY);
+const KEY_OTHER = C => { fillDisc(C, 6, 6, 4.6, col('#8c8674')); fillDisc(C, 6, 6, 2, col('#c4bca4')); };
+const MK = {
+  yes: C => stroke(C, [[1.8, 6.6], [4.6, 9.4], [10.4, 2.6]], 1, col('#52c85a')),
+  no: C => { stroke(C, [[2.4, 2.4], [9.6, 9.6]], 1, col('#e8503a')); stroke(C, [[9.6, 2.4], [2.4, 9.6]], 1, col('#e8503a')); },
+};
+// grey a finished icon (keeps its outline): the look of a lock already opened
+function dimmed(img) {
+  const d = img.data;
+  for (let i = 0; i < d.length; i += 4) { if (!d[i + 3] || (d[i] === OUT[0] && d[i + 1] === OUT[1] && d[i + 2] === OUT[2])) continue; const l = (d[i] * .3 + d[i + 1] * .59 + d[i + 2] * .11) * .45 + 30; d[i] = l; d[i + 1] = l; d[i + 2] = l + 6; }
+  return img;
+}
+export function lockIcon(id, o = {}) {
+  const size = o.size || 12, key = LK[id] ? id : 'lock';
+  return iconCache.get('l' + key + size + (o.dim ? 'd' : ''), () => { const C = canvas(size, size / 12); LK[key](C); const img = finish(C); return o.dim ? dimmed(img) : img; });
+}
+export function keyIcon(kind, o = {}) {
+  const size = o.size || 12, key = KY[kind] ? kind : '-';
+  return iconCache.get('k' + key + size + (o.dim ? 'd' : ''), () => { const C = canvas(size, size / 12); (KY[key] || KEY_OTHER)(C); const img = finish(C); return o.dim ? dimmed(img) : img; });
+}
+export function markIcon(ok, o = {}) {
+  const size = o.size || 12;
+  return iconCache.get('m' + (ok ? 'y' : 'n') + size, () => { const C = canvas(size, size / 12); MK[ok ? 'yes' : 'no'](C); return finish(C); });
 }
 export function gripIcon(o = {}) {
   const size = o.size || 12;

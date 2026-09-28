@@ -1,5 +1,7 @@
 // The party: hero tabs, the hero wearing their gear, stat tiles that count up, equipment slots,
 // the bag filtered by slot with compare arrows, skills, Domains, and Hilda's reforge.
+// mount(root, ctx, { hero?, from = 'world' }): Back returns to `from`.
+// Owner: WP8.
 import { deriveHero, heroSkills, POWERS } from '../../rules/stats.js';
 import { equip, unequip, reforge, reforgeCost, wearerOf } from '../../rules/party.js';
 import { xpForLevel, xpToNext } from '../../rules/progression.js';
@@ -32,10 +34,12 @@ function tilesOf(d) {
 export function mount(root, ctx, params = {}) {
   if (!ctx.game) { ctx.go('title'); return {}; }
   const S = { hero: params.hero || 'warden', slot: 'weapon', prev: {} };
+  const from = params.from || 'world';
+  const leave = () => ctx.go(from);
   if (!ctx.game.party.roster[S.hero]) S.hero = ctx.game.party.active[0];
 
   const top = el('header', 'topbar');
-  top.append(button('‹ Road', 'btn ghost back', () => { ctx.audio.sfx('back'); ctx.go('road'); }), el('div', 'tb-title', '<span class="realm">The Party</span><h1 class="title-display">Arms &amp; the Four</h1>'), el('span', 'tb-gold', ''));
+  top.append(button('‹ Back', 'btn ghost back', () => { ctx.audio.sfx('back'); leave(); }), el('div', 'tb-title', '<span class="realm">The Party</span><h1 class="title-display">Arms &amp; the Four</h1>'), el('span', 'tb-gold', ''));
   const tabs = el('div', { class: 'tabs', role: 'tablist', 'aria-label': 'Party members' });
   const panel = el('div', { class: 'party-grid', role: 'tabpanel' });
   root.append(top, tabs, panel);
@@ -211,8 +215,8 @@ export function mount(root, ctx, params = {}) {
   render();
   if (!ctx.audio.track || ctx.audio.track === 'victory') ctx.audio.music('road');
   const nav = screenNav(root, {
-    back: () => ctx.go('road'),
-    menu: () => ctx.go('road'),
+    back: leave,
+    menu: leave,
     pick: n => { const id = ctx.game.party.active[n - 1]; if (id) { S.hero = id; render(); return true; } return false; },
   });
   return { onAction: nav };

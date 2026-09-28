@@ -1,5 +1,9 @@
 // Item words for the UI: names, type lines, main stats in D&D terms, affix rows, powers,
 // provenance ribbons, and the green/red verdicts for the "Equip on" picker.
+// Enchant (M3 spec D10, mirroring rules/stats.js): the rarity make for generated gear (relics carry
+// their own numbers) plus the temper at 1:1. A weapon adds it to hit and damage, body armour and
+// shields to Guard, everything else 3 max HP per point.
+// Owner: WP8.
 import { RELICS, SETS } from '../../data/relics.js';
 import { ITEMS } from '../../data/items.js';
 import { SKILLS } from '../../data/skills.js';
@@ -28,7 +32,9 @@ export const RELIC_TOTAL = Object.keys(RELICS).length;
 const pad3 = n => String(n).padStart(3, '0');
 export const codexNo = relic => `No. ${pad3(relic.codex)} / ${pad3(RELIC_TOTAL)}`;
 
-const enchantOf = item => (RARITY[item.rarity]?.enchant || 0) + Math.floor((item.temper || 0) / 2);
+export const temperOf = item => Math.max(0, item?.temper || 0);
+const makeOf = item => (isRelic(item) ? 0 : RARITY[item.rarity]?.enchant || 0);
+export const enchantOf = item => makeOf(item) + temperOf(item);
 export const critText = c => (c <= 1 ? '20' : `${21 - c}-20`);
 
 // Split "Ashwick, the Quiet Oath" into a name and an epithet.
@@ -41,7 +47,7 @@ export function nameParts(item) {
 export function typeLine(item) {
   const base = ITEMS[item.base];
   const kind = base && !isRelic(item) ? base.name : (KIND_NAME[item.kind] || item.kind);
-  const bits = [`${rarityName(item.rarity)} ${kind}`];
+  const bits = [`${rarityName(item.rarity)} ${kind}${temperOf(item) ? ` +${temperOf(item)}` : ''}`];
   if (item.aspect) bits.push(ASPECT_NAME[item.aspect]);
   // Amulets and rings are their own slot; saying it twice reads as a bug.
   if (SLOT_NAME[item.slot] && SLOT_NAME[item.slot] !== kind) bits.push(SLOT_NAME[item.slot]);
@@ -81,20 +87,21 @@ export function mainStat(item) {
     const sub = [w.hands === 2 ? 'Two-handed' : w.versatile ? `Versatile (${w.versatile} with both hands)` : 'One-handed'];
     if (w.ranged) sub.push('ranged');
     if (w.weight <= -10) sub.push('quick'); else if (w.weight >= 15) sub.push('heavy');
-    // the weapon's own bonus: a relic's fixed numbers, or the rarity enchant (affixes list their own)
-    const ench = relic ? 0 : enchantOf(item);
-    const hit = relic ? relic.stats?.hit || 0 : ench, dmg = relic ? relic.stats?.dmg || 0 : ench;
+    // the weapon's own bonus: a relic's fixed numbers or the rarity make, plus the temper (affixes list their own)
+    const ench = enchantOf(item);
+    const hit = (relic ? relic.stats?.hit || 0 : 0) + ench, dmg = (relic ? relic.stats?.dmg || 0 : 0) + ench;
     if (hit || dmg) sub.push(hit === dmg ? `+${hit} to hit and damage` : [hit ? `+${hit} to hit` : '', dmg ? `+${dmg} damage` : ''].filter(Boolean).join(', '));
     return { k: 'Damage', v, sub: sub.join(' · '), used: relic ? ['hit', 'dmg'] : [] };
   }
   if (P.armor) {
-    const a = P.armor, g = relic ? relic.stats?.guard || 0 : enchantOf(item) + (ITEMS[item.base]?.stats?.guard || 0);
+    const a = P.armor, g = (relic ? relic.stats?.guard || 0 : ITEMS[item.base]?.stats?.guard || 0) + enchantOf(item);
     const v = `${a.base} + DEX${a.maxDex < 9 ? ` <span class="dw">(max ${a.maxDex})</span>` : ''}${g ? ` <em>+${g}</em>` : ''}`;
     return { k: 'Guard', v, sub: ARMOR_WORD[a.type] || '', used: ['guard'] };
   }
   if (item.kind === 'shield') {
-    const g = relic ? relic.stats?.guard || 0 : enchantOf(item) + (ITEMS[item.base]?.stats?.guard || 0);
-    return { k: 'Guard', v: `+${g}`, sub: `Shield${enchantOf(item) && !relic ? ` · ${rarityName(item.rarity)} make +${enchantOf(item)}` : ''}`, used: ['guard'] };
+    const g = (relic ? relic.stats?.guard || 0 : ITEMS[item.base]?.stats?.guard || 0) + enchantOf(item);
+    const bits = [makeOf(item) ? `${rarityName(item.rarity)} make +${makeOf(item)}` : '', temperOf(item) ? `tempered +${temperOf(item)}` : ''].filter(Boolean);
+    return { k: 'Guard', v: `+${g}`, sub: ['Shield', ...bits].join(' · '), used: ['guard'] };
   }
   const lines = statLines(relic ? relic.stats : ITEMS[item.base]?.stats || {});
   return { k: 'Bonus', v: esc(lines[0] || 'None'), sub: '', used: [] };
@@ -106,6 +113,8 @@ export function traitRows(item) {
   const P = itemProfile(item);
   const relic = relicOf(item);
   const main = mainStat(item);
+  const hpSlot = item.slot !== 'weapon' && item.slot !== 'body' && item.kind !== 'shield';
+  const tempered = temperOf(item);
   if (relic) {
     const s = { ...(relic.stats || {}) };
     for (const k of main.used || []) delete s[k];
@@ -114,6 +123,7 @@ export function traitRows(item) {
       const lines = statLines(s); lines.shift();
       for (const t of lines) rows.push({ text: t, plain: true });
     } else for (const t of statLines(s)) rows.push({ text: t, plain: true });
+    if (tempered && hpSlot) rows.push({ text: `+${tempered * 3} max HP (tempered +${tempered})`, plain: true });
     return rows;
   }
   const base = ITEMS[item.base];
@@ -123,8 +133,9 @@ export function traitRows(item) {
     if (item.slot !== 'weapon' && !P?.armor && item.kind !== 'shield') lines.shift();
     for (const t of lines) rows.push({ text: t, plain: true });
   }
-  const ench = RARITY[item.rarity]?.enchant || 0;
-  if (ench && item.slot !== 'weapon' && item.slot !== 'body' && item.kind !== 'shield') rows.push({ text: `+${ench * 3} max HP (${rarityName(item.rarity)} make)`, plain: true });
+  const ench = makeOf(item);
+  if (ench && hpSlot) rows.push({ text: `+${ench * 3} max HP (${rarityName(item.rarity)} make)`, plain: true });
+  if (tempered && hpSlot) rows.push({ text: `+${tempered * 3} max HP (tempered +${tempered})`, plain: true });
   for (const a of item.affixes || []) {
     if (item.unidentified) { rows.push({ text: '???', stars: 0, hidden: true }); continue; }
     const text = affixText(a);

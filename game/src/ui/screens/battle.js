@@ -1,6 +1,7 @@
-// The battle screen. mount(root, ctx, { battle, returnTo }) plays a battle from the engine state
-// to its end, then hands off: ctx.go('aftermath', { battle: finalState, returnTo, result: outcome }).
-// It never calls ctx.setGame.
+// The battle screen. mount(root, ctx, { battle, returnTo = 'world' }) plays a battle from the engine
+// state to its end, then hands off: ctx.go('aftermath', { battle: finalState, returnTo, result: outcome }).
+// It never calls ctx.setGame. The place line reads the battle ctx's `where` first (a roaming pack has
+// no node), then the node's place, then the backdrop's name.
 //
 // Layout (phone portrait first): stage (backdrop + foes) / Initiative Ribbon / party row / command
 // dock with the dice tray. Laptop: a wider stage, the dock beside the party, keyboard shortcuts.
@@ -26,7 +27,7 @@ import { el, Clock, toCanvas } from '../battle/util.js';
 
 const SPEEDS = [1, 2, 4];
 
-export function mount(root, ctx, { battle, returnTo = 'road' } = {}) {
+export function mount(root, ctx, { battle, returnTo = 'world' } = {}) {
   if (!battle) {
     root.append(el('p', { text: 'No battle to show.' }));
     return {};
@@ -41,6 +42,7 @@ export function mount(root, ctx, { battle, returnTo = 'road' } = {}) {
   let speed = SPEEDS.includes(ctx.settings.battleSpeed) ? ctx.settings.battleSpeed : 1;
   const node = ENCOUNTERS[state.ctx.nodeId] || null;
   const backdrop = state.ctx.backdrop || node?.backdrop || 'hearth-road';
+  const place = state.ctx.where || node?.place || BACKDROPS[backdrop]?.name || '';
   const foes0 = state.order.map(id => state.units[id]).filter(u => u.side === 'foe');
   const boss = foes0.some(f => f.tier === 'champion' || f.tier === 'relic-bearer');
   const sfx = (name, opts) => { try { ctx.audio.sfx(name, opts); } catch { /* audio is optional */ } };
@@ -49,7 +51,7 @@ export function mount(root, ctx, { battle, returnTo = 'road' } = {}) {
   // ---- skeleton ---------------------------------------------------------------------------------------
   root.classList.add('bt-screen');
   const where = el('div.bt-where', null,
-    el('span.bt-where-k', { text: state.ctx.patrol ? `Patrol · ${node?.place || BACKDROPS[backdrop]?.name || ''}` : node?.place || BACKDROPS[backdrop]?.name || 'Battle' }),
+    el('span.bt-where-k', { text: state.ctx.patrol ? `Patrol · ${place}` : place || 'Battle' }),
     el('h1.bt-where-name', { text: state.ctx.patrol ? 'A roving patrol' : node?.name || 'Battle' }));
   const logBtn = el('button.bt-tool', { type: 'button', 'aria-expanded': 'false', 'aria-controls': 'bt-log', title: 'Battle log' }, el('span', { text: 'Log' }));
   const autoBtn = el('button.bt-tool.bt-auto', { type: 'button', 'aria-pressed': String(auto), title: 'Auto battle' }, el('i.dot'), el('span', { text: 'Auto' }));
@@ -62,9 +64,10 @@ export function mount(root, ctx, { battle, returnTo = 'road' } = {}) {
   const finePointer = !('ontouchstart' in window) && !!(window.matchMedia && window.matchMedia('(pointer: fine)').matches);
   const skipHint = el('div.bt-skip', { text: finePointer ? 'click or Enter to hurry' : 'tap to hurry' });
   const intro = el('div.bt-intro', null,
-    el('p.bt-intro-k', { text: state.ctx.ambush ? 'Ambush!' : boss ? 'A foe of note' : 'Battle' }),
+    el('p.bt-intro-k', { text: state.ctx.duel ? 'A duel' : state.ctx.ambush ? 'Ambush!' : state.ctx.firstStrike ? 'First strike!' : boss ? 'A foe of note' : 'Battle' }),
     el('h2.bt-intro-name', { text: state.ctx.patrol ? 'A roving patrol' : node?.name || 'Battle' }),
-    el('p.bt-intro-foes', { text: [...new Set(foes0.map(f => f.name))].join(' · ') }));
+    el('p.bt-intro-foes', { text: [...new Set(foes0.map(f => f.name))].join(' · ') }),
+    state.ctx.duel ? el('p.bt-intro-note', { text: 'Losing is a yield.' }) : null);
   stageHost.append(moveBan, bigBan, skipHint);
 
   const ribbonHost = el('nav.bt-ribbon', { 'aria-label': 'Initiative Ribbon: the next turns' }, el('span.bt-rib-k', { text: 'Turns' }));
@@ -86,7 +89,7 @@ export function mount(root, ctx, { battle, returnTo = 'road' } = {}) {
   if (reduced) shell.classList.add('reduced');
 
   // ---- components ---------------------------------------------------------------------------------------
-  const stage = new Stage(stageHost, { backdrop, reduced });
+  const stage = new Stage(stageHost, { backdrop, reduced, dark: !!state.ctx.dark });
   stageHost.append(intro);
   const nameOf = id => disp.units[id]?.label || '';
   const hud = new Hud({ stageHost, ribbonHost, onFoe: id => tapUnit(id), onGrip: (id, i) => tapGrip(id, i) });
@@ -457,7 +460,7 @@ export function mount(root, ctx, { battle, returnTo = 'road' } = {}) {
     relayout();
     if (ro) { ro.observe(stageHost); ro.observe(partyHost); }
     ctx.audio.music?.(boss ? 'boss' : 'battle');
-    const now = [() => renderBackdrop(backdrop, { w: stage.lw, h: stage.lh, t: 0, reduced })], later = [];
+    const now = [() => renderBackdrop(backdrop, { w: stage.lw, h: stage.lh, t: 0, reduced, dark: !!state.ctx.dark })], later = [];
     for (const v of stage.foes.values()) { const j = v.sprite.jobs(disp.units[v.id]); now.push(...j.now); later.push(...j.later); }
     for (const v of party.v.values()) { const j = v.sprite.jobs(); now.push(...j.now); later.push(...j.later); }
     const t0i = performance.now();

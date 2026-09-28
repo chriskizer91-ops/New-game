@@ -5,8 +5,12 @@
 // sfx names: select confirm back dice hit graze miss crit heal status disarm ko surge legend
 //            victory defeat phase chest reveal equip levelup hearth
 //            (extra: beam tick stamp coin page identify slam error)
+//            world (M3 §5.8): bump alert rout door blip unlock chime
 //   opts: { tier } for rarity-scaled sounds (reveal, equip, beam: 0 worn .. 7 primal)
-// music tracks: title road battle boss victory hearth  (null stops music; victory does not loop)
+//         { voice } 0-7 (or { pitch } in Hz) for blip, the dialogue typewriter: one voice per speaker
+// music tracks: title road battle boss victory hearth, and for the world's maps (MAPS[id].music):
+//               wilds town dungeon (null stops music; victory does not loop). A change of track
+//               crossfades (the old one fades out over 0.9 s while the new one fades in).
 //
 // API: unlock() setEnabled(on) setMusicEnabled(on) enabled musicEnabled sfx(name, opts)
 //      music(track) track duck(amount, seconds)
@@ -73,6 +77,36 @@ const TRACKS = {
       { v: 'drum', g: .5, s: 'c . . . . c . . . . c . . . . . . c . . . . . c . . . c . . . .' },
     ],
   },
+  // the open Wilds: a pastoral flute over walking bass and offbeat plucks (E minor)
+  wilds: {
+    bpm: 104, sub: 2, loop: true, gain: .8,
+    parts: [
+      { v: 'flute', g: .06, s: 'B4 - E5 - G5 - F#5 E5 G5 - - - E5 - C5 - D5 - G5 - B5 - A5 G5 F#5 - - - D5 - . . E5 - G5 - B5 - C6 B5 A5 - G5 - E5 - G5 - A5 - C6 - B5 - A5 G5 F#5 - - - D#5 - . .' },
+      { v: 'tri', g: .15, s: 'E2 . B2 . E2 . B2 . C2 . G2 . C2 . G2 . G2 . D3 . G2 . D3 . D2 . A2 . D2 . A2 . E2 . B2 . E2 . B2 . C2 . G2 . C2 . G2 . A2 . E3 . A2 . E3 . B1 . F#2 . B1 . D#2 .' },
+      { v: 'pluck', g: .035, s: '. G4 . B4 . G4 . B4 . E4 . G4 . E4 . G4 . B4 . D5 . B4 . D5 . A4 . D5 . A4 . F#4 . G4 . B4 . G4 . B4 . E4 . G4 . E4 . G4 . C5 . E5 . C5 . E5 . D#4 . F#4 . B4 . F#4' },
+      { v: 'drum', g: .4, s: 'k . h . . . h . k . h . . . h h' },
+    ],
+  },
+  // a town: music-box bells over a bouncing bass (C major)
+  town: {
+    bpm: 96, sub: 2, loop: true, gain: .85,
+    parts: [
+      { v: 'bell', g: .06, s: 'E5 - G5 - C6 - G5 - A5 - - - E5 - C5 - F5 - A5 - C6 - A5 - G5 - - - D5 - B4 - C5 - E5 - G5 - E5 C5 A4 - C5 - E5 - D5 C5 D5 - F5 - A5 - G5 F5 E5 - D5 - C5 - - -' },
+      { v: 'tri', g: .15, s: 'C3 - . . G2 - . . A2 - . . E2 - . . F2 - . . C3 - . . G2 - . . D3 - . . C3 - . . G2 - . . A2 - . . E2 - . . D3 - . . A2 - . . G2 - . . B2 - D3 -' },
+      { v: 'pluck', g: .03, s: '. E4+G4 . . . E4+G4 . . . C4+E4 . . . C4+E4 . . . A3+C4 . . . A3+C4 . . . B3+D4 . . . B3+D4 . . . E4+G4 . . . E4+G4 . . . C4+E4 . . . C4+E4 . . . D4+F4 . . . D4+F4 . . . B3+D4 . . . B3+F4 . .' },
+      { v: 'drum', g: .38, s: 'k . h . s . h .' },
+    ],
+  },
+  // under the earth: a held minor drone, a far bell and a slow heartbeat (D minor)
+  dungeon: {
+    bpm: 76, sub: 2, loop: true, gain: .85,
+    parts: [
+      { v: 'pad', g: .028, s: 'D3+A3+F4 - - - - - - - - - - - - - - - Bb2+F3+D4 - - - - - - - - - - - - - - - C3+G3+E4 - - - - - - - - - - - - - - - A2+E3+C#4 - - - - - - - - - - - - - - -' },
+      { v: 'bell', g: .05, s: 'D5 . . . . . A4 . . . F5 . . . E5 . D5 . . . . . Bb4 . . . . . A4 . . . C5 . . . E5 . . . G5 . . . F5 . E5 . E5 . . . . . C#5 . . . A4 . . . . .' },
+      { v: 'tri', g: .15, s: 'D2 - - - . . . . D2 - - - . . . . Bb1 - - - . . . . Bb1 - - - . . . . C2 - - - . . . . C2 - - - . . . . A1 - - - . . . . A1 - - - . . C#2 -' },
+      { v: 'drum', g: .45, s: 'k . k . . . . . . . . . . . . .' },
+    ],
+  },
   // the fanfare: plays once
   victory: {
     bpm: 132, sub: 4, loop: false, gain: 1,
@@ -101,6 +135,10 @@ function parsePart(p) {
   return { ...p, ev, len: toks.length };
 }
 const PARSED = Object.fromEntries(Object.entries(TRACKS).map(([k, T]) => [k, { ...T, parts: T.parts.map(parsePart), len: Math.max(...T.parts.map(p => p.s.trim().split(/\s+/).length)) }]));
+// Every music track name, and the notes each track plays that do not parse (for the tests: always []).
+export const TRACK_NAMES = Object.freeze(Object.keys(TRACKS));
+export const badNotes = () => Object.entries(TRACKS).flatMap(([k, T]) => T.parts.filter(p => p.v !== 'drum')
+  .flatMap(p => p.s.trim().split(/\s+/).filter(t => t !== '-' && t !== '.').flatMap(t => t.split('+')).filter(n => !freqOf(n)).map(n => `${k}:${n}`)));
 
 export function createAudio() {
   let enabled = true, musicOn = true, unlocked = false;
@@ -174,6 +212,7 @@ export function createAudio() {
   // ---- sound effects ----
   const CHIME = [[659], [587, 880], [523, 659, 784, 1047], [587, 740, 880, 1109, 1480], [523, 659, 784, 1047, 1319, 1568], [698, 880, 1047, 1319, 1480, 1760, 2093], [622, 784, 932, 1245, 1568, 1865, 2489], [784, 988, 1175, 1568, 1976, 2349, 3136]];
   const clampTier = t => Math.max(0, Math.min(7, t | 0));
+  const VOICES = [660, 520, 740, 440, 880, 590, 390, 980]; // blip pitch per speaker voice 0-7
   const SFX = {
     select(t) { tone(1400, t, .05, { type: 'square', g: .025 }); },
     tick(t) { SFX.select(t); },
@@ -213,6 +252,21 @@ export function createAudio() {
     identify(t) { for (let k = 0; k < 10; k++) tone(880 * Math.pow(2, k / 7), t + k * .07, .25, { type: 'triangle', g: .04 }); noise(t, 1, { type: 'highpass', f: 5000, g: .04, a: .8 }); },
     levelup(t) { [392, 523, 659, 784, 1047].forEach((f, k) => tone(f, t + k * .07, .4, { type: 'pulse', g: .05, lp: 3200 })); bell(1568, t + .4, .9, .05); bell(2093, t + .5, .8, .04); },
     hearth(t) { for (let k = 0; k < 9; k++) noise(t + rnd(0, 1.1), rnd(.02, .05), { type: 'bandpass', f: rnd(1200, 3200), q: 3, g: rnd(.05, .14) }); [174.6, 220, 261.6].forEach(f => tone(f, t, 1.8, { type: 'triangle', g: .05, a: .4 })); },
+    // ---- the world (M3 §5.8) ----
+    // walking into something solid: a soft thud
+    bump(t) { tone(120, t, .09, { to: 70, type: 'triangle', g: .12 }); noise(t, .05, { type: 'lowpass', f: 600, g: .1 }); },
+    // a pack spots you: the "!" beat
+    alert(t) { tone(880, t, .07, { type: 'square', g: .045, lp: 3200 }); tone(1320, t + .07, .16, { type: 'square', g: .055, lp: 3200 }); },
+    // a weak pack scatters: a whoosh, running feet and a coin
+    rout(t) { noise(t, .3, { type: 'bandpass', f: 3000, to: 600, q: 1.2, g: .12 }); [1200, 1000, 820, 700].forEach((f, k) => tone(f, t + .05 + k * .055, .07, { type: 'triangle', g: .05 })); bell(1976, t + .3, .35, .04, null, sfxBus, 2.01); },
+    // a door, a stair or a map edge: a creak and a thunk
+    door(t) { noise(t, .26, { type: 'bandpass', f: 520, to: 900, q: 6, g: .1, a: .08 }); tone(92, t + .22, .16, { to: 60, g: .24, type: 'triangle' }); },
+    // one typed character of dialogue; opts.pitch gives each speaker a voice
+    blip(t, o) { tone(Math.max(120, Math.min(2400, o.pitch || VOICES[(o.voice | 0) & 7] || 660)), t, .035, { type: 'square', g: .022, lp: 2400 }); },
+    // a lock opens (a key, a map power or a Domain): a click and a rising bell
+    unlock(t) { noise(t, .05, { type: 'highpass', f: 4000, g: .15 }); tone(600, t, .06, { type: 'square', g: .035, lp: 2000 }); [784, 988, 1175].forEach((f, k) => bell(f, t + .08 + k * .07, .55, .05)); },
+    // a map power at work, a lookout's Longwatch, a hearth kindled: a bright sparkle
+    chime(t) { [1047, 1319, 1568, 2093].forEach((f, k) => bell(f, t + k * .05, .8, .045)); noise(t, .5, { type: 'highpass', f: 6000, g: .03, a: .2 }); },
   };
 
   function duck(amount, secs) {

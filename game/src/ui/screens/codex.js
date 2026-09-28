@@ -1,5 +1,7 @@
-// The Hearth Codex: a binder of every relic with Sighted / Claimed / Awakened stamps.
-// Unsighted entries are silhouettes with a riddle; tap any entry to see its card.
+// The Hearth Codex: a binder of every relic with Sighted / Claimed / Awakened stamps, counted out of
+// all 24 (RELICS). Unsighted entries are silhouettes with a riddle; tap any entry to see its card.
+// mount(root, ctx, { from = 'world' }): Back returns to `from`.
+// Owner: WP8.
 import { RELICS } from '../../data/relics.js';
 import { relicItem } from '../../rules/loot.js';
 import { createRng } from '../../core/rng.js';
@@ -21,17 +23,34 @@ const RIDDLES = {
   'thornwatch-boots': 'They leave no trail the forest will tell. Deep in the bramble, someone is walking in them.',
   thornwreath: 'It grew around a skull the night the hearth flickered, and it has not stopped growing.',
   briarfang: 'A fang the length of a knife, still in the mouth it came from.',
+  lightfingers: 'Cold hands, quick hands. The queen of a hollow by the Hearth Road never pays a toll.',
+  hartshorn: 'It still pulls toward deer. Look across the millrace, where a poacher keeps his holm.',
+  'mosswatch-lantern': 'The lights at midnight are not ghosts. Ghosts do not need a lantern.',
+  'watchkeepers-kettle': 'An old man in a mossy tower wears his pot like a crown. Talk to him, or help him.',
+  'mire-pearl': 'Something in the Mossfall shrine wears reeds for a crown and a pearl for a heart.',
+  dawnbell: 'Fawnrest lost its bell to something with wings. Listen for humming in the pale trees.',
+  rootsong: 'The Grove circle sings under the new moon, and the Thornmother leads the song.',
+  oathshield: 'Three rangers went down into the roots. One of them still holds the line, and does not know why.',
+  'isoldes-oath': 'The Commander’s own blade, pawned one hard winter. Someone is counting sap with it now.',
+  'ichor-mask': 'A smith’s mask on something that was never a smith. It drinks from the eldest trees.',
+  'first-seed': 'The first thing that ever grew in the Wilds, and the last thing the Rot wants to give back.',
+  'vale-gauntlets': 'Tamsin never takes them off. You will have to beat her to see her hands.',
 };
 
 const HOLDER = {
   hearthbrand: 'the Keep reliquary', 'stillwater-lance': 'Tamsin Vale', cairnmaul: 'the Keep reliquary',
   'wardens-seal': 'Sneck the Tallyman', tallyknife: 'a Tallyman veteran', thornsplitter: 'Old Snag', 'rotwood-circlet': 'the Rot-Stag',
   'thornwatch-hood': 'Skarn', 'thornwatch-jerkin': 'a bandit veteran', 'thornwatch-boots': 'a bandit veteran', thornwreath: 'Briarmaw', briarfang: 'Briarmaw',
+  lightfingers: 'Mags Kestrel', hartshorn: 'Haskett the poacher', 'mosswatch-lantern': 'Hollis Fairweight', 'watchkeepers-kettle': 'Old Garret',
+  'mire-pearl': 'Gorrow the Mire-King', dawnbell: 'the Gloamwing', rootsong: 'Oda the Thornmother', oathshield: 'Sergeant Corra Thistle',
+  'isoldes-oath': 'Dun the Counter', 'ichor-mask': 'the Rotwarden', 'first-seed': 'the Rotwarden', 'vale-gauntlets': 'Tamsin',
 };
 
-export function mount(root, ctx) {
+export function mount(root, ctx, params = {}) {
   if (!ctx.game) { ctx.go('title'); return {}; }
   const game = ctx.game;
+  const from = params.from || 'world';
+  const leave = () => ctx.go(from);
   const ids = Object.values(RELICS).sort((a, b) => a.codex - b.codex).map(r => r.id);
   const entry = id => game.codex[id] || { sighted: false, claimed: false, awakened: false };
   const mine = ['hearthbrand', 'stillwater-lance', 'cairnmaul'].find(id => entry(id).claimed);
@@ -40,7 +59,7 @@ export function mount(root, ctx) {
   const claimed = ids.filter(id => entry(id).claimed).length, sighted = ids.filter(id => entry(id).sighted).length;
 
   const top = el('header', 'topbar');
-  top.append(button('‹ Road', 'btn ghost back', () => { ctx.audio.sfx('back'); ctx.go('road'); }), el('div', 'tb-title', '<span class="realm">The Hearth Codex</span><h1 class="title-display">Every legend has a holder</h1>'));
+  top.append(button('‹ Back', 'btn ghost back', () => { ctx.audio.sfx('back'); leave(); }), el('div', 'tb-title', '<span class="realm">The Hearth Codex</span><h1 class="title-display">Every legend has a holder</h1>'));
   root.append(top);
   const sum = el('section', 'codex-sum panel');
   sum.append(
@@ -75,5 +94,5 @@ export function mount(root, ctx) {
   root.append(binder);
   root.append(el('p', 'codex-foot', 'Sighted: seen on its holder. Claimed: pried loose and yours. Awakened: a relic that has done three great deeds in your hands. No relic has woken that far yet.'));
   if (!ctx.audio.track || ctx.audio.track === 'victory') ctx.audio.music('road');
-  return { onAction: screenNav(root, { back: () => ctx.go('road'), menu: () => ctx.go('road') }) };
+  return { onAction: screenNav(root, { back: leave, menu: leave }) };
 }

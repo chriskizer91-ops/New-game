@@ -1,6 +1,7 @@
-// The Heart Chamber (M3 spec §2.1, §2.3). The dark chamber at the root of the Eldest Tree, where the Rotwarden keeps it.
-// SCAFFOLD DRAFT: exits, anchors, encounters, Hearthfires and the other entities sit at their spec
-// coordinates; the tiles are a simple walkable draft (no pockets or barriers enforce the locks yet).
+// The Heart Chamber (M3 spec §2.1, §2.3), the dark heartwood at the root of the Eldest Tree. Its
+// floor is the Eldest Rings: two bands of root round the Rotwarden (9,5; footprint x7-11, y3-7).
+// First-Age roots come down through the walls, the ring-face (3,2) is the sign, and a tangle in the
+// north-east hides the chest (15,2). Every entity sits at its spec coordinates.
 // Format: src/data/maps/index.js. Owner: WP3B.
 import { deepFreeze } from '../../core/freeze.js';
 
@@ -11,20 +12,20 @@ export default deepFreeze({
   w: 18, h: 16,
   rows: [
     'RRRRRRRRRRRRRRRRRR', // 0
-    'RkkkkkkkkkkkkkkkkR', // 1
-    'RkkkkkkkkkkkkkkkkR', // 2
-    'RkkkkkkkkkkkkkkkkR', // 3
-    'RkkkkkkkkkkkkkkkkR', // 4
-    'RkkkkkkkkkkkkkkkkR', // 5
-    'RkkkkkkkkkkkkkkkkR', // 6
-    'RkkkkkkkkkkkkkkkkR', // 7
-    'RkkkkkkkkkkkkkkkkR', // 8
-    'RkkkkkkkkkkkkkkkkR', // 9
-    'RkkkkkkkkkkkkkkkkR', // 10
-    'RkkkkkkkkkkkkkkkkR', // 11
-    'RkkkkkkkkkkkkkkkkR', // 12
-    'RkkkkkkkkkkkkkkkkR', // 13
-    'RkkkkkkkkkkkkkkkkR', // 14
+    'RRRkrkfkkkkkkYYRRR', // 1
+    'RRkrkkkrrrrrkkkrRR', // 2
+    'RkfrkkrkkkkkrkkrYR', // 3
+    'RkrkkrkkkkkkkrkkrR', // 4
+    'RYrkkrkkkkkkkrkkrR', // 5
+    'RkrkkrkkkkkkkrkfrR', // 6
+    'RkkrkkrkkkkkrkkrkR', // 7
+    'RkkrkkkrrrrrkkkrkR', // 8
+    'RkYkrkkkkkkkkkrkYR', // 9
+    'RYkkkrrkkkkkrrkYkR', // 10
+    'RkkkkkkkrrrkfkkkkR', // 11
+    'RRkYkfkkkkkkkkYkRR', // 12
+    'RRRkkkkYkkkYkkkRRR', // 13
+    'RRRRRRRRkkkRRRRRRR', // 14
     'RRRRRRRRRkRRRRRRRR', // 15
   ],
   entities: [

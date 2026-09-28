@@ -1,6 +1,11 @@
-// The Hindwood (M3 spec §2.1, §2.3). Pale trees; the Gloamwing's hollow in the north-east, the rope-ledge up to Eldergrove in the west.
-// SCAFFOLD DRAFT: exits, anchors, encounters, Hearthfires and the other entities sit at their spec
-// coordinates; the tiles are a simple walkable draft (no pockets or barriers enforce the locks yet).
+// The Hindwood (M3 spec §2.1, §2.3). Glades strung along a trail from Thornhollow (east, 31,34..35)
+// to Fawnrest (north, 15..16,0). A stream crosses the wood from the escarpment, with a ford on the
+// west route (the hunters' cairn, the glowcap ring) and a bridge on the east route (the Gloamwing's
+// pale hollow), so a chase can loop. The escarpment walls the west side: the rope-ledge (1,8..9) is
+// the only way up to Eldergrove (the ledge drop from Eldergrove kicks the rope down). The thornwall
+// (27..28,7) is the only way into the rock alcove with the chest. The feral druid's camp (18,28) and
+// the hinds' pool (SW) fill the south. Every entity sits at its spec coordinates except the cairn,
+// moved 1 south to (10,25) so it touches its stand (10,26).
 // Format: src/data/maps/index.js. Owner: WP3B.
 import { deepFreeze } from '../../core/freeze.js';
 
@@ -11,49 +16,49 @@ export default deepFreeze({
   w: 32, h: 40,
   rows: [
     'TTTTTTTTTTTTTTT==TTTTTTTTTTTTTTT', // 0
-    'T..............==..............T', // 1
-    'T..............==..............T', // 2
-    'T..............==..............T', // 3
-    'T..............==..............T', // 4
-    'T..............==..............T', // 5
-    'T..............==..............T', // 6
-    'T..............==..............T', // 7
-    '=================..............T', // 8
-    '=================..............T', // 9
-    'T..............==..............T', // 10
-    'T..............==..............T', // 11
-    'T..............==..............T', // 12
-    'T..............==..............T', // 13
-    'T..............==..............T', // 14
-    'T..............==..............T', // 15
-    'T..............==..............T', // 16
-    'T..............==..............T', // 17
-    'T..............==..............T', // 18
-    'T..............==..............T', // 19
-    'T..............==..............T', // 20
-    'T..............==..............T', // 21
-    'T..............==..............T', // 22
-    'T..............==..............T', // 23
-    'T..............==..............T', // 24
-    'T..............==..............T', // 25
-    'T..............==..............T', // 26
-    'T..............==..............T', // 27
-    'T..............==..............T', // 28
-    'T..............==..............T', // 29
-    'T..............==..............T', // 30
-    'T..............==..............T', // 31
-    'T..............==..............T', // 32
-    'T..............==..............T', // 33
-    'T..............=================', // 34
-    'T..............=================', // 35
-    'T..............................T', // 36
-    'T..............................T', // 37
-    'T..............................T', // 38
+    'TTTTTTTTTTTTTT.==.TTTTTTTTTTTTTT', // 1
+    '^^^TTTTTTTTTT..==..TTTTTTTTTTTTT', // 2
+    '^^^TTTTTTTTT...==...TTTTTooooooT', // 3
+    '^^^.TTTTTTT,...==....TTTTo,.,,oT', // 4
+    '^^...TTTTTT,,..==.....TTTo.,,.oT', // 5
+    '^^.....TTTT"...==..T...TTo,.,,oT', // 6
+    '^^......TTT""..=........Too..ooT', // 7
+    '==......TTT"..==.....t.......TTT', // 8
+    '==........T...==......,.....TTTT', // 9
+    '^^...o......===TTTTT.,,,,,,,.TTT', // 10
+    '^^...,,f,f,.=...TTT.,,"",,,,.TTT', // 11
+    '^^..,f,,,,,f=....TT.,,,,,"",.TTT', // 12
+    '^^T.f,,,,,,,=,...TT.,,",,,,,TTTT', // 13
+    '^^T..,,,,,,,=,...TT..,,,,,,.TTTT', // 14
+    '^^T.f,,,,,,,=,..TTTT..,,,,..TTTT', // 15
+    '^^T.,f,,,,,f=,.TTTTTT......TTTTT', // 16
+    '^^TT..,f,f===..TTTTTTT.......TTT', // 17
+    '^^^TT.....=.TTTTTTTTTTT..o...TTT', // 18
+    '^^^TTT.......TTTTTTTTTTTT.....TT', // 19
+    '^^^~~~~~~wwww~~~~~~~~~~~~~bb~~~~', // 20
+    '^^^~~~~~~wwww~~~~~~~~~~~~~bb~~~~', // 21
+    '^^TTTTTT...=.TTTTTTTTTTTT.....TT', // 22
+    '^^TTTTTT...=..TTT...TTTT..t...TT', // 23
+    '^TTTTTT.....o..T.......TTT....TT', // 24
+    'TTTTTTT..o......,,o,,,..TT.....T', // 25
+    'TTTTTTTT...o...,,,,,,,,,..T....T', // 26
+    'TTTTTTTT..===..o,,,,,,,o...."..T', // 27
+    'TTTTTTTT....=..,,,,,,,,,,..""..T', // 28
+    'TTT.........=====,,,,,,,,......T', // 29
+    'TT..............o,=,,,,........T', // 30
+    'TT..mm....TTTTT..,=====..TT....T', // 31
+    'TT.m~~m...TTTTTT......=...TT...T', // 32
+    'TT.m~~m..TTTTTTTT.....=.....o..T', // 33
+    'TT..mm...TTTTTTTTTTT..==========', // 34
+    'TT......TTTTTTTTTTTTT.........==', // 35
+    'TTT...TTTTTTTTTTTTTTTTT.......oo', // 36
+    'TTTTTTTTTTTTTTTTTTTTTTTTT.....oT', // 37
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT', // 38
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT', // 39
   ],
   entities: [
-    { id: 'gloamwing-hollow', kind: 'encounter', enc: 'gloamwing-hollow', mode: 'lair', at: [22, 12], face: 's' },
-    { id: 'hindwood-cairn', kind: 'hearthfire', at: [10, 24], stand: [10, 26, 'n'], cold: true },
+    { id: 'gloamwing-hollow', kind: 'encounter', enc: 'gloamwing-hollow', mode: 'lair', at: [22, 12], face: 's', area: [21, 11, 23, 12] },
+    { id: 'hindwood-cairn', kind: 'hearthfire', at: [10, 25], stand: [10, 26, 'n'], cold: true },
     { id: 'hw-glowcaps', kind: 'encounter', enc: 'hw-glowcaps', mode: 'pack', at: [8, 14], face: 's' },
     { id: 'hw-druids', kind: 'encounter', enc: 'hw-druids', mode: 'pack', at: [18, 28], face: 's' },
     { id: 'hw-thorn-chest', kind: 'chest', at: [28, 6], loot: { items: [{ rarity: 'storied', unidentified: true }] } },

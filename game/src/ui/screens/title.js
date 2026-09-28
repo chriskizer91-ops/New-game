@@ -1,13 +1,21 @@
-// Title: the Keep at dusk with the party on the road, the name, and the way in.
+// Title: the Keep at dusk with the party on the road, the name, and the way in (M3 spec §5.7).
+//   - a live save: "Continue", sub-line "Wren · Thornhollow · Day 4 · Lv 5 · 9/24 relics"
+//   - only an M2 save: "Continue from the Gauntlet" -> the carry-over card -> "Walk on" ->
+//     ctx.adopt(game) (held in memory; the world writes it on the first step)
+//   - "New game" over any journey asks first; newgame's Begin backs the old save up (ctx.replaceGame)
+//   - the "M3 · Verdant Wilds" tag
+// Owner: WP8.
 import { renderBackdrop, renderHero } from '../../art/index.js';
-import { ENCOUNTERS } from '../../data/encounters.js';
 import { el, esc, button, toCanvas } from '../lib/dom.js';
 import { animate, isReduced } from '../lib/anim.js';
 import { gearOf, customOf } from '../lib/art.js';
 import { screenNav } from '../lib/keys.js';
+import { openCarryCard } from '../lib/carry.js';
+import { saveLine } from '../lib/carry-facts.js';
 
 export function mount(root, ctx) {
-  const game = ctx.game || null;
+  const game = ctx.game || null, carry = game ? null : ctx.carry;
+  const shown = game || carry; // whose party stands on the road in the painting
   root.classList.add('full');
   const scene = el('div', 'title-scene');
   const cv = el('canvas', { class: 'px', 'aria-hidden': 'true' });
@@ -17,24 +25,39 @@ export function mount(root, ctx) {
     el('p', 'realm', 'A pixel JRPG of stolen legends'),
     el('h1', 'title-display game-title', 'Aethermoor'),
     el('p', 'title-sub', 'Hearth &amp; Heirloom'),
+    el('p', 'title-ver', '<span>M3</span> · Verdant Wilds'),
     el('p', 'title-tag', 'The Eternal Hearth has flickered. Every legend in the land is in someone else’s hands. Go and take them back, one fight at a time.'),
   );
   const menu = el('div', 'title-menu');
   const go = (name, p) => () => { ctx.audio.unlock(); ctx.audio.sfx('confirm'); ctx.go(name, p); };
   if (game) {
-    const w = game.party.roster.warden, node = ENCOUNTERS[game.progress.node];
-    const cont = button(`Continue<small>${esc(w.name)} · Level ${w.level} · ${esc(node?.name || '')} · Day ${game.progress.flags.day}</small>`, 'btn primary big', go('road'), { 'data-primary': '' });
+    menu.append(button(`Continue<small>${esc(saveLine(game))}</small>`, 'btn primary big title-continue', go('world', { arrive: 'continue' }), { 'data-primary': '' }));
+  } else if (carry) {
+    const cont = button(`Continue from the Gauntlet<small>${esc(saveLine(carry))}</small>`, 'btn primary big title-carry', async () => {
+      ctx.audio.unlock(); ctx.audio.sfx('select');
+      const ok = await openCarryCard(ctx, carry, {
+        kind: 'm2', note: 'Your M2 save is never touched: the old page keeps playing it. Nothing is saved here until you take your first step.',
+      });
+      if (!ok) { cont.focus(); return; }
+      ctx.adopt(carry);
+      ctx.go('world', { arrive: 'carry' });
+    }, { 'data-primary': '' });
     menu.append(cont);
-    // a new game replaces the saved journey, so ask first (in the page, never with confirm())
+  }
+  if (shown) {
+    // a new game replaces the journey on this device, so ask first (in the page, never with confirm())
+    const w = shown.party.roster.warden;
     const ask = el('div', 'title-confirm'); ask.hidden = true;
-    const ng = button('New game', 'btn big', () => { ctx.audio.unlock(); ctx.audio.sfx('select'); ng.hidden = true; ask.hidden = false; ask.querySelector('.btn').focus(); });
+    const ng = button('New game', 'btn big title-new', () => { ctx.audio.unlock(); ctx.audio.sfx('select'); ng.hidden = true; ask.hidden = false; ask.querySelector('.btn').focus(); });
     ask.append(
-      el('p', '', `A new Hearthwarden replaces ${esc(w.name)}’s journey on this device once you begin. Make a save code in Settings first if you want it back.`),
+      el('p', '', game
+        ? `A new Hearthwarden replaces ${esc(w.name)}’s journey on this device once you begin. It is kept as a backup, and Settings can bring it back.`
+        : `A new Hearthwarden starts fresh instead of carrying ${esc(w.name)}’s Gauntlet journey over. The M2 save itself is never touched, and Settings can still carry it over later.`),
       el('div', 'row-btns', [button('Start fresh', 'btn danger', go('newgame')), button('Keep my journey', 'btn', () => { ctx.audio.sfx('back'); ask.hidden = true; ng.hidden = false; ng.focus(); })]),
     );
     menu.append(ng, ask);
   } else {
-    menu.append(button('New game', 'btn primary big', go('newgame'), { 'data-primary': '' }));
+    menu.append(button('New game', 'btn primary big title-new', go('newgame'), { 'data-primary': '' }));
   }
   menu.append(button('Settings', 'btn big', go('settings', { from: 'title' })));
   card.append(menu);
@@ -64,8 +87,8 @@ export function mount(root, ctx) {
     const floor = Math.round(H * .86);
     const baseX = Math.round(W * (W < 140 ? .58 : wideMQ.matches ? .66 : .62));
     heroes.forEach((id, i) => {
-      const gear = game ? gearOf(game, id) : undefined;
-      const img = renderHero(id, gear, { pose: 'idle', t: t + i * .37, custom: game ? customOf(game, id) : undefined, reduced: isReduced() });
+      const gear = shown ? gearOf(shown, id) : undefined;
+      const img = renderHero(id, gear, { pose: 'idle', t: t + i * .37, custom: shown ? customOf(shown, id) : undefined, reduced: isReduced() });
       toCanvas(img, tmp);
       const x = baseX + i * 13 - 32 + (i % 2 ? 0 : 3), y = floor - 56 + (i % 2 ? -5 : 0);
       g.drawImage(tmp, x, y);
@@ -81,7 +104,7 @@ export function mount(root, ctx) {
   addEventListener('resize', onResize);
   const nav = screenNav(root, {});
   return {
-    unmount() { removeEventListener('resize', onResize); root.removeEventListener('pointerdown', unlock); },
+    unmount() { removeEventListener('resize', onResize); root.removeEventListener('pointerdown', unlock); clearTimeout(rt); },
     onAction(a) { if (!hint.classList.contains('gone')) { hint.classList.add('gone'); } return nav(a); },
   };
 }

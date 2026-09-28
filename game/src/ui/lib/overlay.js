@@ -1,9 +1,14 @@
 // Full-screen overlays (card reveal, previews, confirmations) layered over the current screen.
 // The screen underneath goes inert, keys are trapped, focus comes back when it closes.
+//   openOverlay({ cls, label, onKey, onBack }) -> { el, inner, closed, close() }
+//   overlayOpen() -> bool
+//   closeOverlays()   closes every open overlay (the app calls it when the screen changes, so a
+//                     dialogue or sheet left open never keeps the next screen inert)
 import { el } from './dom.js';
 import { trapKeys, moveFocus } from './keys.js';
 
 let open = 0;
+const handles = new Set();
 const appRoot = () => document.getElementById('app');
 
 export function openOverlay({ cls = '', label = 'Dialog', onKey, onBack } = {}) {
@@ -17,6 +22,7 @@ export function openOverlay({ cls = '', label = 'Dialog', onKey, onBack } = {}) 
   if (app) app.inert = true;
   document.body.classList.add('ov-open');
   let closed = false;
+  let handle = null;
   const stopKeys = trapKeys((a, e) => {
     if (onKey && onKey(a, e) === true) return true;
     if (a === 'back' && onBack) { onBack(); return true; }
@@ -30,12 +36,13 @@ export function openOverlay({ cls = '', label = 'Dialog', onKey, onBack } = {}) 
     }
     return false;
   });
-  return {
+  handle = {
     el: ov, inner,
     get closed() { return closed; },
     close() {
       if (closed) return;
       closed = true;
+      handles.delete(handle);
       stopKeys();
       ov.remove();
       open = Math.max(0, open - 1);
@@ -46,6 +53,9 @@ export function openOverlay({ cls = '', label = 'Dialog', onKey, onBack } = {}) 
       if (prevFocus && prevFocus.isConnected && prevFocus.focus) prevFocus.focus({ preventScroll: true });
     },
   };
+  handles.add(handle);
+  return handle;
 }
 
 export const overlayOpen = () => open > 0;
+export function closeOverlays() { for (const h of [...handles].reverse()) h.close(); }

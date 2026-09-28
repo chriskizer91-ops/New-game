@@ -59,7 +59,7 @@ try { pw = require('playwright'); } catch {
 }
 const exe = ['/opt/pw-browsers/chromium'].find(p => existsSync(p));
 const browser = await pw.chromium.launch(exe ? { executablePath: exe } : {});
-const url = pathToFileURL(file).href + '#' + [args.only ? `only=${args.only}` : '', args.zoom ? `zoom=${args.zoom}` : '', args.fk ? `fk=${args.fk}` : '', args.ph ? `ph=${args.ph}` : ''].filter(Boolean).join('&');
+const url = pathToFileURL(file).href + '#' + [args.only ? `only=${args.only}` : '', args.zoom ? `zoom=${args.zoom}` : '', args.fk ? `fk=${args.fk}` : '', args.ph ? `ph=${args.ph}` : '', args.bio ? `bio=${args.bio}` : ''].filter(Boolean).join('&');
 const shots = [];
 for (const [name, width, scale] of [['wide', 1500, 1], ['phone', 390, 2]]) {
   if (args.only && name === 'phone' && !args.phone) continue;

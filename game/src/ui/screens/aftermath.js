@@ -1,11 +1,19 @@
 // After a battle: resolve it once, then XP and level-ups, gold, one chest per drop (each opens
 // the card reveal), consumables, Grudges and Brands. A wipe wakes you at the Hearthfire.
+// mount(root, ctx, { battle, returnTo = 'world' }). On leaving it calls
+//   ctx.go(returnTo, { result, brand, wokeAt, yield, rematch, enc })
+// (M3 spec §5.5): result 'victory'|'defeat'|'fled'; brand = report.brand or null; wokeAt = the
+// Hearthfire id a wipe woke you at (HEARTHS in data/world.js), else null; yield = a duel defeat
+// (Tamsin: no gold lost, no Grudge); rematch = a Brand fight won again; enc = the encounter id.
+// Owner: WP8.
 import { resolveBattle } from '../../rules/gauntlet.js';
 import { xpForLevel, xpToNext } from '../../rules/progression.js';
 import { diceIcon } from '../../art/index.js';
 import { SKILLS } from '../../data/skills.js';
 import { CONSUMABLES } from '../../data/items.js';
-import { ENCOUNTERS } from '../../data/encounters.js';
+import { ENCOUNTERS, BRANDS } from '../../data/encounters.js';
+import { HEARTHS } from '../../data/world.js';
+import { MAPS } from '../../data/maps/index.js';
 import { OMENS } from '../../data/omens.js';
 import { el, esc, button, toCanvas, sleep, countTo, plural } from '../lib/dom.js';
 import { isReduced } from '../lib/anim.js';
@@ -20,8 +28,8 @@ const pctOf = h => { const base = xpForLevel(h.level), need = xpToNext(h.level);
 const short = h => (h.id === 'alondra' ? 'Alondra' : h.name.split(' ')[0]);
 
 export function mount(root, ctx, params = {}) {
-  const { battle, returnTo = 'road' } = params;
-  if (!battle || !ctx.game) { ctx.go(ctx.game ? 'road' : 'title'); return {}; }
+  const { battle, returnTo = 'world' } = params;
+  if (!battle || !ctx.game) { ctx.go(ctx.game ? 'world' : 'title'); return {}; }
   let R = RESOLVED.get(battle);
   if (!R) {
     const before = ctx.game;
@@ -32,8 +40,8 @@ export function mount(root, ctx, params = {}) {
       ctx.setGame(game);
     } catch (err) {
       console.error(err);
-      root.append(el('p', 'panel', 'That battle never finished. Back to the road.'));
-      setTimeout(() => ctx.go('road'), 900);
+      root.append(el('p', 'panel', 'That battle never finished. Back to the Wilds.'));
+      setTimeout(() => ctx.go('world'), 900);
       return {};
     }
   }
@@ -43,7 +51,12 @@ export function mount(root, ctx, params = {}) {
   const names = [...new Set(foes.map(f => f.name))];
   const patrol = !!battle.ctx?.patrol;
   const res = report.result;
-  const next = () => { ctx.audio.sfx('confirm'); ctx.go(returnTo, report.brand ? { brand: report.brand } : {}); };
+  const yielded = res === 'defeat' && !!report.yield;
+  const enc = battle.ctx?.nodeId || null;
+  const next = () => {
+    ctx.audio.sfx('confirm');
+    ctx.go(returnTo, { result: res, brand: report.brand || null, wokeAt: report.wokeAt || null, yield: yielded, rematch: !!report.rematch, enc });
+  };
 
   const head = el('header', `af-head af-${res}`);
   const wrap = el('div', 'af-body');
@@ -51,17 +64,26 @@ export function mount(root, ctx, params = {}) {
 
   if (res === 'victory') {
     ctx.audio.music('victory'); // the battle screen already played the victory sting
-    const main = foes.length === 1 ? `${foes[0].name} falls.` : patrol ? 'The patrol is scattered.' : 'The road is clear.';
+    const main = foes.length === 1 ? `${foes[0].name} falls.` : patrol ? 'The pack is scattered.' : 'The way is clear.';
     head.innerHTML = `<p class="kick">Victory</p><h1 class="title-display">${esc(main)}</h1><p class="meta">${esc(names.join(' · '))} · ${plural(Math.max(1, Math.round(report.rounds || 1)), 'round')}</p>`;
+  } else if (yielded) {
+    // a duel lost is a yield (M3 spec §3.5, D9): no gold lost, no Grudge, and the door opens anyway
+    ctx.audio.music('hearth');
+    const who = foes[0]?.name || 'Your rival';
+    head.classList.add('af-yield');
+    head.innerHTML = `<p class="kick">You yield</p><h1 class="title-display">${esc(who)} lowers her blade.</h1><p class="meta">${esc(names.join(' · '))} · Day ${game.progress.flags.day}</p>`;
+    wrap.append(el('p', 'af-story panel', `${esc(who)} offers you a hand up and does not quite hide the grin. Nobody loses a coin, nobody holds a grudge, and the way she was guarding is open anyway. She will be waiting if you want the rematch.`));
   } else if (res === 'defeat') {
     ctx.audio.music('hearth');
-    const woke = ENCOUNTERS[report.wokeAt] || ENCOUNTERS[game.progress.node];
-    head.innerHTML = `<p class="kick">The party falls</p><h1 class="title-display">You wake at the Hearthfire.</h1><p class="meta">${esc(woke?.name || 'The last Hearthfire')} · Day ${game.progress.flags.day}</p>`;
-    wrap.append(el('p', 'af-story panel', `Someone dragged you all back to ${esc(woke?.name || 'the fire')}. Everyone is on their feet, and every piece of gear is where you left it. The purse is lighter, and the lesson stuck.`));
+    const hf = HEARTHS[report.wokeAt] || HEARTHS[game.progress.lastHearthfire] || null;
+    const fire = hf ? hf.name : ENCOUNTERS[report.wokeAt]?.name || 'the last Hearthfire';
+    const where = hf && MAPS[hf.map] ? MAPS[hf.map].name : null;
+    head.innerHTML = `<p class="kick">The party falls</p><h1 class="title-display">You wake at the Hearthfire.</h1><p class="meta">${esc([fire, where, `Day ${game.progress.flags.day}`].filter(Boolean).join(' · '))}</p>`;
+    wrap.append(el('p', 'af-story panel', `Someone dragged you all back to ${esc(fire.replace(/^The /, 'the '))}. Everyone is on their feet, and every piece of gear is where you left it. The purse is lighter, and the lesson stuck.`));
   } else {
     ctx.audio.music('road');
     head.innerHTML = `<p class="kick">Fled</p><h1 class="title-display">You got away.</h1><p class="meta">${esc(names.join(' · '))}</p>`;
-    wrap.append(el('p', 'af-story panel', patrol ? 'You break for the trees and the patrol loses interest in a mile. Nothing lost but a little pride.' : 'You break for the trees and nobody follows far. The road is still blocked, and whoever was holding it will remember your back.'));
+    wrap.append(el('p', 'af-story panel', patrol ? 'You break for the trees and the pack loses interest before long. Nothing lost but a little pride.' : 'You break for the trees and nobody follows far. Whoever was holding the way will remember your back.'));
   }
 
   // ---- gold ----
@@ -186,11 +208,14 @@ export function mount(root, ctx, params = {}) {
     wrap.append(el('p', 'af-empty panel', bag.length ? `Nothing worth carrying but ${bag.map(([id, n]) => `${esc(CONSUMABLES[id]?.name || id)} ×${n}`).join(', ')}.` : 'Nothing worth carrying this time. Their gear was worse than yours.'));
   }
 
-  // ---- the Brand ----
+  // ---- the Brand (or a rematch for one already held) ----
   if (report.brand) {
     const B = report.brand;
-    wrap.append(el('section', 'af-brand', `<p class="kick">Brand earned</p><h2 class="title-display">${esc(B.name)}</h2><p>${esc(B.text)}</p><p class="waking"><b>The Waking rises to ${B.waking}.</b> Every foe in Aethermoor re-arms: higher levels, better gear, Omens on the elites, and better loot in their hands. The road starts again from the Keep.</p>`));
+    wrap.append(el('section', 'af-brand', `<p class="kick">Brand earned</p><h2 class="title-display">${esc(B.name)}</h2><p>${esc(B.text)}</p><p class="waking"><b>The Waking rises to ${Number(B.waking) || game.progress.waking}.</b> Every foe in the Wilds re-arms: higher levels, better gear, Omens on the elites, and better loot in their hands. Rabble that know they are beaten will run from you.</p>`));
     setTimeout(() => ctx.audio.sfx('legend'), 600);
+  } else if (report.rematch) {
+    const B = BRANDS[ENCOUNTERS[enc]?.brand];
+    wrap.append(el('section', 'af-brand af-rematch', `<p class="kick">A rematch</p><h2 class="title-display">${esc(B ? B.name : 'The Brand')} is already yours</h2><p class="waking">No new coal, so the Waking holds at ${game.progress.waking}. The Wilds remember the first time, and so does everything in them.</p>`));
   }
 
   // ---- the way out ----
@@ -199,12 +224,12 @@ export function mount(root, ctx, params = {}) {
     const closed = chests.find(c => !c.st.opened);
     if (closed) closed.b.click(); else next();
   }, { 'data-primary': '' });
-  const skip = button('Back to the road', 'btn ghost', next);
+  const skip = button('Back to the Wilds', 'btn ghost', next);
   foot.append(cta, skip);
   wrap.append(foot);
   function updateCta() {
     const left = chests.filter(c => !c.st.opened).length;
-    cta.textContent = left ? (left === chests.length ? 'Open the chests' : `Open the next chest (${left} left)`) : report.brand ? 'Walk the road again' : 'Back to the road';
+    cta.textContent = left ? (left === chests.length ? 'Open the chests' : `Open the next chest (${left} left)`) : report.brand ? 'Walk on' : res === 'defeat' ? 'Get back up' : 'Back to the Wilds';
     skip.hidden = !left;
   }
   updateCta();

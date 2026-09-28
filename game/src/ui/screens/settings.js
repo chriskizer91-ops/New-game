@@ -1,23 +1,33 @@
-// Settings: sound, music, battle speed, reduced motion; save codes out and in; start over.
-import { exportCode, importCode, clearGame } from '../../core/save.js';
+// Settings (M3 spec §5.7): sound, music, battle speed, reduced motion; the world's touch controls,
+// always-run and map zoom; save codes out (AETH2.) and in (AETH1. or AETH2., through the carry-over
+// card); the M2 save (export it as AETH1, or carry it over again) while one exists; the previous
+// save while a backup exists; and start over.
+// mount(root, ctx, { from }): Back returns to `from` ('world' with a journey, else 'title').
+// Owner: WP8.
+import { exportCode, importCode, exportV1Code, readV1, hasV1, hasBackup, backupGame, restoreBackup, saveGame } from '../../core/save.js';
 import { el, esc, button } from '../lib/dom.js';
 import { screenNav } from '../lib/keys.js';
+import { openCarryCard } from '../lib/carry.js';
 
 const SPEEDS = [[1, 'Normal'], [2, 'Fast'], [4, 'Fastest']];
+const TOUCH = [['auto', 'Auto'], ['on', 'On'], ['off', 'Off']];
+const ZOOM = [['near', 'Near'], ['normal', 'Normal'], ['far', 'Far']];
 
 export function mount(root, ctx, params = {}) {
-  const from = params.from || (ctx.game ? 'road' : 'title');
+  const from = params.from || (ctx.game ? 'world' : 'title');
   const back = () => { ctx.audio.sfx('back'); ctx.go(ctx.game ? from : 'title'); };
   const top = el('header', 'topbar');
-  top.append(button(`‹ ${from === 'title' ? 'Title' : 'Road'}`, 'btn ghost back', back), el('div', 'tb-title', '<span class="realm">Settings</span><h1 class="title-display">By the fire</h1>'));
+  top.append(button(`‹ ${from === 'title' || !ctx.game ? 'Title' : 'Back'}`, 'btn ghost back', back), el('div', 'tb-title', '<span class="realm">Settings</span><h1 class="title-display">By the fire</h1>'));
   root.append(top);
   const apply = patch => { ctx.setSettings(patch); if (ctx.services.applySettings) ctx.services.applySettings(); };
+  const name = g => g?.party?.roster?.warden?.name || 'this journey';
+  // a journey that is on disk (an adopted M2 save is not, until the first step)
+  const saved = () => !!ctx.game && !ctx.adopting;
 
   // ---- toggles ----
-  const opts = el('section', 'set-opts panel');
   const toggle = (key, label, sub, after) => {
     const on = ctx.settings[key] !== false && !!ctx.settings[key];
-    const b = el('button', { type: 'button', class: 'switch', role: 'switch', 'aria-checked': String(on) });
+    const b = el('button', { type: 'button', class: 'switch', role: 'switch', 'aria-checked': String(on), 'data-key': key });
     b.innerHTML = `<span class="sw-txt"><b>${label}</b><small>${sub}</small></span><span class="sw-knob" aria-hidden="true"><i></i></span>`;
     b.addEventListener('click', () => {
       const v = b.getAttribute('aria-checked') !== 'true';
@@ -29,79 +39,165 @@ export function mount(root, ctx, params = {}) {
     });
     return b;
   };
+  // a segmented choice: one of `choices` ([value, label]) for settings[key]
+  const segmented = (key, label, sub, choices, fallback) => {
+    const f = el('fieldset', 'seg');
+    f.dataset.key = key;
+    f.append(el('legend', '', `<b>${label}</b><small>${sub}</small>`));
+    const row = el('div', 'seg-row');
+    const cur = choices.some(([v]) => v === ctx.settings[key]) ? ctx.settings[key] : fallback;
+    for (const [v, text] of choices) {
+      const b = button(text, 'btn seg-b', () => {
+        apply({ [key]: v }); ctx.audio.sfx('select');
+        row.querySelectorAll('.seg-b').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+      }, { 'aria-pressed': String(cur === v), 'data-v': String(v) });
+      row.append(b);
+    }
+    f.append(row);
+    return f;
+  };
+  const opts = el('section', 'set-opts panel');
   opts.append(
     toggle('sound', 'Sound effects', 'Dice, hits, chimes and the loot reveal.'),
-    toggle('music', 'Music', 'Chiptune tracks for the road, the fire and the fight.'),
-    toggle('reducedMotion', 'Reduced motion', 'No shakes, flashes or drifting embers. Cards appear without flipping.'),
+    toggle('music', 'Music', 'Chiptune tracks for the Wilds, the towns, the deep places and the fight.'),
+    toggle('reducedMotion', 'Reduced motion', 'No shakes, flashes or drifting embers. Cards appear without flipping, and the map cuts instead of fading.'),
+    segmented('battleSpeed', 'Battle speed', 'How fast turns play out.', SPEEDS, 1),
   );
-  const speed = el('fieldset', 'seg');
-  speed.append(el('legend', '', '<b>Battle speed</b><small>How fast turns play out.</small>'));
-  const segRow = el('div', 'seg-row');
-  for (const [v, label] of SPEEDS) {
-    const b = button(label, 'btn seg-b', () => { apply({ battleSpeed: v }); ctx.audio.sfx('select'); segRow.querySelectorAll('.seg-b').forEach(x => x.setAttribute('aria-pressed', String(x === b))); }, { 'aria-pressed': String((ctx.settings.battleSpeed || 1) === v) });
-    segRow.append(b);
-  }
-  speed.append(segRow);
-  opts.append(speed);
   root.append(opts);
+
+  const wilds = el('section', 'set-opts set-world panel');
+  wilds.append(
+    el('h2', 'label', 'In the Wilds'),
+    segmented('touchControls', 'Touch controls', 'The d-pad and the A and B buttons. Auto shows them on a touch screen.', TOUCH, 'auto'),
+    toggle('alwaysRun', 'Always run', 'Run everywhere, as if B (X or Shift) were held down.'),
+    segmented('mapZoom', 'Map zoom', 'How close the camera sits. Near shows fewer tiles, bigger.', ZOOM, 'normal'),
+  );
+  root.append(wilds);
 
   // ---- save codes ----
   const saves = el('section', 'set-saves panel');
   saves.append(el('h2', 'label', 'Move your save'));
-  saves.append(el('p', 'small', 'Your journey saves on this device by itself at every Hearthfire and after every fight. To carry it to another phone or laptop, make a code here and paste it in over there.'));
-  const outBox = el('div', 'code-out');
-  const ta = el('textarea', { class: 'code', readonly: '', rows: '4', 'aria-label': 'Your save code', spellcheck: 'false' });
-  const copyBtn = button('Copy code', 'btn', () => {
-    ta.focus(); ta.select();
-    const done = ok => { copyBtn.textContent = ok ? 'Copied' : 'Selected: copy it'; ctx.audio.sfx(ok ? 'confirm' : 'select'); setTimeout(() => { copyBtn.textContent = 'Copy code'; }, 1800); };
-    try {
-      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(ta.value).then(() => done(true), () => { ta.select(); done(false); });
-      else { ta.select(); done(false); }
-    } catch { ta.select(); done(false); }
-  });
+  saves.append(el('p', 'small', 'Your journey saves on this device by itself as you walk, at every Hearthfire and after every fight. To carry it to another phone or laptop, make a code here and paste it in over there.'));
+  // a read-only code box with a Copy button
+  const codeBox = (label, cls) => {
+    const box = el('div', `code-out ${cls || ''}`);
+    const ta = el('textarea', { class: 'code', readonly: '', rows: '4', 'aria-label': label, spellcheck: 'false' });
+    const copy = button('Copy code', 'btn', () => {
+      ta.focus(); ta.select();
+      const done = ok => { copy.textContent = ok ? 'Copied' : 'Selected: copy it'; ctx.audio.sfx(ok ? 'confirm' : 'select'); setTimeout(() => { copy.textContent = 'Copy code'; }, 1800); };
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(ta.value).then(() => done(true), () => { ta.select(); done(false); });
+        else { ta.select(); done(false); }
+      } catch { ta.select(); done(false); }
+    });
+    box.append(ta, el('div', 'row-btns', [copy]));
+    box.hidden = true;
+    return { box, show(code) { ta.value = code; box.hidden = false; ta.focus(); ta.select(); } };
+  };
+  const out = codeBox('Your save code', 'code-v2');
   const mk = button('Make a save code', 'btn primary', () => {
     if (!ctx.game) return;
-    ta.value = exportCode(ctx.game);
-    outBox.hidden = false; mk.textContent = 'Make a fresh code';
-    ta.focus(); ta.select();
+    out.show(exportCode(ctx.game));
+    mk.textContent = 'Make a fresh code';
     ctx.audio.sfx('page');
   });
   mk.disabled = !ctx.game;
-  outBox.append(ta, el('div', 'row-btns', [copyBtn]));
-  outBox.hidden = true;
-  saves.append(mk, outBox);
+  saves.append(mk, out.box);
   if (!ctx.game) saves.append(el('p', 'small', 'No journey yet on this device. Start one, or load a code below.'));
 
   const inBox = el('div', 'code-in');
-  const inTa = el('textarea', { class: 'code', rows: '4', placeholder: 'Paste a code that starts with AETH1.', 'aria-label': 'Paste a save code', spellcheck: 'false', autocomplete: 'off' });
+  const inTa = el('textarea', { class: 'code', rows: '4', placeholder: 'Paste a code that starts with AETH1. or AETH2.', 'aria-label': 'Paste a save code', spellcheck: 'false', autocomplete: 'off' });
   const err = el('p', { class: 'err', role: 'alert' });
-  const load = button('Load this save', 'btn', () => {
+  const load = button('Load this save', 'btn', async () => {
     err.textContent = '';
     const code = inTa.value.trim();
-    if (!code) { err.textContent = 'Paste a save code first. It starts with AETH1.'; ctx.audio.sfx('error'); return; }
+    if (!code) { err.textContent = 'Paste a save code first. It starts with AETH1. or AETH2.'; ctx.audio.sfx('error'); return; }
     let g;
-    try { g = importCode(code); } catch (e) { err.textContent = e.message || 'That code could not be read.'; ctx.audio.sfx('error'); return; }
-    if (!g.party?.roster?.warden || !g.progress) { err.textContent = 'That code is from a different game or version. Nothing was changed.'; ctx.audio.sfx('error'); return; }
-    ctx.setGame(g);
+    try { g = importCode(code, ctx.migrate); } catch (e) { err.textContent = e.message || 'That code could not be read.'; ctx.audio.sfx('error'); return; }
+    if (!g?.party?.roster?.warden || !g.progress) { err.textContent = 'That code is from a different game or version. Nothing was changed.'; ctx.audio.sfx('error'); return; }
+    const m2 = /^AETH1\./.test(code);
+    const ok = await openCarryCard(ctx, g, {
+      kind: m2 ? 'm2' : 'code',
+      note: saved() ? `${name(ctx.game)}’s current journey is kept as a backup: Restore previous save brings it back.` : null,
+    });
+    if (!ok) return;
+    ctx.replaceGame(g);
+    inTa.value = '';
     ctx.audio.sfx('reveal', { tier: 2 });
     ctx.toast(`Welcome back, ${g.party.roster.warden.name}.`);
-    ctx.go('road');
+    ctx.go('world', { arrive: 'load' });
   });
   inBox.append(el('label', 'label', 'Load a code'), inTa, err, load);
   saves.append(inBox);
   root.append(saves);
 
+  // ---- the M2 save (read only, never written or removed) ----
+  if (hasV1()) {
+    const m2 = el('section', 'set-m2 panel');
+    const v1 = readV1();
+    m2.append(el('h2', 'label', 'Your M2 save'));
+    m2.append(el('p', 'small', `${esc(name(v1))}’s Gauntlet journey is still on this device, untouched: the M2 page keeps playing it. You can copy it out as an AETH1 code, or carry it into the Wilds again.`));
+    const v1Out = codeBox('Your M2 save code', 'code-v1');
+    const exp = button('Export M2 backup (AETH1)', 'btn', () => {
+      const code = exportV1Code();
+      if (!code) { ctx.toast('The M2 save could not be read.'); return; }
+      v1Out.show(code);
+      ctx.audio.sfx('page');
+    });
+    const restore = button('Restore my M2 save', 'btn', async () => {
+      let g;
+      try { g = ctx.migrate(readV1()); } catch { ctx.toast('The M2 save could not be read.'); ctx.audio.sfx('error'); return; }
+      backupGame(); // the live save is backed up first
+      const ok = await openCarryCard(ctx, g, {
+        kind: 'm2',
+        note: saved() ? `${name(ctx.game)}’s current journey is kept as a backup: Restore previous save brings it back.` : 'Your M2 save itself is never touched.',
+      });
+      if (!ok) return;
+      ctx.replaceGame(g, { backup: false });
+      ctx.audio.sfx('reveal', { tier: 2 });
+      ctx.go('world', { arrive: 'load' });
+    });
+    m2.append(el('div', 'row-btns', [exp, restore]), v1Out.box);
+    root.append(m2);
+  }
+
+  // ---- the previous save (aethermoor.save.v2.bak) ----
+  if (hasBackup()) {
+    const prev = el('section', 'set-prev panel');
+    prev.append(el('h2', 'label', 'The previous save'), el('p', 'small', 'A backup is kept every time a new game, a loaded code or a restore replaces your journey.'));
+    const ask = el('div', 'confirm-box'); ask.hidden = true;
+    const rb = button('Restore previous save', 'btn', () => { rb.hidden = true; ask.hidden = false; ctx.audio.sfx('select'); ask.querySelector('.btn').focus(); });
+    ask.append(
+      el('p', '', saved() ? `${esc(name(ctx.game))}’s journey and the backup swap places, so you can always swap back.` : 'The backup becomes your journey again.'),
+      el('div', 'row-btns', [
+        button('Restore it', 'btn primary', () => {
+          const cur = saved() ? ctx.game : null;
+          const g = restoreBackup(ctx.migrate);
+          if (!g) { ctx.toast('The backup could not be read.'); ctx.audio.sfx('error'); return; }
+          // swap: the journey we are leaving becomes the new backup
+          if (cur) { saveGame(cur); backupGame(); }
+          ctx.replaceGame(g, { backup: false });
+          ctx.audio.sfx('reveal', { tier: 2 });
+          ctx.toast(`Welcome back, ${g.party.roster.warden.name}.`);
+          ctx.go('world', { arrive: 'load' });
+        }),
+        button('Keep this one', 'btn', () => { ask.hidden = true; rb.hidden = false; ctx.audio.sfx('back'); rb.focus(); }),
+      ]),
+    );
+    prev.append(rb, ask);
+    root.append(prev);
+  }
+
   // ---- start over ----
   const danger = el('section', 'set-danger panel');
   danger.append(el('h2', 'label', 'Start over'));
   const confirmBox = el('div', 'confirm-box'); confirmBox.hidden = true;
-  const who = ctx.game ? ctx.game.party.roster.warden.name : 'this journey';
   const startBtn = button('Start over', 'btn danger', () => { confirmBox.hidden = false; startBtn.hidden = true; ctx.audio.sfx('select'); confirmBox.querySelector('.danger').focus(); });
   startBtn.disabled = !ctx.game;
   confirmBox.append(
-    el('p', '', `This erases ${esc(who)}’s journey from this device: gear, Codex, all of it. Make a save code first if you might want it back.`),
+    el('p', '', `This erases ${esc(name(ctx.game))}’s journey from this device: gear, Codex, all of it. Make a save code first if you might want it back.${hasV1() ? ' Your M2 save stays, and can be carried over again from here.' : ''}`),
     el('div', 'row-btns', [
-      button('Yes, erase it', 'btn danger', () => { clearGame(); ctx.setGame(null); ctx.audio.sfx('defeat'); ctx.toast('The hearth is swept. A new Warden can begin.'); ctx.go('title'); }),
+      button('Yes, erase it', 'btn danger', () => { ctx.clearGame(); ctx.audio.sfx('defeat'); ctx.toast('The hearth is swept. A new Warden can begin.'); ctx.go('title'); }),
       button('Keep playing', 'btn', () => { confirmBox.hidden = true; startBtn.hidden = false; ctx.audio.sfx('back'); startBtn.focus(); }),
     ]),
   );

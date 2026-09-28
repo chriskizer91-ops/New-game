@@ -1,7 +1,8 @@
 // End-to-end test of the battle screen (Playwright, preinstalled Chromium). Builds the dev
 // harness, then plays real battles at phone (390x844) and laptop (1280x800) sizes: the tutorial
 // Tallyman fight (manual commands), a rabble fight, the Rot-Stag, Old Snag (until a disarm
-// happens) and Briarmaw (all three phases, plus a Legend Surge). Asserts no console errors or
+// happens), Briarmaw (all three phases, plus a Legend Surge), and for M3 a fight in the dark (the
+// Lamp Room) and the Tamsin duel's intro ("Losing is a yield."). Asserts no console errors or
 // uncaught exceptions, no horizontal scroll, 44px tap targets, and the aftermath hand-off.
 // Screenshots of the key moments go to tools/shots/battle-*.png.
 //
@@ -419,6 +420,30 @@ await scenario('services', async rec => {
   check(calls.some(c => c[0] === 'cardPreview' && c[2] === 'Old Snag'), 'cardPreview was not called with heldBy');
   rec.notes.push(calls.map(c => c.join(':')).join(', '));
   await s.page.click('.bt-auto');
+  s.aftermath = await toAftermath(s.page, { timeout: 300000, hurry: true });
+  await finishCommon(rec, s);
+  await s.context.close();
+});
+
+await scenario('dark', async rec => {
+  // M3: the Lamp Room fight is in the dark (battle.ctx.dark): the backdrop's dark treatment
+  const s = await open(PHONE, 'node=lantern&level=11&speed=4&auto=1&pause=damage');
+  await s.page.waitForSelector('.bt-foe:not([hidden])', { timeout: 20000 });
+  const d = await pauseOn(s.page, 'damage', 'phone-dark', { timeout: 120000 });
+  check(d, 'no damage in the Lamp Room fight');
+  await layoutChecks(s.page, 'dark');
+  s.aftermath = await toAftermath(s.page, { timeout: 300000, hurry: true });
+  await finishCommon(rec, s);
+  await s.context.close();
+});
+
+await scenario('duel', async rec => {
+  // M3: the Tamsin duel says what losing costs before it starts
+  const s = await open(PHONE, 'node=duel&level=8&speed=4&auto=1');
+  await s.page.waitForSelector('.bt-intro', { timeout: 10000 });
+  const intro = await s.page.evaluate(() => document.querySelector('.bt-intro')?.textContent || '');
+  check(/A duel/.test(intro) && /Losing is a yield/.test(intro), `the duel intro reads "${intro}"`);
+  rec.shots.push(await shot(s.page, 'phone-duel-intro'));
   s.aftermath = await toAftermath(s.page, { timeout: 300000, hurry: true });
   await finishCommon(rec, s);
   await s.context.close();

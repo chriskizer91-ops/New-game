@@ -14,10 +14,11 @@ const MIN_SLOT = 44; // logical px per foe, so plates stay readable
 const HIT_TINT = [255, 255, 255, 0.75];
 
 export class Stage {
-  constructor(host, { backdrop, reduced }) {
+  constructor(host, { backdrop, reduced, dark = false }) {
     this.host = host;
     this.backdropKey = BACKDROPS[backdrop] ? backdrop : 'hearth-road';
     this.reduced = reduced;
+    this.dark = !!dark; // a fight in a dark map (battle.ctx.dark): renderBackdrop's dark treatment; the foes stay lit
     this.speed = 1;
     this.canvas = document.createElement('canvas');
     this.canvas.className = 'bt-stage-cv px';
@@ -337,7 +338,7 @@ export class Stage {
     const bq = this.reduced ? 0 : Math.floor(clockT * 8);
     if (bq !== this.bdT) {
       this.bdT = bq;
-      const img = renderBackdrop(this.backdropKey, { w: lw, h: lh, t: this.reduced ? 0 : clockT, reduced: this.reduced });
+      const img = renderBackdrop(this.backdropKey, { w: lw, h: lh, t: this.reduced ? 0 : clockT, reduced: this.reduced, dark: this.dark });
       if (this.bd.width !== lw || this.bd.height !== lh) { this.bd.width = lw; this.bd.height = lh; }
       this.bd.getContext('2d').putImageData(img, 0, 0);
     }
