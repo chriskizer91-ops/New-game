@@ -87,8 +87,8 @@ forge rules still in world.css.
 **`tools/e2e-flow.mjs`**
 - M4 counts from the data (the lead's request): the Ladder (`LADDER.length`, with at least every rumour a
   silhouette), the Keys list (every lock type in `LOCK_IDS`, each with at least two key marks), the
-  Continue sub-line and the carry-over card (`/${RELIC_TOTAL}`). The Codex check (about line 314) and
-  the Atlas Wilds check (about line 417) are left for the lead, as asked.
+  Continue sub-line and the carry-over card (`/${RELIC_TOTAL}`). The Codex check (line 321) and the
+  Atlas Wilds check (line 424) are left for the lead, as asked.
 - New section **K**, at both sizes:
   - Buy a Sunstone from Idris through his dialogue.
   - Open Hilda's forge from her dialogue. Temper the starter to +4, checking that the +4 step asks for
@@ -133,7 +133,10 @@ What I fixed after reading them:
   - "the Sunscorch champions draw each piece…" (kharzul's pieces)
   - "every encounter and patrol backdrop… has a painter" (no backdrop sun-road)
 - `npm run lint`: clean (0 problems, whole repo).
-- `e2e-flow` (`AETH_HTML=/tmp/aeth-p7a/aethermoor.html`, both sizes): FINAL_E2E_RESULT
+- `e2e-flow` (`AETH_HTML=/tmp/aeth-p7a/aethermoor.html`, both sizes): 238 ok, 2 FAIL. The only failure
+  at each size is the lead's Codex check (line 321: "counts out of 24"; P7b's binder is in progress).
+  Every section K step passes, with no console errors in any of the three profiles at either size and
+  no horizontal scroll anywhere.
 - `e2e-world --scenario=3,9` (the Rout spoils strip and M3's Temper test, which drive my sheets): passed
   at both sizes, with no console errors.
 
@@ -145,8 +148,8 @@ What I fixed after reading them:
 
 ## Needs from others
 
-- **The lead**: the e2e-flow Codex check (about line 314) and Atlas Wilds check (about line 417) still use
-  M3 numbers, as agreed. The Codex check fails at both sizes until P7b's binder lands.
+- **The lead**: the e2e-flow Codex check (line 321) and Atlas Wilds check (line 424) still use M3 numbers,
+  as agreed. The Codex check fails at both sizes until P7b's binder lands; the Atlas check passes today.
 - **P7b (world.css)**: the M3 forge rules in world.css (`.forge-list`, `.forge-item`, `.forge-card`,
   `.forge-nums`, `.forge-line`, `.forge-hint`, `.forge-max`) are now overridden by forge.css. They can be
   deleted whenever convenient; nothing depends on them.
