@@ -338,142 +338,148 @@ name, text} (summons, twins) and `escape` {foe, text} (a foe runs or withers).
 
 ## 12. Balance simulation
 
-`node tools/sim.mjs --seeds 200` plays the whole Gauntlet with the scripted policy in
+`node tools/sim.mjs --seeds 200` plays routes of encounters with the scripted policy in
 `src/rules/autoplay.js` (heal under 45%, revive the fallen, disarm relic holders before killing
-them, Analyze/Mark/Rootbind elites, use relic arts and Surges). After a wipe the sim grinds one
-level at the Hearthfire and retries. "wipe 1st" is the chance the first attempt at a node ends
-in a party wipe; "hp left" is the party's HP at the end of a won first attempt.
+them, Analyze/Mark/Rootbind elites, use relic Arts and Surges), teleporting between fights through
+the flow API. After a wipe it rests, grinds one level on rabble patrols and retries (8 tries is
+"stuck"). Crossing a zone map costs one fight with a roaming patrol (Routed when weak). A lost duel
+is a yield and is not retried. `--modes`, `--seed N` (replay one seed) and `--trace` (every fight)
+help when tuning. "wipe 1st" is the chance the first attempt ends in a party wipe; "hp left" is the
+party's HP after a won first attempt.
 
-**Targets vs results (200 seeds, starters rotated):**
+**M3 targets vs results (200 seeds, starters rotated; spec §7, §3.5):**
 
 | target | result |
 |---|---|
-| rabble fights 2-3 rounds | 2.2-2.7 |
-| veteran fights 3-5 rounds | 2.9-4.8 with drops equipped (the Tallyman camp runs 6.2 on starting gear) |
-| Rot-Stag / Old Snag 5-8 rounds, 15-25% wipe on starting gear | Rot-Stag 6.9 rounds, 21%; Old Snag 7.8 rounds, 13% |
-| ...noticeably less with drops equipped | Rot-Stag 13%, Old Snag 1% (5.6 rounds) |
-| Briarmaw 8-14 rounds, 30-40% wipe first try, no grinding | 12.8 rounds, 33% |
-| Briarmaw ~10-15% after grinding 1-2 levels | +1 level 11%, +2 levels 3% |
-| Gauntlet takes you from level 1 to 6-8 | level 6 at Briarmaw's door, 7.6 at the end |
-| hero attacks ~65-70% hit + ~10% graze | 63-66% hit + 6-7% crit, 13-14% graze |
-| Waking 1 and 2 harder but winnable | elites and Briarmaw run longer (Briarmaw 18-21 rounds); Briarmaw 28% first-try wipe at Waking 1, 10% at Waking 2; 200/200 runs clear; drops shift to tempered/runed/storied |
+| `m2`: Waking 0 within ±3 points of the M2 table | identical: Rot-Stag 13%, Old Snag 1%, Briarmaw 33% first-try wipes |
+| `direct`: Tamsin first-try party win 55-70% | 58% (42% yield) |
+| `direct`: Rotwarden first-try wipe 30-40% | 36% (party level 9.7 at its door: the spec hoped for 10-12; the direct path is short on XP by design) |
+| `leads2` (Mosswatch + Bell, Forewarned): Rotwarden ≤ 20% | 2% |
+| `looper-w2` (the migrated Waking-2 M2 save): Rotwarden ≤ 45% | 7% |
+| each lead's lair taken first at Waking 1: 15-25% | the Lamp Room 22%, the Mire Shrine 27%, the Gloamwing 24%, the Grove Circle 22% |
+| zero stuck runs | 0 in every mode |
 
-Starter check (100 seeds each, drops equipped, no grinding): Briarmaw first-try wipes are 26%
-with Hearthbrand (10.7 rounds), 30% with Stillwater Lance (13.0) and 30% with Cairnmaul (13.9).
-The verdant Champion is the ember starter's "first gym": fights are shorter, not much safer.
+**What the tuning changed** (levels are Waking 0; every post-Brand fight is met at Waking 1):
+- Tamsin: 90 HP (was 34), speed 15, gear tier 3, a two-cut Riposte, party level + 5.
+- The Rotwarden: level 4 (11 at Waking 1). The Heartroot sapwight: level 4.
+- Hollis's Lamp Room: Hollis 5, a Tallyman 5 and a smuggler 7 (a third foe instead of a higher level,
+  so the card reads Hard, not Deadly). The Gloamwing: level 5, 180 HP, atk 6, dmg 4, and the Swift
+  Omen. Gorrow 4 with level-5 boglurchers. Oda 4, a feral druid 3, a briarling 6.
+- A unique foe never draws the Twinned Omen (a twinned Gorrow with Frenzied was a wipe spiral).
 
-Aethermoor balance sim: 200 seeds, starter mix
+Aethermoor balance sim (M3): 200 seeds, starter mix
 
-### Waking 0, starting gear only, no grinding
+### m2: Waking 0, the M2 road, equips drops (a wipe grinds a level)
 
-| node | foes | lvl | win 1st | rounds | hp left | wipe 1st | wipes | claimed | shattered | stuck |
-|---|---|---|---|---|---|---|---|---|---|---|
-| keep-vault | tallyman+cutpurse | 1.0 | 100% | 1.7 | 89% | 0% | 0 | 179 |  |  |
-| hearth-road | cutpurse+cutpurse+cutpurse | 1.0 | 100% | 2.7 | 84% | 0% | 0 |  |  |  |
-| waymarker-stones | thornhound+thornhound+briarling | 2.0 | 100% | 2.4 | 82% | 0% | 0 |  |  |  |
-| bramble-toll | bandit+cutpurse+cutpurse | 2.0 | 100% | 3.0 | 82% | 0% | 0 |  |  |  |
-| verdant-edge | briarling+briarling+thornhound | 3.0 | 100% | 2.4 | 80% | 0% | 0 |  |  |  |
-| rotstag-glade | rotstag | 3.0 | 79% | 6.9 | 45% | 21% | 56 | 200 |  |  |
-| tally-camp | tallyman+bandit+cutpurse | 4.2 | 90% | 6.2 | 59% | 10% | 23 | 200 |  |  |
-| snag-wallow | oldsnag | 5.1 | 87% | 7.8 | 52% | 13% | 27 | 200 |  |  |
-| bramble-deep | bandit+briarling+briarling | 5.5 | 93% | 3.8 | 57% | 8% | 15 |  |  |  |
-| briarmaw-den | briarmaw | 6.3 | 22% | 12.4 | 39% | 78% | 381 | 398 |  | 1 |
+| node | foes | lvl | win 1st | rounds | hp left | wipe 1st | yield | wipes | claimed | shattered | stuck |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| keep-vault | tallyman+cutpurse | 1.0 | 100% | 1.7 | 89% | 0% |  | 0 | 179 |  |  |
+| hearth-road | cutpurse+cutpurse+cutpurse | 1.0 | 100% | 2.7 | 78% | 0% |  | 0 |  |  |  |
+| waymarker-stones | thornhound+thornhound+briarling | 2.0 | 100% | 2.3 | 82% | 0% |  | 0 |  |  |  |
+| bramble-toll | bandit+cutpurse+cutpurse | 2.0 | 100% | 2.9 | 84% | 0% |  | 0 |  |  |  |
+| verdant-edge | briarling+briarling+thornhound | 3.0 | 100% | 2.2 | 82% | 0% |  | 0 |  |  |  |
+| rotstag-glade | rotstag | 3.0 | 88% | 6.5 | 49% | 13% |  | 26 | 200 |  |  |
+| tally-camp | tallyman+bandit+cutpurse | 4.1 | 100% | 4.8 | 68% | 0% |  | 0 | 197 | 3 |  |
+| snag-wallow | oldsnag | 5.0 | 99% | 5.6 | 63% | 2% |  | 3 | 200 |  |  |
+| bramble-deep | bandit+briarling+briarling | 5.1 | 100% | 3.2 | 65% | 0% |  | 0 |  |  |  |
+| briarmaw-den | briarmaw | 6.0 | 68% | 12.8 | 48% | 33% |  | 122 | 400 |  |  |
 
-runs cleared 199/200; end level 9.2; grind fights/run 9.2
-hero attack rolls: hit 63%, graze 13%, crit 6%, miss 14%, fumble 4%
-random/worn-gear drops by rarity: worn 2182, wrought 1235, tempered 269, runed 313, storied 425; named relics dropped (regalia, gentle): 621
+runs cleared 200/200 (stuck 0); end party level 7.7; grind fights/run 2.0
+hero attack rolls: hit 65%, graze 13%, crit 7%, miss 13%, fumble 3%
+random/worn-gear drops by rarity: worn 1298, wrought 782, tempered 330, runed 258, storied 253, shattered 3; named relics dropped: 621
 
-### Waking 0, equips drops, no grinding
+### direct: the critical path after the Brand (Waking 1)
 
-| node | foes | lvl | win 1st | rounds | hp left | wipe 1st | wipes | claimed | shattered | stuck |
-|---|---|---|---|---|---|---|---|---|---|---|
-| keep-vault | tallyman+cutpurse | 1.0 | 100% | 1.7 | 89% | 0% | 0 | 179 |  |  |
-| hearth-road | cutpurse+cutpurse+cutpurse | 1.0 | 100% | 2.7 | 78% | 0% | 0 |  |  |  |
-| waymarker-stones | thornhound+thornhound+briarling | 2.0 | 100% | 2.3 | 82% | 0% | 0 |  |  |  |
-| bramble-toll | bandit+cutpurse+cutpurse | 2.0 | 100% | 2.9 | 84% | 0% | 0 |  |  |  |
-| verdant-edge | briarling+briarling+thornhound | 3.0 | 100% | 2.2 | 82% | 0% | 0 |  |  |  |
-| rotstag-glade | rotstag | 3.0 | 88% | 6.5 | 49% | 13% | 30 | 200 |  |  |
-| tally-camp | tallyman+bandit+cutpurse | 4.1 | 100% | 4.8 | 68% | 0% | 0 | 198 | 2 |  |
-| snag-wallow | oldsnag | 5.0 | 99% | 5.6 | 62% | 1% | 2 | 200 |  |  |
-| bramble-deep | bandit+briarling+briarling | 5.2 | 100% | 3.1 | 65% | 0% | 0 |  |  |  |
-| briarmaw-den | briarmaw | 6.0 | 68% | 12.8 | 50% | 33% | 107 | 400 |  |  |
+| node | foes | lvl | win 1st | rounds | hp left | wipe 1st | yield | wipes | claimed | shattered | stuck |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| patrol:thornway | (zone patrol, 3% routed) | 7.7 | 100% | 2.5 | 65% | 1% |  | 1 |  |  |  |
+| tamsin-duel | tamsin | 8.0 | 58% | 11.1 | 52% | 0% | 42% | 0 |  |  |  |
+| patrol:heartroot | (zone patrol) | 8.8 | 92% | 4.1 | 59% | 8% |  | 33 |  |  |  |
+| hr1-grubs | rotgrub+rotgrub+rotgrub | 9.0 | 94% | 3.8 | 64% | 6% |  | 12 |  |  |  |
+| hr1-sapwight | sapwight+rotgrub+rotgrub | 9.4 | 93% | 5.7 | 61% | 7% |  | 14 |  |  |  |
+| rotwarden-heart | rotwarden | 9.7 | 64% | 17.4 | 41% | 36% |  | 159 | 400 |  |  |
 
-runs cleared 200/200; end level 7.6; grind fights/run 1.7
-hero attack rolls: hit 64%, graze 13%, crit 7%, miss 13%, fumble 3%
-random/worn-gear drops by rarity: worn 1258, wrought 753, tempered 331, runed 264, storied 250, shattered 2; named relics dropped (regalia, gentle): 621
+runs cleared 200/200 (stuck 0); end party level 11.8; grind fights/run 3.6
+hero attack rolls: hit 67%, graze 13%, crit 8%, miss 9%, fumble 4%
+random/worn-gear drops by rarity: worn 640, wrought 642, tempered 505, runed 221, storied 269; named relics dropped: 116
 
-### Waking 0, equips drops, grinds +1 level before Briarmaw
+### leads2: Mosswatch and Bell leads (Forewarned), then the critical path
 
-| node | foes | lvl | win 1st | rounds | hp left | wipe 1st | wipes | claimed | shattered | stuck |
-|---|---|---|---|---|---|---|---|---|---|---|
-| keep-vault | tallyman+cutpurse | 1.0 | 100% | 1.7 | 89% | 0% | 0 | 179 |  |  |
-| hearth-road | cutpurse+cutpurse+cutpurse | 1.0 | 100% | 2.7 | 78% | 0% | 0 |  |  |  |
-| waymarker-stones | thornhound+thornhound+briarling | 2.0 | 100% | 2.3 | 82% | 0% | 0 |  |  |  |
-| bramble-toll | bandit+cutpurse+cutpurse | 2.0 | 100% | 2.9 | 84% | 0% | 0 |  |  |  |
-| verdant-edge | briarling+briarling+thornhound | 3.0 | 100% | 2.2 | 82% | 0% | 0 |  |  |  |
-| rotstag-glade | rotstag | 3.0 | 88% | 6.5 | 49% | 13% | 30 | 200 |  |  |
-| tally-camp | tallyman+bandit+cutpurse | 4.1 | 100% | 4.8 | 68% | 0% | 0 | 198 | 2 |  |
-| snag-wallow | oldsnag | 5.0 | 99% | 5.6 | 62% | 1% | 2 | 200 |  |  |
-| bramble-deep | bandit+briarling+briarling | 5.2 | 100% | 3.1 | 65% | 0% | 0 |  |  |  |
-| briarmaw-den | briarmaw | 7.0 | 89% | 11.8 | 60% | 11% | 24 | 400 |  |  |
+| node | foes | lvl | win 1st | rounds | hp left | wipe 1st | yield | wipes | claimed | shattered | stuck |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| patrol:mossfall | (zone patrol) | 7.7 | 100% | 3.1 | 83% | 0% |  | 0 |  |  |  |
+| mw-stair | tallyman+smuggler+smuggler | 8.0 | 100% | 4.0 | 74% | 0% |  | 0 |  |  |  |
+| mw-lantern | tallyman+tallyman+smuggler | 8.4 | 78% | 8.4 | 57% | 22% |  | 52 | 200 |  |  |
+| patrol:hindwood | (zone patrol, 2% routed) | 9.7 | 100% | 2.6 | 86% | 0% |  | 0 |  |  |  |
+| hw-glowcaps | glowcap+glowcap+glowcap | 9.8 | 100% | 2.8 | 91% | 0% |  | 0 |  |  |  |
+| gloamwing-hollow | gloamwing | 10.3 | 97% | 14.5 | 63% | 4% |  | 9 | 200 |  |  |
+| patrol:thornway | (zone patrol, 100% routed) | 10.7 | 100% | - | NaN% | 0% |  | 0 |  |  |  |
+| tamsin-duel | tamsin | 10.7 | 74% | 12.0 | 57% | 0% | 26% | 0 |  |  |  |
+| patrol:heartroot | (zone patrol, 25% routed) | 11.5 | 98% | 3.6 | 69% | 2% |  | 7 |  |  |  |
+| hr1-grubs | rotgrub+rotgrub+rotgrub | 11.6 | 100% | 3.4 | 71% | 1% |  | 1 |  |  |  |
+| hr1-sapwight | sapwight+rotgrub+rotgrub | 11.7 | 99% | 4.8 | 74% | 1% |  | 2 |  |  |  |
+| rotwarden-heart | rotwarden | 12.1 | 98% | 14.2 | 63% | 2% |  | 4 | 400 |  |  |
 
-runs cleared 200/200; end level 8.3; grind fights/run 5.5
-hero attack rolls: hit 65%, graze 13%, crit 7%, miss 12%, fumble 4%
-random/worn-gear drops by rarity: worn 1675, wrought 981, tempered 380, runed 246, storied 176, shattered 2; named relics dropped (regalia, gentle): 621
-
-### Waking 0, equips drops, grinds +2 levels before Briarmaw
-
-| node | foes | lvl | win 1st | rounds | hp left | wipe 1st | wipes | claimed | shattered | stuck |
-|---|---|---|---|---|---|---|---|---|---|---|
-| keep-vault | tallyman+cutpurse | 1.0 | 100% | 1.7 | 89% | 0% | 0 | 179 |  |  |
-| hearth-road | cutpurse+cutpurse+cutpurse | 1.0 | 100% | 2.7 | 78% | 0% | 0 |  |  |  |
-| waymarker-stones | thornhound+thornhound+briarling | 2.0 | 100% | 2.3 | 82% | 0% | 0 |  |  |  |
-| bramble-toll | bandit+cutpurse+cutpurse | 2.0 | 100% | 2.9 | 84% | 0% | 0 |  |  |  |
-| verdant-edge | briarling+briarling+thornhound | 3.0 | 100% | 2.2 | 82% | 0% | 0 |  |  |  |
-| rotstag-glade | rotstag | 3.0 | 88% | 6.5 | 49% | 13% | 30 | 200 |  |  |
-| tally-camp | tallyman+bandit+cutpurse | 4.1 | 100% | 4.8 | 68% | 0% | 0 | 198 | 2 |  |
-| snag-wallow | oldsnag | 5.0 | 99% | 5.6 | 62% | 1% | 2 | 200 |  |  |
-| bramble-deep | bandit+briarling+briarling | 5.2 | 100% | 3.1 | 65% | 0% | 0 |  |  |  |
-| briarmaw-den | briarmaw | 8.0 | 97% | 10.4 | 65% | 3% | 6 | 400 |  |  |
-
-runs cleared 200/200; end level 9.1; grind fights/run 10.0
-hero attack rolls: hit 66%, graze 14%, crit 6%, miss 11%, fumble 4%
-random/worn-gear drops by rarity: worn 2222, wrought 1260, tempered 373, runed 257, storied 156, shattered 2; named relics dropped (regalia, gentle): 621
-
-### Waking 1 (continues from grind), equips drops, +1 level before Briarmaw
-
-| node | foes | lvl | win 1st | rounds | hp left | wipe 1st | wipes | claimed | shattered | stuck |
-|---|---|---|---|---|---|---|---|---|---|---|
-| hearth-road | cutpurse+cutpurse+cutpurse | 9.1 | 100% | 2.2 | 91% | 0% | 0 |  |  |  |
-| waymarker-stones | thornhound+thornhound+briarling | 9.1 | 100% | 2.3 | 85% | 0% | 0 |  |  |  |
-| bramble-toll | bandit+cutpurse+cutpurse | 9.1 | 100% | 3.6 | 80% | 0% | 0 |  |  |  |
-| verdant-edge | briarling+briarling+thornhound | 9.1 | 100% | 2.6 | 79% | 0% | 0 |  |  |  |
-| rotstag-glade | rotstag | 10.0 | 96% | 8.9 | 64% | 5% | 10 |  |  |  |
-| tally-camp | tallyman+bandit+cutpurse | 10.1 | 100% | 5.9 | 69% | 1% | 1 | 1 | 20 |  |
-| snag-wallow | oldsnag | 10.9 | 99% | 8.4 | 64% | 2% | 3 |  |  |  |
-| bramble-deep | bandit+briarling+briarling | 11.2 | 100% | 4.3 | 68% | 0% | 0 |  |  |  |
-| briarmaw-den | briarmaw | 12.2 | 72% | 18.6 | 49% | 28% | 78 |  |  |  |
-
-runs cleared 200/200; end level 13.9; grind fights/run 6.5
-hero attack rolls: hit 69%, graze 11%, crit 8%, miss 8%, fumble 3%
-random/worn-gear drops by rarity: worn 712, wrought 1210, tempered 1118, runed 600, storied 328, shattered 20; named relics dropped (regalia, gentle): 0
-
-### Waking 2, equips drops, +1 level before Briarmaw
-
-| node | foes | lvl | win 1st | rounds | hp left | wipe 1st | wipes | claimed | shattered | stuck |
-|---|---|---|---|---|---|---|---|---|---|---|
-| hearth-road | cutpurse+cutpurse+cutpurse | 13.9 | 100% | 3.5 | 83% | 0% | 0 |  |  |  |
-| waymarker-stones | thornhound+thornhound+briarling | 13.9 | 100% | 3.2 | 76% | 0% | 0 |  |  |  |
-| bramble-toll | bandit+cutpurse+cutpurse | 13.9 | 100% | 4.7 | 73% | 0% | 0 |  |  |  |
-| verdant-edge | briarling+briarling+thornhound | 14.3 | 100% | 3.4 | 73% | 0% | 0 |  |  |  |
-| rotstag-glade | rotstag | 14.6 | 93% | 10.4 | 53% | 8% | 22 |  |  |  |
-| tally-camp | tallyman+bandit+cutpurse | 15.0 | 93% | 7.8 | 59% | 7% | 19 | 1 |  |  |
-| snag-wallow | oldsnag | 15.7 | 92% | 11.0 | 56% | 9% | 19 |  |  |  |
-| bramble-deep | bandit+briarling+briarling | 16.1 | 94% | 5.3 | 64% | 6% | 12 |  |  |  |
-| briarmaw-den | briarmaw | 17.7 | 91% | 20.6 | 56% | 10% | 25 |  |  |  |
-
-runs cleared 200/200; end level 18.9; grind fights/run 6.3
+runs cleared 200/200 (stuck 0); end party level 13.1; grind fights/run 0.9
 hero attack rolls: hit 67%, graze 12%, crit 8%, miss 10%, fumble 3%
-random/worn-gear drops by rarity: worn 383, wrought 573, tempered 1162, runed 1203, storied 607; named relics dropped (regalia, gentle): 0
+random/worn-gear drops by rarity: worn 582, wrought 1234, tempered 805, runed 368, storied 262; named relics dropped: 148
 
-(194.5s)
+### leads-all: every lead, then the critical path
+
+| node | foes | lvl | win 1st | rounds | hp left | wipe 1st | yield | wipes | claimed | shattered | stuck |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| patrol:mossfall | (zone patrol, 1% routed) | 8.7 | 100% | 3.0 | 84% | 0% |  | 0 |  |  |  |
+| mw-stair | tallyman+smuggler+smuggler | 8.0 | 100% | 4.0 | 74% | 0% |  | 0 |  |  |  |
+| mw-lantern | tallyman+tallyman+smuggler | 8.4 | 78% | 8.4 | 57% | 22% |  | 52 | 200 |  |  |
+| mf-smugglers | smuggler+smuggler+smuggler | 9.7 | 100% | 2.6 | 88% | 0% |  | 0 |  |  |  |
+| mire-shrine | mirelord+boglurcher+boglurcher | 10.2 | 95% | 8.3 | 55% | 6% |  | 18 | 200 |  |  |
+| patrol:hindwood | (zone patrol, 7% routed) | 10.7 | 100% | 2.5 | 87% | 0% |  | 0 |  |  |  |
+| hw-glowcaps | glowcap+glowcap+glowcap | 10.8 | 100% | 2.6 | 93% | 0% |  | 0 |  |  |  |
+| gloamwing-hollow | gloamwing | 11.0 | 100% | 13.6 | 65% | 1% |  | 1 | 200 |  |  |
+| patrol:thornway | (zone patrol, 100% routed) | 11.7 | 100% | - | NaN% | 0% |  | 0 |  |  |  |
+| grove-circle | feral-druid+feral-druid+briarling | 11.7 | 100% | 12.3 | 81% | 0% |  | 0 | 200 |  |  |
+| tamsin-duel | tamsin | 12.4 | 86% | 12.6 | 66% | 0% | 15% | 0 |  |  |  |
+| hollowed-patrol | hollowed-ranger+hollowed-ranger+hollowed-ranger | 12.7 | 88% | 11.9 | 70% | 13% |  | 28 | 200 |  |  |
+| hr1-tappers | tallyman+smuggler+smuggler | 13.5 | 100% | 7.0 | 83% | 0% |  | 0 | 200 |  |  |
+| hr1-grubs | rotgrub+rotgrub+rotgrub | 14.2 | 100% | 2.4 | 92% | 0% |  | 0 |  |  |  |
+| hr1-sapwight | sapwight+rotgrub+rotgrub | 14.3 | 100% | 3.6 | 89% | 0% |  | 0 |  |  |  |
+| rotwarden-heart | rotwarden | 14.4 | 100% | 11.7 | 78% | 0% |  | 0 | 400 |  |  |
+
+runs cleared 200/200 (stuck 0); end party level 15.2; grind fights/run 1.8
+hero attack rolls: hit 68%, graze 12%, crit 8%, miss 9%, fumble 3%
+random/worn-gear drops by rarity: worn 717, wrought 2381, tempered 1401, runed 607, storied 363; named relics dropped: 171
+
+### looper-w2: the migrated Waking-2 M2 save down the critical path
+
+| node | foes | lvl | win 1st | rounds | hp left | wipe 1st | yield | wipes | claimed | shattered | stuck |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| patrol:thornway | (zone patrol, 100% routed) | 14.0 | 100% | - | NaN% | 0% |  | 0 |  |  |  |
+| tamsin-duel | tamsin | 14.0 | 95% | 13.3 | 57% | 0% | 6% | 0 |  |  |  |
+| patrol:heartroot | (zone patrol, 26% routed) | 14.5 | 100% | 3.7 | 71% | 0% |  | 0 |  |  |  |
+| hr1-grubs | rotgrub+rotgrub+rotgrub | 14.0 | 100% | 3.1 | 73% | 0% |  | 0 |  |  |  |
+| hr1-sapwight | sapwight+rotgrub+rotgrub | 14.9 | 100% | 5.5 | 71% | 0% |  | 0 |  |  |  |
+| rotwarden-heart | rotwarden | 15.0 | 94% | 19.3 | 46% | 7% |  | 36 | 400 |  |  |
+
+runs cleared 200/200 (stuck 0); end party level 16.2; grind fights/run 0.6
+hero attack rolls: hit 63%, graze 13%, crit 11%, miss 11%, fumble 3%
+random/worn-gear drops by rarity: worn 180, wrought 274, tempered 408, runed 432, storied 219; named relics dropped: 189
+
+### first-lead: each lead taken first at Waking 1
+
+| node | foes | lvl | win 1st | rounds | hp left | wipe 1st | yield | wipes | claimed | shattered | stuck |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| patrol:mossfall | (zone patrol) | 7.7 | 100% | 3.1 | 83% | 0% |  | 0 |  |  |  |
+| mw-stair | tallyman+smuggler+smuggler | 8.0 | 100% | 4.0 | 74% | 0% |  | 0 |  |  |  |
+| mw-lantern | tallyman+tallyman+smuggler | 8.4 | 78% | 8.4 | 57% | 22% |  | 52 | 200 |  |  |
+| mf-smugglers | smuggler+smuggler+smuggler | 8.0 | 100% | 2.8 | 84% | 0% |  | 0 |  |  |  |
+| mire-shrine | mirelord+boglurcher+boglurcher | 8.4 | 74% | 8.4 | 48% | 27% |  | 87 | 200 |  |  |
+| patrol:hindwood | (zone patrol) | 7.7 | 100% | 2.9 | 80% | 0% |  | 0 |  |  |  |
+| hw-glowcaps | glowcap+glowcap+glowcap | 8.3 | 100% | 2.8 | 88% | 0% |  | 0 |  |  |  |
+| gloamwing-hollow | gloamwing | 8.4 | 76% | 15.6 | 58% | 24% |  | 86 | 200 |  |  |
+| patrol:thornway | (zone patrol, 3% routed) | 7.7 | 100% | 2.5 | 65% | 1% |  | 1 |  |  |  |
+| grove-circle | feral-druid+feral-druid+briarling | 8.0 | 78% | 15.4 | 64% | 22% |  | 59 | 200 |  |  |
+
+runs cleared 800/800 (stuck 0); end party level 9.6; grind fights/run 1.1
+hero attack rolls: hit 63%, graze 13%, crit 7%, miss 13%, fumble 4%
+random/worn-gear drops by rarity: worn 769, wrought 1988, tempered 896, runed 280, storied 304; named relics dropped: 0
+
