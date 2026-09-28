@@ -275,7 +275,7 @@ export const ENCOUNTERS = deepFreeze({
   },
   'dt-aqueduct': {
     id: 'dt-aqueduct', type: 'fight', name: 'The Choked Aqueduct', place: 'The Dust Trail', backdrop: 'dust-trail', region: 'sunscorch',
-    spawns: [SUN('glass-scorpion', 5, { variant: 'matriarch', name: 'The Aqueduct Matriarch' }), SUN('glass-scorpion', 4), SUN('glass-scorpion', 4)],
+    spawns: [SUN('glass-scorpion', 6, { variant: 'matriarch', name: 'The Aqueduct Matriarch' }), SUN('glass-scorpion', 5), SUN('glass-scorpion', 5)],
     text: 'A glass-scorpion nest has choked Sandspire\'s aqueduct channel with its shed shells. The Matriarch is the size of a cart.',
   },
   'wyrm-lair': {

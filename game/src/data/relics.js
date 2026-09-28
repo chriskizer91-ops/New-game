@@ -10,7 +10,9 @@
 // M4 (spec §3.4, §4.2-§4.3; owner P4). Every relic also carries:
 // sockets: gem sockets at Hilda's forge (0-2; heirlooms default to 1, starters and Champion pieces 2)
 // deeds:   exactly three ids from data/deeds.js DEED_IDS. One deed kindles the relic; all three and
-//          Hilda's rite awaken it.
+//          Hilda's rite awaken it. The relics of the M2 road and the first Brand (Nos. 1-12) wake in Act II:
+//          their deeds are untouched (Waking 2+), hundred, settle and rout, so the Verdant keeps the balance
+//          it was tuned to (a Kindled relic adds +1 hit, +1 Guard or +5 HP; tools/sim.mjs m2 and direct).
 // awaken:  { a: branch, b: branch }, branch = { name, text, stats, power? }. Branch a is the Hand
 //          (the bearer's best Domain is physical, combat, survival or beastmastery), b the Heart (craft,
 //          knowledge, influence, attunement, psionics). `stats` use the affix stat keys and apply on top
@@ -39,7 +41,7 @@ export const RELICS = deepFreeze({
     },
     mapPower: { id: 'kindle', name: 'Kindle', text: 'Lights cold hearths and burns frost-sealed doors open.' },
     lore: 'Forged in the Keep\'s own coals. It had never once gone cold, until the night the hearth flickered.',
-    sockets: 2, deeds: ['first-blood', 'brand', 'untouched'],
+    sockets: 2, deeds: ['untouched', 'settle', 'hundred'],
     awaken: {
       a: {
         name: 'Hearthfang', text: 'The fire learns to bite. +1 to hit and +2 damage, and Hearthfall burns hotter: 4d8 ember to every foe.',
@@ -66,7 +68,7 @@ export const RELICS = deepFreeze({
     },
     mapPower: { id: 'still-the-water', name: 'Still the Water', text: 'Freezes streams and millraces into bridges.' },
     lore: 'Cut from Frostmere ice the winter the lake held its breath. The point still remembers the stillness.',
-    sockets: 2, deeds: ['first-blood', 'legend-strike', 'untouched'],
+    sockets: 2, deeds: ['untouched', 'rout', 'hundred'],
     awaken: {
       a: {
         name: 'Rimebreaker', text: 'The point goes in cold and comes out colder. +1 to hit and +1 speed, and Stillwater strikes deeper: 5d8 frost.',
@@ -93,7 +95,7 @@ export const RELICS = deepFreeze({
     },
     mapPower: { id: 'break-the-cairn', name: 'Break the Cairn', text: 'Shatters cracked boulders and clears rockslides.' },
     lore: 'A cairn-stone from the Old Road, bound to an ash haft by a smith who wanted something that would not break. It hasn\'t.',
-    sockets: 2, deeds: ['first-blood', 'claim', 'untouched'],
+    sockets: 2, deeds: ['settle', 'hundred', 'untouched'],
     awaken: {
       a: {
         name: 'Rockslide', text: 'Every swing brings the hillside with it. +2 damage and +3 grip damage, and Cairnfall breaks 6d6 grip.',
@@ -118,7 +120,7 @@ export const RELICS = deepFreeze({
     },
     mapPower: { id: 'wardens-writ', name: 'Warden\'s Writ', text: 'Keep guards and gatekeepers wave you through.' },
     lore: 'Pressed into the wax of every oath the Keep has sworn. The Tallymen wanted it for the oaths, not the silver.',
-    sockets: 1, deeds: ['first-blood', 'surge', 'brand'],
+    sockets: 1, deeds: ['settle', 'untouched', 'rout'],
     awaken: {
       a: hand('Sworn', 'The oath, pressed into the hand that keeps it. +1 STR and +8 HP.', { STR: 1, hp: 8 }),
       b: heart('Witnessing', 'Every oath the Keep ever swore, remembered. +1 CHA, +1 WIS and +10% healing.', { CHA: 1, WIS: 1, healBonus: 10 }),
@@ -137,7 +139,7 @@ export const RELICS = deepFreeze({
     },
     mapPower: { id: 'cut-the-tally', name: 'Cut the Tally', text: 'Slits Tallyman ledger-seals and opens their strongboxes.' },
     lore: 'Every notch on the spine is a debt. The Tallymen swear it has never once been wrong about what you owe.',
-    sockets: 1, deeds: ['first-blood', 'claim', 'hundred'],
+    sockets: 1, deeds: ['settle', 'hundred', 'rout'],
     awaken: {
       a: hand('Quick', 'Every debt collected before it falls due. +1 speed and +1 to hit.', { speed: 1, hit: 1 }),
       b: heart('Counting', 'It keeps the ledger for you now. +4 MP and +2 grip damage.', { mp: 4, gripDmg: 2 }),
@@ -156,7 +158,7 @@ export const RELICS = deepFreeze({
     },
     mapPower: { id: 'cut-the-thornwall', name: 'Cut the Thornwall', text: 'Cuts through the enchanted thorn walls that close the Verdant roads.' },
     lore: 'A Thornwatch ranger buried it in Old Snag\'s hide and never came back for it. Snag has carried the grudge ever since.',
-    sockets: 1, deeds: ['fell-holder', 'settle', 'hundred'],
+    sockets: 1, deeds: ['settle', 'hundred', 'rout'],
     awaken: {
       a: hand('Hewing', 'It clears a road wherever you swing it. +1 to hit and +2 damage.', { hit: 1, dmg: 2 }),
       b: heart('Ranger\'s', 'The ranger who buried it comes back for it, in a way. +2 grip damage, +1 WIS and +15% Legend Surge.', { gripDmg: 2, WIS: 1, surgeGain: 15 }),
@@ -173,7 +175,7 @@ export const RELICS = deepFreeze({
     },
     mapPower: { id: 'hear-the-rot', name: 'Hear the Rot', text: 'Reveals the Whispering Rot\'s sap-trails through the eldest trees.' },
     lore: 'Grown, not made: a crown of Eldergrove heartwood gone black at the core. The Rot-Stag wore it like it was born to.',
-    sockets: 1, deeds: ['surge', 'fell-champion', 'untouched'],
+    sockets: 1, deeds: ['untouched', 'settle', 'hundred'],
     awaken: {
       a: hand('Rooted', 'It takes root in you instead of the Rot. +1 CON and +10 HP.', { CON: 1, hp: 10 }),
       b: heart('Clean', 'The rot burns out of the heartwood. +1 WIS, +6 MP and +10% healing.', { WIS: 1, mp: 6, healBonus: 10 }),
@@ -185,7 +187,7 @@ export const RELICS = deepFreeze({
     stats: { speed: 1, hit: 1, resist: { verdant: 15 } },
     mapPower: { id: 'watchful', name: 'Watchful', text: 'Glinting holders show on the map from farther away.' },
     lore: 'Captain Dael\'s rangers wore these when the Thornwatch still had thirty names on its roll. The bandits wear them now.',
-    sockets: 1, deeds: ['first-blood', 'rout', 'untouched'],
+    sockets: 1, deeds: ['rout', 'untouched', 'settle'],
     awaken: {
       a: hand('Watchful', 'A ranger\'s eye under the hood. +1 to hit and +1 speed.', { hit: 1, speed: 1 }),
       b: heart('Patient', 'A ranger\'s patience under the hood. +1 WIS and +6 HP.', { WIS: 1, hp: 6 }),
@@ -198,7 +200,7 @@ export const RELICS = deepFreeze({
     stats: { hp: 6, resist: { verdant: 15 } },
     mapPower: { id: 'thorn-thread', name: 'Thorn-Thread', text: 'Walk through bramble without a scratch.' },
     lore: 'Stitched with thorn-thread that knits itself closed. It has been stabbed more often than anyone who wore it.',
-    sockets: 1, deeds: ['fell-holder', 'settle', 'untouched'],
+    sockets: 1, deeds: ['settle', 'untouched', 'hundred'],
     awaken: {
       a: hand('Thorn-Stitched', 'The thorn-thread pulls tight. +1 Guard and +6 HP.', { guard: 1, hp: 6 }),
       b: heart('Knitting', 'The thorn-thread knits you too: regrow 1 HP a turn and 15% verdant resist.', { regen: 1, resist: { verdant: 15 } }),
@@ -210,7 +212,7 @@ export const RELICS = deepFreeze({
     stats: { speed: 2, guard: 1 },
     mapPower: { id: 'trackless', name: 'Trackless', text: 'Leaves no trail the forest will tell. Weak foes lose your scent.' },
     lore: 'They leave no trail the forest will tell, which is why nobody could say where the last Thornwatch patrol went.',
-    sockets: 1, deeds: ['rout', 'fell-holder', 'untouched'],
+    sockets: 1, deeds: ['rout', 'untouched', 'hundred'],
     awaken: {
       a: hand('Trackless', 'Gone before the forest can tell. +1 speed and +1 DEX.', { speed: 1, DEX: 1 }),
       b: heart('Homeward', 'They always know the way back. +6 HP and +10% Legend Surge.', { hp: 6, surgeGain: 10 }),
@@ -227,7 +229,7 @@ export const RELICS = deepFreeze({
     },
     mapPower: { id: 'briar-crown', name: 'Briar Crown', text: 'The bramble parts for whoever wears it.' },
     lore: 'It grew around Briarmaw\'s skull the night the hearth flickered, and it has not stopped growing since.',
-    sockets: 2, deeds: ['surge', 'fell-champion', 'brand'],
+    sockets: 2, deeds: ['untouched', 'settle', 'hundred'],
     awaken: {
       a: { name: 'The Bramble King', text: 'It grows into a crown that fights. +1 Guard, +1 STR and +8 HP.', stats: { guard: 1, STR: 1, hp: 8 } },
       b: { name: 'The Green Crown', text: 'It grows green again, and so do you: regrow 2 HP a turn and +15% Legend Surge.', stats: { regen: 2, surgeGain: 15 } },
@@ -245,7 +247,7 @@ export const RELICS = deepFreeze({
     },
     mapPower: { id: 'bloodtrail', name: 'Bloodtrail', text: 'Follow any wounded beast\'s trail to its lair.' },
     lore: 'A fang the length of a knife and sharp as a debt. Pried loose, it still bleeds.',
-    sockets: 2, deeds: ['legend-strike', 'fell-champion', 'hundred'],
+    sockets: 2, deeds: ['hundred', 'settle', 'untouched'],
     awaken: {
       a: { name: 'The Long Fang', text: 'It grows to fit the hand. +1 to hit, +1 damage, and a Legend Strike on 17-20.', stats: { hit: 1, dmg: 1, crit: 1 } },
       b: { name: 'The Green Fang', text: 'It draws out the poison it once put in. +2 grip damage, +6 HP and 15% blight resist.', stats: { gripDmg: 2, hp: 6, resist: { blight: 15 } } },

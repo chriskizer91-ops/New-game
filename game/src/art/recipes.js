@@ -5,8 +5,8 @@ import { hash, vnoise, Xf, Forge, MAT, ramp } from './forge.js';
 /* ==== M4 materials (the Sunscorch), registered into MAT once and never over a name that exists, so
    recipes, looks and the hero rig can all name them ==== */
 const M4_MAT = {
-  glass: ['#0c1a20 #1e3a44 #386a74 #64a0a4 #a8d6d2 #eefffa', { gem: 1 }],
-  sandglass: ['#1e1208 #4a2e14 #86602e #c49a5a #ecd49c #fffbe8', { gem: 1 }],
+  glass: ['#101a1e #2a3c42 #4e6a70 #82a4a6 #bcd8d4 #f2fffa', { gem: 1 }],
+  sandglass: ['#1a0e06 #3e2410 #704a20 #aa7a3e #e2ba76 #fff4d6', { gem: 1 }],
   smokeglass: ['#0c080a #221820 #3e2c34 #604652 #8c6c74 #c4a4a4', { gem: 1 }],
   sand: ['#241a10 #4a3620 #76583a #a4804e #cca868 #ecd49a', { ks: .15, shin: 6 }],
   sandstone: ['#2a1810 #573420 #83553a #ad7c52 #d2a574 #eecb9c', { ks: .2, shin: 6, dither: .3 }],

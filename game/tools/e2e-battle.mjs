@@ -1,8 +1,10 @@
 // End-to-end test of the battle screen (Playwright, preinstalled Chromium). Builds the dev
 // harness, then plays real battles at phone (390x844) and laptop (1280x800) sizes: the tutorial
 // Tallyman fight (manual commands), a rabble fight, the Rot-Stag, Old Snag (until a disarm
-// happens), Briarmaw (all three phases, plus a Legend Surge), and for M3 a fight in the dark (the
-// Lamp Room) and the Tamsin duel's intro ("Losing is a yield."). Asserts no console errors or
+// happens), Briarmaw (all three phases, plus a Legend Surge), for M3 a fight in the dark (the
+// Lamp Room) and the Tamsin duel's intro ("Losing is a yield."), and for M4 the Sunscorch's two
+// Champions: Kharzul through three phases with Cinderfang pried loose, and the Ashen Warden with
+// both the Aegis and the Crown snapped off (each piece shuts its moves down). Asserts no console errors or
 // uncaught exceptions, no horizontal scroll, 44px tap targets, and the aftermath hand-off.
 // Screenshots of the key moments go to tools/shots/battle-*.png.
 //
@@ -16,6 +18,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { buildDevBattle } from './dev-battle.mjs';
+import { RELICS } from '../src/data/relics.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = Object.fromEntries(process.argv.slice(2).map(a => { const [k, v] = a.replace(/^--/, '').split('='); return [k, v ?? true]; }));
@@ -447,6 +450,46 @@ await scenario('duel', async rec => {
   s.aftermath = await toAftermath(s.page, { timeout: 300000, hurry: true });
   await finishCommon(rec, s);
   await s.context.close();
+});
+
+// M4 (spec §8): a Champion taken through all three phases with every breakable piece snapped off, and
+// each piece's loss shutting its moves down ("... clatters loose! Kharzul loses Glasscutter."). The
+// Cairnmaul starter breaks grips; seeds are tried until one does it all (the fight is dice).
+async function championFight(rec, node, pieces, shotName) {
+  const names = pieces.map(id => RELICS[id].name);
+  for (const seed of [3, 4, 5, 6, 7, 8, 9, 10, 11, 12]) {
+    const s = await open(PHONE, `node=${node}&level=12&speed=4&auto=1&starter=cairnmaul&seed=${seed}`);
+    if (seed === 3) {
+      const p2 = await pauseOn(s.page, 'phase', `phone-${shotName}-phase2`, { timeout: 400000, hurry: true });
+      if (p2) { rec.shots.push(p2.path); await layoutChecks(s.page, `${node}/phase2`); }
+    }
+    s.aftermath = await toAftermath(s.page, { timeout: 400000, hurry: true });
+    const log = await logText(s.page);
+    check(!s.errors.length, `seed ${seed}: errors: ${s.errors.slice(0, 5).join(' | ')}`);
+    check(s.aftermath?.ended, `seed ${seed}: no aftermath hand-off`);
+    await s.context.close();
+    const phases = [2, 3].filter(n => log.some(l => new RegExp(`phase ${n}`).test(l)));
+    const loose = names.filter(n => log.some(l => l.includes(`${n} clatters loose!`)));
+    const shut = names.filter(n => log.some(l => l.includes(`${n} clatters loose!`) && / loses /.test(l)));
+    rec.notes.push(`seed ${seed}: ${s.aftermath.result.result}, phases ${phases.join('+') || '-'}, loose ${loose.join(' + ') || '-'}`);
+    if (phases.length === 2 && loose.length === names.length) {
+      check(shut.length === names.length, `seed ${seed}: a piece came loose without shutting its moves down (${names.filter(n => !shut.includes(n)).join(', ')})`);
+      if (s.aftermath.result.result === 'victory') {
+        const got = s.aftermath.result.claimed.map(i => i.base);
+        check(pieces.every(id => got.includes(id)), `seed ${seed}: won, but not every piece was claimed (${got.join(', ')})`);
+      }
+      return;
+    }
+  }
+  throw new Error(`no seed took ${node} through three phases with ${names.join(' and ')} loose`);
+}
+
+await scenario('kharzul', async rec => {
+  await championFight(rec, 'kharzul-heart', ['cinderfang', 'glass-carapace'], 'kharzul');
+});
+
+await scenario('warden', async rec => {
+  await championFight(rec, 'ashen-warden', ['ashen-aegis', 'cinder-crown'], 'warden');
 });
 
 // ---- laptop ------------------------------------------------------------------------------------------

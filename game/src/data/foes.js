@@ -510,17 +510,17 @@ const SUNSCORCH = {
   },
   'glass-scorpion': {
     id: 'glass-scorpion', name: 'Glass Scorpion', art: 'glass-scorpion', tier: 'veteran', kind: 'beast',
-    hp: 28, guard: 16, atk: 4, dmg: 2, speed: 11, armor: 'chitin', aspect: 'stone',
+    hp: 28, guard: 16, atk: 4, dmg: 2, speed: 11, armor: 'none', aspect: 'stone',
     saves: { STR: 2, DEX: 1, CON: 2, WIS: 0 },
     moves: SCORPION_MOVES,
     table: [[1, 3, 'pincer'], [4, 6, 'glass-sting'], [7, 8, 'carapace']],
     variants: {
       // the Aqueduct Matriarch: a lair boss with no relic (spec §3.3: the cistern quest)
-      matriarch: holder('The Glass Matriarch', 'glass-matriarch', 96, {
+      matriarch: holder('The Glass Matriarch', 'glass-matriarch', 80, {
         ...SCORPION_MOVES,
         moult: { name: 'Moult', target: 'self', when: { hpBelow: 0.5 }, fallback: 'glass-sting', text: 'She splits her cracked shell and steps out of it: Regenerating.', effects: [status('regenerating', { value: { dice: '1d6', diceEvery: 3 } })] },
-        'shell-rain': { name: 'Shell Rain', target: 'all-enemies', text: 'She shakes the aqueduct, and a season of shed shells comes down on everyone: Bleeding.', effects: [atk('1d8', 'pierce', { riders: [status('bleeding')] })] },
-      }, [[1, 3, 'pincer'], [4, 6, 'glass-sting'], [7, 7, 'carapace'], [8, 8, 'moult'], [9, 12, 'shell-rain']], { atk: 5 }),
+        'shell-rain': { name: 'Shell Rain', target: 'all-enemies', text: 'She shakes the aqueduct, and a season of shed shells comes down on everyone: Bleeding.', effects: [atk('1d10', 'pierce', { riders: [status('bleeding')] })] },
+      }, [[1, 3, 'pincer'], [4, 7, 'glass-sting'], [8, 8, 'carapace'], [9, 9, 'moult'], [10, 12, 'shell-rain']], { atk: 5 }),
     },
     text: 'A scorpion the size of a dog, its shell gone to cloudy glass in the heat. It clicks when it is hungry. It is always clicking.',
   },

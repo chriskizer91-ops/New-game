@@ -10,6 +10,8 @@
 // Dark maps (M3): every function also takes { dark: true }, or a key ending in ':dark'. The scene falls to near
 // black except around its remaining lights. 'mosswatch:dark' and 'heartroot:dark' are listed in BACKDROPS, so a
 // battle ctx can carry them as its backdrop; darkBackdrop(key) gives the listed dark key for a base key.
+// M4 adds the nine Sunscorch places; 'deep-shaft:dark' and 'scorchgate-vaults:dark' are their dark listings (the
+// lamps and braziers go out; the sunstone veins and the embers in the vault floor stay lit).
 import { hx, ramp, bayer, hash, vnoise, mix } from './forge.js';
 import { lru } from './cache.js';
 
@@ -26,6 +28,18 @@ export const BACKDROPS = Object.freeze({
   heartroot: { name: 'The Heartroot', horizon: .56, floor: [.64, 1], fx: 'blight' },
   'mosswatch:dark': { name: 'The Lamp Room', horizon: .6, floor: [.68, 1], fx: 'dust', dark: true },
   'heartroot:dark': { name: 'The Heart Chamber', horizon: .56, floor: [.64, 1], fx: 'blight', dark: true },
+  // M4: the Sunscorch Wastes
+  'sun-road': { name: 'The Sunward Road', horizon: .58, floor: [.66, 1], fx: 'sand' },
+  sandspire: { name: 'Sandspire', horizon: .6, floor: [.68, 1], fx: 'ember' },
+  'dust-trail': { name: 'The Dust Trail', horizon: .58, floor: [.66, 1], fx: 'sand' },
+  'deep-shaft': { name: 'The Deep Shaft', horizon: .56, floor: [.64, 1], fx: 'grit' },
+  'glass-heart': { name: 'The Glass Heart', horizon: .56, floor: [.64, 1], fx: 'glint' },
+  'glass-flats': { name: 'The Glass Flats', horizon: .56, floor: [.64, 1], fx: 'glint' },
+  miragewell: { name: 'Miragewell', horizon: .58, floor: [.66, 1], fx: 'mirage' },
+  scorchgate: { name: 'Scorchgate Ruins', horizon: .58, floor: [.66, 1], fx: 'ash' },
+  'scorchgate-vaults': { name: 'The Scorchgate Vaults', horizon: .56, floor: [.64, 1], fx: 'ash' },
+  'deep-shaft:dark': { name: 'The Deep Shaft, below the lamp', horizon: .56, floor: [.64, 1], fx: 'grit', dark: true },
+  'scorchgate-vaults:dark': { name: 'The Hall of the Watch', horizon: .56, floor: [.64, 1], fx: 'ash', dark: true },
 });
 export const BACKDROP_KEYS = Object.keys(BACKDROPS);
 // the listed dark variant of a backdrop key ('mosswatch' -> 'mosswatch:dark'), or the key itself when none is listed
@@ -95,6 +109,85 @@ function barkRoot(L, pts, r0, r1, c, lite, rim, rimSide, rimA = .55) {
     if (rim) { const sd = Math.sign(nx) === rimSide ? 1 : -1; L.line(ax + nx * r * .85 * sd, ay + ny * r * .85 * sd, bx + nx * r * .85 * sd, by + ny * r * .85 * sd, rim, rimA); }
   }
 }
+
+/* ---------- M4: helpers for the Sunscorch ---------- */
+const clampI = (l, n) => Math.max(0, Math.min(n, l));
+// dunes, back to front: each [cx, top, wl, wr, sk] rises to a crest at (cx, top) with a long slope on the left in the
+// sun and a steep slip-face on the right in shadow, split by a crest line that runs down and to the right (sk).
+// cols: [slip-face, slip-face foot, lit slope, lit crest]; rim lights the sunlit skyline
+function dunes(L, list, yBase, cols, rim) {
+  const C = cols.map(hx), R = rim && hx(rim);
+  for (const [cx, top, wl, wr, sk] of list) {
+    const hd = yBase - top;
+    for (let x = Math.floor(cx - wl); x <= cx + wr; x++) {
+      const t = Math.ceil(top + hd * (x < cx ? ((cx - x) / wl) ** 1.8 : ((x - cx) / wr) ** 1.2));
+      for (let y = t; y < yBase; y++) { const e = x + .5 - cx - (y - top) * sk, v = (y - t) / hd + bayer(x, y) * .3; L.set(x, y, C[e < 0 ? (e > -2.5 - v * 4 ? 3 : 2) : v > .45 ? 1 : 0]); }
+      if (R && x + .5 < cx + (t - top) * sk) L.set(x, t, R, .75);
+    }
+  }
+}
+// sand from gy down: lighter toward the viewer, drifted with noise, and wind ripples that crowd toward the horizon
+function sandFloor(L, gy, cols, rip, seed) {
+  const G = cols.map(hx), R = hx(rip), n = G.length - 1, H = L.h;
+  for (let y = gy; y < H; y++) for (let x = 0; x < L.w; x++) L.set(x, y, G[clampI(Math.round((y - gy) / (H - gy) * n + bayer(x, y) * .9 - .45 + (vnoise(x * .05, y * .12, seed) - .5) * 1.2), n)]);
+  for (let k = 0; k < 18; k++) { const u = (k + hash(k, 1, seed) * .6) / 18, y0 = gy + 1 + u * u * (H - gy), f = .3 - u * .18; for (let x = 0; x < L.w; x++) if (vnoise(x * .07, k * 3, seed + 1) > .4) L.set(x, y0 + Math.sin(x * f + k * 1.7) * (.5 + u * 1.5), R, .25 + u * .35); }
+}
+// a canyon wall or rock face on one side of edge(y) (side -1 fills to the left, +1 to the right), in strata that
+// wander with noise; rim lights the edge
+function rockWall(L, edge, side, y0, y1, cols, rim, seed) {
+  const C = cols.map(hx), n = C.length - 1, R = rim && hx(rim);
+  for (let y = y0; y < y1; y++) {
+    const e = edge(y);
+    for (let x = side < 0 ? 0 : Math.ceil(e); side < 0 ? x < e : x < L.w; x++) { const b = Math.sin((y + vnoise(x * .05, y * .02, seed) * 8) * .55) + vnoise(x * .2, y * .25, seed + 1) - .5; L.set(x, y, C[clampI(Math.round(n * .5 + b * n * .38 + bayer(x, y) * .6 - .3), n)]); }
+    if (R) L.set(side < 0 ? e - 1 : Math.ceil(e), y, R, .7);
+  }
+}
+// a glass shard rising from (x, y) to its tip, h tall, w half-wide at the root, leaning: a lit face, a shadowed
+// face and a bright edge between them (cols: [shadow, lit])
+function shard(L, x, y, h, w, lean, cols, edge) {
+  const tx = x + lean * h, ty = y - h, mx = x + w * .2;
+  L.poly([[x - w, y], [tx - .3, ty], [mx, y]], hx(cols[1])); L.poly([[mx, y], [tx + .3, ty], [x + w, y]], hx(cols[0])); L.line(mx, y - 1, tx, ty, hx(edge), .8);
+}
+// a standing glass column with a pointed top: a lit face, a shadowed face, its edges caught by the light
+function prism(L, x, y, h, w, cols, edge) {
+  const C = cols.map(hx), E = hx(edge), m = x - w * .15, sh = y - h + w * 1.3;
+  L.poly([[x - w, y], [x - w, sh], [m, y - h], [m, y]], C[1]); L.poly([[m, y], [m, y - h], [x + w, sh], [x + w, y]], C[0]);
+  L.line(m, y - 1, m, y - h, E, .75); L.line(x - w, sh, m, y - h, E, .55);
+}
+// a date palm: a curved, ringed trunk from (x, y), h tall, then fronds arching out from the crown and drooping
+function palm(L, x, y, h, lean, trunk, frond, seed) {
+  const T = hx(trunk), TD = mix(T, [0, 0, 0], .45), F = hx(frond); let px = x, py = y;
+  for (let k = 1; k <= 12; k++) { const u = k / 12, qx = x + lean * h * u * u, qy = y - h * u, r = 1.6 - u * .7; L.thick(px, py, qx, qy, r, r, T); if (k % 2) L.line(qx - r, qy + .5, qx + r, qy - .5, TD); px = qx; py = qy; }
+  for (let f = 0; f < 9; f++) {
+    const a = -Math.PI / 2 + (f - 4) * .36 + (hash(f, seed, 1) - .5) * .2, len = h * (.36 + hash(f, seed, 2) * .14), sd = Math.cos(a) < 0 ? -1 : 1;
+    let ax = px, ay = py;
+    for (let j = 1; j <= 9; j++) { const v = j / 9, bx = px + Math.cos(a) * len * v * 1.2, by = py + Math.sin(a) * len * v + v * v * len * .8; L.line(ax, ay, bx, by, F); if (j > 1 && j < 9) L.line(bx, by, bx + sd * .6, by + 2.4 - v * 1.4, F, .8); ax = bx; ay = by; }
+  }
+}
+// coursed blocks over a rect: shade(x, y) picks each block's step (with a per-block jitter), mortar lines between
+function masonry(L, x0, y0, x1, y1, cols, mortar, bw, bh, seed, shade) {
+  const C = cols.map(hx), M = hx(mortar), n = C.length - 1;
+  for (let y = Math.floor(y0); y < y1; y++) {
+    const row = Math.floor((y - y0) / bh), yo = (y - Math.floor(y0)) % bh;
+    for (let x = Math.floor(x0); x < x1; x++) { const xs = x + row * (bw >> 1) + 64, bi = Math.floor(xs / bw), l = clampI(Math.round(shade(x, y) + (hash(row, bi, seed) - .5) * .9 + bayer(x, y) * .5 - .25), n); L.set(x, y, yo === bh - 1 || xs % bw === 0 ? M : C[yo === 0 ? Math.min(n, l + 1) : l]); }
+  }
+}
+// a fire-bowl with its rim at (x, y), w half-wide. fire 'lit' throws a flame and a glow (out: the flame goes out in
+// the dark); 'sand' is choked with drifted sand, anything else holds cold ash
+function fireBowl(L, x, y, w, lights, fire, out) {
+  L.poly([[x - w, y], [x + w, y], [x + w * .55, y + w * .7], [x - w * .55, y + w * .7]], hx('#2a1c16')); L.line(x - w, y, x + w, y, hx('#6e5444'));
+  if (fire !== 'lit') { for (let k = 1 - w; k < w; k++) L.set(x + k, y - (Math.abs(k) < w - 1.5 ? 1 : 0), hx(fire === 'sand' ? '#b08858' : '#56504c')); return; }
+  L.rect(x - w + 1, y - 1, 2 * w - 1, 1, hx('#ffb04a'));
+  lights.push({ x: x + .2, y: y - 2, r: 8 + w * 2, c: '#ffb04a', a: .5, torch: 1, flick: 3 + x * .01, out }, { x: x - w * .5, y: y - 1.5, r: 2, c: '#ff9a3a', a: .08, torch: 1, flick: 2.1, out }, { x: x + w * .5, y: y - 1.5, r: 2, c: '#ff9a3a', a: .08, torch: 1, flick: 3.7, out });
+}
+// mine rails from the near edge (centre x0, half-gauge g0 at the bottom) toward their vanishing point (vx, vy), drawn
+// from y1 down: sleepers crowding into the distance, then two rails with a lit top
+function rails(L, x0, g0, vx, vy, y1, cols) {
+  const [SL, RD, RL] = cols.map(hx), H = L.h, at = y => { const s = (y - vy) / (H - vy); return [vx + (x0 - vx) * s, g0 * s, s]; };
+  for (let k = 0; k < 40; k++) { const s = 1 / (1 + k * .25), y = vy + (H + 1 - vy) * s; if (y < y1) break; const [cx, g] = at(y); L.rect(cx - g * 1.5, y - Math.max(1, 1.8 * s), g * 3, Math.max(1, 1.8 * s), SL); }
+  for (const sd of [-1, 1]) for (let y = Math.ceil(y1); y < H; y++) { const [a, g, s] = at(y), [b, g2] = at(y + 1); L.line(a + sd * g, y, b + sd * g2, y + 1, RD); if (s > .35) L.line(a + sd * g - sd * .6, y, b + sd * g2 - sd * .6, y + 1, RL, .9); }
+}
+const stars = (L, n, y1, seed) => { const D = hx('#a8b4d8'), B = hx('#fff4dc'); for (let k = 0; k < n; k++) { const x = hash(k, 1, seed) * L.w, y = hash(k, 2, seed) * y1, b = hash(k, 3, seed); L.set(x, y, b > .8 ? B : D, .35 + b * .65); if (b > .94) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) L.set(x + dx, y + dy, D, .4); } };
 
 /* ---------- the four places ---------- */
 const PAINT = {

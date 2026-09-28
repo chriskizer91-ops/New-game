@@ -4,6 +4,7 @@
 //
 //   node tools/sim.mjs [--seeds 200] [--starter hearthbrand|stillwater-lance|cairnmaul|mix] [--md]
 //                      [--modes m2,direct,leads2,leads-all,looper-w2,first-lead,sunscorch,sunscorch-forged,sun-first-lead]
+//                      [--leads caravan,wyrm,gnash,well,aqueduct]   (sun-first-lead: only these leads)
 //
 // Modes (targets from the spec):
 //   m2          Waking 0, the M2 road in order, equips drops; a wipe grinds a level and retries.
@@ -59,6 +60,7 @@ const SUN_MODES = ['sunscorch', 'sunscorch-forged', 'sun-first-lead'];
 const ONLY = arg('modes', ALL_MODES.join(',')).split(',');
 const ONE_SEED = arg('seed', null) ? +arg('seed') : null; // --seed N: replay one seed
 const TRACE = args.includes('--trace');                    // print every fight
+const SUN_ONLY_LEADS = arg('leads', null);                 // --leads wyrm,aqueduct: sun-first-lead runs only these
 const STARTERS = ['hearthbrand', 'stillwater-lance', 'cairnmaul'];
 const MAX_TRIES = 8; // a player who keeps wiping grinds a level each time; eight tries is 'stuck'
 
@@ -294,7 +296,7 @@ function simulate() {
         if (ONLY.includes('sunscorch')) { const f = sunFork('path'); entry(all.sunscorch); run('sunscorch', f.g, SUN_ROUTE, f.ctx); }
         if (ONLY.includes('sunscorch-forged')) { const f = sunFork('path'); entry(all['sunscorch-forged']); run('sunscorch-forged', forgeParty(f.g, all['sunscorch-forged']), SUN_ROUTE, f.ctx); }
         if (ONLY.includes('sun-first-lead')) {
-          for (const lead of Object.keys(SUN_LEAD_ROUTES)) { const f = sunFork(lead); entry(all['sun-first-lead']); run('sun-first-lead', f.g, [...SUN_START, ...SUN_LEAD_ROUTES[lead]], f.ctx); }
+          for (const lead of Object.keys(SUN_LEAD_ROUTES).filter(l => !SUN_ONLY_LEADS || SUN_ONLY_LEADS.split(',').includes(l))) { const f = sunFork(lead); entry(all['sun-first-lead']); run('sun-first-lead', f.g, [...SUN_START, ...SUN_LEAD_ROUTES[lead]], f.ctx); }
         }
       }
       if (ONLY.includes('leads2')) { const f = fork(); run('leads2', f.g, [...LEAD_ROUTES.mosswatch, ...LEAD_ROUTES.bell, 'thornhollow', ...AFTER_BRAND], f.ctx); }

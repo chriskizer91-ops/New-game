@@ -1402,16 +1402,16 @@ function sandSkink(F, st) {
    45), the Aqueduct Matriarch (scaled up, her shell split to moult) and Kharzul (the Champion: Cinderfang in its
    tail, the Glass Carapace over its back, three phases), in a 64x48 base space mapped by S = { k, dx, dy } ---- */
 const TAIL = {
-  idle: [[14.5, 33], [10, 28.4], [9, 21.6], [11.8, 15.4], [17.6, 11.4], [24.4, 10.6]],
-  attack: [[15.4, 32.4], [12.6, 25.6], [14.4, 18.6], [20.4, 14.2], [28.2, 14], [34.4, 18.4]],
-  hurt: [[13.8, 33.2], [8.6, 29], [6, 22.4], [6.8, 15.6], [10.2, 10.6], [15.6, 8]],
-  ko: [[14, 38.4], [9.4, 40.8], [4.8, 42.2], [1.6, 40.6], [1.4, 37], [3.4, 34.6]],
+  idle: [[12.6, 30.4], [8.4, 25], [7.6, 18.4], [10.4, 12.6], [16, 9], [22.4, 8.8]],
+  attack: [[13.4, 30], [11, 23.6], [12.8, 17], [18.6, 12.8], [26, 12.6], [32, 16.4]],
+  hurt: [[12, 30.6], [7, 26], [4.6, 19.6], [5.6, 13], [9.4, 8.4], [15, 6.4]],
+  ko: [[12.4, 36.6], [8, 39.6], [3.8, 41.2], [1, 39.2], [1.2, 35.4], [3.6, 33.2]],
 };
 const BOSS_TAIL = {
-  idle: [[14.5, 33], [8.6, 24.4], [6.4, 13.4], [9.4, 3.4], [16.4, -3.4], [24.8, -5.4], [31.4, -2.6]],
-  attack: [[15.4, 32.4], [11.4, 22], [12.8, 11], [19.4, 3], [28.4, 0], [37, 3.6], [42.6, 10]],
-  hurt: [[14, 33.2], [7.6, 25.2], [4, 14.4], [4.6, 4], [9.6, -3], [16.4, -6.2], [22.6, -5.2]],
-  ko: [[14, 38.4], [9, 41], [3.6, 42.6], [.2, 40], [.6, 35], [3.6, 31.6], [7.6, 31]],
+  idle: [[12.6, 30.4], [7.8, 23.4], [6.6, 15], [9.6, 7.6], [15.4, 2.8], [22.2, 1.6], [27.8, 4.2]],
+  attack: [[13.4, 30], [10.4, 21.6], [12, 13], [18.2, 6.6], [26.4, 4.4], [34, 7.4], [39, 13]],
+  hurt: [[12, 30.6], [6.6, 24], [3.8, 15.4], [4.6, 7.4], [9, 1.8], [15, -.8], [20.6, .2]],
+  ko: [[12.4, 36.6], [7.8, 39.8], [3.2, 41.4], [.4, 38.6], [1, 34.4], [3.8, 31.6], [7.4, 31]],
 };
 function scorpion(F, st, S) {
   const { pose, f, gT, phase, broken, held } = st, A = st.anchors, k = S.k, T = p => [S.dx + p[0] * k, S.dy + p[1] * k];
@@ -1420,89 +1420,87 @@ function scorpion(F, st, S) {
   const glass = P3 || (gT >= 3 && !boss) ? 'smokeglass' : 'sandglass', veinM = P3 || gT >= 3 ? 'ember' : 'amber';
   const eyeM = boss ? (P2 ? 'eyeRed' : 'amber') : gT >= 2 ? 'eyeRed' : 'amber';
   let bx = 0, by = idle ? f * .3 : 0, open = .12 + (idle ? f * .08 : 0), clawUp = 0;
-  if (pose === 'attack') { bx = 2; by = -.4; open = .95; } else if (pose === 'hurt') { bx = -2; by = -.6; open = .5; clawUp = 1; } else if (lie) { by = 4.6; open = .3; }
-  const B = p => T([p[0] + bx, p[1] + by]);
-  const tail = ((boss ? BOSS_TAIL : TAIL)[pose] || (boss ? BOSS_TAIL : TAIL).idle).map((p, i) => (idle ? T([p[0] + Math.sin(f * 1.7 + i) * .3 * i * .2, p[1] + f * .4 * (i / 6)]) : lie ? T(p) : T([p[0] + (i ? 0 : bx), p[1] + (i ? 0 : by)])));
-  // cloudy glass: milky patches and bright facets; sand crusted up the legs when it has burrowed (phase 2+)
-  const sandLine = S.dy + (38 + (lie ? 3 : 0)) * k;
+  if (pose === 'attack') { bx = 2; by = -.4; open = .95; } else if (pose === 'hurt') { bx = -2; by = -.6; open = .5; clawUp = 1; } else if (lie) { by = 4; open = .3; }
+  const B = p => T([p[0] + bx, p[1] + by]), R = r => r * k;
+  const tail = ((boss ? BOSS_TAIL : TAIL)[pose] || (boss ? BOSS_TAIL : TAIL).idle).map((p, i) => (idle ? T([p[0] + Math.sin(f * 1.7 + i) * .06 * i, p[1] + f * .07 * i]) : lie ? T(p) : T([p[0] + (i ? 0 : bx), p[1] + (i ? 0 : by)])));
+  // cloudy glass: milky patches and bright facets; sand crusted up the legs and belly once it has burrowed (phase 2+)
+  const sandLine = S.dy + (35.6 + (lie ? 3 : 0)) * k;
   const gtex = seed => ({ x, y }) => {
-    if (P2 && y > sandLine && vnoise(x * .4, y * .4, seed + 9) > .38) return { m: 'sand', dd: 0 };
+    if (P2 && y > sandLine && vnoise(x * .45, y * .45, seed + 9) > .32) return { m: 'sand', dd: y > sandLine + 3 * k ? 0 : -1 };
     const n = vnoise(x * .32, y * .32, seed); if (n > .75) return 1; if (n < .24) return -1; return hash(x, y, seed) < .05 ? 1 : 0;
   };
-  const R = r => r * k;
-  // far legs and the far pincer
-  const LEGS = [[[22, 38.4], [17.4, 37], [13.8, 45]], [[26.6, 38.8], [23.6, 38], [21.8, 45]], [[31, 38.8], [33.4, 38], [35.6, 45]], [[35.6, 38.4], [40, 37], [43.6, 45]]];
-  const legPts = (L, far) => L.map((p, j) => (lie ? T([p[0] + (far ? 1.2 : 0), j === 2 ? 43 + (far ? -.4 : 0) : p[1] + 3.6 - j * .4 + (j === 1 ? -1.4 : 0)]) : j === 2 ? T([p[0] + (far ? 1.4 : 0) + bx * .3, 45 - (far ? .6 : 0)]) : B([p[0] + (far ? 1.4 : 0), p[1] - (far ? 1 : 0)])));
-  LEGS.forEach((L, i) => legOf(F, legPts(L, true), [R(1.3), R(1), R(.65)], glass, gtex(40 + i), 'legF' + i, true));
+  // eight legs, four a side: up to a high knee, then down to the ground; the far side a shade darker, behind
+  const LEGS = [[[19.6, 36.8], [15.2, 34.4], [12.4, 45]], [[24.2, 37.4], [20.6, 35], [18.8, 45]], [[29, 37.4], [32.6, 35], [34.4, 45]], [[33.6, 36.8], [38.2, 34.4], [41.2, 45]]];
+  const legPts = (L, far) => L.map((p, j) => (lie ? T([p[0] + (far ? 1.2 : 0), j === 2 ? 43.4 - (far ? .4 : 0) : p[1] + 4 + (j === 1 ? -2 : 0)]) : j === 2 ? T([p[0] + (far ? 1.6 : 0) + bx * .3, 45 - (far ? .6 : 0)]) : B([p[0] + (far ? 1.6 : 0), p[1] - (far ? 1.2 : 0)])));
+  LEGS.forEach((L, i) => legOf(F, legPts(L, true), [R(1.6), R(1.25), R(.75)], glass, gtex(40 + i), 'legF' + i, true));
+  // the pincers: a long arm and a great glass claw; open when it strikes, raised when it is hurt
   const claw = (arm, ch, fx, fy, g, far) => {
     const up = clawUp * (far ? 5 : 7), a0 = B(arm[0]), a1 = B([arm[1][0], arm[1][1] - up * .6]), c = B([ch[0], ch[1] - up]);
-    F.add({ mat: glass, prof: 'round', bw: R(1.4), grp: g, shapes: chainC([a0, a1, c], [R(2.1), R(1.8), R(1.6)]), tex: far ? farTex(gtex(50)) : gtex(50) });
-    const hf = frame(c[0], c[1], -.12 - clawUp * .5);
-    F.add({ mat: glass, prof: 'round', bw: R(2), grp: g + 'h', shapes: [rell(hf, 0, 0, R(fx), R(fy), 14)], tex: far ? farTex(gtex(51)) : gtex(51) });
-    const o = open * .55;
-    F.add({ mat: glass, prof: 'round', bw: R(.9), grp: g + 'f', shapes: [cap(hf.P(R(fx * .7), R(-fy * .45)), hf.P(R(fx * 1.75), R(-fy * .7 - o * 3)), R(1.3), R(.45)), cap(hf.P(R(fx * .7), R(fy * .45)), hf.P(R(fx * 1.7), R(fy * .6 + o * 4)), R(1.25), R(.45))], tex: far ? DARK : null });
-    return hf.P(R(fx * 1.2), 0);
+    F.add({ mat: glass, prof: 'round', bw: R(1.8), grp: g, shapes: chainC([a0, a1, c], [R(2.6), R(2.3), R(2.1)]), tex: far ? farTex(gtex(50)) : gtex(50) });
+    const hf = frame(c[0], c[1], -.18 - clawUp * .5), o = open * .6;
+    F.add({ mat: glass, prof: 'round', bw: R(1.1), grp: g + 'f', shapes: [poly([hf.P(R(fx * .5), R(-fy * .7)), hf.P(R(fx * 2), R(-fy * .75 - o * 3)), hf.P(R(fx * 2.1), R(-fy * .4 - o * 3)), hf.P(R(fx * .9), R(-fy * .05))]), poly([hf.P(R(fx * .5), R(fy * .7)), hf.P(R(fx * 1.95), R(fy * .6 + o * 4)), hf.P(R(fx * 1.9), R(fy * .25 + o * 4)), hf.P(R(fx * .9), R(fy * .1))])], tex: far ? DARK : gtex(52) });
+    F.add({ mat: glass, prof: 'round', bw: R(2.2), grp: g + 'h', shapes: [rell(hf, 0, 0, R(fx), R(fy), 16)], tex: far ? farTex(gtex(51)) : gtex(51) });
   };
-  claw([[42.6, 34.2], [46.4, 29.8]], [50.4, 28.6], 3.8, 2.5, 'clawF', true);
-  // the tail: glass segments rising over the back, each a little smaller, then the sting (or Cinderfang)
-  const tr = boss ? [4, 3.8, 3.6, 3.3, 3, 2.8, 2.6] : [3.4, 3.2, 3, 2.8, 2.5, 2.3];
-  for (let i = 0; i < tail.length - 1; i++) F.add({ mat: glass, prof: 'round', bw: R(2.2), grp: 'tail' + i, shapes: [cap(tail[i], tail[i + 1], R(tr[i]), R(tr[i + 1])), circ(tail[i + 1], R(tr[i + 1] * 1.05))], tex: gtex(60 + i) });
+  claw([[42.6, 32.6], [47, 27.6]], [52.6, 26.4], 5.4, 3.8, 'clawF', true);
+  // the tail: glass segments rising over the back, each a little smaller; the sting, or Cinderfang
+  const tr = boss ? [3.8, 3.5, 3.3, 3.1, 2.9, 2.7, 2.6] : [3.2, 3, 2.8, 2.6, 2.4, 2.2];
+  for (let i = 0; i < tail.length - 1; i++) F.add({ mat: glass, prof: 'round', bw: R(2.2), grp: 'tail' + i, shapes: [cap(tail[i], tail[i + 1], R(tr[i] * 1.08), R(tr[i + 1]))], tex: gtex(60 + i) });
   const tn = tail[tail.length - 1], tp = tail[tail.length - 2], d = [tn[0] - tp[0], tn[1] - tp[1]], dl = Math.hypot(d[0], d[1]) || 1, ang = Math.atan2(d[1], d[0]);
-  if ((gT >= 1 || mat || P2) && !lie) F.add({ mat: glass, prof: 'ridge', hs: .9, grp: 'tailspikes', shapes: spikesC(tail.slice(1, -1).map((p, i) => { const q = tail[i + 2], n = [q[1] - p[1], -(q[0] - p[0])], nl = Math.hypot(n[0], n[1]) || 1; return [p[0], p[1], -n[0] / nl, -n[1] / nl, R(2.4 + gT * .5 + (P2 ? 1.2 : 0)), R(.9)]; })) });
+  if ((gT >= 1 || mat || P2) && !lie) F.add({ mat: glass, prof: 'ridge', hs: .9, grp: 'tailspikes', shapes: spikesC(tail.slice(1, -1).map((p, i) => { const q = tail[i + 2], n = [q[1] - p[1], -(q[0] - p[0])], nl = Math.hypot(n[0], n[1]) || 1; return [p[0], p[1], -n[0] / nl, -n[1] / nl, R(tr[i + 1] + 1.4 + gT * .4 + (P2 ? 1 : 0)), R(.9)]; })) });
   const blade = boss && held && !broken.includes('cinderfang') ? relicArt('cinderfang') : null;
   if (boss) {
     // the tip of the tail swells round the hilt it has held for three hundred years
-    F.add({ mat: glass, prof: 'round', bw: R(2.4), grp: 'telson', shapes: [ell(tn, R(3.8), R(3.4))], tex: gtex(69) });
+    F.add({ mat: glass, prof: 'round', bw: R(2.4), grp: 'telson', shapes: [ell(tn, R(3.9), R(3.5))], tex: gtex(69) });
     if (blade) {
-      const art = P3 ? phaseBlade(blade) : blade, fwd = ang + (pose === 'attack' ? .5 : .95);
-      const m = drawItem(F, art, [tn[0] + Math.cos(ang) * R(1.6), tn[1] + Math.sin(ang) * R(1.6)], fwd + Math.PI / 4, .52 * k / 1.46, { center: cardPt(art, 13), drop: ['grip', 'pommel'] });
-      A.blade = m(cardPt(art, 46));
+      const art = P3 ? phaseBlade(blade) : blade, fwd = ang + (pose === 'attack' ? .45 : .9);
+      const m = drawItem(F, art, [tn[0] + Math.cos(ang) * R(1.4), tn[1] + Math.sin(ang) * R(1.4)], fwd + Math.PI / 4, .66 * k / 1.46, { center: cardPt(art, 15), drop: ['grip', 'pommel'] });
+      A.blade = m(cardPt(art, 44));
     } else {
       // pried loose: the socket it grew round, still molten
-      F.add({ mat: 'ember', prof: 'round', bw: R(1), grp: 'wound', noShadow: true, shapes: [circ([tn[0] + Math.cos(ang) * R(2.2), tn[1] + Math.sin(ang) * R(2.2)], R(1.7))] });
-      F.add({ mat: glass, prof: 'ridge', grp: 'stumpspikes', shapes: spikesC([[tn[0], tn[1], Math.cos(ang - .6), Math.sin(ang - .6), R(3), R(1)], [tn[0], tn[1], Math.cos(ang + .7), Math.sin(ang + .7), R(2.6), R(.9)]]) });
+      F.add({ mat: 'ember', prof: 'round', bw: R(1), grp: 'wound', noShadow: true, shapes: [circ([tn[0] + Math.cos(ang) * R(2.2), tn[1] + Math.sin(ang) * R(2.2)], R(1.8))] });
+      F.add({ mat: glass, prof: 'ridge', grp: 'stumpspikes', shapes: spikesC([[tn[0], tn[1], Math.cos(ang - .6), Math.sin(ang - .6), R(3.2), R(1)], [tn[0], tn[1], Math.cos(ang + .7), Math.sin(ang + .7), R(2.8), R(.9)]]) });
     }
   } else {
-    F.add({ mat: glass, prof: 'round', bw: R(2), grp: 'telson', shapes: [ell([tn[0] + d[0] / dl * R(2), tn[1] + d[1] / dl * R(2)], R(3.4), R(2.8))], tex: gtex(69) });
-    const s0 = [tn[0] + d[0] / dl * R(4.4), tn[1] + d[1] / dl * R(4.4)], sd = [Math.cos(ang + 1.1), Math.sin(ang + 1.1)];
-    F.add({ mat: gT >= 3 ? 'ember' : 'glass', prof: 'ridge', hs: .9, grp: 'sting', noShadow: gT >= 3, shapes: spikesC([[s0[0], s0[1], sd[0], sd[1], R(4.6), R(1.2)]]) });
+    F.add({ mat: glass, prof: 'round', bw: R(2), grp: 'telson', shapes: [ell([tn[0] + d[0] / dl * R(2), tn[1] + d[1] / dl * R(2)], R(3.4), R(2.9))], tex: gtex(69) });
+    const s0 = [tn[0] + d[0] / dl * R(4.6), tn[1] + d[1] / dl * R(4.6)], sd = [Math.cos(ang + 1.1), Math.sin(ang + 1.1)];
+    F.add({ mat: gT >= 3 ? 'ember' : 'glass', prof: 'ridge', hs: .9, grp: 'sting', noShadow: gT >= 3, shapes: spikesC([[s0[0], s0[1], sd[0], sd[1], R(5), R(1.3)]]) });
   }
-  // the body: five plates of the back over the underside, the head (prosoma) in front
-  const SEGS = [[17.5, 35, 4.4, 4.4], [22.5, 34.4, 4.6, 4.8], [27.5, 34, 4.8, 5], [32.5, 34.2, 4.8, 5]];
-  const bodyS = lie ? SEGS.map(([x, y, rx, ry]) => ell(T([x, y + 5]), R(rx), R(ry * .75))) : SEGS.map(([x, y, rx, ry]) => ell(B([x, y]), R(rx), R(ry)));
-  F.add({ mat: glass, prof: 'round', bw: R(4), hs: .8, grp: 'body', shapes: bodyS, tex: gtex(70) });
-  const head = lie ? T([39, 39.6]) : B([39, 35]);
-  F.add({ mat: glass, prof: 'round', bw: R(3.4), hs: .8, grp: 'prosoma', shapes: [ell(head, R(6.6), R(lie ? 3.6 : 4.6))], tex: gtex(71) });
+  // the body: the plates of the back over the underside, the head (prosoma) in front
+  const SEGS = [[15.8, 32, 4.8, 5.4], [20.8, 31.4, 5, 5.9], [26, 31.2, 5.2, 6.1], [31.2, 31.6, 5, 5.8]];
+  const bodyS = lie ? SEGS.map(([x, y, rx, ry]) => ell(T([x, y + 5.4]), R(rx), R(ry * .72))) : SEGS.map(([x, y, rx, ry]) => ell(B([x, y]), R(rx), R(ry)));
+  F.add({ mat: glass, prof: 'round', bw: R(4.4), hs: .8, grp: 'body', shapes: bodyS, tex: gtex(70) });
+  const head = lie ? T([39.4, 38]) : B([39.4, 32.2]);
+  F.add({ mat: glass, prof: 'round', bw: R(3.6), hs: .8, grp: 'prosoma', shapes: [ell(head, R(7.4), R(lie ? 3.8 : 5.2))], tex: gtex(71) });
   // a light inside the glass (amber, then ember at the last Waking and in the Glass Storm)
-  const inner = gT >= 2 || boss || mat;
-  if (inner && !lie) F.add({ mat: veinM, prof: 'round', bw: R(.6), grp: 'veins', noShadow: true, shapes: chainC([B([15.6, 35.4]), B([20, 33.6]), B([24.6, 35.6]), B([29.6, 33.4]), B([34.6, 35.4]), B([39.4, 34])], R(boss && (P3 || (broken.includes('glass-carapace') || !held)) ? .8 : .5)) });
-  if (gT >= 1 && !boss && !lie) F.add({ mat: glass, prof: 'ridge', hs: .9, grp: 'backspikes', shapes: spikesC(SEGS.map(([x, y, rx, ry], i) => { const p = B([x, y - ry + .4]); return [p[0], p[1], -.3 + i * .15, -1, R(2 + gT * .7), R(.9)]; })) });
+  const bare = boss && (broken.includes('glass-carapace') || !held);
+  if ((gT >= 2 || boss || mat) && !lie) F.add({ mat: veinM, prof: 'round', bw: R(.6), grp: 'veins', noShadow: true, shapes: chainC([B([13.6, 32.6]), B([18.4, 30.4]), B([23.4, 32.8]), B([28.6, 30.4]), B([33.6, 32.6]), B([39, 31])], R(bare || P3 ? .85 : .5)) });
+  if (gT >= 1 && !boss && !lie) F.add({ mat: glass, prof: 'ridge', hs: .9, grp: 'backspikes', shapes: spikesC(SEGS.map(([x, y, rx, ry], i) => { const p = B([x, y - ry + .6]); return [p[0], p[1], -.3 + i * .15, -1, R(2 + gT * .8), R(1)]; })) });
   if (mat && !lie) { // the Matriarch has split her shell to moult: a glowing seam down her back, shed plates standing up
-    F.add({ mat: 'amber', prof: 'round', bw: R(.6), grp: 'moult', noShadow: true, shapes: chainC([B([15, 31]), B([20.4, 29.2]), B([26, 28.8]), B([31.6, 29.2]), B([36.4, 31])], R(.75)) });
-    F.add({ mat: glass, prof: 'bevel', bw: R(1), grp: 'shed', shapes: [poly([B([19, 29.8]), B([17.6, 24.4]), B([22.4, 26.6]), B([23.6, 29.4])]), poly([B([28, 29.2]), B([29.6, 23.2]), B([33.6, 27.4]), B([32.8, 29.6])])] });
+    F.add({ mat: 'amber', prof: 'round', bw: R(.6), grp: 'moult', noShadow: true, shapes: chainC([B([12.6, 27.4]), B([18.4, 25.6]), B([24.6, 25]), B([30.6, 25.6]), B([35.6, 27.4])], R(.8)) });
+    F.add({ mat: glass, prof: 'bevel', bw: R(1), grp: 'shed', shapes: [poly([B([17, 26.2]), B([15.6, 20.2]), B([20.8, 22.6]), B([22, 25.8])]), poly([B([27, 25.4]), B([28.8, 18.8]), B([33.2, 23.4]), B([32.4, 25.8])])] });
   }
   // Kharzul: the Glass Carapace, clear plates over its back with light in the seams, until it is snapped off
   const shell = boss && held && !broken.includes('glass-carapace') ? relicArt('glass-carapace') : null;
   if (shell && !lie) {
-    const P = shell.p, sm = P.seam || 'amber';
-    F.add({ mat: sm, prof: 'flat', grp: 'seams', noShadow: true, shapes: SEGS.map(([x, y, rx, ry]) => ell(B([x, y - ry * .45]), R(rx + .6), R(ry * .6))) });
-    SEGS.forEach(([x, y, rx, ry], i) => F.add({ mat: P.mat || 'sandglass', prof: 'bevel', bw: R(1.4), grp: 'plate' + i, relic: true, shapes: [poly([B([x - rx - .4, y - ry * .1]), B([x - rx * .6, y - ry - .6]), B([x + rx * .3, y - ry - 1]), B([x + rx + .6, y - ry * .4]), B([x + rx * .5, y - ry * .02])])], tex: ({ x: px, y: py }) => (hash(px, py, 81 + i) < .06 ? 1 : 0) }));
-    F.add({ mat: P.mat || 'sandglass', prof: 'bevel', bw: R(1.4), grp: 'plateH', relic: true, shapes: [poly([B([33.6, 31.4]), B([37, 29.8]), B([42.6, 30.6]), B([45, 33.2]), B([40, 33.4])])] });
-    A.shell = B([27.5, 28.6]);
-  } else if (boss && !lie) {
+    const sm = shell.p.seam || 'amber';
+    F.add({ mat: sm, prof: 'flat', grp: 'seams', noShadow: true, shapes: SEGS.map(([x, y, rx, ry]) => ell(B([x, y - ry * .42]), R(rx + .5), R(ry * .62))) });
+    SEGS.forEach(([x, y, rx, ry], i) => F.add({ mat: 'glass', prof: 'bevel', bw: R(1.5), grp: 'plate' + i, relic: true, shapes: [poly([B([x - rx - .2, y - ry * .05]), B([x - rx * .7, y - ry - .6]), B([x + rx * .2, y - ry - 1.1]), B([x + rx + .6, y - ry * .45]), B([x + rx * .55, y + ry * .02])])], tex: ({ x: px, y: py }) => (hash(px, py, 81 + i) < .07 ? 1 : 0) }));
+    F.add({ mat: 'glass', prof: 'bevel', bw: R(1.5), grp: 'plateH', relic: true, shapes: [poly([B([33.8, 29.4]), B([37.4, 26.8]), B([43.6, 27.4]), B([46.4, 30.6]), B([40.4, 31])])] });
+    A.shell = B([23.6, 25]);
+  } else if (bare && !lie) {
     // bare: the soft glass under the plates, veined with fire
-    F.add({ mat: 'ember', prof: 'round', bw: R(.5), grp: 'rawveins', noShadow: true, shapes: chainC([B([16, 31.6]), B([21, 30.2]), B([26, 31.4]), B([31, 30.2]), B([36, 31.6])], R(.55)).concat(chainC([B([21, 30.2]), B([22, 34.6])], R(.45)), chainC([B([31, 30.2]), B([31.8, 34.4])], R(.45))) });
+    F.add({ mat: 'ember', prof: 'round', bw: R(.5), grp: 'rawveins', noShadow: true, shapes: chainC([B([13.6, 27.6]), B([18.8, 25.8]), B([24.2, 27.2]), B([29.4, 25.8]), B([34.6, 27.6])], R(.6)).concat(chainC([B([18.8, 25.8]), B([19.6, 31])], R(.5)), chainC([B([29.4, 25.8]), B([30.2, 31])], R(.5))) });
   }
-  const eyes = B([43.2, 32.6]);
-  eyeOf(F, frame(eyes[0], eyes[1], 0), 0, 0, R(.8), R(.65), eyeM, false, 'eyeN');
-  eyeOf(F, frame(eyes[0] - R(2.6), eyes[1] - R(.4), 0), 0, 0, R(.7), R(.6), eyeM, false, 'eyeF');
-  LEGS.forEach((L, i) => legOf(F, legPts(L, false), [R(1.4), R(1.1), R(.7)], glass, gtex(90 + i), 'legN' + i));
-  claw([[44.6, 36.4], [48.6, 33.4]], [53, 32.8], 4.2, 2.8, 'clawN', false);
+  const eyes = lie ? T([44, 36.4]) : B([44, 29.6]);
+  eyeOf(F, frame(eyes[0], eyes[1], 0), 0, 0, R(.9), R(.7), eyeM, false, 'eyeN');
+  eyeOf(F, frame(eyes[0] - R(2.8), eyes[1] - R(.5), 0), 0, 0, R(.75), R(.6), eyeM, false, 'eyeF');
+  LEGS.forEach((L, i) => legOf(F, legPts(L, false), [R(1.7), R(1.35), R(.8)], glass, gtex(90 + i), 'legN' + i));
+  claw([[44.6, 34.4], [49.6, 29.6]], [55.4, 28.8], 6, 4.2, 'clawN', false);
   if (P3 && !lie) { // the Glass Storm: needles of glass hang in the air round it
     const N = [[8, 6], [44, 2], [58, 14], [70, 6], [22, -4], [84, 20]];
     F.add({ mat: 'glass', prof: 'ridge', hs: .9, grp: 'storm', noShadow: true, shapes: spikesC(N.map(([x, y], i) => [x + (i & 1 ? f : -f) * .6, y + 14 + f, .3 - i * .1, 1, 4.6, .9])) });
   }
-  A.head = eyes; A.mouth = B([45.6, 35]); A.center = lie ? T([27, 39]) : B([28, 34]);
+  A.head = eyes; A.mouth = lie ? T([47, 38]) : B([47, 32.4]); A.center = lie ? T([26, 38]) : B([27, 32]);
   if (!boss) return;
   A.relics = [A.blade, A.shell].filter(Boolean); A.relic = A.relics[0] || null;
 }

@@ -146,7 +146,7 @@ export const RELIC_ART = Object.freeze({
   // a fist of sunstone caged in brass, never set
   'sunstone-lantern': { r: 'focus', relic: true, fx: 'rise', aspect: 'ember', p: { style: 'lantern', metal: 'brass', frame: 'bronze', stone: 'amber', core: 'radiant', rays: 'amber', capGem: 'topaz', gem: 'amber' } },
   // glass lames like a scorpion's back, light in the seams
-  'glass-carapace': { r: 'plate', relic: true, fx: 'dust', aspect: 'stone', p: { style: 'carapace', mat: 'sandglass', seam: 'amber', under: 'char', trim: 'brass' } },
+  'glass-carapace': { r: 'plate', relic: true, fx: 'dust', aspect: 'stone', p: { style: 'carapace', mat: 'glass', seam: 'amber', under: 'char', trim: 'brass' } },
   // a giant's maul: a block of sandstone fused with dune-glass, bound in black iron
   dunebreaker: { r: 'hammer', relic: true, fx: 'dust', aspect: 'stone', k: .4, p: { headT: 51, headH: 17, headW: 16.5, haft: 'bogwood', haftR: 2.8, wrap: 'leatherDark', wrapEnd: 19, bands: [26, 36], bandMat: 'blackiron', headMat: 'sandstone', headTex: glassFused, pommelMat: 'blackiron', pommelR: 3.4, faces: 1, langets: 1, straps: 'blackiron', shards: 'glass', spike: 0 } },
   // No. 031: a dark scimitar cracked with living fire, the edge still hot, a fang for a pommel
