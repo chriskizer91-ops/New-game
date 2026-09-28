@@ -639,9 +639,15 @@ async function run(V) {
     await inForge('awaken');
     check(await page.locator('.ov-forge .forge-tab[data-tab="awaken"].has-dot').count() === 1 && await page.locator(`.ov-forge .forge-item.on[data-uid="${starterUid}"]`).count() === 1, `${V.name}: the Awaken tab flags the ready relic and picks it`);
     const branches = await page.evaluate(() => [...document.querySelectorAll('.ov-forge .aw-branch')].map(b => [b.dataset.branch, b.getAttribute('aria-disabled'), b.innerText.replace(/\s+/g, ' ')]));
-    check(branches.length === 2 && branches.some(b => b[1] === 'false') && branches.some(b => b[1] === 'true' && /path is the Heart/.test(b[2])), `${V.name}: both branches show, the closed one naming whose path would open it`);
+    // the Warden walks the Hand; the Heart branch is closed and names who would open it, unless nobody who can
+    // carry this starter walks the Heart (a sword), when it opens for its bearer and says so
+    const hand = branches.find(b => b[0] === 'a'), heart = branches.find(b => b[0] === 'b');
+    check(branches.length === 2 && hand?.[1] === 'false' && ((heart?.[1] === 'true' && /path is the Heart \(/.test(heart[2])) || (heart?.[1] === 'false' && /Nobody who can carry it walks the Heart/.test(heart[2]))),
+      `${V.name}: both branches show, the Heart one closed with whose path would open it, or open for its bearer (${JSON.stringify(heart)})`);
     await shot('forge-awaken');
     await noHScroll('the forge (Awaken)');
+    await click('.ov-forge .aw-branch[data-branch="a"]');
+    await page.waitForTimeout(150);
     await click('.ov-forge .aw-go');
     await page.waitForSelector('.ov-card .card', { timeout: 5000 });
     await page.waitForTimeout(1100);
