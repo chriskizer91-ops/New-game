@@ -443,7 +443,15 @@ async function run(V) {
   await click('.carry-go');
   await waitScreen('world');
   let s1 = await store();
-  check(JSON.stringify(JSON.parse(s1.v2)) === JSON.stringify(JSON.parse(s0.v2)), `${V.name}: an AETH2 code round-trips (the save is unchanged)`);
+  // the code holds exactly the save, byte for byte once parsed
+  const inCode = await page.evaluate(c => new TextDecoder().decode(Uint8Array.from(atob(c.slice(6).replace(/\s+/g, '')), ch => ch.charCodeAt(0))), code);
+  check(JSON.stringify(JSON.parse(inCode)) === JSON.stringify(JSON.parse(s0.v2)), `${V.name}: an AETH2 code holds exactly the save`);
+  // walking back in is a visit (spec §4.5: enterMap counts visits[map], and plays the map's arrival
+  // lines once), so the world's arrival bookkeeping is the only thing allowed to differ after the load
+  const paths = (a, b, p = '') => (JSON.stringify(a) === JSON.stringify(b) ? []
+    : a && b && typeof a === 'object' && typeof b === 'object' ? [...new Set([...Object.keys(a), ...Object.keys(b)])].flatMap(k => paths(a[k], b[k], `${p}.${k}`)) : [p]);
+  const moved = paths(JSON.parse(s0.v2), JSON.parse(s1.v2));
+  check(moved.every(p => /^\.progress\.flags\.(visits\.[\w-]+|seen\.arrive:[\w-]+)$/.test(p)), `${V.name}: an AETH2 code round-trips (the save is unchanged but for the arrival's own bookkeeping${moved.length ? `: ${moved.join(', ')}` : ''})`);
   check(s1.bak === s0.v2 && s1.v1 === null, `${V.name}: loading a code backs the old save up to .bak first`);
 
   // ======== G. Briarmaw (forced): the Brand, then an Echo rematch ========
