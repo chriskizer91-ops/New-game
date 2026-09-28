@@ -4,13 +4,14 @@ This is a browser JRPG built into **one self-contained HTML file** that plays on
 - Current status and next steps: `HANDOFF.md`.
 - Technical contract: `game/ARCHITECTURE.md`.
 - Milestone 3 contract: `game/docs/M3-SPEC.md` (its Part A overrides Part B); what shipped: `game/docs/M3-STATUS.md`.
+- Milestone 4 contract: `game/docs/M4-SPEC.md` (its Part A overrides Part B); what shipped: `game/docs/M4-STATUS.md`.
 - Design intent: `docs/DESIGN-BRIEF.md`.
 
 ## Commands (run in `game/`)
 
 - `npm run build` writes `dist/aethermoor.html` and `dist/aethermoor.artifact.html`.
 - `npm test`, `npm run lint`.
-- E2E tests: set `NODE_PATH=$(npm root -g)`, then run `node tools/e2e-flow.mjs`, `e2e-battle.mjs`, `e2e-world.mjs` or `e2e-codes.mjs` (every real M2 save code). Playwright is global, and Chromium is at `/opt/pw-browsers`.
+- E2E tests: set `NODE_PATH=$(npm root -g)`, then run `node tools/e2e-flow.mjs`, `e2e-battle.mjs`, `e2e-world.mjs` or `e2e-codes.mjs` (every real M2 save code and M3 codes). Playwright is global, and Chromium is at `/opt/pw-browsers`.
 
 ## Rules
 
@@ -24,6 +25,7 @@ This is a browser JRPG built into **one self-contained HTML file** that plays on
 - **Saves:**
   - Existing saves must keep working.
   - Never write or delete the `aethermoor.save.v1` key.
+  - Every milestone keeps its own save and file (the player's rule): M4 writes only `aethermoor.save.m4`, never the M3 key `aethermoor.save.v2`; `dist/aethermoor-m2.html` and `-m3.html` are frozen (a test pins their bytes).
   - Migrations are pure functions in `rules/migrate.js`, injected into `core/save.js`.
   - Pasted codes are scrubbed.
 - **Frozen:**
