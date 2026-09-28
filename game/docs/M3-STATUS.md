@@ -45,7 +45,7 @@ next step, nearby). Not done: the white-deer homecoming animation and dotted tra
 |---|---|
 | 1 Stubs | `npm test`, `npm run lint`, `npm run build` pass. |
 | 2 Units | **166/166** node tests pass, including `walk.test.mjs` (a bot walks the critical path on the real maps) and `maps.test.mjs`. |
-| 3 Build and e2e | `e2e-world` **121/121** checks at 360×740 and 1280×800; `e2e-battle` **16/16** scenarios; `e2e-flow` passes at both sizes (see §2.1). No console errors, no `[audio]` warnings. |
+| 3 Build and e2e | On the delivered build: `e2e-world` **121/121** checks at 360×740 and 1280×800; `e2e-flow` passes at both sizes (see §2.1); `e2e-codes` **36/36** (18 real M2 codes × 2 sizes); `e2e-battle` **16/16** scenarios. No console errors, no `[audio]` warnings. |
 | 4 Balance | All targets met; see §2.2. |
 | 5 Performance, size, migration | See §2.3 and §2.4. |
 
