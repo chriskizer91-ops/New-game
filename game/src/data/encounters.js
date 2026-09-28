@@ -159,7 +159,7 @@ export const ENCOUNTERS = deepFreeze({
   'tamsin-duel': {
     id: 'tamsin-duel', type: 'fight', name: 'Tamsin at the Eldest Tree', place: 'Eldergrove', backdrop: 'eldergrove', region: 'verdant',
     once: true, duel: true, yields: 'tamsin-yielded', talk: 'tamsin-door',
-    spawns: [S('tamsin', 'party', { partyDelta: 5, gearTier: 2, variant: '$rival', relic: '$rival', lend: true, wears: 'vale-gauntlets', noWaking: true, name: 'Tamsin' })],
+    spawns: [S('tamsin', 'party', { partyDelta: 5, gearTier: 3, variant: '$rival', relic: '$rival', lend: true, wears: 'vale-gauntlets', noWaking: true, name: 'Tamsin' })],
     text: 'Tamsin, at the Eldest Tree door, with the starter you did not choose. Losing is a yield.',
   },
   'hr1-grubs': {
