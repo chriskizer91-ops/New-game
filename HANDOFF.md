@@ -3,7 +3,7 @@
 This is for a fresh session with none of the earlier conversation. Read it top to bottom, then read `CLAUDE.md`, and you can start milestone 4 without re-exploring.
 
 - **Branch:** `claude/cool-ptolemy-uc93gg`. It contains the whole history of the earlier branch `claude/dnd-game-prototype-bsv3xb`. If your session names a different branch, use that one and carry this history over. Never create a PR unless the player asks for one.
-- **State at handoff:** **M3 is done and delivered** as the download `game/dist/aethermoor-m3.html`. Every gate is green: 160/160 tests, lint, build (1369 KB), `e2e-world`, `e2e-flow` and `e2e-battle` at both sizes, the balance sim on target. The full record is `game/docs/M3-STATUS.md`. **M4 has not started.**
+- **State at handoff:** **M3 is done and delivered** as the download `game/dist/aethermoor-m3.html`. Every gate is green: 166/166 tests, lint, build (1371 KB), `e2e-world`, `e2e-flow`, `e2e-battle` and `e2e-codes` at both sizes, the balance sim on target. A final review found 7 bugs (saves, scenes, quest rewards); all are fixed with regression tests. The full record is `game/docs/M3-STATUS.md`. **M4 has not started.**
 
 ---
 
@@ -60,7 +60,7 @@ The roadmap is in `docs/DESIGN-BRIEF.md` §13. Status:
 - **Bosses:** Briarmaw, the Rotwarden (3 phases, the Ichor Mask, the First Seed), the Tamsin duel (losing is a yield).
 - **Saves:** `aethermoor.save.v2` with `.bak`; the v1 key is only ever read. `AETH2.` codes; `AETH1.` codes migrate through `rules/migrate.js`.
 - **Balance** (`tools/sim.mjs`, 200 seeds): every M3 target met, 0 stuck runs. Table in `docs/RULES.md`.
-- **Known issues:** in `M3-STATUS.md` §3. The top two: the bundle is 1369 KB (over the 1.3 MB warning, under the 1.6 MB fail), and the direct path reaches the Rotwarden at level 9.7 (36% first-try wipe, inside the target).
+- **Known issues:** in `M3-STATUS.md` §3. The top two: the bundle is 1371 KB (over the 1.3 MB warning, under the 1.6 MB fail), and the direct path reaches the Rotwarden at level 9.7 (36% first-try wipe, inside the target).
 
 **How M3 was built** (so M4 can reuse it):
 1. A spec from a design panel (3 designs, 3 judges, a synthesis), with the integrator's amendments on top: `game/docs/M3-SPEC.md` (Part A wins over Part B). Raw designs in `game/docs/m3/`.
@@ -116,7 +116,7 @@ cd game
 npm install                      # esbuild only; eslint is installed globally in this environment
 npm run atlas                    # rebuilds the Atlas WebP from the player's map (only if the map changes)
 npm run build                    # dist/aethermoor.html, .artifact.html, aethermoor-m3.html
-npm test                         # node --test test/*.test.mjs  (160 tests)
+npm test                         # node --test test/*.test.mjs  (166 tests)
 npm run lint                     # eslint src test tools; no-undef is an error
 export NODE_PATH=$(npm root -g)  # Playwright is global; Chromium is at /opt/pw-browsers
 node tools/e2e-world.mjs         # 11 world scenarios at 360x740 and 1280x800 (~20 min), prints PERF lines
