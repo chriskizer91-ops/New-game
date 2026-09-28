@@ -254,11 +254,10 @@ function sightHolders(game, walk, events) {
   if (light(game, walk) !== Infinity) range = Math.min(range, T.darkRadius);
   let g = game;
   for (const e of present(game, walk.map)) {
-    if (e.kind !== 'encounter' || e.mode === 'pack' || !e.glint || distTo(e, walk.x, walk.y) > range) continue;
-    const scouted = !!flagsOf(g).scouted?.[e.enc];
+    // once scouted (sighted or fought), its relics already carry the codex stamp: nothing to do
+    if (e.kind !== 'encounter' || e.mode === 'pack' || !e.glint || flagsOf(g).scouted?.[e.enc] || distTo(e, walk.x, walk.y) > range) continue;
     const relics = spawnsFor(g, e.enc).flatMap(s => [...(s.held || []).map(h => h.relic), s.wears]).filter(Boolean);
     const unseen = relics.filter(r => !g.codex[r]?.sighted);
-    if (scouted && !unseen.length) continue;
     g = sightEncounter(g, e.enc);
     for (const relic of unseen) events.push({ t: 'sighted', relic, enc: e.enc });
   }
