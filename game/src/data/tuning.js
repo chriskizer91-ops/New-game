@@ -21,6 +21,7 @@ export const TUNING = deepFreeze({
     ambushDelay: 40,     // an ambushed party's first turns come this much later
     ambushChance: 0.25,  // patrols (grinding) sometimes ambush
     preview: 8,
+    firstStrikeDelay: 40, // M3: a First Strike pushes every foe's first turn back this much
   },
   surge: {               // Legend Surge gauge 0-100
     max: 100, hit: 5, graze: 2, crit: 20, kill: 8,
@@ -47,6 +48,7 @@ export const TUNING = deepFreeze({
     gearTier: 1,
     omens: 1,            // extra Omens on veterans and above (rabble get waking-1)
     luck: 1,             // loot luck
+    rabbleLevels: 2,     // M3: rabble rise this many levels per Waking (read by rules/foe.js from M3 on)
   },
   rest: {
     breatherHp: 0.2,     // after a won fight each hero catches their breath
@@ -73,4 +75,18 @@ export const TUNING = deepFreeze({
   },
   flee: { dc: 10, tierDc: { rabble: 0, veteran: 3, 'relic-bearer': 6, champion: 99 } },
   shop: { reforgePerIlvl: 12 },
+  // ---- M3 overworld (read by rules/world.js; spec §4.5) ----
+  world: {
+    sight: 5, sightDark: 2,              // a pack notices you within this many tiles (line of sight)
+    sightRelic: 5, sightRelicWatchful: 9, // holders are Sighted (codex) within this range
+    alertWait: 2, alertWaitStill: 6,     // ticks between the "!" and the chase (Stillness: 6)
+    leash: 4,                            // wander radius around home; chase gives up at leash + 6
+    fleeGap: 3,                          // weak = all rabble and top level <= party level - fleeGap (Dawnbell: 2)
+    grace: 6, fleeStun: 12,              // ticks of no contact after a battle; stun after you flee
+    spawnDistance: 8,                    // roamers spawn at least this far (Chebyshev) from you
+    hazardPct: 0.04,                     // soft ichor: max HP lost per step without a key
+    darkRadius: 2,                       // soft darkness: sight radius without a key
+  },
+  rout: { xp: 0.5 },                     // a Rout pays full gold and this share of XP
+  temper: { max: 3, base: 30, mult: [1, 2, 4] }, // cost = base * ceil(ilvl / 2) * mult[temper]
 });

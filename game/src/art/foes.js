@@ -519,6 +519,43 @@ Object.assign(FOE_ART, {
   briarmaw: { name: 'Briarmaw', kind: 'beast', w: 96, h: 96, foot: [46, 93], defaultTier: 'champion', relic: 'thornwreath', relics: ['thornwreath', 'briarfang'], phases: 3, build: briarmaw },
 });
 
+/* ---------- M3 stub aliases (spec §5.1 "Hour-1 stub"; WP6A replaces them with real art) ----------
+   Every new family, named holder and Tamsin points at existing art so renderFoe never throws.
+   A relic id without RELIC_ART (relics 13-24 until WP6B lands) is simply not drawn. */
+const alias = (base, name, o = {}) => Object.assign({}, FOE_ART[base], { name, aliasOf: base }, o);
+Object.assign(FOE_ART, {
+  smuggler: alias('cutpurse', 'Smuggler'),
+  boglurcher: alias('briarling', 'Boglurcher'),
+  glowcap: alias('briarling', 'Glowcap'),
+  rotgrub: alias('briarling', 'Rotgrub'),
+  'feral-druid': alias('bandit', 'Feral Druid', { defaultTier: 'veteran' }),
+  'hollowed-ranger': alias('cutpurse', 'Hollowed Ranger', { defaultTier: 'veteran' }),
+  sapwight: alias('rotstag', 'Sapwight', { defaultTier: 'veteran', relic: null }),
+  gloamwing: alias('rotstag', 'The Gloamwing', { relic: 'dawnbell' }),
+  mirelord: alias('rotstag', 'Gorrow the Mire-King', { relic: 'mire-pearl' }),
+  rotwarden: alias('briarmaw', 'The Rotwarden', { relic: 'ichor-mask', relics: ['ichor-mask', 'first-seed'] }),
+  tamsin: alias('bandit', 'Tamsin', { defaultTier: 'relic-bearer' }),
+});
+Object.assign(FOE_ART, {
+  mags: alias('smuggler', 'Mags Kestrel', { defaultTier: 'relic-bearer' }),
+  haskett: alias('bandit', 'Haskett', { defaultTier: 'relic-bearer' }),
+  hollis: alias('tallyman', 'Hollis Fairweight', { defaultTier: 'relic-bearer' }),
+  dun: alias('tallyman', 'Dun the Counter', { defaultTier: 'relic-bearer' }),
+  vesper: alias('tallyman', 'Vesper', { defaultTier: 'veteran' }),
+  oda: alias('feral-druid', 'Oda the Thornmother', { defaultTier: 'relic-bearer' }),
+  corra: alias('hollowed-ranger', 'Sgt Corra Thistle', { defaultTier: 'relic-bearer' }),
+});
+
+// foeLooks(key, { gearTier }) -> { H, gear }: a humanoid foe's rig params and gear looks, for the
+// overworld walker rig (art/map-sprites.js). Beasts return { H: null, gear: {} }.
+// SCAFFOLD: WP6A owns it.
+export function foeLooks(key, { gearTier = 0 } = {}) {
+  const def = FOE_ART[key];
+  if (!def || def.kind !== 'humanoid') return { H: null, gear: {} };
+  const { H, gear } = humanoid(def, { gearTier });
+  return { H, gear: gearLooks(gear) };
+}
+
 /* =====================================================================
    RENDER
    ===================================================================== */

@@ -1,0 +1,687 @@
+{
+  "version": 1,
+  "seed": 101,
+  "rngState": 56364998,
+  "party": {
+    "active": [
+      "warden",
+      "pip",
+      "bryn",
+      "alondra"
+    ],
+    "roster": {
+      "warden": {
+        "id": "warden",
+        "name": "Wren",
+        "level": 2,
+        "xp": 93,
+        "hp": 28,
+        "mp": 10,
+        "surge": 30,
+        "base": {
+          "STR": 15,
+          "CON": 14,
+          "DEX": 13,
+          "CHA": 12,
+          "WIS": 10,
+          "INT": 8
+        },
+        "gear": {
+          "weapon": "i4tflq0r5ubpd",
+          "offhand": null,
+          "head": null,
+          "body": "imu4rz8dn2hm2",
+          "hands": null,
+          "feet": "iy7oaig849ojw",
+          "amulet": "ialhifx1y06es",
+          "ring": null
+        },
+        "skills": [
+          "challenge"
+        ],
+        "domains": {
+          "combat": {
+            "level": 2,
+            "path": null,
+            "opt7": null,
+            "opt13": null
+          },
+          "physical": {
+            "level": 1,
+            "path": null,
+            "opt7": null,
+            "opt13": null
+          },
+          "influence": {
+            "level": 1,
+            "path": null,
+            "opt7": null,
+            "opt13": null
+          }
+        },
+        "hpRolls": [
+          5
+        ],
+        "look": {
+          "skin": "skinTan",
+          "hairMat": "hairCopper",
+          "hair": "crop",
+          "beard": true,
+          "eye": "#24381c"
+        }
+      },
+      "pip": {
+        "id": "pip",
+        "name": "Pip",
+        "level": 2,
+        "xp": 93,
+        "hp": 17,
+        "mp": 12,
+        "surge": 32,
+        "base": {
+          "STR": 10,
+          "DEX": 16,
+          "CON": 12,
+          "INT": 12,
+          "WIS": 14,
+          "CHA": 11
+        },
+        "gear": {
+          "weapon": "iv349aygwh77f",
+          "offhand": null,
+          "head": "i25ytl8eu2omm",
+          "body": "ir0elnp9msxcb",
+          "hands": null,
+          "feet": "i1i0zjykyszxr",
+          "amulet": null,
+          "ring": null
+        },
+        "skills": [
+          "disarm",
+          "mark-prey",
+          "knife-work"
+        ],
+        "domains": {
+          "survival": {
+            "level": 2,
+            "path": null,
+            "opt7": null,
+            "opt13": null
+          },
+          "combat": {
+            "level": 1,
+            "path": null,
+            "opt7": null,
+            "opt13": null
+          }
+        },
+        "hpRolls": [
+          7
+        ]
+      },
+      "bryn": {
+        "id": "bryn",
+        "name": "Bryn",
+        "level": 2,
+        "xp": 93,
+        "hp": 14,
+        "mp": 24,
+        "surge": 13,
+        "base": {
+          "STR": 9,
+          "DEX": 12,
+          "CON": 13,
+          "INT": 16,
+          "WIS": 14,
+          "CHA": 10
+        },
+        "gear": {
+          "weapon": "iqi3fhxwoxzuh",
+          "offhand": null,
+          "head": "i2faoun5mss95",
+          "body": "i17m54mth8aw",
+          "hands": null,
+          "feet": null,
+          "amulet": null,
+          "ring": null
+        },
+        "skills": [
+          "analyze",
+          "rootbind"
+        ],
+        "domains": {
+          "knowledge": {
+            "level": 2,
+            "path": null,
+            "opt7": null,
+            "opt13": null
+          },
+          "attunement": {
+            "level": 1,
+            "path": null,
+            "opt7": null,
+            "opt13": null
+          }
+        },
+        "hpRolls": [
+          4
+        ]
+      },
+      "alondra": {
+        "id": "alondra",
+        "name": "Sister Alondra",
+        "level": 2,
+        "xp": 93,
+        "hp": 17,
+        "mp": 19,
+        "surge": 51,
+        "base": {
+          "STR": 10,
+          "DEX": 10,
+          "CON": 13,
+          "INT": 12,
+          "WIS": 16,
+          "CHA": 14
+        },
+        "gear": {
+          "weapon": "i1gczrgy0tqev",
+          "offhand": "iqqacc47nauvo",
+          "head": null,
+          "body": "ix0mxp554emsk",
+          "hands": null,
+          "feet": null,
+          "amulet": null,
+          "ring": null
+        },
+        "skills": [
+          "mend",
+          "radiant-lance",
+          "ward"
+        ],
+        "domains": {
+          "attunement": {
+            "level": 2,
+            "path": null,
+            "opt7": null,
+            "opt13": null
+          },
+          "influence": {
+            "level": 1,
+            "path": null,
+            "opt7": null,
+            "opt13": null
+          }
+        },
+        "hpRolls": [
+          7
+        ]
+      }
+    }
+  },
+  "inventory": [
+    {
+      "uid": "i4tflq0r5ubpd",
+      "base": "cairnmaul",
+      "kind": "hammer",
+      "slot": "weapon",
+      "rarity": "heirloom",
+      "ilvl": 1,
+      "name": "Cairnmaul",
+      "aspect": "stone",
+      "affixes": [],
+      "gems": [],
+      "temper": 0,
+      "seed": 1160947504,
+      "provenance": {
+        "from": "the Keep reliquary",
+        "where": "Hearthstone Keep",
+        "day": 1
+      },
+      "chronicle": {
+        "kills": 2
+      }
+    },
+    {
+      "uid": "imu4rz8dn2hm2",
+      "base": "chain-shirt",
+      "kind": "mail",
+      "slot": "body",
+      "rarity": "worn",
+      "ilvl": 1,
+      "name": "Road-Worn Chain Shirt",
+      "aspect": null,
+      "affixes": [],
+      "gems": [],
+      "temper": 0,
+      "seed": 1261693692,
+      "provenance": {
+        "from": "the Keep reliquary",
+        "where": "Hearthstone Keep",
+        "day": 1
+      },
+      "chronicle": {
+        "kills": 0
+      }
+    },
+    {
+      "uid": "iy7oaig849ojw",
+      "base": "boots",
+      "kind": "boots",
+      "slot": "feet",
+      "rarity": "worn",
+      "ilvl": 1,
+      "name": "Rust-Pitted Travel Boots",
+      "aspect": null,
+      "affixes": [],
+      "gems": [],
+      "temper": 0,
+      "seed": 828345003,
+      "provenance": {
+        "from": "the Keep reliquary",
+        "where": "Hearthstone Keep",
+        "day": 1
+      },
+      "chronicle": {
+        "kills": 0
+      }
+    },
+    {
+      "uid": "iv349aygwh77f",
+      "base": "shortbow",
+      "kind": "bow",
+      "slot": "weapon",
+      "rarity": "wrought",
+      "ilvl": 1,
+      "name": "Shortbow of the Forge",
+      "aspect": null,
+      "affixes": [
+        {
+          "id": "forge",
+          "value": 1
+        }
+      ],
+      "gems": [],
+      "temper": 0,
+      "seed": 236177633,
+      "provenance": {
+        "from": "Pip's pack",
+        "where": "Hearthstone Keep",
+        "day": 1
+      },
+      "chronicle": {
+        "kills": 2
+      }
+    },
+    {
+      "uid": "i25ytl8eu2omm",
+      "base": "hood",
+      "kind": "hood",
+      "slot": "head",
+      "rarity": "worn",
+      "ilvl": 1,
+      "name": "Rust-Pitted Hood",
+      "aspect": null,
+      "affixes": [],
+      "gems": [],
+      "temper": 0,
+      "seed": 419959095,
+      "provenance": {
+        "from": "Pip's pack",
+        "where": "Hearthstone Keep",
+        "day": 1
+      },
+      "chronicle": {
+        "kills": 0
+      }
+    },
+    {
+      "uid": "ir0elnp9msxcb",
+      "base": "jerkin",
+      "kind": "leather",
+      "slot": "body",
+      "rarity": "worn",
+      "ilvl": 1,
+      "name": "Rust-Pitted Leather Jerkin",
+      "aspect": null,
+      "affixes": [],
+      "gems": [],
+      "temper": 0,
+      "seed": 1389879041,
+      "provenance": {
+        "from": "Pip's pack",
+        "where": "Hearthstone Keep",
+        "day": 1
+      },
+      "chronicle": {
+        "kills": 0
+      }
+    },
+    {
+      "uid": "i1i0zjykyszxr",
+      "base": "boots",
+      "kind": "boots",
+      "slot": "feet",
+      "rarity": "worn",
+      "ilvl": 1,
+      "name": "Rust-Pitted Travel Boots",
+      "aspect": null,
+      "affixes": [],
+      "gems": [],
+      "temper": 0,
+      "seed": 935742799,
+      "provenance": {
+        "from": "Pip's pack",
+        "where": "Hearthstone Keep",
+        "day": 1
+      },
+      "chronicle": {
+        "kills": 0
+      }
+    },
+    {
+      "uid": "iqi3fhxwoxzuh",
+      "base": "quarterstaff",
+      "kind": "staff",
+      "slot": "weapon",
+      "rarity": "wrought",
+      "ilvl": 1,
+      "name": "Quarterstaff of the Scholar",
+      "aspect": null,
+      "affixes": [
+        {
+          "id": "scholar",
+          "value": 1
+        }
+      ],
+      "gems": [],
+      "temper": 0,
+      "seed": 1347212613,
+      "provenance": {
+        "from": "Bryn's pack",
+        "where": "Hearthstone Keep",
+        "day": 1
+      },
+      "chronicle": {
+        "kills": 1
+      }
+    },
+    {
+      "uid": "i2faoun5mss95",
+      "base": "circlet",
+      "kind": "circlet",
+      "slot": "head",
+      "rarity": "worn",
+      "ilvl": 1,
+      "name": "Patched Circlet",
+      "aspect": null,
+      "affixes": [],
+      "gems": [],
+      "temper": 0,
+      "seed": 1107820554,
+      "provenance": {
+        "from": "Bryn's pack",
+        "where": "Hearthstone Keep",
+        "day": 1
+      },
+      "chronicle": {
+        "kills": 0
+      }
+    },
+    {
+      "uid": "i17m54mth8aw",
+      "base": "jerkin",
+      "kind": "leather",
+      "slot": "body",
+      "rarity": "worn",
+      "ilvl": 1,
+      "name": "Rust-Pitted Leather Jerkin",
+      "aspect": null,
+      "affixes": [],
+      "gems": [],
+      "temper": 0,
+      "seed": 372707962,
+      "provenance": {
+        "from": "Bryn's pack",
+        "where": "Hearthstone Keep",
+        "day": 1
+      },
+      "chronicle": {
+        "kills": 0
+      }
+    },
+    {
+      "uid": "i1gczrgy0tqev",
+      "base": "mace",
+      "kind": "mace",
+      "slot": "weapon",
+      "rarity": "worn",
+      "ilvl": 1,
+      "name": "Scuffed Mace",
+      "aspect": null,
+      "affixes": [],
+      "gems": [],
+      "temper": 0,
+      "seed": 313962028,
+      "provenance": {
+        "from": "Sister Alondra's pack",
+        "where": "Hearthstone Keep",
+        "day": 1
+      },
+      "chronicle": {
+        "kills": 3
+      }
+    },
+    {
+      "uid": "iqqacc47nauvo",
+      "base": "holy-symbol",
+      "kind": "focus",
+      "slot": "offhand",
+      "rarity": "wrought",
+      "ilvl": 1,
+      "name": "Holy Symbol of the Scholar",
+      "aspect": null,
+      "affixes": [
+        {
+          "id": "scholar",
+          "value": 1
+        }
+      ],
+      "gems": [],
+      "temper": 0,
+      "seed": 1019301331,
+      "provenance": {
+        "from": "Sister Alondra's pack",
+        "where": "Hearthstone Keep",
+        "day": 1
+      },
+      "chronicle": {
+        "kills": 0
+      }
+    },
+    {
+      "uid": "ix0mxp554emsk",
+      "base": "chain-shirt",
+      "kind": "mail",
+      "slot": "body",
+      "rarity": "worn",
+      "ilvl": 1,
+      "name": "Notched Chain Shirt",
+      "aspect": null,
+      "affixes": [],
+      "gems": [],
+      "temper": 0,
+      "seed": 1298479183,
+      "provenance": {
+        "from": "Sister Alondra's pack",
+        "where": "Hearthstone Keep",
+        "day": 1
+      },
+      "chronicle": {
+        "kills": 0
+      }
+    },
+    {
+      "uid": "ialhifx1y06es",
+      "base": "wardens-seal",
+      "kind": "amulet",
+      "slot": "amulet",
+      "rarity": "storied",
+      "ilvl": 1,
+      "name": "The Warden's Seal",
+      "aspect": "radiant",
+      "affixes": [],
+      "gems": [],
+      "temper": 0,
+      "seed": 1545505636,
+      "provenance": {
+        "from": "Sneck the Tallyman",
+        "where": "Hearthstone Keep",
+        "day": 2
+      },
+      "chronicle": {
+        "kills": 0
+      }
+    },
+    {
+      "uid": "i85yanyjo49v0",
+      "base": "belt-knife",
+      "kind": "dagger",
+      "slot": "weapon",
+      "rarity": "worn",
+      "ilvl": 1,
+      "name": "Frayed Belt Knife",
+      "aspect": null,
+      "affixes": [],
+      "gems": [],
+      "temper": 0,
+      "seed": 205624993,
+      "provenance": {
+        "from": "Sneck the Tallyman",
+        "where": "Hearthstone Keep",
+        "day": 2
+      },
+      "chronicle": {
+        "kills": 0
+      }
+    },
+    {
+      "uid": "irsw9t71c766p",
+      "base": "belt-knife",
+      "kind": "dagger",
+      "slot": "weapon",
+      "rarity": "worn",
+      "ilvl": 1,
+      "name": "Rust-Pitted Belt Knife",
+      "aspect": null,
+      "affixes": [],
+      "gems": [],
+      "temper": 0,
+      "seed": 382601733,
+      "provenance": {
+        "from": "Cutpurse",
+        "where": "Hearthstone Keep",
+        "day": 2
+      },
+      "chronicle": {
+        "kills": 0
+      }
+    },
+    {
+      "uid": "io08gcnhld6vh",
+      "base": "belt-knife",
+      "kind": "dagger",
+      "slot": "weapon",
+      "rarity": "worn",
+      "ilvl": 1,
+      "name": "Frayed Belt Knife",
+      "aspect": null,
+      "affixes": [],
+      "gems": [],
+      "temper": 0,
+      "seed": 1502192844,
+      "provenance": {
+        "from": "Cutpurse",
+        "where": "Hearth Road",
+        "day": 2
+      },
+      "chronicle": {
+        "kills": 0
+      }
+    },
+    {
+      "uid": "ixjgqoaqi15mm",
+      "base": "spear",
+      "kind": "spear",
+      "slot": "weapon",
+      "rarity": "worn",
+      "ilvl": 2,
+      "name": "Dented Spear",
+      "aspect": null,
+      "affixes": [],
+      "gems": [],
+      "temper": 0,
+      "seed": 1146056819,
+      "provenance": {
+        "from": "Briarling",
+        "where": "Hearth Road",
+        "day": 2
+      },
+      "chronicle": {
+        "kills": 0
+      }
+    }
+  ],
+  "gold": 91,
+  "codex": {
+    "hearthbrand": {
+      "sighted": true,
+      "claimed": false,
+      "awakened": false
+    },
+    "stillwater-lance": {
+      "sighted": true,
+      "claimed": false,
+      "awakened": false
+    },
+    "cairnmaul": {
+      "sighted": true,
+      "claimed": true,
+      "awakened": false
+    },
+    "wardens-seal": {
+      "sighted": true,
+      "claimed": true,
+      "awakened": false
+    }
+  },
+  "progress": {
+    "waking": 0,
+    "brands": [],
+    "lastHearthfire": "milestone-fire",
+    "node": "bramble-toll",
+    "flags": {
+      "cleared": {
+        "keep-vault": true,
+        "hearth-road": true,
+        "waymarker-stones": true
+      },
+      "done": {
+        "keep-vault": true
+      },
+      "grudges": {},
+      "day": 3,
+      "runs": 0
+    }
+  },
+  "settings": {
+    "sound": true,
+    "battleSpeed": 1,
+    "reducedMotion": false
+  },
+  "bag": {
+    "hearth-tonic": 3,
+    "ember-salts": 1,
+    "frost-draught": 1,
+    "bitterroot": 1
+  }
+}

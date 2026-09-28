@@ -1,0 +1,1061 @@
+{
+  "gauntlet": {
+    "hearthstone-keep": null,
+    "keep-vault": [
+      {
+        "family": "tallyman",
+        "level": 1,
+        "gearTier": 0,
+        "omens": [],
+        "variant": "thief",
+        "relic": "wardens-seal",
+        "name": "Sneck the Tallyman"
+      },
+      {
+        "family": "cutpurse",
+        "level": 1,
+        "gearTier": 0,
+        "omens": []
+      }
+    ],
+    "hearth-road": [
+      {
+        "family": "cutpurse",
+        "level": 1,
+        "gearTier": 0,
+        "omens": []
+      },
+      {
+        "family": "cutpurse",
+        "level": 1,
+        "gearTier": 0,
+        "omens": []
+      },
+      {
+        "family": "cutpurse",
+        "level": 2,
+        "gearTier": 0,
+        "omens": []
+      }
+    ],
+    "waymarker-stones": [
+      {
+        "family": "thornhound",
+        "level": 2,
+        "gearTier": 0,
+        "omens": []
+      },
+      {
+        "family": "thornhound",
+        "level": 2,
+        "gearTier": 0,
+        "omens": []
+      },
+      {
+        "family": "briarling",
+        "level": 2,
+        "gearTier": 0,
+        "omens": []
+      }
+    ],
+    "milestone-fire": null,
+    "bramble-toll": [
+      {
+        "family": "bandit",
+        "level": 3,
+        "gearTier": 1,
+        "omens": [],
+        "wears": "thornwatch-hood",
+        "name": "Skarn"
+      },
+      {
+        "family": "cutpurse",
+        "level": 2,
+        "gearTier": 0,
+        "omens": []
+      },
+      {
+        "family": "cutpurse",
+        "level": 2,
+        "gearTier": 0,
+        "omens": []
+      }
+    ],
+    "verdant-edge": [
+      {
+        "family": "briarling",
+        "level": 3,
+        "gearTier": 0,
+        "omens": []
+      },
+      {
+        "family": "briarling",
+        "level": 3,
+        "gearTier": 0,
+        "omens": []
+      },
+      {
+        "family": "thornhound",
+        "level": 3,
+        "gearTier": 0,
+        "omens": []
+      }
+    ],
+    "rotstag-glade": [
+      {
+        "family": "rotstag",
+        "level": 4,
+        "gearTier": 0,
+        "omens": []
+      }
+    ],
+    "thornhollow": null,
+    "tally-camp": [
+      {
+        "family": "tallyman",
+        "level": 5,
+        "gearTier": 1,
+        "omens": [],
+        "relic": "tallyknife"
+      },
+      {
+        "family": "bandit",
+        "level": 5,
+        "gearTier": 1,
+        "omens": [],
+        "wears": "thornwatch-jerkin"
+      },
+      {
+        "family": "cutpurse",
+        "level": 4,
+        "gearTier": 1,
+        "omens": []
+      }
+    ],
+    "snag-wallow": [
+      {
+        "family": "oldsnag",
+        "level": 6,
+        "gearTier": 0,
+        "omens": []
+      }
+    ],
+    "bramble-deep": [
+      {
+        "family": "bandit",
+        "level": 6,
+        "gearTier": 2,
+        "omens": [],
+        "wears": "thornwatch-boots"
+      },
+      {
+        "family": "briarling",
+        "level": 5,
+        "gearTier": 0,
+        "omens": []
+      },
+      {
+        "family": "briarling",
+        "level": 5,
+        "gearTier": 0,
+        "omens": []
+      }
+    ],
+    "den-mouth": null,
+    "briarmaw-den": [
+      {
+        "family": "briarmaw",
+        "level": 7,
+        "gearTier": 0,
+        "omens": []
+      }
+    ]
+  },
+  "patrols": {
+    "hearth-road": [
+      [
+        {
+          "family": "cutpurse",
+          "level": 0,
+          "gearTier": 0,
+          "omens": []
+        },
+        {
+          "family": "cutpurse",
+          "level": 0,
+          "gearTier": 0,
+          "omens": []
+        },
+        {
+          "family": "thornhound",
+          "level": 0,
+          "gearTier": 0,
+          "omens": []
+        }
+      ],
+      [
+        {
+          "family": "thornhound",
+          "level": 0,
+          "gearTier": 0,
+          "omens": []
+        },
+        {
+          "family": "thornhound",
+          "level": 0,
+          "gearTier": 0,
+          "omens": []
+        }
+      ]
+    ],
+    "verdant-wood": [
+      [
+        {
+          "family": "briarling",
+          "level": 0,
+          "gearTier": 0,
+          "omens": []
+        },
+        {
+          "family": "briarling",
+          "level": 0,
+          "gearTier": 0,
+          "omens": []
+        },
+        {
+          "family": "thornhound",
+          "level": 0,
+          "gearTier": 0,
+          "omens": []
+        }
+      ],
+      [
+        {
+          "family": "thornhound",
+          "level": 0,
+          "gearTier": 0,
+          "omens": []
+        },
+        {
+          "family": "thornhound",
+          "level": 0,
+          "gearTier": 0,
+          "omens": []
+        },
+        {
+          "family": "cutpurse",
+          "level": 0,
+          "gearTier": 0,
+          "omens": []
+        }
+      ]
+    ],
+    "thornhollow": [
+      [
+        {
+          "family": "cutpurse",
+          "level": 0,
+          "gearTier": 0,
+          "omens": []
+        },
+        {
+          "family": "cutpurse",
+          "level": 0,
+          "gearTier": 0,
+          "omens": []
+        },
+        {
+          "family": "briarling",
+          "level": 0,
+          "gearTier": 0,
+          "omens": []
+        }
+      ],
+      [
+        {
+          "family": "thornhound",
+          "level": 0,
+          "gearTier": 0,
+          "omens": []
+        },
+        {
+          "family": "briarling",
+          "level": 0,
+          "gearTier": 0,
+          "omens": []
+        },
+        {
+          "family": "briarling",
+          "level": 0,
+          "gearTier": 0,
+          "omens": []
+        }
+      ]
+    ],
+    "briarmaw-den": [
+      [
+        {
+          "family": "briarling",
+          "level": 0,
+          "gearTier": 0,
+          "omens": []
+        },
+        {
+          "family": "briarling",
+          "level": 0,
+          "gearTier": 0,
+          "omens": []
+        },
+        {
+          "family": "briarling",
+          "level": 0,
+          "gearTier": 0,
+          "omens": []
+        }
+      ],
+      [
+        {
+          "family": "thornhound",
+          "level": 0,
+          "gearTier": 0,
+          "omens": []
+        },
+        {
+          "family": "briarling",
+          "level": 0,
+          "gearTier": 0,
+          "omens": []
+        },
+        {
+          "family": "thornhound",
+          "level": 0,
+          "gearTier": 0,
+          "omens": []
+        }
+      ]
+    ]
+  },
+  "spawnsFor": {
+    "0": {
+      "keep-vault": [
+        {
+          "family": "tallyman",
+          "level": 1,
+          "gearTier": 0,
+          "omens": [],
+          "variant": "thief",
+          "name": "Sneck the Tallyman",
+          "held": [
+            {
+              "relic": "wardens-seal"
+            }
+          ],
+          "spawnIndex": 0
+        },
+        {
+          "family": "cutpurse",
+          "level": 1,
+          "gearTier": 0,
+          "omens": [],
+          "spawnIndex": 1
+        }
+      ],
+      "hearth-road": [
+        {
+          "family": "cutpurse",
+          "level": 1,
+          "gearTier": 0,
+          "omens": [],
+          "spawnIndex": 0
+        },
+        {
+          "family": "cutpurse",
+          "level": 1,
+          "gearTier": 0,
+          "omens": [],
+          "spawnIndex": 1
+        },
+        {
+          "family": "cutpurse",
+          "level": 2,
+          "gearTier": 0,
+          "omens": [],
+          "spawnIndex": 2
+        }
+      ],
+      "waymarker-stones": [
+        {
+          "family": "thornhound",
+          "level": 2,
+          "gearTier": 0,
+          "omens": [],
+          "spawnIndex": 0
+        },
+        {
+          "family": "thornhound",
+          "level": 2,
+          "gearTier": 0,
+          "omens": [],
+          "spawnIndex": 1
+        },
+        {
+          "family": "briarling",
+          "level": 2,
+          "gearTier": 0,
+          "omens": [],
+          "spawnIndex": 2
+        }
+      ],
+      "bramble-toll": [
+        {
+          "family": "bandit",
+          "level": 3,
+          "gearTier": 1,
+          "omens": [],
+          "wears": "thornwatch-hood",
+          "name": "Skarn",
+          "spawnIndex": 0
+        },
+        {
+          "family": "cutpurse",
+          "level": 2,
+          "gearTier": 0,
+          "omens": [],
+          "spawnIndex": 1
+        },
+        {
+          "family": "cutpurse",
+          "level": 2,
+          "gearTier": 0,
+          "omens": [],
+          "spawnIndex": 2
+        }
+      ],
+      "verdant-edge": [
+        {
+          "family": "briarling",
+          "level": 3,
+          "gearTier": 0,
+          "omens": [],
+          "spawnIndex": 0
+        },
+        {
+          "family": "briarling",
+          "level": 3,
+          "gearTier": 0,
+          "omens": [],
+          "spawnIndex": 1
+        },
+        {
+          "family": "thornhound",
+          "level": 3,
+          "gearTier": 0,
+          "omens": [],
+          "spawnIndex": 2
+        }
+      ],
+      "rotstag-glade": [
+        {
+          "family": "rotstag",
+          "level": 4,
+          "gearTier": 0,
+          "omens": [],
+          "held": [
+            {
+              "relic": "rotwood-circlet"
+            }
+          ],
+          "spawnIndex": 0
+        }
+      ],
+      "tally-camp": [
+        {
+          "family": "tallyman",
+          "level": 5,
+          "gearTier": 1,
+          "omens": [],
+          "held": [
+            {
+              "relic": "tallyknife"
+            }
+          ],
+          "spawnIndex": 0
+        },
+        {
+          "family": "bandit",
+          "level": 5,
+          "gearTier": 1,
+          "omens": [],
+          "wears": "thornwatch-jerkin",
+          "spawnIndex": 1
+        },
+        {
+          "family": "cutpurse",
+          "level": 4,
+          "gearTier": 1,
+          "omens": [],
+          "spawnIndex": 2
+        }
+      ],
+      "snag-wallow": [
+        {
+          "family": "oldsnag",
+          "level": 6,
+          "gearTier": 0,
+          "omens": [],
+          "held": [
+            {
+              "relic": "thornsplitter"
+            }
+          ],
+          "spawnIndex": 0
+        }
+      ],
+      "bramble-deep": [
+        {
+          "family": "bandit",
+          "level": 6,
+          "gearTier": 2,
+          "omens": [],
+          "wears": "thornwatch-boots",
+          "spawnIndex": 0
+        },
+        {
+          "family": "briarling",
+          "level": 5,
+          "gearTier": 0,
+          "omens": [],
+          "spawnIndex": 1
+        },
+        {
+          "family": "briarling",
+          "level": 5,
+          "gearTier": 0,
+          "omens": [],
+          "spawnIndex": 2
+        }
+      ],
+      "briarmaw-den": [
+        {
+          "family": "briarmaw",
+          "level": 7,
+          "gearTier": 0,
+          "omens": [],
+          "held": [
+            {
+              "relic": "thornwreath"
+            },
+            {
+              "relic": "briarfang"
+            }
+          ],
+          "spawnIndex": 0
+        }
+      ]
+    },
+    "1": {
+      "keep-vault": [
+        {
+          "family": "tallyman",
+          "level": 7,
+          "gearTier": 1,
+          "omens": [
+            "frenzied"
+          ],
+          "variant": "thief",
+          "name": "Sneck the Tallyman",
+          "held": [
+            {
+              "relic": "wardens-seal"
+            }
+          ],
+          "spawnIndex": 0
+        },
+        {
+          "family": "cutpurse",
+          "level": 7,
+          "gearTier": 1,
+          "omens": [],
+          "spawnIndex": 1
+        }
+      ],
+      "hearth-road": [
+        {
+          "family": "cutpurse",
+          "level": 7,
+          "gearTier": 1,
+          "omens": [],
+          "spawnIndex": 0
+        },
+        {
+          "family": "cutpurse",
+          "level": 7,
+          "gearTier": 1,
+          "omens": [],
+          "spawnIndex": 1
+        },
+        {
+          "family": "cutpurse",
+          "level": 8,
+          "gearTier": 1,
+          "omens": [],
+          "spawnIndex": 2
+        }
+      ],
+      "waymarker-stones": [
+        {
+          "family": "thornhound",
+          "level": 8,
+          "gearTier": 1,
+          "omens": [],
+          "spawnIndex": 0
+        },
+        {
+          "family": "thornhound",
+          "level": 8,
+          "gearTier": 1,
+          "omens": [],
+          "spawnIndex": 1
+        },
+        {
+          "family": "briarling",
+          "level": 8,
+          "gearTier": 1,
+          "omens": [],
+          "spawnIndex": 2
+        }
+      ],
+      "bramble-toll": [
+        {
+          "family": "bandit",
+          "level": 9,
+          "gearTier": 2,
+          "omens": [
+            "twinned"
+          ],
+          "wears": "thornwatch-hood",
+          "name": "Skarn",
+          "spawnIndex": 0
+        },
+        {
+          "family": "cutpurse",
+          "level": 8,
+          "gearTier": 1,
+          "omens": [],
+          "spawnIndex": 1
+        },
+        {
+          "family": "cutpurse",
+          "level": 8,
+          "gearTier": 1,
+          "omens": [],
+          "spawnIndex": 2
+        }
+      ],
+      "verdant-edge": [
+        {
+          "family": "briarling",
+          "level": 9,
+          "gearTier": 1,
+          "omens": [],
+          "spawnIndex": 0
+        },
+        {
+          "family": "briarling",
+          "level": 9,
+          "gearTier": 1,
+          "omens": [],
+          "spawnIndex": 1
+        },
+        {
+          "family": "thornhound",
+          "level": 9,
+          "gearTier": 1,
+          "omens": [],
+          "spawnIndex": 2
+        }
+      ],
+      "rotstag-glade": [
+        {
+          "family": "rotstag",
+          "level": 10,
+          "gearTier": 1,
+          "omens": [
+            "emberblooded"
+          ],
+          "held": [
+            {
+              "relic": "rotwood-circlet"
+            }
+          ],
+          "spawnIndex": 0
+        }
+      ],
+      "tally-camp": [
+        {
+          "family": "tallyman",
+          "level": 11,
+          "gearTier": 2,
+          "omens": [
+            "ironclad"
+          ],
+          "held": [
+            {
+              "relic": "tallyknife"
+            }
+          ],
+          "spawnIndex": 0
+        },
+        {
+          "family": "bandit",
+          "level": 11,
+          "gearTier": 2,
+          "omens": [
+            "ironclad"
+          ],
+          "wears": "thornwatch-jerkin",
+          "spawnIndex": 1
+        },
+        {
+          "family": "cutpurse",
+          "level": 10,
+          "gearTier": 2,
+          "omens": [],
+          "spawnIndex": 2
+        }
+      ],
+      "snag-wallow": [
+        {
+          "family": "oldsnag",
+          "level": 12,
+          "gearTier": 1,
+          "omens": [
+            "emberblooded"
+          ],
+          "held": [
+            {
+              "relic": "thornsplitter"
+            }
+          ],
+          "spawnIndex": 0
+        }
+      ],
+      "bramble-deep": [
+        {
+          "family": "bandit",
+          "level": 12,
+          "gearTier": 3,
+          "omens": [
+            "frenzied"
+          ],
+          "wears": "thornwatch-boots",
+          "spawnIndex": 0
+        },
+        {
+          "family": "briarling",
+          "level": 11,
+          "gearTier": 1,
+          "omens": [],
+          "spawnIndex": 1
+        },
+        {
+          "family": "briarling",
+          "level": 11,
+          "gearTier": 1,
+          "omens": [],
+          "spawnIndex": 2
+        }
+      ],
+      "briarmaw-den": [
+        {
+          "family": "briarmaw",
+          "level": 13,
+          "gearTier": 1,
+          "omens": [
+            "swift"
+          ],
+          "held": [
+            {
+              "relic": "thornwreath"
+            },
+            {
+              "relic": "briarfang"
+            }
+          ],
+          "spawnIndex": 0
+        }
+      ]
+    },
+    "2": {
+      "keep-vault": [
+        {
+          "family": "tallyman",
+          "level": 13,
+          "gearTier": 2,
+          "omens": [
+            "twinned",
+            "swift"
+          ],
+          "variant": "thief",
+          "name": "Sneck the Tallyman",
+          "held": [
+            {
+              "relic": "wardens-seal"
+            }
+          ],
+          "spawnIndex": 0
+        },
+        {
+          "family": "cutpurse",
+          "level": 13,
+          "gearTier": 2,
+          "omens": [
+            "thornskinned"
+          ],
+          "spawnIndex": 1
+        }
+      ],
+      "hearth-road": [
+        {
+          "family": "cutpurse",
+          "level": 13,
+          "gearTier": 2,
+          "omens": [
+            "emberblooded"
+          ],
+          "spawnIndex": 0
+        },
+        {
+          "family": "cutpurse",
+          "level": 13,
+          "gearTier": 2,
+          "omens": [
+            "thornskinned"
+          ],
+          "spawnIndex": 1
+        },
+        {
+          "family": "cutpurse",
+          "level": 14,
+          "gearTier": 2,
+          "omens": [
+            "thornskinned"
+          ],
+          "spawnIndex": 2
+        }
+      ],
+      "waymarker-stones": [
+        {
+          "family": "thornhound",
+          "level": 14,
+          "gearTier": 2,
+          "omens": [
+            "frenzied"
+          ],
+          "spawnIndex": 0
+        },
+        {
+          "family": "thornhound",
+          "level": 14,
+          "gearTier": 2,
+          "omens": [
+            "emberblooded"
+          ],
+          "spawnIndex": 1
+        },
+        {
+          "family": "briarling",
+          "level": 14,
+          "gearTier": 2,
+          "omens": [
+            "emberblooded"
+          ],
+          "spawnIndex": 2
+        }
+      ],
+      "bramble-toll": [
+        {
+          "family": "bandit",
+          "level": 15,
+          "gearTier": 3,
+          "omens": [
+            "frenzied",
+            "thornskinned"
+          ],
+          "wears": "thornwatch-hood",
+          "name": "Skarn",
+          "spawnIndex": 0
+        },
+        {
+          "family": "cutpurse",
+          "level": 14,
+          "gearTier": 2,
+          "omens": [
+            "emberblooded"
+          ],
+          "spawnIndex": 1
+        },
+        {
+          "family": "cutpurse",
+          "level": 14,
+          "gearTier": 2,
+          "omens": [
+            "thornskinned"
+          ],
+          "spawnIndex": 2
+        }
+      ],
+      "verdant-edge": [
+        {
+          "family": "briarling",
+          "level": 15,
+          "gearTier": 2,
+          "omens": [
+            "emberblooded"
+          ],
+          "spawnIndex": 0
+        },
+        {
+          "family": "briarling",
+          "level": 15,
+          "gearTier": 2,
+          "omens": [
+            "swift"
+          ],
+          "spawnIndex": 1
+        },
+        {
+          "family": "thornhound",
+          "level": 15,
+          "gearTier": 2,
+          "omens": [
+            "ironclad"
+          ],
+          "spawnIndex": 2
+        }
+      ],
+      "rotstag-glade": [
+        {
+          "family": "rotstag",
+          "level": 16,
+          "gearTier": 2,
+          "omens": [
+            "frenzied",
+            "thornskinned"
+          ],
+          "held": [
+            {
+              "relic": "rotwood-circlet"
+            }
+          ],
+          "spawnIndex": 0
+        }
+      ],
+      "tally-camp": [
+        {
+          "family": "tallyman",
+          "level": 17,
+          "gearTier": 3,
+          "omens": [
+            "thornskinned",
+            "swift"
+          ],
+          "held": [
+            {
+              "relic": "tallyknife"
+            }
+          ],
+          "spawnIndex": 0
+        },
+        {
+          "family": "bandit",
+          "level": 17,
+          "gearTier": 3,
+          "omens": [
+            "ironclad",
+            "emberblooded"
+          ],
+          "wears": "thornwatch-jerkin",
+          "spawnIndex": 1
+        },
+        {
+          "family": "cutpurse",
+          "level": 16,
+          "gearTier": 3,
+          "omens": [
+            "frenzied"
+          ],
+          "spawnIndex": 2
+        }
+      ],
+      "snag-wallow": [
+        {
+          "family": "oldsnag",
+          "level": 18,
+          "gearTier": 2,
+          "omens": [
+            "frenzied",
+            "emberblooded"
+          ],
+          "held": [
+            {
+              "relic": "thornsplitter"
+            }
+          ],
+          "spawnIndex": 0
+        }
+      ],
+      "bramble-deep": [
+        {
+          "family": "bandit",
+          "level": 18,
+          "gearTier": 3,
+          "omens": [
+            "emberblooded",
+            "frenzied"
+          ],
+          "wears": "thornwatch-boots",
+          "spawnIndex": 0
+        },
+        {
+          "family": "briarling",
+          "level": 17,
+          "gearTier": 2,
+          "omens": [
+            "frenzied"
+          ],
+          "spawnIndex": 1
+        },
+        {
+          "family": "briarling",
+          "level": 17,
+          "gearTier": 2,
+          "omens": [
+            "twinned"
+          ],
+          "spawnIndex": 2
+        }
+      ],
+      "briarmaw-den": [
+        {
+          "family": "briarmaw",
+          "level": 19,
+          "gearTier": 2,
+          "omens": [
+            "thornskinned",
+            "ironclad"
+          ],
+          "held": [
+            {
+              "relic": "thornwreath"
+            },
+            {
+              "relic": "briarfang"
+            }
+          ],
+          "spawnIndex": 0
+        }
+      ]
+    }
+  }
+}

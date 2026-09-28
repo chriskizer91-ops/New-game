@@ -97,10 +97,11 @@ export const HEROES = deepFreeze({
 export const HERO_IDS = Object.freeze(['warden', 'pip', 'bryn', 'alondra']);
 
 // Starter relic choice decides the Warden's weapon and offhand.
+// rival (M3): the counter-starter Tamsin carries (lent) in the duel, the one whose aspect beats yours.
 export const STARTERS = deepFreeze({
-  hearthbrand: { relic: 'hearthbrand', offhand: { base: 'heater-shield', rarity: 'worn' }, text: 'Sword and shield. Burns.' },
-  'stillwater-lance': { relic: 'stillwater-lance', offhand: { base: 'buckler', rarity: 'wrought' }, text: 'Spear and buckler. Chills, then freezes.' },
-  cairnmaul: { relic: 'cairnmaul', offhand: null, text: 'Two-handed hammer. Staggers, and breaks grips.' },
+  hearthbrand: { relic: 'hearthbrand', offhand: { base: 'heater-shield', rarity: 'worn' }, rival: 'cairnmaul', text: 'Sword and shield. Burns.' },
+  'stillwater-lance': { relic: 'stillwater-lance', offhand: { base: 'buckler', rarity: 'wrought' }, rival: 'hearthbrand', text: 'Spear and buckler. Chills, then freezes.' },
+  cairnmaul: { relic: 'cairnmaul', offhand: null, rival: 'stillwater-lance', text: 'Two-handed hammer. Staggers, and breaks grips.' },
 });
 
 export const STARTING_BAG = deepFreeze({ 'hearth-tonic': 3, 'ember-salts': 1, 'frost-draught': 1, 'bitterroot': 1 });

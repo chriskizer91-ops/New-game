@@ -12,8 +12,12 @@ import * as aftermath from './ui/screens/aftermath.js';
 import * as party from './ui/screens/party.js';
 import * as codex from './ui/screens/codex.js';
 import * as settings from './ui/screens/settings.js';
+import * as world from './ui/screens/world.js';
+import * as atlas from './ui/screens/atlas.js';
+import * as journal from './ui/screens/journal.js';
 
-const screens = { title, newgame, road, battle, aftermath, party, codex, settings };
+// M3: 'world', 'atlas' and 'journal' join the registry; 'road' stays until WP8 makes it an alias of 'world'.
+const screens = { title, newgame, road, battle, aftermath, party, codex, settings, world, atlas, journal };
 
 const app = createApp(document.getElementById('app'), screens);
 

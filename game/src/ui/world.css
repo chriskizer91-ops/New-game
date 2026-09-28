@@ -1,0 +1,10 @@
+/* The world screen (M3 spec §5.4). Imported by ui/screens/world.js. Owner: WP7.
+   SCAFFOLD: just enough layout for the placeholder screen. */
+.screen-world { display: flex; flex-direction: column; gap: 12px; padding: 12px 16px; max-width: 720px; margin: 0 auto; }
+.screen-world .world-hud { font-size: 13px; opacity: .8; }
+.screen-world .world-canvas { width: 100%; max-width: 480px; aspect-ratio: 3 / 2; image-rendering: pixelated; background: #000; border-radius: 4px; }
+.screen-world .world-place { margin: 0; }
+.screen-world .world-pos { font: 13px/1.4 ui-monospace, monospace; opacity: .85; }
+.screen-world .world-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.screen-world .world-actions .btn { min-height: 44px; }
+.screen-world .world-log { font-size: 13px; min-height: 1.4em; }

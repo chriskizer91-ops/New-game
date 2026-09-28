@@ -151,6 +151,157 @@ export const RELICS = deepFreeze({
     mapPower: { id: 'bloodtrail', name: 'Bloodtrail', text: 'Follow any wounded beast\'s trail to its lair.' },
     lore: 'A fang the length of a knife and sharp as a debt. Pried loose, it still bleeds.',
   },
+
+  // ---- M3: the twelve new heirlooms of the Verdant Wilds (codex 13-24; spec §3.4) ----------------
+  // Minimal valid entries from the scaffold: WP4 owns the final numbers, WP6B the looks.
+  lightfingers: {
+    id: 'lightfingers', codex: 13, name: 'Lightfingers', kind: 'gloves', slot: 'hands', aspect: 'frost', rarity: 'heirloom', ilvl: 6,
+    holder: 'Mags Kestrel, queen of the Smugglers\' Hollow', grip: 20,
+    stats: { DEX: 1, gripDmg: 3, speed: 1 },
+    power: {
+      id: 'sleight-of-hand', name: 'Sleight of Hand', target: 'enemy',
+      text: 'Now you see it: 4d6 grip damage, 2d6 frost, and the foe is Chilled.',
+      effects: [{ type: 'grip', dice: '4d6' }, { type: 'damage', dice: '2d6', kind: 'frost', aspect: 'frost', diceEvery: 6, riders: [{ type: 'status', status: 'chilled' }] }],
+    },
+    mapPower: { id: 'lightfingers', name: 'Lightfingers', text: 'Picks Tallyman ledger-seals without a scratch on the wax.' },
+    lore: 'Mags Kestrel never once paid a toll in them. The fingertips are worn through from counting other people\'s coin.',
+  },
+  hartshorn: {
+    id: 'hartshorn', codex: 14, name: 'Hartshorn', kind: 'bow', slot: 'weapon', aspect: 'storm', rarity: 'heirloom', ilvl: 10,
+    holder: 'Haskett the poacher, on Poacher\'s Holm', grip: 26,
+    weapon: { dice: '1d8', dmg: 'pierce', hands: 2, weight: 0, ability: ['DEX'], ranged: true, extra: [{ dice: '1d6', aspect: 'storm' }] },
+    stats: { hit: 2 },
+    power: {
+      id: 'thunder-of-the-hart', name: 'Thunder of the Hart', target: 'all-enemies',
+      text: 'The string cracks like a storm: 2d8 storm to every foe, and they Stagger.',
+      effects: [{ type: 'damage', dice: '2d8', kind: 'storm', aspect: 'storm', diceEvery: 6, riders: [{ type: 'status', status: 'staggered' }] }],
+    },
+    mapPower: { id: 'harts-sight', name: 'Hart\'s Sight', text: 'Spots the old rope on every ledge, and hidden caches sparkle.' },
+    lore: 'Strung with the sinew of the white hart\'s grandsire. Haskett swears it still pulls toward deer.',
+  },
+  'mosswatch-lantern': {
+    id: 'mosswatch-lantern', codex: 15, name: 'Mosswatch Lantern', kind: 'focus', slot: 'offhand', aspect: 'ember', rarity: 'heirloom', ilvl: 11,
+    holder: 'Hollis Fairweight, in the Lamp Room', grip: 22,
+    stats: { mp: 6, healBonus: 10, resist: { blight: 15 } },
+    power: {
+      id: 'signal-fire', name: 'Signal Fire', target: 'all-enemies',
+      text: 'The tower\'s old warning, lit at arm\'s length: 2d8 ember to every foe, and they Burn.',
+      effects: [{ type: 'damage', dice: '2d8', kind: 'ember', aspect: 'ember', diceEvery: 6, riders: [{ type: 'status', status: 'burning' }] }],
+    },
+    mapPower: { id: 'lamplight', name: 'Lamplight', text: 'Lights the dark places, and cold hearths catch from it.' },
+    lore: 'The watchkeepers carried it up the stair every dusk for three hundred years. Hollis carried it down.',
+  },
+  'watchkeepers-kettle': {
+    id: 'watchkeepers-kettle', codex: 16, name: 'Watchkeeper\'s Kettle', kind: 'kettle', slot: 'head', aspect: 'storm', rarity: 'heirloom', ilvl: 11,
+    holder: 'Old Garret of Mosswatch (a contest, or a favour)',
+    stats: { guard: 1, hp: 8, WIS: 1 },
+    power: {
+      id: 'longwatch', name: 'Longwatch', target: 'all-allies',
+      text: 'Eyes on the horizon: every ally is Warded for 2d6 and Hasted.',
+      effects: [{ type: 'status', status: 'warded', value: { dice: '2d6', diceEvery: 5 } }, { type: 'status', status: 'hasted' }],
+    },
+    mapPower: { id: 'longwatch', name: 'Longwatch', text: 'From a lookout, marks the chests, locks and holders around on the Atlas.' },
+    lore: 'Dented by every hailstorm Mosswatch ever had. Garret says it hums when weather is coming. It does.',
+  },
+  'mire-pearl': {
+    id: 'mire-pearl', codex: 17, name: 'Mire Pearl', kind: 'ring', slot: 'ring', aspect: 'tide', rarity: 'heirloom', ilvl: 11,
+    holder: 'Gorrow the Mire-King, in his crown of reeds', grip: 24,
+    stats: { hp: 6, regen: 1, resist: { tide: 20, blight: 10 } },
+    power: {
+      id: 'undertow', name: 'Undertow', target: 'enemy',
+      text: 'The marsh pulls: 3d8 tide, and the foe Staggers.',
+      effects: [{ type: 'damage', dice: '3d8', kind: 'tide', aspect: 'tide', diceEvery: 6, riders: [{ type: 'status', status: 'staggered' }] }],
+    },
+    mapPower: { id: 'mirebreath', name: 'Mirebreath', text: 'Breathe easy in black water. Ichor cannot burn you.' },
+    lore: 'Grown in the throat of the oldest frog in Mossfall. It is warm, and it is never quite dry.',
+  },
+  dawnbell: {
+    id: 'dawnbell', codex: 18, name: 'Dawnbell', kind: 'mace', slot: 'weapon', aspect: 'radiant', rarity: 'heirloom', ilvl: 11,
+    holder: 'Silk-spun on the Gloamwing\'s thorax', grip: 26,
+    weapon: { dice: '1d8', dmg: 'crush', hands: 1, weight: 5, ability: ['STR', 'WIS'], extra: [{ dice: '1d6', aspect: 'radiant' }] },
+    stats: { healBonus: 10 },
+    power: {
+      id: 'matins', name: 'Matins', target: 'all-allies',
+      text: 'The first bell of morning: every ally heals 2d8 and sheds one harmful status.',
+      effects: [{ type: 'heal', dice: '2d8', diceEvery: 5 }, { type: 'cleanse', harmful: 1 }],
+    },
+    mapPower: { id: 'dawnbell', name: 'Dawnbell', text: 'Weak packs scatter sooner. Rings the Fawnrest bell.' },
+    lore: 'The Fawnrest bell, taken off its frame by something with wings. Rung, it brings the deer home.',
+  },
+  rootsong: {
+    id: 'rootsong', codex: 19, name: 'Rootsong', kind: 'staff', slot: 'weapon', aspect: 'tide', rarity: 'heirloom', ilvl: 11,
+    holder: 'Oda the Thornmother, in the Grove circle', grip: 26,
+    weapon: { dice: '1d6', dmg: 'crush', hands: 2, weight: 0, ability: ['STR', 'INT', 'WIS'], extra: [{ dice: '1d6', aspect: 'tide' }] },
+    stats: { mp: 8, INT: 1 },
+    power: {
+      id: 'rising-sap', name: 'Rising Sap', target: 'all-allies',
+      text: 'The old roots sing up through your boots: every ally heals 1d8 and Regenerates 1d8 a turn.',
+      effects: [{ type: 'heal', dice: '1d8', diceEvery: 5 }, { type: 'status', status: 'regenerating', value: { dice: '1d8', diceEvery: 6 } }],
+    },
+    mapPower: { id: 'rootsong', name: 'Rootsong', text: 'Streams part and rot-knots untie for it.' },
+    lore: 'A staff of living rowan that the Eldergrove druids sang into shape. Oda sang it into something else.',
+  },
+  oathshield: {
+    id: 'oathshield', codex: 20, name: 'Oathshield', kind: 'shield', slot: 'offhand', aspect: 'stone', rarity: 'heirloom', ilvl: 12,
+    holder: 'Sergeant Corra Thistle of the Thornwatch', grip: 28,
+    stats: { guard: 2, hp: 6, resist: { blight: 15 } },
+    power: {
+      id: 'hold-the-line', name: 'Hold the Line', target: 'all-allies',
+      text: 'Shoulder to shoulder: every ally is Warded for 3d6.',
+      effects: [{ type: 'status', status: 'warded', value: { dice: '3d6', diceEvery: 5 } }],
+    },
+    mapPower: { id: 'hold-the-line', name: 'Hold the Line', text: 'Ichor cannot reach you through it.' },
+    lore: 'Every Thornwatch sergeant swore on it. Corra swore on it last, and meant it longest.',
+  },
+  'isoldes-oath': {
+    id: 'isoldes-oath', codex: 21, name: 'Isolde\'s Oath', kind: 'sword', slot: 'weapon', aspect: 'frost', rarity: 'heirloom', ilvl: 12,
+    holder: 'Dun the Counter, at the sap-taps', grip: 28,
+    weapon: { dice: '1d8', dmg: 'slash', hands: 1, versatile: '1d10', weight: 0, ability: ['STR', 'DEX'], extra: [{ dice: '1d6', aspect: 'frost' }] },
+    stats: { hit: 2 },
+    power: {
+      id: 'oath-of-winter', name: 'Oath of Winter', target: 'all-enemies',
+      text: 'A vow said once and kept: 2d8 frost to every foe and 2 stacks of Chilled.',
+      effects: [{ type: 'damage', dice: '2d8', kind: 'frost', aspect: 'frost', diceEvery: 6, riders: [{ type: 'status', status: 'chilled', stacks: 2 }] }],
+    },
+    mapPower: { id: 'stillness', name: 'Stillness', text: 'Packs that spot you hesitate far longer before they come.' },
+    lore: 'The Warden-Commander\'s own blade, pawned the winter the Keep could not pay its rangers. The Tallymen kept the ticket.',
+  },
+  'ichor-mask': {
+    id: 'ichor-mask', codex: 22, name: 'Ichor Mask', kind: 'helm', slot: 'head', aspect: 'blight', rarity: 'heirloom', ilvl: 13,
+    holder: 'The Rotwarden\'s breakable smith\'s mask', grip: 32,
+    stats: { INT: 1, WIS: 1, resist: { blight: 30 } },
+    power: {
+      id: 'blacksap', name: 'Blacksap', target: 'all-enemies',
+      text: 'The mask weeps: 2d8 blight to every foe and 2 stacks of Poisoned.',
+      effects: [{ type: 'damage', dice: '2d8', kind: 'blight', aspect: 'blight', diceEvery: 6, riders: [{ type: 'status', status: 'poisoned', stacks: 2 }] }],
+    },
+    mapPower: { id: 'ichorsight', name: 'Ichorsight', text: 'Rot-knots open to it, and the sap-trails show.' },
+    lore: 'A smith\'s mask with a hammer in a broken ring stamped inside. It was never meant for a face made of bark.',
+  },
+  'first-seed': {
+    id: 'first-seed', codex: 23, name: 'The First Seed', kind: 'amulet', slot: 'amulet', aspect: 'verdant', rarity: 'heirloom', ilvl: 13,
+    holder: 'The Rotwarden\'s breakable heart-seed', grip: 28,
+    stats: { hp: 10, regenPct: 3, resist: { blight: 20 } },
+    power: {
+      id: 'greenwake', name: 'Greenwake', target: 'all-allies',
+      text: 'Green comes back: every ally heals 3d8 and sheds one harmful status.',
+      effects: [{ type: 'heal', dice: '3d8', diceEvery: 5 }, { type: 'cleanse', harmful: 1 }],
+    },
+    mapPower: { id: 'greenwake', name: 'Greenwake', text: 'Bramble parts and ichor dries where you walk.' },
+    lore: 'The seed the Eldest Tree grew from, kept at the root for nine hundred years. It is still, very faintly, alive.',
+  },
+  'vale-gauntlets': {
+    id: 'vale-gauntlets', codex: 24, name: 'Vale Gauntlets', kind: 'gauntlets', slot: 'hands', aspect: 'storm', rarity: 'heirloom', ilvl: 11,
+    holder: 'Worn by Tamsin, the Keep\'s other Warden',
+    stats: { STR: 1, hit: 1, gripDmg: 2 },
+    power: {
+      id: 'showing-off', name: 'Showing Off', target: 'enemy',
+      text: 'A strike made for an audience: a weapon strike that cannot miss, dice doubled.',
+      effects: [{ type: 'attack', weapon: true, autoCrit: true }],
+    },
+    mapPower: { id: 'name-drop', name: 'Name-Drop', text: 'Gatekeepers remember whose gauntlets these were, and lift the bar.' },
+    lore: 'Tamsin\'s, and before that her mother\'s. Every knuckle-plate is engraved with somebody she beat.',
+  },
 });
 
 export const SETS = deepFreeze({

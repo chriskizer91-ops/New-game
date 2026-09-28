@@ -58,8 +58,14 @@ test('every shared item kind has at least one base item', () => {
   for (const c of ['hearth-tonic', 'ember-salts', 'frost-draught']) assert.ok(CONSUMABLES[c]);
 });
 
-test('the twelve named relics match the shared vocabulary', () => {
-  assert.deepEqual(Object.keys(RELICS).sort(), Object.keys(RELIC_TABLE).sort());
+test('the twelve M2 relics match the shared vocabulary; M3 adds twelve heirlooms (codex 13-24)', () => {
+  for (const id of Object.keys(RELIC_TABLE)) assert.ok(RELICS[id], id);
+  assert.equal(Object.keys(RELICS).length, 24);
+  assert.deepEqual(Object.values(RELICS).map(r => r.codex).sort((a, b) => a - b), Array.from({ length: 24 }, (_, i) => i + 1));
+  for (const r of Object.values(RELICS).filter(r => r.codex > 12)) {
+    assert.equal(r.rarity, 'heirloom', r.id);
+    assert.ok(r.power && r.mapPower, `${r.id} has a power and a map power`);
+  }
   for (const [id, [kind, aspect]] of Object.entries(RELIC_TABLE)) {
     assert.equal(RELICS[id].kind, kind, id);
     assert.equal(RELICS[id].aspect, aspect, id);
@@ -75,7 +81,11 @@ test('skills, affixes and foes reference real statuses, domains and relics', () 
   const statusRefs = [];
   const walk = effs => { for (const e of effs || []) { if (e.status) statusRefs.push(e.status); walk(e.riders); } };
   for (const sk of Object.values(SKILLS)) { assert.ok(DOMAIN_IDS.includes(sk.domain), sk.id); walk(sk.effects); }
-  for (const f of Object.values(FOES)) for (const m of Object.values(f.moves)) { walk(m.effects); if (m.requires) assert.ok(RELICS[m.requires]); }
+  for (const f of Object.values(FOES)) {
+    for (const moves of [f.moves, ...Object.values(f.variants || {}).map(v => v.moves).filter(Boolean)]) {
+      for (const m of Object.values(moves)) { walk(m.effects); if (m.requires) assert.ok(RELICS[m.requires], m.requires); }
+    }
+  }
   for (const r of Object.values(RELICS)) walk(r.power?.effects);
   for (const s of statusRefs) assert.ok(STATUSES[s], s);
   assert.ok(Object.keys(SKILLS).length >= 20);
@@ -85,12 +95,15 @@ test('skills, affixes and foes reference real statuses, domains and relics', () 
 
 test('every move table covers every face of its intent die', () => {
   for (const f of Object.values(FOES)) {
-    const die = FOE_TIERS[f.tier].die;
-    const tables = f.phases ? f.phases.map(p => p.table) : [f.table, ...Object.values(f.variants || {}).map(v => v.table)];
-    for (const t of tables) {
+    // a variant may override the tier (named holders are relic-bearers) and the moves
+    const tables = f.phases
+      ? f.phases.map(p => ({ t: p.table, die: FOE_TIERS[f.tier].die, moves: f.moves, id: f.id }))
+      : [{ t: f.table, die: FOE_TIERS[f.tier].die, moves: f.moves, id: f.id },
+        ...Object.entries(f.variants || {}).filter(([, v]) => v.table).map(([k, v]) => ({ t: v.table, die: FOE_TIERS[v.tier || f.tier].die, moves: v.moves || f.moves, id: `${f.id}/${k}` }))];
+    for (const { t, die, moves, id } of tables) {
       for (let face = 1; face <= die; face++) {
         const row = t.find(([lo, hi]) => face >= lo && face <= hi);
-        assert.ok(row && f.moves[row[2]], `${f.id} face ${face}`);
+        assert.ok(row && moves[row[2]], `${id} face ${face}`);
       }
     }
   }
