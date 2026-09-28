@@ -33,8 +33,10 @@
 @keyframes wEmber { 0% { opacity: 1; } 25% { opacity: .3; } 50% { opacity: 1; } 100% { opacity: 0; } }
 
 /* ---------- bust strip ---------- */
-.w-busts { grid-area: busts; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: #0d0a08; box-shadow: 0 1px 0 var(--ink); }
-.w-bust { display: flex; align-items: center; gap: 4px; min-width: 0; height: 26px; padding: 0 4px; background: transparent; border: 0; cursor: pointer; }
+.w-busts { grid-area: busts; position: relative; z-index: 2; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: #0d0a08; box-shadow: 0 1px 0 var(--ink); }
+.w-bust { position: relative; display: flex; align-items: center; gap: 4px; min-width: 0; height: 26px; padding: 0 4px; background: transparent; border: 0; cursor: pointer; }
+/* the strip is 26 px, but a thumb gets 44: the touch area reaches 18 px down over the edge of the map */
+.w-bust::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 44px; }
 .w-bust + .w-bust { box-shadow: inset 1px 0 0 #211915; }
 .w-bust-art { width: 24px; height: 24px; flex: none; }
 .w-bars { flex: 1; min-width: 0; display: grid; gap: 1px; }
