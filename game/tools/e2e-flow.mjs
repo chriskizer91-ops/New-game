@@ -54,6 +54,7 @@ import path from 'node:path';
 import { HEARTHS } from '../src/data/world.js';
 import { MAPS } from '../src/data/maps/index.js';
 import { RELICS } from '../src/data/relics.js';
+import { DEEDS } from '../src/data/deeds.js';
 import { LOCK_IDS } from '../src/data/locks.js';
 import { LADDER } from '../src/data/ladder.js';
 import { SHOPS } from '../src/data/shops.js';
@@ -689,13 +690,15 @@ async function run(V) {
     // A finished Codex page: every Page I relic claimed, a Sunscorch fight won
     const pageOne = PAGES[0];
     const need = Object.values(RELICS).filter(r => r.codex >= pageOne.from && r.codex <= pageOne.to && !r.starter).map(r => r.id);
+    // a relic whose deeds include First Blood (a won fight does it), on Pip, away from the weapon slot
+    const kindling = Object.values(RELICS).find(r => r.slot !== 'weapon' && (r.deeds || []).includes('first-blood'));
     await setGame(`g => {
       for (const id of ${JSON.stringify(need)}) g.codex[id] = { sighted: true, claimed: true, awakened: false, ...(g.codex[id] || {}), claimed: true };
       g.progress.flags.pages = {};
-      const seal = window.__worldTools.relicItem('wardens-seal', 'Sneck the Tallyman');
-      seal.uid = 'e2e-seal';
-      g.inventory.push(seal);
-      g.party.roster.pip.gear.amulet = seal.uid;
+      const it = window.__worldTools.relicItem(${JSON.stringify(kindling.id)}, 'Sneck the Tallyman');
+      it.uid = 'e2e-kindling';
+      g.inventory.push(it);
+      g.party.roster.pip.gear[${JSON.stringify(kindling.slot)}] = it.uid;
     }`);
     const fightId = ['vault-guard', 'sg-captain', 'gf-raiders'].find(id => ENCOUNTERS[id]) || 'keep-vault';
     const mats0 = { ...(await game()).materials };
@@ -705,7 +708,7 @@ async function run(V) {
     const banner = await page.locator('.af-page').first().innerText().catch(() => '');
     check(new RegExp(`Page ${pageOne.no} complete: ${pageOne.reward.name}`, 'i').test(banner), `${V.name}: a finished page shows its banner ("${banner.replace(/\s+/g, ' ').slice(0, 90)}")`);
     const deeds = await page.locator('.af-deeds').innerText().catch(() => '');
-    check(/The Warden's Seal: First Blood/.test(deeds.replace(/\s+/g, ' ')) && /is Kindled/.test(deeds), `${V.name}: the aftermath lists the deed done and the relic Kindled (${deeds.replace(/\s+/g, ' ').slice(0, 120)})`);
+    check(deeds.replace(/\s+/g, ' ').includes(`${kindling.name}: ${DEEDS['first-blood'].name}`) && /is Kindled/.test(deeds), `${V.name}: the aftermath lists ${kindling.name}'s deed done and the relic Kindled (${deeds.replace(/\s+/g, ' ').slice(0, 120)})`);
     g = await game();
     if (ENCOUNTERS[fightId].region === 'sunscorch') {
       const mats = await page.locator('.af-mats').innerText().catch(() => '');
