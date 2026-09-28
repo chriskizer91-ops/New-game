@@ -82,7 +82,7 @@ The tuning that got there is listed in `docs/RULES.md` ("What the tuning changed
 ### 2.3 Performance and size
 
 - **Frame time** (e2e-world scenario 11: 4× CPU throttle, walking the Hearth Road with 4 followers
-  and 6 roamers for 10 s): p95 **1.8 ms** (phone) and **1.9 ms** (laptop) of JS per frame against
+  and 6 roamers for 10 s): p95 **1.8–2.3 ms** of JS per frame across runs at both sizes, against
   the 16 ms target; **17–18 `drawImage` calls** per frame against the 40 target.
 - **Idle:** standing still the loop idles at **12 fps** (target 10–15). A pack stepping on screen
   runs at full rate; packs wandering off screen do not.
