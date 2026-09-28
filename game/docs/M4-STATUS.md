@@ -39,7 +39,7 @@ the gem you set.
 
 | Gate | Result |
 |---|---|
-| Units | **269/269** node tests pass (`npm test`), lint clean. |
+| Units | **276/276** node tests pass (`npm test`), lint clean. |
 | e2e-world | **241** checks, 0 failed, 0 blocked, at 360×740 and 1280×800: scenarios 1-19, including the south-east gate, Sandspire, dune-glass and the mirage, Kharzul's pre-fight card, the Deep Shaft's dark, the Glass Flats performance, the Codex binder, Grudges and the second council. |
 | e2e-flow | Passes at both sizes (**240** checks): the M3 flow plus the forge (temper to +4 with silver, a reroll, salvage, a gem, an awakening), Idris's shop, the card's Chronicle side, a finished page's banner and the Party screen's page bonus; the M2 and M3 carry-over profiles. |
 | e2e-battle | **18/18** scenarios, including Kharzul through three phases with Cinderfang and the Carapace pried loose, and the Ashen Warden with the Aegis and the Crown snapped off. |
@@ -77,7 +77,24 @@ curve; glass scorpions wear no armour type. Details in `notes/P4-foes.md` and `d
 
 ### 2.3 Review
 
-An independent review of the whole M4 source diff is in progress; its findings and their fixes are recorded here when it reports.
+An independent review read the whole M4 source diff (about 11k lines) with proof scripts: every M2
+fixture as `AETH1`, `AETH2` and `AETH3`; a 20,000-operation forge fuzz (no duplicated or lost gems or
+materials, nothing salvaged that should not be, no change on a refusal); the Chronicle and deeds through
+`resolveBattle`; every new `innerHTML` sink; the new screens at 360 and 320 px with touch. It found:
+
+| # | Severity | Finding | Fix |
+|---|---|---|---|
+| 1 | Blocker | A relic reforged from shattered was never Claimed, so its Codex page could never finish (and its holder carried only Echoes). Likely in M4: a Champion's pieces shatter when it dies first. | `reforge` Claims the relic and records a page it finishes; the rite Claims; `toV3` Claims a whole relic in the bag that M2 or M3 left unclaimed. |
+| 2 | Should-fix | Ten awakening branches (Hearthbrand's Keepflame, Cinderfang's Glassline among them) were closed to every party: only heroes who cannot carry those relics walk those paths, and the forge sent the player to them. | A branch that no hero able to carry the relic walks opens for its bearer; the advice names only heroes who can carry it. `canUse` moves to a leaf module, `rules/gear.js`. |
+| 3 | Minor | Malformed M4 item fields in a pasted code (temper, rerolls, the Chronicle) passed the check, then threw or corrupted the save. | `saveProblems` checks them; the forge and the Chronicle guard their reads. |
+| 4 | Minor | The world HUD ignored the pages' bonus ("105 of 100 HP"). | `heroStats` in `ui/world/hud.js`. |
+| 5 | Minor | Two Grudges settled in one fight were reported and stamped under the last name only. | Both are recorded; each foe's own drops carry its own name. |
+| 6 | Minor | A Twinned foe's twin paid forge spoils. | Foes that drop nothing pay nothing. |
+
+Earlier integration fixes: the pre-fight card names a Champion's Brand; a Champion's armour reads "Worn
+by"; hero sprites show forged gear (the hero art's cache ignored temper, gems and stage); foes carry an
+uncapped look tier (Tamsin's kindled kit, beasts re-gearing with the Waking); a Grudge never Twins a
+named holder. Each fix has a test that fails without it; the suite is **276/276**.
 
 ## 3. Known issues, most important first
 
@@ -90,7 +107,10 @@ An independent review of the whole M4 source diff is in progress; its findings a
    Champion at half damage; they make up most of the Sunscorch's retry losses. It only affects Auto.
 4. **Named holders can still be Twinned by the Waking** (as in M3; a Grudge no longer does it). The twin
    carries no relic and drops nothing.
-5. The stretch items above.
+5. **Relics Nos. 1-12 wake late.** Their deeds are Act II ones (Untouched, Fifty Felled, Grudge Settled,
+   Rout) so they do not Kindle in their first fight and change M3's curve; Hearthbrand's are Untouched,
+   Grudge Settled and Fifty Felled.
+6. The stretch items above.
 
 ## 4. Reproduce
 
