@@ -23,7 +23,7 @@ import { FOES } from '../data/foes.js';
 import { TUNING } from '../data/tuning.js';
 import { SLOTS } from '../data/items.js';
 import { createBattle, outcome } from './battle.js';
-import { escalateSpawn, addOmens, buildFoe } from './foe.js';
+import { escalateSpawn, addOmens, buildFoe, familyOf } from './foe.js';
 import { deriveHero } from './stats.js';
 import { grantXp } from './progression.js';
 import { generateItem, relicItem, routSpoils } from './loot.js';
@@ -286,7 +286,10 @@ function recordGrudge(g, battle, fled) {
   // A capped number of Grudge Omens (so a loss is never a wall), never one it already had.
   const cap = TUNING.wipe.grudgeOmens[foe.tier === 'champion' ? 'champion' : 'other'];
   const pool = [...new Set([...foe.omens, ...prev.omens])];
-  const omens = prev.omens.length >= cap ? prev.omens : [...prev.omens, ...addOmens(pool, 1, `${key}:${wins + flees}:${g.seed}`, foe.tier, { unique: !!FOES[foe.family]?.unique }).slice(pool.length)];
+  // a unique foe, or a named holder with a relic in hand (Rasa, Gnash, Mags...), is never Twinned by a
+  // Grudge: two of them would be two holders, and a loss would snowball (M4; the Waking's picks are unchanged)
+  const unique = !!familyOf(foe).unique || (foe.held || []).length > 0;
+  const omens = prev.omens.length >= cap ? prev.omens : [...prev.omens, ...addOmens(pool, 1, `${key}:${wins + flees}:${g.seed}`, foe.tier, { unique }).slice(pool.length)];
   const baseName = foe.name.replace(/ the (Party-Breaker|Twice-Victor|Thrice-Victor|Unbeaten|Once-Fled|Twice-Fled|Thrice-Fled|Ever-Fled)$/, '');
   const grudge = { ...prev, wins, flees, title, omens, name: `${baseName} ${title}` };
   g.progress.flags.grudges[key] = grudge;

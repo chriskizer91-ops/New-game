@@ -475,3 +475,16 @@ test('a foe\'s look has its own tier: Tamsin\'s kindled kit at 4, beasts re-gear
   assert.equal(wyrm.artTier, beast.gearTier, 'but they look the part of the Waking');
   assert.ok(wyrm.artTier >= 2);
 });
+
+test('a Grudge never Twins a named holder with a relic in hand (only the Twinned Omen left: none is added)', async () => {
+  const { OMENS, OMEN_IDS } = await import('../src/data/omens.js');
+  const g0 = newGame({ seed: 18 });
+  const { game, battle } = startBattle(g0, { nodeId: 'sr-toll' });
+  const b = structuredClone(battle);
+  const rasa = Object.values(b.units).find(u => u.side === 'foe' && (u.held || []).length);
+  assert.ok(rasa, 'Rasa holds her relic');
+  rasa.omens = OMEN_IDS.filter(o => o !== 'twinned' && !OMENS[o].notFor?.includes(rasa.tier));
+  const { report } = resolveBattle(game, ended(b, 'defeat'));
+  assert.ok(report.grudge, 'a Grudge is born');
+  assert.ok(!report.grudge.omens.includes('twinned'), `no Twinned Omen (${report.grudge.omens.join(', ')})`);
+});
