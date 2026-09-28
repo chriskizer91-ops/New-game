@@ -222,9 +222,10 @@ export const ENCOUNTERS = deepFreeze({
     text: 'One coal, still green, in a hollow of the roots. It remembers being fire.',
   },
   // ---- M4: the Sunscorch Wastes (spec §2.5, §3.3; owner P4). Levels are Waking-0 levels, and a player
-  // arrives at Waking 2 at the earliest (both Verdant Brands open the Keep's south-east gate), so the
-  // Waking adds 12 levels to everything but rabble (+4) on arrival and 18 (+6) after the first Sunscorch
-  // Brand. They are low on purpose: tuned in Gate 4 with tools/sim.mjs (docs/RULES.md §12, M4).
+  // arrives at Waking 2 at the earliest (both Verdant Brands open the Keep's south-east gate). Every foe
+  // that is not rabble is a SUN spawn (4 levels per Waking: +8 on arrival, +12 after the first Sunscorch
+  // Brand); rabble climb the usual 2. Tuned in Gate 4 with tools/sim.mjs (docs/RULES.md §12, M4); a base
+  // level also picks the spawn's Omens, so a change of one level can change the fight.
   waystone: {
     id: 'waystone', type: 'hearthfire', name: 'The Waystone Fire', place: 'The Sunward Road', backdrop: 'sun-road', region: 'sunscorch',
     text: 'A fire-bowl on a standing stone where the green gives out and the sand begins.',

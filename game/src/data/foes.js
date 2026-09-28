@@ -1,4 +1,4 @@
-// Foe families of the Verdant Wilds slice. Art keys match the shared vocabulary.
+// Foe families of the Verdant Wilds (M2, M3) and the Sunscorch Wastes (M4). Art keys match the shared vocabulary.
 //
 // Stats are for level 1; rules/foe.js scales them by level, gear tier, Omens and the Waking.
 // Each family has a MOVE TABLE read like a D&D random table: the foe rolls its intent die
@@ -579,7 +579,7 @@ const SUNSCORCH = {
   // Champions (spec §3.5). Each piece is a held relic with its own grip meter; prying one loose shuts its moves down.
   kharzul: {
     id: 'kharzul', name: 'Kharzul the Glass Scorpion', art: 'kharzul', tier: 'champion', kind: 'beast', unique: true,
-    hp: 205, guard: 16, atk: 7, dmg: 4, speed: 11, armor: 'chitin', aspect: 'stone',
+    hp: 200, guard: 19, atk: 7, dmg: 3, speed: 11, armor: 'chitin', aspect: 'stone',
     saves: { STR: 4, DEX: 2, CON: 4, WIS: 2 },
     relics: ['cinderfang', 'glass-carapace'],
     noFlee: true,
@@ -601,12 +601,12 @@ const SUNSCORCH = {
   },
   'ashen-warden': {
     id: 'ashen-warden', name: 'The Ashen Warden', art: 'ashen-warden', tier: 'champion', kind: 'undead', unique: true,
-    hp: 185, guard: 15, atk: 6, dmg: 3, speed: 9, armor: 'plate', aspect: 'ember', weak: ['radiant'],
+    hp: 152, guard: 17, atk: 8, dmg: 5, speed: 9, armor: 'plate', aspect: 'ember', weak: ['radiant'],
     saves: { STR: 4, DEX: 1, CON: 4, WIS: 3 },
     relics: ['ashen-aegis', 'cinder-crown'],
     noFlee: true,
     moves: {
-      'ash-blade': { name: 'Ash Blade', target: 'enemy', text: 'Scorchgate\'s last sword, still hot from the last fire.', effects: [atk('2d8', 'slash', { aspect: 'ember' })] },
+      'ash-blade': { name: 'Ash Blade', target: 'enemy', text: 'Scorchgate\'s last sword, still hot from the last fire.', effects: [atk('2d10', 'slash', { aspect: 'ember' })] },
       'ember-sweep': { name: 'Ember Sweep', target: 'all-enemies', text: 'One wide, burning cut across the whole line.', effects: [atk('1d8', 'slash', { aspect: 'ember' })] },
       'ward-of-ash': { name: 'Ward of Ash', target: 'self', requires: 'ashen-aegis', fallback: 'ash-blade', text: 'The Aegis comes up and the ash settles on it. The next blow sinks into the ash (Warded).', effects: [status('warded', { value: { dice: '2d8', diceEvery: 3 } })] },
       'call-the-watch': { name: 'Call the Watch', target: 'self', text: 'It strikes the floor with the Aegis rim, and a wight climbs out of the ash to stand beside it.', effects: [{ type: 'summon', family: 'ash-wight', count: 1, max: 2, levelDelta: -4 }] },

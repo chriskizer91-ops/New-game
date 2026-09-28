@@ -163,6 +163,43 @@ relic-bearer 48, champion 110), gold likewise (3/8/25/60), each Omen +20%.
   Shot frightens, Showboat hastes her, Parry guards, and her lent counter-starter's Art is 8-11
   on her d12 (Kindled Cut, Still Point or Cairn Swing). Not Like This heals her once she is low.
 
+**M4 foes** (the Sunscorch Wastes; a player arrives at Waking 2, both Verdant Brands having opened the
+Keep's south-east gate):
+- **The Sunscorch Waking.** Every Sunscorch spawn that is not rabble climbs **4 levels per Waking**
+  (`wakeLevels: 4`, the `SUN` spawns in `data/encounters.js`), not 6: +8 on arrival, +12 once the
+  region's first Brand is taken. The party gains about four levels between the two Brands, so the second
+  Champion is as fair as the first in either order; at +6 the second half of the region would have needed
+  Waking-0 levels below 1. Rabble climb the usual 2, and Omens and gear tiers still come with every Waking.
+- Rabble: sand-skink (ember, fast, Sun-Spit Burns, skitters off under half HP), scavenger (humanoid,
+  Salvage Net Roots, scarpers). Zone patrols are rabble only, as in M3.
+- Veterans: dune-raider (storm; *Sand in the Eyes* is the blinding: DEX save or Frightened, which
+  Alondra's Blind Sight shrugs off; Dune Charge Staggers; War-Cry Hastes the pack), glass-scorpion (stone;
+  *Glass Sting* pierces and Bleeds; *Carapace* Guards), mirage-wisp (frost; Cold Touch Chills, *Blink*
+  evades as Guarding, *Beguile* charms as a WIS save or Rooted), ash-wight (ember undead in old
+  Scorchgate kit, weak to radiant; *Cinder Grasp* drains and heals, *Ember Breath* Burns).
+- Relic-Bearers: the Sand Wyrm (stone, chitin; *Swallow* charges, then spits you out Staggered and
+  Rooted; *Scale-Grind* needs Wyrmscale), and the named holders, each with its Art on the d12's 9-12:
+  Rasa (Dune-Step, Sandwalkers), Gnash (Dunefall, Dunebreaker), the Wisp-Queen (Hall of Mirrors, the
+  Mirage Glass), the Ash-Captain (the Keyless Turn, the Scorchgate Key), Foreman Brask (Noon Flare, the
+  Sunstone Lantern) and Vell Saltglass (Singing Shot, Saltglass). The Glass Matriarch is a Relic-Bearer
+  with no relic (Shell Rain, Moult); the Quartermaster is a veteran who Wards the caravan.
+- **Kharzul the Glass Scorpion** (Champion, stone, chitin): *The Glass Wakes* (Tail Lash, Glass Sting,
+  **Glasscutter**: charging, a cut at every hero that Burns, needs Cinderfang, else Tail Lash); at 66%
+  *It Burrows* (Burrow: a charging strike from under the floor for 3d8 that Staggers, after which it lies
+  half-buried, Guarding; **Carapace Brace** needs the Glass Carapace: Guarding and Warded); at 33% *Glass
+  Storm* (Glass Rain: 2d6 piercing to all, DEX save for half, Bleeding; **Molten Tail** needs Cinderfang,
+  else Glass Sting). Cinderfang is held in the tail and the Carapace worn, each with its own grip meter.
+- **The Ashen Warden** (Champion, ember undead, plate, weak to radiant): *The Warden Stands* (Ash Blade,
+  Ember Sweep, **Ward of Ash** needs the Aegis: it Wards itself against the next blows); at 66% *The Ash
+  Rises* (Call the Watch: an ash-wight out of the ash, at most two; **Command of Cinders** needs the Cinder
+  Crown: every foe Hasted); at 33% *The Last Watch* (Scorch the Vault: charging, 3d8 ember to all, DEX for
+  half, Burning; **the Watch Unbroken** needs the Crown: 1d6 ember to all and the Warden heals).
+- **Tamsin at Scorchgate**: the M3 kit (her lent counter-starter's Art on 8-11) at party level + 4, the
+  art's kindled gear tier, and the Swift Omen.
+- What the engine has no status for is built from the nearest one: blinding is Frightened, a charm is
+  Rooted, being swallowed is Staggered and Rooted, burrowing is a charge followed by Guarding, "every foe
+  acts twice this round" is Hasted, and "the party's first hit each round is absorbed" is Warded.
+
 **Omens** (stack on elites; the Waking and Grudges add them): emberblooded (hits Burn, resists
 ember), thornskinned (reflects 25% of melee damage), twinned (splits in two at half HP; never on
 Champions), frenzied (acts twice as often under 25%), ironclad (+2 Guard, grip ×1.5), swift
@@ -185,6 +222,12 @@ A holder shows a grip meter per relic: `max = relic grip × (1 + 0.1(L−1))` (�
   item of the same kind), still with a grip meter.
 - A **lent** relic (M3: Tamsin's counter-starter) can be disarmed like any other, but it is never
   claimed and never shatters: it goes home with its owner.
+- **M4 Champions** hold two pieces each (Kharzul: Cinderfang 44 and the Glass Carapace 40; the Ashen
+  Warden: the Ashen Aegis 30 and the Cinder Crown 28, base grip before the level scaling). A disarm names
+  the Arts it ends ("Cinderfang clatters loose! Kharzul loses Glasscutter and Molten Tail."), a charging
+  Art whose piece comes loose fizzles (the intent is re-rolled), and a Champion keeps its d20. The
+  autoplay pries both pieces loose in every fight it wins (sim: Cinderfang by round 2-3, the Carapace
+  by round 5).
 
 ## 7. Legend Surge
 
@@ -197,6 +240,29 @@ Stillwater (4d8 frost + Frozen), Cairnfall (4d10 crush, 4d6 grip, Stagger), Clea
 The Rot Remembers, Crown of Briars, Bleeding Thorn, and minor powers on Storied items (Seal of
 the Keep, Final Tally, one per aspect for generated Storied gear). A hero with no powered item
 fires **Heroic Strike** (an auto-crit weapon blow).
+
+**M4 relics (Codex Nos. 25-38)** each carry a signature Surge: Sandstride (Sandwalkers: every ally
+Hasted, Rooted shaken off), The Hour Turns (the Orrery: every ally Hasted, every foe's next two moves
+shown), Wyrm's Shoulder (Wyrmscale: 3d8 crushing, 3d6 grip, Stagger), High Noon (the Sunstone Lantern:
+2d6 ember to all foes and Exposed), Mirror-Shell (the Glass Carapace: every ally Warded 2d8, Burning and
+Bleeding washed off), Break the Dune (Dunebreaker: 2d10 crushing and 2d6 grip to every foe, Stagger),
+**Glasscutter** (Cinderfang, the design brief's No. 031: a weapon attack against every foe, each hit
+Burns), A Thousand Mirrors (the Mirage Glass: 2d6 frost to all, WIS save, Frightened), The Cistern
+Opens (Qasim's Signet: every ally heals 2d8, Burning washed away), Sunbeat (the Sunstone Heart: every
+ally heals 2d8 and Regenerates), The Last Door (the Scorchgate Key: every foe Staggers and is Exposed),
+Ward of Ash (the Ashen Aegis: every ally Warded 3d8), Command of Cinders (the Cinder Crown: every ally
+Hasted and +15 Surge) and The Glass Sings (Saltglass: an auto-crit shot that Staggers).
+
+**Deeds, sockets and awakening (M4 data; rules in `rules/forge.js` and `rules/codex.js`).** Every relic
+names three deeds (`data/deeds.js`), gem `sockets` (0-2: the starters and the Champions' pieces 2, the
+Scorchgate Key 0, the rest 1) and two awakened branches: **a, the Hand** (a physical, combat, survival or
+beastmastery bearer) and **b, the Heart** (the other Domains). A branch adds its `stats` on top of the
+relic's and may lay a new `power` over its Surge (the id becomes `<relic>:<branch>`). The starters,
+Cinderfang (Sunmarrow: the fire spreads to every foe, hit or miss / Glassline: +4 speed, +1 to hit and a
+Glasscutter at +5) and the Champions' pieces have their own names; the rest read "the Quick Hand", "the
+Counting Heart". The relics of the M2 road and the first Brand (Nos. 1-12) wake in Act II: their deeds
+come from Untouched (Waking 2+), Fifty Felled, Grudge Settled and Rout, so their Kindled bonus (+1 hit,
++1 Guard or +5 HP) does not soften the Verdant it was tuned without (§12).
 
 ## 8. Heroes and growth
 
@@ -347,7 +413,8 @@ is a yield and is not retried. `--modes`, `--seed N` (replay one seed) and `--tr
 help when tuning. "wipe 1st" is the chance the first attempt ends in a party wipe; "hp left" is the
 party's HP after a won first attempt.
 
-**M3 targets vs results (200 seeds, starters rotated; spec §7, §3.5):**
+**M3 targets vs results (200 seeds, starters rotated; spec §7, §3.5):** the tables below are the M3 release. Under M4's rules (Kindled
+relics) the same modes still meet these targets; their current numbers are in the M4 part at the end.
 
 | target | result |
 |---|---|
@@ -367,7 +434,7 @@ party's HP after a won first attempt.
   Omen. Gorrow 4 with level-5 boglurchers. Oda 4, a feral druid 3, a briarling 6.
 - A unique foe never draws the Twinned Omen (a twinned Gorrow with Frenzied was a wipe spiral).
 
-Aethermoor balance sim (M3): 200 seeds, starter mix
+Aethermoor balance sim (M3 release tables): 200 seeds, starter mix
 
 ### m2: Waking 0, the M2 road, equips drops (a wipe grinds a level)
 
@@ -482,4 +549,136 @@ random/worn-gear drops by rarity: worn 180, wrought 274, tempered 408, runed 432
 runs cleared 800/800 (stuck 0); end party level 9.6; grind fights/run 1.1
 hero attack rolls: hit 63%, graze 13%, crit 7%, miss 13%, fumble 4%
 random/worn-gear drops by rarity: worn 769, wrought 1988, tempered 896, runed 280, storied 304; named relics dropped: 0
+
+
+### M4: the Sunscorch Wastes (Gate 4, M4 spec §8)
+
+`node tools/sim.mjs --seeds 200 --modes sunscorch,sunscorch-forged,sun-first-lead` (add `--leads wyrm,aqueduct`
+to run only some leads). Each mode starts from the end state of a `direct` run: the party that has just beaten
+the Rotwarden, at Waking 2 with Act I done (party level 11.8 on average).
+- `sunscorch`: home to the Eternal Hearth, then `SUN_PATH` in order with one zone patrol per zone map walked
+  through and a rest at each Hearthfire passed. After the Brand of Glass (Waking 3) the party walks back up
+  the Deep Shaft and the Dust Trail (a patrol each) and rests at the Spire Hearth before the Glass Flats, and
+  it climbs back out to the Last Watchfire before the Ashen Warden, as M3's route rests at the Last Green
+  Coal before the Rotwarden.
+- `sunscorch-forged`: the same party with every hero's weapon tempered to +4 and one gem each (a Dusthaven
+  Sunstone in the weapon when it has a socket, else in the first socketed piece they wear: 784 of 800).
+- `sun-first-lead`: each lead's lair (`SUN_LEADS`) as the first thing after Sandspire, at Waking 2.
+
+**M4 targets vs results (200 seeds, starters rotated):**
+
+| target | result |
+|---|---|
+| `sunscorch`: Kharzul first-try wipe 30-40% | 36% (party level 14.5; 18.8 rounds) |
+| `sunscorch`: the Ashen Warden first-try wipe 30-40% | 35% (party level 19.5; 19.4 rounds) |
+| `sunscorch`: Tamsin at Scorchgate first-try party win 55-70% | 65% (36% yield) |
+| `sunscorch-forged`: both Champions <= 20% | Kharzul 18%, the Ashen Warden 13% |
+| `sun-first-lead`: each lead's lair taken first 15-25% | the caravan 20%, the Sand Wyrm 19%, Gnash 16%, the Wisp-Queen 18%, the Aqueduct 19% |
+| zero stuck runs | 0 in every mode (M3's and M4's) |
+| the M3 modes stay on their M3 targets | m2 13% / 1% / 33% (identical to M3); direct Tamsin 65% win, Rotwarden 33%; leads2 1%; looper-w2 8%; first-lead 20% / 28% / 23% / 20% (the Mire Shrine was 27% in M3) |
+
+**What the tuning settled:**
+- The Sunscorch's non-rabble spawns climb 4 levels per Waking (§5); Waking-0 levels are 3-7 (Kharzul 6: level
+  14 on arrival; the Ashen Warden 7: level 19 after the Brand of Glass). A base level also picks the spawn's
+  Omens, so each lair's level was chosen with its Omens in view (Kharzul: Swift and Thornskinned; the Warden
+  after the first Brand: Frenzied, Ironclad and Swift; the Aqueduct's scorpions carry no Twinned).
+- Champions: Kharzul 200 HP, Guard 19, atk 7, Tail Lash 2d10, Cinderfang grip 44 and the Carapace 40; the
+  Ashen Warden 152 HP, Guard 17, atk 8, dmg 5, Ash Blade 2d10 (a shorter, harder-hitting fight: at 22 rounds
+  a party whose weapons its aspect halves could not win it even eight levels up). Higher Guard makes the
+  forge's +4 to hit count, which is what separates the forged party.
+- W3 humanoid packs (gear tier 3, three Omens) proved the heaviest: dune-raiders are 22 HP / atk 3, ash-wights
+  18 HP / atk 2 with 1d6 weapons at every gear tier, and Stand Watch left their table.
+- The glass scorpions wear no armour type (their defence is Guard 16 and the Carapace): with chitin, a party
+  whose weapons were storm or ember and piercing did 0.375x and spiralled into stuck runs at the Aqueduct.
+- Tamsin at Scorchgate carries the Swift Omen on top of the spec's spawn line (party + 4): without it the
+  party won 90% of the time.
+- **Kindled relics and the Verdant.** With every deed reachable at once (a relic Kindles on its first won
+  fight), the M3 modes drifted out of their targets (m2 Briarmaw 15%, direct Rotwarden 23%, three first-lead
+  lairs at 12-14%). With no deeds at all they reproduce M3 exactly; so the relics of the M2 road and the
+  first Brand (Nos. 1-12) take their deeds from Untouched, Fifty Felled, Grudge Settled and Rout, and wake
+  in Act II.
+- A player who takes Scorchgate first meets the Ashen Warden at Waking 2 (level 15) and Kharzul at Waking 3
+  (level 18): the +4 Waking keeps both orders within a couple of levels of the party.
+
+### sunscorch: from the direct run's end (Waking 2), home to the Keep, then SUN_PATH
+
+| node | foes | lvl | win 1st | rounds | hp left | wipe 1st | yield | wipes | claimed | shattered | stuck |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| patrol:sun-road | (zone patrol) | 11.8 | 100% | 4.1 | 78% | 1% |  | 1 |  |  |  |
+| sr-toll | dune-raider+dune-raider+dune-raider | 11.9 | 97% | 9.2 | 68% | 3% |  | 7 | 200 |  |  |
+| patrol:dust-trail | (zone patrol) | 12.8 | 100% | 3.6 | 79% | 0% |  | 0 |  |  |  |
+| dt-scorpions | glass-scorpion+glass-scorpion | 13.0 | 100% | 5.5 | 78% | 1% |  | 1 |  |  |  |
+| patrol:deep-shaft | (zone patrol) | 13.4 | 100% | 4.2 | 81% | 0% |  | 0 |  |  |  |
+| ds-crew | tallyman+smuggler+smuggler | 13.6 | 100% | 10.6 | 67% | 1% |  | 2 | 200 |  |  |
+| kharzul-heart | kharzul | 14.5 | 65% | 18.8 | 52% | 36% |  | 178 | 400 |  |  |
+| patrol:deep-shaft@back | (zone patrol, 2% routed) | 16.4 | 99% | 5.6 | 64% | 2% |  | 3 |  |  |  |
+| patrol:dust-trail@back | (zone patrol, 11% routed) | 16.6 | 97% | 4.6 | 64% | 4% |  | 7 |  |  |  |
+| patrol:glass-flats | (zone patrol, 4% routed) | 16.8 | 100% | 4.2 | 73% | 0% |  | 0 |  |  |  |
+| gf-raiders | dune-raider+dune-raider+dune-raider | 16.9 | 90% | 6.7 | 58% | 10% |  | 21 |  |  |  |
+| patrol:scorchgate | (zone patrol, 1% routed) | 17.6 | 99% | 5.4 | 69% | 2% |  | 3 |  |  |  |
+| sg-captain | ash-wight+ash-wight+ash-wight | 17.7 | 99% | 9.8 | 68% | 2% |  | 4 | 200 |  |  |
+| tamsin-scorchgate | tamsin | 18.6 | 65% | 13.8 | 55% | 0% | 36% | 0 |  |  |  |
+| vault-guard | ash-wight+ash-wight+ash-wight | 19.0 | 84% | 7.6 | 65% | 16% |  | 32 |  |  |  |
+| ashen-warden | ashen-warden | 19.5 | 66% | 19.4 | 47% | 35% |  | 143 | 400 |  |  |
+
+runs cleared 200/200 (stuck 0); end party level 21.3; grind fights/run 8.6
+
+hero attack rolls: hit 61%, graze 13%, crit 10%, miss 13%, fumble 3%
+
+random/worn-gear drops by rarity: worn 364, wrought 641, tempered 2116, runed 3104, storied 1474; named relics dropped: 0
+
+party level entering the Sunscorch: 11.8
+
+### sunscorch-forged: the same party with weapons tempered to +4 and one gem each
+
+| node | foes | lvl | win 1st | rounds | hp left | wipe 1st | yield | wipes | claimed | shattered | stuck |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| patrol:sun-road | (zone patrol) | 11.8 | 100% | 3.0 | 82% | 0% |  | 0 |  |  |  |
+| sr-toll | dune-raider+dune-raider+dune-raider | 11.9 | 100% | 7.4 | 69% | 0% |  | 0 | 200 |  |  |
+| patrol:dust-trail | (zone patrol) | 12.8 | 100% | 2.7 | 83% | 0% |  | 0 |  |  |  |
+| dt-scorpions | glass-scorpion+glass-scorpion | 13.0 | 100% | 4.5 | 80% | 0% |  | 0 |  |  |  |
+| patrol:deep-shaft | (zone patrol) | 13.4 | 100% | 3.3 | 84% | 0% |  | 0 |  |  |  |
+| ds-crew | tallyman+smuggler+smuggler | 13.6 | 100% | 8.8 | 68% | 0% |  | 0 | 200 |  |  |
+| kharzul-heart | kharzul | 14.5 | 83% | 15.1 | 52% | 18% |  | 56 | 400 |  |  |
+| patrol:deep-shaft@back | (zone patrol) | 15.8 | 99% | 4.4 | 65% | 2% |  | 3 |  |  |  |
+| patrol:dust-trail@back | (zone patrol, 1% routed) | 16.0 | 99% | 3.7 | 65% | 2% |  | 3 |  |  |  |
+| patrol:glass-flats | (zone patrol) | 16.2 | 100% | 3.7 | 75% | 0% |  | 0 |  |  |  |
+| gf-raiders | dune-raider+dune-raider+dune-raider | 16.4 | 98% | 5.3 | 63% | 2% |  | 4 |  |  |  |
+| patrol:scorchgate | (zone patrol) | 17.0 | 100% | 4.6 | 72% | 1% |  | 1 |  |  |  |
+| sg-captain | ash-wight+ash-wight+ash-wight | 17.2 | 100% | 9.2 | 68% | 0% |  | 0 | 200 |  |  |
+| tamsin-scorchgate | tamsin | 18.0 | 87% | 11.7 | 61% | 0% | 14% | 0 |  |  |  |
+| vault-guard | ash-wight+ash-wight+ash-wight | 18.5 | 96% | 6.5 | 67% | 5% |  | 9 |  |  |  |
+| ashen-warden | ashen-warden | 19.0 | 88% | 17.0 | 56% | 13% |  | 41 | 400 |  |  |
+
+runs cleared 200/200 (stuck 0); end party level 20.4; grind fights/run 2.4
+
+hero attack rolls: hit 75%, graze 9%, crit 8%, miss 5%, fumble 3%
+
+random/worn-gear drops by rarity: worn 248, wrought 524, tempered 1627, runed 2625, storied 1294; named relics dropped: 0
+
+party level entering the Sunscorch: 11.8
+
+forged: 800 heroes' weapons at +4; 784 gems set (485 in the weapon)
+
+### sun-first-lead: each Sunscorch lead's lair taken first, right after Sandspire (Waking 2)
+
+| node | foes | lvl | win 1st | rounds | hp left | wipe 1st | yield | wipes | claimed | shattered | stuck |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| patrol:sun-road | (zone patrol) | 11.8 | 100% | 4.1 | 78% | 0% |  | 2 |  |  |  |
+| sr-toll | dune-raider+dune-raider+dune-raider | 11.9 | 98% | 9.2 | 68% | 2% |  | 27 | 1000 |  |  |
+| patrol:glass-flats | (zone patrol) | 12.8 | 100% | 3.9 | 72% | 0% |  | 2 |  |  |  |
+| gf-caravan | tallyman+smuggler+smuggler | 13.0 | 80% | 13.7 | 65% | 20% |  | 52 | 200 |  |  |
+| patrol:dust-trail | (zone patrol) | 12.8 | 100% | 3.6 | 78% | 0% |  | 0 |  |  |  |
+| wyrm-lair | sand-wyrm | 13.0 | 82% | 14.6 | 55% | 19% |  | 84 | 200 |  |  |
+| gnash-camp | dune-raider+dune-raider+dune-raider | 13.0 | 84% | 12.4 | 67% | 16% |  | 38 | 200 |  |  |
+| wisp-queen | mirage-wisp+mirage-wisp+mirage-wisp | 13.0 | 82% | 11.6 | 63% | 18% |  | 54 | 200 |  |  |
+| dt-aqueduct | glass-scorpion+glass-scorpion+glass-scorpion | 13.0 | 81% | 8.9 | 53% | 19% |  | 79 |  |  |  |
+
+runs cleared 1000/1000 (stuck 0); end party level 14.1; grind fights/run 1.1
+
+hero attack rolls: hit 63%, graze 13%, crit 7%, miss 13%, fumble 4%
+
+random/worn-gear drops by rarity: worn 536, wrought 1056, tempered 4072, runed 2202, storied 806; named relics dropped: 0
+
+party level entering the Sunscorch: 11.8
 
