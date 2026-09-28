@@ -5,7 +5,9 @@ import assert from 'node:assert/strict';
 import { newGame } from '../src/rules/gauntlet.js';
 import { migrate } from '../src/rules/migrate.js';
 import { deepFreeze } from '../src/core/freeze.js';
-import { check, condErrors } from '../src/rules/cond.js';
+import { check, condErrors, questState } from '../src/rules/cond.js';
+import { relicItem } from '../src/rules/loot.js';
+import { createRng } from '../src/core/rng.js';
 import { talkTo, dialogueView, enterDialogue, choose, questLog, nextObjective, ladder } from '../src/rules/story.js';
 
 import { readFileSync } from 'node:fs';
@@ -79,4 +81,40 @@ test('dialogue check odds match the rolled distribution (a check with advantage,
   assert.ok(Math.abs(rate('vesper', vesper.i) - vesper.odds.pct) < 3, `Vesper: ${vesper.odds.pct}%`);
   const garret = dialogueView(g, 'garret').choices.find(c => c.odds);
   assert.ok(Math.abs(rate('garret', garret.i) - garret.odds.pct) < 3, `Garret's contest: ${garret.odds.pct}%`);
+});
+
+test('a thank-you is never lost, whoever you meet first (quests used to stick at "ready")', () => {
+  const g0 = fresh();
+  const base = withProgress(g0, { flags: { story: { ...g0.progress.flags.story, 'intro-done': true } } });
+  // Captain Dael, first met after the Brand: the patrol report still pays and sends Corra home
+  let d = withProgress(base, { brands: ['brand-of-briars'], flags: { beaten: { 'hollowed-patrol': 1 } } });
+  assert.equal(talkTo(d, 'dael'), 'dael-brand');
+  d = enterDialogue(d, 'dael-brand').game;
+  assert.equal(talkTo(d, 'dael'), 'dael-report');
+  const gold = d.gold;
+  d = enterDialogue(d, 'dael-report').game;
+  assert.equal(questState(d, 'missing-patrol'), 'done');
+  assert.equal(d.gold, gold + 150);
+  assert.equal(d.progress.flags.story['rangers-home'], true);
+  // Old Garret, first met with the lantern beaten and the signal fire lit
+  let h = withProgress(base, { flags: { beaten: { 'mw-lantern': 1 }, kindled: { ...base.progress.flags.kindled, 'mosswatch-fire': true } } });
+  assert.equal(talkTo(h, 'garret'), 'garret-thanks');
+  h = enterDialogue(h, 'garret-thanks').game;
+  assert.equal(questState(h, 'lights-at-midnight'), 'done');
+  // the council, reached without ever talking to Dael or Miravel, still closes the main quest
+  let c = withProgress(base, { brands: ['brand-of-briars', 'brand-of-the-heartroot'], flags: { done: { 'keep-vault': true }, story: { ...base.progress.flags.story, 'act1-complete': true } } });
+  assert.equal(questState(c, 'hearth-gutters'), 'active');
+  assert.equal(nextObjective(c).entity, 'isolde', 'the talk steps are moot once their Brands are earned');
+  c = enterDialogue(c, 'council').game;
+  assert.equal(questState(c, 'hearth-gutters'), 'done');
+  // a claim still needs every step: telling Dael about a patrol you never found pays nothing
+  const early = enterDialogue(withProgress(base, { flags: { story: { ...base.progress.flags.story, 'met-dael': true } } }), 'dael-report').game;
+  assert.notEqual(questState(early, 'missing-patrol'), 'done');
+});
+
+test('Garret\'s contest is for a Kettle you do not have yet', () => {
+  const g = fresh();
+  assert.ok(dialogueView(g, 'garret').choices.some(ch => /Challenge/.test(ch.text)));
+  const owner = { ...g, inventory: [...g.inventory, relicItem('watchkeepers-kettle', createRng(3))] };
+  assert.ok(!dialogueView(owner, 'garret').choices.some(ch => /Challenge/.test(ch.text)), 'no second Kettle a day later');
 });

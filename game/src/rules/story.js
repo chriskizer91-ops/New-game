@@ -208,8 +208,11 @@ function claimInto(g, id, rng, events) {
     apply(g, [{ gold: b.gold }], rng, events);
     return;
   }
-  if (questState(g, id) !== 'ready') return;
-  const r = QUESTS[id].reward || {};
+  // every step done is enough, even if the giver was never met first: the Wilds are open, and a
+  // thank-you must never leave a quest stuck at "ready"
+  const q = QUESTS[id];
+  if (!q || questState(g, id) === 'done' || !q.steps.every(s => check(g, s.done))) return;
+  const r = q.reward || {};
   f.quests[id] = 'claimed';
   apply(g, [
     ...(r.gold ? [{ gold: r.gold }] : []), ...(r.relic ? [{ give: r.relic }] : []),

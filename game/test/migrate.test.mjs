@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { migrate, starterOf } from '../src/rules/migrate.js';
+import { migrate, starterOf, saveProblems } from '../src/rules/migrate.js';
 import { canWalk, present } from '../src/rules/world.js';
 import { spawnsFor, newGame, uniqueBrands } from '../src/rules/gauntlet.js';
 import { v1Anchor, MAP_IDS } from '../src/data/maps/index.js';
@@ -151,4 +151,23 @@ test('every fixture: present() on every map and spawnsFor on every fight', () =>
     for (const id of MAP_IDS) assert.ok(Array.isArray(present(g, id)), `${f} ${id}`);
     for (const id of Object.keys(ENCOUNTERS)) if (ENCOUNTERS[id].type === 'fight') assert.ok(spawnsFor(g, id).length, `${f} ${id}`);
   }
+});
+
+test('a pasted code must have the shape the game walks on: every real save passes, damaged ones name the damage', () => {
+  for (const f of FIX) assert.deepEqual(saveProblems(migrate(load(f))), [], f);
+  const good = migrate(newGame({ name: 'Tess', seed: 5 }));
+  assert.deepEqual(saveProblems(good), []);
+  const broken = fn => { const g = structuredClone(good); fn(g); return saveProblems(g); };
+  // each of these broke Continue or the title when it got through (review, M3)
+  assert.ok(broken(g => { delete g.inventory; }).includes('its items'));
+  assert.ok(broken(g => { g.inventory = {}; }).includes('its items'));
+  assert.ok(broken(g => { delete g.codex; }).includes('its codex'));
+  assert.ok(broken(g => { delete g.progress.flags.grudges; }).includes('its grudges flags'));
+  assert.ok(broken(g => { g.party.active = []; }).includes('its active party'));
+  assert.ok(broken(g => { g.party.active = ['warden', 'nobody']; }).includes('its active party'));
+  assert.ok(broken(g => { g.party.roster.pip.gear = 'none'; }).includes('the hero pip'));
+  assert.ok(broken(g => { g.gold = '12'; }).includes('its gold'));
+  assert.ok(broken(g => { g.progress.pos = { map: 'nowhere', x: 1, y: 1 }; }).includes('where you stand'));
+  assert.ok(broken(g => { g.progress.pos.x = 9999; }).includes('where you stand'));
+  assert.deepEqual(saveProblems(null), ['it is not a save']);
 });

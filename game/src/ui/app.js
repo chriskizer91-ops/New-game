@@ -89,15 +89,17 @@ export function createApp(root, screens, { aliases = {} } = {}) {
       if (!adopted || !game) return false;
       adopted = false;
       const ok = saveGame(game);
-      markMigrated();
+      // only once the v2 save is really written: a failed write (storage full) keeps the M2 save on offer
+      if (ok) markMigrated();
       return ok;
     },
     replaceGame(g, { backup = true } = {}) {
       if (!g) return false;
       if (backup) backupGame();
-      if (hasV1()) markMigrated();
       adopted = false; carry = null; game = g;
-      return saveGame(g);
+      const ok = saveGame(g);
+      if (ok && hasV1()) markMigrated();
+      return ok;
     },
     clearGame() {
       clearSave();

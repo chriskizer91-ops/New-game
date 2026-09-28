@@ -8,6 +8,7 @@ import { exportCode, importCode, exportV1Code, readV1, hasV1, hasBackup, backupG
 import { el, esc, button } from '../lib/dom.js';
 import { screenNav } from '../lib/keys.js';
 import { openCarryCard } from '../lib/carry.js';
+import { saveProblems } from '../../rules/migrate.js';
 
 const SPEEDS = [[1, 'Normal'], [2, 'Fast'], [4, 'Fastest']];
 const TOUCH = [['auto', 'Auto'], ['on', 'On'], ['off', 'Off']];
@@ -114,7 +115,9 @@ export function mount(root, ctx, params = {}) {
     if (!code) { err.textContent = 'Paste a save code first. It starts with AETH1. or AETH2.'; ctx.audio.sfx('error'); return; }
     let g;
     try { g = importCode(code, ctx.migrate); } catch (e) { err.textContent = e.message || 'That code could not be read.'; ctx.audio.sfx('error'); return; }
-    if (!g?.party?.roster?.warden || !g.progress) { err.textContent = 'That code is from a different game or version. Nothing was changed.'; ctx.audio.sfx('error'); return; }
+    // a damaged code never replaces your journey
+    const bad = saveProblems(g);
+    if (bad.length) { err.textContent = `That code is damaged (${bad.slice(0, 3).join(', ')}). Nothing was changed.`; ctx.audio.sfx('error'); return; }
     const m2 = /^AETH1\./.test(code);
     const ok = await openCarryCard(ctx, g, {
       kind: m2 ? 'm2' : 'code',
@@ -147,13 +150,12 @@ export function mount(root, ctx, params = {}) {
     const restore = button('Restore my M2 save', 'btn', async () => {
       let g;
       try { g = ctx.migrate(readV1()); } catch { ctx.toast('The M2 save could not be read.'); ctx.audio.sfx('error'); return; }
-      backupGame(); // the live save is backed up first
       const ok = await openCarryCard(ctx, g, {
         kind: 'm2',
         note: saved() ? `${name(ctx.game)}’s current journey is kept as a backup: Restore previous save brings it back.` : 'Your M2 save itself is never touched.',
       });
-      if (!ok) return;
-      ctx.replaceGame(g, { backup: false });
+      if (!ok) return; // "Not yet" leaves the live save and the backup exactly as they were
+      ctx.replaceGame(g); // backs the live save up first
       ctx.audio.sfx('reveal', { tier: 2 });
       ctx.go('world', { arrive: 'load' });
     });

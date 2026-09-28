@@ -113,3 +113,19 @@ test('no flag is read that is never set', () => {
   const missing = [...read.keys()].filter(f => !set.has(f)).map(f => `${f} (read by ${read.get(f)})`);
   assert.deepEqual(missing, []);
 });
+
+test('a trigger whose scene changes the game is guarded by a flag it sets, never by `once`', () => {
+  // `once` is saved the moment the trigger fires, before the scene's effects are: a reload mid-scene
+  // would lose them for good (the intro, the council). A flag guard lets the scene play again instead.
+  const effects = (id, seen = new Set()) => {
+    const n = DIALOGUE[id];
+    if (!n || seen.has(id)) return false;
+    seen.add(id);
+    return !!n.do?.length || (n.choices || []).some(c => c.do?.length || c.contest || effects(c.next, seen)) || effects(n.next, seen);
+  };
+  for (const m of Object.values(MAPS)) for (const e of m.entities) {
+    if (e.kind !== 'trigger' || !effects(e.dialogue)) continue;
+    assert.ok(!e.once, `${m.id}/${e.id} plays ${e.dialogue}, which changes the game: guard it with a flag instead of once`);
+    assert.ok(e.if, `${m.id}/${e.id} needs a guard so it stops once ${e.dialogue} has done its work`);
+  }
+});

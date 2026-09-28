@@ -233,15 +233,18 @@ export function move(game, walk, dir, { run = false } = {}) {
   return { game: g, walk: tickRoamers(g, w, events), events };
 }
 
-// Soft ichor: every active hero loses pct of max HP per step, never below 1.
+// Soft ichor: every active hero loses pct of max HP per step, never below 1. A fallen hero (0 HP)
+// stays down: the ichor never lifts anyone back to 1.
 function burn(game, pct, events) {
   const g = structuredClone(game);
   const hurt = {};
   for (const id of g.party.active) {
     const h = g.party.roster[id];
     const max = deriveHero(h, g.inventory).maxHp;
-    const hp = Math.max(1, (h.hp ?? max) - Math.max(1, Math.round(max * pct)));
-    if (hp !== h.hp) { hurt[id] = (h.hp ?? max) - hp; g.party.roster[id] = { ...h, hp }; }
+    const cur = h.hp ?? max;
+    if (cur <= 0) continue;
+    const hp = Math.max(1, cur - Math.max(1, Math.round(max * pct)));
+    if (hp !== cur) { hurt[id] = cur - hp; g.party.roster[id] = { ...h, hp }; }
   }
   events.push({ t: 'hazard', pct, hurt });
   return Object.keys(hurt).length ? g : game;

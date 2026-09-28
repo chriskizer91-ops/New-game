@@ -23,7 +23,8 @@
 // And an M2 profile (a v1 save seeded in localStorage):
 //   I. "Continue from the Gauntlet" -> the carry-over card -> Walk on (nothing written) -> the first
 //      step commits v2 and the marker; Settings -> Load a code with test/fixtures/v1/v1-grudges.code.txt
-//      -> the card; Export M2 backup; Restore previous save (a swap); Start over; Restore my M2 save.
+//      -> the card; Export M2 backup; Restore previous save (a swap); Restore my M2 save then "Not yet"
+//      (nothing changes); Start over; Restore my M2 save.
 //      aethermoor.save.v1 stays byte-identical throughout.
 // Fails on any console error, page exception or [audio] warning. The world screen is WP7's: this
 // test drives it only through go() and the window.__world seam, and checks the shell's own screens.
@@ -581,6 +582,16 @@ async function runM2(V) {
   const idOf = raw => { const x = raw && JSON.parse(raw); return x ? `${x.progress.node}/${x.gold}` : null; };
   check(idOf(swapped.v2) === idOf(s.bak) && idOf(swapped.bak) === idOf(s.v2) && idOf(s.v2) !== idOf(s.bak), `${V.name}: restoring the previous save swaps it with the live one (${idOf(swapped.v2)} <-> ${idOf(swapped.bak)})`);
   await v1Same('after Restore previous save');
+  // "Restore my M2 save", then "Not yet": the live save and the backup stay exactly as they were
+  await settings();
+  const kept = await store();
+  await click('button:has-text("Restore my M2 save")');
+  await page.waitForSelector('.carry-card');
+  await click('.carry-no');
+  await page.waitForTimeout(300);
+  const still = await store();
+  check(!!kept.bak && still.v2 === kept.v2 && still.bak === kept.bak, `${V.name}: "Not yet" on "Restore my M2 save" keeps the live save and the backup`);
+  await v1Same('after Restore my M2 save, Not yet');
 
   // Start over keeps v1, and the M2 save does not come back by itself
   await settings();

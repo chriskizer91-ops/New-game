@@ -104,12 +104,12 @@ export const DIALOGUE = deepFreeze({
   },
   'dael-brand': {
     lines: [['dael', 'Briarmaw. So it had a name after all. Here, the Keep\'s bounty, every coin of it.']],
-    do: [{ gold: 300 }, { set: 'paid-briarmaw' }],
+    do: [{ set: 'met-dael' }, { gold: 300 }, { set: 'paid-briarmaw' }],
     choices: DAEL,
   },
   'dael-report': {
     lines: [['dael', 'Corra Thistle, walking and talking. You found them.'], ['dael', 'That\'s the patrol\'s pay. They won\'t miss it; they\'re too busy being alive.']],
-    do: [{ set: 'reported-patrol' }, { claim: 'missing-patrol' }],
+    do: [{ set: 'met-dael' }, { set: 'reported-patrol' }, { claim: 'missing-patrol' }],
     choices: DAEL,
   },
   'dael-home': { lines: [['dael', 'Three went out. Three came home. I\'ll take it.']], choices: DAEL },
@@ -138,7 +138,7 @@ export const DIALOGUE = deepFreeze({
     do: [{ set: 'met-garret' }],
     choices: [
       {
-        text: 'Challenge him for the Kettle.', if: { since: { flag: 'garret-tried', days: 1 } }, do: [{ set: 'garret-tried', value: 'day' }],
+        text: 'Challenge him for the Kettle.', if: { all: [{ since: { flag: 'garret-tried', days: 1 } }, { not: { owns: 'watchkeepers-kettle' } }] }, do: [{ set: 'garret-tried', value: 'day' }],
         contest: { checks: [{ domain: 'knowledge', dc: 12 }, { domain: 'survival', dc: 13 }, { domain: 'influence', dc: 12 }], need: 2, pass: 'garret-won', fail: 'garret-lost' },
       },
       { text: 'Ask about the lights.', next: 'garret-lights' },
@@ -149,11 +149,11 @@ export const DIALOGUE = deepFreeze({
   'garret-won': { lines: [['garret', 'Fine. Fine! Take the Kettle. It hums when weather\'s coming.']], do: [{ give: 'watchkeepers-kettle' }] },
   'garret-thanks': {
     lines: [['garret', 'The fire\'s lit. I saw it from the kitchen and I cried into the porridge. Don\'t tell anyone.'], ['garret', 'Take the Kettle. The tower wants someone to keep watch.']],
-    do: [{ set: 'garret-told' }, { give: 'watchkeepers-kettle' }, { claim: 'lights-at-midnight' }],
+    do: [{ set: 'met-garret' }, { set: 'garret-told' }, { give: 'watchkeepers-kettle' }, { claim: 'lights-at-midnight' }],
   },
   'garret-thanks-gold': {
     lines: [['garret', 'The fire\'s lit. I saw it from the kitchen and I cried into the porridge. Don\'t tell anyone.'], ['garret', 'You\'ve the Kettle already, so have my savings. Don\'t argue.']],
-    do: [{ set: 'garret-told' }, { gold: 150 }, { claim: 'lights-at-midnight' }],
+    do: [{ set: 'met-garret' }, { set: 'garret-told' }, { gold: 150 }, { claim: 'lights-at-midnight' }],
   },
   'notice-garret-lantern': { lines: [['garret', 'My tower\'s lantern! Keep it lit, then. Somebody should.']] },
   'mw-lookout': {

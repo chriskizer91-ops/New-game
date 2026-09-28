@@ -318,3 +318,28 @@ test('sealed exits say whether the next chapter has opened them', () => {
   const done = { ...game, progress: { ...game.progress, flags: { ...game.progress.flags, story: { ...game.progress.flags.story, 'act1-complete': true } } } };
   assert.equal(move(done, at(10, 4, 'e'), 'e').events[0].nextChapter, true);
 });
+
+test('a scene cut short by a reload plays again: the intro and the council are guarded by their own flags', () => {
+  const g = fresh();
+  const scene = (game, id) => enterMap(game, { map: 'keep-hall', at: [12, 6], face: 'n' }).events.some(e => e.t === 'trigger' && e.id === id);
+  // the intro fired, the tab was closed before it finished: the saved game has the visit, not intro-done
+  const first = enterMap(g, { map: 'keep-hall', at: [12, 6], face: 'n' });
+  assert.ok(first.events.some(e => e.t === 'trigger' && e.id === 'keep-intro'));
+  assert.equal(scene(first.game, 'keep-intro'), true, 'the intro plays again');
+  const story = (game, patch) => ({ ...game, progress: { ...game.progress, flags: { ...game.progress.flags, story: { ...game.progress.flags.story, ...patch } } } });
+  assert.equal(scene(story(first.game, { 'intro-done': true }), 'keep-intro'), false, 'and stops once it has done its work');
+  const act1 = story(g, { 'intro-done': true, 'act1-complete': true });
+  const council = enterMap(act1, { map: 'keep-hall', at: [12, 6], face: 'n' });
+  assert.equal(scene(council.game, 'council'), true, 'the council plays again after a reload');
+  assert.equal(scene(story(council.game, { 'council-done': true }), 'council'), false);
+});
+
+test('ichor never lifts a fallen hero back to 1 HP', () => {
+  const game = fresh();
+  const down = { ...game, party: { ...game.party, roster: { ...game.party.roster, pip: { ...game.party.roster.pip, hp: 0 } } } };
+  // (8,6) is ichor on the mini map: step in and out of it three times
+  let g = down, w = at(8, 5);
+  for (let i = 0; i < 6; i++) { const m = move(g, w, i % 2 ? 'n' : 's'); g = m.game; w = m.walk; }
+  assert.equal(g.party.roster.pip.hp, 0, 'Pip stays down');
+  assert.ok(g.party.roster.warden.hp < game.party.roster.warden.hp, 'the others still burn');
+});

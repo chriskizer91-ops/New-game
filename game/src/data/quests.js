@@ -16,9 +16,11 @@ export const QUESTS = deepFreeze({
     id: 'hearth-gutters', name: 'The Hearth Gutters', kind: 'main', giver: 'isolde', start: { flag: 'intro-done' },
     steps: [
       step('Stop Sneck at the vault door.', { done: 'keep-vault' }, 'keep-hall', 'keep-vault'),
-      step('Reach Thornhollow and find Captain Dael.', { flag: 'met-dael' }, 'thornhollow', 'dael'),
+      // a talk step also counts once the Brand it leads to is earned (the Wilds are open: a player can beat
+      // Briarmaw before ever meeting Dael, and the quest must still close at the council)
+      step('Reach Thornhollow and find Captain Dael.', { any: [{ flag: 'met-dael' }, { brand: 'brand-of-briars' }] }, 'thornhollow', 'dael'),
       step('Name the beast on Dael\'s board.', { brand: 'brand-of-briars' }, 'briarmaw-den', 'briarmaw-den'),
-      step('Hear Miravel out about the Rot.', { flag: 'met-miravel-rot' }, 'eldergrove', 'miravel'),
+      step('Hear Miravel out about the Rot.', { any: [{ flag: 'met-miravel-rot' }, { brand: 'brand-of-the-heartroot' }] }, 'eldergrove', 'miravel'),
       step('Go down into the Heartroot.', { brand: 'brand-of-the-heartroot' }, 'heartroot-2', 'rotwarden-heart'),
       step('Come home to the Keep.', { flag: 'council-done' }, 'keep-hall', 'isolde'),
     ],

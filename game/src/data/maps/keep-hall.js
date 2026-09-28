@@ -62,8 +62,9 @@ export default deepFreeze({
     { id: 'pedestal-first-seed', kind: 'pedestal', relic: 'first-seed', at: [14, 12] },
     { id: 'pedestal-vale-gauntlets', kind: 'pedestal', relic: 'vale-gauntlets', at: [15, 12] },
     { id: 'keep-vault-cradle', kind: 'sign', at: [22, 7], text: 'The Seal\'s cradle: old velvet that still holds its shape, and a fresh knife-scratch where Sneck worked it loose.' },
-    { id: 'keep-intro', kind: 'trigger', area: [0, 0, 23, 13], on: 'enter', once: true, if: { not: { flag: 'intro-done' } }, dialogue: 'keep-intro' },
-    { id: 'council', kind: 'trigger', area: [0, 0, 23, 13], on: 'enter', once: true, if: { flag: 'act1-complete' }, dialogue: 'council' },
+    // guarded by the flags their scenes set, not by `once` (a reload mid-scene plays it again)
+    { id: 'keep-intro', kind: 'trigger', area: [0, 0, 23, 13], on: 'enter', if: { not: { flag: 'intro-done' } }, dialogue: 'keep-intro' },
+    { id: 'council', kind: 'trigger', area: [0, 0, 23, 13], on: 'enter', if: { all: [{ flag: 'act1-complete' }, { not: { flag: 'council-done' } }] }, dialogue: 'council' },
   ],
   exits: [
     { id: 'hall-s', area: [12, 13, 12, 13], to: 'keep', anchor: 'from-hall' },

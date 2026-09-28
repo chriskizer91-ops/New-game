@@ -6,7 +6,7 @@
 import { GAUNTLET, ENCOUNTERS } from '../data/encounters.js';
 import { STARTERS } from '../data/heroes.js';
 import { HEARTHS } from '../data/world.js';
-import { v1Anchor } from '../data/maps/index.js';
+import { MAPS, v1Anchor } from '../data/maps/index.js';
 
 const NEW_FLAGS = ['story', 'unlocked', 'opened', 'kindled', 'visits', 'quests', 'scouted', 'seen', 'worn', 'beaten'];
 const V1_STORY = [['met-dael', 'thornhollow'], ['bounty-briarmaw', 'thornhollow']];
@@ -45,4 +45,37 @@ export function migrate(save) {
   p.pos = { map: a.map, x: a.x, y: a.y, face: a.face };
   p.act = 1; v.version = 2; v.migratedFrom = 1;
   return v;                         // cleared, done, grudges, day, runs, waking, brands and node are untouched
+}
+
+// A pasted code is untrusted: before it replaces the journey on this device, check that the migrated
+// save has the shape the game walks on (not its balance). Returns what is wrong, [] when it is sound.
+export function saveProblems(g) {
+  const obj = v => !!v && typeof v === 'object' && !Array.isArray(v);
+  const num = v => typeof v === 'number' && Number.isFinite(v);
+  if (!obj(g)) return ['it is not a save'];
+  const out = [];
+  if (g.version !== 2) out.push('its version');
+  if (!Array.isArray(g.inventory) || !g.inventory.every(it => obj(it) && typeof it.uid === 'string' && typeof it.base === 'string')) out.push('its items');
+  const roster = g.party?.roster, active = g.party?.active;
+  if (!obj(roster) || !obj(roster.warden)) out.push('its party');
+  else {
+    if (!Array.isArray(active) || !active.length || active.length > 4 || !active.every(id => typeof id === 'string' && obj(roster[id]))) out.push('its active party');
+    for (const [id, h] of Object.entries(roster)) {
+      const ok = obj(h) && num(h.level) && obj(h.base) && obj(h.gear) && Object.values(h.gear).every(u => u == null || typeof u === 'string')
+        && (h.domains == null || obj(h.domains)) && (h.hp == null || num(h.hp));
+      if (!ok) out.push(`the hero ${id}`);
+    }
+  }
+  if (!num(g.gold)) out.push('its gold');
+  if (!obj(g.codex)) out.push('its codex');
+  const p = g.progress, f = p?.flags;
+  if (!obj(p) || !obj(f)) out.push('its progress');
+  else {
+    for (const k of ['cleared', 'done', 'grudges', ...NEW_FLAGS]) if (!obj(f[k])) out.push(`its ${k} flags`);
+    if (!Array.isArray(p.brands ?? [])) out.push('its Brands');
+    if (!num(p.waking ?? 0)) out.push('its Waking');
+    const pos = p.pos, map = obj(pos) ? MAPS[pos.map] : null;
+    if (!map || !Number.isInteger(pos.x) || !Number.isInteger(pos.y) || pos.x < 0 || pos.y < 0 || pos.x >= map.w || pos.y >= map.h) out.push('where you stand');
+  }
+  return out;
 }

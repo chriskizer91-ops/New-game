@@ -80,7 +80,7 @@ export default deepFreeze({
     { id: 'snag-wallow', kind: 'encounter', enc: 'snag-wallow', mode: 'lair', at: [22, 34], area: [21, 33, 23, 34], face: 'w' },
     { id: 'tw-thornwall', kind: 'lock', lock: 'thornwall', area: [12, 26, 16, 26] },
     { id: 'bramble-deep', kind: 'encounter', enc: 'bramble-deep', mode: 'block', at: [15, 20], face: 's' },
-    { id: 'tw-boots', kind: 'trigger', area: [14, 19, 18, 22], on: 'step', once: true, dialogue: 'boots-clue' },
+    { id: 'tw-boots', kind: 'trigger', area: [14, 19, 18, 22], on: 'step', if: { not: { flag: 'saw-boots' } }, dialogue: 'boots-clue' },
     { id: 'den-mouth', kind: 'hearthfire', at: [22, 9], stand: [22, 10, 'n'] },
     { id: 'tw-crown-n', kind: 'gate', area: [14, 1, 15, 1], look: 'crownwall', open: { brand: 'brand-of-briars' }, text: 'Briarmaw\'s crown-growth walls the road. A green heart-knot pulses in it.' },
     { id: 'tw-thorn-chest', kind: 'chest', at: [27, 28], loot: { items: [{ rarity: 'tempered', slot: 'body' }] }, lock: 'thornwall' },
