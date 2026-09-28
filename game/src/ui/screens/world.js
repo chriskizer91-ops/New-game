@@ -232,9 +232,11 @@ export function mount(root, ctx, params = {}) {
     const B = view.map;
     if (B) view.camera.snap(actors.leader.px + TILE / 2, actors.leader.py + 4, view.size.w, view.size.h, B.pw, B.ph);
   }
+  const CAM = { x: 0, y: 0, w: 0, h: 0 }; // reused every frame (no allocation in the loop)
   const loop = createLoop((now, dt) => {
     pump(now);
-    let busy = actors.update(now);
+    CAM.x = view.camera.x; CAM.y = view.camera.y; CAM.w = view.size.w; CAM.h = view.size.h;
+    let busy = actors.update(now, CAM);
     const B = view.map;
     // while a conversation covers the bottom of the view, look a little lower so the party stays in sight
     if (B) view.camera.follow(actors.leader.px + TILE / 2, actors.leader.py + 4 + (talking ? view.size.h * 0.22 : 0), dt, view.size.w, view.size.h, B.pw, B.ph, reduced);

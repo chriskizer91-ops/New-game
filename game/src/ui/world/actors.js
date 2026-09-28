@@ -320,10 +320,15 @@ export function createActors({ reduced = false } = {}) {
     partyShown: () => party.filter(a => a.rec.show).length,
     partyTiles: () => party.map(a => [a.x, a.y]),
 
-    update(now) {
+    // cam { x, y, w, h } in art px (optional): a roamer stepping off screen does not keep the loop
+    // at full rate, so a wandering pack elsewhere on the map leaves the idle rate alone
+    update(now, cam = null) {
       busy = false;
-      for (let i = 0; i < party.length; i++) tween(party[i], now);
-      for (let i = 0; i < roamers.length; i++) tween(roamers[i], now);
+      for (let i = 0; i < party.length; i++) if (tween(party[i], now)) busy = true;
+      for (let i = 0; i < roamers.length; i++) {
+        const a = roamers[i];
+        if (tween(a, now) && (!cam || (a.px > cam.x - 2 * TILE && a.px < cam.x + cam.w + TILE && a.py > cam.y - 2 * TILE && a.py < cam.y + cam.h + 2 * TILE))) busy = true;
+      }
       const L = party[0];
       if (L) { leader.px = L.px; leader.py = L.py; }
       // emotes bob slowly enough for the idle rate; only a showoff needs full rate
@@ -450,14 +455,16 @@ export function createActors({ reduced = false } = {}) {
     get busy() { return busy; },
   };
 
+  // returns true while the actor is mid-step
   function tween(a, now) {
     if (a.dur && now < a.t0 + a.dur) {
       const u = Math.max(0, (now - a.t0) / a.dur);
       a.px = (a.fx + (a.x - a.fx) * u) * TILE; a.py = (a.fy + (a.y - a.fy) * u) * TILE;
-      a.moving = true; a.u = u; busy = true;
-    } else {
-      a.px = a.x * TILE; a.py = a.y * TILE; a.moving = false; a.u = 1; a.dur = 0;
+      a.moving = true; a.u = u;
+      return true;
     }
+    a.px = a.x * TILE; a.py = a.y * TILE; a.moving = false; a.u = 1; a.dur = 0;
+    return false;
   }
 
   return api;

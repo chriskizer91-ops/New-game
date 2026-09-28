@@ -26,7 +26,9 @@
 //   10 no horizontal scroll at 360 px; reduced motion (instant dialogue text, the camera snaps)
 //   11 performance: CDP 4x CPU throttle while walking the Hearth Road with 4 followers and roamers for
 //      10 s. Prints p95 frame time and drawImage calls per frame (counted through a wrapped context).
-//      Hard fail: p95 > 33 ms or > 60 drawImage per frame (A7); the target is 16 ms and 40.
+//      Hard fail: p95 > 33 ms or > 60 drawImage per frame (A7); the target is 16 ms and 40. Then,
+//      standing still with the packs in view stunned and those far off screen wandering, the loop
+//      idles at 8-17 fps.
 // Playwright is not a project dependency: it comes from the global npm root.
 // Owner: WP7.
 import { execSync } from 'node:child_process';
@@ -674,10 +676,25 @@ async function run(V) {
       if (Math.max(dMax, sMax) > 40) console.log(`  note: ${Math.max(dMax, sMax)} drawImage calls is over the 40 target`);
       check(maxParty >= 4, `${P} 11: 4 walkers in the conga line (${maxParty})`);
       if (maxRoamers < 3) block(`${P} 11: only ${maxRoamers} roamers on the Hearth Road (WP1 seeds them)`);
-      // idle: the loop drops to 10-15 fps
+      // idle: the loop drops to 10-15 fps while nothing on screen changes (spec A: "Frame rate while
+      // nothing changes"). A pack stepping in view is a change and runs at full rate, so the packs in
+      // or near the view (8 tiles of margin) are stunned and stand still, showing their "?"; the packs
+      // far off screen keep wandering, and that must not keep the loop at full rate either.
+      const far = await W(() => {
+        const s = window.__world.state(), [cx, cy] = s.camera, [vw, vh] = s.view, m = 8 * 16;
+        const near = r => r.x * 16 > cx - m && r.x * 16 < cx + vw + m && r.y * 16 > cy - m && r.y * 16 < cy + vh + m;
+        const list = window.__world.walkRoamers();
+        window.__world.roam(list.map(r => (near(r) ? { ...r, mood: 'stunned', wait: 1e6 } : r)));
+        return list.filter(r => !near(r)).map(r => r.id);
+      });
+      await page.waitForTimeout(300);
+      const before = await state();
       await W(() => window.__world.resetPerf());
       await page.waitForTimeout(2000);
       const idleFrames = (await W(() => window.__world.perf())).frames;
+      const after = await state();
+      const wandered = after.roamers.filter(r => far.includes(r.id) && before.roamers.some(q => q.id === r.id && (q.x !== r.x || q.y !== r.y))).length;
+      console.log(`  note: ${far.length} packs far off screen, ${wandered} of them moved while standing still`);
       check(idleFrames >= 16 && idleFrames <= 34, `${P} 11: standing still, the loop idles at ~${(idleFrames / 2).toFixed(1)} fps`);
     } catch (e) { check(false, `${P} 11: ${e.message.split('\n')[0]}`); }
   }
