@@ -1,10 +1,19 @@
-// Atlas geometry (M3 spec §5.6), pure and DOM-free so node can test it (test/atlas-geo.test.mjs).
-// Coordinates are the illustrated map's viewBox (1200x800, the same 3:2 aspect as the image).
+// Atlas geometry (M3 spec §5.6; M4 spec §5.4), pure and DOM-free so node can test it
+// (test/shell.test.mjs). Coordinates are the illustrated map's viewBox (1200x800, the same 3:2 aspect
+// as the image).
 //
-//   VIEWS                      { wilds, realm }: the crop each Atlas view shows, { x, y, w, h }
+//   VIEWS                      { wilds, sunscorch, realm }: the crop each Atlas view shows, { x, y, w, h }
+//                              (every view is 3:2, like the frame)
+//   REGION_VIEW                { [regionId]: viewId } the view that frames each open region
+//   regionOpen(game, id)       -> boolean   a region is open on the Atlas when REGIONS says so and one of
+//                              its entry exits can be walked (the Keep's south-east gate after Act I)
+//   placeOf(mapId)             -> string    the illustrated map's place a map belongs to (Sandspire,
+//                              Mosswatch Tower...), the nearest place for a dungeon under one, or the
+//                              map's own name (routes)
 //   loreAt(mapId, x, y)        -> [lx, ly] | null   a tile position on the illustrated map: a map's
 //                              `lore` is one pair (a point) or a line of pairs [loreX, loreY, tileX,
-//                              tileY]; (x, y) is projected onto the nearest segment in tile space, so
+//                              tileY] (a route; a branching route goes out and back through its
+//                              junction); (x, y) is projected onto the nearest segment in tile space, so
 //                              "you are here" slides along a route as you walk it
 //   entityLore(mapId, entity)  -> [lx, ly] | null   the centre of an entity's `at` or `area`
 //   toFrame(view, [lx, ly], W, H) -> [px, py]       viewBox -> frame pixels for a view
@@ -14,16 +23,56 @@
 //                              node: { x0, y0, weight? } in, { x, y } out. Deterministic.
 //   RELIC_SITE                 { [relicId]: encounterId } where each relic is held or worn (data only;
 //                              '$rival' and gifts are left out)
-// Owner: WP8.
+// Owner: WP8; M4 P7b (the Sunscorch view, regionOpen, placeOf).
 import { MAPS } from '../../data/maps/index.js';
 import { ENCOUNTERS } from '../../data/encounters.js';
 import { FOES } from '../../data/foes.js';
+import { REGIONS, LORE } from '../../data/world.js';
+import { check } from '../../rules/cond.js';
 
 export const VIEWBOX = Object.freeze({ w: 1200, h: 800 });
 export const VIEWS = Object.freeze({
   wilds: Object.freeze({ x: 105, y: 100, w: 516, h: 344 }), // the Verdant quarter, and the Keep's island
+  // the Sunscorch: from the Keep's south-east shore to Miragewell, and down to the Scorchgate Vaults
+  sunscorch: Object.freeze({ x: 540, y: 350, w: 600, h: 400 }),
   realm: Object.freeze({ x: 0, y: 0, w: 1200, h: 800 }),
 });
+export const REGION_VIEW = Object.freeze({ verdant: 'wilds', sunscorch: 'sunscorch' });
+
+// exit id -> exit, over every map (a region's `entries` name exits)
+const EXIT = {};
+for (const m of Object.values(MAPS)) for (const x of m.exits || []) if (!EXIT[x.id]) EXIT[x.id] = x;
+
+export function regionOpen(game, id) {
+  const r = REGIONS[id];
+  if (!r?.open) return false;
+  if (!r.entries?.length) return true; // the Wilds: where the game starts
+  return r.entries.some(exitId => {
+    const x = EXIT[exitId];
+    if (!x?.to) return false;
+    if (!x.gate) return true;
+    try { return !!check(game, x.gate); } catch { return false; }
+  });
+}
+
+// A place's map, or (for a one-point map under or beside a place: a dungeon, the Lamp Room, the Great
+// Hall) the nearest place within 25 viewBox units; a route keeps its own name.
+export function placeOf(mapId) {
+  const direct = Object.values(LORE).find(p => p.map === mapId);
+  if (direct) return direct.name;
+  const M = MAPS[mapId];
+  if (!M) return mapId || '';
+  const L = M.lore || [];
+  if (L.length === 1) {
+    let best = null;
+    for (const p of Object.values(LORE)) {
+      const d = Math.hypot(p.at[0] - L[0][0], p.at[1] - L[0][1]);
+      if (d <= 25 && (!best || d < best.d)) best = { d, name: p.name };
+    }
+    if (best) return best.name;
+  }
+  return M.name;
+}
 
 export function loreAt(mapId, x, y) {
   const L = MAPS[mapId]?.lore;

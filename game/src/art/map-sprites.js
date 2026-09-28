@@ -26,6 +26,7 @@ import { foeLooks, relicSlot, FOE_ART } from './foes.js';
 import { itemArt, itemIcon, lookFor } from './item-looks.js';
 import { RELICS } from '../data/relics.js';
 import { FOES } from '../data/foes.js';
+import { worldMats } from './tiles.js';
 import { lru } from './cache.js';
 
 const P = pts => ({ k: 'p', pts });
@@ -34,6 +35,7 @@ const O = (c, r) => ({ k: 'o', c, r });
 const E = (c, rx, ry) => ({ k: 'e', c, rx, ry });
 const RECT = (x0, y0, x1, y1) => P([[x0, y0], [x1, y0], [x1, y1], [x0, y1]]);
 const A = (r, p) => ({ r, p });
+worldMats(); // the 'w.' materials the Sunscorch people wear
 const strHash = s => { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
 
 /* =====================================================================
@@ -57,6 +59,19 @@ export const NPC_LOOKS = Object.freeze({
   tamsin: { H: { build: 'human', skin: 'skinTan', hairMat: 'hairBlack', hair: 'pony', eye: '#2a2030', cloak: 'cloakRed', gloves: 'leather', boots: 'leatherDark' }, gear: { weapon: A('sword', { blade: 'steel', guardMat: 'bronze', grip: 'leatherRed', pommel: 'bronze', bladeL: 44 }), body: A('leather', { mat: 'leatherRed', shirt: 'wool', belt: 'leatherDark', trim: 'bronze' }) } },
   vesper: { H: { build: 'human', skin: 'skinAsh', hairMat: 'hairBlack', hair: 'crop', eye: '#1a1a1a', tunic: 'clothGrey', cloak: 'clothGrey', gloves: 'skinAsh', boots: 'leatherDark' }, gear: { body: A('robe', { mat: 'clothGrey', trim: 'gold', sash: 'leatherDark' }), offhand: { look: 'orb', metal: 'bronze', gem: 'amber' } } },
   rotwarden: { H: { build: 'brute', skin: 'skinAsh', hairMat: 'hairBlack', hair: 'none', eye: '#1a1a1a', cloak: 'rotwood', tunic: 'rotwood', pants: 'rotwood', boots: 'bark', gloves: 'bark' }, gear: { head: 'ichor-mask', body: A('plate', { mat: 'rotwood', trim: 'bark' }), amulet: 'first-seed' } },
+  // M4: the Sunscorch (desert dress: turbans, veils and kaftans; 'wrap', 'fez' and 'cap' are walkers.js head looks)
+  zara: { H: { build: 'human', skin: 'skinTan', hairMat: 'hairBlack', hair: 'long', eye: '#3a1a10', cloak: 'robeRed', gloves: 'skinTan', boots: 'leatherRed' }, gear: { head: { look: 'wrap', mat: 'w.saffron', band: 'robeRed', tall: 1, gem: 'ruby', tail: 'w.indigo' }, body: { kind: 'robe', mat: 'w.indigo', trim: 'gold', sash: 'robeRed' }, amulet: { metal: 'gold', gem: 'topaz' } } },
+  qasim: { H: { build: 'brute', skin: 'skinDeep', hairMat: 'hairBlack', hair: 'short', beard: true, eye: '#1a1a1a', cloak: 'clothTeal', mantle: 'clothTeal', gloves: 'skinDeep', boots: 'leatherRed' }, gear: { head: { look: 'wrap', mat: 'clothWhite', gem: 'seaglass', tail: false }, body: { kind: 'robe', mat: 'clothWhite', trim: 'gold', sash: 'clothTeal' }, weapon: A('staff', { style: 'orb', haft: 'bogwood', metal: 'gold', glow: 'w.oasis' }) } },
+  idris: { H: { build: 'dwarf', skin: 'skinTan', hairMat: 'hairSilver', hair: 'short', beard: true, eye: '#2a2030', gloves: 'skinTan', boots: 'leatherRed', pants: 'wool', trinket: { kind: 'pouch', mat: 'leatherRed' } }, gear: { head: { look: 'fez', mat: 'robeRed', trim: 'gold' }, body: { kind: 'leather', mat: 'hoodGreen', shirt: 'clothWhite', belt: 'leatherRed', trim: 'gold' }, offhand: { look: 'orb', metal: 'gold', gem: 'amethyst' } } },
+  'spire-guard': { H: { build: 'human', skin: 'skinTan', hairMat: 'hairBlack', hair: 'short', eye: '#1c1f38', scarf: 'clothWhite', tabard: 'w.saffron', cloak: 'w.canvas', gloves: 'leather', boots: 'leatherRed' }, gear: { weapon: A('spear', { head: 'steel', haft: 'bogwood', socket: 'bronze', ribbon: 'w.saffron', wings: 1 }), head: { look: 'wrap', style: 'helm', mat: 'clothWhite', metal: 'steel', trim: 'gold', tail: false }, body: { kind: 'mail', mat: 'iron', belt: 'leatherRed' } } },
+  'water-seller': { H: { build: 'youth', skin: 'skinDeep', hairMat: 'hairBlack', hair: 'crop', eye: '#2a2030', gloves: 'skinDeep', boots: 'leather', pants: 'w.canvas', trinket: { kind: 'gourd', mat: 'bronze' } }, gear: { head: { look: 'kettle', mat: 'thorn', trim: 'clothBlue' }, body: { kind: 'leather', mat: 'clothBlue', shirt: 'clothWhite', sash: 'clothTeal' }, offhand: { look: 'jar', mat: 'rust', band: 'clothWhite' } } },
+  luma: { H: { build: 'youth', skin: 'skinTan', hairMat: 'hairCopper', hair: 'pony', eye: '#24381c', goggles: 'bronze', lens: 'seaglass', mantle: 'clothTeal', gloves: 'leather', boots: 'leatherDark', pants: 'pants' }, gear: { body: { kind: 'leather', mat: 'leather', shirt: 'w.canvas', belt: 'leatherDark', trim: 'bronze' }, weapon: A('hammer', { headMat: 'bronze', haft: 'wood', headW: 10, bandMat: 'leatherDark' }), amulet: { metal: 'bronze', gem: 'topaz' } } },
+  ode: { H: { build: 'brute', skin: 'skinTan', hairMat: 'hairSilver', hair: 'none', beard: true, eye: '#2a2030', gloves: 'skinTan', boots: 'leatherDark', pants: 'wool' }, gear: { body: { kind: 'leather', mat: 'leatherDark', shirt: 'wool', belt: 'leather' }, offhand: { look: 'lantern', metal: 'bronze', glow: 'amber' } } },
+  miner: { H: { build: 'human', skin: 'skinTan', hairMat: 'hairBrown', hair: 'short', eye: '#2a2030', scarf: 'robeRed', gloves: 'leatherDark', boots: 'leatherDark', pants: 'wool' }, gear: { head: { look: 'cap', mat: 'leather', metal: 'bronze', glow: 'amber' }, body: { kind: 'leather', mat: 'leatherDark', shirt: 'wool', belt: 'leather' }, weapon: A('pick', { haft: 'wood', headMat: 'iron' }) } },
+  sabah: { H: { build: 'human', skin: 'skinDeep', hairMat: 'hairSilver', hair: 'long', eye: '#2a2030', gloves: 'skinDeep', boots: 'leather' }, gear: { head: { look: 'hood', mat: 'clothWhite', tip: 0, trim: 'gold' }, body: { kind: 'robe', mat: 'clothBlue', trim: 'clothWhite', sash: 'gold' }, offhand: { look: 'jar', mat: 'bronze', band: 'clothTeal' } } },
+  'pilgrim-mw': { H: { build: 'human', skin: 'skinTan', hairMat: 'hairBrown', hair: 'short', beard: true, eye: '#2a2030', cloak: 'rags', gloves: 'skinTan', boots: 'leather', trinket: { kind: 'gourd', mat: 'w.saffron' } }, gear: { head: { look: 'wrap', mat: 'clothTeal', tail: 'clothTeal' }, body: { kind: 'robe', mat: 'w.canvas', trim: 'leather', sash: 'leather' }, weapon: A('staff', { style: 'crook', haft: 'wood' }) } },
+  cinder: { H: { build: 'human', skin: 'skinAsh', hairMat: 'hairSilver', hair: 'none', beard: true, eye: '#3a1a10', cloak: 'w.char', gloves: 'skinAsh', boots: 'w.char' }, gear: { head: { look: 'hood', mat: 'w.char', tip: 0, trim: 'w.ash' }, body: { kind: 'robe', mat: 'clothGrey', trim: 'w.char', sash: 'string' }, offhand: { look: 'lantern', metal: 'blackiron', glow: 'ember' } } },
+  'ashen-warden': { H: { build: 'brute', skin: 'skinAsh', hairMat: 'hairBlack', hair: 'none', eye: '#1a1a1a', cloak: 'w.char', tunic: 'w.char', pants: 'w.char', boots: 'blackiron', gloves: 'blackiron' }, gear: { head: { look: 'helm', mat: 'blackiron', eyes: 'ember', glowEyes: 1, crest: 'ember', trim: 'gold' }, body: { kind: 'plate', mat: 'blackiron', trim: 'bronze' }, offhand: { look: 'tower', face: 'w.char', rim: 'bronze', boss: 'ember' }, weapon: A('sword', { blade: 'blackiron', guardMat: 'bronze', grip: 'leatherDark', pommel: 'bronze', fuller: 'ember', bladeL: 52 }) } },
 });
 const SKINS = ['skin', 'skinPale', 'skinTan', 'skinDeep'], HAIRS = ['hairBrown', 'hairBlack', 'hairAuburn', 'hairBlond', 'hairSilver', 'hairCopper'], STYLES = ['short', 'crop', 'long', 'pony', 'bun'];
 const TUNICS = ['wool', 'gambeson', 'rags', 'clothBlue', 'hoodGreen', 'robeRed'];
@@ -95,16 +110,122 @@ function relicLook(relic) {
   const look = art ? lookFor(slot, art) : null;
   return look ? { slot, look } : null;
 }
+// M4: a Sunscorch family's named variant -> its own map sprite (the ids are fixed by the M4 spec §3.2-§3.3)
+const SUN_VARIANT = { 'dune-raider:rider': 'rasa', 'dune-raider:raider-king': 'gnash', 'glass-scorpion:matriarch': 'glass-matriarch', 'mirage-wisp:queen': 'wisp-queen',
+  'ash-wight:captain': 'ash-captain', 'tallyman:foreman': 'brask', 'tallyman:quartermaster': 'quartermaster', 'smuggler:sharpshooter': 'vell' };
 function resolveFoeKey(artKey, variant) {
+  if (variant && SUN_VARIANT[artKey + ':' + variant]) return SUN_VARIANT[artKey + ':' + variant];
   if (variant && FOES[artKey] && FOES[artKey].variants && FOES[artKey].variants[variant]) {
     const a = FOES[artKey].variants[variant].art;
     if (a && (FOE_ART[a] || MAP_FOE_SIZE[a])) return a;
   }
   return artKey;
 }
+/* M4 humanoid map foes: the Sunscorch families and named holders through the walker rig, one gear kit per
+   gearTier (the Waking re-gear). They take precedence over foeLooks() for these keys. A holder's own relic
+   is drawn by its relicLook in relicSlot unless RELIC_ART has the real piece (own: always this look), and
+   glintAt names where it glints when that is a place M3 never glinted (boots, a lantern, a belt key). */
+const scim = (blade, guard = 'bronze', o = {}) => A('sword', Object.assign({ blade, guardMat: guard, grip: 'leatherDark', pommel: guard, bladeL: 42, shape: 'fang', curve: 1 }, o));
+const knife = (blade, o = {}) => A('dagger', Object.assign({ blade, guardMat: 'iron', grip: 'leather', pommel: 'iron', bladeL: 30 }, o));
+const blade = (blade, guard, o = {}) => A('sword', Object.assign({ blade, guardMat: guard, grip: 'leatherDark', pommel: guard, bladeL: 44 }, o));
+const wrap = (mat, o = {}) => Object.assign({ look: 'wrap', mat, tail: mat }, o);
+const WIGHT = { build: 'human', skin: 'skinAsh', hairMat: 'hairBlack', hair: 'none', eye: '#1a1a1a', tunic: 'w.char', pants: 'w.char', boots: 'blackiron', gloves: 'w.char', tabard: 'robeRed' };
+const TALLY = { build: 'human', skin: 'skinAsh', hairMat: 'hairBlack', hair: 'none', eye: '#1a1a1a', tunic: 'clothGrey', pants: 'clothGrey', boots: 'leatherDark', gloves: 'leatherDark', shade: true, shadeEyes: 'amber' };
+const SUN_FOES = {
+  scavenger: {
+    H: { build: 'youth', skin: 'skinTan', hairMat: 'hairBlack', hair: 'crop', eye: '#2a2030', tunic: 'rags', pants: 'wool', boots: 'leatherDark', gloves: 'skinTan', scarf: 'clothTeal', quiver: 'leather', fletch: 'w.canvas' },
+    gear: [
+      { weapon: knife('rust'), head: wrap('leatherRed', { tail: 'rags' }) },
+      { weapon: knife('iron'), head: wrap('leatherRed', { tail: 'rags' }), body: { kind: 'leather', mat: 'leather', shirt: 'rags', belt: 'leatherDark' }, H: { goggles: 'iron', lens: 'w.glass' } },
+      { weapon: scim('iron', 'iron'), head: { look: 'kettle', mat: 'rust' }, body: { kind: 'mail', mat: 'iron', belt: 'leather' }, H: { goggles: 'iron', lens: 'w.glass' } },
+      { weapon: knife('steel', { fuller: 'amber' }), head: { look: 'hood', mat: 'dark', tip: 1, trim: 'bronze' }, body: { kind: 'leather', mat: 'leatherDark', shirt: 'w.canvas', studs: 'bronze', pauldrons: 'bronze', belt: 'leatherDark' }, H: { goggles: 'bronze', lens: 'amber', cloak: 'rags' } },
+    ],
+  },
+  'dune-raider': {
+    H: { build: 'human', skin: 'skinDeep', hairMat: 'hairBlack', hair: 'short', eye: '#1a1a1a', tunic: 'w.indigo', pants: 'w.indigo', boots: 'leatherDark', gloves: 'leatherDark', scarf: 'w.indigo', cloak: 'w.canvas' },
+    gear: [
+      { weapon: scim('iron'), head: wrap('w.indigo'), body: { kind: 'leather', mat: 'leatherDark', shirt: 'w.indigo', belt: 'leather' } },
+      { weapon: scim('steel'), offhand: { look: 'round', face: 'w.terra', rim: 'bronze', boss: 'bronze' }, head: wrap('w.indigo', { gem: 'bronze' }), body: { kind: 'leather', mat: 'leatherDark', shirt: 'w.indigo', belt: 'leather', trim: 'bronze' } },
+      { weapon: scim('steel', 'gold'), offhand: { look: 'round', face: 'w.indigo', rim: 'steel', boss: 'gold' }, head: wrap('w.indigo', { style: 'helm', metal: 'steel', trim: 'gold', tail: false }), body: { kind: 'mail', mat: 'iron', belt: 'leather', trim: 'w.indigo' } },
+      { weapon: scim('steel', 'gold', { fuller: 'storm' }), offhand: { look: 'round', face: 'w.indigo', rim: 'gold', boss: 'stormglass' }, head: wrap('dark', { style: 'helm', metal: 'blackiron', trim: 'storm', tail: false }), body: { kind: 'mail', mat: 'steel', belt: 'leatherDark', trim: 'storm', pauldrons: 'blackiron' }, H: { cloak: 'w.indigo', scarf: 'dark' } },
+    ],
+  },
+  'ash-wight': {
+    H: WIGHT,
+    gear: [
+      { weapon: blade('rust', 'blackiron'), head: { look: 'helm', mat: 'w.char', eyes: 'ember', glowEyes: 1, crest: null }, body: { kind: 'mail', mat: 'blackiron', belt: 'w.char' } },
+      { weapon: blade('rust', 'blackiron'), offhand: { look: 'round', face: 'w.char', rim: 'blackiron', boss: 'rust' }, head: { look: 'helm', mat: 'w.char', eyes: 'ember', glowEyes: 1, crest: null }, body: { kind: 'mail', mat: 'blackiron', belt: 'w.char', trim: 'robeRed' } },
+      { weapon: blade('iron', 'blackiron'), offhand: { look: 'round', face: 'w.char', rim: 'blackiron', boss: 'rust' }, head: { look: 'helm', mat: 'blackiron', eyes: 'ember', glowEyes: 1, crest: 'w.char' }, body: { kind: 'plate', mat: 'blackiron', trim: 'w.char' } },
+      { weapon: blade('blackiron', 'bronze', { fuller: 'ember' }), offhand: { look: 'heater', face: 'w.char', rim: 'bronze', boss: 'ember' }, head: { look: 'helm', mat: 'blackiron', eyes: 'ember', glowEyes: 1, crest: 'ember' }, body: { kind: 'plate', mat: 'blackiron', trim: 'ember' }, H: { cloak: 'w.char' } },
+    ],
+  },
+  // the named holders (M4 spec §3.3)
+  rasa: {
+    relic: 'sandwalkers', relicSlot: 'feet', relicLook: { mat: 'bronze', trim: 'w.saffron', greave: 'gold', heirloom: true }, glintAt: ['feet'],
+    H: { build: 'human', skin: 'skinTan', hairMat: 'hairAuburn', hair: 'braid', eye: '#3a1a10', tunic: 'w.indigo', pants: 'w.indigo', boots: 'leatherDark', gloves: 'leather', scarf: 'robeRed', cloak: 'robeRed' },
+    gear: [0, 1, 2, 3].map(t => ({
+      weapon: A('spear', { head: t >= 2 ? 'steel' : 'iron', haft: 'bogwood', socket: 'bronze', ribbon: 'robeRed', wings: t >= 1 ? 1 : 0, fuller: t >= 3 ? 'storm' : null }),
+      head: wrap('clothWhite', { tail: 'robeRed', gem: t >= 3 ? 'stormglass' : 'topaz', style: t >= 2 ? 'helm' : null, metal: 'bronze', trim: 'gold' }),
+      body: { kind: t >= 2 ? 'mail' : 'leather', mat: t >= 2 ? 'bronze' : 'leatherDark', shirt: 'w.indigo', belt: 'robeRed', trim: t >= 3 ? 'storm' : 'gold' },
+    })),
+  },
+  'ash-captain': {
+    relic: 'scorchgate-key', relicSlot: 'trinket', glintAt: ['trinket'],
+    H: Object.assign({}, WIGHT, { cloak: 'robeRed', trinket: { kind: 'key', mat: 'blackiron', gem: 'ember' } }),
+    gear: [0, 1, 2, 3].map(t => ({
+      weapon: blade(t >= 2 ? 'blackiron' : 'iron', 'bronze', { bladeL: 50, fuller: t >= 3 ? 'ember' : null }),
+      head: { look: 'helm', mat: 'blackiron', eyes: 'ember', glowEyes: 1, crest: t >= 3 ? 'ember' : 'w.char', plume: 'robeRed', trim: 'bronze' },
+      body: { kind: 'plate', mat: 'blackiron', trim: t >= 1 ? 'bronze' : 'w.char', pauldrons: t >= 2 ? 'bronze' : 'blackiron' },
+    })),
+  },
+  brask: {
+    relic: 'sunstone-lantern', relicSlot: 'offhand', relicLook: { look: 'lantern', metal: 'bronze', glow: 'amber' }, own: true, glintAt: ['offhand'],
+    H: Object.assign({}, TALLY, { build: 'brute', ledger: 'leatherDark' }),
+    gear: [0, 1, 2, 3].map(t => ({
+      weapon: A('pick', { haft: 'wood', headMat: t >= 2 ? 'steel' : 'iron' }),
+      head: { look: 'cap', mat: t >= 3 ? 'blackiron' : 'clothGrey', metal: 'bronze', glow: 'amber' },
+      body: { kind: 'robe', mat: 'clothGrey', trim: t >= 3 ? 'blight' : t >= 1 ? 'iron' : 'wool', sash: 'leatherDark', sleeve: t >= 2 ? 'iron' : null },
+      H: t >= 2 ? { mantle: t >= 3 ? 'blackiron' : 'iron' } : null,
+    })),
+  },
+  quartermaster: {
+    H: Object.assign({}, TALLY, { trinket: { kind: 'ledger', mat: 'leatherDark' } }),
+    gear: [0, 1, 2, 3].map(t => ({
+      weapon: knife(t >= 2 ? 'steel' : 'iron', t >= 3 ? { fuller: 'blight' } : {}),
+      head: { look: 'kettle', mat: 'leatherDark', trim: t >= 1 ? 'gold' : 'clothGrey' },
+      body: { kind: 'robe', mat: 'clothGrey', trim: t >= 3 ? 'blight' : 'gold', sash: 'leatherDark' },
+      H: t >= 2 ? { mantle: 'iron' } : null,
+    })),
+  },
+  vell: {
+    relic: 'saltglass', relicSlot: 'weapon', relicLook: Object.assign(A('bow', { limb: 'pearl', grip: 'clothTeal', gem: 'seaglass', tassel: 'clothTeal' }), { relic: true }),
+    H: { build: 'human', skin: 'skinPale', hairMat: 'hairSilver', hair: 'pony', eye: '#1c2a24', tunic: 'clothTeal', pants: 'wool', boots: 'leatherDark', gloves: 'leather', quiver: 'leatherDark', fletch: 'clothWhite', cloak: 'w.canvas' },
+    gear: [0, 1, 2, 3].map(t => ({
+      weapon: A('bow', { limb: 'wood', grip: 'leather' }),
+      head: { look: 'kettle', mat: 'leatherDark', trim: 'clothTeal' },
+      body: { kind: 'leather', mat: 'leatherDark', shirt: 'clothTeal', belt: 'leather', studs: t >= 2 ? 'bronze' : null, pauldrons: t >= 3 ? 'steel' : null, trim: t >= 1 ? 'bronze' : null },
+    })),
+  },
+};
+function sunFoeSheet(key, gT, rel) {
+  const S = SUN_FOES[key], kit = S.gear[gT] || S.gear[0], H = Object.assign({}, S.H, kit.H || {}), gear = Object.assign({}, kit);
+  delete gear.H;
+  const mine = rel && rel === S.relic, real = mine && !S.own && typeof rel === 'string' ? itemArt(rel) : null;
+  if (mine && S.relicLook && !real) gear[S.relicSlot] = S.relicLook;
+  const { L, M } = resolveGear(gear);
+  if (mine && !real) { if (S.relicSlot !== 'trinket') M[S.relicSlot] = { heirloom: true, relic: true }; if (S.glintAt) M.glintAt = S.glintAt; }
+  else if (rel) { const r = relicLook(rel); if (r) { L[r.slot] = r.look; M[r.slot] = { heirloom: true, relic: true }; if (r.slot === 'feet' || r.slot === 'offhand') M.glintAt = [r.slot]; } }
+  if (!mine && S.relicSlot === 'trinket') delete H.trinket;
+  return rigSheet(H, L, { meta: M, frames: 2, pick: k => k + 1 });
+}
 const foeCache = lru(64);
 export function mapFoeSheet(artKey, { gearTier = 0, variant = null, relic } = {}) {
   const key = resolveFoeKey(artKey, variant), gT = Math.max(0, Math.min(3, gearTier | 0));
+  if (SUN_FOES[key]) {
+    const rel = relic !== undefined ? relic : SUN_FOES[key].relic || null;
+    const img = foeCache.get(`s|${key}|${gT}|${rel || '-'}`, () => sunFoeSheet(key, gT, rel));
+    return { img, w: WALKER_W, h: WALKER_H, foot: WALKER_FOOT.slice(), frames: 2, rows: 4, head: [8, 3] };
+  }
   const def = FOE_ART[key], beast = BEASTS[key] || (def && def.kind === 'beast' && BEASTS[def.aliasOf]);
   if (beast && !(def && def.kind === 'humanoid')) {
     const [w, h] = MAP_FOE_SIZE[key] || MAP_FOE_SIZE[def && def.aliasOf] || [16, 16];

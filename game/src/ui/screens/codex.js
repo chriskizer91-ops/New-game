@@ -1,8 +1,26 @@
-// The Hearth Codex: a binder of every relic with Sighted / Claimed / Awakened stamps, counted out of
-// all 24 (RELICS). Unsighted entries are silhouettes with a riddle; tap any entry to see its card.
-// mount(root, ctx, { from = 'world' }): Back returns to `from`.
-// Owner: WP8.
+// The Hearth Codex binder (M3 spec §5.6; M4 spec §4.4, §5.2): one page per region, tabbed I · II · III · IV.
+// mount(root, ctx, { from = 'world', page? }): Back returns to `from`. The binder opens on `page`, else
+// on the page of the region the party stands in (Page I in the Wilds).
+//
+//   - page tabs: I and II show their region and a claimed count (a tick once the page is finished);
+//     sealed pages (III Ironspire, IV Gloomfen) show a padlock and the region's name, and open a
+//     sealed panel with the region's closed roads instead of pockets
+//   - each open page: its progress ("9 of 14 claimed, 12 sighted", rules/codex.js pageProgress), a
+//     bar, and its reward line (data/codex.js PAGES: greyed until earned, then gold with the day)
+//   - its pockets, in Codex order: the portrait, the name (a riddle while unsighted), who holds it,
+//     and the three stamps (Sighted, Claimed, Awakened); Awakened pockets glow. The starters you did
+//     not choose stay in the Keep (Tamsin only ever lends hers): their pockets say so, and the page
+//     does not count them. Tap a pocket for its card (a silhouette, the grey held card, or yours)
+//   - the footer keeps M3's stamp legend
+// Pure helpers for tests (node): binderPage(game, pageId), defaultPage(game), RIDDLES, HOLDER.
+// Test hooks: .cx-tab[data-page][aria-selected]; .cx-head[data-page]; .cx-prog; .cx-reward[data-earned];
+//   .cx-sealed; .pocket[data-relic][data-state] (+ .is-awakened, .is-spare).
+// Owner: WP8; M4 P7b (the binder).
 import { RELICS } from '../../data/relics.js';
+import { PAGES } from '../../data/codex.js';
+import { STARTERS } from '../../data/heroes.js';
+import { MAPS } from '../../data/maps/index.js';
+import { relicsOn, pageProgress } from '../../rules/codex.js';
 import { relicItem } from '../../rules/loot.js';
 import { createRng } from '../../core/rng.js';
 import { el, esc, button } from '../lib/dom.js';
@@ -10,7 +28,7 @@ import { portraitCanvas, rarityColor, rarityName } from '../lib/art.js';
 import { codexNo } from '../lib/items.js';
 import { screenNav } from '../lib/keys.js';
 
-const RIDDLES = {
+export const RIDDLES = Object.freeze({
   hearthbrand: 'It has never once gone cold. Ask Fenwick where the Keep keeps its coals.',
   'stillwater-lance': 'Cut from a lake the winter it held its breath.',
   cairnmaul: 'A stone from the Old Road that refused to break.',
@@ -35,64 +53,209 @@ const RIDDLES = {
   'ichor-mask': 'A smith’s mask on something that was never a smith. It drinks from the eldest trees.',
   'first-seed': 'The first thing that ever grew in the Wilds, and the last thing the Rot wants to give back.',
   'vale-gauntlets': 'Tamsin never takes them off. You will have to beat her to see her hands.',
-};
+  // Page II: the Sunscorch Wastes
+  sandwalkers: 'They have never once sunk. A rider takes her toll in water on the Sunward Road.',
+  'zaras-orrery': 'It hums an hour that has not happened yet. A caravan-mistress in Sandspire has lost the crate it sleeps in.',
+  wyrmscale: 'A scale big enough to hide behind, still on the thing it grew on. Something in the Dust Trail breathes under the sand.',
+  'sunstone-lantern': 'A sun in a brass cage, carried down the Dusthaven shaft by a foreman who counts every stone.',
+  'glass-carapace': 'Glass that remembers being a dune. Something in the heart of the mine wears it like a shell.',
+  dunebreaker: 'A maul that cracks glassed dunes. The Raider-King of the Flats says he took it from a giant.',
+  cinderfang: 'Forged to kill a dragon, and still warm from failing. It is caught in a tail, deep under Dusthaven.',
+  'mirage-glass': 'A lens of well-water that never spills. The queen of Miragewell’s lights will not lend it.',
+  'qasims-signet': 'Pressed into every water-tally in Sandspire. The Cistern Lord gives it only for water.',
+  'sunstone-heart': 'It beats. An assayer in Dusthaven keeps a secret, and asks for a lantern’s worth of light.',
+  'scorchgate-key': 'A key ring with no key on it. A captain of ash still walks the walls of Scorchgate with it.',
+  'ashen-aegis': 'Scorchgate’s last shield, carried out of the fire and never put down. It still stands watch below.',
+  'cinder-crown': 'Every ember in it was a soldier. Whoever wears it in the Vault of Ash still gives them orders.',
+  saltglass: 'It sings when it is drawn. A sharpshooter rides with the Tallyman caravan across the Flats.',
+});
 
-const HOLDER = {
+// Who holds each relic, short enough for a pocket ("Held by ...") and the grey card's stamp.
+export const HOLDER = Object.freeze({
   hearthbrand: 'the Keep reliquary', 'stillwater-lance': 'Tamsin Vale', cairnmaul: 'the Keep reliquary',
   'wardens-seal': 'Sneck the Tallyman', tallyknife: 'a Tallyman veteran', thornsplitter: 'Old Snag', 'rotwood-circlet': 'the Rot-Stag',
   'thornwatch-hood': 'Skarn', 'thornwatch-jerkin': 'a bandit veteran', 'thornwatch-boots': 'a bandit veteran', thornwreath: 'Briarmaw', briarfang: 'Briarmaw',
   lightfingers: 'Mags Kestrel', hartshorn: 'Haskett the poacher', 'mosswatch-lantern': 'Hollis Fairweight', 'watchkeepers-kettle': 'Old Garret',
   'mire-pearl': 'Gorrow the Mire-King', dawnbell: 'the Gloamwing', rootsong: 'Oda the Thornmother', oathshield: 'Sergeant Corra Thistle',
   'isoldes-oath': 'Dun the Counter', 'ichor-mask': 'the Rotwarden', 'first-seed': 'the Rotwarden', 'vale-gauntlets': 'Tamsin',
-};
+  sandwalkers: 'Rasa the Dune-Rider', 'zaras-orrery': 'Zara’s lost crate', wyrmscale: 'the Sand Wyrm', 'sunstone-lantern': 'Foreman Brask',
+  'glass-carapace': 'Kharzul the Glass Scorpion', dunebreaker: 'Gnash the Raider-King', cinderfang: 'Kharzul the Glass Scorpion',
+  'mirage-glass': 'the Wisp-Queen', 'qasims-signet': 'Cistern Lord Qasim', 'sunstone-heart': 'Luma of Dusthaven',
+  'scorchgate-key': 'the Ash-Captain', 'ashen-aegis': 'the Ashen Warden', 'cinder-crown': 'the Ashen Warden', saltglass: 'Vell Saltglass',
+});
+
+const PAGE_IDS = PAGES.map(p => p.id);
+const isSealed = P => !P || P.from == null;
+const shortRegion = P => String(P?.name || '').replace(/^The /, '').split(' ')[0];
+
+// Every sealed road into a region (the Keep's postern guards, the Wilds' edges): the sealed page's text.
+function sealedTexts(region) {
+  const out = [];
+  for (const m of Object.values(MAPS)) for (const x of m.exits || []) if (x.sealed?.region === region && !x.to && !out.includes(x.sealed.text)) out.push(x.sealed.text);
+  return out;
+}
+
+// The starter you carry, and the one Tamsin lends in her duels (M3: the codex remembers which you took).
+function startersOf(game) {
+  const codex = game?.codex || {};
+  const mine = game?.progress?.flags?.story?.starter && STARTERS[game.progress.flags.story.starter] ? game.progress.flags.story.starter
+    : Object.keys(STARTERS).find(id => codex[id]?.claimed) || null;
+  return { mine, tamsins: mine ? STARTERS[mine].rival : null };
+}
+
+// The page to open on: the one of the region the party stands in, if that page is open; else Page I.
+export function defaultPage(game) {
+  const region = MAPS[game?.progress?.pos?.map]?.region;
+  const P = PAGES.find(p => p.region === region);
+  return P && !isSealed(P) ? P.id : PAGES[0].id;
+}
+
+// The view model of one page (pure; node tests use it).
+export function binderPage(game, pageId) {
+  const P = PAGES.find(p => p.id === pageId) || PAGES[0];
+  const codex = game?.codex || {};
+  if (isSealed(P)) return { id: P.id, no: P.no, name: P.name, region: P.region, sealed: true, texts: sealedTexts(P.region), relics: [], progress: null, reward: null };
+  const { mine, tamsins } = startersOf(game);
+  const progress = pageProgress(game, P.id);
+  const day = game?.progress?.flags?.pages?.[P.id];
+  const earned = !!(P.reward && (day || progress.done));
+  const relics = relicsOn(P.id).map(id => {
+    const R = RELICS[id], e = codex[id] || {};
+    const state = e.claimed ? 'claimed' : e.sighted ? 'sighted' : 'unsighted';
+    // a starter you did not choose: it stays on its pedestal (or in Tamsin's hands) and the page does not need it
+    const spare = R.starter && !e.claimed ? (id === tamsins ? 'tamsin' : 'keep') : null;
+    const holder = R.starter ? (id === tamsins ? 'Tamsin Vale' : id === mine ? 'you' : 'the Keep reliquary') : HOLDER[id] || R.holder || 'somebody';
+    return { id, codex: R.codex, name: R.name, rarity: R.rarity, state, awakened: !!e.awakened, spare, holder, riddle: RIDDLES[id] || 'Nobody has seen it yet.' };
+  });
+  return {
+    id: P.id, no: P.no, name: P.name, region: P.region, sealed: false, texts: [], relics, progress,
+    reward: P.reward ? { name: P.reward.name, text: P.reward.text, earned, day: typeof day === 'number' ? day : null } : null,
+  };
+}
+
+let lastPage = null; // the page picked last this session (while the party stays in the same region)
 
 export function mount(root, ctx, params = {}) {
   if (!ctx.game) { ctx.go('title'); return {}; }
   const game = ctx.game;
   const from = params.from || 'world';
   const leave = () => ctx.go(from);
-  const ids = Object.values(RELICS).sort((a, b) => a.codex - b.codex).map(r => r.id);
-  const entry = id => game.codex[id] || { sighted: false, claimed: false, awakened: false };
-  const mine = ['hearthbrand', 'stillwater-lance', 'cairnmaul'].find(id => entry(id).claimed);
-  const tamsins = { hearthbrand: 'cairnmaul', 'stillwater-lance': 'hearthbrand', cairnmaul: 'stillwater-lance' }[mine];
-  const holderOf = id => (RELICS[id].starter ? (id === tamsins ? 'Tamsin Vale' : 'the Keep reliquary') : HOLDER[id] || RELICS[id].holder);
-  const claimed = ids.filter(id => entry(id).claimed).length, sighted = ids.filter(id => entry(id).sighted).length;
+  const region = MAPS[game.progress?.pos?.map]?.region || 'verdant';
+  const pick0 = PAGE_IDS.includes(params.page) ? params.page : lastPage && lastPage.region === region ? lastPage.id : defaultPage(game);
+  let page = pick0;
+  const act1 = !!game.progress?.flags?.story?.['act1-complete'];
 
   const top = el('header', 'topbar');
   top.append(button('‹ Back', 'btn ghost back', () => { ctx.audio.sfx('back'); leave(); }), el('div', 'tb-title', '<span class="realm">The Hearth Codex</span><h1 class="title-display">Every legend has a holder</h1>'));
-  root.append(top);
-  const sum = el('section', 'codex-sum panel');
-  sum.append(
-    el('p', '', `Page I · <b>The Verdant Wilds</b>. ${claimed} of ${ids.length} claimed, ${sighted} sighted. Every relic here is in somebody’s hands until you take it off them.`),
-    el('span', 'cbar', `<i style="width:${claimed / ids.length * 100}%"></i><b style="width:${sighted / ids.length * 100}%"></b>`),
-  );
-  root.append(sum);
+  const tabs = el('div', { class: 'tabs cx-tabs', role: 'tablist', 'aria-label': 'Codex pages' });
+  const head = el('section', { class: 'codex-sum cx-head panel', 'aria-live': 'polite' });
+  const binder = el('div', { class: 'binder', role: 'tabpanel', id: 'cx-panel' });
+  const foot = el('p', 'codex-foot');
+  root.append(top, tabs, head, binder, foot);
 
-  const binder = el('div', 'binder');
-  ids.forEach((id, i) => {
-    const R = RELICS[id], e = entry(id);
-    const owned = game.inventory.find(it => it.base === id && !it.shattered) || game.inventory.find(it => it.base === id);
-    const item = owned || relicItem(id, createRng('codex-' + id), { from: R.holder, where: 'The Verdant Wilds', day: game.progress.flags.day });
-    const state = e.claimed ? 'claimed' : e.sighted ? 'sighted' : 'unsighted';
-    const b = el('button', { type: 'button', class: `pocket is-${state}`, 'data-r': R.rarity, 'aria-label': `${codexNo(R)}: ${state === 'unsighted' ? 'unknown relic' : R.name}, ${state}` });
-    const p = portraitCanvas(item, { size: 64, develop: state === 'unsighted' ? 0 : undefined, still: state !== 'claimed' });
-    b.append(el('span', 'no', codexNo(R).replace(' / ', '/')), el('span', 'pp', [p.canvas]));
-    b.append(el('span', 'pn', state === 'unsighted' ? '???' : esc(R.name)));
-    b.append(el('span', 'pr', state === 'unsighted' ? 'Unsighted' : `<span style="color:${rarityColor(R.rarity)}">${esc(rarityName(R.rarity))}</span>`));
-    if (state === 'unsighted') b.append(el('span', 'hint', esc(RIDDLES[id] || 'Nobody has seen it yet.')));
-    else if (state === 'sighted') b.append(el('span', 'hint', `Held by ${esc(holderOf(id))}`));
-    b.append(el('span', 'stamps', `<i class="${e.sighted ? 'on' : ''}">Sighted</i><i class="${e.claimed ? 'on' : ''}">Claimed</i><i class="${e.awakened ? 'on' : ''}">Awakened</i>`));
-    b.addEventListener('click', () => {
-      ctx.audio.sfx('page');
-      if (state === 'unsighted') ctx.services.cardInspect(item, { silhouette: true, riddle: RIDDLES[id], picker: false });
-      else if (state === 'sighted') ctx.services.cardPreview(item, { heldBy: holderOf(id) });
-      else ctx.services.cardInspect(owned || item, { picker: !!owned });
+  const awakenedAll = Object.values(game.codex || {}).filter(e => e?.awakened).length;
+  foot.textContent = `Sighted: seen on its holder. Claimed: pried loose and yours. Awakened: a relic that has done three great deeds in your hands. ${awakenedAll ? `${awakenedAll === 1 ? 'One relic has' : `${awakenedAll} relics have`} woken that far.` : 'No relic has woken that far yet.'}`;
+
+  function renderTabs() {
+    tabs.replaceChildren(...PAGES.map((P, i) => {
+      const sealed = isSealed(P);
+      const prog = sealed ? null : pageProgress(game, P.id);
+      const done = !!(prog?.done || game.progress?.flags?.pages?.[P.id]);
+      const label = sealed ? `Page ${P.no}, ${P.name}: sealed` : `Page ${P.no}, ${P.name}: ${prog.claimed} of ${prog.needed} claimed${done ? ', finished' : ''}`;
+      const b = button('', `tab cx-tab${sealed ? ' is-sealed' : ''}${done ? ' is-done' : ''}`, () => { if (page === P.id) return; ctx.audio.sfx('page'); setPage(P.id); },
+        { role: 'tab', 'aria-selected': String(P.id === page), 'aria-controls': 'cx-panel', 'aria-label': label, 'data-page': P.id, 'data-pick': String(i + 1) });
+      const no = el('span', 'cx-no', [sealed ? el('i', { class: 'cx-lock', 'aria-hidden': 'true' }) : null, el('b', { text: P.no }), done ? el('i', { class: 'cx-tick', 'aria-hidden': 'true', text: '✓' }) : null]);
+      b.append(no, el('span', { class: 'cx-rg', text: shortRegion(P) }), el('span', { class: 'cx-ct', text: sealed ? 'Sealed' : `${prog.claimed}/${prog.needed}` }));
+      return b;
+    }));
+  }
+
+  function renderHead(V) {
+    head.replaceChildren();
+    head.dataset.page = V.id;
+    head.classList.toggle('is-sealed', V.sealed);
+    head.append(el('p', { class: 'cx-kick', text: `Page ${V.no}` }), el('h2', { class: 'title-display cx-name', text: V.name }));
+    if (V.sealed) return;
+    const p = V.progress;
+    const bits = [`${p.claimed} of ${p.needed} claimed`, `${p.sighted} sighted`];
+    if (p.awakened) bits.push(`${p.awakened} awakened`);
+    head.append(el('p', { class: 'cx-prog', text: bits.join(', ') }));
+    const bar = el('span', { class: 'cbar', role: 'img', 'aria-label': `${p.claimed} of ${p.needed} claimed` });
+    const claimedW = p.needed ? p.claimed / p.needed * 100 : 0, sightedW = p.total ? p.sighted / p.total * 100 : 0;
+    bar.append(el('i', { style: { width: `${claimedW}%` } }), el('b', { style: { width: `${sightedW}%` } }));
+    head.append(bar);
+    if (V.reward) {
+      const r = V.reward;
+      const line = el('p', { class: `cx-reward${r.earned ? ' is-earned' : ''}`, 'data-earned': r.earned ? '1' : '0' });
+      line.append(
+        el('span', { class: 'cx-rk', text: r.earned ? `Earned${r.day ? ` · Day ${r.day}` : ''}` : 'Reward' }),
+        el('b', { class: 'cx-rn', text: r.name }),
+        el('span', { class: 'cx-rt', text: r.earned ? `${r.text} Yours for good.` : `${r.text} Claim every relic on the page.` }),
+      );
+      head.append(line);
+    }
+    // the page's small print: the starters on Page I, the road to Page II
+    const spare = V.relics.filter(x => x.spare).length;
+    if (spare) head.append(el('p', { class: 'cx-note', text: `The page counts your starter and every relic held out in the world. The ${spare === 1 ? 'starter' : `${spare} starters`} you passed over stay${spare === 1 ? 's' : ''} in the Keep, or with Tamsin.` }));
+    if (V.region === 'sunscorch' && !act1 && !p.sighted) head.append(el('p', { class: 'cx-note', text: 'The road to the Sunscorch opens once both Brands of the Wilds are yours.' }));
+  }
+
+  function renderSealed(V) {
+    const box = el('div', 'cx-sealed');
+    box.append(el('span', { class: 'cx-bigl', 'aria-hidden': 'true' }), el('p', { class: 'cx-sealed-k', text: 'Sealed' }));
+    for (const t of V.texts.slice(0, 2)) box.append(el('p', { class: 'cx-sealed-t', text: `“${t}”` }));
+    box.append(el('p', { class: 'cx-sealed-n', text: `The relics of ${V.name.replace(/^The /, 'the ')} are still out of reach. This page opens in a later chapter.` }));
+    binder.append(box);
+  }
+
+  function renderPockets(V) {
+    const where = PAGES.find(p => p.id === V.id)?.name || 'the Realm';
+    V.relics.forEach((x, i) => {
+      const R = RELICS[x.id];
+      const owned = game.inventory.find(it => it.base === x.id && !it.shattered) || game.inventory.find(it => it.base === x.id);
+      const item = owned || relicItem(x.id, createRng('codex-' + x.id), { from: R.holder, where, day: game.progress.flags.day });
+      const st = x.state;
+      const b = el('button', {
+        type: 'button', class: `pocket is-${st}${x.awakened ? ' is-awakened' : ''}${x.spare ? ' is-spare' : ''}`, 'data-r': x.rarity, 'data-relic': x.id, 'data-state': st,
+        'aria-label': `${codexNo(R)}: ${st === 'unsighted' ? 'unknown relic' : x.name}, ${st}${x.awakened ? ', awakened' : ''}${x.spare ? ', not needed for the page' : ''}`,
+      });
+      const p = portraitCanvas(item, { size: 64, develop: st === 'unsighted' ? 0 : undefined, still: st !== 'claimed' });
+      b.append(el('span', 'no', codexNo(R).replace(' / ', '/')), el('span', 'pp', [p.canvas]));
+      b.append(el('span', 'pn', st === 'unsighted' ? '???' : esc(x.name)));
+      b.append(el('span', 'pr', st === 'unsighted' ? 'Unsighted' : `<span style="color:${rarityColor(x.rarity)}">${esc(rarityName(x.rarity))}</span>`));
+      if (x.spare) b.append(el('span', { class: 'hint spare', text: x.spare === 'tamsin' ? 'Tamsin’s: only ever lent. The page does not need it.' : 'Stays in the Keep. The page does not need it.' }));
+      else if (st === 'unsighted') b.append(el('span', { class: 'hint', text: x.riddle }));
+      else if (st === 'sighted') b.append(el('span', { class: 'hint', text: `Held by ${x.holder}` }));
+      b.append(el('span', 'stamps', `<i class="${st !== 'unsighted' ? 'on' : ''}">Sighted</i><i class="${st === 'claimed' ? 'on' : ''}">Claimed</i><i class="${x.awakened ? 'on' : ''}">Awakened</i>`));
+      b.addEventListener('click', () => {
+        ctx.audio.sfx('page');
+        if (st === 'unsighted') ctx.services.cardInspect(item, { silhouette: true, riddle: x.riddle, picker: false });
+        else if (st === 'sighted') ctx.services.cardPreview(item, { heldBy: x.holder });
+        else ctx.services.cardInspect(owned || item, { picker: !!owned });
+      });
+      b.style.setProperty('--i', String(i));
+      binder.append(b);
     });
-    b.dataset.pick = String(i + 1);
-    binder.append(b);
-  });
-  root.append(binder);
-  root.append(el('p', 'codex-foot', 'Sighted: seen on its holder. Claimed: pried loose and yours. Awakened: a relic that has done three great deeds in your hands. No relic has woken that far yet.'));
+  }
+
+  function setPage(id) {
+    page = id;
+    lastPage = { id, region };
+    const V = binderPage(game, id);
+    renderTabs();
+    renderHead(V);
+    binder.replaceChildren();
+    binder.classList.toggle('is-sealed', V.sealed);
+    binder.dataset.page = V.id;
+    if (V.sealed) renderSealed(V); else renderPockets(V);
+  }
+
+  setPage(page);
   if (!ctx.audio.track || ctx.audio.track === 'victory') ctx.audio.music('road');
-  return { onAction: screenNav(root, { back: leave, menu: leave }) };
+  return {
+    onAction: screenNav(root, {
+      back: leave, menu: leave,
+      pick: n => { const P = PAGES[n - 1]; if (!P) return false; if (P.id !== page) { ctx.audio.sfx('page'); setPage(P.id); } return true; },
+    }),
+  };
 }

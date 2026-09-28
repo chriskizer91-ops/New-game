@@ -1,7 +1,10 @@
-// The Sunscorch Gallery (M4 spec §2.4): the reliquary's second room, through a door on the Great Hall's
-// east wall. Codex Page II's 14 pedestals stand in codex order on rows 2 and 5 (west to east), with a
-// walkway between. STUB from the M4 scaffold: WP-maps (P2) dresses the room.
-// Format: src/data/maps/index.js.
+// The Sunscorch Gallery (M4 spec §2.1, §2.4): the reliquary's second room, through a door on the Great
+// Hall's east wall (0,4). A long gallery with torches between the pedestals on both walls and a runner
+// down the middle from the door to the plaque on the east wall (16,4). Codex Page II's 14 pedestals
+// stand in codex order on rows 2 and 5 (west to east), seven a side, with the walkway between; the
+// flagstone aisles behind them let you walk round every one.
+// Tiles (keep): '#' stone walls, '*' torches, ':' flagstones, '_' the runner, '+' the door to the Hall.
+// Format: src/data/maps/index.js. Owner: M4 P2.
 import { deepFreeze } from '../../core/freeze.js';
 
 export default deepFreeze({
@@ -10,14 +13,14 @@ export default deepFreeze({
   lore: [[545, 385, 9, 4]],
   w: 18, h: 8,
   rows: [
-    '##################', // 0
-    '#________________#', // 1
-    '#________________#', // 2
-    '#________________#', // 3
-    '.________________#', // 4
-    '#________________#', // 5
-    '#________________#', // 6
-    '##################', // 7
+    '####*###*###*###*#', // 0
+    '#::::::::::::::::#', // 1
+    '#::::::::::::::::#', // 2
+    '#:______________:#', // 3
+    '+:______________:#', // 4
+    '#::::::::::::::::#', // 5
+    '#::::::::::::::::#', // 6
+    '####*###*###*###*#', // 7
   ],
   entities: [
     { id: 'pedestal-sandwalkers', kind: 'pedestal', relic: 'sandwalkers', at: [3, 2] },
@@ -34,6 +37,7 @@ export default deepFreeze({
     { id: 'pedestal-ashen-aegis', kind: 'pedestal', relic: 'ashen-aegis', at: [11, 5] },
     { id: 'pedestal-cinder-crown', kind: 'pedestal', relic: 'cinder-crown', at: [13, 5] },
     { id: 'pedestal-saltglass', kind: 'pedestal', relic: 'saltglass', at: [15, 5] },
+    { id: 'gal-plaque', kind: 'sign', at: [16, 4], look: 'plaque', text: 'The Sunscorch Gallery: fourteen pedestals of Sandspire stone, cut for the second page of the Codex. The first is warm to the touch.' },
   ],
   exits: [
     { id: 'gal-w', area: [0, 4, 0, 4], to: 'keep-hall', anchor: 'from-gallery' },

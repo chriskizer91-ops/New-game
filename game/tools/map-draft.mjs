@@ -94,7 +94,7 @@ async function reachGame(mode) {
   g.progress.brands = ['brand-of-briars', 'brand-of-the-heartroot'];
   const f = g.progress.flags;
   for (const [id, e] of Object.entries(ENCOUNTERS)) if (e.type === 'fight') { f.beaten[id] = 1; f.cleared[id] = true; if (e.once) f.done[id] = true; if (e.opens) f.unlocked[e.opens] = true; }
-  Object.assign(f.story, { 'tamsin-yielded': true, 'act1-complete': true, 'intro-done': true });
+  Object.assign(f.story, { 'tamsin-yielded': true, 'tamsin-yielded-2': true, 'act1-complete': true, 'intro-done': true });
   for (const m of Object.values(MAPS)) for (const e of m.entities) if (e.kind === 'lock' || e.kind === 'gate') f.unlocked[e.id] = true;
   return g;
 }
@@ -102,6 +102,7 @@ async function reachGame(mode) {
 // Flood fill from START_AT across every map through the engine's canWalk; exits are portals.
 async function reachable(game) {
   const { canWalk } = await import('../src/rules/world.js');
+  const { check } = await import('../src/rules/cond.js');
   const { START_AT } = await import('../src/data/world.js');
   const { anchor } = await import('../src/data/maps/index.js');
   const DIRS = { n: [0, -1], e: [1, 0], s: [0, 1], w: [-1, 0] };
@@ -115,7 +116,8 @@ async function reachable(game) {
       if (!canWalk(game, mid, nx, ny, { dir: d })) continue;
       const ex = m.exits.find(e => cells(e).some(([cx, cy]) => cx === nx && cy === ny));
       let to = [mid, nx, ny];
-      if (ex) { if (ex.sealed) continue; const a = anchor(ex.to, ex.anchor); if (!a) continue; to = [a.map, a.x, a.y]; }
+      // M4: a gated exit (the Keep's south-east gate) is a way through once its gate holds
+      if (ex) { if (ex.sealed && !(ex.to && ex.gate && check(game, ex.gate))) continue; const a = anchor(ex.to, ex.anchor); if (!a) continue; to = [a.map, a.x, a.y]; }
       const k = `${to[0]}:${to[1]},${to[2]}`;
       if (!seen.has(k)) { seen.add(k); q.push(to); }
     }
@@ -173,8 +175,10 @@ function paint(d) {
   const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
   const fill = (c, x, y, w = 1, h = 1) => { g.fillStyle = c; g.fillRect(X(x), Y(y), w * S, h * S); };
   const dot = (c, px, py, r) => { g.fillStyle = c; g.beginPath(); g.arc(px, py, r, 0, Math.PI * 2); g.fill(); };
-  const GRASS = '#5b8c3a';
-  const ground = { '.': GRASS, ',': GRASS, '"': '#4d7d31', '=': '#c9a96c', ':': '#9c968b', _: '#8c6b49', m: '#6d5333', f: '#2f4a3d', r: '#5e4731', k: '#2c2931',
+  // M4: the Sunscorch biomes read as sand, ash or stone instead of grass (the draft only; --art paints the real tiles)
+  const SUN = { desert: '#d6bb83', 'desert-town': '#d9c08c', canyon: '#c9a46e', 'mine-camp': '#bfa27a', dunes: '#dcc18a', oasis: '#cdb887', ash: '#8a8580', mine: '#4a4038', crystal: '#3b4a57', vault: '#46403c' }[d.biome];
+  const GRASS = SUN || '#5b8c3a';
+  const ground = { '.': GRASS, ',': GRASS, '"': SUN ? '#b9a35e' : '#4d7d31', '=': SUN ? '#a88a58' : '#c9a96c', ':': '#9c968b', _: '#8c6b49', m: SUN ? '#e4cc98' : '#6d5333', f: '#2f4a3d', r: '#5e4731', k: '#2c2931',
     T: GRASS, t: GRASS, Y: '#5b3f25', R: '#3d2b1d', o: GRASS, '#': '#6b6771', H: '#9b4531', '|': GRASS, '*': '#6b6771', '~': '#2f69a9', w: '#5b99c9',
     b: '#a27d51', '^': '#7b6551', v: GRASS, '+': '#5b3b1f', s: '#9b9b9b', i: '#1d1519', x: '#000000' };
   // pass 1: ground
@@ -182,13 +186,13 @@ function paint(d) {
     const ch = d.m.rows[y][x], px = X(x), py = Y(y);
     fill(ground[ch] || '#ff00ff', x, y);
     switch (ch) {
-      case '.': for (let i = 0; i < 3; i++) dot('#6b9c47', px + rnd() * S, py + rnd() * S, S * 0.06); break;
+      case '.': for (let i = 0; i < 3; i++) dot(SUN ? 'rgba(0,0,0,0.12)' : '#6b9c47', px + rnd() * S, py + rnd() * S, S * 0.06); break;
       case ',': for (let i = 0; i < 4; i++) dot(['#f1dc54', '#ee86b4', '#fafafa'][i % 3], px + 2 + rnd() * (S - 4), py + 2 + rnd() * (S - 4), S * 0.09); break;
       case '"': g.strokeStyle = '#7bb04a'; g.lineWidth = 1; for (let i = 0; i < 4; i++) { const bx = px + 2 + rnd() * (S - 4); g.beginPath(); g.moveTo(bx, py + S - 1); g.lineTo(bx + 1, py + S * 0.3); g.stroke(); } break;
       case '=': g.fillStyle = '#b89456'; g.fillRect(px, py + S * 0.8, S, S * 0.2); dot('#d9bd84', px + rnd() * S, py + rnd() * S, S * 0.07); break;
       case ':': g.strokeStyle = '#7e786d'; g.strokeRect(px + 0.5, py + 0.5, S - 1, S - 1); break;
       case '_': g.fillStyle = '#76583a'; g.fillRect(px, py + S / 2, S, 1); g.fillRect(px, py + S - 1, S, 1); break;
-      case 'm': dot('#5b4427', px + rnd() * S, py + rnd() * S, S * 0.18); break;
+      case 'm': if (SUN) { g.strokeStyle = 'rgba(120,90,40,0.5)'; g.beginPath(); g.moveTo(px + 1, py + S * 0.6); g.quadraticCurveTo(px + S / 2, py + S * 0.3, px + S - 1, py + S * 0.6); g.stroke(); } else dot('#5b4427', px + rnd() * S, py + rnd() * S, S * 0.18); break;
       case 'f': dot('#8af7da', px + S * 0.3, py + S * 0.6, S * 0.12); dot('#8af7da', px + S * 0.7, py + S * 0.35, S * 0.09); break;
       case 'r': g.strokeStyle = '#43301f'; g.beginPath(); g.moveTo(px, py + S * 0.3); g.lineTo(px + S, py + S * 0.6); g.stroke(); break;
       case 't': dot('#2f6d25', px + S / 2, py + S * 0.55, S * 0.46); dot('#4f9a38', px + S * 0.4, py + S * 0.42, S * 0.2); break;
@@ -233,7 +237,8 @@ function paint(d) {
   for (const [x0, y0, x1, y1] of d.m.roam?.rects || []) { g.setLineDash([6, 4]); g.lineWidth = 2; g.strokeStyle = 'rgba(255,150,40,0.75)'; g.strokeRect(X(x0) + 2, Y(y0) + 2, (x1 - x0 + 1) * S - 4, (y1 - y0 + 1) * S - 4); g.setLineDash([]); }
   for (const [x, y] of d.dead) { g.fillStyle = 'rgba(255,0,0,0.35)'; g.fillRect(X(x), Y(y), S, S); g.strokeStyle = 'rgba(255,60,60,0.9)'; g.beginPath(); g.moveTo(X(x), Y(y)); g.lineTo(X(x) + S, Y(y) + S); g.stroke(); }
   for (const [x, y] of d.corr) dot('rgba(255,140,0,0.95)', X(x) + S / 2, Y(y) + S / 2, S * 0.12);
-  const LOCK = { thornwall: 'Th', bramble: 'Br', stream: 'St', boulder: 'Bo', 'cold-hearth': 'Co', 'tally-seal': 'Ta', 'barred-gate': 'Ba', darkness: 'Dk', 'rot-knot': 'Rk', 'rope-ledge': 'Ro', ichor: 'Ic' };
+  const LOCK = { thornwall: 'Th', bramble: 'Br', stream: 'St', boulder: 'Bo', 'cold-hearth': 'Co', 'tally-seal': 'Ta', 'barred-gate': 'Ba', darkness: 'Dk', 'rot-knot': 'Rk', 'rope-ledge': 'Ro', ichor: 'Ic',
+    'dune-glass': 'Dg', mirage: 'Mi', quicksand: 'Qs', 'vault-seal': 'Vs' };
   const big = [];
   for (const e of d.m.entities) {
     const [x0, y0] = e.area ? e.area : e.at;
@@ -406,7 +411,7 @@ if (wantPng) {
     const md = { id: m.id, biome: m.biome, w: m.w, h: m.h, rows: m.rows, entities: m.entities, exits: m.exits, anchors: m.anchors, roam: m.roam };
     const src = art
       ? await page.evaluate(paintArt, { m: md, zoom: scale, legendW: 470, lines })
-      : await page.evaluate(paint, { m: md, scale, labels: !!flag('labels'), legendW: 470, dead: deadTiles, corr: corridors(m), warn, lines });
+      : await page.evaluate(paint, { m: md, biome: m.biome, scale, labels: !!flag('labels'), legendW: 470, dead: deadTiles, corr: corridors(m), warn, lines });
     const file = path.join(outDir, `${id}${art ? '-art' : ''}.png`);
     writeFileSync(file, Buffer.from(src.split(',')[1], 'base64'));
     console.log(`wrote ${file}${warnings.length ? `  (${warnings.length} lint note${warnings.length > 1 ? 's' : ''})` : ''}`);

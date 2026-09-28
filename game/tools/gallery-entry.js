@@ -291,6 +291,17 @@ const SCENES = {
   tower: ['xxxx##############xxxx', 'xxx#*____#s#____*#xxx', 'xx#______#_#______#xx', 'x#__________________#x', '#____kkk_______o_____#', '*____kkk____________*', '#___________________##', '#__"_____####___t____#', '#________#__#________#', 'x#_______#__+_______#x', 'xx#_________________#x', 'xxx###*###++###*###xxx'],
   roots: ['RRRRRRRRRRRRRRRRRRRRRR', 'RRrrrrrrRRRRrrrrrrrRRR', 'Rrrrfrrrrr##rrrriiiirR', 'RrrYYYrrrrrrrrrriiiirR', 'RrrrrrrrrkkkkrrrriirrR', 'RRrrrffrrkkkkrrrrrrrRR', 'Rrrrrrrrrrrrrrrr.rrrrR', 'RrrrrrYYYrrrrrfrrrrrrR', 'Rriiirrrrrrr~~rrrrrrRR', 'RriiiirrrrrrrrrrrYYrrR', 'RRrrrrrrrrs+rrrrrrrrRR', 'RRRRRRRRRRRRRRRRRRRRRR'],
   den: ['RRRRRRRRRRRRRRRRRRRRRR', 'RRmmmmmRRRRRRmmmmmmRRR', 'Rmmmtmmmmmmmmmmmiimm.R', 'Rmm..mmmmmmmmmmiiiimmR', 'Rmm.....o.....mmiimmmR', 'RRm............mmmmRRR', 'Rmm..........t....mmR', 'Rmmmii.....mmmm...mmmR', 'Rmmiiii...mmmmmm..mmRR', 'RRmmii.....mmmm..tmmmR', 'RRRmmmmmmm++mmmmmmmRRR', 'RRRRRRRRRRRRRRRRRRRRRR'],
+  // M4: the Sunscorch biomes (every character each place is likely to use)
+  desert: ['"""..T.....==..,,,,.T..', '"t"".......==.,,,,,....', '..".....o..==.....f....', '...,,,.....==...HHHH...', '..,,,,.....==...HHHH.o.', '.....T.....==...#*+#...', '..o........==.........t', '^^^^^^vv^^^==^^^^^^^^^^', '.....rrrr..==...~~~~...', '..T..r..r..==..~~~ww~..', '.....r..rrr==...~~~~.t.', '..t..r.....==....T.....'],
+  'desert-town': ['.HHHHHH..::::..HHHHHH..', '.HHHHHH..::::..HHHHHH.T', '.#*#+##..::::..##+#*#..', '.,,.T....::::....T.,,..', '........::::::......o..', '=========::::::=========', '...t..~~~~::::~~~~..t..', '...T..~~~~::::~~~~..T..', '.,,...~~ww::::ww~~..,,.', '......________.....#####', '.t....________..o..#*+##', '......________.....#...#'],
+  canyon: ['^^^^^^^^^^^^^^^^^^^^^^^', '^^^^^^^^^^^^^^^^^^^^^^^', '..o..rrrrrrrrrr....o...', '.....r........r...,,,..', '==...r..T.....rrrrrrrrr', '====.r...........t.....', '...===rrrrrrr...~~~~~~~', '.,,...==........~~~~~~~', '......."".==....bbb.YY.', '.T.....""..===.....YYY.', 'vvvvvvvvvvvvvvvvvvvvvvv', '...o..#####.....T.m..t.'],
+  'mine-camp': ['|||||||||||||||||||||||', '|.HHHHH....s.....HHHH.|', '|.HHHHH..........HHHH.|', '|.#+###.rrrrrrr..#+*#.|', '|......r.......r......|', '|..t...r..,,,..r...T..|', '|......r..,,,..r......|', '=======r.......r=======', '|..o...rrrrrrrrr...t..|', '|..mm.....f.......___.|', '|.mmm..~~~.......____.|', '|||||||||||||||||||||||'],
+  mine: ['RRRRRRRRRRRRRRRRRRRRRRR', 'RRRRRR#*##s##*#RRRRRRRR', 'R.....r.......r....fRRR', 'R..T..r...o...r.....RRR', 'R.....rrrrrrrrr..k..RRR', 'RR....r.....,,...kk..RR', 'RR.f..r...t.......YY.RR', 'R.....r....mm...~~~..RR', 'R..,,.r...mmm...~~~..RR', 'Rxxxxxbbbxxxx.........R', 'R.....r........f...+..R', 'RRRRRRRRRRRRRRRRRRRRRRR'],
+  crystal: ['RRRRRRRRRRRRRRRRRRRRRRR', 'RRR#*##RRRRRRR##*#RRRRR', 'R.....f....T.....,,..RR', 'R..T...,,.....o.....fRR', 'R....t......YYY......RR', 'R.........f.YYY..t....R', 'RR..o...........~~~~..R', 'R....T....,,...~~~~~..R', 'R..f.........T..~~~..RR', 'R......kkkk.......f...R', 'RR.t...kkkk...o.......R', 'RRRRRRRRRRRRRRRRRRRRRRR'],
+  dunes: [',,,,,,....T.......,,,,,', ',,,,,.....o..HHHH.,,,,,', '.......t.....HHHH......', '..T..........#+##...o..', '......f..............,,', '=======================', '...,,,,....t....f......', '..,,,,,,.....T.....,,,,', '^^^^^^vvv^^^^^^^^^^^^^^', '.....""".......####....', '..o..""".......#..#..T.', '.f..........t..........'],
+  oasis: ['#####*#######*#########', '#,,.T..,,.T...,,.T..,,#', '#..HHHH.......~~~~~...#', '#..HHHH..T...~~~~~~~..#', '#..#+##......~~~ww~~..#', '#.........T...~~~~~.,,#', '#::::::::::::::.......#', '#,,.t.."""..f..::.t...#', '#...T..""".....::.....#', '#..mmm.....,,,.::..T..#', '#.............f::.....#', '#######+###############'],
+  ash: ['#####*#####..#####*####', '#HHHHH#.....,,..HHHH..#', '#HHHHH#..T.,,,..HHHH..#', '#*#+###.........#+##..#', '#......o..mmm.......t.#', '#..""....mmmmm..f.....#', '#::::::::::::::::::::::', '#..t..f...,,,..T..o...#', '#.......iii.....,,....#', '#..T...iiiii......||||#', '#.......iii....___....#', '#####....#########....#'],
+  vault: ['#######################', '#*###*#####s####*###*##', '#::::::::::::::::::::##', '#:T:::T:::::::T:::T::##', '#::::::::mm:::::::::::#', '#:::t::::mmm::f::o::::#', '#.......______........#', '#..f....______..mm....#', '#..YY...______...t....#', '#..YY.....,,.........##', '#RRRRRR...+....RRRRRR##', '#######################'],
 };
 function sceneCanvas(biome, rows, sprites = [], frame = 0) {
   const A = tileAtlas(biome), src = document.createElement('canvas');
@@ -337,7 +348,8 @@ if (want('world-npcs')) {
   const r2 = row(s, 'front, 6x');
   for (const k of keys) fig(r2, crop(npcSheet(k).img, 0, 0, 16, 24), 6, k, GROUND_BG);
 }
-const MAP_FOE_KEYS = ['cutpurse', 'bandit', 'tallyman', 'smuggler', 'feral-druid', 'hollowed-ranger', 'tamsin', 'mags', 'haskett', 'hollis', 'dun', 'vesper', 'oda', 'corra'];
+const MAP_FOE_KEYS = ['cutpurse', 'bandit', 'tallyman', 'smuggler', 'feral-druid', 'hollowed-ranger', 'tamsin', 'mags', 'haskett', 'hollis', 'dun', 'vesper', 'oda', 'corra',
+  'scavenger', 'dune-raider', 'ash-wight', 'rasa', 'ash-captain', 'brask', 'quartermaster', 'vell'];
 if (want('world-foes')) {
   const s = section('world-foes', 'World: map foes', 'mapFoeSheet(artKey, { gearTier, variant, relic }): 2 gait frames x rows s, n, e, w. Humanoids reuse the walker rig via foeLooks (gearTier 0-3 shown); named holders carry their relic; beasts are dedicated 16-32 px sprites.');
   const r = row(s, 'humanoids at gearTier 0 and 3 (3x)');
@@ -398,6 +410,7 @@ if (only && only.includes('world-zoom')) {
   for (const key of keys) {
     const r = row(s, key);
     if (MAP_FOE_SIZE[key] || MAP_FOE_KEYS.includes(key)) { for (const gT of [0, 3]) fig(r, mapFoeSheet(key, { gearTier: gT }).img, 6, key + ' g' + gT, GROUND_BG); continue; }
+    if (key.startsWith('npc:')) { fig(r, npcSheet(key.slice(4)).img, 6, key, GROUND_BG); continue; }
     if (key.startsWith('obj:')) { const k = key.slice(4); for (const st of OBJECT_STATES[k] || ['closed']) { const a = objectSprite(k, st, { relic: k === 'pedestal' ? 'isoldes-oath' : null }); fig(r, a, 6, st, GROUND_BG); if (a.frames > 1) fig(r, objectSprite(k, st, { frame: 1 }), 6, 'f1', GROUND_BG); } if (k === 'hearth') for (const id of Object.keys(HEARTH_LOOKS)) fig(r, objectSprite('hearth', 'lit', { id }), 6, id, GROUND_BG); continue; }
     for (const [label, gear] of WALKER_KITS[key] || [['starter', undefined]]) fig(r, walkerSheet(key, gear).img, 6, label, GROUND_BG);
   }

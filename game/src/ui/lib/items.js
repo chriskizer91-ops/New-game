@@ -3,15 +3,27 @@
 // Enchant (M3 spec D10, mirroring rules/stats.js): the rarity make for generated gear (relics carry
 // their own numbers) plus the temper at 1:1. A weapon adds it to hit and damage, body armour and
 // shields to Guard, everything else 3 max HP per point.
-// Owner: WP8.
+// M4 (spec §5.1, §5.3; owner P7a): the forge words shared by the card, the forge sheet, the shops, the
+// spoils and the aftermath: sockets and gems (socketList, gemText, blockLines), the stage and deeds of a
+// relic (stageInfo, kindledText), the Chronicle (chronicleOf), costs and counts (costText, countsText),
+// and small gem and material icons (gemIconEl, matIconEl: the art's gemIcon/materialIcon when
+// src/art has them, else a CSS stand-in in the gem's colour). verdict() compares with the Codex
+// pages' party bonus, as the Party screen shows it.
+// Owner: WP8 (M3), P7a (M4).
 import { RELICS, SETS } from '../../data/relics.js';
 import { ITEMS } from '../../data/items.js';
 import { SKILLS } from '../../data/skills.js';
 import { RARITY } from '../../data/rarity.js';
+import { HEROES } from '../../data/heroes.js';
+import { GEMS, MATERIALS } from '../../data/gems.js';
+import { TUNING } from '../../data/tuning.js';
 import { itemProfile, POWERS } from '../../rules/stats.js';
 import { affixText, affixQuality } from '../../rules/loot.js';
 import { compare, wearerOf } from '../../rules/party.js';
-import { esc, fmt } from './dom.js';
+import { socketsOf } from '../../rules/forge.js';
+import { stageOf, deedsOf, pageBonus } from '../../rules/codex.js';
+import * as Art from '../../art/index.js';
+import { el, esc, fmt, toCanvas } from './dom.js';
 import { rarityName } from './art.js';
 
 export const SLOT_NAME = { weapon: 'Weapon', offhand: 'Off-hand', head: 'Head', body: 'Body', hands: 'Hands', feet: 'Feet', amulet: 'Amulet', ring: 'Ring' };
@@ -185,7 +197,7 @@ export function verdict(game, heroId, item) {
   const hero = game.party.roster[heroId];
   const w = wearerOf(game, item.uid);
   if (w && w.heroId === heroId) return { cls: 'on', text: 'Equipped' };
-  const c = compare(hero, item, game.inventory);
+  const c = compare(hero, item, game.inventory, pageBonus(game));
   if (!c.ok) return { cls: 'cant', text: "Can't use", reason: c.reason };
   const d = c.deltas;
   const order = item.slot === 'weapon' ? [['dmg', 'DMG'], ['hit', 'HIT'], ['guard', 'GRD'], ['hp', 'HP'], ['speed', 'SPD'], ['mp', 'MP'], ['crit', 'CRIT']]
@@ -201,3 +213,185 @@ export const CMP_ROWS = [
   ['dmg', 'Damage / hit', v => fmt(v)], ['hit', 'Attack', v => (v >= 0 ? '+' : '') + v], ['guard', 'Guard', v => String(v)],
   ['hp', 'Hit points', v => String(v)], ['mp', 'MP', v => String(v)], ['speed', 'Speed', v => String(v)], ['crit', 'Legend Strike on', critText],
 ];
+
+// ---- M4: the forge words (spec §4.2-§4.5, §5.1, §5.3) ---------------------------------------------------
+
+export const TEMPER_STEPS = TUNING.temper.max; // the flames on a card: +1 to +10
+
+// An item's sockets: a gem id, or null for an empty socket, for each socket it has.
+export function socketList(item) {
+  const n = item ? socketsOf(item) : 0;
+  const list = Array.isArray(item?.gems) ? item.gems : [];
+  return Array.from({ length: n }, (_, i) => (GEMS[list[i]] ? list[i] : null));
+}
+
+// Plain-language lines for a stats block that may also carry the dice keys of affixes (a gem's stats,
+// an Awakened branch's): "+1d4 ember damage on hit", then statLines for the rest.
+export function blockLines(stats) {
+  if (!stats || typeof stats !== 'object') return [];
+  const { extraDice, vsHurt, vsUnaware, aspect, ...rest } = stats;
+  const out = [];
+  if (extraDice > 0) out.push(`+1d${extraDice * 2}${aspect ? ` ${aspect}` : ''} damage on hit`);
+  if (vsHurt > 0) out.push(`+1d${vsHurt * 2} damage vs foes at half HP or less`);
+  if (vsUnaware > 0) out.push(`+1d${vsUnaware * 2} damage vs marked, rooted, frozen or staggered foes`);
+  return [...out, ...statLines(rest)];
+}
+
+// What a gem does set in this slot (rules/stats.js): a weapon takes its `weapon` stats, anything else
+// its `other` stats.
+export const gemStats = (gemId, slot) => (slot === 'weapon' ? GEMS[gemId]?.weapon : GEMS[gemId]?.other) || {};
+export const gemText = (gemId, slot) => blockLines(gemStats(gemId, slot)).join(', ');
+export const gemBothText = gemId => `In a weapon: ${gemText(gemId, 'weapon')}. In anything else: ${gemText(gemId, 'other')}.`;
+export const gemName = (gemId, n = 1) => `${GEMS[gemId]?.name || gemId}${n === 1 ? '' : 's'}`;
+
+// A Kindled relic's bonus (rules/stats.js itemProfile): to hit on a weapon, Guard on body armour and
+// shields, max HP on the rest.
+export function kindledText(item) {
+  const K = TUNING.forge.kindled;
+  const kind = RELICS[item?.base]?.kind || item?.kind;
+  if (item?.slot === 'weapon') return `+${K.hit} to hit`;
+  if (item?.slot === 'body' || (item?.slot === 'offhand' && kind === 'shield')) return `+${K.guard} Guard`;
+  return `+${K.hp} max HP`;
+}
+
+// A relic's stage and deeds, for the card and the forge; null for anything that is not a relic.
+// { stage, deeds: [{ id, name, text, done, day }], done, total, ready, branch, line }
+// line: "Dormant · 0 of 3 deeds", "Kindled · 2 of 3 deeds", "Kindled · 3 of 3 deeds · Hilda can wake it",
+// "Awakened · Sunmarrow".
+export function stageInfo(item) {
+  const stage = stageOf(item);
+  if (!stage) return null;
+  const deeds = deedsOf(item).map(d => ({ ...d, day: Number(item.deeds?.[d.id]) || null }));
+  const done = deeds.filter(d => d.done).length, total = deeds.length;
+  const b = stage === 'awakened' ? RELICS[item.base].awaken[item.awakened] : null;
+  const branch = b ? { id: item.awakened, name: b.name, text: b.text, stats: b.stats || {} } : null;
+  const ready = !branch && total > 0 && done === total;
+  const line = branch ? `Awakened · ${branch.name}`
+    : `${stage === 'kindled' ? 'Kindled' : 'Dormant'} · ${done} of ${total} deeds${ready ? ' · Hilda can wake it' : ''}`;
+  return { stage, deeds, done, total, ready, branch, line };
+}
+
+export const heroName = (game, id) => game?.party?.roster?.[id]?.name || HEROES[id]?.name || String(id);
+
+// The back of the card (spec §5.3): foes felled, the mightiest kill, and everyone who has carried it.
+// Every field may be missing on an older save: bearers then start with whoever wears it now.
+export function chronicleOf(game, item) {
+  const c = item?.chronicle && typeof item.chronicle === 'object' ? item.chronicle : {};
+  const ids = Array.isArray(c.bearers) ? c.bearers.filter(id => typeof id === 'string') : [];
+  const w = game?.party?.roster && item ? wearerOf(game, item.uid) : null;
+  if (w && !ids.includes(w.heroId)) ids.push(w.heroId);
+  const m = c.mightiest && typeof c.mightiest === 'object' && c.mightiest.name
+    ? { name: String(c.mightiest.name), level: Number(c.mightiest.level) || null } : null;
+  return { kills: Math.max(0, Number(c.kills) || 0), mightiest: m, bearers: [...new Set(ids)].map(id => heroName(game, id)), wearer: w ? w.heroId : null };
+}
+
+// Forge costs and counts in words: "120 gold + 1 silver", "+2 scrap, +1 silver", "+1 Ash Garnet".
+export const matWord = (k, n) => (k === 'embers' && n === 1 ? 'ember' : (MATERIALS[k]?.name || k).toLowerCase());
+export function costText(cost) {
+  if (!cost) return '';
+  const bits = [];
+  if (cost.gold) bits.push(`${cost.gold} gold`);
+  for (const [k, n] of Object.entries(cost.materials || {})) if (n) bits.push(`${n} ${matWord(k, n)}`);
+  return bits.join(' + ') || 'Free';
+}
+export function countsText(counts, { gems = false, sign = '+' } = {}) {
+  return Object.entries(counts || {}).filter(([, n]) => n > 0)
+    .map(([k, n]) => `${sign}${n} ${gems ? gemName(k, n) : matWord(k, n)}`).join(', ');
+}
+
+// Small pixel icons for gems, materials and temper flames. A gem or a material uses the art's gemIcon /
+// materialIcon when src/art/index.js exports them (P6); until then (or if one throws) a stand-in drawn
+// here: a cut stone in the gem's colour, a chip of scrap, a silver bar, a live coal. `box` is the CSS
+// size in px, reached by whole pixel steps.
+function artIcon(name, id, box) {
+  const fn = Art[name];
+  if (typeof fn !== 'function') return null;
+  try {
+    const img = fn(id, { size: box });
+    if (!img || !img.width || !img.height) return null;
+    const cv = typeof img.getContext === 'function' ? img : toCanvas(img);
+    const k = Math.max(1, Math.floor(box / Math.max(img.width, img.height)));
+    cv.style.width = img.width * k + 'px';
+    cv.style.height = img.height * k + 'px';
+    cv.classList.add('px');
+    return cv;
+  } catch { return null; }
+}
+
+const hexRgb = h => { const n = parseInt(String(h).replace('#', ''), 16) || 0; return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
+const shade = (rgb, k) => rgb.map(v => Math.round(k < 0 ? v * (1 + k) : v + (255 - v) * k));
+const pixCache = new Map();
+// A tiny sprite from rows of palette digits ('.' is clear), as ImageData (cached by key).
+function pixImage(key, rows, pal) {
+  if (!pixCache.has(key)) {
+    const w = Math.max(...rows.map(r => r.length)), h = rows.length, d = new Uint8ClampedArray(w * h * 4);
+    rows.forEach((r, y) => [...r].forEach((ch, x) => {
+      const c = pal[ch];
+      if (!c) return;
+      const i = (y * w + x) * 4;
+      d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255;
+    }));
+    pixCache.set(key, new ImageData(d, w, h));
+  }
+  return pixCache.get(key);
+}
+function pixCanvas(img, box) {
+  const k = Math.max(1, Math.floor(box / Math.max(img.width, img.height)));
+  const cv = toCanvas(img, null, k);
+  cv.setAttribute('aria-hidden', 'true');
+  return cv;
+}
+
+const GEM_ROWS = ['.111111.', '12233221', '12344321', '.123321.', '..1221..', '...11...'];
+const MAT_ROWS = {
+  scrap: ['..11....', '.1221.1.', '1233212.', '.123321.', '..12221.', '.12222.1', '..1111..'],
+  silver: ['...1111..', '..133331.', '.12333321', '122222221', '.1111111.'],
+  embers: ['..1111..', '.123321.', '12344321', '12344321', '.123321.', '..1111..'],
+};
+const MAT_PAL = {
+  scrap: { 1: [58, 46, 38], 2: [120, 104, 88], 3: [176, 160, 136] },
+  silver: { 1: [72, 78, 92], 2: [168, 178, 196], 3: [236, 242, 250] },
+  embers: { 1: [90, 29, 10], 2: [200, 64, 26], 3: [238, 142, 49], 4: [255, 241, 176] },
+};
+export function gemIconEl(gemId, box = 20) {
+  const n = artIcon('gemIcon', gemId, box) || (() => {
+    const c = hexRgb(GEMS[gemId]?.color || '#c8c0b0');
+    const pal = { 1: shade(c, -0.55), 2: shade(c, -0.2), 3: c, 4: shade(c, 0.6) };
+    return pixCanvas(pixImage(`gem:${gemId}`, GEM_ROWS, pal), box);
+  })();
+  n.classList.add('gem-i');
+  n.dataset.gem = gemId;
+  n.setAttribute('aria-hidden', 'true');
+  return n;
+}
+export function matIconEl(matId, box = 18) {
+  const n = artIcon('materialIcon', matId, box) || pixCanvas(pixImage(`mat:${matId}`, MAT_ROWS[matId] || MAT_ROWS.scrap, MAT_PAL[matId] || MAT_PAL.scrap), box);
+  n.classList.add('mat-i');
+  n.dataset.mat = matId;
+  n.setAttribute('aria-hidden', 'true');
+  return n;
+}
+
+// One temper flame: 'off' (a dark coal), 'on' (+1 to +6), 'hot' (+7 to +9, white-hot at the core),
+// 'white' (+10), 'next' (the step Hilda would add). flameState(i, temper) picks one for flame i (0-9).
+const FLAME_ROWS = ['...1...', '..11...', '..121..', '.1221..', '.12221.', '122321.', '1223321', '1233321', '.12321.', '..111..'];
+const FLAME_PAL = {
+  off: { 1: [70, 52, 40], 2: [44, 32, 25], 3: [36, 26, 20] },
+  on: { 1: [164, 82, 26], 2: [238, 142, 49], 3: [255, 203, 102] },
+  hot: { 1: [216, 106, 28], 2: [255, 176, 74], 3: [255, 246, 214] },
+  white: { 1: [154, 180, 255], 2: [232, 240, 255], 3: [255, 255, 255] },
+  next: { 1: [255, 203, 102], 2: [58, 40, 26], 3: [80, 54, 30] },
+};
+export const flameState = (i, temper) => (i >= temper ? 'off' : temper >= TEMPER_STEPS && i === TEMPER_STEPS - 1 ? 'white' : i >= 6 ? 'hot' : 'on');
+export function flameEl(state = 'off', box = 20) {
+  const cv = pixCanvas(pixImage(`flame:${state}`, FLAME_ROWS, FLAME_PAL[state] || FLAME_PAL.off), box);
+  cv.classList.add('flame', `fl-${state}`);
+  return cv;
+}
+// A row of ten flames for `temper` (+0 to +10); `next` marks the flame the next step lights.
+export function flamesEl(temper, { next = false, box = 20, cls = '' } = {}) {
+  const t = Math.max(0, Math.min(TEMPER_STEPS, temper || 0));
+  const row = el('span', { class: `flames${cls ? ` ${cls}` : ''}${t >= 7 ? ' hot' : ''}`, role: 'img', 'aria-label': `Tempered +${t} of +${TEMPER_STEPS}` });
+  for (let i = 0; i < TEMPER_STEPS; i++) row.append(flameEl(next && i === t ? 'next' : flameState(i, t), box));
+  return row;
+}

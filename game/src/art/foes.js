@@ -1345,6 +1345,19 @@ Object.assign(FOE_ART, {
   rotwarden: { name: 'The Rotwarden', kind: 'beast', w: 96, h: 96, foot: [48, 93], defaultTier: 'champion', relic: 'ichor-mask', relics: ['ichor-mask', 'first-seed'], phases: 3, build: rotwarden },
 });
 
+/* =====================================================================
+   M4 · THE SUNSCORCH (spec §3.2, §6.2): stand-ins until each family's own art lands below, so every
+   key in data/foes.js resolves (a Ladder poster or a battle never meets "unknown foe")
+   ===================================================================== */
+for (const [key, like, name] of [['sand-skink', 'rotgrub', 'Sand-Skink'], ['scavenger', 'smuggler', 'Dune Scavenger'], ['dune-raider', 'bandit', 'Dune Raider'],
+  ['rasa', 'mags', 'Rasa the Dune-Rider'], ['gnash', 'bandit', 'Gnash the Raider-King'], ['glass-scorpion', 'thornhound', 'Glass Scorpion'],
+  ['glass-matriarch', 'thornhound', 'The Glass Matriarch'], ['mirage-wisp', 'glowcap', 'Mirage Wisp'], ['wisp-queen', 'gloamwing', 'The Wisp-Queen'],
+  ['ash-wight', 'sapwight', 'Ash-Wight'], ['ash-captain', 'dun', 'The Ash-Captain'], ['sand-wyrm', 'oldsnag', 'The Sand Wyrm'],
+  ['kharzul', 'briarmaw', 'Kharzul the Glass Scorpion'], ['ashen-warden', 'rotwarden', 'The Ashen Warden'], ['brask', 'hollis', 'Foreman Brask'],
+  ['quartermaster', 'tallyman', 'The Quartermaster'], ['vell', 'hollowed-ranger', 'Vell Saltglass']]) {
+  if (!FOE_ART[key]) FOE_ART[key] = Object.assign({}, FOE_ART[like], { name, standIn: like, relic: FOE_ART[like].relic && FOE_ART[like].kind === 'beast' ? null : FOE_ART[like].relic });
+}
+
 // foeLooks(key, { gearTier, relic, variant }) -> { H, gear }: a humanoid foe's rig identity and gear
 // looks, for the overworld walker rig (art/map-sprites.js). Beasts and unknown keys give { H: null, gear: {} }.
 // `relic` (optional) overrides the relic carried; for Tamsin `variant` (the rival starter id) picks it.

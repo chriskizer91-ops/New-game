@@ -27,6 +27,12 @@ export const BACKDROPS = Object.freeze(['hearth-road', 'verdant-wood', 'thornhol
   'sun-road', 'sandspire', 'dust-trail', 'deep-shaft', 'glass-heart', 'glass-flats', 'miragewell', 'scorchgate', 'scorchgate-vaults']); // M4
 
 const S = (family, level, o = {}) => ({ family, level, gearTier: 0, omens: [], ...o });
+// M4: a Sunscorch spawn that is not rabble climbs SUN_WAKE levels per Waking instead of 6 (M3 §4.6 wakeLevels).
+// A player arrives at Waking 2 and meets the region's second Champion at Waking 3, in whichever order
+// they take them; the party gains about four levels between the two Brands, so +4 keeps both halves of
+// the region (and both orders) fair, where +6 would need Waking-0 levels below 1 for the second half.
+const SUN_WAKE = 4;
+const SUN = (family, level, o = {}) => S(family, level, { wakeLevels: SUN_WAKE, ...o });
 
 export const ENCOUNTERS = deepFreeze({
   'hearthstone-keep': {
@@ -215,8 +221,10 @@ export const ENCOUNTERS = deepFreeze({
     id: 'last-green-coal', type: 'hearthfire', name: 'The Last Green Coal', place: 'The Heartroot', backdrop: 'heartroot', region: 'verdant',
     text: 'One coal, still green, in a hollow of the roots. It remembers being fire.',
   },
-  // ---- M4: the Sunscorch Wastes (spec §2.5, §3.3). STUBS from the M4 scaffold: ids, places, modes,
-  // leads, holders and Brands are the spec's; WP-foes (P4) tunes every level and spawn in Gate 4. ----
+  // ---- M4: the Sunscorch Wastes (spec §2.5, §3.3; owner P4). Levels are Waking-0 levels, and a player
+  // arrives at Waking 2 at the earliest (both Verdant Brands open the Keep's south-east gate), so the
+  // Waking adds 12 levels to everything but rabble (+4) on arrival and 18 (+6) after the first Sunscorch
+  // Brand. They are low on purpose: tuned in Gate 4 with tools/sim.mjs (docs/RULES.md §12, M4).
   waystone: {
     id: 'waystone', type: 'hearthfire', name: 'The Waystone Fire', place: 'The Sunward Road', backdrop: 'sun-road', region: 'sunscorch',
     text: 'A fire-bowl on a standing stone where the green gives out and the sand begins.',
@@ -247,101 +255,101 @@ export const ENCOUNTERS = deepFreeze({
   },
   'sr-skinks': {
     id: 'sr-skinks', type: 'fight', name: 'Sand-Skinks', place: 'The Sunward Road', backdrop: 'sun-road', region: 'sunscorch',
-    spawns: [S('sand-skink', 9), S('sand-skink', 9), S('sand-skink', 9)],
-    text: 'Quick little lizards with too many teeth.',
+    spawns: [S('sand-skink', 8), S('sand-skink', 8), S('sand-skink', 8)],
+    text: 'Quick little lizards with too many teeth, sunning themselves on the road.',
   },
   'sr-toll': {
     id: 'sr-toll', type: 'fight', name: 'Rasa\'s Toll', place: 'The Sunward Road', backdrop: 'sun-road', region: 'sunscorch',
-    spawns: [S('dune-raider', 4, { variant: 'rider', relic: 'sandwalkers', name: 'Rasa the Dune-Rider' }), S('dune-raider', 3), S('dune-raider', 3)],
-    text: 'Rasa the Dune-Rider has strung a rope across the road and wants a toll in water.',
+    spawns: [SUN('dune-raider', 4, { variant: 'rider', relic: 'sandwalkers', name: 'Rasa the Dune-Rider' }), SUN('dune-raider', 3), SUN('dune-raider', 3)],
+    text: 'Rasa the Dune-Rider has strung a rope across the road and wants a toll in water. Her boots have never sunk.',
   },
   'dt-skinks': {
     id: 'dt-skinks', type: 'fight', name: 'Skink Nest', place: 'The Dust Trail', backdrop: 'dust-trail', region: 'sunscorch',
-    spawns: [S('sand-skink', 10), S('sand-skink', 10), S('sand-skink', 10), S('sand-skink', 10)],
-    text: 'A nest of sand-skinks in the rail cuttings.',
+    spawns: [S('sand-skink', 9), S('sand-skink', 9), S('sand-skink', 9), S('sand-skink', 9)],
+    text: 'A nest of sand-skinks in the rail cuttings, all of them hungry at once.',
   },
   'dt-scorpions': {
     id: 'dt-scorpions', type: 'fight', name: 'Glass Scorpions', place: 'The Dust Trail', backdrop: 'dust-trail', region: 'sunscorch',
-    spawns: [S('glass-scorpion', 4), S('glass-scorpion', 4)],
+    spawns: [SUN('glass-scorpion', 5), SUN('glass-scorpion', 5)],
     text: 'Two scorpions of cloudy glass, clicking in the heat.',
   },
   'dt-aqueduct': {
     id: 'dt-aqueduct', type: 'fight', name: 'The Choked Aqueduct', place: 'The Dust Trail', backdrop: 'dust-trail', region: 'sunscorch',
-    spawns: [S('glass-scorpion', 5, { variant: 'matriarch', name: 'The Aqueduct Matriarch' }), S('glass-scorpion', 4), S('glass-scorpion', 4)],
-    text: 'A glass-scorpion nest has choked Sandspire\'s aqueduct channel with its shed shells.',
+    spawns: [SUN('glass-scorpion', 5, { variant: 'matriarch', name: 'The Aqueduct Matriarch' }), SUN('glass-scorpion', 4), SUN('glass-scorpion', 4)],
+    text: 'A glass-scorpion nest has choked Sandspire\'s aqueduct channel with its shed shells. The Matriarch is the size of a cart.',
   },
   'wyrm-lair': {
     id: 'wyrm-lair', type: 'fight', name: 'The Sand Wyrm', place: 'The Dust Trail', backdrop: 'dust-trail', region: 'sunscorch',
-    spawns: [S('sand-wyrm', 5, { name: 'The Sand Wyrm' })],
-    text: 'The sand in the sinkhole breathes in and out.',
+    spawns: [SUN('sand-wyrm', 5, { name: 'The Sand Wyrm' })],
+    text: 'The sand in the sinkhole breathes in and out. Something in it glints like a door.',
   },
   'ds-crew': {
     id: 'ds-crew', type: 'fight', name: 'Brask\'s Crew', place: 'The Deep Shaft', backdrop: 'deep-shaft', region: 'sunscorch', dark: true,
-    spawns: [S('tallyman', 5, { variant: 'foreman', relic: 'sunstone-lantern', name: 'Foreman Brask' }), S('smuggler', 8), S('smuggler', 8)],
+    spawns: [SUN('tallyman', 5, { variant: 'foreman', relic: 'sunstone-lantern', name: 'Foreman Brask' }), S('smuggler', 9), S('smuggler', 9)],
     text: 'Tallyman diggers, working the sunstone veins by the light of a stolen lantern.',
   },
   'ds-scorpions': {
     id: 'ds-scorpions', type: 'fight', name: 'Shaft Scorpions', place: 'The Deep Shaft', backdrop: 'deep-shaft', region: 'sunscorch', dark: true,
-    spawns: [S('glass-scorpion', 4), S('glass-scorpion', 4), S('sand-skink', 10)],
+    spawns: [SUN('glass-scorpion', 5), SUN('glass-scorpion', 5), S('sand-skink', 10)],
     text: 'Scorpions in the dark, drawn up from the Glass Heart below.',
   },
   'kharzul-heart': {
     id: 'kharzul-heart', type: 'fight', name: 'The Glass Heart', place: 'The Deep Shaft', backdrop: 'glass-heart', region: 'sunscorch',
     brand: 'brand-of-glass',
-    spawns: [S('kharzul', 4)],
-    text: 'A scorpion of living glass, and a scimitar in its tail that has been warm for three hundred years.',
+    spawns: [SUN('kharzul', 6)],
+    text: 'A scorpion of living glass, and a scimitar in its tail that has been warm for three hundred years. Snap the carapace; pry the blade loose.',
   },
   'gf-raiders': {
     id: 'gf-raiders', type: 'fight', name: 'Dune Raiders', place: 'The Glass Flats', backdrop: 'glass-flats', region: 'sunscorch',
-    spawns: [S('dune-raider', 4), S('dune-raider', 4), S('dune-raider', 4)],
-    text: 'Raiders coming over the dune crest, blades out.',
+    spawns: [SUN('dune-raider', 3), SUN('dune-raider', 3), SUN('dune-raider', 3)],
+    text: 'Raiders coming over the dune crest, blades out and faces wrapped.',
   },
   'gf-wisps': {
     id: 'gf-wisps', type: 'fight', name: 'Mirage Wisps', place: 'The Glass Flats', backdrop: 'glass-flats', region: 'sunscorch',
-    spawns: [S('mirage-wisp', 4), S('mirage-wisp', 4)],
+    spawns: [SUN('mirage-wisp', 4), SUN('mirage-wisp', 4)],
     text: 'Two shimmers that look like water until they bite.',
   },
   'gf-caravan': {
     id: 'gf-caravan', type: 'fight', name: 'The Tallyman Caravan', place: 'The Glass Flats', backdrop: 'glass-flats', region: 'sunscorch',
-    spawns: [S('tallyman', 5, { variant: 'quartermaster', name: 'The Quartermaster' }), S('smuggler', 8, { variant: 'sharpshooter', relic: 'saltglass', name: 'Vell Saltglass' }), S('smuggler', 8)],
-    text: 'A Tallyman caravan, and on the last wagon a crate that hums.',
+    spawns: [SUN('tallyman', 4, { variant: 'quartermaster', name: 'The Quartermaster' }), SUN('smuggler', 5, { variant: 'sharpshooter', relic: 'saltglass', name: 'Vell Saltglass' }), S('smuggler', 9)],
+    text: 'A Tallyman caravan with a sharpshooter on the lead wagon, and on the last wagon a crate that hums.',
   },
   'gnash-camp': {
     id: 'gnash-camp', type: 'fight', name: 'Gnash\'s Camp', place: 'The Glass Flats', backdrop: 'glass-flats', region: 'sunscorch',
-    spawns: [S('dune-raider', 5, { variant: 'raider-king', relic: 'dunebreaker', name: 'Gnash the Raider-King' }), S('dune-raider', 4), S('dune-raider', 4)],
-    text: 'Gnash the Raider-King holds court on a throne of glassed sand.',
+    spawns: [SUN('dune-raider', 5, { variant: 'raider-king', relic: 'dunebreaker', name: 'Gnash the Raider-King' }), SUN('dune-raider', 4), SUN('dune-raider', 4)],
+    text: 'Gnash the Raider-King holds court on a throne of glassed sand, with a giant\'s maul across his knees.',
   },
   'wisp-queen': {
     id: 'wisp-queen', type: 'fight', name: 'The Wisp-Queen', place: 'Miragewell', backdrop: 'miragewell', region: 'sunscorch',
-    spawns: [S('mirage-wisp', 5, { variant: 'queen', relic: 'mirage-glass', name: 'The Wisp-Queen' }), S('mirage-wisp', 4), S('mirage-wisp', 4)],
-    text: 'The wisps drink the well dry each night. Their queen wears a lens of well-water.',
+    spawns: [SUN('mirage-wisp', 5, { variant: 'queen', relic: 'mirage-glass', name: 'The Wisp-Queen' }), SUN('mirage-wisp', 4), SUN('mirage-wisp', 4)],
+    text: 'The wisps drink the well dry each night. Their queen wears a lens of well-water that never spills.',
   },
   'sg-wights': {
     id: 'sg-wights', type: 'fight', name: 'Ash-Wights', place: 'Scorchgate Ruins', backdrop: 'scorchgate', region: 'sunscorch',
-    spawns: [S('ash-wight', 4), S('ash-wight', 4), S('ash-wight', 4)],
-    text: 'Scorchgate\'s soldiers, still walking the walls.',
+    spawns: [SUN('ash-wight', 4), SUN('ash-wight', 4), SUN('ash-wight', 4)],
+    text: 'Scorchgate\'s soldiers, still walking the walls three hundred years after the fire.',
   },
   'sg-captain': {
     id: 'sg-captain', type: 'fight', name: 'The Ash-Captain', place: 'Scorchgate Ruins', backdrop: 'scorchgate', region: 'sunscorch',
-    spawns: [S('ash-wight', 5, { variant: 'captain', relic: 'scorchgate-key', name: 'The Ash-Captain' }), S('ash-wight', 4), S('ash-wight', 4)],
+    spawns: [SUN('ash-wight', 4, { variant: 'captain', relic: 'scorchgate-key', name: 'The Ash-Captain' }), SUN('ash-wight', 3), SUN('ash-wight', 3)],
     text: 'The Ash-Captain guards the vault door with a key ring that has no key on it.',
   },
   'tamsin-scorchgate': {
     id: 'tamsin-scorchgate', type: 'fight', name: 'Tamsin at Scorchgate', place: 'Scorchgate Ruins', backdrop: 'scorchgate', region: 'sunscorch',
     once: true, duel: true, yields: 'tamsin-yielded-2', talk: 'tamsin-scorchgate',
     spawns: [S('tamsin', 'party', { partyDelta: 4, gearTier: 4, variant: '$rival', relic: '$rival', lend: true, noWaking: true, name: 'Tamsin' })],
-    text: 'Tamsin, on Scorchgate\'s parade ground, with a blade that has started to glow. Losing is a yield.',
+    text: 'Tamsin, on Scorchgate\'s parade ground, and the relic in her hands has started to glow. Losing is a yield.',
   },
   'vault-guard': {
     id: 'vault-guard', type: 'fight', name: 'The Vault Guard', place: 'The Scorchgate Vaults', backdrop: 'scorchgate-vaults', region: 'sunscorch', dark: true,
-    spawns: [S('ash-wight', 5), S('ash-wight', 5), S('ash-wight', 5)],
+    spawns: [SUN('ash-wight', 3), SUN('ash-wight', 3), SUN('ash-wight', 3)],
     text: 'Three wights at the inner door, as they have stood for three hundred years.',
   },
   'ashen-warden': {
     id: 'ashen-warden', type: 'fight', name: 'The Vault of Ash', place: 'The Scorchgate Vaults', backdrop: 'scorchgate-vaults', region: 'sunscorch',
     brand: 'brand-of-ash', dark: true,
-    spawns: [S('ashen-warden', 4)],
-    text: 'The Ashen Warden stands where the fire stopped, with the Aegis up and the Crown lit.',
+    spawns: [SUN('ashen-warden', 7)],
+    text: 'The Ashen Warden stands where the fire stopped, with the Aegis up and the Crown lit. Break them both.',
   },
 });
 
@@ -360,8 +368,8 @@ export const PATROLS = deepFreeze({
   mossfall: [[S('smuggler', 0), S('smuggler', 0), S('boglurcher', 0)], [S('boglurcher', 0), S('boglurcher', 0)]],
   hindwood: [[S('glowcap', 0), S('glowcap', 0), S('thornhound', 0)], [S('thornhound', 0), S('thornhound', 0), S('briarling', 0)]],
   heartroot: [[S('rotgrub', 0), S('rotgrub', 0), S('rotgrub', 0)], [S('rotgrub', 0), S('rotgrub', 0), S('glowcap', 0)]],
-  // M4: the Sunscorch zones (spec §2.6; STUBS until WP-foes tunes them)
-  // (patrols are rabble, as in M3: skinks, scavengers and smugglers)
+  // M4: the Sunscorch zones (spec §2.6). Rabble only, as in M3: skinks, scavengers and smugglers;
+  // ZONES in data/world.js pick the set and the Waking-0 level (the Waking adds 2 per Brand).
   'sun-road': [[S('sand-skink', 0), S('sand-skink', 0), S('scavenger', 0)], [S('scavenger', 0), S('scavenger', 0)]],
   'dust-trail': [[S('sand-skink', 0), S('sand-skink', 0), S('sand-skink', 0)], [S('scavenger', 0), S('sand-skink', 0)]],
   'deep-shaft': [[S('smuggler', 0), S('smuggler', 0), S('sand-skink', 0)], [S('scavenger', 0), S('smuggler', 0)]],

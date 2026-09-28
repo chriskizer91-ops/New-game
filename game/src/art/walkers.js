@@ -120,6 +120,7 @@ const WEAPON_MATS = w => {
     case 'spear': return { head: mt(p.head, 'steel'), haft: mt(p.haft, 'wood'), socket: mt(p.socket || p.bandMat, 'iron'), glow: mt(p.fuller, null), ribbon: mt(p.ribbon, null), gem: mt(p.gem, null), butt: mt(p.butt, null) };
     case 'staff': return { haft: mt(p.haft, 'wood'), metal: mt(p.metal || p.bandMat, 'bronze'), gem: mt(p.gem || p.orb || p.crystal, null), glow: mt(p.glow, null), leaves: mt(p.leaves, null), style: p.style || 'crook', wrap: mt(p.wrap, null) };
     case 'bow': return { limb: mt(p.limb, 'wood'), grip: mt(p.grip, 'leather'), nock: mt(p.nock, 'bone'), gem: mt(p.gem, null), tassel: mt(p.tassel, null) };
+    case 'pick': return { haft: mt(p.haft, 'wood'), head: mt(p.headMat, 'iron') };
   }
   return { blade: 'steel', guard: 'iron', grip: 'leather', pommel: 'iron' };
 };
@@ -211,6 +212,11 @@ function weaponParts(F, w, J, anchors) {
       tip = at(hi + 1.2);
     }
     mid = tip;
+  } else if (r === 'pick') { // a pickaxe: a haft and a head pointed at both ends
+    const L = 3.4;
+    part({ mat: M.haft || 'wood', prof: 'round', bw: .6, shapes: [C(at(-1.2), at(L + 1), .5)] });
+    part({ mat: M.head || 'iron', prof: 'ridge', hs: .6, shapes: [P([at(L + .2, -3), at(L + 1.3, -.5), at(L + 1.5, 0), at(L + 1.3, .5), at(L + .2, 3), at(L + .8, 0)])] });
+    tip = at(L + .2, 3); mid = at(L + 1, 0);
   } else if (r === 'bow') {
     const out = dir === 'e' ? 1 : dir === 's' ? -1 : 1;
     const top = add(h, [0, -6.6]), bot = add(h, [0, 5.6]), bulge = out * 1.9;
@@ -257,6 +263,12 @@ function offhandParts(F, o, J, anchors) {
   } else if (o.look === 'lantern') {
     F.add({ mat: mt(o.metal, 'iron'), prof: 'round', bw: .6, grp: 'focus', shapes: [C(add(h, [0, .4]), add(h, [0, 1.3]), .4), RECT(h[0] - 1.3, h[1] + 1.3, h[0] + 1.3, h[1] + 4)] });
     F.add({ mat: glow || 'ember', prof: 'flat', grp: 'focus', noShadow: true, shapes: [RECT(h[0] - .6, h[1] + 2, h[0] + .6, h[1] + 3.4)] });
+    anchors.g_offhand = [h[0] - .9, h[1] + 1.6];
+  } else if (o.look === 'jar') { // a clay water jar held at the hip
+    const c = [h[0] + (dir === 'e' ? -.6 : 0), h[1] + .6], m = mt(o.mat, 'rust');
+    F.add({ mat: m, prof: 'round', bw: 1.4, grp: 'jar', shapes: [E(c, 2, 2.3), RECT(c[0] - .8, c[1] - 3.4, c[0] + .8, c[1] - 1.6)], tex: ({ y }) => (Math.abs(y - c[1]) < .6 ? { m: mt(o.band, 'clothWhite'), dd: -1 } : 0) });
+    F.add({ mat: 'dark', prof: 'flat', grp: 'jarmouth', noShadow: true, shapes: [E([c[0], c[1] - 3.3], .8, .4)] });
+    anchors.g_offhand = [c[0] - .8, c[1] - 1];
   } else { // sigil on a chain
     F.add({ mat: mt(o.metal, 'gold'), prof: 'round', bw: .5, grp: 'focus', shapes: [C(add(h, [0, .5]), add(h, [0, 1.8]), .35), O(add(h, [0, 2.8]), 1.25)] });
     F.add({ mat: gem, prof: 'flat', grp: 'focus', noShadow: true, shapes: [O(add(h, [0, 2.8]), .5)] });
@@ -264,7 +276,7 @@ function offhandParts(F, o, J, anchors) {
 }
 
 /* ---------- headgear by look ---------- */
-const headInfo = h => ({ hood: h.look === 'hood' || h.look === 'coif', helm: h.look === 'helm' && h.style !== 'mask', hideFace: h.look === 'helm' });
+const headInfo = h => ({ hood: h.look === 'hood' || h.look === 'coif', helm: h.look === 'helm' && h.style !== 'mask', hideFace: h.look === 'helm', wrap: h.look === 'wrap' });
 function headgear(F, h, J) {
   const [cx, cy] = J.hc, rx = J.hrx, ry = J.hry, dir = J.dir, e = dir === 'e', n = dir === 'n';
   const look = h.look;
@@ -320,6 +332,36 @@ function headgear(F, h, J) {
     }
     return {};
   }
+  if (look === 'wrap') { // a turban: wound cloth over the crown down to the brow, a loose tail, a brooch; style 'helm' sets a pointed steel cap on it
+    const m = mt(h.mat, 'clothWhite'), tall = h.tall ? 1 : 0, helm = h.style === 'helm', brow = cy - 1.1, top = cy - ry - .5 - tall * 1.3, ox = e ? -.6 : 0;
+    if (h.tail !== false) F.add({ mat: mt(h.tail, m), prof: 'round', bw: .7, grp: 'wraptail', shapes: [e ? C([cx - 3, cy - 1.6], [cx - 4.6, cy + 4.4], 1.1, .8) : n ? C([cx + .6, cy - 1], [cx + .4, J.sh + 2.6], 1.2, .9) : C([cx + rx - .6, cy - 1.2], [cx + rx + .6, J.sh + 2.2], 1, .75)] });
+    const dome = P([[cx - rx - .15 + ox + (e ? 1 : 0), brow + .4], [cx - rx + .2 + ox, cy - 2.6], [cx - 2.6 + ox, top + 1], [cx - .6 + ox, top], [cx + 1.6 + ox, top + .3], [cx + rx - .5, cy - 2.8], [cx + rx + .15, brow + .4]]);
+    F.add({ mat: m, prof: 'round', bw: 2, grp: 'wrap', shapes: [dome], tex: ({ x, y }) => ((x + y * 2) % 5 === 0 ? -1 : (x + y * 2) % 5 === 1 ? .3 : 0) });
+    F.add({ mat: mt(h.band, m), prof: 'round', bw: .6, grp: 'wrapband', noShadow: true, shapes: [C([cx - rx + (e ? 1.2 : 0) + ox, brow - .1], [cx + rx, brow - .1], .7)], tex: () => -.5 });
+    if (helm) {
+      const c = mt(h.metal, 'steel');
+      F.add({ mat: c, prof: 'round', bw: 1.6, grp: 'cap', shapes: [P([[cx - rx + 1 + ox + (e ? .4 : 0), cy - 2.4], [cx - 1.4 + ox, cy - ry - 1], [cx + ox, cy - ry - 3.2], [cx + 1.4 + ox, cy - ry - 1], [cx + rx - .9, cy - 2.4]])] });
+      if (h.trim) F.add({ mat: mt(h.trim, 'gold'), prof: 'round', bw: .5, grp: 'caprim', noShadow: true, shapes: [C([cx - rx + 1.3 + ox + (e ? .4 : 0), cy - 2.5], [cx + rx - 1.2, cy - 2.5], .45)] });
+    } else if ((h.gem || h.clasp) && !n) F.add({ mat: mt(h.gem, mt(h.clasp, 'gold')), prof: 'round', bw: .5, grp: 'wrapgem', noShadow: true, shapes: [O([cx + (e ? 2.8 : 0), brow - .4], .75)] });
+    return { wrap: true };
+  }
+  if (look === 'fez') {
+    const m = mt(h.mat, 'robeRed'), top = cy - ry - 1.6;
+    F.add({ mat: m, prof: 'round', bw: 1.2, grp: 'fez', shapes: [P([[cx - 2.8 + (e ? -.2 : 0), cy - 2.4], [cx - 2.3, top], [cx + 2.3, top], [cx + 2.8, cy - 2.4]])], tex: ({ y }) => (y > cy - 3.4 ? -.6 : 0) });
+    F.add({ mat: mt(h.trim, 'gold'), prof: 'round', bw: .4, grp: 'tassel', noShadow: true, shapes: [e ? C([cx, top + .3], [cx - 2.6, top + 2.4], .42) : C([cx, top + .3], [cx + 2.6, top + 2.2], .42)] });
+    return {};
+  }
+  if (look === 'cap') { // a miner's hard cap with a lamp on the brow
+    const m = mt(h.mat, 'leather');
+    F.add({ mat: m, prof: 'round', bw: 2, grp: 'cap', shapes: [E([cx + (e ? -.2 : 0), cy - 1.8], rx + .2, ry - .5)], clip: RECT(-2, -3, 18, cy - .9) });
+    F.add({ mat: m, prof: 'round', bw: .6, grp: 'capbrim', shapes: [e ? C([cx - 1, cy - 1.1], [cx + rx + 1.4, cy - 1.1], .6) : C([cx - rx - .4, cy - 1.1], [cx + rx + .4, cy - 1.1], .55)] });
+    if (!n) {
+      const at = e ? [cx + 3.1, cy - 2.8] : [cx, cy - 3.2];
+      F.add({ mat: mt(h.metal, 'bronze'), prof: 'round', bw: .6, grp: 'lampcup', shapes: [O(at, 1.25)] });
+      F.add({ mat: mt(h.glow, 'amber'), prof: 'flat', grp: 'lamp', noShadow: true, shapes: [O(at, .7)] });
+    }
+    return {};
+  }
   if (look === 'crown') {
     const by = cy - ry + 1.1;
     if (h.style === 'thorn') {
@@ -354,7 +396,7 @@ function hairParts(F, H, J, stage, hg) {
     if (style === 'braid' && dir !== 's') F.add({ mat: m, prof: 'round', bw: .7, grp: 'hairback', shapes: dir === 'e' ? [C([cx - 3, cy], [cx - 3.6, cy + 6], .9, .6)] : [C([cx + .6, cy + 1], [cx + .8, cy + 7], .9, .6)] });
     return;
   }
-  if (hg && hg.helm) return;
+  if (hg && (hg.helm || hg.wrap)) return;
   if (hg && hg.hood) { // bangs in the face opening
     if (dir === 'n') return;
     F.add({ mat: m, prof: 'round', bw: .8, grp: 'hair', shapes: [dir === 'e' ? E([cx + 1.6, cy - 1.6], 2.3, 1.3) : E([cx, cy - 1.7], rx - 1.3, 1.5)], tex: TEXW.hair });
@@ -412,6 +454,7 @@ function rigFrame(H, L, M, dir, f) {
     const bt = Math.min(y1 - 2.2, B.bootT + (B.footY - y1) * .5 + (J.bob && !e ? .4 : 0));
     const toe = e ? 1 : 0;
     F.add({ mat: bootMat, prof: 'round', bw: .9, grp: 'boot' + (leg.side || (leg.far ? 'f' : 'n')), shapes: [P([[x1 - 1.05, bt], [x1 + 1.05, bt], [x1 + 1.15 + toe, y1], [x1 - 1.15, y1]])], tex });
+    if (leg.side === 1 || leg.far === false) anchors.g_feet = [x1 + (e ? .6 : 0), bt + .8];
     if (g.feet && g.feet.greave) F.add({ mat: mt(g.feet.greave, 'iron'), prof: 'round', bw: .6, grp: 'greave' + (leg.side || leg.far), noShadow: true, shapes: [RECT(x1 - 1.05, bt - .2, x1 + 1.05, bt + 1.2)], tex });
     else if (g.feet && g.feet.trim) F.add({ mat: mt(g.feet.trim, 'leatherDark'), prof: 'round', bw: .5, grp: 'bootcuff' + (leg.side || leg.far), noShadow: true, shapes: [RECT(x1 - 1.1, bt - .1, x1 + 1.1, bt + .85)], tex });
   };
@@ -446,6 +489,14 @@ function rigFrame(H, L, M, dir, f) {
   if (body.vine && !n) F.add({ mat: mt(body.vine, 'bramble'), prof: 'round', bw: .4, grp: 'vine', noShadow: true, shapes: [C([tx - 2.2, J.hipY - .6], [tx - 1.4, J.sh + 1.4], .42)] });
   const belt = body.sash || (robe ? null : body.belt || 'leather');
   if (belt || robe) F.add({ mat: mt(belt, 'leather'), prof: 'round', bw: .5, grp: 'belt', noShadow: true, shapes: [C([tx - ww - .4, J.waY], [tx + ww + .4, J.waY], .55)] });
+  if (H.trinket && !n) { // hanging at the hip, on the side away from the weapon hand
+    const T = H.trinket, m = mt(T.mat, 'iron'), c = e ? [tx - 1.2, J.waY + 2] : [tx + ww + .2, J.waY + 1.8];
+    const sh = T.kind === 'key' ? [O([c[0], c[1] - .6], .95), C([c[0], c[1]], [c[0], c[1] + 2.6], .42), C([c[0], c[1] + 2.4], [c[0] + .9, c[1] + 2.4], .38)]
+      : T.kind === 'ledger' ? [RECT(c[0] - 1.1, c[1] - .6, c[0] + 1.1, c[1] + 2.2)] : T.kind === 'gourd' ? [O([c[0], c[1] + 1.4], 1.3), O([c[0], c[1] - .2], .75)] : [E([c[0], c[1] + 1], 1.2, 1.4)];
+    F.add({ mat: m, prof: 'round', bw: .6, grp: 'trinket', shapes: sh, cuts: T.kind === 'key' ? [O([c[0], c[1] - .6], .4)] : undefined });
+    if (T.gem) F.add({ mat: mt(T.gem, 'ember'), prof: 'flat', grp: 'trinketgem', noShadow: true, shapes: [O([c[0], c[1] + (T.kind === 'key' ? -.6 : 1)], .5)] });
+    anchors.g_trinket = [c[0] - .5, c[1] - .5];
+  }
 
   // --- cloak over the back (north view), quiver on it
   if (cloak && n) F.add({ mat: cloak, prof: 'round', bw: 2, grp: 'cloakb', shapes: [P([[8 - B.shW - .2, J.sh - .1], [8 + B.shW + .2, J.sh - .1], [8 + B.shW + 1.4, J.hipY], [8 + B.shW + 1.6, 21 + (f ? .3 : 0)], [8, 21.5], [8 - B.shW - 1.6, 21 + (f ? .3 : 0)], [8 - B.shW - 1.4, J.hipY]])], tex: ({ x, y }) => (y > J.waY && (x + 1) % 3 === 0 ? -1 : 0) });
@@ -488,7 +539,16 @@ function rigFrame(H, L, M, dir, f) {
   const hg = hgLook ? headInfo(hgLook) : null;
   hairParts(F, H, J, 'front', hg);
   if (hgLook) headgear(F, hgLook, J, H);
-  if (!n && !(hg && (hg.hood || hg.helm))) { // ears over the hair: long ones poke out sideways, short ones are a skin pixel in side view
+  if (H.goggles) { // brass goggles pushed up on the brow
+    const gy = cy - 2.5, fr = mt(H.goggles, 'bronze'), lens = mt(H.lens, 'seaglass');
+    F.add({ mat: mt(H.strap, 'leatherDark'), prof: 'round', bw: .4, grp: 'gogstrap', noShadow: true, shapes: [e ? C([cx - J.hrx + .4, gy + .6], [cx + 2, gy], .45) : C([cx - J.hrx - .1, gy + .2], [cx + J.hrx + .1, gy + .2], .45)] });
+    if (!n) {
+      const L = e ? [[cx + 2.5, gy]] : [[cx - 1.8, gy], [cx + 1.8, gy]];
+      F.add({ mat: fr, prof: 'round', bw: .6, grp: 'gogframe', shapes: L.map(c => O(c, 1.2)) });
+      F.add({ mat: lens, prof: 'flat', grp: 'goglens', noShadow: true, shapes: L.map(c => O(c, .62)) });
+    }
+  }
+  if (!n && !(hg && (hg.hood || hg.helm || hg.wrap))) { // ears over the hair: long ones poke out sideways, short ones are a skin pixel in side view
     const long = H.ears === 'long';
     if (e && (long || H.hair !== 'long')) F.add({ mat: skin, prof: 'round', bw: .6, grp: 'ear', noShadow: true, shapes: [long ? P([[cx - .4, cy + .4], [cx - 4.6, cy - 1.6], [cx - .2, cy + 1.9]]) : O([cx - .4, cy + 1], .72)] });
     else if (!e && H.ears) for (const s of [-1, 1]) F.add({ mat: skin, prof: 'round', bw: .6, grp: 'ear' + s, noShadow: true, shapes: [long ? P([[cx + s * (J.hrx - .5), cy + .3], [cx + s * (J.hrx + 2.4), cy - .9], [cx + s * (J.hrx - .3), cy + 2.1]]) : P([[cx + s * (J.hrx - .5), cy + .5], [cx + s * (J.hrx + 1), cy], [cx + s * (J.hrx - .3), cy + 1.8]])] });
@@ -499,7 +559,7 @@ function rigFrame(H, L, M, dir, f) {
   if (H.mask && !n) F.add({ mat: mt(H.mask, 'iron'), prof: 'round', bw: 1.4, grp: 'mask', shapes: [e ? E([cx + 1.6, cy + 1.2], 2.8, 3) : E([cx, cy + 1.3], J.hrx - 1.1, J.hry - 1.3)] });
 
   // face info for paint(): eyes, shade
-  const face = { hideFace: !!(hg && hg.hideFace), shade: !!(H.shade && !(hg && hg.helm)), mask: !!H.mask, blind: !!H.blindfold };
+  const face = { hideFace: !!(hg && hg.hideFace), shade: !!(H.shade && !(hg && hg.helm)), mask: !!H.mask, blind: !!H.blindfold, helmEyes: hgLook && hgLook.look === 'helm' && hgLook.glowEyes ? mt(hgLook.eyes, 'ember') : null };
   anchors.amulet = amu ? [Math.round(e ? tx + 1.2 : tx) - (e ? 0 : 1), Math.round(J.sh + 2.2)] : null;
   return { F, J, anchors, face, amu };
 }
@@ -538,6 +598,7 @@ function paintFrame(img, r, H, M, mirror) {
     if (dir === 'e') setPx(img, mx(Math.round(cx + 2.2)), eyeY, c);
     else { setPx(img, Math.round(cx - 2), eyeY, c); setPx(img, Math.round(cx + 1), eyeY, c); }
   }
+  if (face.helmEyes && dir !== 'n') { const c = MAT[face.helmEyes].pal[4]; if (dir === 'e') setPx(img, mx(Math.round(cx + 2.2)), eyeY, c); else { setPx(img, Math.round(cx - 2), eyeY, c); setPx(img, Math.round(cx + 1), eyeY, c); } }
   // amulet: one bright pixel of its gem at the chest, the chain as a darker pixel above
   if (r.amu && anchors.amulet) {
     const gm = MAT[mt(r.amu.gem, 'ruby')].pal, [ax, ay] = anchors.amulet;
@@ -556,6 +617,7 @@ function paintFrame(img, r, H, M, mirror) {
     pts.push([at, [255, 244, 200]]);
     break;
   }
+  for (const k of M.glintAt || []) { const at = k === 'amulet' ? anchors.amulet : anchors['g_' + k]; if (at) pts.push([at, [255, 244, 200]]); }
   for (const [[gx, gy], c] of pts) {
     const x = mx(Math.round(gx)), y = Math.round(gy);
     if (alphaAt(img, x, y)) setPx(img, x, y, c);

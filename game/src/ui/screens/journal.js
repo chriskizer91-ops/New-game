@@ -1,15 +1,22 @@
-// The Journal (M3 spec §5.6): tabs for Quests, Bounties, the Ladder and Keys.
-// mount(root, ctx, { tab: 'quests' | 'bounties' | 'ladder' | 'keys' = 'quests', from = 'world' })
+// The Journal (M3 spec §5.6; M4 spec §4.6, §5.4): tabs for Quests, Bounties, the Ladder, Keys and
+// Grudges.
+// mount(root, ctx, { tab: 'quests' | 'bounties' | 'ladder' | 'keys' | 'grudges' = 'quests', from = 'world' })
 //
 //   Quests    rules/story.js questLog: each quest's steps so far (ticked by their `done`
 //             conditions), the step you are on and where, the reward and whom to tell
-//   Bounties  rules/story.js bounties: Dael's board, hunting / ready to turn in / paid
+//   Bounties  rules/story.js bounties, one group per board (Dael's in Thornhollow; Zara's in
+//             Sandspire once the Sunscorch is open): hunting / ready to turn in (to its giver) / paid
 //   Ladder    rules/story.js ladder: a renderFoe poster per villain, a black silhouette until
-//             scouted, stamped when settled; the Act II rumours after them
+//             scouted, stamped when settled; the rumours of the sealed regions after them
 //   Keys      rules/world.js lockStatus for every lock type: a tick or cross per key and whose
 //             Domain counts; the story seals (crownwalls, the roads out of the Wilds) listed apart
-// Test hooks: tabs are .jr-tab[data-tab]; posters are .poster[data-id][data-state].
-// Owner: WP8.
+//   Grudges   flags.grudges (the unsettled: name, title, where, their Omens, and whether the pack
+//             hunts you) and flags.settled (name and the day), from grudgeView(game)
+// Every saved string (a Grudge's name and title, an Omen id) goes in through textContent.
+// Pure helper for tests (node): grudgeView(game).
+// Test hooks: tabs are .jr-tab[data-tab]; posters are .poster[data-id][data-state]; Grudges are
+// .jr-grudge[data-key][data-state="active"|"settled"] (the empty states .jr-empty).
+// Owner: WP8; M4 P7b (the Grudges tab, the Sandspire board).
 import { questLog, bounties, ladder } from '../../rules/story.js';
 import { lockStatus, keys } from '../../rules/world.js';
 import { check } from '../../rules/cond.js';
@@ -23,16 +30,50 @@ import { LOCKS, LOCK_IDS, CROWNWALL } from '../../data/locks.js';
 import { NPCS } from '../../data/npcs.js';
 import { RELICS } from '../../data/relics.js';
 import { DOMAINS } from '../../data/domains.js';
+import { OMENS } from '../../data/omens.js';
+import { GEMS, MATERIALS } from '../../data/gems.js';
+import { ENCOUNTERS } from '../../data/encounters.js';
 import { REGIONS } from '../../data/world.js';
 import { MAPS, ENTITY_OF } from '../../data/maps/index.js';
 import { el, button, toCanvas } from '../lib/dom.js';
 import { screenNav } from '../lib/keys.js';
+import { regionOpen } from '../lib/atlas-geo.js';
 import { foeLook } from '../battle/sprites.js';
 
-const TABS = [['quests', 'Quests'], ['bounties', 'Bounties'], ['ladder', 'Ladder'], ['keys', 'Keys']];
+const TABS = [['quests', 'Quests'], ['bounties', 'Bounties'], ['ladder', 'Ladder'], ['keys', 'Keys'], ['grudges', 'Grudges']];
 const STATE_WORD = { active: 'Active', ready: 'Ready', done: 'Done' };
 const mapName = id => MAPS[id]?.name || '';
 const whereOf = encId => mapName(ENTITY_OF[encId]?.map);
+const times = n => (n === 1 ? 'once' : n === 2 ? 'twice' : n === 3 ? 'three times' : `${n} times`);
+const str = v => (v == null ? '' : String(v));
+
+// The Grudges tab's rows (pure; node tests use it). A Grudge is keyed `<encId>#<spawnIndex>`; old
+// saves may miss any field, so everything falls back to something that reads.
+export function grudgeView(game) {
+  const f = game?.progress?.flags || {};
+  const active = Object.entries(f.grudges && typeof f.grudges === 'object' ? f.grudges : {}).map(([key, g0]) => {
+    const g = g0 && typeof g0 === 'object' ? g0 : {};
+    const nodeId = str(g.nodeId || key.split('#')[0]);
+    const E = ENCOUNTERS[nodeId];
+    const at = ENTITY_OF[nodeId];
+    const wins = Math.max(0, Number(g.wins) || 0), flees = Math.max(0, Number(g.flees) || 0);
+    const bits = [wins && `Beat you ${times(wins)}`, flees && `You fled ${times(flees)}`].filter(Boolean);
+    return {
+      key, nodeId, name: str(g.name) || E?.name || 'A foe you know', title: str(g.title),
+      where: [E?.place, at ? mapName(at.map) : ''].filter((s, i, a) => s && a.indexOf(s) === i).join(' · ') || 'Somewhere out there',
+      record: bits.join(' · '),
+      omens: (Array.isArray(g.omens) ? g.omens : []).map(id => ({ id: str(id), name: OMENS[id]?.name || str(id), color: OMENS[id]?.color || '#999', text: OMENS[id]?.text || '' })),
+      // a pack with a Grudge hunts you across its map (spec §4.6); lairs and blocks keep their ground
+      hunts: at?.entity?.mode === 'pack',
+    };
+  });
+  const settled = Object.entries(f.settled && typeof f.settled === 'object' ? f.settled : {}).map(([key, s0]) => {
+    const s = s0 && typeof s0 === 'object' ? s0 : {};
+    const nodeId = key.split('#')[0];
+    return { key, name: str(s.name) || ENCOUNTERS[nodeId]?.name || 'A foe you know', day: Number(s.day) || null, where: ENCOUNTERS[nodeId]?.place || '' };
+  }).sort((a, b) => (b.day || 0) - (a.day || 0));
+  return { active, settled };
+}
 
 export function mount(root, ctx, params = {}) {
   if (!ctx.game) { ctx.go('title'); return {}; }
@@ -62,6 +103,7 @@ export function mount(root, ctx, params = {}) {
       if (tab === 'quests') renderQuests(g);
       else if (tab === 'bounties') renderBounties(g);
       else if (tab === 'ladder') renderLadder(g);
+      else if (tab === 'grudges') renderGrudges(g);
       else renderKeys(g);
     } catch (err) {
       console.error(err);
@@ -96,7 +138,12 @@ export function mount(root, ctx, params = {}) {
       card.append(steps);
       const giver = NPCS[Q?.giver]?.name;
       const r = Q?.reward || {};
-      const reward = [r.gold && `${r.gold} gold`, r.relic && RELICS[r.relic]?.name, r.item && 'an item'].filter(Boolean).join(' and ');
+      const count = (n, name) => (n === 1 ? name : `${n} ${name}${/s$/.test(name) ? '' : 's'}`);
+      const reward = [
+        r.gold && `${r.gold} gold`, r.relic && RELICS[r.relic]?.name, r.item && 'an item',
+        ...Object.entries(r.gems || {}).map(([id, n]) => count(n, GEMS[id]?.name || id)),
+        ...Object.entries(r.materials || {}).map(([id, n]) => `${n} ${(MATERIALS[id]?.name || id).toLowerCase()}`),
+      ].filter(Boolean).join(' and ');
       if (q.state === 'ready') card.append(el('p', { class: 'jr-ready', text: `Done. Tell ${giver || 'whoever asked'}${reward ? ` for ${reward}` : ''}.` }));
       else if (q.state === 'active' && (reward || giver)) card.append(el('p', { class: 'jr-meta', text: [giver && `From ${giver}`, reward && `Reward: ${reward}`].filter(Boolean).join(' · ') }));
       panel.append(card);
@@ -104,29 +151,92 @@ export function mount(root, ctx, params = {}) {
   }
 
   // ---- bounties -------------------------------------------------------------------------------
+  // One group per board: Captain Dael's in Thornhollow, Zara's in Sandspire (once the Sunscorch is
+  // open, or a bounty of hers is already done). Either board pays for any bounty.
   function renderBounties(g) {
     const list = bounties(g);
-    const met = safeCheck(g, { flag: 'met-dael' });
-    panel.append(el('p', { class: 'jr-lede', text: met ? 'Posted on Captain Dael’s board in Thornhollow. Bring him the proof and he pays.' : 'Captain Dael keeps a bounty board in Thornhollow. You have not read it yet, but word gets around.' }));
-    const ul = el('ul', 'jr-bounties');
-    for (const b of list) {
-      const li = el('li', `jr-bounty panel is-${b.state}`);
-      li.dataset.id = b.id;
-      const st = b.state === 'ready' ? 'Ready: turn in to Dael' : b.state === 'done' ? 'Paid' : 'Hunting';
-      li.append(
-        el('span', 'jb-txt', [el('b', { text: b.name }), el('small', { text: [whereOf(b.enc), st].filter(Boolean).join(' · ') })]),
-        el('span', { class: 'jb-gold', text: `${b.gold} g` }),
-      );
+    const BOARDS = [
+      { giver: 'dael', met: 'met-dael', read: 'Posted on Captain Dael’s board in Thornhollow. Bring him the proof and he pays.', unread: 'Captain Dael keeps a bounty board in Thornhollow. You have not read it yet, but word gets around.' },
+      { giver: 'zara', met: 'met-zara', read: 'Posted on the Sandspire board, by Zara al-Khem’s caravanserai. She pays for proof, and either board pays for any bounty.', unread: 'Sandspire keeps a bounty board by the caravanserai. Zara al-Khem pays for proof.' },
+    ];
+    const sunOpen = regionOpen(g, 'sunscorch');
+    for (const B of BOARDS) {
+      const mine = list.filter(b => (b.giver || 'dael') === B.giver);
+      if (!mine.length) continue;
+      if (B.giver !== 'dael' && !sunOpen && !safeCheck(g, { flag: B.met }) && mine.every(b => b.state === 'active')) continue;
+      const box = el('section', { class: 'jr-board', 'data-giver': B.giver });
+      box.append(el('p', { class: 'jr-lede', text: safeCheck(g, { flag: B.met }) ? B.read : B.unread }));
+      const ul = el('ul', 'jr-bounties');
+      for (const b of mine) {
+        const li = el('li', `jr-bounty panel is-${b.state}`);
+        li.dataset.id = b.id;
+        const who = NPCS[b.giver || 'dael']?.name || 'the board';
+        const st = b.state === 'ready' ? `Ready: turn in to ${who}` : b.state === 'done' ? 'Paid' : 'Hunting';
+        li.append(
+          el('span', 'jb-txt', [el('b', { text: b.name }), el('small', { text: [whereOf(b.enc), st].filter(Boolean).join(' · ') })]),
+          el('span', { class: 'jb-gold', text: `${b.gold} g` }),
+        );
+        ul.append(li);
+      }
+      box.append(ul);
+      panel.append(box);
+    }
+  }
+
+  // ---- Grudges (spec §4.6) --------------------------------------------------------------------
+  function renderGrudges(g) {
+    const { active, settled } = grudgeView(g);
+    panel.append(el('p', { class: 'jr-lede', text: 'A foe that beats you, or that you run from, remembers you: it takes a title and an Omen, and it waits. A pack with a Grudge hunts you across its map. Settle it, and everything it drops says so.' }));
+    if (!active.length && !settled.length) {
+      panel.append(el('p', { class: 'panel jr-empty jr-grudge-none', text: 'No Grudges yet. Nobody out there has beaten you, and you have run from nobody. Keep it that way, or come back and settle it.' }));
+      return;
+    }
+    const sec = (cls, label, rows, empty) => {
+      const s = el('section', { class: `jr-grudges ${cls}` });
+      s.append(el('h2', { class: 'label jr-gh', text: `${label} · ${rows.length}` }));
+      if (!rows.length) s.append(el('p', { class: 'panel jr-empty', text: empty }));
+      panel.append(s);
+      return s;
+    };
+    const A = sec('is-active', 'Unsettled', active, 'Nobody is waiting for you. Every Grudge you made is settled.');
+    for (const r of active) {
+      const card = el('article', { class: 'jr-grudge panel', 'data-key': r.key, 'data-state': 'active' });
+      card.append(el('p', 'jr-kick', [el('span', { class: 'jr-kind', text: r.hunts ? 'Hunts you' : 'Waits for you' }), r.record ? el('span', { class: 'chip st-shut', text: r.record }) : null]));
+      card.append(el('h3', { class: 'title-display jg-name', text: r.name }));
+      if (r.title && !r.name.endsWith(r.title)) card.append(el('p', { class: 'jg-title', text: r.title }));
+      card.append(el('p', { class: 'jg-where', text: r.where }));
+      if (r.omens.length) {
+        const om = el('ul', { class: 'jg-omens', 'aria-label': 'Its Omens' });
+        for (const o of r.omens) {
+          const li = el('li', 'jg-omen');
+          const chip = el('b', { class: 'omen', text: o.name });
+          chip.style.setProperty('--c', /^#[0-9a-f]{3,8}$/i.test(o.color) ? o.color : '#999');
+          li.append(chip);
+          if (o.text) li.append(el('small', { text: o.text }));
+          om.append(li);
+        }
+        card.append(om);
+      }
+      card.append(el('p', { class: 'jg-note', text: r.hunts ? 'It sees you from farther off than the rest, never runs, and follows you anywhere on its map.' : 'It holds its ground, and it will know you when you come back.' }));
+      A.append(card);
+    }
+    const S = sec('is-settled', 'Settled', settled, 'None settled yet. Beat a Grudge and every piece it drops is stamped Grudge settled.');
+    const ul = el('ul', 'jr-settled');
+    for (const r of settled) {
+      const li = el('li', { class: 'jr-grudge panel', 'data-key': r.key, 'data-state': 'settled' });
+      li.append(el('span', 'jb-txt', [el('b', { text: r.name }), el('small', { text: [r.where, r.day ? `Settled on Day ${r.day}` : 'Settled'].filter(Boolean).join(' · ') })]), el('span', { class: 'jg-stamp', text: 'Settled' }));
       ul.append(li);
     }
-    panel.append(ul);
+    if (settled.length) S.append(ul);
   }
 
   // ---- the Ladder -----------------------------------------------------------------------------
   function renderLadder(g) {
     const posters = ladder(g);
-    const settled = posters.filter(p => p.state === 'settled').length, act1 = posters.filter(p => p.act === 1).length;
-    panel.append(el('p', { class: 'jr-lede', text: `The Ladder: every name that has a hand in this. ${settled} of ${act1} settled. A poster fills in once you have seen its villain.` }));
+    // every poster with a villain behind it counts (Act I and the Sunscorch); the rumours do not
+    const real = posters.filter(p => !LADDER.find(x => x.id === p.id)?.silhouette);
+    const settled = real.filter(p => p.state === 'settled').length;
+    panel.append(el('p', { class: 'jr-lede', text: `The Ladder: every name that has a hand in this. ${settled} of ${real.length} settled. A poster fills in once you have seen its villain.` }));
     const grid = el('div', 'ladder');
     const jobs = [];
     for (const p of posters) {
@@ -160,7 +270,7 @@ export function mount(root, ctx, params = {}) {
   // ---- keys -----------------------------------------------------------------------------------
   function renderKeys(g) {
     const k = keys(g);
-    panel.append(el('p', { class: 'jr-lede', text: 'Every lock in the Wilds has two keys: a relic’s map power, or a Domain. A relic counts while you own it, worn or not. A Domain counts for your best active hero.' }));
+    panel.append(el('p', { class: 'jr-lede', text: 'Every lock has two keys or more: a relic’s map power, or a Domain. A relic counts while you own it, worn or not. A Domain counts for your best active hero.' }));
     const dom = el('ul', { class: 'jr-domains', 'aria-label': 'Your best Domains' });
     const used = new Set(LOCK_IDS.map(id => LOCKS[id].domain.id));
     for (const [id, D] of Object.entries(DOMAINS).filter(([id]) => used.has(id))) {
@@ -196,8 +306,14 @@ export function mount(root, ctx, params = {}) {
     const sl = el('ul', 'jl-keys');
     const seal = (name, open, text) => sl.append(el('li', open ? 'have' : 'lack', [el('span', { class: 'mk', text: open ? '✓' : '✗' }), icon(lockIcon('crownwall', { size: 12, dim: open })), el('span', { class: 'kl', text: name }), el('small', { text })]));
     seal(`${CROWNWALL.name}s`, crownOpen, crownOpen ? 'Fallen with Briarmaw. The old roads are yours.' : CROWNWALL.journal);
+    // the Sunscorch road (the Keep's south-east gate) opens with Act I; the rest wait on later chapters
+    const act1 = safeCheck(g, { flag: 'act1-complete' });
+    for (const r of Object.values(REGIONS).filter(r => r.open && r.entries?.length)) {
+      const o = regionOpen(g, r.id);
+      seal(`The road to ${r.name.replace(/^The /, 'the ')}`, o, o ? 'Open: the Keep\'s south-east gate stands open.' : 'Sealed until both Brands of the Wilds are yours.');
+    }
     const closed = Object.values(REGIONS).filter(r => !r.open);
-    seal('The roads out of the Wilds', false, `${closed.map(r => r.name.replace(/^The /, '')).join(', ')}: sealed. ${safeCheck(g, { flag: 'act1-complete' }) ? 'The way opens in the next chapter.' : 'Not in this chapter.'}`);
+    if (closed.length) seal('The roads beyond', false, `${closed.map(r => r.name.replace(/^The /, '')).join(', ')}: sealed. ${act1 ? 'The way opens in a later chapter.' : 'Not in this chapter.'}`);
     seals.append(sl);
     panel.append(seals);
   }

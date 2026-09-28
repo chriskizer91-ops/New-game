@@ -1,25 +1,31 @@
-// The Atlas (M3 spec §5.6): the player's illustrated map with the Wilds on it.
-// mount(root, ctx, { mode: 'travel' | 'view' = 'view', from = 'world' })
+// The Atlas (M3 spec §5.6; M4 spec §5.4): the player's illustrated map with the open regions on it.
+// mount(root, ctx, { mode: 'travel' | 'view' = 'view', from = 'world', view? })
 //
-//   - two views: "Wilds" (the Verdant quarter fills the frame; the default on phones and for
-//     travel) and "Realm" (the whole map)
+//   - views: "Wilds" (the Verdant quarter fills the frame), "Sunscorch" (the Sunscorch Wastes, once
+//     the region is open: the Keep's south-east gate after Act I) and "Realm" (the whole map). Travel
+//     and phones open on the view of the region you stand in; a view picked this session sticks
 //   - 44 px markers at viewBox coordinates (1200x800, the image's own aspect), pushed apart where
 //     they would overlap, with a leader line back to the true spot:
-//       the ten Hearthfires (lit when kindled, dim when known, faint when never seen); in travel
-//       mode a tap on a kindled one travels there (gauntlet.travel) and returns to the world
+//       the Hearthfires of the region in view (all of them in the Realm view on a laptop; on a phone
+//       the Realm view shows one marker per open region instead): lit when kindled, dim when known,
+//       faint when never seen; in travel mode a tap on a kindled one travels there (gauntlet.travel)
+//       and returns to the world. Labels (laptop) name the place a fire stands in (Sandspire,
+//       Thornhollow), else the fire itself
 //       "you are here", projected onto the current map's lore line (it slides as you walk)
-//       padlocks on the three sealed regions (Sandspire, Ironhold, Bogmire)
-//   - map annotations: routes you have walked, sighted holders (an eye), claimed relics (a star),
-//     Longwatch marks (a spyglass: the chests, locks and holders on the maps of every lookout in
-//     data/dialogue.js LOOKOUTS whose flag is set), and dimmed place names in the Realm view
+//       padlocks on the sealed regions (Sandspire until Act I is done, Ironhold, Bogmire)
+//   - map annotations: routes you have walked (only the open regions' routes), sighted holders (an
+//     eye), claimed relics (a star), Longwatch marks (a spyglass: the chests, locks and holders on the
+//     maps of every lookout in data/dialogue.js LOOKOUTS whose flag is set), and dimmed place names in
+//     the Realm view
 //   - the Hearth Clock (8 coals, uniqueBrands of them lit, and the Waking)
-//   - a Hearthfire list under the map (beside it on a laptop) that also travels, and a list of the
-//     marks; both are the keyboard and screen-reader path
+//   - a Hearthfire list under the map (beside it on a laptop), one group per open region, that also
+//     travels, and a list of the marks; both are the keyboard and screen-reader path
 //   - view only underground (a map with travel: false), and in view mode
 //   - a procedural parchment with the same markers when the image fails (or is the placeholder)
 // Test hooks: markers are .atlas-mk[data-key] (hearths also [data-hearth]); list rows are
-// .atlas-hf[data-hearth]; the frame carries data-view and data-art ('image' | 'parchment').
-// Owner: WP8.
+// .atlas-hf[data-hearth] (grouped in .atlas-grp[data-region]); view buttons are
+// .atlas-view[data-view]; the frame carries data-view and data-art ('image' | 'parchment').
+// Owner: WP8; M4 P7b (the Sunscorch).
 import ATLAS_IMAGE, { ATLAS_PLACEHOLDER } from '../assets/atlas-image.js';
 import { HEARTHS, HEARTH_IDS, REGIONS, LORE, BRAND_TOTAL } from '../../data/world.js';
 import { MAPS, MAP_IDS } from '../../data/maps/index.js';
@@ -27,14 +33,14 @@ import { ENCOUNTERS } from '../../data/encounters.js';
 import { FOES } from '../../data/foes.js';
 import { RELICS } from '../../data/relics.js';
 import { travel, uniqueBrands, spawnsFor } from '../../rules/gauntlet.js';
-import { present } from '../../rules/world.js';
+import { present, lockStatus } from '../../rules/world.js';
 import { nextObjective } from '../../rules/story.js';
 import { relicItem } from '../../rules/loot.js';
 import { createRng } from '../../core/rng.js';
 import { el, esc, button } from '../lib/dom.js';
 import { screenNav } from '../lib/keys.js';
 import { LOOKOUTS } from '../../data/dialogue.js';
-import { VIEWS, loreAt, entityLore, toFrame, relax, RELIC_SITE } from '../lib/atlas-geo.js';
+import { VIEWS, REGION_VIEW, regionOpen, placeOf, loreAt, entityLore, toFrame, relax, RELIC_SITE } from '../lib/atlas-geo.js';
 
 // Small inline icons (static markup, 16x16).
 const ICON = {
@@ -43,11 +49,13 @@ const ICON = {
   lock: '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="7" width="10" height="8" rx="1.2"/><path d="M5.2 7V5.2a2.8 2.8 0 0 1 5.6 0V7" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>',
   pin: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 15.5s5-5.1 5-9A5 5 0 0 0 3 6.5c0 3.9 5 9 5 9z"/><circle cx="8" cy="6.4" r="2.1" fill="#fff4dc"/></svg>',
   wilds: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1l4 6H9.5l3 4H9v4H7v-4H3.5l3-4H4z"/></svg>',
+  // a sun over a dune
+  sunscorch: '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="6.2" r="3"/><path d="M8 .6v1.6M3 2.6l1.1 1.1M13 2.6l-1.1 1.1M1.4 7h1.6M13 7h1.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M0.5 15c2-3.4 4.6-4.6 7.5-4.6s5.5 1.2 7.5 4.6z"/></svg>',
 };
+const REGION_ICON = { verdant: ICON.wilds, sunscorch: ICON.sunscorch };
 const TREE = 'M0 -6 L4 0 H1.5 L4.5 4 H0.9 V7 H-0.9 V4 H-4.5 L-1.5 0 H-4 Z';
 const EYE = 'M-6 0 C-3 -4.5 3 -4.5 6 0 C3 4.5 -3 4.5 -6 0 Z';
 const STAR = 'M0 -6 L1.8 -1.9 6 -1.9 2.6 0.8 3.8 5.2 0 2.6 -3.8 5.2 -2.6 0.8 -6 -1.9 -1.8 -1.9 Z';
-let lastView = null; // the view chosen last this session
 
 const inSentence = s => String(s || '').replace(/^The /, 'the ');
 const holderName = s => {
@@ -55,9 +63,19 @@ const holderName = s => {
   const base = s.name || F?.variants?.[s.variant]?.name || F?.name || s.family;
   return s.title ? `${base} ${s.title}` : base;
 };
-// The illustrated-map place a map belongs to (Thornhollow, Mosswatch Tower...), or the map's name.
-const placeOf = mapId => Object.values(LORE).find(p => p.map === mapId)?.name
-  || (mapId === 'mosswatch-2' ? LORE.mosswatch.name : mapId === 'keep-hall' ? LORE.crossroads.name : MAPS[mapId]?.name || mapId);
+const VIEW_NAME = { wilds: 'The Verdant Wilds', sunscorch: 'The Sunscorch Wastes', realm: 'The Realm of Aethermoor' };
+const VIEW_BUTTON = { wilds: 'Wilds', sunscorch: 'Sunscorch', realm: 'Realm' };
+const VIEW_REGION = Object.fromEntries(Object.entries(REGION_VIEW).map(([r, v]) => [v, r]));
+const shortRegion = r => String(REGIONS[r]?.name || r).replace(/^The /, '');
+// The keys that light a cold Hearthfire, from the lock itself ("Kindle, Lamplight or Attunement 3").
+function coldKeys(game) {
+  let st = null;
+  try { st = lockStatus(game, 'cold-hearth'); } catch { st = null; }
+  const names = (st?.keys || []).map(k => (k.kind === 'power' ? k.detail : k.label)).filter(Boolean);
+  if (!names.length) return 'a flame';
+  return names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} or ${names[names.length - 1]}`;
+}
+let lastView = null; // the view chosen last this session
 
 export function mount(root, ctx, params = {}) {
   if (!ctx.game) { ctx.go('title'); return {}; }
@@ -74,14 +92,23 @@ export function mount(root, ctx, params = {}) {
   const canTravel = mode === 'travel' && !underground;
   const back = () => { ctx.audio.sfx('back'); ctx.go(from); };
 
+  // ---- the regions: open ones have a view and their fires; sealed ones a padlock ----------------
+  const open = new Set(Object.keys(REGIONS).filter(r => regionOpen(game, r)));
+  const hereRegion = hereMap?.region || 'verdant';
+  const views = ['wilds', ...Object.keys(REGION_VIEW).filter(r => r !== 'verdant' && open.has(r)).map(r => REGION_VIEW[r]), 'realm'];
+
   // ---- what goes on the map -------------------------------------------------------------------
   const hearths = HEARTH_IDS.map(id => {
     const h = HEARTHS[id];
     const kindled = !!f.kindled?.[id];
     const known = kindled || !!f.visits?.[h.map] || (pos && pos.map === h.map);
-    return { id, h, kindled, known, place: placeOf(h.map), mapName: MAPS[h.map]?.name || h.map };
-  });
+    const region = MAPS[h.map]?.region || 'verdant';
+    // a place's own fire is labelled with the place (Sandspire), a fire on the road with its own name
+    const home = Object.values(LORE).find(p => p.map === h.map);
+    return { id, h, kindled, known, region, place: placeOf(h.map), label: home ? home.name : h.name, mapName: MAPS[h.map]?.name || h.map };
+  }).filter(x => open.has(x.region) || x.kindled || x.known); // a sealed region's fires stay off the map
   const kindledCount = hearths.filter(x => x.kindled).length;
+  const inRegion = r => hearths.filter(x => x.region === r);
 
   const holders = [], longwatch = [];
   // Longwatch (data/dialogue.js LOOKOUTS): a lookout's flag marks the chests, locks and holders on its maps
@@ -120,33 +147,36 @@ export function mount(root, ctx, params = {}) {
     return null;
   }).filter(x => x && x.at);
 
-  const sealed = Object.values(REGIONS).filter(r => !r.open).map(r => {
+  // a region is sealed until one of its roads opens (the Sunscorch: the Keep's south-east gate, after
+  // Act I); REGIONS.open alone says only that its maps exist
+  const sealed = Object.values(REGIONS).filter(r => !open.has(r.id)).map(r => {
     const texts = [];
     for (const m of MAP_IDS) for (const x of MAPS[m].exits) if (x.sealed?.region === r.id) texts.push(x.sealed.text);
     const cap = Object.values(LORE).find(p => p.region === r.id && p.at[0] === r.lore[0] && p.at[1] === r.lore[1]);
-    return { id: r.id, name: r.name, place: cap?.name || r.name, at: r.lore, texts };
+    return { id: r.id, name: r.name, place: cap?.name || r.name, at: r.lore, texts, later: !r.open };
   });
 
   // ---- skeleton ---------------------------------------------------------------------------------
   const top = el('header', 'topbar');
   const title = el('div', 'tb-title');
-  const h1 = el('h1', { class: 'title-display', text: 'The Verdant Wilds' });
+  const h1 = el('h1', { class: 'title-display', text: VIEW_NAME.wilds });
   title.append(el('span', { class: 'realm', text: mode === 'travel' ? 'Travel' : 'The Atlas' }), h1);
   top.append(button('‹ Back', 'btn ghost back', back), title);
 
   const bar = el('div', 'atlas-bar');
-  const views = el('div', { class: 'atlas-views', role: 'group', 'aria-label': 'Map view' });
+  const viewBar = el('div', { class: 'atlas-views', role: 'group', 'aria-label': 'Map view' });
+  viewBar.style.setProperty('--n', String(views.length));
   const vBtn = {};
-  for (const [v, label] of [['wilds', 'Wilds'], ['realm', 'Realm']]) {
-    vBtn[v] = button(label, 'btn seg-b atlas-view', () => { if (view !== v) { ctx.audio.sfx('page'); setView(v); } }, { 'data-view': v, 'aria-pressed': 'false' });
-    views.append(vBtn[v]);
+  for (const v of views) {
+    vBtn[v] = button(VIEW_BUTTON[v], 'btn seg-b atlas-view', () => { if (view !== v) { ctx.audio.sfx('page'); setView(v); } }, { 'data-view': v, 'aria-pressed': 'false' });
+    viewBar.append(vBtn[v]);
   }
   const coals = uniqueBrands(game), waking = game.progress.waking || 0;
   const clock = el('div', { class: 'hclock', role: 'img', 'aria-label': `Hearth Clock: ${coals} of ${BRAND_TOTAL} coals lit, Waking ${waking}` });
   const coalRow = el('span', 'hc-coals');
   for (let i = 0; i < BRAND_TOTAL; i++) coalRow.append(el('i', i < coals ? 'lit' : ''));
   clock.append(el('span', { class: 'hc-k', text: 'Hearth Clock' }), coalRow, el('b', { class: 'hc-w', text: `Waking ${waking}` }));
-  bar.append(views, clock);
+  bar.append(viewBar, clock);
 
   const frame = el('div', { class: 'atlas-frame', role: 'group', 'aria-label': 'The illustrated map' });
   const sheet = el('div', 'atlas-sheet');
@@ -187,7 +217,10 @@ export function mount(root, ctx, params = {}) {
   }
 
   // ---- markers --------------------------------------------------------------------------------
-  let view = lastView || ((mode === 'travel' || (root.clientWidth || innerWidth) < 720) ? 'wilds' : 'realm');
+  // the region you stand in: travel and phones open on it; a view picked this session sticks
+  const hereView = REGION_VIEW[hereRegion] && views.includes(REGION_VIEW[hereRegion]) ? REGION_VIEW[hereRegion] : 'wilds';
+  const asked = views.includes(params.view) ? params.view : null;
+  let view = asked || (mode === 'travel' ? hereView : (views.includes(lastView) ? lastView : ((root.clientWidth || innerWidth) < 720 ? hereView : 'realm')));
   let selected = null;
   const markerEls = new Map();
   const hfState = x => (x.kindled ? 'kindled' : x.h.cold && x.known ? 'cold' : x.known ? 'unlit' : 'unknown');
@@ -195,18 +228,24 @@ export function mount(root, ctx, params = {}) {
 
   function markerList(ppu) {
     const out = [];
-    const showHearths = view === 'wilds' || ppu >= 0.6;
+    const region = VIEW_REGION[view];
+    // a region's view shows its own fires; the Realm shows them all where there is room (a laptop),
+    // and one marker per open region on a phone
+    const showHearths = !!region || ppu >= 0.6;
     if (showHearths) {
-      for (const x of hearths) {
+      for (const x of region ? inRegion(region) : hearths) {
         const st = hfState(x);
         out.push({
           key: `hf:${x.id}`, kind: 'hearth', at: x.h.lore, cls: `mk-hearth is-${st}`, icon: st === 'kindled' ? ICON.fire : ICON.coal,
-          label: x.place === x.h.name ? x.place : x.h.name, hearth: x.id,
+          label: x.label, hearth: x.id,
           aria: `${x.h.name}, ${x.mapName}: ${stateWord[st]}${canTravel && x.kindled ? '. Travel here' : ''}`,
         });
       }
     } else {
-      out.push({ key: 'region:verdant', kind: 'region', at: REGIONS.verdant.lore, cls: 'mk-region', icon: ICON.wilds, label: 'The Verdant Wilds', aria: `The Verdant Wilds: ${kindledCount} of ${hearths.length} Hearthfires kindled. Show the Wilds` });
+      for (const r of Object.keys(REGION_VIEW).filter(id => open.has(id))) {
+        const R = REGIONS[r], fires = inRegion(r), lit = fires.filter(x => x.kindled).length;
+        out.push({ key: `region:${r}`, kind: 'region', region: r, at: R.lore, cls: `mk-region rg-${r}`, icon: REGION_ICON[r] || ICON.wilds, label: R.name, aria: `${R.name}: ${lit} of ${fires.length} Hearthfires kindled. Show ${inSentence(R.name)}` });
+      }
     }
     for (const r of sealed) out.push({ key: `sealed:${r.id}`, kind: 'sealed', at: r.at, cls: 'mk-sealed', icon: ICON.lock, label: r.place, aria: `${r.name}: sealed` });
     if (here) out.push({ key: 'here', kind: 'here', at: here, cls: 'mk-here', icon: ICON.pin, label: null, aria: `You are here: ${hereMap?.name || ''}`, weight: 0.15 });
@@ -219,9 +258,9 @@ export function mount(root, ctx, params = {}) {
     const V = VIEWS[view];
     const ppu = W / V.w;
     frame.dataset.view = view;
-    frame.classList.toggle('labels', W >= 600 && view === 'wilds');
-    frame.setAttribute('aria-label', view === 'wilds' ? 'The illustrated map: the Verdant Wilds' : 'The illustrated map: the whole Realm of Aethermoor');
-    h1.textContent = view === 'wilds' ? 'The Verdant Wilds' : 'The Realm of Aethermoor';
+    frame.classList.toggle('labels', W >= 600 && view !== 'realm');
+    frame.setAttribute('aria-label', view === 'realm' ? 'The illustrated map: the whole Realm of Aethermoor' : `The illustrated map: ${inSentence(VIEW_NAME[view])}`);
+    h1.textContent = VIEW_NAME[view];
     for (const [v, b] of Object.entries(vBtn)) b.setAttribute('aria-pressed', String(v === view));
     Object.assign(sheet.style, { width: `${W * 1200 / V.w}px`, height: `${H * 800 / V.h}px`, left: `${-V.x / V.w * W}px`, top: `${-V.y / V.h * H}px` });
 
@@ -274,22 +313,24 @@ export function mount(root, ctx, params = {}) {
     let svg = '';
     ink.setAttribute('viewBox', `0 0 ${W} ${H}`);
     ink.setAttribute('width', W); ink.setAttribute('height', H);
-    // routes (maps drawn as a line on the illustrated map)
+    // routes (maps drawn as a line on the illustrated map), in the open regions only
     for (const id of MAP_IDS) {
       const L = MAPS[id].lore;
-      if (!L || L.length < 2) continue;
+      if (!L || L.length < 2 || !open.has(MAPS[id].region || 'verdant')) continue;
       const pts = L.map(p => P([p[0], p[1]]));
       const walked = !!f.visits?.[id] || (pos && pos.map === id);
       svg += `<polyline class="rt${walked ? ' walked' : ''}" points="${pts.map(p => p.map(v => v.toFixed(1)).join(',')).join(' ')}"/>`;
     }
-    // place names: the sealed regions' places, dimmed, where there is room
+    // place names beyond the Wilds (dimmed while their region is sealed), where there is room and no
+    // marker already stands on them (an open region's places are its fires' labels)
     if (view === 'realm' && ppu >= 0.5) {
       for (const p of Object.values(LORE)) {
         if (!p.region || p.region === 'verdant') continue;
         const [x, y] = P(p.at);
         // a padlock sits on its region's capital, so that name goes under the padlock
         if (sealed.some(r => r.at[0] === p.at[0] && r.at[1] === p.at[1])) { svg += `<text class="pl pl-sealed" x="${x.toFixed(1)}" y="${(y + 34).toFixed(1)}">${esc(p.name)}</text>`; continue; }
-        svg += `<circle class="pl-dot" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.5"/><text class="pl" x="${x.toFixed(1)}" y="${(y - 7).toFixed(1)}">${esc(p.name)}</text>`;
+        if (nodes.some(n => n.kind === 'hearth' && Math.hypot(n.x0 - x, n.y0 - y) < 14)) continue;
+        svg += `<circle class="pl-dot" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.5"/><text class="pl${open.has(p.region) ? ' pl-open' : ''}" x="${x.toFixed(1)}" y="${(y - 7).toFixed(1)}">${esc(p.name)}</text>`;
       }
     }
     // annotations: Longwatch marks, sighted holders and claimed relics, fanned out around shared spots
@@ -349,7 +390,7 @@ export function mount(root, ctx, params = {}) {
     info.replaceChildren();
     const head = (k, t, sub) => info.append(el('p', { class: 'kick', text: k }), el('h2', { class: 'title-display', text: t }), sub && sub !== t ? el('p', { class: 'ai-sub', text: sub }) : '');
     if (!n || n.kind === 'here') {
-      head('You are here', hereMap ? hereMap.name : 'Somewhere in the Wilds', hereMap ? placeOf(pos.map) : null);
+      head('You are here', hereMap ? hereMap.name : 'Somewhere in the Realm', hereMap ? placeOf(pos.map) : null);
       const next = safeNext();
       if (next) info.append(el('p', { class: 'ai-next', text: `Next: ${next.text}` }));
       if (mode === 'travel') info.append(el('p', { class: 'ai-note', text: underground ? 'Underground, the Atlas is only for looking. Walk back up to a Hearthfire to travel.' : 'Tap a lit Hearthfire to travel there.' }));
@@ -361,7 +402,7 @@ export function mount(root, ctx, params = {}) {
       head(stateWord[st], x.h.name, `${x.mapName}${x.place !== x.mapName ? ` · ${x.place}` : ''}`);
       const flavour = ENCOUNTERS[x.id]?.text;
       if (flavour && x.known) info.append(el('p', { class: 'ai-text', text: flavour }));
-      if (st === 'cold') info.append(el('p', { class: 'ai-note', text: 'It needs a flame before it will take a rest: Kindle, Lamplight, or Attunement 3.' }));
+      if (st === 'cold') info.append(el('p', { class: 'ai-note', text: `It needs a flame before it will take a rest: ${coldKeys(game)}.` }));
       else if (st === 'unlit') info.append(el('p', { class: 'ai-note', text: 'Rest at it once and it stays lit for travel.' }));
       else if (st === 'unknown') info.append(el('p', { class: 'ai-note', text: 'Somewhere out there. Nobody in the party has seen it yet.' }));
       if (x.kindled && canTravel) info.append(button(`Travel to ${esc(x.h.name)}`, 'btn primary ai-go', () => go(x.id), { 'data-hearth': x.id }));
@@ -372,12 +413,16 @@ export function mount(root, ctx, params = {}) {
       const r = sealed.find(y => `sealed:${y.id}` === n.key);
       head('Sealed', r.name, r.place);
       for (const t of r.texts.slice(0, 2)) info.append(el('p', { class: 'ai-text', text: `“${t}”` }));
-      info.append(el('p', { class: 'ai-note', text: story['act1-complete'] ? 'The way opens in the next chapter.' : 'No road goes there yet.' }));
+      // the Sunscorch waits on Act I; Ironspire and Gloomfen on a later chapter
+      const note = !r.later ? 'The Keep\'s south-east gate opens once both Brands of the Wilds are yours.'
+        : story['act1-complete'] ? 'The way opens in a later chapter.' : 'No road goes there yet.';
+      info.append(el('p', { class: 'ai-note', text: note }));
       return;
     }
     if (n.kind === 'region') {
-      head('Open', 'The Verdant Wilds', `${kindledCount} of ${hearths.length} Hearthfires kindled`);
-      info.append(button('Show the Wilds', 'btn ai-go', () => setView('wilds')));
+      const R = REGIONS[n.region], fires = inRegion(n.region);
+      head('Open', R.name, `${fires.filter(x => x.kindled).length} of ${fires.length} Hearthfires kindled`);
+      info.append(button(`Show ${esc(inSentence(R.name))}`, 'btn ai-go', () => setView(REGION_VIEW[n.region])));
     }
   }
   const safeNext = () => { try { return nextObjective(game); } catch { return null; } };
@@ -390,7 +435,7 @@ export function mount(root, ctx, params = {}) {
     ctx.audio.sfx('select');
     selected = n.key;
     for (const [k, b] of markerEls) b.classList.toggle('sel', k === selected);
-    if (n.kind === 'region') { setView('wilds'); showInfo(null); return; }
+    if (n.kind === 'region') { setView(REGION_VIEW[n.region] || 'wilds'); showInfo(null); return; }
     showInfo(n);
   }
 
@@ -407,25 +452,35 @@ export function mount(root, ctx, params = {}) {
   function renderLists() {
     list.replaceChildren(el('h2', 'label', `Hearthfires · ${kindledCount} of ${hearths.length} kindled`));
     if (mode === 'travel') list.append(el('p', { class: 'small', text: underground ? 'Underground, the Atlas is only for looking.' : 'Choose a lit Hearthfire to travel there.' }));
-    const ul = el('ul', 'atlas-hfs');
-    for (const x of hearths) {
-      const st = hfState(x);
-      const li = el('li');
-      const travelNow = canTravel && x.kindled;
-      const b = button('', `atlas-hf is-${st}${travelNow ? ' go' : ''}`, () => {
-        if (travelNow) { go(x.id); return; }
-        ctx.audio.sfx('select');
-        if (view !== 'wilds' && frame.clientWidth / VIEWS.realm.w < 0.6) setView('wilds');
-        selected = `hf:${x.id}`;
-        for (const [k, m] of markerEls) m.classList.toggle('sel', k === selected);
-        showInfo({ kind: 'hearth', hearth: x.id, key: selected });
-      }, { 'data-hearth': x.id });
-      b.append(el('span', 'hf-ico', st === 'kindled' ? ICON.fire : ICON.coal), el('span', 'hf-txt', [el('b', { text: x.h.name }), el('small', { text: `${x.mapName} · ${stateWord[st]}` })]));
-      if (travelNow) b.append(el('span', { class: 'hf-go', text: 'Travel' }));
-      li.append(b);
-      ul.append(li);
+    // one group per region with fires on the map; the region you stand in first
+    const groups = [...new Set(hearths.map(x => x.region))].sort((a, b) => (b === hereRegion) - (a === hereRegion));
+    for (const r of groups) {
+      const fires = inRegion(r);
+      const grp = el('section', { class: 'atlas-grp', 'data-region': r });
+      if (groups.length > 1) grp.append(el('h3', { class: 'atlas-grp-h', text: `${shortRegion(r)} · ${fires.filter(x => x.kindled).length} of ${fires.length}` }));
+      const ul = el('ul', 'atlas-hfs');
+      for (const x of fires) {
+        const st = hfState(x);
+        const li = el('li');
+        const travelNow = canTravel && x.kindled;
+        const b = button('', `atlas-hf is-${st}${travelNow ? ' go' : ''}`, () => {
+          if (travelNow) { go(x.id); return; }
+          ctx.audio.sfx('select');
+          // show the fire where it stands: its region's view (the phone's Realm view has no fires)
+          const rv = REGION_VIEW[x.region];
+          if (rv && views.includes(rv) && (view === 'realm' ? frame.clientWidth / VIEWS.realm.w < 0.6 : view !== rv)) setView(rv);
+          selected = `hf:${x.id}`;
+          for (const [k, m] of markerEls) m.classList.toggle('sel', k === selected);
+          showInfo({ kind: 'hearth', hearth: x.id, key: selected });
+        }, { 'data-hearth': x.id });
+        b.append(el('span', 'hf-ico', st === 'kindled' ? ICON.fire : ICON.coal), el('span', 'hf-txt', [el('b', { text: x.h.name }), el('small', { text: `${x.mapName} · ${stateWord[st]}` })]));
+        if (travelNow) b.append(el('span', { class: 'hf-go', text: 'Travel' }));
+        li.append(b);
+        ul.append(li);
+      }
+      grp.append(ul);
+      list.append(grp);
     }
-    list.append(ul);
 
     notes.replaceChildren(el('h2', 'label', 'Marks on the map'));
     const rows = el('ul', 'atlas-rows');

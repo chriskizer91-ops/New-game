@@ -227,14 +227,79 @@ body.ov-open { overflow: hidden; }
 .slam-text { margin: 4px 0 0; text-align: center; font-size: 15px; color: var(--parchment-2); max-width: 36ch; }
 .ov-slam.still, .ov-slam.still * { animation: none !important; }
 
+/* ---------- M4: the forge bits below the portrait (spec §5.3) ---------- */
+.forgebits { display: grid; gap: 8px; }
+.fb-row { display: grid; grid-template-columns: 72px auto minmax(0, 1fr); align-items: center; gap: 10px; }
+.fb-k { font-family: var(--f-pixel); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--ash); }
+.fb-v { font-size: 14px; line-height: 1.3; color: var(--parchment-2); }
+.fb-v:empty { display: none; }
+.sockets { display: flex; gap: 8px; }
+.sock {
+  width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%;
+  background: radial-gradient(circle at 50% 45%, #07060a 0 52%, #1d1612 60%, #120e0c 100%);
+  box-shadow: 0 0 0 2px var(--ink), 0 0 0 3px var(--seam-2), inset 0 2px 3px rgba(0, 0, 0, .8);
+}
+.sock.set { background: radial-gradient(circle at 50% 45%, #1d1612 0 60%, #120e0c 100%); box-shadow: 0 0 0 2px var(--ink), 0 0 0 3px var(--rc); }
+.flames { display: inline-grid; grid-template-columns: repeat(10, auto); gap: 2px 3px; justify-content: start; }
+.flames canvas { display: block; }
+.flames.hot { filter: drop-shadow(0 0 3px rgba(255, 203, 102, .55)); }
+.flames .fl-next { animation: flNext 1.1s steps(2, start) infinite; }
+@keyframes flNext { 50% { opacity: .35; } }
+.pips { display: inline-flex; gap: 6px; }
+.pips i { display: block; width: 10px; height: 10px; background: #2c2019; box-shadow: 0 0 0 2px var(--ink), inset 0 0 0 1px #4a3a2e; }
+.pips i.on { background: radial-gradient(circle at 40% 35%, #fff1b0, #ee8e31 55%, #7a3a12); box-shadow: 0 0 0 2px var(--ink), 0 0 6px rgba(238, 142, 49, .85); }
+.fb-deeds.st-awakened .pips i.on { background: radial-gradient(circle at 40% 35%, #fff, #ffe890 50%, #c8801c); box-shadow: 0 0 0 2px var(--ink), 0 0 8px rgba(255, 232, 144, .9); }
+.fb-stage { font-family: var(--f-pixel); font-size: 10px; letter-spacing: .06em; line-height: 1.5; text-transform: uppercase; color: var(--ash); }
+.fb-deeds.st-kindled .fb-stage { color: var(--hearth-hot); }
+.fb-deeds.ready .fb-stage { color: #ffe890; }
+.fb-deeds.st-awakened .fb-stage { color: #fff3c4; text-shadow: 0 0 10px rgba(255, 203, 102, .7); }
+.fb-deednames { margin: 0; font-size: 13px; color: var(--ash); white-space: pre-wrap; }
+.fb-note { margin: 0; font-size: 14px; color: var(--parchment-2); }
+.fb-note.awake b { font-family: var(--f-display); font-size: 17px; color: #ffe890; }
+
+/* the Chronicle: a button on the face, the card's back */
+.iconrow.has-chron { grid-template-columns: auto minmax(0, 1fr) auto; }
+.chron-btn { min-height: var(--tap); padding: 0 12px; font-size: 11px; }
+.card.show-back > .pwin, .card.show-back > .card-body, .card.show-back > .pick-host { display: none; }
+.card-back { padding-top: 2px; }
+.cb-kick { margin: 0; text-align: center; font-family: var(--f-pixel); font-size: 11px; letter-spacing: .3em; text-transform: uppercase; color: var(--hearth-hot); }
+.card-back .cb-name { margin-top: 8px; font-size: 32px; }
+.cb-facts { margin: 16px 0 0; display: grid; gap: 1px; background: var(--seam); border: 1px solid var(--seam); }
+.cb-fact { display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr); gap: 4px 12px; align-items: baseline; padding: 9px 12px; background: var(--soot-2); }
+.cb-fact dt { font-family: var(--f-pixel); font-size: 10px; letter-spacing: .08em; line-height: 1.4; color: var(--ash); text-transform: uppercase; }
+.cb-fact dd { margin: 0; font-size: 16px; line-height: 1.3; text-align: right; overflow-wrap: anywhere; }
+.cb-fact.felled { align-items: center; }
+.cb-fact.felled dd { font-size: 30px; font-weight: 800; line-height: 1; color: var(--hearth-hot); font-variant-numeric: tabular-nums; }
+.cb-h { margin: 16px 0 6px; font-family: var(--f-pixel); font-size: 10px; font-weight: 400; letter-spacing: .1em; text-transform: uppercase; color: var(--hearth-hot); }
+.cb-deeds { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.cb-deeds li { display: grid; grid-template-columns: 10px auto minmax(0, 1fr); gap: 10px; align-items: baseline; font-size: 15px; color: var(--ash); }
+.cb-deeds li i { width: 10px; height: 10px; background: #2c2019; box-shadow: 0 0 0 2px var(--ink), inset 0 0 0 1px #4a3a2e; transform: translateY(1px); }
+.cb-deeds li.on { color: var(--parchment); }
+.cb-deeds li.on i { background: radial-gradient(circle at 40% 35%, #fff1b0, #ee8e31 55%, #7a3a12); box-shadow: 0 0 0 2px var(--ink), 0 0 6px rgba(238, 142, 49, .85); }
+.cb-deeds li span { font-size: 13px; color: var(--ash); text-align: right; }
+.cb-grudge { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 18px 0 0; }
+.card-back .stamp.cb-stamp { position: relative; right: auto; bottom: auto; left: auto; top: auto; display: inline-block; transform: rotate(-5deg); }
+.cb-grudge-who { font-family: var(--f-display); font-style: italic; font-size: 18px; color: #ffc9d8; }
+.chron-back { width: 100%; margin-top: 16px; }
+.card.turn-out > :not(.corner) { animation: cardTurnOut .15s ease-in forwards; }
+.card.turn-in > :not(.corner) { animation: cardTurnIn .23s ease-out both; }
+@keyframes cardTurnOut { to { transform: scaleX(0); opacity: .35; } }
+@keyframes cardTurnIn { from { transform: scaleX(0); opacity: .35; } to { transform: none; opacity: 1; } }
+
 @media (max-width: 420px) {
   .item-name { font-size: 32px; }
+  .flames { grid-template-columns: repeat(5, auto); }
+  .fb-row { grid-template-columns: 64px auto minmax(0, 1fr); gap: 8px; }
+  .iconrow.has-chron { grid-template-columns: auto minmax(0, 1fr); }
+  .iconrow.has-chron .chron-btn { grid-column: 1 / -1; width: 100%; }
+  .card-back .cb-name { font-size: 28px; }
   .card { padding-inline: 12px; }
   .banner h2 { font-size: 22px; }
   .hero-view canvas { width: 128px; height: 128px; margin-top: -8px; }
   .slam-name { font-size: 32px; }
 }
 @media (prefers-reduced-motion: reduce) {
+  .card.turn-out > :not(.corner), .card.turn-in > :not(.corner), .flames .fl-next { animation: none; }
   .card.enter, .card.flip { animation: cardIn .01s both; }
   .reveal-stage.shake, .flash.go, .stamp.slam { animation: none; }
   .card[data-r="primal"]::before, .card[data-r="primal"] .rar { animation: none; }

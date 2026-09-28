@@ -2,7 +2,7 @@
 // Hearthfires, the start position, the 17 places on the illustrated map, the critical paths and the
 // optional leads.
 // Coordinates: tiles for maps, viewBox 1200x800 for the illustrated map (`lore`).
-// Owner: WP3. Imports nothing from rules/.
+// Owner: WP3; M4 P2 (the Sunscorch stands, SUN_PATH, SUN_LEADS). Imports nothing from rules/.
 
 import { deepFreeze } from '../core/freeze.js';
 
@@ -47,14 +47,15 @@ export const HEARTHS = deepFreeze({
   'fawnrest-stone': H('fawnrest', 11, 7, [370, 170], 'The Dreaming Stone'),
   'eldergrove-hearth': H('eldergrove', 13, 16, [200, 160], 'The Eldergrove Hearth'),
   'last-green-coal': H('heartroot-1', 4, 21, [192, 152], 'The Last Green Coal', { cold: true }),
-  // M4 (spec §2.5). Stands are placeholders until WP-maps lays the maps out.
-  waystone: H('sun-road', 12, 20, [700, 420], 'The Waystone Fire'),
+  // M4 (spec §2.5): the stands of the laid-out Sunscorch maps (M4 P2). The Last Watchfire stands against
+  // Scorchgate's last wall, so its stand is north of it and faces south.
+  waystone: H('sun-road', 16, 21, [700, 420], 'The Waystone Fire'),
   'spire-hearth': H('sandspire', 15, 13, [870, 470], 'The Spire Hearth'),
-  'dust-cairn': H('dust-trail', 22, 12, [830, 520], 'The Dust Cairn', { cold: true }),
-  pithead: H('dusthaven', 12, 12, [780, 560], 'The Pithead Fire'),
-  'shaft-lamp': H('deep-shaft-1', 12, 6, [770, 575], 'The Shaft Lamp', { cold: true }),
-  'well-fire': H('miragewell', 11, 10, [1010, 540], 'The Well Fire'),
-  'last-watchfire': H('scorchgate', 16, 26, [930, 660], 'The Last Watchfire', { cold: true }),
+  'dust-cairn': H('dust-trail', 22, 9, [830, 520], 'The Dust Cairn', { cold: true }),
+  pithead: H('dusthaven', 9, 6, [780, 560], 'The Pithead Fire'),
+  'shaft-lamp': H('deep-shaft-1', 8, 12, [770, 575], 'The Shaft Lamp', { cold: true }),
+  'well-fire': H('miragewell', 10, 13, [1010, 540], 'The Well Fire'),
+  'last-watchfire': H('scorchgate', 20, 13, [930, 660], 'The Last Watchfire', { cold: true, face: 's' }),
 });
 export const HEARTH_IDS = Object.freeze(Object.keys(HEARTHS));
 

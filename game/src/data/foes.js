@@ -421,27 +421,238 @@ const VERDANT = {
   },
 };
 
-// M4: the Sunscorch Wastes (spec §3.2). STUBS from the M4 scaffold: each borrows a Verdant family's
-// numbers and moves until WP-foes (P4) writes the real family in its place.
-const stub = (id, name, from, o = {}) => ({ ...VERDANT[from], id, name, art: id, stub: true, variants: {}, ...o });
-// a named holder: a relic-bearer variant of its family (WP-foes writes its moves)
-const holder = (name, hp, o = {}) => ({ name, tier: 'relic-bearer', hp, ...o });
-const SUNSCORCH = {
-  'sand-skink': stub('sand-skink', 'Sand-Skink', 'thornhound', { aspect: 'ember', text: 'Quick little lizards of the Sunscorch. They bite and run.' }),
-  scavenger: stub('scavenger', 'Dune Scavenger', 'cutpurse', { aspect: null, text: 'Wreck-pickers of the caravan roads. They run when it goes badly.' }),
-  'dune-raider': stub('dune-raider', 'Dune Raider', 'bandit', { aspect: 'storm', variants: { rider: holder('Rasa the Dune-Rider', 60), 'raider-king': holder('Gnash the Raider-King', 70) }, text: 'Riders of the dunes, with curved blades and wrapped faces.' }),
-  'glass-scorpion': stub('glass-scorpion', 'Glass Scorpion', 'bandit', { humanoid: false, kind: 'beast', aspect: 'stone', variants: { matriarch: { name: 'Glass Matriarch', hp: 50 } }, text: 'A scorpion the size of a dog, its shell gone to glass.' }),
-  'mirage-wisp': stub('mirage-wisp', 'Mirage Wisp', 'feral-druid', { humanoid: false, kind: 'spirit', aspect: 'frost', variants: { queen: holder('The Wisp-Queen', 60) }, text: 'A shimmer that walks. It looks like water until it bites.' }),
-  'ash-wight': stub('ash-wight', 'Ash-Wight', 'hollowed-ranger', { aspect: 'ember', variants: { captain: holder('The Ash-Captain', 64) }, text: 'A Scorchgate soldier still on watch, three centuries after the fire.' }),
-  'sand-wyrm': stub('sand-wyrm', 'Sand Wyrm', 'oldsnag', { aspect: 'stone', relics: ['wyrmscale'], text: 'A wyrm that swims in the sand and waits under the trail.' }),
-  kharzul: stub('kharzul', 'Kharzul the Glass Scorpion', 'rotwarden', { aspect: 'stone', unique: true, relics: ['cinderfang', 'glass-carapace'], text: 'A scorpion of living glass, with a scimitar lodged in its tail for three centuries.' }),
-  'ashen-warden': stub('ashen-warden', 'The Ashen Warden', 'rotwarden', { aspect: 'ember', unique: true, relics: ['ashen-aegis', 'cinder-crown'], text: 'The last Warden of Scorchgate, still guarding a vault of ash.' }),
+// ---- M4: the Sunscorch Wastes (spec §3.2; owner P4). Stats are for level 1, like everything above; the
+// Waking adds the rest (a player meets these at Waking 2 or 3). Moves the spec asks for that the engine
+// has no status for are built from the nearest ones (docs/RULES.md §5): Sand in the Eyes blinds with
+// Frightened, a wisp's charm roots you where you stand, the Wyrm's swallow Staggers and Roots, and
+// Kharzul's burrow is a charging strike from under the floor after which it lies half-buried (Guarding).
+const RAIDER_MOVES = {
+  'scimitar-cut': { name: 'Scimitar Cut', target: 'enemy', text: 'A curved blade, drawn and swung in the same breath.', effects: [atk('1d6', 'slash', { weapon: true })] },
+  'sand-in-the-eyes': { name: 'Sand in the Eyes', target: 'enemy', text: 'A fistful of hot sand flung from the saddle. DEX save or you fight half-blind (Frightened).', effects: [status('frightened', { save: 'DEX' })] },
+  'dune-charge': { name: 'Dune Charge', target: 'enemy', charge: true, text: 'It wheels back up the dune and comes down at you, charging.', effects: [atk('1d6', 'slash', { weapon: true, bonusDice: [{ dice: '1d8' }], riders: [status('staggered')] })] },
+  'war-cry': { name: 'War-Cry', target: 'all-allies', text: 'A cry like thunder rolling off the dunes: every raider is Hasted.', effects: [status('hasted')] },
+};
+const SCORPION_MOVES = {
+  pincer: { name: 'Pincer', target: 'enemy', text: 'A glass claw closes on you like a vice.', effects: [atk('1d6', 'crush')] },
+  'glass-sting': { name: 'Glass Sting', target: 'enemy', text: 'The glass stinger punches through armour and snaps off in the wound: Bleeding.', effects: [atk('1d8', 'pierce', { riders: [status('bleeding')] })] },
+  carapace: { name: 'Carapace', target: 'self', text: 'It hunkers down under its glassy shell: Guarding.', effects: [status('guarding')] },
+};
+const WISP_MOVES = {
+  'cold-touch': { name: 'Cold Touch', target: 'enemy', text: 'A touch like well-water at midnight: Chilled.', effects: [atk('1d6', 'frost', { aspect: 'frost', riders: [status('chilled')] })] },
+  blink: { name: 'Blink', target: 'self', text: 'It blinks out and back a step to the left, and your blow finds shimmer: Guarding.', effects: [status('guarding')] },
+  beguile: { name: 'Beguile', target: 'enemy', text: 'It shows you water where there is none. WIS save or you stand and stare (Rooted).', effects: [status('rooted', { save: 'WIS' })] },
+};
+const WIGHT_MOVES = {
+  'ash-blade': { name: 'Ash Blade', target: 'enemy', text: 'A blade still hot from the fire that killed the hand holding it.', effects: [atk('1d6', 'slash', { weapon: true })] },
+  'cinder-grasp': { name: 'Cinder Grasp', target: 'enemy', text: 'A burnt hand closes on yours and drinks the warmth out of it. It heals.', effects: [{ type: 'damage', dice: '1d6', kind: 'ember', aspect: 'ember' }, { type: 'heal', dice: '1d8', self: true }] },
+  'ember-breath': { name: 'Ember Breath', target: 'enemy', text: 'It breathes on you, and three hundred years of ember breathe with it. DEX save or Burning.', effects: [{ type: 'damage', dice: '1d6', kind: 'ember', aspect: 'ember', save: 'DEX', riders: [status('burning')] }] },
 };
 
-// the Tallymen of the Sunscorch: new variants of the M3 families
+// a named holder: a relic-bearer variant of its family, using its relic through requires/fallback moves
+const holder = (name, art, hp, moves, table, o = {}) => ({ name, art, tier: 'relic-bearer', hp, moves, table, ...o });
+
+const SUNSCORCH = {
+  'sand-skink': {
+    id: 'sand-skink', name: 'Sand-Skink', art: 'sand-skink', tier: 'rabble', kind: 'beast',
+    hp: 14, guard: 14, atk: 4, dmg: 1, speed: 15, armor: 'hide', aspect: 'ember',
+    saves: { STR: 0, DEX: 3, CON: 0, WIS: 0 },
+    moves: {
+      bite: { name: 'Bite', target: 'enemy', text: 'Needle teeth, hot as a stove lid.', effects: [atk('1d6', 'pierce')] },
+      'sun-spit': { name: 'Sun-Spit', target: 'enemy', text: 'A gob of sun-hot venom: Burning.', effects: [atk('1d4', 'pierce', { aspect: 'ember', riders: [status('burning')] })] },
+      skitter: { name: 'Skitter', target: 'self', when: { hpBelow: 0.5 }, fallback: 'bite', text: 'It skitters under a rock and is gone.', effects: [{ type: 'escape' }] },
+    },
+    table: [[1, 3, 'bite'], [4, 5, 'sun-spit'], [6, 6, 'skitter']],
+    text: 'Quick little lizards the colour of hot sand. They bite, they spit, and they run.',
+  },
+  scavenger: {
+    id: 'scavenger', name: 'Dune Scavenger', art: 'scavenger', tier: 'rabble', humanoid: true,
+    hp: 17, guard: 13, atk: 3, dmg: 2, speed: 11, armor: 'hide', aspect: null,
+    saves: { STR: 1, DEX: 1, CON: 1, WIS: 0 },
+    moves: {
+      'hook-knife': { name: 'Hook-Knife', target: 'enemy', text: 'A wrecker\'s hook, for cutting straps and purses.', effects: [atk('1d4', 'slash', { weapon: true })] },
+      'salvage-net': { name: 'Salvage Net', target: 'enemy', text: 'A weighted net off a wrecked wagon. DEX save or Rooted.', effects: [status('rooted', { save: 'DEX' })] },
+      scarper: { name: 'Scarper', target: 'self', when: { hpBelow: 0.5 }, fallback: 'hook-knife', text: 'It drops the sack and scarpers over the dune.', effects: [{ type: 'escape' }] },
+    },
+    table: [[1, 3, 'hook-knife'], [4, 5, 'salvage-net'], [6, 6, 'scarper']],
+    gear: [
+      [{ base: 'belt-knife' }, { base: 'hood' }],
+      [{ base: 'hand-axe' }, { base: 'hood' }, { base: 'jerkin' }],
+      [{ base: 'spear' }, { base: 'kettle-helm' }, { base: 'jerkin' }],
+      [{ base: 'spear' }, { base: 'kettle-helm' }, { base: 'brigandine' }],
+    ],
+    text: 'Wreck-pickers of the caravan roads, wrapped to the eyes against the sun. They run when it goes badly.',
+  },
+  'dune-raider': {
+    id: 'dune-raider', name: 'Dune Raider', art: 'dune-raider', tier: 'veteran', humanoid: true,
+    hp: 22, guard: 15, atk: 3, dmg: 2, speed: 12, armor: 'hide', aspect: 'storm',
+    saves: { STR: 1, DEX: 2, CON: 1, WIS: 0 },
+    names: ['Qadir', 'Sefa Half-Veil', 'Ninefingers', 'Old Harrow', 'Duma the Dry'],
+    moves: RAIDER_MOVES,
+    table: [[1, 3, 'scimitar-cut'], [4, 5, 'sand-in-the-eyes'], [6, 7, 'dune-charge'], [8, 8, 'war-cry']],
+    variants: {
+      rider: holder('Rasa the Dune-Rider', 'rasa', 62, {
+        ...RAIDER_MOVES,
+        'dune-step': { name: 'Dune-Step', target: 'enemy', requires: 'sandwalkers', fallback: 'scimitar-cut', text: 'Sandwalkers skim the dune and she is behind you before you turn: 2d8 slashing, you Stagger, and Rasa is Hasted.', effects: [atk('2d8', 'slash', { riders: [status('staggered')] }), status('hasted', { self: true })] },
+      }, [[1, 4, 'scimitar-cut'], [5, 6, 'sand-in-the-eyes'], [7, 8, 'dune-charge'], [9, 12, 'dune-step']], { speed: 14 }),
+      'raider-king': holder('Gnash the Raider-King', 'gnash', 80, {
+        ...RAIDER_MOVES,
+        'kings-blow': { name: 'King\'s Blow', target: 'enemy', text: 'Whatever is in his hands, he swings it like a door.', effects: [atk('1d8', 'crush', { weapon: true })] },
+        'dunefall': { name: 'Dunefall', target: 'all-enemies', requires: 'dunebreaker', fallback: 'kings-blow', charge: true, text: 'Gnash hefts Dunebreaker over his head, charging: the whole dune comes down on every hero, and you Stagger.', effects: [atk('2d6', 'crush', { aspect: 'stone', riders: [status('staggered')] })] },
+      }, [[1, 5, 'kings-blow'], [6, 7, 'sand-in-the-eyes'], [8, 8, 'war-cry'], [9, 12, 'dunefall']], { speed: 9 }),
+    },
+    gear: [
+      [{ base: 'arming-sword' }, { base: 'hood' }, { base: 'jerkin' }],
+      [{ base: 'arming-sword' }, { base: 'hood' }, { base: 'jerkin' }, { base: 'buckler' }],
+      [{ base: 'arming-sword' }, { base: 'kettle-helm' }, { base: 'brigandine' }, { base: 'buckler' }],
+      [{ base: 'longsword' }, { base: 'kettle-helm' }, { base: 'brigandine' }, { base: 'heater-shield' }],
+    ],
+    text: 'Riders of the deep dunes, faces wrapped, blades curved like the moon. The caravans pay them or pray.',
+  },
+  'glass-scorpion': {
+    id: 'glass-scorpion', name: 'Glass Scorpion', art: 'glass-scorpion', tier: 'veteran', kind: 'beast',
+    hp: 28, guard: 16, atk: 4, dmg: 2, speed: 11, armor: 'chitin', aspect: 'stone',
+    saves: { STR: 2, DEX: 1, CON: 2, WIS: 0 },
+    moves: SCORPION_MOVES,
+    table: [[1, 3, 'pincer'], [4, 6, 'glass-sting'], [7, 8, 'carapace']],
+    variants: {
+      // the Aqueduct Matriarch: a lair boss with no relic (spec §3.3: the cistern quest)
+      matriarch: holder('The Glass Matriarch', 'glass-matriarch', 66, {
+        ...SCORPION_MOVES,
+        moult: { name: 'Moult', target: 'self', when: { hpBelow: 0.5 }, fallback: 'glass-sting', text: 'She splits her cracked shell and steps out of it: Regenerating.', effects: [status('regenerating', { value: { dice: '1d6', diceEvery: 3 } })] },
+        'shell-rain': { name: 'Shell Rain', target: 'all-enemies', text: 'She shakes the aqueduct, and a season of shed shells comes down on everyone: Bleeding.', effects: [atk('1d8', 'pierce', { riders: [status('bleeding')] })] },
+      }, [[1, 4, 'pincer'], [5, 7, 'glass-sting'], [8, 8, 'carapace'], [9, 10, 'moult'], [11, 12, 'shell-rain']]),
+    },
+    text: 'A scorpion the size of a dog, its shell gone to cloudy glass in the heat. It clicks when it is hungry. It is always clicking.',
+  },
+  'mirage-wisp': {
+    id: 'mirage-wisp', name: 'Mirage Wisp', art: 'mirage-wisp', tier: 'veteran', kind: 'spirit',
+    hp: 22, guard: 16, atk: 4, dmg: 2, speed: 13, armor: 'none', aspect: 'frost',
+    saves: { STR: 0, DEX: 3, CON: 1, WIS: 2 },
+    moves: WISP_MOVES,
+    table: [[1, 4, 'cold-touch'], [5, 6, 'blink'], [7, 8, 'beguile']],
+    variants: {
+      queen: holder('The Wisp-Queen', 'wisp-queen', 64, {
+        ...WISP_MOVES,
+        'drink-the-well': { name: 'Drink the Well', target: 'self', when: { hpBelow: 0.5 }, fallback: 'cold-touch', text: 'She drinks from the well until the bucket comes up dry: 2d8 healing.', effects: [{ type: 'heal', dice: '2d8', diceEvery: 3 }] },
+        'hall-of-mirrors': { name: 'Hall of Mirrors', target: 'all-enemies', requires: 'mirage-glass', fallback: 'cold-touch', text: 'The Mirage Glass flashes and there are a hundred queens: 2d6 frost to every hero, WIS save for half, and you are Chilled.', effects: [{ type: 'damage', dice: '2d6', kind: 'frost', aspect: 'frost', save: 'WIS', riders: [status('chilled')] }] },
+      }, [[1, 4, 'cold-touch'], [5, 6, 'blink'], [7, 7, 'beguile'], [8, 8, 'drink-the-well'], [9, 12, 'hall-of-mirrors']]),
+    },
+    text: 'A shimmer that walks on its own. It looks like water until it bites, and it bites cold.',
+  },
+  'ash-wight': {
+    id: 'ash-wight', name: 'Ash-Wight', art: 'ash-wight', tier: 'veteran', kind: 'undead', humanoid: true,
+    hp: 20, guard: 13, atk: 2, dmg: 1, speed: 9, armor: 'mail', aspect: 'ember', weak: ['radiant'],
+    saves: { STR: 2, DEX: 0, CON: 2, WIS: 1 },
+    names: ['Sergeant Cole', 'Tamber of the Gate', 'the Standard-Bearer', 'Old Watch'],
+    moves: WIGHT_MOVES,
+    table: [[1, 4, 'ash-blade'], [5, 6, 'cinder-grasp'], [7, 8, 'ember-breath']],
+    variants: {
+      captain: holder('The Ash-Captain', 'ash-captain', 50, {
+        ...WIGHT_MOVES,
+        'fall-in': { name: 'Fall In!', target: 'all-allies', text: 'Three hundred years dead and still barking orders: every wight is Warded.', effects: [status('warded', { value: { dice: '1d6', diceEvery: 4 } })] },
+        'keyless-turn': { name: 'The Keyless Turn', target: 'all-enemies', requires: 'scorchgate-key', fallback: 'ash-blade', text: 'He turns the ring that has no key on it, and every lock in Scorchgate answers: 2d6 ember to every hero, CON save for half, and you Burn.', effects: [{ type: 'damage', dice: '2d6', kind: 'ember', aspect: 'ember', save: 'CON', riders: [status('burning')] }] },
+      }, [[1, 4, 'ash-blade'], [5, 6, 'cinder-grasp'], [7, 7, 'ember-breath'], [8, 8, 'fall-in'], [9, 12, 'keyless-turn']]),
+    },
+    gear: [
+      [{ base: 'spear' }, { base: 'kettle-helm' }, { base: 'chain-shirt' }],
+      [{ base: 'spear' }, { base: 'kettle-helm' }, { base: 'chain-shirt' }, { base: 'buckler' }],
+      [{ base: 'arming-sword' }, { base: 'great-helm' }, { base: 'hauberk' }, { base: 'buckler' }],
+      [{ base: 'arming-sword' }, { base: 'great-helm' }, { base: 'hauberk' }, { base: 'heater-shield' }],
+    ],
+    text: 'A soldier of Scorchgate still on watch, three hundred years after the fire. The ash holds the shape of the man.',
+  },
+  'sand-wyrm': {
+    id: 'sand-wyrm', name: 'The Sand Wyrm', art: 'sand-wyrm', tier: 'relic-bearer', kind: 'beast', unique: true,
+    hp: 162, guard: 15, atk: 6, dmg: 4, speed: 12, armor: 'chitin', aspect: 'stone',
+    saves: { STR: 4, DEX: 1, CON: 4, WIS: 1 },
+    relics: ['wyrmscale'],
+    moves: {
+      maw: { name: 'Maw', target: 'enemy', text: 'A mouth like a well, lined with glass teeth.', effects: [atk('2d10', 'pierce')] },
+      thrash: { name: 'Thrash', target: 'all-enemies', text: 'It thrashes, and the sinkhole walls come down on everyone.', effects: [atk('1d8', 'crush')] },
+      'sand-dive': { name: 'Sand-Dive', target: 'self', text: 'It pours itself back into the sand, and blows glance off: Guarding.', effects: [status('guarding')] },
+      swallow: { name: 'Swallow', target: 'enemy', charge: true, text: 'The sand opens underneath you. It is charging to swallow you whole: spat out Staggered and stuck fast (Rooted).', effects: [atk('3d10', 'crush', { riders: [status('staggered'), status('rooted')] })] },
+      'scale-grind': { name: 'Scale-Grind', target: 'all-enemies', requires: 'wyrmscale', fallback: 'maw', text: 'It grinds the great scale in its hide against the sinkhole wall: 2d8 stone to every hero, STR save for half, and the sand has you to the knees (Rooted).', effects: [{ type: 'damage', dice: '2d8', kind: 'crush', aspect: 'stone', save: 'STR', riders: [status('rooted')] }] },
+    },
+    table: [[1, 3, 'maw'], [4, 6, 'thrash'], [7, 7, 'sand-dive'], [8, 9, 'swallow'], [10, 12, 'scale-grind']],
+    text: 'It swims in the sand under the Dust Trail and waits for the wagons. One scale in its hide is the size of a door, and it glints.',
+  },
+  // Champions (spec §3.5). Each piece is a held relic with its own grip meter; prying one loose shuts its moves down.
+  kharzul: {
+    id: 'kharzul', name: 'Kharzul the Glass Scorpion', art: 'kharzul', tier: 'champion', kind: 'beast', unique: true,
+    hp: 205, guard: 16, atk: 7, dmg: 4, speed: 11, armor: 'chitin', aspect: 'stone',
+    saves: { STR: 4, DEX: 2, CON: 4, WIS: 2 },
+    relics: ['cinderfang', 'glass-carapace'],
+    noFlee: true,
+    moves: {
+      'tail-lash': { name: 'Tail Lash', target: 'enemy', text: 'The tail comes over like a thrown spear.', effects: [atk('2d10', 'pierce')] },
+      'glass-sting': { name: 'Glass Sting', target: 'enemy', text: 'The stinger punches through plate and snaps off in the wound: 2 stacks of Bleeding.', effects: [atk('1d10', 'pierce', { riders: [status('bleeding', { stacks: 2 })] })] },
+      glasscutter: { name: 'Glasscutter', target: 'all-enemies', requires: 'cinderfang', fallback: 'tail-lash', charge: true, text: 'Cinderfang comes round in one long arc, charging: a cut at every hero, and every cut Burns.', effects: [atk('2d8', 'slash', { aspect: 'ember', riders: [status('burning')] })] },
+      burrow: { name: 'Burrow', target: 'enemy', charge: true, text: 'It goes down into the glass floor as if it were water, charging: it will come up under you. Then it lies half-buried (Guarding).', effects: [atk('3d8', 'pierce', { riders: [status('staggered')] }), status('guarding', { self: true })] },
+      'carapace-brace': { name: 'Carapace Brace', target: 'self', requires: 'glass-carapace', fallback: 'tail-lash', text: 'The Glass Carapace locks plate over plate: Guarding, and Warded until the glass gives.', effects: [status('guarding'), status('warded', { value: { dice: '3d6', diceEvery: 3 } })] },
+      'glass-rain': { name: 'Glass Rain', target: 'all-enemies', text: 'The ceiling of the Glass Heart comes down in needles: 2d6 piercing to every hero, DEX save for half, and you Bleed.', effects: [{ type: 'damage', dice: '2d6', kind: 'pierce', save: 'DEX', riders: [status('bleeding')] }] },
+      'molten-tail': { name: 'Molten Tail', target: 'enemy', requires: 'cinderfang', fallback: 'glass-sting', text: 'Cinderfang glows white in the tail: 3d8 ember, and you Burn.', effects: [atk('3d8', 'slash', { aspect: 'ember', riders: [status('burning')] })] },
+    },
+    phases: [
+      { at: 1, text: 'The Glass Wakes. Kharzul uncoils from the heart of the cavern, and the blade in its tail catches the light.', table: [[1, 7, 'tail-lash'], [8, 13, 'glass-sting'], [14, 20, 'glasscutter']] },
+      { at: 0.66, text: 'It Burrows. Kharzul goes down into the glass floor as if it were water.', table: [[1, 4, 'tail-lash'], [5, 8, 'glass-sting'], [9, 13, 'burrow'], [14, 16, 'carapace-brace'], [17, 20, 'glasscutter']] },
+      { at: 0.33, text: 'Glass Storm. The whole cavern starts to ring, and the ceiling answers.', table: [[1, 4, 'tail-lash'], [5, 10, 'glass-rain'], [11, 14, 'glass-sting'], [15, 20, 'molten-tail']] },
+    ],
+    text: 'A scorpion of living glass the size of a wagon, with a scimitar lodged in its tail for three hundred years. The blade has been warm the whole time.',
+  },
+  'ashen-warden': {
+    id: 'ashen-warden', name: 'The Ashen Warden', art: 'ashen-warden', tier: 'champion', kind: 'undead', unique: true,
+    hp: 145, guard: 15, atk: 6, dmg: 3, speed: 9, armor: 'plate', aspect: 'ember', weak: ['radiant'],
+    saves: { STR: 4, DEX: 1, CON: 4, WIS: 3 },
+    relics: ['ashen-aegis', 'cinder-crown'],
+    noFlee: true,
+    moves: {
+      'ash-blade': { name: 'Ash Blade', target: 'enemy', text: 'Scorchgate\'s last sword, still hot from the last fire.', effects: [atk('2d8', 'slash', { aspect: 'ember' })] },
+      'ember-sweep': { name: 'Ember Sweep', target: 'all-enemies', text: 'One wide, burning cut across the whole line.', effects: [atk('1d8', 'slash', { aspect: 'ember' })] },
+      'ward-of-ash': { name: 'Ward of Ash', target: 'self', requires: 'ashen-aegis', fallback: 'ash-blade', text: 'The Aegis comes up and the ash settles on it. The next blow sinks into the ash (Warded).', effects: [status('warded', { value: { dice: '2d8', diceEvery: 3 } })] },
+      'call-the-watch': { name: 'Call the Watch', target: 'self', text: 'It strikes the floor with the Aegis rim, and a wight climbs out of the ash to stand beside it.', effects: [{ type: 'summon', family: 'ash-wight', count: 1, max: 2, levelDelta: -4 }] },
+      'command-of-cinders': { name: 'Command of Cinders', target: 'all-allies', requires: 'cinder-crown', fallback: 'ash-blade', text: 'The Cinder Crown flares and every soldier of Scorchgate answers at the double: every foe is Hasted.', effects: [status('hasted')] },
+      'scorch-the-vault': { name: 'Scorch the Vault', target: 'all-enemies', charge: true, text: 'It lifts its sword and the Vault fills with fire, charging: 2d8 ember to every hero, DEX save for half, and you Burn.', effects: [{ type: 'damage', dice: '2d8', kind: 'ember', aspect: 'ember', save: 'DEX', riders: [status('burning')] }] },
+      'watch-unbroken': { name: 'The Watch Unbroken', target: 'all-enemies', requires: 'cinder-crown', fallback: 'ash-blade', text: 'The embers in the Crown drink the fire off you: 1d6 ember to every hero, and the Warden heals.', effects: [{ type: 'damage', dice: '1d6', kind: 'ember', aspect: 'ember' }, { type: 'heal', dice: '2d8', diceEvery: 3, self: true }] },
+    },
+    phases: [
+      { at: 1, text: 'The Warden Stands. Ash falls off it like snow as it raises the Aegis.', table: [[1, 10, 'ash-blade'], [11, 14, 'ember-sweep'], [15, 20, 'ward-of-ash']] },
+      { at: 0.66, text: 'The Ash Rises. The drifts on the Vault floor stand up and take the shapes of soldiers.', table: [[1, 6, 'ash-blade'], [7, 10, 'call-the-watch'], [11, 13, 'ward-of-ash'], [14, 20, 'command-of-cinders']] },
+      { at: 0.33, text: 'The Last Watch. The Crown burns white. It will not let the Vault fall twice.', table: [[1, 6, 'ash-blade'], [7, 11, 'scorch-the-vault'], [12, 16, 'watch-unbroken'], [17, 20, 'command-of-cinders']] },
+    ],
+    text: 'The last Warden of Scorchgate, still guarding a vault of ash. The Aegis on its arm and the Crown on its brow are all that did not burn.',
+  },
+};
+
+// The Tallymen of the Sunscorch: new variants of the M3 families (spec §3.2). Brask and Vell are holders.
 const TALLY_SUN = {
-  tallyman: { ...VERDANT.tallyman, variants: { ...VERDANT.tallyman.variants, foreman: holder('Foreman Brask', 62), quartermaster: { name: 'The Quartermaster', hp: 34 } } },
-  smuggler: { ...VERDANT.smuggler, variants: { ...(VERDANT.smuggler.variants || {}), sharpshooter: holder('Vell Saltglass', 50) } },
+  tallyman: {
+    ...VERDANT.tallyman,
+    variants: {
+      ...VERDANT.tallyman.variants,
+      foreman: holder('Foreman Brask', 'brask', 64, {
+        ...TALLY_MOVES,
+        pick: { name: 'Pick', target: 'enemy', text: 'A miner\'s pick, swung by someone who has swung ten thousand of them.', effects: [atk('1d8', 'pierce')] },
+        'dig-faster': { name: 'Dig Faster!', target: 'all-allies', text: 'Brask cracks the tally-whip: every digger is Hasted.', effects: [status('hasted')] },
+        'noon-flare': { name: 'Noon Flare', target: 'all-enemies', requires: 'sunstone-lantern', fallback: 'pick', text: 'Brask unshutters the Sunstone Lantern and it is noon underground: 2d6 ember to every hero, CON save for half, and the glare leaves you half-blind (Frightened).', effects: [{ type: 'damage', dice: '2d6', kind: 'ember', aspect: 'ember', save: 'CON', riders: [status('frightened')] }] },
+      }, [[1, 4, 'pick'], [5, 6, 'tally-mark'], [7, 8, 'dig-faster'], [9, 12, 'noon-flare']]),
+      quartermaster: {
+        name: 'The Quartermaster', hp: 34, art: 'quartermaster',
+        moves: { ...TALLY_MOVES, 'hand-out': { name: 'Hand Out the Good Stuff', target: 'all-allies', text: 'The Quartermaster opens a crate that was not his: every foe is Warded.', effects: [status('warded', { value: { dice: '1d8', diceEvery: 3 } })] } },
+        table: [[1, 3, 'cut'], [4, 4, 'tally-mark'], [5, 5, 'smoke-pot'], [6, 8, 'hand-out']],
+      },
+    },
+  },
+  smuggler: {
+    ...VERDANT.smuggler,
+    variants: {
+      ...VERDANT.smuggler.variants,
+      sharpshooter: holder('Vell Saltglass', 'vell', 54, {
+        ...SMUGGLER_MOVES,
+        'pin-down': { name: 'Pin Down', target: 'enemy', text: 'An arrow through your bootlace and into the sand: Rooted.', effects: [atk('1d6', 'pierce', { weapon: true, riders: [status('rooted')] })] },
+        'singing-shot': { name: 'Singing Shot', target: 'enemy', requires: 'saltglass', fallback: 'cut', charge: true, text: 'Saltglass sings as Vell draws it to the ear, charging: 3d8 storm, and you Stagger.', effects: [atk('3d8', 'pierce', { aspect: 'storm', riders: [status('staggered')] })] },
+      }, [[1, 4, 'cut'], [5, 6, 'caltrops'], [7, 8, 'pin-down'], [9, 12, 'singing-shot']], { speed: 13 }),
+    },
+  },
 };
 
 export const FOES = deepFreeze({ ...VERDANT, ...TALLY_SUN, ...SUNSCORCH });

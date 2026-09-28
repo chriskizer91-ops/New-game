@@ -316,6 +316,51 @@ body { background-repeat: no-repeat; }
 .pocket.is-unsighted .pn { color: var(--ash); }
 .codex-foot { margin: 12px 5px 0; font-size: 14px; color: var(--ash); }
 
+/* ---------- M4: the Codex binder (pages I-IV, rewards, the Awakened glow) ---------- */
+.cx-tabs .cx-tab { gap: 1px; padding: 5px 2px 6px; min-height: 58px; justify-content: center; }
+.cx-no { display: inline-flex; align-items: center; gap: 5px; min-height: 22px; font-family: var(--f-display); font-weight: 700; font-size: 21px; line-height: 1; color: var(--parchment); }
+.cx-no b { font-weight: 700; }
+.cx-tab[aria-selected="true"] .cx-no { color: var(--hearth-hot); }
+.cx-rg { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--f-pixel); font-size: 9px; letter-spacing: .02em; color: var(--parchment-2); }
+.cx-ct { font-family: var(--f-pixel); font-size: 8px; letter-spacing: .04em; color: var(--ash); }
+.cx-tick { font-style: normal; font-family: var(--f-body); font-weight: 800; font-size: 14px; color: var(--up); }
+.cx-tab.is-done { border-color: #7a4a12; }
+.cx-tab.is-sealed { background: #17120f; }
+.cx-tab.is-sealed .cx-no b, .cx-tab.is-sealed .cx-rg { color: var(--ash); }
+.cx-tab.is-sealed .cx-ct { color: #8a4a3e; }
+.cx-lock, .cx-bigl { position: relative; display: inline-block; background: linear-gradient(180deg, #9a8a74, #5a4c3e); box-shadow: 0 0 0 1px var(--ink); }
+.cx-lock { width: 11px; height: 9px; margin-top: 6px; border-radius: 1px; }
+.cx-lock::before, .cx-bigl::before { content: ""; position: absolute; box-sizing: border-box; border: 2px solid #9a8a74; border-bottom: 0; }
+.cx-lock::before { left: 2px; top: -6px; width: 7px; height: 7px; border-radius: 4px 4px 0 0; }
+.cx-head { margin-bottom: 12px; }
+.cx-head .cx-kick { margin: 0; font-family: var(--f-pixel); font-size: 10px; letter-spacing: .2em; text-transform: uppercase; color: var(--hearth); }
+.cx-head .cx-name { margin: 2px 0 6px; font-size: 26px; color: #fff3da; }
+.cx-head.is-sealed .cx-name { color: var(--parchment-2); }
+.codex-sum .cx-prog { margin: 0 0 8px; font-family: var(--f-pixel); font-size: 11px; letter-spacing: .03em; color: var(--parchment); }
+.codex-sum .cx-reward { display: grid; gap: 2px; margin: 12px 0 0; padding: 8px 10px; color: var(--ash); background: rgba(0, 0, 0, .2); border: 1px dashed #4a3a2e; }
+.cx-rk { font-family: var(--f-pixel); font-size: 9px; letter-spacing: .12em; text-transform: uppercase; }
+.cx-rn { font-family: var(--f-display); font-size: 19px; line-height: 1.1; }
+.cx-rt { font-size: 14px; line-height: 1.3; }
+.codex-sum .cx-reward.is-earned { color: #ffe6b0; background: linear-gradient(180deg, rgba(238, 142, 49, .24), rgba(122, 58, 18, .2)); border: 1px solid #c8801c; box-shadow: 0 0 18px rgba(238, 142, 49, .25); }
+.cx-reward.is-earned .cx-rk { color: var(--hearth-hot); }
+.cx-reward.is-earned .cx-rn { color: #ffcb66; text-shadow: 0 0 10px rgba(238, 142, 49, .55); }
+.codex-sum .cx-note { margin: 8px 0 0; font-size: 13px; font-style: italic; color: var(--ash); }
+.pocket .stamps i.on:nth-child(3) { color: #fff3da; background: linear-gradient(180deg, #ffab4a, #c2410c); border-color: #ffcb66; box-shadow: 0 0 6px rgba(255, 160, 60, .8); }
+.pocket.is-awakened { border-color: #ffcb66; background: radial-gradient(90% 60% at 50% 35%, rgba(255, 180, 70, .2), rgba(0, 0, 0, 0) 70%), linear-gradient(180deg, rgba(255, 255, 255, .05), rgba(0, 0, 0, .2)), var(--iron); box-shadow: 0 0 0 2px var(--ink), 0 0 16px 2px rgba(255, 170, 60, .55); animation: cxGlow 2.6s ease-in-out infinite; }
+.pocket.is-awakened .pn { color: #ffe2a0; }
+@keyframes cxGlow { 50% { box-shadow: 0 0 0 2px var(--ink), 0 0 28px 6px rgba(255, 190, 80, .85); } }
+.pocket.is-spare { border-style: dashed; }
+.pocket.is-spare .pp canvas { filter: saturate(.2) brightness(.6); }
+.pocket .hint.spare { font-style: normal; color: var(--parchment-2); }
+.binder.is-sealed { display: block; }
+.cx-sealed { display: grid; justify-items: center; gap: 8px; padding: 34px 12px 30px; text-align: center; }
+.cx-bigl { width: 46px; height: 36px; border-radius: 4px; }
+.cx-bigl::before { left: 9px; top: -24px; width: 28px; height: 27px; border-width: 6px 6px 0; border-radius: 15px 15px 0 0; }
+.cx-bigl::after { content: ""; position: absolute; left: 20px; top: 11px; width: 6px; height: 13px; border-radius: 3px 3px 1px 1px; background: #1c1510; }
+.cx-sealed-k { margin: 8px 0 0; font-family: var(--f-pixel); font-size: 12px; letter-spacing: .24em; text-transform: uppercase; color: var(--down); }
+.cx-sealed-t { margin: 0; max-width: 40ch; font-family: var(--f-display); font-size: 19px; font-style: italic; line-height: 1.3; color: var(--parchment-2); }
+.cx-sealed-n { margin: 2px 0 0; max-width: 46ch; font-size: 14px; color: var(--ash); }
+
 /* ---------- settings ---------- */
 .screen-settings { max-width: 720px; }
 .set-opts, .set-saves, .set-danger { margin-bottom: 12px; display: grid; gap: 10px; }
@@ -381,7 +426,8 @@ textarea.code:focus { outline: none; border-color: var(--hearth); }
 /* ---------- M3: the Atlas ---------- */
 .screen-atlas { max-width: 1240px; }
 .atlas-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin: 0 5px 10px; }
-.atlas-views { display: grid; grid-template-columns: repeat(2, minmax(88px, 1fr)); gap: 6px; }
+.atlas-views { display: grid; grid-template-columns: repeat(var(--n, 2), minmax(76px, auto)); gap: 6px; }
+.atlas-views .atlas-view { padding: 0 10px; }
 .hclock { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 4px 10px; background: var(--ink); box-shadow: 0 0 0 2px var(--seam); }
 .hc-k { font-family: var(--f-pixel); font-size: 8px; letter-spacing: .1em; text-transform: uppercase; color: var(--ash); max-width: 5.5em; line-height: 1.2; }
 .hc-coals { display: flex; gap: 3px; }
@@ -399,6 +445,7 @@ textarea.code:focus { outline: none; border-color: var(--hearth); }
 .atlas-ink .pl { font-family: var(--f-display); font-weight: 700; font-size: 12px; fill: #2c1810; text-anchor: middle; paint-order: stroke; stroke: rgba(236, 223, 195, .8); stroke-width: 3px; opacity: .72; }
 .atlas-ink .pl-dot { fill: #2c1810; opacity: .6; }
 .atlas-ink .pl.pl-sealed { opacity: .9; fill: #5a1a14; }
+.atlas-ink .pl.pl-open { opacity: .9; fill: #3a1c08; }
 .atlas-ink .lead { stroke: rgba(20, 12, 8, .9); stroke-width: 1.6; }
 .atlas-ink .lead-dot { fill: #2c1810; stroke: rgba(245, 236, 208, .7); stroke-width: .8; }
 .atlas-ink .holder path { fill: #f5ecd0; stroke: #8b2020; stroke-width: 1.4; }
@@ -415,6 +462,7 @@ textarea.code:focus { outline: none; border-color: var(--hearth); }
 .mk-hearth.is-unknown .mk-ico { opacity: .6; box-shadow: 0 0 0 2px rgba(18, 12, 8, .6), 0 0 0 3px rgba(245, 236, 208, .35); }
 .mk-sealed .mk-ico { color: #f5ecd0; background: #5a1a14; box-shadow: 0 0 0 2px #120c08, 0 0 0 3px #d8a878, 0 2px 6px rgba(0, 0, 0, .55); }
 .mk-region .mk-ico { width: 34px; height: 34px; color: #b4f0a4; background: #1f4a1a; }
+.mk-region.rg-sunscorch .mk-ico { color: #ffd27a; background: #7a4212; }
 .mk-here { z-index: 3; }
 .mk-here .mk-ico { width: 32px; height: 32px; color: #e8402c; background: none; box-shadow: none; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .75)); }
 .mk-here svg { width: 30px; height: 30px; animation: hereBob 1.6s ease-in-out infinite; }
@@ -440,6 +488,8 @@ textarea.code:focus { outline: none; border-color: var(--hearth); }
 .atlas-list, .atlas-notes { margin: 5px; }
 .atlas-list h2, .atlas-notes h2 { margin: 0 0 8px; font-weight: 400; }
 .atlas-list > .small { margin: -2px 0 8px; }
+.atlas-grp + .atlas-grp { margin-top: 12px; }
+.atlas-grp-h { margin: 0 0 6px; font-family: var(--f-pixel); font-size: 10px; font-weight: 400; letter-spacing: .08em; text-transform: uppercase; color: var(--hearth); }
 .atlas-hfs, .atlas-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .atlas-hf, .atlas-row { width: 100%; min-height: 48px; display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 4px 8px 4px 6px; text-align: left; cursor: pointer; color: var(--parchment); background: var(--iron); border: 2px solid var(--seam); box-shadow: 0 0 0 2px var(--ink); }
 div.atlas-row { cursor: default; }

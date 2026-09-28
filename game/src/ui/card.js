@@ -3,17 +3,26 @@
 //                                                                then "Equip on..." with live try-on
 //   ctx.services.cardSlam(item, { power, name, text })         ~1.2 s Legend Surge slam
 //   ctx.services.cardPreview(item, { heldBy })                 greyed card stamped HELD BY
-//   ctx.services.cardInspect(item, { heroId, stamps })          card + picker, no chest (party, codex)
+//   ctx.services.cardInspect(item, { heroId, stamps, game })    card + picker, no chest (party, codex);
+//                                                                `game`: a read-only snapshot to show the
+//                                                                item from (Hilda's forge, before it saves)
 // Each returns a Promise that resolves when the player closes it.
+// M4 (spec §5.3; owner P7a): below the portrait, the socket row, the temper flames (+1 to +10) and a
+// relic's deed pips and stage line; the Chronicle button turns the card over to its back (foes felled,
+// the mightiest kill, everyone who has carried it, its deeds, the provenance ribbon, Grudge settled).
+// The reveal itself (the chest, the flip, the stamps and their timing) is frozen (A6).
 import './card.css';
 import { RARITY_LOOK, itemIcon, hx } from '../art/index.js';
+import { GEMS } from '../data/gems.js';
 import { equip, unequip, compare, wearerOf, bestHeroFor, canUse } from '../rules/party.js';
 import { itemProfile, POWERS } from '../rules/stats.js';
 import { identifyItem } from '../rules/loot.js';
+import { pageBonus } from '../rules/codex.js';
 import { el, esc, button, toCanvas, fmt, sgn, replay, countTo } from './lib/dom.js';
 import { portraitCanvas, cornerCanvas, iconCanvas, bustCanvas, heroSprite, gearOf, itemsById, chestImage, tierOf, rarityName } from './lib/art.js';
 import {
   nameParts, typeLine, mainStat, traitRows, powersOf, setInfo, provenanceText, verdict, isRelic, relicOf, codexNo, SLOT_NAME, CMP_ROWS,
+  temperOf, socketList, gemIconEl, gemText, stageInfo, kindledText, chronicleOf, flamesEl,
 } from './lib/items.js';
 import { openOverlay } from './lib/overlay.js';
 import { isReduced } from './lib/anim.js';
@@ -108,6 +117,7 @@ export function buildCard(itemIn, ctx, opts = {}) {
         sb.append(el('div', 'pieces', si.pieces.map(p => `${p.on ? '■' : '□'} ${esc(p.name)}`).join(' &nbsp; ')));
         body.append(sb);
       }
+      body.append(forgeBits(item));
       const lore = relic ? relic.lore : item.lore;
       if (lore) body.append(el('p', 'lore', `“${esc(lore)}”`));
     }
@@ -125,8 +135,70 @@ export function buildCard(itemIn, ctx, opts = {}) {
       const kills = item.chronicle?.kills || 0;
       const chron = [kills ? `${kills} ${kills === 1 ? 'foe' : 'foes'} felled` : item.slot === 'weapon' ? 'No foes felled yet' : null, wear ? `Borne by ${shortName(ctx.game, wear.heroId)}` : 'In the bag'].filter(Boolean).join(' · ');
       row.append(icons, el('p', '', `<b>Chronicle</b>${esc(chron)}`));
+      // M4: turn the card over to read its Chronicle
+      if (!opts.silhouette && !item.unidentified) {
+        row.append(button('Chronicle', 'btn chron-btn', () => turn(true), { 'aria-label': `Turn the card over: the Chronicle of ${item.name}` }));
+        row.classList.add('has-chron');
+      }
       body.append(row);
     }
+  }
+
+  // ---- M4: the back of the card, its Chronicle (spec §5.3) ----
+  const back = el('section', { class: 'card-back', 'aria-label': 'The Chronicle' });
+  back.hidden = true;
+  card.insertBefore(back, pickHost);
+  function paintBack() {
+    item = liveItem(ctx.game, item);
+    back.replaceChildren();
+    const ch = chronicleOf(ctx.game, item);
+    back.append(el('p', 'cb-kick', 'Chronicle'), el('h2', 'item-name cb-name', esc(nameParts(item).name)));
+    const facts = el('dl', 'cb-facts');
+    const fact = (k, v, cls = '') => { const d = el('div', `cb-fact ${cls}`); d.append(el('dt', '', esc(k)), el('dd', '', esc(v))); facts.append(d); };
+    fact('Foes felled', String(ch.kills), 'felled');
+    fact('The mightiest kill', ch.mightiest ? `${ch.mightiest.name}${ch.mightiest.level ? ` · Lv ${ch.mightiest.level}` : ''}` : 'None yet', 'mightiest');
+    fact(ch.bearers.length === 1 ? 'Carried by' : 'Everyone who has carried it', ch.bearers.length ? ch.bearers.join(', ') : 'Nobody yet', 'bearers');
+    back.append(facts);
+    const st = stageInfo(item);
+    if (st) {
+      const ul = el('ul', 'cb-deeds');
+      for (const d of st.deeds) ul.append(el('li', d.done ? 'on' : '', `<i aria-hidden="true"></i><b>${esc(d.name)}</b><span>${esc(d.done ? (d.day ? `Day ${d.day}` : 'Done') : d.text)}</span>`));
+      back.append(el('h3', 'cb-h', esc(st.line)), ul);
+    }
+    const grudge = item.provenance?.grudge || (item.stamp === 'grudge-settled' ? true : null);
+    if (grudge) {
+      const g = el('div', 'cb-grudge');
+      const stamp = el('span', 'stamp st-grudge cb-stamp', 'Grudge settled');
+      g.append(stamp);
+      if (typeof grudge === 'string') g.append(el('span', 'cb-grudge-who', esc(grudge)));
+      back.append(g);
+    }
+    if (item.provenance?.from || opts.heldBy) back.append(el('p', 'ribbon', `<span>${esc(provenanceText(item, opts.source))}</span>`));
+    back.append(button('Turn it back', 'btn chron-back', () => turn(false), { 'aria-label': 'Turn the card back to its face' }));
+  }
+  let turning = false;
+  S.back = false;
+  function turn(toBack) {
+    if (S.back === toBack || turning) return;
+    ctx.audio.sfx('page');
+    const swap = () => {
+      S.back = toBack;
+      if (toBack) paintBack();
+      back.hidden = !toBack;
+      card.classList.toggle('show-back', toBack);
+      const f = toBack ? back.querySelector('.chron-back') : body.querySelector('.chron-btn');
+      if (toBack) back.scrollIntoView({ block: 'nearest' });
+      if (f) f.focus({ preventScroll: !toBack });
+    };
+    if (isReduced()) { swap(); return; }
+    turning = true;
+    card.classList.add('turn-out');
+    setTimeout(() => {
+      card.classList.remove('turn-out');
+      swap();
+      card.classList.add('turn-in');
+      setTimeout(() => { card.classList.remove('turn-in'); turning = false; }, 230);
+    }, 150);
   }
 
   function paintStamps(slam) {
@@ -149,7 +221,7 @@ export function buildCard(itemIn, ctx, opts = {}) {
 
   // ---- identify ritual ----
   let idBtn = null;
-  if (item.unidentified && inInventory(ctx.game, item) && !opts.grey) {
+  if (item.unidentified && inInventory(ctx.game, item) && !opts.grey && !opts.readOnly) {
     const box = el('div', 'identify');
     const face = el('span', 'die');
     idBtn = button('Roll to identify', 'btn primary identify-btn', async () => {
@@ -224,7 +296,7 @@ export function buildCard(itemIn, ctx, opts = {}) {
 
     function previewGear(id) {
       const g = gearOf(ctx.game, id);
-      const c = compare(ctx.game.party.roster[id], item, ctx.game.inventory);
+      const c = compare(ctx.game.party.roster[id], item, ctx.game.inventory, pageBonus(ctx.game));
       if (!c.ok) return g;
       const over = { [item.slot]: item };
       for (const uid of c.displaced || []) for (const [s, v] of Object.entries(g)) if (v && v.uid === uid && s !== item.slot) over[s] = null;
@@ -258,7 +330,7 @@ export function buildCard(itemIn, ctx, opts = {}) {
         b.setAttribute('aria-label', `${shortName(game, hid)}: ${v.reason || v.text}`);
         if (v.reason) b.title = v.reason; else b.removeAttribute('title');
       }
-      const c = compare(hero, item, game.inventory);
+      const c = compare(hero, item, game.inventory, pageBonus(game));
       const owned = wearNow && wearNow.heroId === id;
       const gearNow = owned ? gearOf(game, id) : previewGear(id);
       if (!S.sprite || S.spriteHero !== id) {
@@ -306,7 +378,7 @@ export function buildCard(itemIn, ctx, opts = {}) {
       if (setInfo(item)) paintBody();
     }
     function doEquip() {
-      const id = S.target, before = compare(ctx.game.party.roster[id], item, ctx.game.inventory);
+      const id = S.target, before = compare(ctx.game.party.roster[id], item, ctx.game.inventory, pageBonus(ctx.game));
       const r = equip(ctx.game, id, item.uid);
       if (!r.ok) { ctx.audio.sfx('error'); ctx.toast(r.reason || "Can't equip that."); return; }
       ctx.setGame(r.game);
@@ -339,9 +411,48 @@ export function buildCard(itemIn, ctx, opts = {}) {
     el: card,
     get item() { return item; },
     setStamp, paintStamps,
+    turn(toBack) { turn(!!toBack); },
     selectHero(i) { const id = ctx.game.party.active[i]; if (id && S.update) { S.target = id; S.update(); ctx.audio.sfx('select'); return true; } return false; },
     sizePortrait() { sizePortrait(card, port.canvas); },
   };
+}
+
+// M4 (spec §5.3): what Hilda has done to it, below the portrait. The socket row (gems in their colours,
+// empty sockets as dark rings), the temper flames (+1 to +10; two rows of five on a phone), and for a
+// relic its three deed pips and its stage ("Kindled · 2 of 3 deeds", "Awakened · Sunmarrow").
+function forgeBits(item) {
+  const box = el('section', 'blk forgebits');
+  const socks = socketList(item);
+  if (socks.length) {
+    const row = el('div', 'fb-row fb-sockets');
+    const list = el('span', 'sockets');
+    socks.forEach(g => {
+      const s = el('span', { class: `sock${g ? ' set' : ''}`, role: 'img', 'aria-label': g ? `${GEMS[g].name}: ${gemText(g, item.slot)}` : 'An empty socket' });
+      if (g) { s.append(gemIconEl(g, 20)); s.title = `${GEMS[g].name}: ${gemText(g, item.slot)}`; }
+      list.append(s);
+    });
+    const set = socks.filter(Boolean);
+    row.append(el('span', 'fb-k', socks.length === 1 ? 'Socket' : 'Sockets'), list,
+      el('span', 'fb-v', esc(set.length ? set.map(g => gemText(g, item.slot)).join(' · ') : socks.length === 1 ? 'Empty: Hilda can set a gem' : 'Empty: Hilda can set gems')));
+    box.append(row);
+  }
+  const t = temperOf(item);
+  const fl = el('div', 'fb-row fb-temper');
+  fl.append(el('span', 'fb-k', t ? `Temper +${t}` : 'Temper'), flamesEl(t), el('span', 'fb-v', t ? '' : 'Not tempered yet'));
+  box.append(fl);
+  const st = stageInfo(item);
+  if (st) {
+    const row = el('div', `fb-row fb-deeds st-${st.stage}${st.ready ? ' ready' : ''}`);
+    const pips = el('span', { class: 'pips', role: 'img', 'aria-label': `${st.done} of ${st.total} deeds done` });
+    for (const d of st.deeds) { const p = el('i', d.done ? 'on' : ''); p.title = `${d.name}${d.done ? ' (done)' : `: ${d.text}`}`; pips.append(p); }
+    row.append(el('span', 'fb-k', 'Deeds'), pips, el('span', 'fb-stage', esc(st.line)));
+    box.append(row);
+    const names = st.deeds.map(d => `${d.done ? '●' : '○'} ${d.name}`).join('  ');
+    box.append(el('p', 'fb-deednames', esc(names)));
+    if (st.branch) box.append(el('p', 'fb-note awake', `<b>${esc(st.branch.name)}.</b> ${esc(st.branch.text)}`));
+    else if (st.stage === 'kindled') box.append(el('p', 'fb-note', `Kindled: ${esc(kindledText(item))}.${st.ready ? ' All three deeds are done: Hilda can wake it.' : ''}`));
+  }
+  return box;
 }
 
 function darkIcon(item, scale) {
@@ -446,6 +557,9 @@ export function installCardServices(ctx) {
   const reduced = () => ctx.reduced();
 
   function cardOverlay(item, opts, { withChest = false, title } = {}) {
+    // a read-only snapshot (opts.game): the card reads that game, and nothing it does is saved
+    const cctx = opts.game ? Object.create(ctx, { game: { value: opts.game, enumerable: true }, setGame: { value: () => {} } }) : ctx;
+    if (opts.game) opts = { ...opts, readOnly: true, picker: false };
     return new Promise(resolve => {
       let cardApi = null, stage = null, done = false;
       const finish = () => { if (done) return; done = true; if (stage) stage.stop(); ov.close(); removeEventListener('resize', onResize); resolve({ item: cardApi ? cardApi.item : item }); };
@@ -465,7 +579,7 @@ export function installCardServices(ctx) {
       const onResize = () => { if (stage) stage.relayout(); if (cardApi) cardApi.sizePortrait(); };
       addEventListener('resize', onResize);
       const showCard = () => {
-        cardApi = buildCard(item, ctx, {
+        cardApi = buildCard(item, cctx, {
           ...opts, picker: opts.picker !== false && !opts.grey,
           onChange: kind => { if (kind === 'equip') { cont.textContent = 'Continue'; cont.className = 'btn primary cont'; cont.setAttribute('data-primary', ''); } },
         });

@@ -1,6 +1,26 @@
 // Ported from prototypes/item-card.html (the approved Loot Forge art pipeline).
 // Item shape recipes. Each recipe(F, X, P) adds parts to a Forge in 64px item space.
-import { hash, vnoise, Xf, Forge } from './forge.js';
+import { hash, vnoise, Xf, Forge, MAT, ramp } from './forge.js';
+
+/* ==== M4 materials (the Sunscorch), registered into MAT once and never over a name that exists, so
+   recipes, looks and the hero rig can all name them ==== */
+const M4_MAT = {
+  glass: ['#0c1a20 #1e3a44 #386a74 #64a0a4 #a8d6d2 #eefffa', { gem: 1 }],
+  sandglass: ['#1e1208 #4a2e14 #86602e #c49a5a #ecd49c #fffbe8', { gem: 1 }],
+  smokeglass: ['#0c080a #221820 #3e2c34 #604652 #8c6c74 #c4a4a4', { gem: 1 }],
+  sand: ['#241a10 #4a3620 #76583a #a4804e #cca868 #ecd49a', { ks: .15, shin: 6 }],
+  sandstone: ['#2a1810 #573420 #83553a #ad7c52 #d2a574 #eecb9c', { ks: .2, shin: 6, dither: .3 }],
+  ash: ['#141214 #2a2628 #4a4446 #726a68 #9e9690 #cac2b8', { ks: .1, shin: 6, dither: .35 }],
+  char: ['#0a0606 #180e0c #281814 #3a241c #523426 #6c4a34', { ks: .5, shin: 10 }],
+  skink: ['#2a1206 #5a2810 #92481c #c67434 #e6a454 #f8d48c', { ks: .5, shin: 12 }],
+  wyrmHide: ['#1a120c #36281a #5a452c #806642 #a88a5a #d0b27a', { ks: .3, shin: 8 }],
+  clothIndigo: ['#07081a #0f1434 #1a2254 #28347a #3c4c9e #5c6cbc', { ks: 0 }],
+  clothSaffron: ['#1e1004 #42240a #6e4012 #9c601c #c8862c #eab452', { ks: 0 }],
+  brass: ['#1e1406 #483010 #7c5a1c #b08a30 #d8b85a #f6e6a0', { ks: 1.5, shin: 18, metal: 1 }],
+  haze: ['#0a2224 #174a4e #2a8084 #52bcb8 #a2eae2 #effffb', { emit: 1, eBase: 2.9 }],
+  heartglow: ['#101428 #28366e #5a78c8 #a4c4f4 #eef4ff #ffffff', { emit: 1, eBase: 3.2 }],
+};
+for (const [k, [s, o]] of Object.entries(M4_MAT)) if (!MAT[k]) MAT[k] = Object.assign({ pal: ramp(s) }, o);
 
 /* ==== RECIPES: items are parameter sets fed to a few shape recipes ==== */
 const TX = {
@@ -10,9 +30,19 @@ const TX = {
 };
 function swordR(F, X, P) {
   const g0 = P.gripEnd, t0 = g0 + P.guardT, bw = P.bladeW, tipS = t0 + P.bladeL - P.tipL, tipE = t0 + P.bladeL;
-  const bt = P.bladeTex; F.add({ X, mat: P.blade, prof: 'ridge', hs: .8, grp: 'blade', tex: q => { const a = Math.abs(q.v) * q.k; if (P.heat && a < 1.7 && q.u > t0 - 1) return { m: 'heat', dd: a < .6 ? 2 : 0 }; const r = bt ? bt(q) : 0; if (a < .6 && q.u > t0) return typeof r === 'object' ? Object.assign({}, r, { dd: (r.dd || 0) + 1 }) : r + 2; return r; }, shapes: [X.poly([[t0 - 2, -bw], [tipS, -bw * P.taper], [tipE, 0], [tipS, bw * P.taper], [t0 - 2, bw]])], cuts: (P.notches || []).map(([t, s, r]) => X.circ(t, s, r)) });
-  if (P.fuller) F.add({ X, mat: P.fuller, prof: 'round', bw: 1, grp: 'blade', noShadow: true, shapes: [X.cap(t0 + 2.5, 0, tipS - 4, 0, P.fullerR || 1, (P.fullerR || 1) * .7)], tex: ({ u }) => (Math.sin(u * .7) > .6 ? 1 : 0) + (u > tipS - 12 ? -1 : 0) });
-  if (P.guard === 'flame') {
+  const bt = P.bladeTex;
+  if (P.shape === 'scimitar') scimitarBlade(F, X, P, t0);
+  else {
+    F.add({ X, mat: P.blade, prof: 'ridge', hs: .8, grp: 'blade', tex: q => { const a = Math.abs(q.v) * q.k; if (P.heat && a < 1.7 && q.u > t0 - 1) return { m: 'heat', dd: a < .6 ? 2 : 0 }; const r = bt ? bt(q) : 0; if (a < .6 && q.u > t0) return typeof r === 'object' ? Object.assign({}, r, { dd: (r.dd || 0) + 1 }) : r + 2; return r; }, shapes: [X.poly([[t0 - 2, -bw], [tipS, -bw * P.taper], [tipE, 0], [tipS, bw * P.taper], [t0 - 2, bw]])], cuts: (P.notches || []).map(([t, s, r]) => X.circ(t, s, r)) });
+    if (P.fuller) F.add({ X, mat: P.fuller, prof: 'round', bw: 1, grp: 'blade', noShadow: true, shapes: [X.cap(t0 + 2.5, 0, tipS - 4, 0, P.fullerR || 1, (P.fullerR || 1) * .7)], tex: ({ u }) => (Math.sin(u * .7) > .6 ? 1 : 0) + (u > tipS - 12 ? -1 : 0) });
+  }
+  if (P.guard === 'hook') {
+    // scimitar quillons swept toward the blade, knobbed, with a langet running up the blade
+    const gc = g0 + P.guardT / 2, gw = P.guardW ?? 8, q = g => chain(X, [[gc, 0], [gc + .4, g * gw * .45], [gc + 2.6, g * gw * .86], [gc + 5.4, g * gw * .78]], [2, 1.7, 1.35, 1]);
+    F.add({ X, mat: P.guardMat, prof: 'round', bw: 1.6, grp: 'guard', shapes: q(-1).concat(q(1), [X.circ(gc + 5.9, -gw * .74, 1.5), X.circ(gc + 5.9, gw * .74, 1.5)]) });
+    F.add({ X, mat: P.guardMat, prof: 'bevel', bw: 1.2, grp: 'langet', shapes: [X.poly([[g0 - 1, -2.4], [t0 + 4.4, -1.4], [t0 + 6.2, 0], [t0 + 4.4, 1.4], [g0 - 1, 2.4]])] });
+    if (P.gem) F.add({ X, mat: P.gem, prof: 'round', bw: 1.4, grp: 'langet', noShadow: true, shapes: [X.circ(gc + .6, 0, 1.6)] });
+  } else if (P.guard === 'flame') {
     const o = [[-.2, -3], [.3, -7], [1.3, -10.5], [4, -13], [8, -13.8], [5.7, -11.2], [4.8, -8.2], [4.7, -4.5], [4.7, 4.5], [4.8, 8.2], [5.7, 11.2], [8, 13.8], [4, 13], [1.3, 10.5], [.3, 7], [-.2, 3]];
     F.add({ X, mat: P.guardMat, prof: 'round', bw: 1.7, grp: 'guard', shapes: [X.poly(o.map(([t, s]) => [g0 + t, s]))] });
     F.add({ X, mat: P.guardMat, prof: 'round', bw: 3.4, grp: 'boss', shapes: [X.circ(g0 + 2.3, 0, 3.7)] });
@@ -23,9 +53,25 @@ function swordR(F, X, P) {
     F.add({ X, mat: P.guardMat, prof: 'round', bw: P.guardR, grp: 'guard', shapes: [X.cap(g0 + P.guardT / 2, -P.guardW, g0 + P.guardT / 2, P.guardW, P.guardR)], tex: P.guardTex });
   }
   F.add({ X, mat: P.grip, prof: 'round', bw: P.gripR, grp: 'grip', shapes: [X.cap(P.pommelR * 1.4, 0, g0 + .5, 0, P.gripR)], tex: TX.wrap(2.4) });
-  F.add({ X, mat: P.pommel, prof: 'round', bw: P.pommelR, grp: 'pommel', shapes: [X.circ(P.pommelR, 0, P.pommelR)], tex: P.pommelTex });
+  if (P.pommelShape === 'hook') F.add({ X, mat: P.pommel, prof: 'round', bw: P.pommelR * .8, grp: 'pommel', shapes: chain(X, [[P.pommelR * 1.6, 0], [P.pommelR * .7, P.pommelR * .5], [P.pommelR * .3, P.pommelR * 1.7], [P.pommelR * .9, P.pommelR * 2.6]], [P.pommelR * .9, P.pommelR, P.pommelR * .8, P.pommelR * .55]), tex: P.pommelTex });
+  else F.add({ X, mat: P.pommel, prof: 'round', bw: P.pommelR, grp: 'pommel', shapes: [X.circ(P.pommelR, 0, P.pommelR)], tex: P.pommelTex });
   if (P.pommelGem) F.add({ X, mat: P.pommelGem, prof: 'round', bw: 1.5, grp: 'pommel', noShadow: true, detail: true, shapes: [X.circ(P.pommelR, 0, P.pommelR * .5)] });
   if (P.ribbon) swordRibbon(F, X, P, g0);
+}
+// sword shape 'scimitar': a blade curving back from the hilt and broadening toward a clipped point, the edge on
+// the convex side; `edge` runs a glowing strip down the cutting edge, `fuller` a groove along the back
+function scimitarBlade(F, X, P, t0) {
+  const L = P.bladeL, bw = P.bladeW, C = P.curve ?? 6, n = 18, T = u => t0 - 2 + (L + 2) * u, sc = u => -C * Math.pow(u, 1.8);
+  const back = u => sc(u) - bw * .8 * (1 - Math.pow(u, 4)), edge = u => sc(u) + bw * (.9 + .7 * Math.sin(u * Math.PI * .8)) * (1 - Math.pow(u, 5));
+  const B = [], E = [];
+  for (let k = 0; k <= n; k++) { const u = k / n; B.push([T(u), back(u)]); E.push([T(u), edge(u)]); }
+  const bt = P.bladeTex;
+  F.add({ X, mat: P.blade, prof: 'ridge', hs: .8, grp: 'blade', shapes: [X.poly(B.concat(E.reverse()))], tex: bt });
+  if (P.fuller) F.add({ X, mat: P.fuller, prof: 'round', bw: .8, grp: 'blade', noShadow: true, shapes: chain(X, [.06, .2, .36, .52].map(u => [T(u), back(u) * .45 + sc(u) * .55]), [.9, .85, .7, .45]) });
+  if (P.edge) {
+    const S = []; for (let k = 1; k < n - 1; k++) { const a = k / n, b = (k + 1) / n; S.push(X.poly([[T(a), edge(a)], [T(b), edge(b)], [T(b), edge(b) - 1.3 * (1 - b * .5)], [T(a), edge(a) - 1.3 * (1 - a * .5)]])); }
+    F.add({ X, mat: P.edge, prof: 'round', bw: .7, grp: 'blade', noShadow: true, shapes: S });
+  }
 }
 function hammerR(F, X, P) {
   const hc = P.headT, ht = P.headH / 2, hw = P.headW, r = P.haftR;
@@ -58,6 +104,9 @@ function hammerR(F, X, P) {
     for (const g of [-1, 1]) { L(hc - ht + 2.6, g * 6.4, hc + ht - 2.6, g * 6.4); L(hc - .6, g * 6.4, hc + 2.2, g * 8.2); }
     F.add({ X, mat: P.runes, prof: 'round', bw: .7, grp: 'head', noShadow: true, detail: true, shapes: S });
   }
+  // M4: iron straps binding the head, and glass shards fused into it (Dunebreaker)
+  if (P.straps) for (const t of [hc - ht * .52, hc + ht * .52]) F.add({ X, mat: P.straps, prof: 'round', bw: 1, grp: 'strap' + t, shapes: [X.poly([[t - 1.4, -hw - .7], [t + 1.4, -hw - .7], [t + 1.4, hw + .7], [t - 1.4, hw + .7]])], tex: ({ x, y }) => (hash(x, y, 9) < .2 ? { m: 'rust', dd: 0 } : 0) });
+  if (P.shards) F.add({ X, mat: P.shards, prof: 'ridge', hs: .9, grp: 'shards', shapes: thornShapes(X, [[hc + ht - 1.5, -hw * .45, 1, -.4, 7, 2.3], [hc + ht - 1, hw * .1, 1, .05, 9, 2.7], [hc + ht - 2, hw * .62, .8, .6, 6, 2], [hc - 3, -hw + .6, -.2, -1, 5.5, 1.9], [hc + 2.6, -hw + .6, .35, -1, 6.5, 2.1]]) });
 }
 function bowR(F, X, P) {
   const L = P.len, b = P.bulge, h = 2 * b, R0 = (L * L / 4 + h * h) / (2 * h), al = Math.asin((L / 2) / R0), cS = -b + R0;
