@@ -1466,11 +1466,12 @@ function scorpion(F, st, S) {
     F.add({ mat: gT >= 3 ? 'ember' : 'glass', prof: 'ridge', hs: .9, grp: 'sting', noShadow: gT >= 3, shapes: spikesC([[s0[0], s0[1], sd[0], sd[1], R(5), R(1.3)]]) });
   }
   // the body: the plates of the back over the underside, the head (prosoma) in front
-  const SEGS = [[15.8, 32, 4.8, 5.4], [20.8, 31.4, 5, 5.9], [26, 31.2, 5.2, 6.1], [31.2, 31.6, 5, 5.8]];
+  // (Kharzul's body is deeper, grown up over the same belly line)
+  const SEGS = [[15.8, 32, 4.8, 5.4], [20.8, 31.4, 5, 5.9], [26, 31.2, 5.2, 6.1], [31.2, 31.6, 5, 5.8]].map(([x, y, rx, ry]) => (boss ? [x, y - ry * .22, rx * 1.06, ry * 1.22] : [x, y, rx, ry]));
   const bodyS = lie ? SEGS.map(([x, y, rx, ry]) => ell(T([x, y + 5.4]), R(rx), R(ry * .72))) : SEGS.map(([x, y, rx, ry]) => ell(B([x, y]), R(rx), R(ry)));
   F.add({ mat: glass, prof: 'round', bw: R(4.4), hs: .8, grp: 'body', shapes: bodyS, tex: gtex(70) });
   const head = lie ? T([39.4, 38]) : B([39.4, 32.2]);
-  F.add({ mat: glass, prof: 'round', bw: R(3.6), hs: .8, grp: 'prosoma', shapes: [ell(head, R(7.4), R(lie ? 3.8 : 5.2))], tex: gtex(71) });
+  F.add({ mat: glass, prof: 'round', bw: R(3.6), hs: .8, grp: 'prosoma', shapes: [ell(boss && !lie ? [head[0], head[1] - R(.8)] : head, R(boss ? 7.9 : 7.4), R(lie ? 3.8 : boss ? 6 : 5.2))], tex: gtex(71) });
   // a light inside the glass (amber, then ember at the last Waking and in the Glass Storm)
   const bare = boss && (broken.includes('glass-carapace') || !held);
   if ((gT >= 2 || boss || mat) && !lie) F.add({ mat: veinM, prof: 'round', bw: R(.6), grp: 'veins', noShadow: true, shapes: chainC([B([13.6, 32.6]), B([18.4, 30.4]), B([23.4, 32.8]), B([28.6, 30.4]), B([33.6, 32.6]), B([39, 31])], R(bare || P3 ? .85 : .5)) });
@@ -1481,12 +1482,12 @@ function scorpion(F, st, S) {
   }
   // Kharzul: the Glass Carapace, clear plates over its back with light in the seams, until it is snapped off
   const shell = boss && held && !broken.includes('glass-carapace') ? relicArt('glass-carapace') : null;
-  if (shell && !lie) {
-    const sm = shell.p.seam || 'amber';
-    F.add({ mat: sm, prof: 'flat', grp: 'seams', noShadow: true, shapes: SEGS.map(([x, y, rx, ry]) => ell(B([x, y - ry * .42]), R(rx + .5), R(ry * .62))) });
-    SEGS.forEach(([x, y, rx, ry], i) => F.add({ mat: 'glass', prof: 'bevel', bw: R(1.5), grp: 'plate' + i, relic: true, shapes: [poly([B([x - rx - .2, y - ry * .05]), B([x - rx * .7, y - ry - .6]), B([x + rx * .2, y - ry - 1.1]), B([x + rx + .6, y - ry * .45]), B([x + rx * .55, y + ry * .02])])], tex: ({ x: px, y: py }) => (hash(px, py, 81 + i) < .07 ? 1 : 0) }));
-    F.add({ mat: 'glass', prof: 'bevel', bw: R(1.5), grp: 'plateH', relic: true, shapes: [poly([B([33.8, 29.4]), B([37.4, 26.8]), B([43.6, 27.4]), B([46.4, 30.6]), B([40.4, 31])])] });
-    A.shell = B([23.6, 25]);
+  if (shell) { // (fallen, the plates lie flattened with the body)
+    const sm = shell.p.seam || 'amber', Q = y0 => (px, py) => (lie ? T([px, y0 + 5.4 + (py - y0) * .72]) : B([px, py])), QH = (px, py) => (lie ? T([px, 38 + (py - 32.2) * .72]) : B([px, py]));
+    F.add({ mat: sm, prof: 'flat', grp: 'seams', noShadow: true, shapes: SEGS.map(([x, y, rx, ry]) => ell(Q(y)(x, y - ry * .42), R(rx + .5), R(ry * .62 * (lie ? .72 : 1)))) });
+    SEGS.forEach(([x, y, rx, ry], i) => { const q = Q(y); F.add({ mat: 'glass', prof: 'bevel', bw: R(1.5), grp: 'plate' + i, relic: true, shapes: [poly([q(x - rx - .2, y - ry * .05), q(x - rx * .7, y - ry - .6), q(x + rx * .2, y - ry - 1.1), q(x + rx + .6, y - ry * .45), q(x + rx * .55, y + ry * .02)])], tex: ({ x: px, y: py }) => (hash(px, py, 81 + i) < .07 ? 1 : 0) }); });
+    F.add({ mat: 'glass', prof: 'bevel', bw: R(1.5), grp: 'plateH', relic: true, shapes: [poly([QH(33.8, 29.4), QH(37.4, 26.8), QH(43.6, 27.4), QH(46.4, 30.6), QH(40.4, 31)])] });
+    A.shell = lie ? T([23.6, 30.4]) : B([23.6, 25]);
   } else if (bare && !lie) {
     // bare: the soft glass under the plates, veined with fire
     F.add({ mat: 'ember', prof: 'round', bw: R(.5), grp: 'rawveins', noShadow: true, shapes: chainC([B([13.6, 27.6]), B([18.8, 25.8]), B([24.2, 27.2]), B([29.4, 25.8]), B([34.6, 27.6])], R(.6)).concat(chainC([B([18.8, 25.8]), B([19.6, 31])], R(.5)), chainC([B([29.4, 25.8]), B([30.2, 31])], R(.5))) });
@@ -1583,8 +1584,11 @@ function sandWyrm(F, st) {
   const ringTex = ({ x, y }) => (vnoise(x * .3, y * .3, 43) > .74 ? { m: 'sand', dd: 1 } : hash(x, y, 44) < .06 ? -1 : 0);
   // the mound of sand it rises out of (it pours off its hide)
   F.add({ mat: 'sand', prof: 'round', bw: 3, hs: .6, grp: 'mound', shapes: [ell([40, 59.6], 26, 5), ell([30, 57.4], 12, 5.4), ell([52, 58], 12, 4)], tex: ({ x, y }) => ((x * 3 + y * 5) % 11 === 0 ? -1 : hash(x, y, 45) < .08 ? 1 : 0) });
-  // segments from the sand up to the head: each a ring of hide, the plates on its back ridged, darker between
-  for (let i = 0; i < P.length; i++) F.add({ mat: hide, prof: 'round', bw: rs[i] * .6, hs: .8, grp: 'seg' + i, shapes: [circ(P[i], rs[i])], tex: ringTex, cuts: i === 0 && !lie ? [poly([[0, 58.6], [96, 58.6], [96, 64], [0, 64]])] : null });
+  // the body from the sand up to the head: a ring of hide per segment, each a short barrel (so the rings read), the
+  // belly paler along the inside of the arch
+  const nrm = i => { const q = P[Math.min(P.length - 1, i + 1)], o = P[Math.max(0, i - 1)], dx = q[0] - o[0], dy = q[1] - o[1], l = Math.hypot(dx, dy) || 1; return [dy / l, -dx / l]; };
+  for (let i = 0; i < P.length - 1; i++) F.add({ mat: hide, prof: 'round', bw: rs[i] * .5, hs: .8, grp: 'seg' + i, shapes: [cap(P[i], P[i + 1], rs[i], rs[i + 1] * .96)], tex: ringTex, cuts: i === 0 && !lie ? [poly([[0, 58.6], [96, 58.6], [96, 64], [0, 64]])] : null });
+  if (!lie) F.add({ mat: 'sand', prof: 'round', bw: 1, hs: .5, noOutline: true, grp: 'belly', shapes: P.slice(1, -1).map((p, k) => { const i = k + 1, [nx, ny] = nrm(i), q = P[i + 1], [mx, my] = nrm(i + 1); return cap([p[0] - nx * rs[i] * .72, p[1] - ny * rs[i] * .72], [q[0] - mx * rs[i + 1] * .72, q[1] - my * rs[i + 1] * .72], rs[i] * .24, rs[i + 1] * .2); }), tex: ({ x, y }) => ((x * 2 + y * 3) % 5 === 0 ? -1 : 0) });
   // ridge plates along its back, glassed spines from the last Waking
   const top = P.map((p, i) => { const q = P[Math.min(P.length - 1, i + 1)], o = P[Math.max(0, i - 1)], dx = q[0] - o[0], dy = q[1] - o[1], l = Math.hypot(dx, dy) || 1; return [p[0] + dy / l * rs[i] * .92, p[1] - dx / l * rs[i] * .92, dy / l, -dx / l]; });
   F.add({ mat: gT >= 3 ? 'glass' : 'claw', prof: 'ridge', hs: .9, grp: 'ridge', shapes: spikesC(top.slice(1).map(([x, y, nx, ny]) => [x, y, nx, ny, 3.2 + gT * 1.1, 1.8])) });
@@ -1597,8 +1601,9 @@ function sandWyrm(F, st) {
   else F.add({ mat: 'flesh', prof: 'round', bw: 1.6, grp: 'raw', shapes: [ell(at, 5.4, 4)], tex: ({ x, y }) => ((x + y) % 3 === 0 ? -1 : 0) });
   // the head: a blunt wedge with a round maw ringed in glass teeth
   const hf = frame(H[0], H[1], ha);
-  F.add({ mat: hide, prof: 'round', bw: 4, grp: 'head', shapes: [rell(hf, 0, 0, 9.4, 7.6), hf.cap(2, 0, 8, 0, 7, 6)], tex: ringTex });
-  const mc = hf.P(9.2, .6), mr = 3.4 + maw * 2.4;
+  F.add({ mat: hide, prof: 'round', bw: 4, grp: 'head', shapes: [rell(hf, 0, 0, 10.4, 8.4), hf.cap(1, 0, 8.6, 0, 8.2, 7.6)], tex: ringTex });
+  F.add({ mat: 'wyrmHide', prof: 'round', bw: 1.4, grp: 'lip', shapes: [rell(frame(hf.P(9.6, .4)[0], hf.P(9.6, .4)[1], ha), 0, 0, 2.6, 7.4, 16)] });
+  const mc = hf.P(10.2, .6), mr = 3.8 + maw * 2.6;
   F.add({ mat: 'dark', prof: 'round', bw: 2, grp: 'maw', shapes: [rell(frame(mc[0], mc[1], ha), 0, 0, mr * .7, mr, 16)] });
   if (maw > .5) F.add({ mat: 'flesh', prof: 'round', bw: 1, grp: 'throat', shapes: [rell(frame(mc[0], mc[1], ha), .4, 0, mr * .4, mr * .6, 12)] });
   F.add({ mat: gT >= 3 ? 'glass' : 'bone', prof: 'ridge', grp: 'teeth', shapes: spikesC(Array.from({ length: 9 }, (_, i) => { const a = i / 9 * Math.PI * 2, c = Math.cos(a) * mr * .7, s = Math.sin(a) * mr, p = frame(mc[0], mc[1], ha).P(c, s); return [p[0], p[1], mc[0] - p[0], mc[1] - p[1], 2.2 + maw, .8]; })) });
@@ -1781,7 +1786,7 @@ function vellX(c) {
 const shortBow = bowT(56, 'wood', 'leatherDark', { bindings: [.27, .73], bindMat: 'leatherDark' });
 const indigoHood = (o = {}) => A('hood', Object.assign({ look: 'hood', mat: 'clothIndigo', tip: 0 }, o));
 const wightMail = (o = {}) => A('mail', Object.assign({ mat: 'blackiron', trim: 'bronze', belt: 'leatherDark' }, o));
-const wightH = { build: 'human', skin: 'ash', hairMat: 'hairBlack', hair: 'none', eye: '#101010', mask: 'char', maskEyes: 'ember', tunic: 'char', pants: 'char', boots: 'char', gloves: 'ash', tabard: 'cloakRed', emblem: 'bronze', buckle: 'bronze' };
+const wightH = { build: 'human', skin: 'ash', hairMat: 'hairBlack', hair: 'none', eye: '#101010', mask: 'ash', maskEyes: 'ember', tunic: 'char', pants: 'char', boots: 'char', gloves: 'ash', tabard: 'cloakRed', emblem: 'bronze', buckle: 'bronze' };
 Object.assign(FOE_ART, {
   scavenger: H3('Dune Scavenger', 'rabble', {
     H: { build: 'human', skin: 'skinTan', hairMat: 'hairBrown', hair: 'none', eye: '#2a2030', scarf: 'robe', tunic: 'rags', pants: 'robe', boots: 'rags', gloves: 'rags', buckle: 'iron', sack: 'rags' },
@@ -1885,6 +1890,7 @@ Object.assign(FOE_ART, {
 // ember rim on everything she carries (her lent starter too) and ember motes rising off her
 FOE_ART.tamsin.gear.push(Object.assign({}, FOE_ART.tamsin.gear[3], { kindle: true, head: A('circlet', { look: 'circlet', mat: 'gold', gem: 'ember' }), body: A('mail', { mat: 'steel', trim: 'gold', belt: 'leatherDark', pauldrons: 'steel', glyph: 'ember' }), H: { mantle: 'cloakRed' } }));
 FOE_ART.tamsin.motes = (t, a, gT) => (gT >= 4 ? awakenMotes(t, { x: (a.center || [32, 36])[0] - 12, y: (a.center || [32, 36])[1] - 24, w: 24, h: 36 }, { n: 7 }) : null);
+FOE_ART.tamsin.aura = (gT, t) => (gT >= 4 ? [[255, 146, 58], 2, .34 + .08 * Math.sin(t * 3)] : null); // a faint ember halo
 
 // any art key data/foes.js names that has no art of its own yet draws a stand-in of its kind, so a battle or a Ladder
 // poster never meets "unknown foe" (test/art-keys.test.mjs lists every stand-in as a failure)
@@ -1960,9 +1966,16 @@ export function renderFoe(key, o = {}) {
   if (base.def.motes && !o.reduced) oo.particles = base.def.motes(t, base.anchors, base.gT, o.phase || 1);
   if (o.tint) oo.tint = o.tint;
   const img = compose(base.R, oo);
+  if (base.def.aura) { const a = base.def.aura(base.gT, o.reduced ? 0 : t); if (a) halo(img, ...a); }
   if (base.face) { const fc = base.face, st = o.pose === 'idle' || !o.pose ? ((t % 3.7) < .14 ? 'blink' : 'open') : fc.st; paintFace(img, fc.H, fc.hc, FRAME_BATTLE.ox, FRAME_BATTLE.oy, st, !o.flip, fc.map); }
   img.anchors = base.anchors;
   return img;
+}
+// a soft halo round a sprite on a clear ground (compose's aura is for a painted ground): colour [r, g, b], radius, alpha
+function halo(img, [r, g, b], rad, alpha) {
+  const { width: w, height: h, data: d } = img, near = new Float32Array(w * h).fill(99);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (d[(y * w + x) * 4 + 3] > 200) for (let dy = -rad; dy <= rad; dy++) for (let dx = -rad; dx <= rad; dx++) { const X = x + dx, Y = y + dy; if (X >= 0 && Y >= 0 && X < w && Y < h) { const j = Y * w + X, dd = Math.hypot(dx, dy); if (dd < near[j]) near[j] = dd; } }
+  for (let i = 0; i < w * h; i++) { if (d[i * 4 + 3] || near[i] > rad) continue; const a = alpha * (1 - near[i] / (rad + .5)) * (hash(i % w, (i / w) | 0, 9) < .75 ? 1 : .5); if (a > .06) { d[i * 4] = r; d[i * 4 + 1] = g; d[i * 4 + 2] = b; d[i * 4 + 3] = Math.min(255, a * 255); } }
 }
 export function foeAnchors(key, o = {}) { return build(key, o).anchors; }
 export const FOE_KEYS = Object.keys(FOE_ART);

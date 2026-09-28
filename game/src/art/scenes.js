@@ -112,17 +112,18 @@ function barkRoot(L, pts, r0, r1, c, lite, rim, rimSide, rimA = .55) {
 
 /* ---------- M4: helpers for the Sunscorch ---------- */
 const clampI = (l, n) => Math.max(0, Math.min(n, l));
-// dunes, back to front: each [cx, top, wl, wr, sk] rises to a crest at (cx, top) with a long slope on the left in the
-// sun and a steep slip-face on the right in shadow, split by a crest line that runs down and to the right (sk).
-// cols: [slip-face, slip-face foot, lit slope, lit crest]; rim lights the sunlit skyline
+// dunes, back to front: each [cx, top, wl, wr, sk] rises to a crest at (cx, top): a long windward slope on the left,
+// rounded at the top and flaring into the ground, lit by the sun; a steep slip-face on the right in shadow; the brink
+// between them curves down and to the right (sk). cols: [slip-face, its foot, lit slope, lit brink]; rim lights the
+// sunlit skyline
 function dunes(L, list, yBase, cols, rim) {
   const C = cols.map(hx), R = rim && hx(rim);
   for (const [cx, top, wl, wr, sk] of list) {
-    const hd = yBase - top;
+    const hd = yBase - top, brink = y => cx + (y - top) * sk * (1 + (y - top) / hd);
     for (let x = Math.floor(cx - wl); x <= cx + wr; x++) {
-      const t = Math.ceil(top + hd * (x < cx ? ((cx - x) / wl) ** 1.8 : ((x - cx) / wr) ** 1.2));
-      for (let y = t; y < yBase; y++) { const e = x + .5 - cx - (y - top) * sk, v = (y - t) / hd + bayer(x, y) * .3; L.set(x, y, C[e < 0 ? (e > -2.5 - v * 4 ? 3 : 2) : v > .45 ? 1 : 0]); }
-      if (R && x + .5 < cx + (t - top) * sk) L.set(x, t, R, .75);
+      const s = x < cx ? (cx - x) / wl : (x - cx) / wr, t = Math.ceil(top + hd * (x < cx ? s * s * (3 - 2 * s) : Math.min(1, s ** .85)));
+      for (let y = t; y < yBase; y++) { const e = x + .5 - brink(y), d = (y - t) / hd + bayer(x, y) * .3; L.set(x, y, C[e < 0 ? (e > -1.5 - d * 6 ? 3 : 2) : d > .45 ? 1 : 0]); }
+      if (R && x + .5 < brink(t)) L.set(x, t, R, .75);
     }
   }
 }
@@ -164,12 +165,13 @@ function palm(L, x, y, h, lean, trunk, frond, seed) {
     for (let j = 1; j <= 9; j++) { const v = j / 9, bx = px + Math.cos(a) * len * v * 1.2, by = py + Math.sin(a) * len * v + v * v * len * .8; L.line(ax, ay, bx, by, F); if (j > 1 && j < 9) L.line(bx, by, bx + sd * .6, by + 2.4 - v * 1.4, F, .8); ax = bx; ay = by; }
   }
 }
-// coursed blocks over a rect: shade(x, y) picks each block's step (with a per-block jitter), mortar lines between
+// coursed blocks over a rect: shade(x, y) picks each block's step (with a per-block jitter; null leaves the pixel
+// empty, for a broken top), mortar lines between
 function masonry(L, x0, y0, x1, y1, cols, mortar, bw, bh, seed, shade) {
   const C = cols.map(hx), M = hx(mortar), n = C.length - 1;
   for (let y = Math.floor(y0); y < y1; y++) {
     const row = Math.floor((y - y0) / bh), yo = (y - Math.floor(y0)) % bh;
-    for (let x = Math.floor(x0); x < x1; x++) { const xs = x + row * (bw >> 1) + 64, bi = Math.floor(xs / bw), l = clampI(Math.round(shade(x, y) + (hash(row, bi, seed) - .5) * .9 + bayer(x, y) * .5 - .25), n); L.set(x, y, yo === bh - 1 || xs % bw === 0 ? M : C[yo === 0 ? Math.min(n, l + 1) : l]); }
+    for (let x = Math.floor(x0); x < x1; x++) { const s = shade(x, y); if (s === null) continue; const xs = x + row * (bw >> 1) + 64, bi = Math.floor(xs / bw), l = clampI(Math.round(s + (hash(row, bi, seed) - .5) * .9 + bayer(x, y) * .5 - .25), n); L.set(x, y, yo === bh - 1 || xs % bw === 0 ? M : C[yo === 0 ? Math.min(n, l + 1) : l]); }
   }
 }
 // a fire-bowl with its rim at (x, y), w half-wide. fire 'lit' throws a flame and a glow (out: the flame goes out in
@@ -186,6 +188,15 @@ function rails(L, x0, g0, vx, vy, y1, cols) {
   const [SL, RD, RL] = cols.map(hx), H = L.h, at = y => { const s = (y - vy) / (H - vy); return [vx + (x0 - vx) * s, g0 * s, s]; };
   for (let k = 0; k < 40; k++) { const s = 1 / (1 + k * .25), y = vy + (H + 1 - vy) * s; if (y < y1) break; const [cx, g] = at(y); L.rect(cx - g * 1.5, y - Math.max(1, 1.8 * s), g * 3, Math.max(1, 1.8 * s), SL); }
   for (const sd of [-1, 1]) for (let y = Math.ceil(y1); y < H; y++) { const [a, g, s] = at(y), [b, g2] = at(y + 1); L.line(a + sd * g, y, b + sd * g2, y + 1, RD); if (s > .35) L.line(a + sd * g - sd * .6, y, b + sd * g2 - sd * .6, y + 1, RL, .9); }
+}
+// paving running away to a vanishing point vy above the horizon: courses crowding toward it, staggered joints;
+// shade(x, y) gives each stone's step before a per-stone jitter
+function paving(L, gy, vy, cols, mortar, tw, rows, seed, shade) {
+  const C = cols.map(hx), M = hx(mortar), n = C.length - 1, H = L.h, vx = L.w / 2;
+  for (let y = gy; y < H; y++) {
+    const z = (H - vy) / (y - vy), r = z * rows, row = Math.floor(r);
+    for (let x = 0; x < L.w; x++) { const X = (x + .5 - vx) * z / tw + row * .5, col = Math.floor(X); L.set(x, y, r - row < .14 || X - col < .07 * z ? M : C[clampI(Math.round(shade(x, y) + (hash(col, row, seed) - .5) * .9 + bayer(x, y) * .6 - .3), n)]); }
+  }
 }
 const stars = (L, n, y1, seed) => { const D = hx('#a8b4d8'), B = hx('#fff4dc'); for (let k = 0; k < n; k++) { const x = hash(k, 1, seed) * L.w, y = hash(k, 2, seed) * y1, b = hash(k, 3, seed); L.set(x, y, b > .8 ? B : D, .35 + b * .65); if (b > .94) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) L.set(x + dx, y + dy, D, .4); } };
 
@@ -610,6 +621,366 @@ const PAINT = {
     lights.push({ drips, c: '#1a0e20' });
     return { layers: [sky, far, mid, gnd], lights, fx: 'blight', darkAmb: dark ? .16 : .2 };
   },
+
+  /* ---------- M4: the Sunscorch Wastes ---------- */
+  // the Sunward Road in the afternoon: the last green scrub and cacti give out to dunes, the Waystone's fire-bowl
+  // burns where the old paving leaves the green, and Sandspire's mesa and Spire stand far off in the haze
+  'sun-road'(W, H, gy) {
+    const sky = layer(W, H), far = layer(W, H), mid = layer(W, H), gnd = layer(W, H), lights = [];
+    skyFill(sky, ['#1c2a52', '#26406e', '#3a5a88', '#627a98', '#9a9098', '#cca88a', '#e8c088'], 0, gy + 2);
+    const sx = Math.round(W * .22), sy = Math.round(gy - H * .36);
+    sky.glow(sx, sy, 46, hx('#ffe6b0'), .45); sky.glow(sx, sy, 13, hx('#fff4d8'), .6); sky.disc(sx, sy, 4.5, hx('#fffae8'));
+    for (let k = 0; k < 4; k++) { const cy = 6 + k * 7 + hash(k, 1, 83) * 3, cx = hash(k, 2, 83) * W, len = 26 + hash(k, 3, 83) * 40; for (let x = Math.floor(cx - len / 2); x < cx + len / 2; x++) { const u = (x - cx + len / 2) / len; if ((x + k) & 1) sky.set(x, cy + Math.sin(u * 3 + k) * .8, hx('#e0d0c4'), .22 * Math.sin(u * Math.PI)); } }
+    // far: hazy dunes, and Sandspire on its mesa: the red Spire and the city's towers
+    ridge(far, x => gy - 2 - vnoise(x * .04, 0, 81) * 4, gy + 2, '#a47e78', '#e8c49a', .45);
+    const mx = Math.round(W * .6), MS = hx('#8e6670'), ML = hx('#d8a88c');
+    far.poly([[mx - 21, gy + 1], [mx - 16, gy - 8], [mx + 13, gy - 9], [mx + 19, gy + 1]], MS); far.line(mx - 16, gy - 8, mx - 21, gy + 1, ML, .6); far.line(mx - 16, gy - 8, mx + 13, gy - 9, ML, .35);
+    far.poly([[mx - 3.5, gy - 8], [mx - 2, gy - 22], [mx - .5, gy - 26], [mx + 1.5, gy - 21], [mx + 3, gy - 8]], hx('#8a5a5e')); far.line(mx - 3.5, gy - 8, mx - 2, gy - 22, ML, .55); far.line(mx - 2, gy - 22, mx - .5, gy - 26, ML, .8);
+    for (const [x, w, h] of [[mx - 13, 4, 3], [mx - 8, 3, 6], [mx + 5, 4, 4], [mx + 10, 2, 7]]) { far.rect(x, gy - 8 - h, w, h, MS); far.line(x, gy - 8 - h, x, gy - 9, ML, .5); }
+    far.disc(mx - 6.5, gy - 14, 1.8, MS); far.set(mx - 7.5, gy - 15, ML, .6);
+    // mid: the first dunes on the right, where the sand begins; the last of the green on the left
+    dunes(far, [[W * .8, gy - 4, 26, 10, .5], [W * 1.02, gy - 5, 24, 10, .5]], gy + 2, ['#8a5e5a', '#9a6c62', '#c89a82', '#e0b896'], '#f8dcb8');
+    dunes(mid, [[W * .7, gy - 6, 22, 10, .45], [W * .88, gy - 12, 34, 13, .4], [W * 1.04, gy - 8, 22, 10, .45], [W * .96, gy - 1, 20, 9, .5]], gy + 3, ['#7a4632', '#94583a', '#cc905a', '#eab478'], '#fff0c8');
+    const SC = ['#2e3a1c', '#4a5628', '#6e7434'].map(hx);
+    for (let k = 0; k < 16; k++) { const x = hash(k, 1, 85) * W * .5, y = gy + 1 + hash(k, 2, 85) * 4, r = 1.5 + hash(k, 3, 85) * 2.5; mid.disc(x, y - r * .5, r, SC[0]); mid.disc(x - r * .3, y - r * .8, r * .7, SC[1]); mid.set(x - r * .5, y - r * 1.2, SC[2]); }
+    const cactus = (x, y, h, arms) => {
+      const C = hx('#3a5230'), CL = hx('#6a8a48'), CD = hx('#243620');
+      mid.thick(x, y, x, y - h, 1.7, 1.5, C); mid.line(x - 1, y - 1, x - 1, y - h + 1, CL); mid.line(x + 1, y - 1, x + 1, y - h + 1, CD, .7);
+      for (const [sd, at, len] of arms) { const ay = y - h * at, ex = x + sd * 3.5; mid.thick(x, ay, ex, ay, 1, 1, C); mid.thick(ex, ay, ex, ay - len, 1.1, 1, C); mid.line(ex - 1, ay - 1, ex - 1, ay - len + 1, CL, .8); }
+    };
+    cactus(W * .07, gy + 2, 17, [[1, .45, 5], [-1, .6, 4]]); cactus(W * .34, gy + 1, 9, [[1, .5, 3]]);
+    // the Waystone: a standing stone with its fire-bowl, where the road leaves the green
+    const wx = Math.round(W * .47), wy = gy + 4, WS = hx('#5a4a44'), WL = hx('#a08a70'), WD = hx('#3a2e2c');
+    mid.poly([[wx - 3.5, wy], [wx - 3, wy - 13], [wx - 1.5, wy - 16], [wx + 1.5, wy - 16], [wx + 3, wy - 13], [wx + 3.6, wy]], WS);
+    mid.line(wx - 3, wy - 13, wx - 3.5, wy - 1, WL, .8); mid.line(wx - 3, wy - 13, wx - 1.5, wy - 16, WL, .8); for (let y = wy - 12; y < wy; y++) mid.set(wx + 3, y, WD);
+    mid.line(wx - 1, wy - 11, wx + 1, wy - 9, WD, .8); mid.line(wx - 1, wy - 6, wx + 1, wy - 7, WD, .8);
+    fireBowl(mid, wx, wy - 17, 3, lights, 'lit');
+    // ground: sand, and the caravan road with its old paving half buried, running off toward Sandspire
+    sandFloor(gnd, gy, ['#6a4830', '#7e5836', '#94683e', '#a87848'], '#c4945a', 86);
+    const road = y => { const u = (y - gy) / (H - gy); return [W * (.6 - .14 * u), 1.5 + u * W * .2]; }, RC = ['#8a6848', '#a07c56', '#b48e62'].map(hx);
+    for (let y = gy + 1; y < H; y++) { const [c, hw] = road(y); for (let x = Math.floor(c - hw); x <= c + hw; x++) { const e = Math.abs(x - c) / hw; if (e > .8 && bayer(x, y) < (e - .8) * 5) continue; gnd.set(x, y, RC[clampI(Math.round(1 + (y - gy) / (H - gy) - e * .8 + bayer(x, y) * .7), 2)]); } }
+    for (let k = 0; k < 26; k++) { const v = hash(k, 1, 87), y = gy + 2 + v * v * (H - gy - 3), [c, hw] = road(y), x = c + (hash(k, 2, 87) - .5) * hw * 1.6, s = .8 + v * 3.2; if (hash(k, 3, 87) < .3) continue; gnd.poly([[x - s * 1.2, y], [x + s, y - .4], [x + s * 1.1, y + s * .5], [x - s, y + s * .55]], hx(k & 1 ? '#7a6452' : '#6e5a4a')); gnd.line(x - s * 1.2, y, x + s, y - .4, hx('#b8a080'), .7); }
+    for (let k = 0; k < 30; k++) { const x = hash(k, 1, 88) * W * .55, y = gy + 2 + hash(k, 2, 88) * (H - gy - 3), [c, hw] = road(y); if (Math.abs(x - c) < hw) continue; for (let b = -1; b <= 1; b++) gnd.line(x + b, y, x + b * 2, y - 2 - hash(k, b + 2, 88) * 2.5, hx(b ? '#8a8440' : '#a8a050'), .85); }
+    const kx = Math.round(W * .38), ky = H - 7, BN = hx('#e8dcc4'), BD = hx('#3a2e24');
+    gnd.rect(kx, ky, 5, 3, BN); gnd.set(kx + 1, ky + 1, BD); gnd.set(kx + 3, ky + 1, BD); gnd.rect(kx + 1, ky + 3, 3, 1, hx('#c8bca4')); gnd.line(kx - 3, ky - 2, kx, ky, BN); gnd.line(kx + 5, ky, kx + 8, ky - 2, BN);
+    return { layers: [sky, far, mid, gnd], lights, fx: 'sand' };
+  },
+  // Sandspire at sundown: the red rock of the Spire above the city's domes and towers, lamps in the windows, the
+  // market under striped awnings and lantern strings, palms, and the Spire Hearth burning in the square
+  sandspire(W, H, gy) {
+    const sky = layer(W, H), far = layer(W, H), mid = layer(W, H), gnd = layer(W, H), lights = [];
+    skyFill(sky, ['#221a3a', '#3a2246', '#5e2e4a', '#904048', '#c05c48', '#de8650', '#f0ac66'], 0, gy + 2);
+    sky.glow(W * .78, gy - 2, 54, hx('#ffc070'), .42); sky.disc(W * .78, gy + 1, 7, hx('#ffd890'), .9);
+    for (let k = 0; k < 3; k++) { const cy = 7 + k * 8 + hash(k, 1, 91) * 3, cx = hash(k, 2, 91) * W, len = 30 + hash(k, 3, 91) * 36; for (let x = Math.floor(cx - len / 2); x < cx + len / 2; x++) { const th = 1 + Math.round(Math.sin((x - cx + len / 2) / len * Math.PI) * 1.5); for (let y = 0; y < th; y++) sky.set(x, cy + y, hx('#5a2c48'), .5); sky.set(x, cy + th, hx('#f0a070'), .4); } }
+    // the Spire: a pillar of red rock the city grew round, lit on its sunset face, windows cut into it
+    const sx = W * .42, R = ['#3a1820', '#58262a', '#7a3830', '#a8563a', '#d07848'].map(hx);
+    for (let y = 1; y < gy; y++) { const u = y / gy, hw = 4 + u * u * 12 + vnoise(y * .2, 0, 92) * 2.5, c = sx + Math.sin(u * 3.4) * 2.5; for (let x = Math.floor(c - hw); x < c + hw; x++) { const e = (x - c + hw) / (2 * hw), band = Math.sin(y * .8 + vnoise(x * .15, y * .1, 93) * 3) > .75 ? 1 : 0; far.set(x, y, R[clampI(Math.round(.3 + e * 3.4 + bayer(x, y) * .7 - band), 4)]); } }
+    for (const [dx, y] of [[-1, 8], [2, 15], [-3, 23], [3, 29]]) { far.rect(sx + dx, y, 1, 2, hx('#ffb04a')); lights.push({ x: sx + dx + .5, y: y + 1, r: 4, c: '#ffb04a', a: .25, flick: 1.5 + y * .05 }); }
+    // the city: flat roofs, domes and towers against the sunset, windows lit
+    const CS = hx('#2e1a26'), CR = hx('#d87a4a'), WN = hx('#ffb04a');
+    for (let k = 0, x = -3; x < W + 3; k++) {
+      const w = 7 + hash(k, 1, 94) * 10, h = 8 + hash(k, 2, 94) * 10 + (k % 4 === 1 ? 8 : 0), top = gy + 2 - h, kind = hash(k, 3, 94);
+      far.rect(x, top, w, h + 1, CS); far.line(x + w - 1, top, x + w - 1, gy + 1, CR, .7); far.line(x, top, x + w - 1, top, CR, .35);
+      if (kind < .35) { far.disc(x + w / 2, top, w * .36, CS); far.set(x + w / 2 + w * .2, top - w * .25, CR, .7); far.line(x + w / 2, top - w * .36 - 2, x + w / 2, top - w * .36, CS); } else if (kind < .6) for (let m = 0; m < w - 1; m += 2) far.set(x + m, top - 1, CS);
+      for (let j = 0; j < 3; j++) if (hash(k, j, 95) < .45) far.rect(x + 2 + hash(k, j, 96) * (w - 4), top + 3 + hash(k, j, 97) * (h - 6), 1, 2, WN, .9);
+      x += w - 1;
+    }
+    // the market: stalls under awnings striped saffron, bone and indigo, goods on their counters; palms; a lantern
+    // string between the stalls
+    const stall = (x0, x1, y0, cols, seed) => {
+      const C = cols.map(hx), P = hx('#2a1a10'), x0i = Math.floor(x0);
+      mid.rect(x0 + 1, y0 + 6, x1 - x0 - 2, gy + 3 - y0 - 6, hx('#1a1016')); mid.rect(x0 + 1, gy - 3, x1 - x0 - 2, 3, hx('#4a3020')); mid.rect(x0 + 1, gy - 3, x1 - x0 - 2, 1, hx('#8a6040'));
+      for (let k = 0; k < (x1 - x0 - 4) / 3.5; k++) { const h = 1 + Math.round(hash(k, 3, seed) * 2.4); mid.rect(x0 + 2.5 + k * 3.5, gy - 3 - h, 2, h, hx(['#c8783a', '#e8c070', '#9a5a9a', '#5a9aaa', '#e0d8c0'][Math.floor(hash(k, 2, seed) * 5)])); }
+      for (let x = x0i; x < x1; x++) { const i = x - x0i, st = C[Math.floor(i / 3) % C.length]; for (let y = 0; y < 6; y++) mid.set(x, y0 + y, y === 0 ? mix(st, [255, 230, 190], .35) : y > 3 ? mix(st, [0, 0, 0], .2) : st); if (i % 3 !== 2) mid.set(x, y0 + 6, mix(st, [0, 0, 0], .3)); }
+      mid.rect(x0, y0 + 1, 1, gy + 3 - y0, P); mid.rect(x1 - 1, y0 + 1, 1, gy + 3 - y0, P);
+    };
+    palm(mid, W * .2, gy + 3, H * .38, -.2, '#3a2418', '#2e4a2a', 1); palm(mid, W * .88, gy + 3, H * .42, .15, '#3a2418', '#2e4a2a', 2);
+    stall(W * .02, W * .27, gy - 16, ['#d89a3a', '#e8dcc0', '#3a4a8a'], 1); stall(W * .7, W * .98, gy - 15, ['#b8402e', '#e8dcc0', '#d89a3a'], 2);
+    for (let k = 0; k <= 40; k++) { const u = k / 40, x = W * (.27 + .43 * u), y = gy - 18 + u + Math.sin(u * Math.PI) * 6; mid.set(x, y, hx('#2a1a14')); if (k % 8 === 4) { mid.rect(x - .5, y + 1, 2, 2, hx(k % 16 === 4 ? '#ffc060' : '#ff8a4a')); lights.push({ x: x + .5, y: y + 2, r: 5, c: '#ffb04a', a: .3, flick: 2 + k * .1 }); } }
+    // the Spire Hearth on its plinth in the square
+    const fx0 = Math.round(W * .52), fy = gy + 3; mid.rect(fx0 - 5, fy - 3, 10, 4, hx('#6a4a3a')); mid.rect(fx0 - 5, fy - 3, 10, 1, hx('#b08a64')); mid.rect(fx0 + 3, fy - 2, 2, 3, hx('#4a3226'));
+    fireBowl(mid, fx0, fy - 4, 4, lights, 'lit');
+    // the square: worn paving in the last of the sun, warm round the fire; jars and a crate by the right-hand stall
+    paving(gnd, gy, gy - (H - gy) * 1.2, ['#4a3028', '#5e3e30', '#74503a', '#8a6446', '#a07650'], '#34221c', 9, 16, 98, (x, y) => (y - gy) / (H - gy) * 1.2 + .7 + x / W * .8 + Math.max(0, 1 - Math.hypot(x - fx0, (y - fy) * 2.5) / 30) * 1.6);
+    for (const [x, h, c] of [[W * .8, 6, '#a0603a'], [W * .84, 5, '#8a4e30'], [W * .9, 7, '#b87a4a']]) { gnd.disc(x, gy + 5 - h * .5, h * .45, hx(c)); gnd.rect(x - 1, gy + 4 - h, 2, 1.5, hx(c)); gnd.set(x - h * .25, gy + 4 - h * .6, hx('#e8b080'), .8); }
+    return { layers: [sky, far, mid, gnd], lights, fx: 'ember' };
+  },
+  // the Dust Trail: a red canyon under a strip of white-hot sky, Sandspire's aqueduct striding across it on arches
+  // (broken where the scorpions choked it), Dusthaven's headframe far down the canyon, the sand-choked Dust Cairn,
+  // and the mine-cart rails running out of the dust
+  'dust-trail'(W, H, gy) {
+    const sky = layer(W, H), far = layer(W, H), mid = layer(W, H), gnd = layer(W, H), lights = [];
+    skyFill(sky, ['#4e6a8e', '#7288a2', '#9ea4ac', '#c8b49c', '#e4c492'], 0, gy + 2);
+    sky.glow(W * .6, gy - 12, 40, hx('#fff0c8'), .35);
+    // far: the canyon narrowing to the west, its walls hazed with distance
+    const vx = W * .62, FW = ['#6e3e3e', '#84504a', '#9a6256', '#b27662', '#c88c70'];
+    rockWall(far, y => vx - 7 - (gy + 2 - y) * 1.5 - vnoise(y * .15, 0, 102) * 5, -1, 0, gy + 2, FW, '#f0c090', 103);
+    rockWall(far, y => vx + 7 + (gy + 2 - y) * 1.2 + vnoise(y * .15, 1, 102) * 5, 1, 0, gy + 2, FW, null, 104);
+    // Dusthaven's headframe, far down the canyon
+    const hf = hx('#3a2418'); far.line(vx - 3, gy + 1, vx, gy - 8, hf); far.line(vx + 3, gy + 1, vx, gy - 8, hf); far.line(vx - 2, gy - 3, vx + 2, gy - 3, hf); far.disc(vx, gy - 8, 1.6, hf); far.set(vx, gy - 8, hx('#9a7a5a'));
+    // the aqueduct across the canyon on its arches, broken in the middle; a trickle of sand where it fell
+    const ay = Math.round(gy - H * .3), AQ = hx('#a87a58'), AL = hx('#e0b488'), AD = hx('#6a4234'), span = 18, pw = 5, r = (span - pw) / 2;
+    for (let x = 0; x < W; x++) {
+      if (x > W * .5 && x < W * .57) continue;
+      const brk = x > W * .46 && x <= W * .5 ? (x - W * .46) * 1.2 : x >= W * .57 && x < W * .61 ? (W * .61 - x) * 1.2 : 0, px = (x + 7) % span;
+      for (let y = ay + Math.round(brk * hash(x, 1, 105)); y < ay + 5; y++) far.set(x, y, y === ay ? AL : y === ay + 1 || y === ay + 4 ? AD : AQ);
+      if (brk) continue;
+      if (px < pw) for (let y = ay + 5; y < gy + 2; y++) far.set(x, y, px === 0 ? AL : px === pw - 1 ? AD : AQ);
+      else { const d = (px - pw + .5 - r) / r, f = ay + 6 + Math.round(r * (1 - Math.sqrt(Math.max(0, 1 - d * d)))); for (let y = ay + 5; y < f; y++) far.set(x, y, AQ); far.set(x, f, AD); }
+    }
+    for (let y = ay + 5; y < gy + 1; y++) if (hash(y, 2, 106) < .6) far.set(W * .5 + hash(y, 3, 106) * 2, y, hx('#e8c89a'), .6);
+    // mid: the near canyon walls in red strata, and the Dust Cairn on its rise, its fire-bowl choked with sand
+    const NW = ['#3e1e18', '#5a2a20', '#76382a', '#924a34', '#b0603e'];
+    rockWall(mid, y => W * .1 + (gy + 4 - y) * .12 + vnoise(y * .12, 2, 107) * 6, -1, 0, gy + 5, NW, '#f0a060', 108);
+    rockWall(mid, y => W * .9 - (gy + 4 - y) * .1 - vnoise(y * .12, 3, 107) * 6, 1, 0, gy + 5, NW, null, 109);
+    const cx0 = Math.round(W * .45), cy0 = gy + 3;
+    for (const [dx, dy, r] of [[-4, 0, 2.6], [0, 0, 3], [4, 0, 2.4], [-2, -3.5, 2.4], [2, -3.5, 2.5], [0, -6.5, 2.2]]) { mid.disc(cx0 + dx, cy0 + dy - r * .6, r, hx('#6a4a3e')); mid.set(cx0 + dx - r * .5, cy0 + dy - r * 1.2, hx('#a8826a')); }
+    fireBowl(mid, cx0, cy0 - 10, 3, lights, 'sand');
+    // ground: red dust, the rails, scorpion shells glinting, boulders
+    sandFloor(gnd, gy, ['#4a2a20', '#5a3424', '#6c3e2a', '#7e4a30'], '#9a6040', 110);
+    rails(gnd, W * .66, 10, vx, gy - 8, gy, ['#2e1c14', '#3a3a40', '#9a9aa4']);
+    for (let k = 0; k < 14; k++) { const x = hash(k, 1, 111) * W, y = gy + 3 + hash(k, 2, 111) * (H - gy - 5); gnd.line(x, y, x + 2, y - 1, hx('#d8c8a0'), .8); gnd.set(x + 1, y, hx('#f8f0d8')); }
+    for (const [x, y, r] of [[W * .02, H - 6, 9], [W * .97, gy + 12, 6], [W * .3, gy + 4, 3]]) { gnd.disc(x, y, r, hx('#5a2e22')); gnd.disc(x - r * .25, y - r * .3, r * .7, hx('#7a4230')); gnd.set(x - r * .5, y - r * .7, hx('#b06a44')); }
+    return { layers: [sky, far, mid, gnd], lights, fx: 'sand' };
+  },
+  // the Deep Shaft: a timbered gallery in rock shot through with sunstone that glows by itself; the rails run on down
+  // the shaft into the dark, past a cart, the miners' lamps and the great Shaft Lamp. In the dark the lamps are out
+  // and only the sunstone glows
+  'deep-shaft'(W, H, gy) {
+    const sky = layer(W, H), far = layer(W, H), mid = layer(W, H), gnd = layer(W, H), lights = [];
+    // hewn rock, pick-marked, lighter where the lamps reach it
+    const RK = ['#110b09', '#19120e', '#221913', '#2d2219', '#3a2d20', '#4a3a26'].map(hx);
+    for (let y = 0; y < gy + 3; y++) for (let x = 0; x < W; x++) {
+      const n = vnoise(x * .08, y * .1, 121) * .65 + vnoise(x * .25, y * .3, 126) * .35, lamp = Math.max(0, 1 - Math.min(Math.hypot(x - W * .3, y - 16), Math.hypot(x - W * .72, y - 14), Math.hypot(x - W * .84, y - gy + H * .26)) / 40);
+      sky.set(x, y, RK[clampI(Math.round(n * 4 - .9 + lamp * 2.8 + bayer(x, y) * .7 - .35 - (hash(Math.floor(x / 3), Math.floor(y / 2), 127) < .06 ? 1 : 0)), 5)]);
+    }
+    // sunstone veins: jagged seams of gold in the rock that keep glowing when the lamps go out
+    for (let k = 0; k < 5; k++) {
+      let x = W * [.12, .3, .7, .86, .5][k], y = H * [.3, .08, .16, .38, .02][k]; const pts = [[x, y]];
+      for (let s = 0; s < 7; s++) { x += (hash(k, s, 122) - .3) * 5; y += 1.5 + hash(k, s, 123) * 2.5; pts.push([x, y]); }
+      for (let s = 0; s < pts.length - 1; s++) { sky.line(pts[s][0], pts[s][1], pts[s + 1][0], pts[s + 1][1], hx('#a8641c')); sky.line(pts[s][0] - 1, pts[s][1], pts[s + 1][0] - 1, pts[s + 1][1], hx('#6a3a14'), .6); }
+      for (const s of [2, 5]) { sky.set(pts[s][0], pts[s][1], hx('#ffe08a')); lights.push({ x: pts[s][0] + .5, y: pts[s][1] + .5, r: 5, c: '#ffb040', a: .3, pulse: 1, flick: .6 + k * .1 }); }
+    }
+    // the shaft running on: a black mouth, timber frames receding into it
+    const vx = W * .55, vy = gy - 10, mouth = d => [vx - 17 / d, vy + (gy + 2 - vy) / d, vy + (gy - 25 - vy) / d, vx + 17 / d];
+    const [ml, mf, mt, mr] = mouth(1); far.poly([[ml, mf], [ml, mt], [mr, mt], [mr, mf]], hx('#060404'));
+    for (const d of [5, 3.2, 2.1, 1.4]) { const [l, f, t, r] = mouth(d), c = hx(['#140e0a', '#1e150e', '#2a1c12', '#3a2616'][[5, 3.2, 2.1, 1.4].indexOf(d)]), w = 2.8 / d; far.rect(l, t, w, f - t, c); far.rect(r - w, t, w, f - t, c); far.rect(l, t, r - l, w, c); }
+    rails(far, vx - 1, 11 * .7, vx, vy, vy + 3, ['#1a120c', '#2a2a2e', '#5a5a60']);
+    // timber props framing the gallery; lamps hang from the cap beam and the Shaft Lamp is bolted to the right-hand post
+    const T = hx('#3a2616'), TL = hx('#5e4226'), TD = hx('#1c120a');
+    for (const x of [W * .06, W * .9]) { mid.rect(x, 0, 5, gy + 8, T); mid.rect(x, 0, 1, gy + 8, TL); mid.rect(x + 4, 0, 1, gy + 8, TD); for (let y = 10; y < gy; y += 13) mid.set(x + 2, y, hx('#7a7a80')); }
+    mid.rect(0, 3, W, 5, T); mid.rect(0, 3, W, 1, TL); mid.rect(0, 7, W, 1, TD); for (let x = 5; x < W; x += 12) mid.set(x, 5, hx('#7a7a80'));
+    for (const [x0, sd] of [[W * .06 + 5, 1], [W * .9, -1]]) mid.thick(x0, 20, x0 + sd * 12, 8, 1.4, 1.4, T);
+    for (const [x, len] of [[W * .3, 6], [W * .72, 4]]) { mid.line(x, 8, x, 8 + len, hx('#4a4a50')); mid.rect(x - 1, 9 + len, 3, 4, hx('#4a3a2a')); mid.rect(x - .5, 10 + len, 2, 2, hx('#ffd27a')); lights.push({ x: x + .5, y: 11 + len, r: 12, c: '#ffb04a', a: .42, flick: 2.2 + x * .01, out: true }); }
+    const lx = Math.round(W * .9) - 6, ly = Math.round(gy - H * .3), BR = hx('#9a7440'), BRD = hx('#5a4024');
+    mid.rect(lx - 1, ly - 5, 8, 1.5, hx('#2e2e34')); mid.line(lx + 1.5, ly - 4, lx + 1.5, ly - 2, hx('#5a5a62')); mid.poly([[lx - 2, ly + .5], [lx + 5, ly + .5], [lx + 3.5, ly - 2], [lx - .5, ly - 2]], BR);
+    mid.rect(lx - 1.5, ly + .5, 6, 8, hx('#ffe6a0')); mid.rect(lx, ly + 2, 3, 5, hx('#fffbe8')); for (const d of [-1.5, 1.5, 3.5]) mid.rect(lx + d, ly + .5, 1, 8, d === 1.5 ? BRD : BR); mid.rect(lx - 2, ly + 8.5, 7, 1.5, BR); mid.rect(lx - 1, ly + 10, 5, 1, BRD);
+    lights.push({ x: lx + 1.5, y: ly + 4.5, r: 16, c: '#ffc060', a: .5, flick: 1.8, out: true, core: [[lx + 1, ly + 3], [lx + 2, ly + 5]] });
+    // floor: rubble and gravel, the rails, an ore cart on them, a heap of sunstone ore by a pick
+    const GF = ['#150f0d', '#1c1511', '#241a15', '#2e2219', '#3a2c1f'].map(hx);
+    for (let y = gy; y < H; y++) for (let x = 0; x < W; x++) { const pool = Math.max(0, 1 - Math.hypot((x - W * .3) / 1.6, y - gy - 4) / 24, 1 - Math.hypot((x - W * .74) / 1.6, y - gy - 3) / 22); gnd.set(x, y, GF[clampI(Math.round((y - gy) / (H - gy) * 2 + pool * 2.2 + bayer(x, y) * .8 - .4 + (vnoise(x * .12, y * .25, 124) - .5)), 4)]); if (hash(x, y, 128) < .05) gnd.set(x, y, hx(hash(x, y, 129) < .5 ? '#3e3226' : '#0a0706')); }
+    rails(gnd, W * .5, 11, vx, vy, gy, ['#2a1c12', '#3a3a40', '#8a8a94']);
+    const cx = W * .545, cy = gy + 7; gnd.poly([[cx - 7, cy - 6], [cx + 7, cy - 6], [cx + 5.5, cy], [cx - 5.5, cy]], hx('#4a4448')); gnd.line(cx - 7, cy - 6, cx + 7, cy - 6, hx('#8a8490')); gnd.rect(cx - 5, cy - 4, 10, 1, hx('#2e2a2e'));
+    for (const d of [-4, 3]) { gnd.disc(cx + d, cy + .5, 1.3, hx('#1a1616')); gnd.set(cx + d, cy + .5, hx('#6a6468')); }
+    for (const [dx, c] of [[-4, '#8a6a3a'], [-1, '#e8a040'], [2, '#6a5a4a'], [4, '#c88a3a']]) gnd.disc(cx + dx, cy - 6.5, 1.4, hx(c));
+    const ox = W * .3, oy = H - 10;
+    for (let k = 0; k < 16; k++) { const a = hash(k, 1, 125) * Math.PI, r = hash(k, 2, 125) * 8, x = ox + Math.cos(a) * r * 1.6, y = oy - Math.sin(a) * r * .8, gold = k % 4 === 0; gnd.disc(x, y, 1.6, hx(gold ? '#e89a30' : k & 1 ? '#3a2c22' : '#4a3a2c')); if (gold) { gnd.set(x - .5, y - .5, hx('#ffe08a')); lights.push({ x: x + .5, y, r: 4, c: '#ffb040', a: .25, pulse: 1, flick: .7 + k * .05 }); } }
+    gnd.line(ox + 9, oy + 1, ox + 15, oy - 12, hx('#5a3e24')); gnd.poly([[ox + 11, oy - 12], [ox + 18, oy - 13], [ox + 20, oy - 11], [ox + 15, oy - 11]], hx('#7a7a84')); gnd.line(ox + 11, oy - 12, ox + 18, oy - 13, hx('#b8b8c4'));
+    return { layers: [sky, far, mid, gnd], lights, fx: 'grit', darkAmb: .15 };
+  },
+  // the Glass Heart: a cavern of living glass round a knot of crystal that burns like a forge inside; glass columns
+  // round the rim catch its light, shards glow in the fused floor, cracks run hot, and a bright pool lies still
+  'glass-heart'(W, H, gy) {
+    const sky = layer(W, H), far = layer(W, H), mid = layer(W, H), gnd = layer(W, H), lights = [];
+    const cx = W * .54, cy = gy - H * .22, cell = 12, pt = (i, j) => [(i + .15 + hash(i, j, 131) * .7) * cell, (j + .15 + hash(i, j, 132) * .7) * cell];
+    // the cavern wall: facets of smoky glass turned a little toward the heart or away from it, their edges lit
+    const F = ['#0a080c', '#100c12', '#181018', '#22141c', '#301a1e', '#46221c'].map(hx), E = hx('#d8783a'), EC = hx('#5a8088');
+    for (let y = 0; y < gy + 3; y++) for (let x = 0; x < W; x++) {
+      const i0 = Math.floor(x / cell), j0 = Math.floor(y / cell); let d1 = 1e9, d2 = 1e9, id = 0;
+      for (let j = j0 - 1; j <= j0 + 1; j++) for (let i = i0 - 1; i <= i0 + 1; i++) { const [px, py] = pt(i, j), d = (px - x - .5) ** 2 + (py - y - .5) ** 2; if (d < d1) { d2 = d1; d1 = d; id = i * 131 + j; } else if (d < d2) d2 = d; }
+      const near = 1 - Math.min(1, Math.hypot(x - cx, (y - cy) * 1.3) / (W * .55));
+      const f = hash(id, 1, 133), sheen = f > .86 ? 1.6 : 0, lit = near * 4 + (f - .5) * 2.4 + sheen + ((x - y * .6 + id) % 7 === 0 && f > .6 ? 1 : 0);
+      sky.set(x, y, F[clampI(Math.round(lit + bayer(x, y) * .6 - .3), 5)]);
+      if (Math.sqrt(d2) - Math.sqrt(d1) < 1 && hash(id, 2, 133) < .7) sky.set(x, y, near > .35 ? E : EC, .15 + near * .45);
+    }
+    sky.glow(cx, cy, 60, hx('#a8401a'), .4); sky.glow(cx, cy, 28, hx('#ffb050'), .35);
+    // the heart: a spray of crystal round a white-hot core
+    far.disc(cx, cy + 9, 9, hx('#2a1210')); far.disc(cx, cy + 8, 6, hx('#6a2a14'));
+    for (const [dx, h, w, ln] of [[-9, 11, 2.6, -.4], [9, 12, 2.6, .38], [-5, 18, 3.2, -.18], [5, 16, 3, .2], [0, 24, 3.8, .02], [-2, 8, 2.2, -.05], [3, 7, 2, .1]]) shard(far, cx + dx, cy + 9, h, w, ln, ['#a8481e', '#ffb45a'], '#fff4d0');
+    far.disc(cx, cy + 5, 2.6, hx('#ffe8b0')); far.disc(cx - .5, cy + 4.5, 1.2, hx('#ffffff'));
+    lights.push({ x: cx, y: cy + 3, r: 22, c: '#ffb050', a: .5, pulse: 1, flick: .5, core: [[Math.round(cx), Math.round(cy + 4)]] });
+    // glass columns round the rim, cool glass rim-lit warm on the side that faces the heart
+    for (const [x, h, w] of [[W * .05, H * .66, 6], [W * .17, H * .5, 4], [W * .84, H * .56, 5], [W * .96, H * .7, 6.5]]) {
+      prism(far, x, gy + 3, h, w, ['#16242a', '#2e4850'], '#9ad0d0'); const sd = x < cx ? 1 : -1;
+      for (let y = Math.round(gy + 3 - h + w * 1.3); y < gy + 3; y++) far.set(x + sd * (w - .5), y, hx('#f0a050'), .55 + .3 * Math.sin(y * .4));
+    }
+    // mid: shards standing in the floor, glowing at the root
+    for (const [x, h, w, ln] of [[W * .28, 9, 2.2, .3], [W * .36, 5, 1.6, -.2], [W * .68, 11, 2.6, -.25], [W * .76, 6, 1.8, .15], [W * .6, 4, 1.4, .1]]) {
+      shard(mid, x, gy + 3, h, w, ln, ['#1e3036', '#4a7078'], '#c8f0f0'); mid.set(x, gy + 2, hx('#ff9a48')); lights.push({ x: x + .5, y: gy + 2, r: 4, c: '#ff9a48', a: .28, pulse: 1, flick: .8 + x * .01 });
+    }
+    // floor: fused glass, dark and glossy, holding the heart's light; hot cracks; the pool, bright and still
+    const G = ['#140e10', '#1e1416', '#2a1a1a', '#3a221c', '#4e2c1e'].map(hx);
+    for (let y = gy; y < H; y++) for (let x = 0; x < W; x++) {
+      const u = (y - gy) / (H - gy), refl = Math.max(0, 1 - Math.abs(x - cx) / (8 + u * 26)) * (1 - u * .6), warm = Math.max(0, 1 - Math.hypot(x - cx, (y - gy) * 2.2) / (W * .5));
+      gnd.set(x, y, G[clampI(Math.round(u * 1.2 + warm * 2.6 + bayer(x, y) * .8 - .4 + (vnoise(x * .08, y * .3, 135) - .5)), 4)]);
+      if (refl > 0 && ((x + y) & 1)) gnd.set(x, y, hx('#ffa050'), refl * .45);
+    }
+    const px0 = W * .44, py0 = gy + 8;
+    for (let y = Math.floor(py0 - 4); y <= py0 + 4; y++) for (let x = Math.floor(px0 - 15); x <= px0 + 15; x++) { const e = ((x - px0) / 15) ** 2 + ((y - py0) / 3.6) ** 2; if (e < 1) gnd.set(x, y, hx(e > .75 ? (y < py0 ? '#6a8a88' : '#2a3a3c') : e > .3 ? '#4a8a8a' : '#78c0bc')); }
+    gnd.line(px0 - 8, py0 - 1, px0 - 2, py0 - 1, hx('#d8fff8'), .8); gnd.line(px0 + 3, py0 + 1, px0 + 6, py0 + 1, hx('#d8fff8'), .6);
+    lights.push({ x: px0, y: py0, r: 12, c: '#8ae0d8', a: .22, pulse: 1, flick: .4 });
+    const cracks = [];
+    for (let k = 0; k < 6; k++) { let x = hash(k, 1, 136) * W, y = gy + 4 + hash(k, 2, 136) * (H - gy - 8); const pts = [[x, y]]; for (let s = 0; s < 5; s++) { x += 2 + hash(k, s, 137) * 3; y += (hash(k, s, 138) - .5) * 4; pts.push([x, y]); } cracks.push(pts); for (let s = 0; s < 5; s++) gnd.line(pts[s][0], pts[s][1], pts[s + 1][0], pts[s + 1][1], hx('#4a1a0e')); }
+    lights.push({ cracks, c: '#ff8a3a' });
+    for (let k = 0; k < 10; k++) { const x = hash(k, 1, 139) * W, y = gy + 3 + hash(k, 2, 139) * (H - gy - 5); shard(gnd, x, y, 2 + hash(k, 3, 139) * 3, 1, (hash(k, 4, 139) - .5), ['#2a3a40', '#6a9098'], '#e0ffff'); }
+    return { layers: [sky, far, mid, gnd], lights, fx: 'glint' };
+  },
+  // the Glass Flats at noon: a white sky over the dune sea, the Glass Mesa on the horizon floating on its mirage,
+  // and in front a floor of glassed sand, dark and glossy, holding the sky in its cracks; a raider's banner
+  'glass-flats'(W, H, gy) {
+    const sky = layer(W, H), far = layer(W, H), mid = layer(W, H), gnd = layer(W, H), lights = [];
+    skyFill(sky, ['#2a5890', '#4270a6', '#6a90b6', '#9cb2c4', '#c8ccc6', '#e8e0c8', '#faf2dc'], 0, gy + 2);
+    const sx = Math.round(W * .3), sy = Math.round(H * .12);
+    sky.glow(sx, sy, 50, hx('#ffffff'), .42); sky.glow(sx, sy, 14, hx('#ffffff'), .7); sky.disc(sx, sy, 5, hx('#ffffff'));
+    // far: the Glass Mesa, a ridge of fused dune glinting black and white
+    const mt = x => { const u = Math.abs(x - W * .62) / (W * .34); return u > 1 ? null : gy - 1 - Math.min(1, (1 - u) * 4) * 8 - vnoise(x * .15, 0, 141) * 2; };
+    for (let x = 0; x < W; x++) { const t = mt(x); if (t === null) continue; for (let y = Math.round(t); y < gy + 1; y++) far.set(x, y, hx((x * 3 + y * 5) % 13 < 2 ? '#6a7a88' : y - t < 2 ? '#4a5260' : '#343844')); far.set(x, Math.round(t), hx('#e8f4ff'), .8); }
+    // mid: dunes, bright in the noon sun
+    dunes(mid, [[W * .24, gy - 6, 30, 12, .45], [W * .1, gy - 11, 28, 13, .4], [W * .86, gy - 12, 36, 13, .4], [W * 1.02, gy - 7, 22, 10, .45], [W * .02, gy - 3, 16, 9, .5]], gy + 3, ['#9a6440', '#b27a4c', '#e2b074', '#f8d49a'], '#fff8e0');
+    // Gnash's banner: indigo rags on a spear
+    const bx = Math.round(W * .82), by = gy - 17; mid.line(bx, by, bx, gy + 4, hx('#3a2616')); mid.poly([[bx, by - 2], [bx + 1, by - 3], [bx + 2, by - 1]], hx('#c8c8d0'));
+    for (let y = 0; y < 8; y++) { const len = 6 - y * .4 + Math.sin(y * 1.3) * 1.2; mid.line(bx + 1, by + 1 + y, bx + 1 + len, by + 1 + y + Math.sin(y) * .5, hx(y % 3 === 2 ? '#2a2a5a' : '#3a3a7a')); }
+    // ground: the mirage lying on the sand at the horizon (the sky, and the mesa upside down in it), then the flats: sand
+    // giving way to glassed sand, dark and glossy, cracked into plates, holding the sky
+    const G = ['#20242e', '#2a303e', '#384258', '#526078', '#7a8aa4', '#a8b8cc'].map(hx), S = ['#b07e4e', '#c8965e', '#dcae74', '#ecc88e'].map(hx), CK = hx('#e8f4ff'), vx = W * .5;
+    for (let y = gy; y < H; y++) {
+      const u = (y - gy) / (H - gy), z = 1 / (u + .06);
+      for (let x = 0; x < W; x++) {
+        const X = (x - vx) / W * z * 2.4, Z = z * 1.3, sand = vnoise(X * .7, Z * .5, 142) + (z - 3) * .06;
+        if (sand > .56) { gnd.set(x, y, S[clampI(Math.round(u * 3.2 + bayer(x, y) * .8 - .4 + (sand > .62 ? 0 : -1)), 3)]); continue; }
+        const i0 = Math.floor(X), j0 = Math.floor(Z); let d1 = 9, d2 = 9, id = 0;
+        for (let j = j0 - 1; j <= j0 + 1; j++) for (let i = i0 - 1; i <= i0 + 1; i++) { const d = (i + hash(i, j, 143) - X) ** 2 + (j + hash(i, j, 144) - Z) ** 2; if (d < d1) { d2 = d1; d1 = d; id = i * 97 + j; } else if (d < d2) d2 = d; }
+        const glare = Math.max(0, 1 - Math.abs(x - sx) / (3 + u * 12)) * (1 - u * .5);
+        gnd.set(x, y, G[clampI(Math.round(5.2 - u * 5 + (hash(id, 1, 146) - .5) * 1.8 + glare * 1.6 + bayer(x, y) * .9 - .45), 5)]);
+        if (glare > .6 && hash(x, y, 148) < .12) gnd.set(x, y, CK, .8);
+        if (Math.sqrt(d2) - Math.sqrt(d1) < z * 2.4 / W * .9) gnd.set(x, y, CK, .3 + u * .4);
+      }
+    }
+    for (let y = gy; y < gy + 5; y++) for (let x = 0; x < W; x++) {
+      if (hash(x >> 2, y, 147) < .25) continue;
+      const t = mt(x), inv = t !== null && y - gy < (gy - t) * .5;
+      gnd.set(x, y, hx(inv ? ((x + y) & 1 ? '#56606e' : '#6a7684') : y - gy < 2 ? '#e4e8e4' : '#c4d2de'), inv ? .8 : .7 - (y - gy) * .1);
+    }
+    for (const [x, y, h, w, ln] of [[W * .06, H - 4, 12, 2.6, .25], [W * .95, H - 8, 9, 2.2, -.3], [W * .44, gy + 9, 5, 1.4, .2]]) shard(gnd, x, y, h, w, ln, ['#262c38', '#6a7a90'], '#f0f8ff');
+    return { layers: [sky, far, mid, gnd], lights, fx: 'glint' };
+  },
+  // Miragewell by night: palms against the stars and the moon, the well-court's mud-brick wall with torches on its
+  // corners, the Well of Mirages breathing a pale shimmer, the oasis pool holding the moon, and the Well Fire
+  miragewell(W, H, gy) {
+    const sky = layer(W, H), far = layer(W, H), mid = layer(W, H), gnd = layer(W, H), lights = [];
+    skyFill(sky, ['#05081a', '#080e24', '#0d1630', '#141e3c', '#1c2848', '#263254'], 0, gy + 2);
+    stars(sky, 60, gy - 6, 151);
+    const mx = Math.round(W * .2), my = Math.round(H * .16);
+    sky.glow(mx, my, 30, hx('#8aa0c8'), .25); sky.disc(mx, my, 5, hx('#dce4f0')); sky.disc(mx + 1.5, my - 1, 4.2, hx('#1a2444'), .9);
+    // far: dunes under the moon, and palms of the far grove
+    ridge(far, x => gy - 3 - vnoise(x * .05, 0, 152) * 6, gy + 2, '#101830', '#4a5a88', .6);
+    for (const [x, h, ln] of [[W * .6, 24, .15], [W * .68, 19, -.1], [W * .74, 22, .2], [W * .06, 21, -.15]]) palm(far, x, gy, h, ln, '#0a0e20', '#0a1224', x | 0);
+    // the well-court: a mud-brick wall with a gateway, torches on its corners, a flat-roofed house with a lit door
+    const WB = hx('#2a2230'), WL = hx('#4a3e50'), wy = gy - 9;
+    for (let x = 0; x < W; x++) { if (x > W * .56 && x < W * .64) continue; const top = wy + (Math.floor(x / 5) % 2 ? 0 : -1.5); for (let y = Math.round(top); y < gy + 2; y++) mid.set(x, y, WB); mid.set(x, Math.round(top), WL); if (hash(x, 1, 153) < .08) mid.set(x, wy + 4 + hash(x, 2, 153) * 5, hx('#1c1622')); }
+    for (const x of [W * .56, W * .64]) { mid.rect(x - 2, wy - 5, 4, gy + 2 - wy + 5, WB); mid.rect(x - 2, wy - 5, 4, 1, WL); }
+    for (const x of [W * .25, W * .78]) { mid.rect(x - .5, wy - 5, 1.5, 5, hx('#3a2616')); lights.push({ x: x + .2, y: wy - 7, r: 12, c: '#ff9a3a', a: .45, torch: 1, flick: 3 + x * .01 }); }
+    const hx0 = W * .82; mid.rect(hx0, wy - 8, 22, gy + 2 - wy + 8, hx('#34283a')); mid.rect(hx0, wy - 8, 22, 1, hx('#54465a')); mid.rect(hx0 + 5, gy - 7, 4, 7, hx('#ffb060')); lights.push({ x: hx0 + 7, y: gy - 3, r: 9, c: '#ffb060', a: .3, flick: 1.7 });
+    // the Well of Mirages: a stone well-head under its windlass, breathing a pale shimmer
+    const wx = W * .47, wyy = gy + 5;
+    for (let y = wyy - 8; y <= wyy; y++) for (let x = Math.floor(wx - 10); x <= wx + 10; x++) { const u = (x - wx) / 10; if (Math.abs(u) <= 1) mid.set(x, y, hx((y - wyy) % 3 === 0 ? '#2a2438' : Math.abs(u) > .8 ? '#3a3448' : u < -.3 ? '#6a6080' : '#524a66')); }
+    for (let x = Math.floor(wx - 10); x <= wx + 10; x++) { mid.set(x, wyy - 9, hx('#b0a8c4')); mid.set(x, wyy - 8, hx(Math.abs(x - wx) < 8 ? '#0a1a2a' : '#8a8098')); }
+    for (const d of [-8, 8]) mid.rect(wx + d - .5, wyy - 22, 1.5, 13, hx('#3a2616')); mid.rect(wx - 9, wyy - 22, 19, 1.5, hx('#5a3e24')); mid.line(wx, wyy - 20.5, wx, wyy - 14, hx('#8a7a5a')); mid.rect(wx - 1.5, wyy - 14, 4, 3, hx('#5a4028')); mid.rect(wx - 1.5, wyy - 14, 4, 1, hx('#7a5a38'));
+    for (let y = wyy - 30; y < wyy - 8; y++) for (let x = Math.floor(wx - 7); x <= wx + 7; x++) { const v = (wyy - 8 - y) / 22, sh = Math.sin(y * 1.3 + x * .4) + Math.sin(y * .5 - x); if (((x + y) & 1) && sh > 1.2 - v && Math.abs(x - wx - Math.sin(y * .3) * 2) < 7 * (1 - v * .5)) mid.set(x, y, hx(sh > 1.6 ? '#e0fffa' : '#8ae8e0'), .5 * (1 - v)); }
+    lights.push({ x: wx, y: wyy - 10, r: 16, c: '#8ae8e0', a: .34, pulse: 1, flick: .35 });
+    // ground: sand and the court's paving; the pool holding the moon; reeds; the Well Fire; palms framing the view
+    paving(gnd, gy, gy - (H - gy) * 1.2, ['#16162a', '#1e1e34', '#262640', '#2e2e4a', '#3a3858'], '#0c0c1a', 10, 15, 154, (x, y) => (y - gy) / (H - gy) * 1.6 + .6 + Math.max(0, 1 - Math.hypot(x - W * .66, (y - gy - 10) * 2) / 26) * 1.6);
+    for (let y = gy; y < H; y++) for (let x = 0; x < W; x++) { const e = Math.abs(x - W * .5) / (W * .5) - .62 + (vnoise(x * .1, y * .2, 156) - .5) * .3; if (e > 0 && (e > .08 || (x + y) & 1)) gnd.set(x, y, hx(e > .2 ? '#2e2c46' : '#26243c')); }
+    const pc = W * .2, py = gy + 9;
+    for (let y = Math.floor(py - 4); y <= py + 4; y++) for (let x = Math.floor(pc - 24); x <= pc + 24; x++) { const e = ((x - pc) / 24) ** 2 + ((y - py) / 4.2) ** 2; if (e < 1) gnd.set(x, y, hx(e > .7 && y < py ? '#3a4a70' : '#0c1428')); }
+    for (let y = gy + 6; y < py + 4; y += 1.5) { const len = 1 + hash(y | 0, 1, 155) * 4, x0 = mx + (hash(y | 0, 2, 155) - .5) * 5 - len / 2; if (((x0 - pc) / 24) ** 2 + ((y - py) / 4.2) ** 2 < .9) gnd.line(x0, y, x0 + len, y, hx('#c8d4ec'), .7); }
+    for (let x = Math.floor(pc - 26); x < pc - 12; x++) if (hash(x, 3, 155) < .5) gnd.line(x, py + 1, x + (hash(x, 4, 155) - .5) * 2, py - 5 - hash(x, 5, 155) * 5, hx('#1a2a22'));
+    fireBowl(gnd, Math.round(W * .66), gy + 10, 3, lights, 'lit');
+    palm(gnd, W * .03, H + 2, H * .6, .25, '#2a2232', '#1a3228', 3); palm(gnd, W * 1.0, H + 2, H * .55, -.3, '#2a2232', '#1a3228', 4);
+    return { layers: [sky, far, mid, gnd], lights, fx: 'mirage' };
+  },
+  // Scorchgate Ruins: a smoke-red sky over the burned fortress city, broken towers and the keep, the Last Watchfire
+  // cold on its wall, charred trees, and ash over everything, with embers still alive in the cracks
+  scorchgate(W, H, gy) {
+    const sky = layer(W, H), far = layer(W, H), mid = layer(W, H), gnd = layer(W, H), lights = [];
+    skyFill(sky, ['#120a0c', '#1e0e0e', '#321410', '#4e1c12', '#6e2a14', '#8a3a18', '#a04e22'], 0, gy + 2);
+    sky.glow(W * .64, gy - 4, 40, hx('#e0602a'), .35); sky.disc(W * .64, gy - 12, 6, hx('#e8703a'), .55);
+    for (let k = 0; k < 3; k++) { const x0 = W * (.2 + k * .3) + hash(k, 1, 161) * 10; for (let y = 0; y < gy - 8; y++) { const u = y / (gy - 8), wd = 3 + (1 - u) * 12, x = x0 + Math.sin(y * .12 + k) * 4 + (1 - u) * 10; for (let d = -wd; d < wd; d++) if (((x + d + y) & 1) && hash((x + d) | 0, y, 162) < .8) sky.set(x + d, y, hx('#1a0c0c'), .25 * (1 - Math.abs(d) / wd)); } }
+    // far: the curtain wall and its broken towers, the keep's stump in the middle
+    const K = hx('#160c0c'), KR = hx('#b0502a');
+    ridge(far, x => gy - 6 - (Math.floor(x / 4) % 2 ? 1 : 0) - (hash(Math.floor(x / 9), 1, 163) < .3 ? -3 : 0), gy + 2, '#1e1010', '#8a3a1e', .5);
+    for (const [x, w, h, br] of [[W * .08, 8, 20, 4], [W * .34, 7, 15, 6], [W * .86, 9, 22, 3]]) { const t = gy - h; far.rect(x - w / 2, t, w, h + 2, K); for (let k = 0; k < w; k++) far.set(x - w / 2 + k, t - (k % 3 === 0 ? 0 : 1) - hash(k, x | 0, 164) * br, K); far.line(x + w / 2 - 1, t, x + w / 2 - 1, gy, KR, .45); far.rect(x - 1, t + 5, 2, 3, hx('#060404')); }
+    const kx = W * .55; far.poly([[kx - 12, gy + 2], [kx - 11, gy - 28], [kx - 6, gy - 31], [kx - 2, gy - 26], [kx + 3, gy - 33], [kx + 11, gy - 27], [kx + 12, gy + 2]], K);
+    far.line(kx + 11, gy - 27, kx + 12, gy, KR, .5); far.line(kx + 3, gy - 33, kx + 11, gy - 27, KR, .6); for (const [x, y] of [[kx - 5, gy - 20], [kx + 4, gy - 22], [kx - 1, gy - 12]]) far.rect(x, y, 2, 3, hx('#050303'));
+    // mid: the last wall, its gate fallen in the gap; the Last Watchfire cold on its stand; charred trees
+    const LW = ['#241816', '#2e201c', '#3a2a24', '#4a3630'], top = x => Math.round(x < W * .5 ? gy - 14 + Math.max(0, x - W * .28) * 1.4 : gy - 12 + Math.max(0, W * .72 - x) * 1.6) + (hash(Math.floor(x / 3), 1, 166) < .25 ? 2 : 0);
+    const soot = (x, y) => (vnoise(x * .12, y * .08, 169) > .62 ? 1.3 : 0);
+    masonry(mid, 0, gy - 14, W * .36, gy + 4, LW, '#140c0c', 9, 5, 165, (x, y) => (y < top(x) ? null : 1.6 - soot(x, y)));
+    masonry(mid, W * .64, gy - 12, W, gy + 4, LW, '#140c0c', 9, 5, 167, (x, y) => (y < top(x) ? null : 1.8 - soot(x, y) - (x > W * .9 ? .6 : 0)));
+    for (let x = 0; x < W; x++) if (x < W * .36 || x >= W * .64) mid.set(x, top(x), KR, .45);
+    const wfx = Math.round(W * .2), wfy = gy - 25, IR = hx('#2a2422'), IL = hx('#5a4c46');
+    for (const d of [-3, 0, 3]) mid.line(wfx + d * .4, wfy + 5, wfx + d, top(wfx + d), IR);
+    mid.poly([[wfx - 5, wfy], [wfx + 5, wfy], [wfx + 3, wfy + 5], [wfx - 3, wfy + 5]], IR); for (let d = -4; d <= 4; d += 2) mid.line(wfx + d, wfy + 1, wfx + d * .65, wfy + 4.5, IL, .8);
+    mid.line(wfx - 5, wfy, wfx + 5, wfy, hx('#7a6a60')); mid.set(wfx + 5, wfy, KR); mid.poly([[wfx - 4, wfy], [wfx - 2, wfy - 2], [wfx + 1, wfy - 2.5], [wfx + 4, wfy]], hx('#5a5250')); mid.line(wfx - 2, wfy - 2, wfx + 1, wfy - 2.5, hx('#8a8280'));
+    const CT = hx('#0e0808');
+    branch(mid, W * .42, gy + 4, -Math.PI / 2 + .15, 14, 1.8, 3, CT, 17); branch(mid, W * .74, gy + 5, -Math.PI / 2 - .2, 12, 1.6, 3, CT, 23);
+    // ground: ash and cinders, rubble, a charred beam, the fallen gate leaf, embers alive in the cracks
+    sandFloor(gnd, gy, ['#262222', '#2e2828', '#383030', '#423838'], '#4a4240', 168);
+    const gx = W * .5, gyy = gy + 8; gnd.poly([[gx - 13, gyy], [gx + 10, gyy - 2.5], [gx + 14, gyy + 5], [gx - 10, gyy + 7]], hx('#3a2418'));
+    for (let k = 1; k < 5; k++) gnd.line(gx - 13 + k * 5, gyy - k * .5, gx - 10 + k * 5.4, gyy + 7 - k * .5, hx('#24160e'));
+    for (const v of [.25, .75]) gnd.line(gx - 13 + 3 * v, gyy + 7 * v, gx + 10 + 4 * v, gyy - 2.5 + 7.5 * v, hx('#5a5a60')); for (let k = 0; k < 6; k++) gnd.set(gx - 10 + k * 4.2, gyy + 1.2 - k * .4, hx('#8a8a90'));
+    gnd.line(gx - 13, gyy, gx + 10, gyy - 2.5, hx('#5a3a26'), .8);
+    gnd.thick(W * .06, H - 6, W * .3, H - 12, 1.8, 1.4, hx('#140c0a')); gnd.line(W * .06, H - 8, W * .3, H - 13.5, hx('#5a3a2a'), .7);
+    for (let k = 0; k < 12; k++) { const x = hash(k, 1, 169) * W, y = gy + 2 + hash(k, 2, 169) * (H - gy - 4), s = 1.2 + hash(k, 3, 169) * 2.4; gnd.rect(x, y - s, s * 1.6, s, hx('#3e3230')); gnd.rect(x, y - s, s * 1.6, 1, hx('#6a5a54')); }
+    const cracks = [];
+    for (let k = 0; k < 6; k++) { let x = hash(k, 1, 170) * W, y = gy + 4 + hash(k, 2, 170) * (H - gy - 8); const pts = [[x, y]]; for (let s = 0; s < 5; s++) { x += 1.5 + hash(k, s, 171) * 3; y += (hash(k, s, 172) - .5) * 4; pts.push([x, y]); } cracks.push(pts); for (let s = 0; s < 5; s++) gnd.line(pts[s][0], pts[s][1], pts[s + 1][0], pts[s + 1][1], hx('#1a0a06')); }
+    lights.push({ cracks, c: '#ff7a2a' });
+    return { layers: [sky, far, mid, gnd], lights, fx: 'ash' };
+  },
+  // the Scorchgate Vaults: a pillared hall of dark stone drifted with ash, braziers on their stands, old shields on
+  // the walls, the ash-black seal on the far door, grey light falling down the stair, and embers alive in the floor
+  // where the fire stopped. In the dark the braziers are out
+  'scorchgate-vaults'(W, H, gy) {
+    const sky = layer(W, H), far = layer(W, H), mid = layer(W, H), gnd = layer(W, H), lights = [];
+    masonry(sky, 0, 0, W, gy + 3, ['#0e0c10', '#141116', '#1a161c', '#221c22', '#2a2228'], '#08070a', 12, 6, 181, (x, y) => 2.6 - Math.abs(x - W / 2) / (W / 2) * 1.6 - (y < 12 ? 1 : 0));
+    // the far door under its arch, and the seal: an ash-black disc with a sigil, its rim smouldering
+    const dx = W * .52, dt = gy - 30, DB = hx('#0a0808');
+    sky.poly(Array.from({ length: 13 }, (_, k) => { const a = Math.PI + k / 12 * Math.PI; return [dx + Math.cos(a) * 13, dt + 12 + Math.sin(a) * 12]; }).concat([[dx + 13, gy + 3], [dx - 13, gy + 3]]), hx('#3a3036'));
+    sky.poly(Array.from({ length: 13 }, (_, k) => { const a = Math.PI + k / 12 * Math.PI; return [dx + Math.cos(a) * 11, dt + 12 + Math.sin(a) * 10.5]; }).concat([[dx + 11, gy + 3], [dx - 11, gy + 3]]), hx('#1e1614'));
+    for (let x = dx - 10; x < dx + 10; x += 4) sky.line(x, dt + 3, x, gy + 2, DB);
+    sky.disc(dx, dt + 16, 6.5, hx('#050404')); for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2; sky.set(dx + Math.cos(a) * 6.2, dt + 16 + Math.sin(a) * 6.2, hx('#c8501e'), .5 + .4 * hash(k, 1, 182)); }
+    sky.line(dx, dt + 12, dx, dt + 20, hx('#5a2a18')); sky.line(dx - 3, dt + 14, dx + 3, dt + 18, hx('#5a2a18')); sky.line(dx + 3, dt + 14, dx - 3, dt + 18, hx('#5a2a18'));
+    lights.push({ x: dx, y: dt + 16, r: 9, c: '#ff6a2a', a: .22, pulse: 1, flick: .4 });
+    // shields hung between the arches
+    for (const x of [W * .2, W * .8]) { const y = gy - 26; sky.disc(x, y, 4, hx('#3a3a40')); sky.disc(x, y, 3, hx('#4a3a2e')); sky.line(x - 3, y, x + 3, y, hx('#6a6a70')); sky.line(x, y - 3, x, y + 3, hx('#6a6a70')); sky.set(x - 1.5, y - 2, hx('#8a8a94')); }
+    // pillars: a far pair either side of the door, and great near pillars framing the hall
+    const pillar = (L, x, w, y0, y1, c) => { const C = c.map(hx); for (let y = y0; y < y1; y++) for (let xx = Math.floor(x - w / 2); xx < x + w / 2; xx++) { const u = (xx - x + w / 2) / w; L.set(xx, y, C[clampI(Math.round(u < .25 ? 3 : u > .8 ? 0 : 2 - u + bayer(xx, y) * .6), 3)]); } L.rect(x - w / 2 - 1, y0, w + 2, 2, C[3]); L.rect(x - w / 2 - 1, y1 - 2, w + 2, 2, C[1]); };
+    for (const x of [W * .34, W * .7]) pillar(far, x, 6, 0, gy + 3, ['#141016', '#1e181e', '#2a2228', '#3a3036']);
+    for (const x of [W * .04, W * .96]) pillar(mid, x, 12, 0, gy + 8, ['#0c0a0e', '#16121a', '#221c24', '#322a32']);
+    // braziers on their stands, lit (they go out in the dark)
+    for (const x of [Math.round(W * .24), Math.round(W * .8)]) { mid.rect(x - .5, gy - 8, 1.5, 11, hx('#2a2226')); mid.line(x - 3, gy + 3, x, gy, hx('#2a2226')); mid.line(x + 3, gy + 3, x, gy, hx('#2a2226')); fireBowl(mid, x, gy - 9, 3, lights, 'lit', true); }
+    // grey light falling down the stair from the upper left
+    const beam = [[W * .1, 0], [W * .24, 0], [W * .46, H], [W * .2, H]], beamA = (px, py) => (((px + py) & 1) ? .06 : .1) * (1 - py / H * .5);
+    far.poly(beam, hx('#b8b0b8'), (px, py) => (py < gy ? beamA(px, py) : 0)); lights.push({ beam, a: .35 });
+    // floor: flagstones running away to the door, drifted with ash, embers alive in the cracks
+    paving(gnd, gy, gy - (H - gy) * 1.4, ['#161218', '#1e181e', '#262026', '#2e272c'], '#0a080a', 11, 14, 183, (x, y) => (y - gy) / (H - gy) * 1.3 + .6);
+    for (let y = gy; y < H; y++) for (let x = 0; x < W; x++) { const v = vnoise(x * .05, y * .3, 184) + Math.max(0, 1 - Math.min(x, W - x) / (W * .2)) * .35; if (v > .62 && ((x + y) & 1 || v > .72)) gnd.set(x, y, hx(v > .76 ? '#3e383a' : '#2e2a2c'), Math.min(1, (v - .6) * 4)); }
+    gnd.poly(beam, hx('#b8b0b8'), (px, py) => (py >= gy ? beamA(px, py) : 0));
+    const cracks = [];
+    for (let k = 0; k < 5; k++) { let x = W * (.3 + hash(k, 1, 185) * .4), y = gy + 3 + hash(k, 2, 185) * (H - gy - 6); const pts = [[x, y]]; for (let s = 0; s < 5; s++) { x += (hash(k, s, 186) - .5) * 6; y += 1 + hash(k, s, 187) * 2; pts.push([x, y]); } cracks.push(pts); for (let s = 0; s < 5; s++) gnd.line(pts[s][0], pts[s][1], pts[s + 1][0], pts[s + 1][1], hx('#1a0806')); }
+    lights.push({ cracks, c: '#ff6a2a' });
+    return { layers: [sky, far, mid, gnd], lights, fx: 'ash', darkAmb: .14 };
+  },
 };
 
 // the dark treatment: everything falls toward a violet-black, except around the lights that stay lit
@@ -668,6 +1039,12 @@ export function ambient(key, t, o = {}) {
       case 'dust': out.push({ x: (r1 * w + t * 1.6 * sp) % w, y: r3 * h * .92 + Math.sin(t * .5 + k * 1.7) * 3, c: [196, 206, 220], a: .22 + .2 * Math.sin(t * .8 + k) }); break;
       case 'petal': { const ph = (t * .045 * sp + r3) % 1; out.push({ x: (r1 * w + ph * 34 + Math.sin(t * 1.4 + k) * 4) % w, y: ph * h, c: k % 4 === 0 ? [255, 244, 214] : k % 2 ? [240, 190, 206] : [248, 222, 232], a: .85 }); break; }
       case 'firefly': out.push({ x: r1 * w + Math.sin(t * .5 + k * 1.3) * 7, y: gy - 22 + r3 * (h - gy + 18) + Math.cos(t * .6 + k) * 4, c: k % 3 ? [220, 250, 120] : [255, 214, 120], a: Math.max(0, Math.sin(t * 1.9 + k * 2.3)) * .95 }); break;
+      // M4: blown sand, dust in lamplight, glints on glass, mirage motes, falling ash with the odd live ember
+      case 'sand': { const ph = (t * .12 * sp + r1) % 1; out.push({ x: ph * (w + 24) - 12, y: gy - 4 + r3 * (h - gy + 4) + Math.sin(t * 2.3 + k) * 1.5, c: r2 > .5 ? [240, 212, 160] : [210, 168, 112], a: .6 * Math.sin(ph * Math.PI) }); break; }
+      case 'grit': out.push({ x: (r1 * w + t * 1.1 * sp) % w, y: r3 * h * .92 + Math.sin(t * .45 + k * 1.7) * 3, c: [236, 196, 132], a: .2 + .16 * Math.sin(t * .8 + k) }); break;
+      case 'glint': { const s = Math.sin(t * 1.9 * sp + k * 2.7); out.push({ x: r1 * w, y: k % 2 ? gy + r3 * (h - gy) : r3 * h, c: k % 3 ? [255, 250, 232] : [255, 196, 120], a: s > .8 ? (s - .8) * 5 : 0 }); break; }
+      case 'mirage': { const ph = (t * .03 * sp + r3) % 1; out.push({ x: r1 * w + Math.sin(t * .6 + k * 1.3) * 5, y: h - ph * (h - 6), c: k % 3 ? [150, 236, 226] : [224, 250, 255], a: Math.min(1, (1 - ph) * 2, ph * 5) * (.35 + .5 * Math.max(0, Math.sin(t * 2.1 + k * 2.3))) }); break; }
+      case 'ash': { const ph = (t * .035 * sp + r3) % 1; out.push(k % 6 === 0 ? { x: r1 * w + Math.sin(t * .9 + k) * 4, y: h - ph * h, c: [255, 150, 70], a: Math.min(1, (1 - ph) * 2) * .8 } : { x: (r1 * w + Math.sin(t * .7 + k * 1.3) * 6 + t * 2.5) % w, y: ph * h, c: r2 > .5 ? [150, 144, 140] : [96, 90, 90], a: .75 }); break; }
     }
   }
   if (S.dark) for (const p of out) p.a *= .55;

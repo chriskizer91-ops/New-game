@@ -13,7 +13,9 @@ globalThis.ImageData ??= class ImageData {
 };
 const { FOES } = await import('../src/data/foes.js');
 const { RELICS } = await import('../src/data/relics.js');
-const { BACKDROPS: BACKDROP_IDS, ENCOUNTERS, PATROLS } = await import('../src/data/encounters.js');
+const { BACKDROPS: BACKDROP_IDS, ENCOUNTERS } = await import('../src/data/encounters.js');
+const { ZONES } = await import('../src/data/world.js');
+const { MAPS } = await import('../src/data/maps/index.js');
 const { GEMS, MATERIALS } = await import('../src/data/gems.js');
 const { LOCKS } = await import('../src/data/locks.js');
 const { FOE_ART, renderFoe } = await import('../src/art/foes.js');
@@ -58,10 +60,11 @@ test('the Sunscorch champions draw each piece until it is snapped off, in every 
   }
 });
 
-test('every encounter and patrol backdrop, and every listed BACKDROPS id, has a painter; dark ones read dark', () => {
+test('every encounter, map and patrol-zone backdrop, and every listed BACKDROPS id, has a painter; dark ones read dark', () => {
   const used = new Set(BACKDROP_IDS);
   for (const e of Object.values(ENCOUNTERS)) if (e.backdrop) used.add(e.backdrop);
-  for (const k of Object.keys(PATROLS || {})) used.add(k);
+  for (const z of Object.values(ZONES)) used.add(z.backdrop);
+  for (const m of Object.values(MAPS)) if (m.backdrop) used.add(m.backdrop);
   for (const k of used) assert.ok(BACKDROPS[k], `no backdrop ${k}`);
   const mean = img => { let s = 0; for (let i = 0; i < img.data.length; i += 4) s += img.data[i] * .3 + img.data[i + 1] * .59 + img.data[i + 2] * .11; return s / (img.data.length / 4); };
   for (const k of ['sun-road', 'sandspire', 'dust-trail', 'deep-shaft', 'glass-heart', 'glass-flats', 'miragewell', 'scorchgate', 'scorchgate-vaults']) {
