@@ -1,6 +1,8 @@
-// Consumable shops (M3 spec §3.9). Prices come from CONSUMABLES[id].price in data/items.js.
-// SHOPS[id] = { id, name, items: [consumableId] }. Opened by the dialogue effect { open: 'shop:<id>' }.
-// Owner: WP3S.
+// Shops (M3 spec §3.9, M4 spec §3.7). Consumable prices come from CONSUMABLES[id].price in
+// data/items.js; gem prices from GEMS[id].price in data/gems.js.
+// SHOPS[id] = { id, name, items: [consumableId], gems?: [gemId] }. Opened by the dialogue effect
+// { open: 'shop:<id>' }.
+// Owner: WP3S (M3), P3 story (M4).
 
 import { deepFreeze } from '../core/freeze.js';
 
@@ -9,7 +11,8 @@ const STOCK = ['hearth-tonic', 'bitterroot', 'frost-draught', 'ember-salts'];
 export const SHOPS = deepFreeze({
   marta: { id: 'marta', name: 'Marta\'s Stall', items: STOCK },
   nell: { id: 'nell', name: 'Nell\'s Store', items: STOCK },
-  // M4 (spec §3.7): Idris sells gems (data/gems.js prices), not consumables
+  // M4: Idris sells gems, not consumables, and never the Ash Garnet (it only comes out of Scorchgate's ash)
   idris: { id: 'idris', name: 'Idris the Gemwright', items: [], gems: ['sunstone', 'moss-agate', 'glass-pearl'] },
-  pithead: { id: 'pithead', name: 'The Pithead Store', items: STOCK },
+  // Old Ode's store at the pithead: the same stock, with the Frost Draught first (the Sunscorch burns)
+  pithead: { id: 'pithead', name: 'The Pithead Store', items: ['frost-draught', 'hearth-tonic', 'bitterroot', 'ember-salts'] },
 });

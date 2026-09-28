@@ -1,13 +1,15 @@
-// The Unsmith's letters (M3 spec §3.1, §3.6): one per Brand, shown once (story['letter:<brandId>']).
+// The Unsmith's letters (M3 spec §3.1, §3.6; M4 spec §3.6): one per Brand, shown once
+// (story['letter:<brandId>']).
 // LETTERS[brandId] = { text }
-// Owner: WP3S.
+// The Sunscorch Brands come in either order, so their letters never count coals.
+// Owner: WP3S (M3), P3 story (M4).
 
 import { deepFreeze } from '../core/freeze.js';
 
 export const LETTERS = deepFreeze({
   'brand-of-briars': { text: 'One coal. How touching. Ask your hearthkeeper what a hearth eats, little Warden, and watch his hands while he answers. — U.' },
   'brand-of-the-heartroot': { text: 'Two. You are making it hungry. Keep going. — U.' },
-  // M4 (spec §3.6; STUBS until WP-story writes them)
-  'brand-of-glass': { text: 'Three. The glass remembers the fire that made it. So will you. — U.' },
-  'brand-of-ash': { text: 'Four, and the Sunscorch is yours. Scorchgate burned for a sword once. Ask Fenwick what it burned for before that. — U.' },
+  // M4: the Sunscorch
+  'brand-of-glass': { text: 'The scorpion is only glass again, and you have a warm sword. Keep it polished, little Warden. Metal melts better clean. — U.' },
+  'brand-of-ash': { text: 'Scorchgate\'s Warden has finally sat down. Ask Fenwick why your hearth never needed wood. Then ask him how old he is. — U.' },
 });

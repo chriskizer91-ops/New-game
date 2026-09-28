@@ -1,12 +1,15 @@
-// The Ladder (M3 spec §3.6): one poster per villain, in order, then the Act II silhouettes.
+// The Ladder (M3 spec §3.6, M4 spec §3.6): one poster per villain, in order: Act I, then the
+// Sunscorch's Act II posters, then the rumours of the regions still sealed (Gloomfen, Ironspire).
 // LADDER = [{ id, enc?, spawn?, name, silhouette?, act }]
 //   enc/spawn  the encounter and spawn index whose foe the poster shows (renderFoe silhouette)
+//   silhouette a rumour: no encounter yet, only a name
 //   state      silhouette -> scouted (flags.scouted[id], sighted or fought) -> settled ({ beaten: enc })
-// Owner: WP3S.
+// Owner: WP3S (M3), P3 story (M4).
 
 import { deepFreeze } from '../core/freeze.js';
 
 const P = (id, enc, name, spawn = 0) => ({ id, enc, spawn, name, act: 1 });
+const P2 = (id, enc, name, spawn = 0) => ({ id, enc, spawn, name, act: 2 });
 
 export const LADDER = deepFreeze([
   P('sneck', 'keep-vault', 'Sneck the Tallyman'),
@@ -26,7 +29,16 @@ export const LADDER = deepFreeze([
   P('corra', 'hollowed-patrol', 'Sgt Corra Thistle'),
   P('dun', 'hr1-tappers', 'Dun the Counter'),
   P('rotwarden', 'rotwarden-heart', 'The Rotwarden'),
-  { id: 'glass-scorpion', name: 'a glass scorpion', silhouette: true, act: 2 },
+  // Act II: the Sunscorch Wastes (M4). The Act I rumour of "a glass scorpion" is Kharzul's poster now.
+  P2('rasa', 'sr-toll', 'Rasa the Dune-Rider'),
+  P2('sand-wyrm', 'wyrm-lair', 'The Sand Wyrm'),
+  P2('brask', 'ds-crew', 'Foreman Brask'),
+  P2('kharzul', 'kharzul-heart', 'Kharzul the Glass Scorpion'),
+  P2('gnash', 'gnash-camp', 'Gnash the Raider-King'),
+  P2('wisp-queen', 'wisp-queen', 'The Wisp-Queen'),
+  P2('ash-captain', 'sg-captain', 'The Ash-Captain'),
+  P2('ashen-warden', 'ashen-warden', 'The Ashen Warden'),
+  // Act II rumours: Gloomfen and Ironspire stay sealed until a later chapter
   { id: 'lantern-mother', name: 'the Lantern Mother', silhouette: true, act: 2 },
   { id: 'missing-smith', name: 'the missing smith', silhouette: true, act: 2 },
 ]);
