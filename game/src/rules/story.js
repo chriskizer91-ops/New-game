@@ -8,22 +8,26 @@
 // choose(game, id, i) -> { game, next: dialogueId | null, events, roll: null | { label, dc, total, nat, pass, parts? } }
 // questLog(game) -> [{ id, name, kind, state: 'active'|'ready'|'done', step: { text, target } }]   (hidden omitted)
 // nextObjective(game) -> { text, map, entity } | null
-// claimQuest(game, id) -> { game, events }               id may be 'bounty:<bountyId>' to turn a bounty in
+// claimQuest(game, id) -> { game, events }               id may be 'bounty:<bountyId>' to turn a bounty in,
+//                                                        or 'bounties' to turn in every settled one
 // bounties(game) -> [{ id, enc, name, gold, state: 'active'|'ready'|'done' }]
 // ladder(game) -> [{ id, name, act, state: 'silhouette'|'scouted'|'settled' }]
+// afterDialogue(game, encId, result) -> dialogueId | null   what to play back from a fight ('victory'|'yield')
+// restDialogue(game, hfId) -> dialogueId | null             what to play after resting (the Fawnrest dream)
+// pendingLetter(game) -> brandId | null                     a held Brand whose Unsmith letter is unread
+// readLetter(game, brandId) -> game                         marks it read (story['letter:<brandId>'])
 // Events: { t: 'fight', enc } { t: 'open', screen } { t: 'item', item } { t: 'gold', n } { t: 'letter', id } { t: 'end', act }
-//
-// SCAFFOLD: working first cut; WP1 owns and finishes it (odds against the rolled distribution, etc.).
 // Import direction (A6): world -> story -> cond -> gauntlet. Never import world here.
 // Owner: WP1.
 
 import { NPCS } from '../data/npcs.js';
-import { DIALOGUE } from '../data/dialogue.js';
+import { DIALOGUE, AFTER, RESTS } from '../data/dialogue.js';
+import { LETTERS } from '../data/letters.js';
 import { QUESTS, BOUNTIES } from '../data/quests.js';
 import { LADDER } from '../data/ladder.js';
 import { HEROES } from '../data/heroes.js';
 import { DOMAINS } from '../data/domains.js';
-import { check, questState, isBeaten, flagsOf } from './cond.js';
+import { check, questState, bountyState, flagsOf, storyOf } from './cond.js';
 import { deriveHero } from './stats.js';
 import { generateItem, relicItem } from './loot.js';
 import { mod, ibFor, rngFrom } from './util.js';
@@ -193,9 +197,13 @@ export function nextObjective(game) {
 function claimInto(g, id, rng, events) {
   const f = g.progress.flags;
   f.quests = { ...(f.quests || {}) };
+  if (id === 'bounties') {
+    for (const b of Object.keys(BOUNTIES)) if (bountyState(g, b) === 'ready') claimInto(g, `bounty:${b}`, rng, events);
+    return;
+  }
   if (id.startsWith('bounty:')) {
     const b = BOUNTIES[id.slice(7)];
-    if (!b || f.quests[id] === 'claimed' || !isBeaten(g, b.enc)) return;
+    if (!b || bountyState(g, b.id) !== 'ready') return;
     f.quests[id] = 'claimed';
     apply(g, [{ gold: b.gold }], rng, events);
     return;
@@ -214,16 +222,36 @@ export function claimQuest(game, id) {
 }
 
 export function bounties(game) {
-  const q = flagsOf(game).quests || {};
-  return Object.values(BOUNTIES).map(b => ({
-    ...b, state: q[`bounty:${b.id}`] === 'claimed' ? 'done' : isBeaten(game, b.enc) ? 'ready' : 'active',
-  }));
+  return Object.values(BOUNTIES).map(b => ({ ...b, state: bountyState(game, b.id) }));
 }
 
 export function ladder(game) {
   const scouted = flagsOf(game).scouted || {};
   return LADDER.map(p => ({
-    id: p.id, name: p.name, act: p.act,
-    state: p.enc && isBeaten(game, p.enc) ? 'settled' : (scouted[p.enc] || scouted[p.id]) ? 'scouted' : 'silhouette',
+    id: p.id, name: p.name, act: p.act, enc: p.enc || null, spawn: p.spawn ?? null,
+    state: p.enc && check(game, { beaten: p.enc }) ? 'settled' : (scouted[p.enc] || scouted[p.id]) ? 'scouted' : 'silhouette',
   }));
+}
+
+// ---- story beats around fights, rests and Brands ----------------------------------------------------
+
+export function afterDialogue(game, encId, result) {
+  const hit = (AFTER[encId] || []).find(a => a.on === result && check(game, a.if));
+  return hit ? hit.d : null;
+}
+
+export function restDialogue(game, hfId) {
+  const hit = RESTS.find(r => r.at === hfId && check(game, r.if));
+  return hit ? hit.d : null;
+}
+
+export function pendingLetter(game) {
+  const story = storyOf(game);
+  return [...new Set(game?.progress?.brands || [])].find(b => LETTERS[b] && !story[`letter:${b}`]) || null;
+}
+
+export function readLetter(game, brandId) {
+  if (storyOf(game)[`letter:${brandId}`]) return game;
+  const f = game.progress.flags;
+  return { ...game, progress: { ...game.progress, flags: { ...f, story: { ...(f.story || {}), [`letter:${brandId}`]: true } } } };
 }

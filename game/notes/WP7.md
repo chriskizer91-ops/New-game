@@ -18,3 +18,10 @@
 - New export `afterBattle(game, walk, { roamerId, result }) -> walk`: call it when you come back from any battle (result 'victory'|'fled'|'defeat'|'rout'; roamerId null for blocks/lairs). It sets grace 6, removes a beaten/routed roamer (adds it to `gone`) and stuns one you fled from for 12 ticks.
 - `interact` on a roamer tile gives the same `contact`/`rout` as walking into it. Pack encounters are no longer returned by `interact`; draw packs from `walk.roamers`, not from `present()` (present still lists the pack entity at its home with solid:false; skip `mode === 'pack'`).
 - Also exported: `roamMask(map)` (Uint8Array, 1 = roamable) if you want to debug-draw it.
+## 2026-09-28 from the lead (WP1/WP3S): story beats the world screen should play
+- `use { kind, id }` events: if `DIALOGUE[id]` exists (`fr-bellframe`, `th-lookout`, `mw-lookout`), open that dialogue; otherwise the default (board/table `opens`, pedestal = the relic card).
+- `enterMap` now also emits `trigger { id: 'arrive:<map>', dialogue }` once for the party's homecoming lines (Pip at Thornhollow, Bryn at Eldergrove, Alondra at Fawnrest). Treat it like any trigger.
+- After a battle: `story.afterDialogue(game, encId, result)` ('victory' | 'yield') gives a dialogue to play on return (Tamsin's win/yield lines, Corra freed, the Rotwarden's last words). Play it after the Brand banner/letters.
+- After Rest at a Hearthfire: `story.restDialogue(game, hfId)` (the Fawnrest dream that sets Forewarned).
+- Letters: `story.pendingLetter(game)` -> a Brand id whose Unsmith letter is unread (also true for migrated M2 loopers on first load); show `LETTERS[id].text`, then `ctx.setGame(story.readLetter(game, id))`.
+- Dialogue effect `{ claim: 'bounties' }` (Dael's "Turn in bounties.") turns in every settled bounty; it emits `gold` events.

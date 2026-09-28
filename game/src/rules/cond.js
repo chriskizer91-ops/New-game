@@ -13,13 +13,15 @@
 //   { domain, level }        the best active hero's domains[domain].level >= level
 //   { unlocked } { opened } { kindled }                          flags.unlocked / opened / kindled [id]
 //   { quest, state }         questState(game, quest) === state ('hidden'|'active'|'ready'|'done')
+//   { bounty, state }        bountyState(game, bounty) === state ('active'|'ready'|'done'); bounty 'any'
+//                            holds when any bounty is in that state
 //   { since: { flag, days } } story[flag] is not a day number yet, or flags.day - story[flag] >= days
 //   { all: [...] } { any: [...] } { not: cond }
 // Import direction (A6): world -> story -> cond -> gauntlet. Never import world or story here.
 // Owner: WP1.
 
 import { RELICS } from '../data/relics.js';
-import { QUESTS } from '../data/quests.js';
+import { QUESTS, BOUNTIES } from '../data/quests.js';
 import { partyLevel, uniqueBrands } from './gauntlet.js';
 
 const EMPTY = Object.freeze({});
@@ -70,6 +72,14 @@ export function questState(game, id) {
   return q.steps.every(s => check(game, s.done)) ? 'ready' : 'active';
 }
 
+// A bounty's state: active (posted), ready (its encounter beaten), done (turned in to Dael).
+export function bountyState(game, id) {
+  const b = BOUNTIES[id];
+  if (!b) return 'hidden';
+  if (bag(game, 'quests')[`bounty:${id}`] === 'claimed') return 'done';
+  return isBeaten(game, b.enc) ? 'ready' : 'active';
+}
+
 export function check(game, cond) {
   if (cond == null) return true;
   if (Array.isArray(cond)) return cond.every(c => check(game, c));
@@ -95,6 +105,10 @@ export function check(game, cond) {
   if ('opened' in cond) return !!bag(game, 'opened')[cond.opened];
   if ('kindled' in cond) return !!bag(game, 'kindled')[cond.kindled];
   if ('quest' in cond) return questState(game, cond.quest) === (cond.state || 'done');
+  if ('bounty' in cond) {
+    const want = cond.state || 'done';
+    return cond.bounty === 'any' ? Object.keys(BOUNTIES).some(id => bountyState(game, id) === want) : bountyState(game, cond.bounty) === want;
+  }
   if ('since' in cond) {
     const at = storyOf(game)[cond.since.flag];
     return typeof at !== 'number' || (f.day || 1) - at >= (cond.since.days || 0);
@@ -104,7 +118,7 @@ export function check(game, cond) {
 
 // The keys check() understands, and a validator for data tests ("all conditions parse").
 export const COND_KEYS = Object.freeze(['all', 'any', 'not', 'flag', 'cleared', 'done', 'beaten', 'brand', 'brands', 'waking', 'level',
-  'owns', 'power', 'wears', 'active', 'domain', 'unlocked', 'opened', 'kindled', 'quest', 'since']);
+  'owns', 'power', 'wears', 'active', 'domain', 'unlocked', 'opened', 'kindled', 'quest', 'bounty', 'since']);
 
 export function condErrors(cond, at = 'cond') {
   if (cond == null) return [];

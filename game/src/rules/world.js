@@ -51,6 +51,7 @@ import { RELICS } from '../data/relics.js';
 import { DOMAINS } from '../data/domains.js';
 import { ENCOUNTERS, PATROLS } from '../data/encounters.js';
 import { ZONES } from '../data/world.js';
+import { ARRIVALS } from '../data/dialogue.js';
 import { TUNING } from '../data/tuning.js';
 import { createRng } from '../core/rng.js';
 import { check, ownedRelics, bestDomain, flagsOf } from './cond.js';
@@ -176,6 +177,12 @@ export function enterMap(game, target) {
   f.visits[map.id] = visit;
   const events = [{ t: 'enter', map: map.id }];
   fireTriggers(g, map, pos.x, pos.y, 'enter', events);
+  // the party's homecoming lines, once (data/dialogue.js ARRIVALS)
+  const home = ARRIVALS[map.id];
+  if (home && !f.seen?.[`arrive:${map.id}`]) {
+    f.seen = { ...(f.seen || {}), [`arrive:${map.id}`]: true };
+    events.push({ t: 'trigger', id: `arrive:${map.id}`, dialogue: home });
+  }
   return { game: g, walk: newWalk(g, map, pos, visit), events };
 }
 

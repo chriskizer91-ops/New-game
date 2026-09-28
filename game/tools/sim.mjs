@@ -1,36 +1,63 @@
-// Headless auto-battler: plays the whole Gauntlet with the scripted policy in
-// src/rules/autoplay.js across many seeds and prints balance tables.
+// Headless balance sim for M3 (spec §7 "Balance sim"): plays routes of encounters with the scripted
+// policy in src/rules/autoplay.js across many seeds, teleporting between fights (no walking, no
+// roaming packs), and prints balance tables.
 //
 //   node tools/sim.mjs [--seeds 200] [--starter hearthbrand|stillwater-lance|cairnmaul|mix] [--md]
+//                      [--modes m2,direct,leads2,leads-all,looper-w2,first-lead]
 //
-// Modes (each seed plays all of them):
-//   bare    Waking 0, starting gear only, no grinding
-//   equip   Waking 0, equips drops when they are upgrades, no grinding
-//   grind1  Waking 0, equips drops, grinds patrols for +1 level before Briarmaw
-//   grind   Waking 0, equips drops, grinds patrols for +2 levels before Briarmaw
-//   wake1   continues `grind` into Waking 1 (equips drops, grinds +1 level before Briarmaw)
-//   wake2   continues into Waking 2
+// Modes (targets from the spec):
+//   m2          Waking 0, the M2 road in order, equips drops; a wipe grinds a level and retries.
+//               Waking-0 first-try results within +-3 points of the M2 table in docs/RULES.md.
+//   direct      m2, then straight down the critical path after the Brand: Eldergrove, the Tamsin
+//               duel, the Heartroot, the Rotwarden. Party L10-12 at the Rotwarden; Rotwarden
+//               first-try wipe 30-40%; Tamsin first-try party win 55-70%.
+//   leads2      m2, then the Mosswatch and Bell leads (the Dawnbell's dream: Forewarned), then the
+//               critical path. Rotwarden first-try wipe <= 20%.
+//   leads-all   m2, then every lead, then the critical path.
+//   looper-w2   the migrated v1-waking2-dupe fixture (Waking 2) down the critical path.
+//               Rotwarden first-try wipe <= 45%.
+//   first-lead  m2, then each lead's lair as the first thing done at Waking 1: 15-25% first-try wipe.
+// Every mode: zero stuck runs. A duel lost is a yield (not retried); the door opens anyway.
 
-import { newGame, startBattle, resolveBattle, advance, rest, currentNode, canAdvance } from '../src/rules/gauntlet.js';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
+import { newGame, startBattle, resolveBattle, rest, spawnsFor, partyLevel } from '../src/rules/gauntlet.js';
+import { migrate } from '../src/rules/migrate.js';
+import { escalateSpawn, familyOf } from '../src/rules/foe.js';
 import { current, act, foeTurn, outcome } from '../src/rules/battle.js';
 import { autoCommand } from '../src/rules/autoplay.js';
 import { equip, bestHeroFor } from '../src/rules/party.js';
-import { ENCOUNTERS, GAUNTLET } from '../src/data/encounters.js';
+import { createRng } from '../src/core/rng.js';
+import { ENCOUNTERS, GAUNTLET, PATROLS } from '../src/data/encounters.js';
 import { RARITY_ORDER } from '../src/data/rarity.js';
 import { RELICS } from '../src/data/relics.js';
 
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
 const arg = (k, d) => { const i = args.indexOf(`--${k}`); return i >= 0 ? args[i + 1] : d; };
 const SEEDS = +arg('seeds', 200);
 const STARTER = arg('starter', 'mix');
 const MD = args.includes('--md');
-const ONLY = arg('modes', 'bare,equip,grind1,grind,wake1,wake2').split(',');
+const ALL_MODES = ['m2', 'direct', 'leads2', 'leads-all', 'looper-w2', 'first-lead'];
+const ONLY = arg('modes', ALL_MODES.join(',')).split(',');
 const STARTERS = ['hearthbrand', 'stillwater-lance', 'cairnmaul'];
 const MAX_TRIES = 6;
 
+// Routes: hearthfire ids rest; fight ids are fought until cleared (duels once).
+const AFTER_BRAND = ['eldergrove-hearth', 'tamsin-duel', 'hr1-grubs', 'hr1-sapwight', 'last-green-coal', 'rotwarden-heart'];
+const LEAD_ROUTES = {
+  mosswatch: ['thornhollow', 'mossfall-cairn', 'mw-stair', 'mw-lantern', 'mosswatch-fire'],
+  mire: ['thornhollow', 'mossfall-cairn', 'mf-smugglers', 'mire-shrine', 'mossfall-cairn'],
+  bell: ['thornhollow', 'hindwood-cairn', 'hw-glowcaps', 'gloamwing-hollow', 'fawnrest-stone', 'dream'],
+  grove: ['eldergrove-hearth', 'grove-circle', 'eldergrove-hearth'],
+  roots: ['last-green-coal', 'hollowed-patrol', 'hr1-tappers', 'last-green-coal'],
+};
+const LEAD_LAIRS = { mosswatch: 'mw-lantern', mire: 'mire-shrine', bell: 'gloamwing-hollow', grove: 'grove-circle' };
+
 function fight(battle, stats) {
   let b = battle;
-  for (let n = 0; current(b) && n < 2000; n++) {
+  for (let n = 0; current(b) && n < 3000; n++) {
     const id = current(b);
     const r = b.units[id].side === 'hero' ? act(b, autoCommand(b, id)) : foeTurn(b);
     for (const e of r.events) {
@@ -54,17 +81,16 @@ function equipDrops(g, items) {
   return game;
 }
 
-// Party HP left at the end of a battle, as a fraction of max HP.
 const hpLeft = b => {
   const p = outcome(b).party;
   return p.reduce((a, h) => a + h.hp, 0) / p.reduce((a, h) => a + h.maxHp, 0);
 };
 
-function newNodeStats() {
-  return Object.fromEntries(GAUNTLET.filter(id => ENCOUNTERS[id].type === 'fight').map(id => [id, { tries: 0, first: 0, firstWins: 0, wins: 0, wipes: 0, rounds: [], hpLeft: [], level: [], stuck: 0, claims: 0, shatters: 0 }]));
+function nodeStats(stats, id) {
+  stats.nodes[id] ||= { tries: 0, first: 0, firstWins: 0, wins: 0, wipes: 0, rounds: [], hpLeft: [], level: [], stuck: 0, claims: 0, shatters: 0, yields: 0 };
+  return stats.nodes[id];
 }
 
-// Random and worn-gear drops by rarity (named relics are counted in the claimed column).
 function recordDrops(stats, items) {
   for (const it of items) {
     if (RELICS[it.base] && !it.shattered) { stats.relics++; continue; }
@@ -73,101 +99,110 @@ function recordDrops(stats, items) {
   }
 }
 
-// Play one Gauntlet run from wherever `g` stands (the start of a Waking) through the Brand.
-function playRun(g, mode, stats) {
-  const grindTo = mode.grind ? mode.grind : 0;
-  const tries = {};
-  for (let step = 0; step < 400; step++) {
-    const node = currentNode(g);
-    if (node.type === 'hearthfire') {
-      g = rest(g);
-      if (grindTo && GAUNTLET[GAUNTLET.indexOf(node.id) + 1] === 'briarmaw-den') g = grind(g, grindTo, stats, mode);
-      g = advance(g);
-      continue;
-    }
-    if (canAdvance(g)) { g = advance(g); continue; }
-    const ns = stats.nodes[node.id];
-    tries[node.id] = (tries[node.id] || 0) + 1;
-    if (tries[node.id] > MAX_TRIES) { ns.stuck++; return { g, done: false }; }
-    const level = g.party.roster.warden.level;
-    const started = startBattle(g);
-    const b = fight(started.battle, stats);
-    const res = resolveBattle(started.game, b);
-    g = res.game;
-    const rep = res.report;
-    const first = tries[node.id] === 1;
-    ns.tries++;
-    if (first) { ns.first++; ns.level.push(level); ns.rounds.push(rep.rounds); }
-    if (rep.result === 'victory') {
-      ns.wins++;
-      if (first) { ns.firstWins++; ns.hpLeft.push(hpLeft(b)); }
-      recordDrops(stats, rep.drops);
-      ns.claims += rep.claimed.filter(i => RELICS[i.base]).length;
-      ns.shatters += rep.drops.filter(i => i.shattered).length;
-      if (mode.equip) g = equipDrops(g, [...rep.claimed, ...rep.drops]);
-      if (rep.brand) return { g, done: true };
-    } else if (rep.result === 'defeat') {
-      ns.wipes++;
-      // A real player who just wiped grinds a level at the Hearthfire before trying again.
-      g = grind(g, 1, stats, mode);
-    }
-  }
-  return { g, done: false };
-}
-
-function grind(g, levels, stats, mode) {
-  const target = g.party.roster.warden.level + levels;
-  for (let i = 0; i < 60 && g.party.roster.warden.level < target; i++) {
-    const started = startBattle(g, { patrol: true });
+// Grinding as in M2: rabble patrols at the level of the strongest rabble already beaten, from the
+// patrol set of the last fight's backdrop, rest between patrols.
+function grind(g, levels, stats, ctx) {
+  const target = partyLevel(g) + levels;
+  const rng = ctx.rng;
+  for (let i = 0; i < 60 && partyLevel(g) < target; i++) {
+    const set = rng.pick(PATROLS[ctx.backdrop] || PATROLS['verdant-wood']);
+    const spawns = set.map((sp, k) => ({ ...escalateSpawn({ ...sp, level: Math.max(1, ctx.rabble) }, g.progress.waking, `patrol#${k}`), spawnIndex: k }));
+    const started = startBattle(g, { patrol: { spawns, where: 'The Wilds', backdrop: ctx.backdrop } }, { ambush: rng.chance(0.25) });
     const b = fight(started.battle, stats);
     const res = resolveBattle(started.game, b);
     g = res.game;
     stats.grindFights++;
-    if (res.report.result === 'victory') {
-      recordDrops(stats, res.report.drops);
-      if (mode.equip) g = equipDrops(g, res.report.drops);
-    }
-    g = rest(g); // grinding happens from a Hearthfire: rest between patrols
+    if (res.report.result === 'victory') { recordDrops(stats, res.report.drops); g = equipDrops(g, res.report.drops); }
+    g = rest(g, g.progress.lastHearthfire);
   }
   return g;
 }
 
-const MODES = {
-  bare: { equip: false, grind: 0, label: 'Waking 0, starting gear only, no grinding' },
-  equip: { equip: true, grind: 0, label: 'Waking 0, equips drops, no grinding' },
-  grind1: { equip: true, grind: 1, label: 'Waking 0, equips drops, grinds +1 level before Briarmaw' },
-  grind: { equip: true, grind: 2, label: 'Waking 0, equips drops, grinds +2 levels before Briarmaw' },
-  wake1: { equip: true, grind: 1, label: 'Waking 1 (continues from grind), equips drops, +1 level before Briarmaw' },
-  wake2: { equip: true, grind: 1, label: 'Waking 2, equips drops, +1 level before Briarmaw' },
-};
+// Play a route from `g`. Returns { g, done } (done: the route's last fight was won or yielded).
+function playRoute(g, route, stats, ctx) {
+  for (const id of route) {
+    if (id === 'dream') { g = { ...g, progress: { ...g.progress, flags: { ...g.progress.flags, story: { ...g.progress.flags.story, 'bell-rung': true, forewarned: true } } } }; continue; }
+    const node = ENCOUNTERS[id];
+    if (node.type === 'hearthfire') { g = rest(g, id); continue; }
+    const f = g.progress.flags;
+    if (f.done[id] || (f.cleared[id] && !node.brand)) continue;
+    const ns = nodeStats(stats, id);
+    for (let tries = 1; ; tries++) {
+      if (tries > MAX_TRIES) { ns.stuck++; return { g, done: false }; }
+      const level = partyLevel(g);
+      const spawns = spawnsFor(g, id);
+      const started = startBattle(g, { nodeId: id });
+      const b = fight(started.battle, stats);
+      const res = resolveBattle(started.game, b);
+      g = res.game;
+      const rep = res.report;
+      ns.tries++;
+      if (tries === 1) { ns.first++; ns.level.push(level); ns.rounds.push(rep.rounds); }
+      ctx.backdrop = node.backdrop;
+      if (rep.result === 'victory') {
+        ns.wins++;
+        if (tries === 1) { ns.firstWins++; ns.hpLeft.push(hpLeft(b)); }
+        for (const s of spawns) if (familyOf(s).tier === 'rabble') ctx.rabble = Math.max(ctx.rabble, s.level);
+        recordDrops(stats, rep.drops);
+        ns.claims += rep.claimed.filter(i => RELICS[i.base]).length;
+        ns.shatters += rep.drops.filter(i => i.shattered).length;
+        g = equipDrops(g, [...rep.claimed, ...rep.drops]);
+        break;
+      }
+      if (rep.yield) { ns.yields++; break; }
+      if (rep.result === 'defeat') { ns.wipes++; g = grind(rest(g, g.progress.lastHearthfire), 1, stats, ctx); }
+    }
+  }
+  return { g, done: true };
+}
 
 function newStats() {
-  return { nodes: newNodeStats(), rolls: { n: 0 }, drops: {}, relics: 0, grindFights: 0, runs: 0, cleared: 0, endLevel: [] };
+  return { nodes: {}, rolls: { n: 0 }, drops: {}, relics: 0, grindFights: 0, runs: 0, cleared: 0, endLevel: [], stuck: 0 };
 }
 
 const avg = xs => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : NaN);
 const pct = (a, b) => (b ? `${Math.round(100 * a / b)}%` : '-');
 const f1 = x => (Number.isFinite(x) ? x.toFixed(1) : '-');
 
+const LOOPER = JSON.parse(readFileSync(path.join(root, 'test/fixtures/v1/v1-waking2-dupe.json'), 'utf8'));
+
 function simulate() {
-  const all = Object.fromEntries(Object.keys(MODES).map(k => [k, newStats()]));
+  const all = Object.fromEntries(ALL_MODES.map(k => [k, newStats()]));
+  const run = (k, g, route, ctx) => {
+    const st = all[k];
+    const r = playRoute(g, route, st, ctx);
+    st.runs++;
+    if (r.done) st.cleared++; else st.stuck++;
+    st.endLevel.push(partyLevel(r.g));
+    return r;
+  };
   for (let seed = 1; seed <= SEEDS; seed++) {
     const starter = STARTER === 'mix' ? STARTERS[seed % 3] : STARTER;
-    for (const k of ['bare', 'equip', 'grind1'].filter(m => ONLY.includes(m))) {
-      const st = all[k];
-      const r = playRun(newGame({ name: 'Sim', starter, seed }), MODES[k], st);
-      st.runs++; if (r.done) st.cleared++;
-      st.endLevel.push(r.g.party.roster.warden.level);
+    const ctx0 = () => ({ rng: createRng(`sim:${seed}`), rabble: 1, backdrop: 'hearth-road' });
+    const need = ONLY.filter(m => m !== 'looper-w2');
+    let base = null;
+    if (need.length) {
+      const ctx = ctx0();
+      const r = run('m2', newGame({ name: 'Sim', starter, seed }), GAUNTLET, ctx);
+      if (r.done) base = { g: r.g, ctx };
     }
-    let g = newGame({ name: 'Sim', starter, seed });
-    for (const k of ['grind', 'wake1', 'wake2']) {
-      if (!ONLY.includes(k) && !ONLY.some(m => ['wake1', 'wake2'].includes(m) && m > k)) break;
-      const st = all[k];
-      const r = playRun(g, MODES[k], st);
-      st.runs++; if (r.done) st.cleared++;
-      st.endLevel.push(r.g.party.roster.warden.level);
-      if (!r.done) break;
-      g = r.g;
+    if (base) {
+      const fork = () => ({ g: base.g, ctx: { ...base.ctx, rng: createRng(`sim:${seed}:fork`) } });
+      if (ONLY.includes('direct')) { const f = fork(); run('direct', f.g, AFTER_BRAND, f.ctx); }
+      if (ONLY.includes('leads2')) { const f = fork(); run('leads2', f.g, [...LEAD_ROUTES.mosswatch, ...LEAD_ROUTES.bell, 'thornhollow', ...AFTER_BRAND], f.ctx); }
+      if (ONLY.includes('leads-all')) {
+        const f = fork();
+        const leads = [...LEAD_ROUTES.mosswatch, ...LEAD_ROUTES.mire, ...LEAD_ROUTES.bell, ...LEAD_ROUTES.grove];
+        const r = run('leads-all', f.g, [...leads, 'eldergrove-hearth', 'tamsin-duel', ...LEAD_ROUTES.roots, 'hr1-grubs', 'hr1-sapwight', 'last-green-coal', 'rotwarden-heart'], f.ctx);
+        void r;
+      }
+      if (ONLY.includes('first-lead')) {
+        for (const lead of Object.keys(LEAD_LAIRS)) { const f = fork(); run('first-lead', f.g, LEAD_ROUTES[lead], f.ctx); }
+      }
+    }
+    if (ONLY.includes('looper-w2')) {
+      const g = migrate(LOOPER);
+      run('looper-w2', { ...g, seed: g.seed + seed, rngState: (g.rngState + seed * 7919) | 0 }, AFTER_BRAND, { rng: createRng(`sim:${seed}:looper`), rabble: 12, backdrop: 'verdant-wood' });
     }
   }
   return all;
@@ -180,22 +215,32 @@ function table(rows, head) {
   return [line(head), w.map(n => '-'.repeat(n)).join('  '), ...rows.map(line)].join('\n');
 }
 
+const LABELS = {
+  m2: 'm2: Waking 0, the M2 road, equips drops (a wipe grinds a level)',
+  direct: 'direct: the critical path after the Brand (Waking 1)',
+  leads2: 'leads2: Mosswatch and Bell leads (Forewarned), then the critical path',
+  'leads-all': 'leads-all: every lead, then the critical path',
+  'looper-w2': 'looper-w2: the migrated Waking-2 M2 save down the critical path',
+  'first-lead': 'first-lead: each lead taken first at Waking 1',
+};
+
 function report(all) {
   const out = [];
-  out.push(`Aethermoor balance sim: ${SEEDS} seeds, starter ${STARTER}`);
-  for (const [k, st] of Object.entries(all)) {
+  out.push(`Aethermoor balance sim (M3): ${SEEDS} seeds, starter ${STARTER}`);
+  for (const k of ALL_MODES) {
     if (!ONLY.includes(k)) continue;
-    out.push('', `## ${MODES[k].label}`, '');
+    const st = all[k];
+    out.push('', `### ${LABELS[k]}`, '');
     const rows = Object.entries(st.nodes).filter(([, n]) => n.first).map(([id, n]) => [
       id, ENCOUNTERS[id].spawns.map(s => s.family).join('+'), f1(avg(n.level)), pct(n.firstWins, n.first), f1(avg(n.rounds)),
-      pct(avg(n.hpLeft), 1), pct(n.first - n.firstWins, n.first), n.wipes, n.claims || '', n.shatters || '', n.stuck || '',
+      pct(avg(n.hpLeft), 1), pct(n.first - n.firstWins - n.yields, n.first), n.yields ? pct(n.yields, n.first) : '', n.wipes, n.claims || '', n.shatters || '', n.stuck || '',
     ]);
-    out.push(table(rows, ['node', 'foes', 'lvl', 'win 1st', 'rounds', 'hp left', 'wipe 1st', 'wipes', 'claimed', 'shattered', 'stuck']));
+    out.push(table(rows, ['node', 'foes', 'lvl', 'win 1st', 'rounds', 'hp left', 'wipe 1st', 'yield', 'wipes', 'claimed', 'shattered', 'stuck']));
     const r = st.rolls;
     const drops = [...RARITY_ORDER, 'shattered'].filter(x => st.drops[x]).map(x => `${x} ${st.drops[x]}`).join(', ');
-    out.push('', `runs cleared ${st.cleared}/${st.runs}; end level ${f1(avg(st.endLevel))}; grind fights/run ${f1(st.grindFights / Math.max(1, st.runs))}`);
+    out.push('', `runs cleared ${st.cleared}/${st.runs} (stuck ${st.stuck}); end party level ${f1(avg(st.endLevel))}; grind fights/run ${f1(st.grindFights / Math.max(1, st.runs))}`);
     out.push(`hero attack rolls: hit ${pct((r.hit || 0), r.n)}, graze ${pct(r.graze || 0, r.n)}, crit ${pct(r.crit || 0, r.n)}, miss ${pct(r.miss || 0, r.n)}, fumble ${pct(r.fumble || 0, r.n)}`);
-    out.push(`random/worn-gear drops by rarity: ${drops}; named relics dropped (regalia, gentle): ${st.relics}`);
+    out.push(`random/worn-gear drops by rarity: ${drops}; named relics dropped: ${st.relics}`);
   }
   return out.join('\n');
 }

@@ -1,10 +1,10 @@
-// Story data tests (M3 spec §3.1, §3.6, §4.4, §6.1 WP3S). Owner: WP3S.
-// SCAFFOLD: ids, conditions, line lengths and quest targets. WP3S adds "no flag is read that is
-// never set" and the rest.
+// Story data tests (M3 spec §3.1, §3.6, §4.4, §6.1 WP3S): ids, conditions, line lengths, quest
+// targets, the beats around fights and rests, and "no flag is read that is never set". Owner: WP3S.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { NPCS } from '../src/data/npcs.js';
-import { DIALOGUE } from '../src/data/dialogue.js';
+import { DIALOGUE, ARRIVALS, AFTER, RESTS, LOOKOUTS } from '../src/data/dialogue.js';
+import { HEARTHS } from '../src/data/world.js';
 import { QUESTS, BOUNTIES } from '../src/data/quests.js';
 import { SHOPS } from '../src/data/shops.js';
 import { LADDER } from '../src/data/ladder.js';
@@ -75,4 +75,41 @@ test('quests, bounties, shops, the Ladder and letters name real things', () => {
 test('every condition in the story data parses', () => {
   for (const [c, at] of conds) assert.deepEqual(condErrors(c), [], at);
   assert.ok(conds.length > 20);
+});
+
+test('arrivals, after-fight lines, rests and lookouts point at real things', () => {
+  for (const [map, d] of Object.entries(ARRIVALS)) { assert.ok(MAPS[map], map); assert.ok(DIALOGUE[d], d); }
+  for (const [enc, list] of Object.entries(AFTER)) {
+    assert.ok(ENCOUNTERS[enc], enc);
+    for (const a of list) { assert.ok(['victory', 'yield'].includes(a.on)); assert.ok(DIALOGUE[a.d], a.d); cond(a.if, `after ${enc}`); }
+  }
+  for (const r of RESTS) { assert.ok(HEARTHS[r.at], r.at); assert.ok(DIALOGUE[r.d], r.d); cond(r.if, `rest ${r.at}`); }
+  for (const [id, l] of Object.entries(LOOKOUTS)) {
+    assert.ok(DIALOGUE[id], `lookout ${id} has a dialogue`);
+    for (const m of l.maps) assert.ok(MAPS[m], m);
+  }
+  // every bellframe and lookout on a map opens its own dialogue
+  for (const m of Object.values(MAPS)) for (const e of m.entities) if (e.kind === 'bellframe' || e.kind === 'lookout') assert.ok(DIALOGUE[e.id], `${m.id}/${e.id}`);
+});
+
+// Flags set outside the story data, by the rules (gauntlet, migrate, world).
+const RULE_FLAGS = ['act1-complete', 'tamsin-yielded', 'starter', 'm2-save', 'intro-done', 'met-dael', 'bounty-briarmaw'];
+
+test('no flag is read that is never set', () => {
+  const read = new Map(), set = new Set(RULE_FLAGS);
+  const walk = (c, at) => {
+    if (!c || typeof c !== 'object') return;
+    if (Array.isArray(c)) { c.forEach(x => walk(x, at)); return; }
+    if (typeof c.flag === 'string') read.set(c.flag, at);
+    if (c.since?.flag) read.set(c.since.flag, at);
+    for (const k of ['all', 'any']) if (c[k]) walk(c[k], at);
+    if (c.not) walk(c.not, at);
+  };
+  for (const [c, at] of conds) walk(c, at);
+  const effects = (list = []) => { for (const e of list) { if (e.set) set.add(e.set); if (e.letter) set.add(`letter:${e.letter}`); } };
+  for (const d of Object.values(DIALOGUE)) { effects(d.do); for (const c of d.choices || []) effects(c.do); }
+  for (const q of Object.values(QUESTS)) if (q.reward.set) set.add(q.reward.set);
+  for (const m of Object.values(MAPS)) for (const e of m.entities) if (e.kind === 'chest' && e.loot?.story) set.add(e.loot.story);
+  const missing = [...read.keys()].filter(f => !set.has(f)).map(f => `${f} (read by ${read.get(f)})`);
+  assert.deepEqual(missing, []);
 });

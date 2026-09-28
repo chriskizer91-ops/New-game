@@ -31,7 +31,7 @@ export const QUESTS = deepFreeze({
       step('Relight the signal fire.', { kindled: 'mosswatch-fire' }, 'mosswatch-2', 'mosswatch-fire'),
       step('Tell Garret.', { flag: 'garret-told' }, 'mosswatch-1', 'garret'),
     ],
-    reward: { relic: 'watchkeepers-kettle' }, // 150 gold instead if the Kettle was already won in the contest
+    reward: {}, // Garret's thanks: the Kettle, or 150 gold if it was already won in the contest (data/dialogue.js)
   },
   'silent-bell': {
     id: 'silent-bell', name: 'The Silent Bell', kind: 'side', giver: 'ivo', start: { flag: 'met-ivo' },
@@ -45,9 +45,9 @@ export const QUESTS = deepFreeze({
   'missing-patrol': {
     id: 'missing-patrol', name: 'The Missing Patrol', kind: 'side', giver: 'dael', start: { flag: 'met-dael' },
     steps: [
-      step('Look for the patrol\'s trail on the Thornway.', { flag: 'saw-boots' }, 'thornway', 'tw-boots'),
+      step('Look for the patrol\'s trail on the Thornway.', { any: [{ flag: 'saw-boots' }, { beaten: 'hollowed-patrol' }] }, 'thornway', 'tw-boots'),
       step('Find them.', { beaten: 'hollowed-patrol' }, 'heartroot-1', 'hollowed-patrol'),
-      step('Report to Dael.', { flag: 'rangers-home' }, 'thornhollow', 'dael'),
+      step('Report to Dael.', { flag: 'reported-patrol' }, 'thornhollow', 'dael'),
     ],
     reward: { gold: 150, set: 'rangers-home' },
   },
