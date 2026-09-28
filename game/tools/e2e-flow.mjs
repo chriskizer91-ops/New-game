@@ -944,7 +944,11 @@ async function runM3(V) {
   await page.goto(pathToFileURL(file).href);
   await page.waitForSelector('.title-menu');
   await page.waitForTimeout(400);
-  check(await page.locator('.title-continue').count() === 1 && await page.locator('.title-carry').count() === 0, `${V.name}: after a reload the title continues this milestone's save`);
+  const seen = await page.evaluate(() => ({
+    cont: document.querySelectorAll('.title-continue').length, carry: document.querySelectorAll('.title-carry').length,
+    live: !!localStorage.getItem('aethermoor.save.m4'), mark: localStorage.getItem('aethermoor.m4.started'), screen: document.getElementById('app').dataset.screen,
+  }));
+  check(seen.cont === 1 && seen.carry === 0, `${V.name}: after a reload the title continues this milestone's save (${JSON.stringify(seen)})`);
 
   const fontOnly = failed.length && failed.every(u => /fonts\.(googleapis|gstatic)\.com/.test(u));
   const real = errors.filter(e => !/favicon/i.test(e) && !(fontOnly && /Failed to load resource/.test(e)));
