@@ -1,5 +1,6 @@
 // The migration checklist (M3 spec §7), automated: paste every real M2 code in test/fixtures/v1/ into
-// the built game through the title's Settings → Load a code, in Chromium at phone (360x740, touch)
+// the built game through the title's Settings → Load a code, plus (M4 spec §8) Milestone 3 codes
+// (AETH2., the M3 game each of three fixtures becomes), in Chromium at phone (360x740, touch)
 // and laptop (1280x800) sizes. For each code: the carry-over card opens, "Walk on" reaches the
 // world, the party walks, Party, Codex, Journal and Atlas open, this milestone's own save is the
 // migrated game, the M2 and Milestone 3 keys are never written, nothing scrolls sideways, and there is
@@ -16,14 +17,25 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
-import { SAVE_VERSION } from '../src/rules/migrate.js';
+import { SAVE_VERSION, toV2 } from '../src/rules/migrate.js';
+import { exportCode } from '../src/core/save.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = Object.fromEntries(process.argv.slice(2).map(a => { const [k, v] = a.replace(/^--/, '').split('='); return [k, v ?? true]; }));
 if (!args['no-build'] && !process.env.AETH_HTML) execSync('npm run build', { cwd: root, stdio: 'inherit' });
 const file = process.env.AETH_HTML ? path.resolve(process.env.AETH_HTML) : path.join(root, 'dist/aethermoor.html');
 const fixtures = path.join(root, 'test/fixtures/v1');
-const codes = readdirSync(fixtures).filter(f => f.endsWith('.code.txt') && (!args.codes || f.includes(String(args.codes))));
+const load = id => JSON.parse(readFileSync(path.join(fixtures, `${id}.json`), 'utf8'));
+// every real M2 code, then Milestone 3 codes: the version 2 game an M3 player would have exported
+const M3_FROM = ['v1-node-thornhollow', 'v1-after-brand', 'v1-grudges'];
+const entries = [
+  ...readdirSync(fixtures).filter(f => f.endsWith('.code.txt')).map(f => {
+    const id = f.replace('.code.txt', '');
+    return { id, code: readFileSync(path.join(fixtures, f), 'utf8').trim(), gold: load(id).gold };
+  }),
+  ...M3_FROM.map(id => { const m3 = toV2(load(id)); return { id: `m3-${id}`, code: exportCode(m3), gold: m3.gold }; }),
+].filter(e => !args.codes || e.id.includes(String(args.codes)));
+for (const e of entries) if (e.id.startsWith('m3-') && !e.code.startsWith('AETH2.')) throw new Error(`${e.id} is not an AETH2 code`);
 
 const require = createRequire(import.meta.url);
 let pw;
@@ -40,10 +52,7 @@ const fails = [];
 const screen = page => page.evaluate(() => document.getElementById('app').dataset.screen);
 for (const V of VIEWPORTS) {
   console.log(`\n== ${V.name} ${V.viewport.width}x${V.viewport.height}`);
-  for (const f of codes) {
-    const id = f.replace('.code.txt', '');
-    const code = readFileSync(path.join(fixtures, f), 'utf8').trim();
-    const v1 = JSON.parse(readFileSync(path.join(fixtures, `${id}.json`), 'utf8'));
+  for (const { id, code, gold } of entries) {
     const context = await browser.newContext({ viewport: V.viewport, deviceScaleFactor: V.deviceScaleFactor, isMobile: !!V.isMobile, hasTouch: !!V.hasTouch });
     await context.addInitScript(() => { window.__aethTest = app => { window.__app = app; }; });
     const page = await context.newPage();
@@ -65,7 +74,7 @@ for (const V of VIEWPORTS) {
       const card = (await page.locator('.carry-card').innerText()).replace(/\s+/g, ' ');
       where = (card.match(/You wake [^.]+/) || [''])[0];
       if (!where) problems.push('the card does not say where you wake');
-      if (!new RegExp(`\\b${v1.gold}\\b`).test(card)) problems.push(`the card does not show ${v1.gold} gold`);
+      if (!new RegExp(`\\b${gold}\\b`).test(card)) problems.push(`the card does not show ${gold} gold`);
       await page.locator('.carry-go').first().click();
       await page.waitForFunction(() => document.getElementById('app').dataset.screen === 'world', null, { timeout: 8000 });
       await page.waitForTimeout(600);
@@ -78,7 +87,7 @@ for (const V of VIEWPORTS) {
       const st = await page.evaluate(() => ({ live: localStorage.getItem('aethermoor.save.m4') }));
       const g = st.live ? JSON.parse(st.live) : null;
       if (!g || g.version !== SAVE_VERSION || g.migratedFrom !== 1) problems.push('the live save is not the migrated game');
-      if (g && g.gold !== v1.gold) problems.push(`gold ${g.gold} is not the code's ${v1.gold}`);
+      if (g && g.gold !== gold) problems.push(`gold ${g.gold} is not the code's ${gold}`);
       // walk: every tile the party stands on counts
       const tiles = new Set();
       const here = async () => { const s = await page.evaluate(() => window.__world?.state()); if (s) tiles.add(`${s.map}:${s.x},${s.y}`); };
@@ -106,5 +115,5 @@ for (const V of VIEWPORTS) {
   }
 }
 await browser.close();
-console.log(fails.length ? `\nE2E-CODES FAILED (${fails.length}):\n - ${fails.join('\n - ')}` : `\nE2E-CODES passed (${codes.length} codes x ${VIEWPORTS.length} sizes)`);
+console.log(fails.length ? `\nE2E-CODES FAILED (${fails.length}):\n - ${fails.join('\n - ')}` : `\nE2E-CODES passed (${entries.length} codes x ${VIEWPORTS.length} sizes)`);
 process.exit(fails.length ? 1 : 0);
