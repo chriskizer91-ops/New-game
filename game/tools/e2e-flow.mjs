@@ -317,8 +317,17 @@ async function run(V) {
 
   await openFromWorld('codex', 'Codex');
   await page.waitForTimeout(400);
-  const codexCount = await page.locator('.pocket').count();
-  check(codexCount === 24 && /of 24 claimed/.test(await page.locator('.codex-sum').innerText()), `${V.name}: the Codex counts out of 24 (${codexCount} pockets)`);
+  // M4: the binder opens on a page; its pockets are that page's relics, and it counts only what the page
+  // needs (the starters you passed over stay in the Keep)
+  const cx = await page.evaluate(() => ({
+    tabs: document.querySelectorAll('.cx-tab').length, page: document.querySelector('.cx-tab[aria-selected="true"]')?.dataset.page,
+    pockets: document.querySelectorAll('.pocket').length, prog: document.querySelector('.cx-prog')?.textContent || '',
+  }));
+  const cxPage = PAGES.find(P => P.id === cx.page);
+  const cxOn = cxPage && cxPage.from != null ? Object.values(RELICS).filter(r => r.codex >= cxPage.from && r.codex <= cxPage.to) : [];
+  const cxNeed = cxOn.filter(r => !r.starter).length + (cxOn.some(r => r.starter) ? 1 : 0);
+  check(cx.tabs === PAGES.length && cxOn.length > 0 && cx.pockets === cxOn.length && new RegExp(`of ${cxNeed} claimed`).test(cx.prog),
+    `${V.name}: the Codex binder opens on Page ${cxPage?.no} with ${cx.pockets} pockets, "${cx.prog}" (needs ${cxNeed})`);
   await shot('codex');
   await noHScroll('codex');
   await click('.pocket.is-claimed');

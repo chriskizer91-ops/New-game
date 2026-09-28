@@ -13,7 +13,7 @@
 // Every user-visible string goes in through textContent (or esc() for the few html fragments).
 // Owner: WP7 (M3); openShop, openForge and showSpoils: P7a (M4).
 
-import { ENCOUNTERS } from '../../data/encounters.js';
+import { ENCOUNTERS, BRANDS } from '../../data/encounters.js';
 import { HEARTHS } from '../../data/world.js';
 import { LOCKS, CROWNWALL } from '../../data/locks.js';
 import { OMENS } from '../../data/omens.js';
@@ -86,7 +86,9 @@ function heldList(game, T) {
   for (const s of T.spawns) {
     const holder = (s.grudge && grudges[s.grudge]?.name) || s.name || familyOf(s).name;
     for (const h of s.held || []) {
-      if (h.relic || h.item) out.push({ held: h, holder, lend: !!h.lend });
+      // a Champion's breakable armour (the Glass Carapace, the Cinder Crown) is worn, not held
+      const slot = h.relic ? RELICS[h.relic]?.slot : h.item?.slot;
+      if (h.relic || h.item) out.push({ held: h, holder, lend: !!h.lend, worn: !!slot && !['weapon', 'offhand'].includes(slot) });
     }
     if (s.wears) out.push({ held: { relic: s.wears }, holder, worn: true });
   }
@@ -177,6 +179,11 @@ export function openPrefight(ctx, { game, encId } = {}) {
       row.append(b);
     }
     P.append(text('p', 'label', 'Glinting on them'), row);
+  }
+  const brand = enc.brand && BRANDS[enc.brand];
+  if (brand) {
+    const held = (game.progress?.brands || []).includes(brand.id);
+    P.append(text('p', 'pf-brand', held ? `${brand.name} is already yours: this is a rematch.` : `Win, and ${brand.name} is yours: the Waking rises.`));
   }
   if (enc.duel) P.append(text('p', 'pf-duel', 'Losing is a yield.'));
   if (enc.text) P.append(text('p', 'pf-text', enc.text));

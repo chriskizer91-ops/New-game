@@ -171,6 +171,7 @@
 .pf-relic-t small { font-size: 12px; color: var(--ash); }
 .w-sheet .label { margin: 12px 0 6px; }
 .pf-duel { margin: 12px 0 0; font-family: var(--f-pixel); font-size: 11px; letter-spacing: .06em; color: var(--marsh); }
+.pf-brand { margin: 12px 0 0; font-family: var(--f-pixel); font-size: 11px; letter-spacing: .06em; line-height: 1.5; color: var(--r-heirloom); }
 .pf-text { margin: 10px 0 0; color: var(--parchment-2); font-size: 15px; }
 
 .lock .lock-text { margin: 0 0 10px; color: var(--parchment-2); }

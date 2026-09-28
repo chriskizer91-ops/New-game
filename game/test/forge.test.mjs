@@ -6,7 +6,7 @@ import { migrate } from '../src/rules/migrate.js';
 import { generateItem, relicItem } from '../src/rules/loot.js';
 import { createRng } from '../src/core/rng.js';
 import { deepFreeze } from '../src/core/freeze.js';
-import { deriveHero, heroStats } from '../src/rules/stats.js';
+import { deriveHero, heroStats, branchPowerId, POWERS } from '../src/rules/stats.js';
 import { equip } from '../src/rules/party.js';
 import * as F from '../src/rules/forge.js';
 import { relicsOn, pageProgress, pagesDone, pageBonus, markPages, relicDeeds } from '../src/rules/codex.js';
@@ -232,6 +232,57 @@ test('awakening: the three deeds first, then Hilda\'s rite; the path follows the
   assert.equal(F.bestDomainOf(scholar), 'influence');
   assert.equal(F.pathOf(scholar), 'b');
   assert.equal(F.awaken(g0, 'nope', 'a').reason, 'Only relics awaken.');
+});
+
+test('the rite: Hearthbrand, ready, on the Warden (the Hand); the Heart says whose path would open it', () => {
+  const g0 = start();
+  const uid = g0.party.roster.warden.gear.weapon;
+  const A = RELICS.hearthbrand.awaken;
+  assert.ok(A?.a?.name && A?.b?.name, 'Hearthbrand has both branches');
+  const ready = { ...g0, gold: 1000, materials: { scrap: 0, silver: 0, embers: 1 },
+    inventory: g0.inventory.map(i => (i.uid === uid ? { ...i, deeds: Object.fromEntries(relicDeeds('hearthbrand').map(d => [d, 2])) } : i)) };
+  const o = F.awakenOptions(deepFreeze(ready), uid);
+  assert.equal(o.ready, true);
+  assert.equal(o.why, null);
+  const [a, b] = ['a', 'b'].map(id => o.branches.find(x => x.id === id));
+  assert.deepEqual([a.enabled, a.name, a.path], [true, A.a.name, 'the Hand']);
+  assert.equal(b.enabled, false);
+  assert.match(b.why, /the Heart \(Bryn, Sister Alondra\)/);
+  assert.equal(F.awaken(ready, uid, 'b').reason, b.why);
+  assert.equal(F.awaken(ready, uid, 'a').reason, 'Needs 2 embers');
+  const before = deriveHero(ready.party.roster.warden, ready.inventory);
+  const r = F.awaken({ ...ready, materials: { embers: 2 } }, uid, 'a');
+  assert.equal(r.ok, true, r.reason);
+  const blade = find(r.game, uid);
+  assert.equal(blade.awakened, 'a');
+  assert.equal(F.stageOf(blade), 'awakened');
+  assert.equal(r.game.codex.hearthbrand.awakened, true);
+  assert.equal(r.game.materials.embers, 0);
+  assert.equal(r.game.gold, 1000 - 150 * Math.ceil(RELICS.hearthbrand.ilvl / 2));
+  const after = deriveHero(r.game.party.roster.warden, r.game.inventory);
+  const S = A.a.stats || {};
+  if (S.hp) assert.equal(after.maxHp, before.maxHp + S.hp);
+  if (S.guard) assert.equal(after.guard, before.guard + S.guard);
+  if (S.speed) assert.equal(after.speed, before.speed + S.speed);
+  if (S.hit) assert.equal(after.weapon.hit, before.weapon.hit + S.hit);
+  if (S.dmg) assert.equal(after.weapon.flat, before.weapon.flat + S.dmg);
+  if (A.a.power) assert.equal(after.powers.find(p => p.uid === uid).power, branchPowerId('hearthbrand', 'a'));
+  assert.equal(F.awakenOptions(r.game, uid).why, 'It is already awake.');
+  // off the Warden, nobody carries it: both paths say to equip it
+  const bag = { ...ready, party: { ...ready.party, roster: { ...ready.party.roster, warden: { ...ready.party.roster.warden, gear: { ...ready.party.roster.warden.gear, weapon: null } } } } };
+  for (const x of F.awakenOptions(bag, uid).branches) assert.match(x.why, /^Equip it on the one who will carry it/);
+});
+
+test('every relic has three deeds and both branches, and an awakened Surge resolves to a real power', () => {
+  for (const r of Object.values(RELICS)) {
+    const deeds = relicDeeds(r.id);
+    assert.equal(deeds.length, 3, `${r.id} deeds`);
+    for (const d of deeds) assert.ok(DEEDS[d], `${r.id}: ${d}`);
+    for (const k of ['a', 'b']) {
+      assert.ok(r.awaken?.[k]?.name && r.awaken[k].text, `${r.id} branch ${k}`);
+      if (r.awaken[k].power) assert.ok(POWERS[branchPowerId(r.id, k)], `${r.id} branch ${k}: its power resolves`);
+    }
+  }
 });
 
 // ---- the Codex binder (spec §4.4) ---------------------------------------------------------------------
