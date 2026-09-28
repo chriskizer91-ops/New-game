@@ -3,7 +3,7 @@
 This is a browser JRPG built into **one self-contained HTML file** that plays on phone and laptop. The code is in `game/`.
 - Current status and next steps: `HANDOFF.md`.
 - Technical contract: `game/ARCHITECTURE.md`.
-- Milestone 3 contract: `game/docs/M3-SPEC.md` (its Part A overrides Part B).
+- Milestone 3 contract: `game/docs/M3-SPEC.md` (its Part A overrides Part B); what shipped: `game/docs/M3-STATUS.md`.
 - Design intent: `docs/DESIGN-BRIEF.md`.
 
 ## Commands (run in `game/`)
@@ -34,6 +34,6 @@ This is a browser JRPG built into **one self-contained HTML file** that plays on
   - Never republish the player's M2 page (https://claude.ai/artifact/9i9bPrdG6ZY22xWnXgGUQa); their saves live there.
   - Deliver new builds as a downloadable HTML file, or as a new, separate page.
 - **Git:**
-  - Work on branch `claude/dnd-game-prototype-bsv3xb`, and commit and push when a step is done.
+  - Work on branch `claude/cool-ptolemy-uc93gg` (it carries the history of `claude/dnd-game-prototype-bsv3xb`), unless the session names another; commit and push when a step is done.
   - Subagents never run git.
   - No AI model names or identifiers in code, comments, docs or commit messages.
