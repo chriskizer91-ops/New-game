@@ -140,3 +140,50 @@ test('data tables are frozen', () => {
   assert.ok(Object.isFrozen(FOES.briarmaw.moves.maul));
   assert.throws(() => { 'use strict'; RELICS.hearthbrand.name = 'x'; });
 });
+
+// ---- M3 data (spec §3.2-§3.5, §6.1 WP4) ----------------------------------------------------------------
+
+test('M3 encounters: every one has a region, a valid backdrop, real families and real relics', async () => {
+  const { BRANDS, PATROLS } = await import('../src/data/encounters.js');
+  const { familyOf } = await import('../src/rules/foe.js');
+  for (const [id, n] of Object.entries(ENCOUNTERS)) {
+    assert.ok(BACKDROPS.includes(n.backdrop), `${id} backdrop`);
+    if (!GAUNTLET.includes(id)) assert.equal(n.region, 'verdant', `${id} region`);
+    for (const s of n.spawns || []) {
+      if (s.variant && s.variant !== '$rival') assert.ok(FOES[s.family].variants?.[s.variant], `${id}: ${s.family}/${s.variant}`);
+      for (const r of [s.relic, s.wears]) if (r && r !== '$rival') assert.ok(RELICS[r], `${id}: relic ${r}`);
+      if (s.variant !== '$rival') assert.ok(familyOf(s).tier, `${id}: tier`);
+    }
+    if (n.brand) assert.ok(BRANDS[n.brand], `${id} brand`);
+  }
+  for (const b of Object.values(BRANDS)) assert.equal(b.region, 'verdant', `${b.id} has a region`);
+  for (const [k, sets] of Object.entries(PATROLS)) for (const set of sets) for (const s of set) assert.equal(FOES[s.family].tier, 'rabble', `${k}: patrols are rabble`);
+});
+
+test('M3 foes: the Rotwarden has three phases whose Arts need its breakable relics; Tamsin has a variant per starter', () => {
+  const rw = FOES.rotwarden;
+  assert.equal(rw.phases.length, 3);
+  assert.deepEqual(rw.relics, ['ichor-mask', 'first-seed']);
+  for (const ph of rw.phases) {
+    const faces = new Set();
+    for (const [lo, hi, move] of ph.table) { assert.ok(rw.moves[move], move); for (let f = lo; f <= hi; f++) faces.add(f); }
+    assert.equal(faces.size, 20);
+  }
+  for (const m of Object.values(rw.moves)) if (m.requires) assert.ok(rw.relics.includes(m.requires) && rw.moves[m.fallback], m.name);
+  for (const st of Object.keys(STARTERS)) {
+    const v = FOES.tamsin.variants[st];
+    assert.ok(v, `Tamsin carries ${st}`);
+    assert.ok(Object.values(v.moves).some(m => m.requires === st), `${st}: her Art needs the lent relic`);
+    assert.ok(STARTERS[STARTERS[st].rival], 'rivals are starters');
+  }
+  assert.equal(FOES.tamsin.tier, 'relic-bearer');
+  for (const id of ['gloamwing', 'mirelord']) assert.equal(FOES[id].tier, 'relic-bearer');
+});
+
+test('shops sell consumables with prices; the temper table has three steps', async () => {
+  const { TUNING } = await import('../src/data/tuning.js');
+  for (const id of ['hearth-tonic', 'bitterroot', 'frost-draught', 'ember-salts']) assert.ok(CONSUMABLES[id].price > 0, id);
+  assert.equal(TUNING.temper.max, 3);
+  assert.equal(TUNING.temper.mult.length, 3);
+  assert.equal(TUNING.waking.rabbleLevels, 2);
+});

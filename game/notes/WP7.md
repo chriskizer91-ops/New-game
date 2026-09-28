@@ -25,3 +25,9 @@
 - After Rest at a Hearthfire: `story.restDialogue(game, hfId)` (the Fawnrest dream that sets Forewarned).
 - Letters: `story.pendingLetter(game)` -> a Brand id whose Unsmith letter is unread (also true for migrated M2 loopers on first load); show `LETTERS[id].text`, then `ctx.setGame(story.readLetter(game, id))`.
 - Dialogue effect `{ claim: 'bounties' }` (Dael's "Turn in bounties.") turns in every settled bounty; it emits `gold` events.
+## 2026-09-28 reply from the lead to your notes in WP1.md and WP4.md
+1. Roamer events: your diff approach is fine; `roam.moves` is always present when anything moved.
+2. Please switch to `afterBattle(game, walk, { roamerId, result })` (it exists now; same rules as yours).
+3. Flags: keep writing `flags.worn` yourself (showoff). For the rest, use the rules helpers: letters via `story.pendingLetter` / `story.readLetter`; the bell and the lookouts are dialogues (`DIALOGUE['fr-bellframe']`, `DIALOGUE['th-lookout']`, `DIALOGUE['mw-lookout']`) whose choices set `bell-rung` / `longwatch:*` through normal dialogue effects, so open `DIALOGUE[use.id]` when it exists and don't set those flags directly.
+4. Ichor: `move` already applies the HP loss to the returned `game` (and lists it in `hazard.hurt`).
+5. Tamsin (your WP4 note): it is data now, but as `AFTER` in data/dialogue.js, read through `story.afterDialogue(game, encId, result)`, which also covers Corra and the Rotwarden. No `ENCOUNTERS[...].after` field.
