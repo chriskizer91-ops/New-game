@@ -12,6 +12,13 @@
 // id; stand:[x,y,face]; cold?), npc, gate, lock, chest, sign, board, table, pedestal, lookout,
 // bellframe, prop, trigger, light. Entity ids are unique within a map; lock, gate, chest and
 // trigger ids are unique across all maps (flags.unlocked / opened / seen are keyed by them).
+// Map rules that test/maps.test.mjs enforces (so new maps, e.g. M4's, keep the world playable):
+//   - a Hearthfire touches its stand, so `interact` from the stand reaches it;
+//   - every CRITICAL_PATH target is reachable with only the starter relic at the worst-case levels,
+//     and a block or lair the Brand re-arms never closes the only way on;
+//   - every hard lock and story gate is the only way through to what it guards;
+//   - pack homes are roamable and inside a roam rect; roam rects stay roomy.
+// tools/map-draft.mjs draws any map as ASCII or PNG (--png, --art for the real tiles) with a lint.
 // Owner: WP3 (index, keep, keep-hall, hearth-road, thornhollow, thornway, briarmaw-den, mossfall);
 // WP3B (mosswatch-1, mosswatch-2, hindwood, fawnrest, eldergrove, heartroot-1, heartroot-2).
 

@@ -1,5 +1,5 @@
 // The world above the maps (M3 spec §2, §3.3, §4.2): regions, Brands, patrol zones, Hearthfires,
-// the start position, the 17 places on the illustrated map, the critical path and the three leads.
+// the start position, the 17 places on the illustrated map, the critical path and the optional leads.
 // Coordinates: tiles for maps, viewBox 1200x800 for the illustrated map (`lore`).
 // Owner: WP3. Imports nothing from rules/.
 

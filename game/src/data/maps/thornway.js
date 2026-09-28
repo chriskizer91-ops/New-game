@@ -1,6 +1,13 @@
-// The Thornway (M3 spec §2.1, §2.3). The path winds north from the Thornhollow gate; the Tally camp to the west, Old Snag's wallow to the east, the den door in the rock face at the top right.
-// SCAFFOLD DRAFT: exits, anchors, encounters, Hearthfires and the other entities sit at their spec
-// coordinates; the tiles are a simple walkable draft (no pockets or barriers enforce the locks yet).
+// The Thornway (M3 spec §2.1, §2.3). The forest path winds north from Thornhollow's north gate. Past
+// the Tallyman camp (tents, crates and a lamp in a western clearing) and Old Snag's wallow (black mud
+// and pools to the east), a band of thorn thicket crosses the whole wood: the thornwall is the only
+// way through. North of it the path squeezes through the Bramble-Deep, where a bandit in Thornwatch
+// boots waits in the thorns beside the path (not across it, so the Brand's re-armed Echo never shuts
+// the road). Clearings hold the boulder-sealed chest (W) and the bramble cache (by the thorn band).
+// At the top the path forks: north to the crownwall and Eldergrove, east to the Last Coals and the den
+// door in the rock face.
+// Layout notes: the den-mouth hearthfire sits at (22,9), next to its stand (22,10) (spec (22,8), moved
+// 1). Old Snag's lair sits at (22,34) (spec (24,34), moved 2) so the wallow reads from the path.
 // Format: src/data/maps/index.js. Owner: WP3.
 import { deepFreeze } from '../../core/freeze.js';
 
@@ -10,71 +17,71 @@ export default deepFreeze({
   lore: [[305, 250, 13, 55], [262, 205, 14, 0]],
   w: 30, h: 56,
   rows: [
-    'TTTTTTTTTTTTTT==TTTTTTTTTTTTTT', // 0
-    'T.............==.......ooooooT', // 1
-    'T.............==.......ooooooT', // 2
-    'T.............==.......ooooooT', // 3
-    'T.............==.......ooo+ooT', // 4
-    'T.............==.............T', // 5
-    'T.............==.............T', // 6
-    'T.............==.............T', // 7
-    'T.............==.............T', // 8
-    'T.............==.............T', // 9
-    'T.............==.............T', // 10
-    'T.............==.............T', // 11
-    'T.............==.............T', // 12
-    'T.............==.............T', // 13
-    'T.............==.............T', // 14
-    'T.............==.............T', // 15
-    'T.............==.............T', // 16
-    'T.............==.............T', // 17
-    'T.............==.............T', // 18
-    'T.............==.............T', // 19
-    'T.............==.............T', // 20
-    'T.............==.............T', // 21
-    'T.............==.............T', // 22
-    'T.............==.............T', // 23
-    'T.............==.............T', // 24
-    'T.............==.............T', // 25
-    'T.............==.............T', // 26
-    'T............==..............T', // 27
-    'T............==..............T', // 28
-    'T............==..............T', // 29
-    'T............==.....mmmmmmmmmT', // 30
-    'T............==.....mmmmmmmmmT', // 31
-    'T............==.....mmmmmmmmmT', // 32
-    'T............==.....mmmmmmmmmT', // 33
-    'T............==.....mmmmmmmmmT', // 34
-    'T............==.....mmmmmmmmmT', // 35
-    'T............==.....mmmmmmmmmT', // 36
-    'T............==.....mmmmmmmmmT', // 37
-    'T............==.....mmmmmmmmmT', // 38
-    'T............==..............T', // 39
-    'T............==..............T', // 40
-    'T............==..............T', // 41
-    'T............==..............T', // 42
-    'T............==..............T', // 43
-    'T............==..............T', // 44
-    'T............==..............T', // 45
-    'T............==..............T', // 46
-    'T............==..............T', // 47
-    'T............==..............T', // 48
-    'T............==..............T', // 49
-    'T............==..............T', // 50
-    'T............==..............T', // 51
-    'T............==..............T', // 52
-    'T............==..............T', // 53
-    'T............==..............T', // 54
+    'TTTTTTTTTTTTTT==TTT^^^^^^^^^^^', //  0
+    'TTTTTTTTTTTTTt==tTT^^^^^^^^^^^', //  1
+    'TTTTTTTTTTTTT.==.tT^^^^^^^^^^^', //  2
+    'TTTTTTTTTTTT.,===.To^^^^^^^^^o', //  3
+    'TTTTTTTTTTT...===.too^^^^^+^^o', //  4
+    'TTTTTT.."..TT.===.TT.,....=.TT', //  5
+    'TTTTT.,.......===.t..,....=..T', //  6
+    'TTTT..."......===..".,....==.T', //  7
+    'TTTTT.,.....T.===........=.,TT', //  8
+    'TTTTTTT....TT.===.....:..=..TT', //  9
+    'TTTTTTTTT..TT.========:===..TT', // 10
+    'TTT...TTTTTTT.===.t........".T', // 11
+    'TT.....TTTTTT.===.TTttTTTTTTTT', // 12
+    'T...,.........===.TTTTTTTTTTTT', // 13
+    'T.........,...===.TTTTTTTTTTTT', // 14
+    'T.......TTTTT.===.TTT..,..TTTT', // 15
+    'TT.,...TTTTTT.===..."....TTTTT', // 16
+    'TTT...TTTTTTT.===....,...TTTTT', // 17
+    'TTTTTTTTTTtttt===.......TTTTTT', // 18
+    'TTTTTTTT...ttttt===tt..TTTTTTT', // 19
+    'TTTTTTT"...tttt.===tt.TTTTTTTT', // 20
+    'TTTTTTT.,.ttttt.===ttTTTTTTTTT', // 21
+    'TTTTTTT....tttt.===tTTTTTTTTTT', // 22
+    'TTTTTTT.....t.===.TTTTTTTTTTTT', // 23
+    'TTTTTTT....,..===.TTTTTTTTTTTT', // 24
+    'TTTTtttttttt.===.tttttttttTTTT', // 25
+    'TTTTtttttttt=====tttttttttTTTT', // 26
+    'TTTTtttttttt.===.tttttttttTTTT', // 27
+    'TTTTTTTTTTTT.===.TTTTTTTTTt.tT', // 28
+    'TTTTTTTTTTTT.===..TTTTTTTt..tT', // 29
+    'TTTTTTTTTTT.,..===.T."mmm~~..T', // 30
+    'TTTTTTTTTT.....===..."mmmmm~..', // 31
+    'TTTTTTTTT..,...===..mmmmmmm".T', // 32
+    'TTTTTTT..".....===..mmmmmmmm.T', // 33
+    'TTTTTTT..,.....===..mmmmmmmm.T', // 34
+    'TTTTTTT.......t===..mmmmmmm".T', // 35
+    'TTTTTTTT"......===...mmmm~m..T', // 36
+    'TTTTTTTTTT..T..===..".~~mmm..T', // 37
+    'TTTTTTTTTTTT.===...T.."....TTT', // 38
+    'TTTTTTTTTTTT.===.TTTT.,...TTTT', // 39
+    'TTHH...HHTT.===..TTTTTTTTTTTTT', // 40
+    'TTHH.,.HHT..===..TTTT..,.TTTTT', // 41
+    'T..........===.TTT...."..TTTTT', // 42
+    'T.....*.....===.TT..,....TTTTT', // 43
+    'To.........===.....".,...TTTTT', // 44
+    'T.o........===......,...TTTTTT', // 45
+    'T..........===.TTT.."..TTTTTTT', // 46
+    'To.......T..===.TTTTTTTTTTTTTT', // 47
+    'TT..,....TT.===.TTTTTTTTTTTTTT', // 48
+    'TTTTTTTTTTTT===.TTTTTTTTTTTTTT', // 49
+    'TTTTTTTTTTTT.===.TTTTTTTTTTTTT', // 50
+    'TTTTTTTTTTT.,===.",.TTTTTTTTTT', // 51
+    'TTTTTTTTTTt..===...,.TTTTTTTTT', // 52
+    'TTTTTTTTTTT".===....TTTTTTTTTT', // 53
+    'TTTTTTTTTTTT.===.TTTTTTTTTTTTT', // 54
     'TTTTTTTTTTTTT==TTTTTTTTTTTTTTT', // 55
   ],
   entities: [
     { id: 'tally-camp', kind: 'encounter', enc: 'tally-camp', mode: 'block', at: [5, 44], face: 'e' },
     { id: 'tw-strongbox', kind: 'chest', at: [2, 42], loot: { gold: 80, items: [{ rarity: 'runed' }] }, lock: 'tally-seal' },
-    { id: 'snag-wallow', kind: 'encounter', enc: 'snag-wallow', mode: 'lair', at: [24, 34], face: 'w' },
+    { id: 'snag-wallow', kind: 'encounter', enc: 'snag-wallow', mode: 'lair', at: [22, 34], area: [21, 33, 23, 34], face: 'w' },
     { id: 'tw-thornwall', kind: 'lock', lock: 'thornwall', area: [12, 26, 16, 26] },
     { id: 'bramble-deep', kind: 'encounter', enc: 'bramble-deep', mode: 'block', at: [15, 20], face: 's' },
     { id: 'tw-boots', kind: 'trigger', area: [14, 19, 18, 22], on: 'step', once: true, dialogue: 'boots-clue' },
-    { id: 'den-mouth', kind: 'hearthfire', at: [22, 8], stand: [22, 10, 'n'] },
+    { id: 'den-mouth', kind: 'hearthfire', at: [22, 9], stand: [22, 10, 'n'] },
     { id: 'tw-crown-n', kind: 'gate', area: [14, 1, 15, 1], look: 'crownwall', open: { brand: 'brand-of-briars' }, text: 'Briarmaw\'s crown-growth walls the road. A green heart-knot pulses in it.' },
     { id: 'tw-thorn-chest', kind: 'chest', at: [27, 28], loot: { items: [{ rarity: 'tempered', slot: 'body' }] }, lock: 'thornwall' },
     { id: 'tw-boulder-chest', kind: 'chest', at: [3, 14], loot: { items: [{ rarity: 'runed', slot: 'ring' }] }, lock: 'boulder' },

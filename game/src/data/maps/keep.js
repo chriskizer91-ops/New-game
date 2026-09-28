@@ -1,6 +1,11 @@
-// Hearthstone Keep (M3 spec §2.1, §2.3). Walls ring a flagstone yard; the hall facade runs along the top; the north gate opens onto the causeway (A2).
-// SCAFFOLD DRAFT: exits, anchors, encounters, Hearthfires and the other entities sit at their spec
-// coordinates; the tiles are a simple walkable draft (no pockets or barriers enforce the locks yet).
+// Hearthstone Keep (M3 spec §2.1, §2.3, A2). The Keep stands on an island in the central lake: a
+// curtain wall rings the flagstone yard, with the lake lapping at it on every side. The north gate
+// (torches on both towers) opens onto the causeway to the Hearth Road; the Great Hall's facade runs
+// along the top, so you walk round it to reach the gate. Three posterns open onto piers and causeway
+// ends on the island's edge: the sealed exits east (Ironspire), south-east (Sunscorch) and south-west
+// (Gloomfen), each with a gate guard. The yard: the old well (NW), the barred armory (NE), the refugee
+// tents along the west wall with the Keep's forge among them (Hilda works it after the second Brand),
+// the courtyard tree and its flower bed, Marta's stall (E), and the barracks (SE).
 // Format: src/data/maps/index.js. Owner: WP3.
 import { deepFreeze } from '../../core/freeze.js';
 
@@ -10,42 +15,42 @@ export default deepFreeze({
   lore: [[540, 390, 15, 12]],
   w: 30, h: 24,
   rows: [
-    '##############:::#############', // 0
-    '#::::::::::::::::::::::::::::#', // 1
-    '#::::::::::::::::::::::::::::#', // 2
-    '#::::::::HHHHHHHHHHHHH:::::::#', // 3
-    '#::::::::######+######:::::::#', // 4
-    '#::::::::::::::::::::::::::::#', // 5
-    '#::::::::::::::::::::::::::::#', // 6
-    '#::::::::::::::::::::::::::::#', // 7
-    '#::::::::::::::::::::::::::::#', // 8
-    '#::::::::::::::::::::::::::::#', // 9
-    '#::::::::::::::::::::::::::::#', // 10
-    '#:::::::::::::::::::::::::::::', // 11
-    '#:::::::::::::::::::::::::::::', // 12
-    '#::::::::::::::::::::::::::::#', // 13
-    '#::::::::::::::::::::::::::::#', // 14
-    '#::::::::::::::::::::::::::::#', // 15
-    '#::::::::::::::::::::::::::::#', // 16
-    '#::::::::::::::::::::::::::::#', // 17
-    '#::::::::::::::::::::::::::::#', // 18
-    '#::::::::::::::::::::::::::::#', // 19
-    '#::::::::::::::::::::::::::::#', // 20
-    '#::::::::::::::::::::::::::::#', // 21
-    '#::::::::::::::::::::::::::::#', // 22
-    '######::##############::######', // 23
+    '~~~~~~~~~~~~oobbboo~~~~~~~~~~~', //  0
+    '~############*:::*###########~', //  1
+    '~#::::::::::::::::::::::::::#~', //  2
+    '~#:ooo::HHHHHHHHHHHHHHH::::T#~', //  3
+    '~#:o~o::HHH###*+*###HHH::####~', //  4
+    '~#:ooo::HHH:::::::::HHH::#__#~', //  5
+    '~#.:::::#*#:::::::::#*#::+__#~', //  6
+    '~#..:::::::::::::::::::::#__#~', //  7
+    '~#T.:::::::::::::::::::::####~', //  8
+    '~#.......:::::::::::::::::::#~', //  9
+    '~#HH..,..:::::,,,:::::::::::#~', // 10
+    '~#HH.....::::,,T,,::::::::::+b', // 11
+    '~#HH.....:::::,,,::HHH::::::+b', // 12
+    '~#HH.,...::::::::::###::::::#~', // 13
+    '~#......#*#:::::::::::::::::#~', // 14
+    '~#.......:::::::::::::::HHHH#~', // 15
+    '~#HHH....:::::::::::::::HHHH#~', // 16
+    '~#HHH.,..:::::::::::::::#####~', // 17
+    '~#.......:::HHHHHHH::::::...#~', // 18
+    '~#..,....:::HHHHHHH:::::.,..#~', // 19
+    '~#T......:::#######:::::..,T#~', // 20
+    '~#####++##############++#####~', // 21
+    '~oo~~~bb~~~~~~~~~~~~~~bb~~~oo~', // 22
+    '~~~~~~bb~~~~~~~~~~~~~~bb~~~~~~', // 23
   ],
   entities: [
     { id: 'keep-n-gate', kind: 'gate', area: [14, 1, 16, 1], look: 'gate', open: { done: 'keep-vault' }, text: 'Guard: "Not with the Seal still missing, Warden. Captain\'s orders."' },
     { id: 'marta', kind: 'npc', npc: 'marta', at: [20, 14], face: 's' },
-    { id: 'refugee-1', kind: 'npc', npc: 'refugee', at: [8, 12], face: 's' },
-    { id: 'refugee-2', kind: 'npc', npc: 'refugee', at: [11, 17], face: 's' },
+    { id: 'refugee-1', kind: 'npc', npc: 'refugee', at: [8, 12], face: 'e' },
+    { id: 'refugee-2', kind: 'npc', npc: 'refugee', at: [11, 17], face: 'w' },
     { id: 'hilda', kind: 'npc', npc: 'hilda', at: [9, 15], face: 's', if: { brands: 2 } },
-    { id: 'gate-guard-e', kind: 'npc', npc: 'gate-guard-e', at: [28, 10], face: 'w' },
-    { id: 'gate-guard-se', kind: 'npc', npc: 'gate-guard-se', at: [21, 22], face: 's' },
-    { id: 'gate-guard-sw', kind: 'npc', npc: 'gate-guard-sw', at: [8, 22], face: 's' },
+    { id: 'gate-guard-e', kind: 'npc', npc: 'gate-guard-e', at: [27, 10], face: 's' },
+    { id: 'gate-guard-se', kind: 'npc', npc: 'gate-guard-se', at: [21, 20], face: 's' },
+    { id: 'gate-guard-sw', kind: 'npc', npc: 'gate-guard-sw', at: [8, 20], face: 's' },
     { id: 'keep-armory-bar', kind: 'lock', lock: 'barred-gate', at: [25, 6] },
-    { id: 'keep-armory', kind: 'chest', at: [26, 6], loot: { items: [{ rarity: 'tempered', slot: 'head' }] } },
+    { id: 'keep-armory', kind: 'chest', at: [27, 6], loot: { items: [{ rarity: 'tempered', slot: 'head' }] } },
   ],
   exits: [
     { id: 'keep-hall-door', area: [15, 4, 15, 4], to: 'keep-hall', anchor: 'from-court' },

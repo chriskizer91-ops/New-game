@@ -1,6 +1,10 @@
-// Thornhollow (M3 spec §2.1, §2.3). A palisade ring around a square with the hearth in the middle.
-// SCAFFOLD DRAFT: exits, anchors, encounters, Hearthfires and the other entities sit at their spec
-// coordinates; the tiles are a simple walkable draft (no pockets or barriers enforce the locks yet).
+// Thornhollow (M3 spec §2.1, §2.3). The rangers' outpost inside a ring of enchanted thorn palisade,
+// with four gates: south to the Hearth Road, north to the Thornway, west to Mossfall and north-east
+// to the Hindwood (the last two behind Briarmaw's crownwalls until the Brand). A flagstone square holds
+// the hearth; round it: the Thornwatch lodge with Dael, his bounty board and the corner lookout (NW),
+// Nell's store (NE), Hilda's forge (SE), houses (W, SW), two market stalls on the south street, and the
+// barred stockade with the Thornwatch cache in the south-east corner.
+// Layout notes: the hearthfire sits at (12,12), next to its stand (12,13) (spec (12,11), moved 1).
 // Format: src/data/maps/index.js. Owner: WP3.
 import { deepFreeze } from '../../core/freeze.js';
 
@@ -10,31 +14,31 @@ export default deepFreeze({
   lore: [[310, 260, 12, 11]],
   w: 24, h: 22,
   rows: [
-    '|||||||||||==|||||||||||', // 0
-    '|..........==..........|', // 1
-    '|..........==..........|', // 2
-    '|..........=============', // 3
-    '|..........=============', // 4
-    '|..........==..........|', // 5
-    '|..........==..........|', // 6
-    '|..........==..........|', // 7
-    '|..........==..........|', // 8
-    '|..........==..........|', // 9
-    '=============..........|', // 10
-    '============...........|', // 11
-    '|..........==..........|', // 12
-    '|..........==..........|', // 13
-    '|..........==..........|', // 14
-    '|..........==..........|', // 15
-    '|..........==..........|', // 16
-    '|..........==..........|', // 17
-    '|..........==..........|', // 18
-    '|..........==..........|', // 19
-    '|..........==..........|', // 20
+    '|||||||||||==|||||||||||', //  0
+    '|:::HHHHHH.==.T..,..T..|', //  1
+    '|:::HHHHHH.==.,..".....|', //  2
+    '|:::HHHHHH.=============', //  3
+    '|..:######.=============', //  4
+    '|T.........==.HHHHH....|', //  5
+    '|..,.......==.HHHHH.T..|', //  6
+    '|.....,....==.#####..."|', //  7
+    '|T.........==.........T|', //  8
+    '|..T.....t:::::t..,,,..|', //  9
+    '=========:::::::..,",..|', // 10
+    '=========:::::::.......|', // 11
+    '|.HHHHH..:::::::.HHHHH.|', // 12
+    '|.HHHHH..:::::::.HHHHH.|', // 13
+    '|.#####..:::::::.##*##.|', // 14
+    '|....,...t:::::t.......|', // 15
+    '|..T....HH.==.HH.......|', // 16
+    '|.HHHHH....==.......||||', // 17
+    '|.HHHHH....==.,.,...:..|', // 18
+    '|.#####....==..,,...|..|', // 19
+    '|..,...,...==....T..|..|', // 20
     '|||||||||||==|||||||||||', // 21
   ],
   entities: [
-    { id: 'thornhollow', kind: 'hearthfire', at: [12, 11], stand: [12, 13, 'n'] },
+    { id: 'thornhollow', kind: 'hearthfire', at: [12, 12], stand: [12, 13, 'n'] },
     { id: 'dael', kind: 'npc', npc: 'dael', at: [7, 6], face: 's' },
     { id: 'nell', kind: 'npc', npc: 'nell', at: [16, 8], face: 's' },
     { id: 'hilda', kind: 'npc', npc: 'hilda', at: [18, 15], face: 's', if: { not: { brand: 'brand-of-briars' } } },
