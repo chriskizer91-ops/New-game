@@ -19,8 +19,9 @@ import path from 'node:path';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = Object.fromEntries(process.argv.slice(2).map(a => { const [k, v] = a.replace(/^--/, '').split('='); return [k, v ?? true]; }));
-if (!args['no-build']) execSync('npm run build', { cwd: root, stdio: 'inherit' });
-const file = path.join(root, 'dist/aethermoor.html');
+// AETH_HTML=<path> tests a private build (node tools/build.mjs --out <dir>) and skips the shared one.
+if (!args['no-build'] && !process.env.AETH_HTML) execSync('npm run build', { cwd: root, stdio: 'inherit' });
+const file = process.env.AETH_HTML ? path.resolve(process.env.AETH_HTML) : path.join(root, 'dist/aethermoor.html');
 const outDir = args.out ? path.resolve(args.out) : path.join(root, 'tools/shots/e2e');
 rmSync(outDir, { recursive: true, force: true });
 mkdirSync(outDir, { recursive: true });

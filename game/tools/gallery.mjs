@@ -4,6 +4,7 @@
 //   node tools/gallery.mjs                  # build + screenshots
 //   node tools/gallery.mjs --only=foes,icons  # only these sections (faster iteration)
 //   node tools/gallery.mjs --no-shots       # build the HTML only
+//   node tools/gallery.mjs --out=/tmp/x     # write the page and screenshots somewhere private
 //
 // Playwright is not a project dependency: it is loaded from the global npm root, and the
 // preinstalled Chromium is used when present.
@@ -16,8 +17,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const outDir = path.join(root, 'tools/shots');
 const args = Object.fromEntries(process.argv.slice(2).map(a => { const [k, v] = a.replace(/^--/, '').split('='); return [k, v ?? true]; }));
+const outDir = args.out ? path.resolve(String(args.out)) : path.join(root, 'tools/shots');
 
 const res = await build({
   entryPoints: [path.join(root, 'tools/gallery-entry.js')],

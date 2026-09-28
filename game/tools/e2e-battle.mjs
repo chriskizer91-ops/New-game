@@ -7,6 +7,7 @@
 //
 //   node tools/e2e-battle.mjs                 # everything
 //   node tools/e2e-battle.mjs --only=snag,boss  # some scenarios (names below)
+//   node tools/e2e-battle.mjs --out=/tmp/x    # private harness page and screenshots (parallel runs)
 import { createRequire } from 'node:module';
 import { execSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -16,8 +17,9 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { buildDevBattle } from './dev-battle.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const shots = path.join(root, 'tools/shots');
 const args = Object.fromEntries(process.argv.slice(2).map(a => { const [k, v] = a.replace(/^--/, '').split('='); return [k, v ?? true]; }));
+const shots = args.out ? path.resolve(String(args.out)) : path.join(root, 'tools/shots');
+mkdirSync(shots, { recursive: true });
 const only = args.only ? String(args.only).split(',') : null;
 
 const require = createRequire(import.meta.url);
@@ -57,7 +59,7 @@ function fontCache() {
 const fonts = fontCache();
 console.log(fonts ? `fonts: ${Object.keys(fonts.files).length} files cached` : 'fonts: offline (system fallbacks)');
 
-const page0 = await buildDevBattle();
+const page0 = await buildDevBattle(args.out ? path.join(shots, 'dev-battle.html') : undefined);
 const url = hash => `${pathToFileURL(page0).href}#${hash}`;
 const browser = await pw.chromium.launch(exe ? { executablePath: exe } : {});
 const PHONE = { width: 390, height: 844 };

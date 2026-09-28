@@ -1,12 +1,22 @@
 // Bundles src/main.js (plus any CSS it imports) and inlines both into src/index.html.
-// Outputs a full document for local play and a fragment for publishing as a claude.ai page.
+// Outputs a full document for local play, a fragment for publishing as a claude.ai page, and the
+// M3 download (aethermoor-m3.html, the same full document). dist/aethermoor-m2.html is a frozen copy
+// of the M2 build and is never written here.
+//
+//   node tools/build.mjs                 # into dist/
+//   node tools/build.mjs --out /tmp/x    # into a private folder (parallel builders; A5)
+//
+// Size rule (M3 spec A8): warn above 1.3 MB, fail above 1.6 MB.
 import { build } from 'esbuild';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { Buffer } from 'node:buffer';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const out = path.join(root, 'dist');
+const argv = process.argv.slice(2);
+const outArg = argv.find(a => a.startsWith('--out='))?.slice(6) ?? (argv.includes('--out') ? argv[argv.indexOf('--out') + 1] : null);
+const out = outArg ? path.resolve(outArg) : path.join(root, 'dist');
 
 const result = await build({
   entryPoints: [path.join(root, 'src/main.js')],
@@ -38,8 +48,17 @@ const full = '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\
   + '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'
   + fill(head) + '</head>\n<body>\n' + fill(body) + '</body>\n</html>\n';
 
+const bytes = Buffer.byteLength(full);
+const WARN = 1.3 * 1024 * 1024, FAIL = 1.6 * 1024 * 1024;
+const kb = n => (n / 1024).toFixed(0) + ' KB';
+if (bytes > FAIL) {
+  console.error(`build FAILED: ${kb(bytes)} is over the 1.6 MB limit (M3 spec A8)`);
+  process.exit(1);
+}
 await mkdir(out, { recursive: true });
+const rel = f => path.relative(process.cwd(), path.join(out, f)) || f;
 await writeFile(path.join(out, 'aethermoor.html'), full);
 await writeFile(path.join(out, 'aethermoor.artifact.html'), fragment);
-const kb = n => (n / 1024).toFixed(0) + ' KB';
-console.log(`built dist/aethermoor.html (${kb(full.length)}), dist/aethermoor.artifact.html (${kb(fragment.length)})`);
+await writeFile(path.join(out, 'aethermoor-m3.html'), full);
+console.log(`built ${rel('aethermoor.html')} (${kb(bytes)}), ${rel('aethermoor.artifact.html')} (${kb(Buffer.byteLength(fragment))}), ${rel('aethermoor-m3.html')}`);
+if (bytes > WARN) console.warn(`build WARNING: ${kb(bytes)} is over 1.3 MB (M3 spec A8 warns here; fails above 1.6 MB)`);

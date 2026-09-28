@@ -11,7 +11,7 @@ import path from 'node:path';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const DEV_PAGE = path.join(root, 'tools/shots/dev-battle.html');
 
-export async function buildDevBattle() {
+export async function buildDevBattle(file = DEV_PAGE) {
   const res = await build({
     entryPoints: [path.join(root, 'tools/dev-battle-entry.js')],
     bundle: true, format: 'iife', target: 'es2020', write: false, minify: false, legalComments: 'none',
@@ -29,9 +29,9 @@ export async function buildDevBattle() {
   const html = '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
     + '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'
     + fill(head).replace('<title>Aethermoor: Hearth &amp; Heirloom</title>', '<title>Battle harness</title>') + '</head>\n<body>\n' + fill(body) + '</body>\n</html>\n';
-  await mkdir(path.dirname(DEV_PAGE), { recursive: true });
-  await writeFile(DEV_PAGE, html);
-  return DEV_PAGE;
+  await mkdir(path.dirname(file), { recursive: true });
+  await writeFile(file, html);
+  return file;
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
