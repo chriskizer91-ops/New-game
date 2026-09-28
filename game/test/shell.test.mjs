@@ -11,6 +11,7 @@ import { newGame } from '../src/rules/gauntlet.js';
 import { MAPS, MAP_IDS, ENTITY_OF } from '../src/data/maps/index.js';
 import { HEARTHS } from '../src/data/world.js';
 import { RELICS } from '../src/data/relics.js';
+import { QUESTS } from '../src/data/quests.js';
 import { carryFacts, saveLine, inSentence, RELIC_TOTAL } from '../src/ui/lib/carry-facts.js';
 import { VIEWS, loreAt, entityLore, toFrame, relax, RELIC_SITE } from '../src/ui/lib/atlas-geo.js';
 import { TRACK_NAMES, badNotes } from '../src/core/audio.js';
@@ -18,13 +19,13 @@ import { TRACK_NAMES, badNotes } from '../src/core/audio.js';
 const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures/v1');
 const fixtures = readdirSync(dir).filter(f => f.endsWith('.json')).map(f => [f, JSON.parse(readFileSync(path.join(dir, f), 'utf8'))]);
 
-test('the carry-over card has the party, the relics out of 24, and a real place to wake for every M2 fixture', () => {
-  assert.equal(RELIC_TOTAL, 24);
+test('the carry-over card has the party, the relics out of 38, and a real place to wake for every M2 fixture', () => {
+  assert.equal(RELIC_TOTAL, 38);
   for (const [name, v1] of fixtures) {
     const g = migrate(v1);
     const F = carryFacts(g);
     assert.equal(F.heroes.length, 4, name);
-    assert.equal(F.total, 24, name);
+    assert.equal(F.total, 38, name);
     assert.equal(F.gold, v1.gold, name);
     assert.equal(F.waking, v1.progress.waking, name);
     assert.equal(F.place, MAPS[g.progress.pos.map].name, name);
@@ -38,8 +39,8 @@ test('the carry-over card has the party, the relics out of 24, and a real place 
 
 test('the title Continue line reads name · place · day · level · relics', () => {
   const g = newGame({ name: 'Wren', starter: 'hearthbrand', seed: 7 });
-  assert.match(saveLine(g), /^Wren · The Great Hall · Day 1 · Lv 1 · 1\/24 relics$/);
-  for (const [name, v1] of fixtures) assert.match(saveLine(migrate(v1)), /^.+ · .+ · Day \d+ · Lv \d+ · \d+\/24 relics$/, name);
+  assert.match(saveLine(g), /^Wren · The Great Hall · Day 1 · Lv 1 · 1\/38 relics$/);
+  for (const [name, v1] of fixtures) assert.match(saveLine(migrate(v1)), /^.+ · .+ · Day \d+ · Lv \d+ · \d+\/38 relics$/, name);
 });
 
 test('you-are-here projects onto each route between its lore ends, and points stay put', () => {
@@ -57,10 +58,12 @@ test('you-are-here projects onto each route between its lore ends, and points st
   for (const [id, where] of Object.entries(ENTITY_OF)) assert.ok(entityLore(where.map, where.entity), id);
 });
 
-test('Atlas markers never overlap: the ten Hearthfires in both views, on a phone and a laptop', () => {
+test('Atlas markers never overlap: each region\'s Hearthfires in its own view and all of them in the realm view, on a phone and a laptop', () => {
+  const inRegion = region => Object.values(HEARTHS).filter(h => MAPS[h.map].region === region);
+  const VIEW_FIRES = { wilds: inRegion('verdant'), realm: Object.values(HEARTHS) };
   for (const [W, H] of [[318, 212], [866, 577]]) {
     for (const view of ['wilds', 'realm']) {
-      const run = () => relax(Object.values(HEARTHS).map(h => { const [x0, y0] = toFrame(VIEWS[view], h.lore, W, H); return { x0, y0 }; }), { W, H, r: 22 });
+      const run = () => relax(VIEW_FIRES[view].map(h => { const [x0, y0] = toFrame(VIEWS[view], h.lore, W, H); return { x0, y0 }; }), { W, H, r: 22 });
       const nodes = run();
       for (const n of nodes) assert.ok(n.x >= 22 && n.x <= W - 22 && n.y >= 22 && n.y <= H - 22, `${view} ${W}: inside the frame`);
       let min = Infinity;
@@ -69,8 +72,8 @@ test('Atlas markers never overlap: the ten Hearthfires in both views, on a phone
       assert.deepEqual(run(), nodes, 'deterministic');
     }
   }
-  // the Wilds view holds every Hearthfire
-  for (const [id, h] of Object.entries(HEARTHS)) {
+  // the Wilds view holds every Hearthfire of the Wilds (M4: the Sunscorch ones are in the realm view)
+  for (const [id, h] of Object.entries(HEARTHS).filter(([, h]) => MAPS[h.map].region === 'verdant')) {
     const [x, y] = toFrame(VIEWS.wilds, h.lore, 480, 320);
     assert.ok(x > 0 && x < 480 && y > 0 && y < 320, `${id} is inside the Wilds view`);
   }
@@ -81,7 +84,9 @@ test('every held or worn relic has a placed holder for the Atlas', () => {
     assert.ok(RELICS[relic], relic);
     assert.ok(ENTITY_OF[enc], `${relic}: ${enc} is placed on a map`);
   }
-  const held = Object.values(RELICS).filter(r => !r.starter && r.id !== 'watchkeepers-kettle').map(r => r.id);
+  // a quest's reward (M4: the Orrery, the Signet, the Sunstone Heart) and Garret's Kettle have no holder
+  const given = new Set(['watchkeepers-kettle', ...Object.values(QUESTS).map(q => q.reward?.relic).filter(Boolean)]);
+  const held = Object.values(RELICS).filter(r => !r.starter && !given.has(r.id)).map(r => r.id);
   for (const r of held) assert.ok(RELIC_SITE[r], `${r} has a holder`);
 });
 

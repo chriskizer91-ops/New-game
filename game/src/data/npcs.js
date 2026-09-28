@@ -70,6 +70,30 @@ export const NPCS = deepFreeze({
   tamsin: N('tamsin', 'Tamsin', 'Rival', [{ d: 'tamsin-door' }]),
   vesper: N('vesper', 'Vesper', 'Tallyman con', [{ d: 'vesper' }]),
   rotwarden: N('rotwarden', 'The Rotwarden', 'Boss', []),
+  // M4: the Sunscorch Wastes (spec §3.1; STUBS until WP-story writes their talk tables)
+  zara: N('zara', 'Zara al-Khem', 'Caravan-mistress', [
+    { if: { all: [{ beaten: 'gf-caravan' }, { not: { flag: 'crate-returned' } }] }, d: 'zara-crate' },
+    { d: 'zara' },
+  ]),
+  qasim: N('qasim', 'Cistern Lord Qasim', 'Lord of the cistern', [
+    { if: { all: [{ beaten: 'dt-aqueduct' }, { not: { flag: 'cistern-told' } }] }, d: 'qasim-water' },
+    { d: 'qasim' },
+  ]),
+  idris: N('idris', 'Idris the Gemwright', 'Gems', [{ d: 'idris' }]),
+  'spire-guard': N('spire-guard', 'Spire Guard', 'Flavour', [{ d: 'spire-guard' }]),
+  'water-seller': N('water-seller', 'Water-Seller', 'Flavour', [{ d: 'water-seller' }]),
+  luma: N('luma', 'Luma of Dusthaven', 'Assayer', [
+    { if: { all: [{ owns: 'sunstone-lantern' }, { not: { flag: 'luma-trusted' } }] }, d: 'luma-secret' },
+    { d: 'luma' },
+  ]),
+  ode: N('ode', 'Old Ode', 'Pithead store', [{ d: 'ode' }]),
+  miner: N('miner', 'Miner', 'Flavour', [{ d: 'miner' }]),
+  sabah: N('sabah', 'Sabah the Well-Keeper', 'Keeper of the well', [
+    { if: { all: [{ beaten: 'wisp-queen' }, { not: { flag: 'well-told' } }] }, d: 'sabah-well' },
+    { d: 'sabah' },
+  ]),
+  'pilgrim-mw': N('pilgrim-mw', 'Pilgrim', 'Flavour', [{ d: 'pilgrim-mw' }]),
+  cinder: N('cinder', 'Brother Cinder', 'Ash-hermit', [{ d: 'cinder' }]),
 });
 
 export const NPC_IDS = Object.freeze(Object.keys(NPCS));

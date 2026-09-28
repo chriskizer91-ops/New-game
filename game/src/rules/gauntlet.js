@@ -360,6 +360,8 @@ function earnBrand(g, node, report) {
   f.runs += 1;
   for (const [id, e] of Object.entries(ENCOUNTERS)) if ((e.region || 'verdant') === brand.region && !e.once) delete f.cleared[id];
   if (REGIONS.verdant.brands.every(b => p.brands.includes(b))) f.story = { ...(f.story || {}), 'act1-complete': true };
+  // M4: both Sunscorch Brands call the second council (data/maps/keep-hall.js council-2)
+  if (REGIONS.sunscorch.brands.every(b => p.brands.includes(b))) f.story = { ...(f.story || {}), 'sunscorch-complete': true };
   report.brand = { ...brand, waking: p.waking, first: true, count: new Set(p.brands).size };
 }
 

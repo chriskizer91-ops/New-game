@@ -66,7 +66,7 @@ const TAMSIN_MOVES = {
   'not-like-this': { name: 'Not Like This', target: 'self', when: { hpBelow: 0.35 }, fallback: 'riposte', text: 'Not like this. She steadies: 2d8 healing and Warded.', effects: [{ type: 'heal', dice: '2d8' }, status('warded', { value: { dice: '1d6', diceEvery: 3 } })] },
 };
 
-export const FOES = deepFreeze({
+const VERDANT = {
   cutpurse: {
     id: 'cutpurse', name: 'Cutpurse', art: 'cutpurse', tier: 'rabble', humanoid: true,
     hp: 16, guard: 14, atk: 3, dmg: 2, speed: 12, armor: 'hide', aspect: null,
@@ -419,6 +419,31 @@ export const FOES = deepFreeze({
     ],
     text: 'The Keep\'s other Warden. Isolde sent her in first. She has not forgiven anyone for that yet.',
   },
-});
+};
+
+// M4: the Sunscorch Wastes (spec §3.2). STUBS from the M4 scaffold: each borrows a Verdant family's
+// numbers and moves until WP-foes (P4) writes the real family in its place.
+const stub = (id, name, from, o = {}) => ({ ...VERDANT[from], id, name, art: id, stub: true, variants: {}, ...o });
+// a named holder: a relic-bearer variant of its family (WP-foes writes its moves)
+const holder = (name, hp, o = {}) => ({ name, tier: 'relic-bearer', hp, ...o });
+const SUNSCORCH = {
+  'sand-skink': stub('sand-skink', 'Sand-Skink', 'thornhound', { aspect: 'ember', text: 'Quick little lizards of the Sunscorch. They bite and run.' }),
+  scavenger: stub('scavenger', 'Dune Scavenger', 'cutpurse', { aspect: null, text: 'Wreck-pickers of the caravan roads. They run when it goes badly.' }),
+  'dune-raider': stub('dune-raider', 'Dune Raider', 'bandit', { aspect: 'storm', variants: { rider: holder('Rasa the Dune-Rider', 60), 'raider-king': holder('Gnash the Raider-King', 70) }, text: 'Riders of the dunes, with curved blades and wrapped faces.' }),
+  'glass-scorpion': stub('glass-scorpion', 'Glass Scorpion', 'bandit', { humanoid: false, kind: 'beast', aspect: 'stone', variants: { matriarch: { name: 'Glass Matriarch', hp: 50 } }, text: 'A scorpion the size of a dog, its shell gone to glass.' }),
+  'mirage-wisp': stub('mirage-wisp', 'Mirage Wisp', 'feral-druid', { humanoid: false, kind: 'spirit', aspect: 'frost', variants: { queen: holder('The Wisp-Queen', 60) }, text: 'A shimmer that walks. It looks like water until it bites.' }),
+  'ash-wight': stub('ash-wight', 'Ash-Wight', 'hollowed-ranger', { aspect: 'ember', variants: { captain: holder('The Ash-Captain', 64) }, text: 'A Scorchgate soldier still on watch, three centuries after the fire.' }),
+  'sand-wyrm': stub('sand-wyrm', 'Sand Wyrm', 'oldsnag', { aspect: 'stone', relics: ['wyrmscale'], text: 'A wyrm that swims in the sand and waits under the trail.' }),
+  kharzul: stub('kharzul', 'Kharzul the Glass Scorpion', 'rotwarden', { aspect: 'stone', unique: true, relics: ['cinderfang', 'glass-carapace'], text: 'A scorpion of living glass, with a scimitar lodged in its tail for three centuries.' }),
+  'ashen-warden': stub('ashen-warden', 'The Ashen Warden', 'rotwarden', { aspect: 'ember', unique: true, relics: ['ashen-aegis', 'cinder-crown'], text: 'The last Warden of Scorchgate, still guarding a vault of ash.' }),
+};
+
+// the Tallymen of the Sunscorch: new variants of the M3 families
+const TALLY_SUN = {
+  tallyman: { ...VERDANT.tallyman, variants: { ...VERDANT.tallyman.variants, foreman: holder('Foreman Brask', 62), quartermaster: { name: 'The Quartermaster', hp: 34 } } },
+  smuggler: { ...VERDANT.smuggler, variants: { ...(VERDANT.smuggler.variants || {}), sharpshooter: holder('Vell Saltglass', 50) } },
+};
+
+export const FOES = deepFreeze({ ...VERDANT, ...TALLY_SUN, ...SUNSCORCH });
 
 export const FOE_IDS = Object.freeze(Object.keys(FOES));

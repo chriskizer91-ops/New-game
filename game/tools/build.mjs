@@ -10,7 +10,8 @@
 //
 // The bundle is an IIFE, whitespace-minified (esbuild minifyWhitespace: identifiers and structure
 // are kept), so the delivered file's format never changes between builds.
-// Size rule (M3 spec A8), on the full document: warn above 1.3 MB, fail above 1.6 MB.
+// Size rule (M4 spec A3, raised from M3's A8 for a second region), on the full document: warn above
+// 1.8 MB, fail above 2.2 MB.
 // Owner: WP8.
 import { build } from 'esbuild';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
@@ -58,12 +59,12 @@ async function bundle(minifyAll) {
   return { full, fragment, bytes: Buffer.byteLength(full) };
 }
 
-const WARN = 1.3 * 1024 * 1024, FAIL = 1.6 * 1024 * 1024;
+const WARN = 1.8 * 1024 * 1024, FAIL = 2.2 * 1024 * 1024;
 const kb = n => (n / 1024).toFixed(0) + ' KB';
 const fullMinify = argv.includes('--minify');
 const { full, fragment, bytes } = await bundle(fullMinify);
 if (bytes > FAIL) {
-  console.error(`build FAILED: ${kb(bytes)} is over the 1.6 MB limit (M3 spec A8)`);
+  console.error(`build FAILED: ${kb(bytes)} is over the 2.2 MB limit (M4 spec A3)`);
   process.exit(1);
 }
 await mkdir(out, { recursive: true });
@@ -72,4 +73,4 @@ await writeFile(path.join(out, 'aethermoor.html'), full);
 await writeFile(path.join(out, 'aethermoor.artifact.html'), fragment);
 await writeFile(path.join(out, DELIVERY), full);
 console.log(`built ${rel('aethermoor.html')} (${kb(bytes)}${fullMinify ? ', fully minified' : ''}), ${rel('aethermoor.artifact.html')} (${kb(Buffer.byteLength(fragment))}), ${rel(DELIVERY)}`);
-if (bytes > WARN) console.warn(`build WARNING: ${kb(bytes)} is over 1.3 MB (M3 spec A8 warns here; fails above 1.6 MB)`);
+if (bytes > WARN) console.warn(`build WARNING: ${kb(bytes)} is over 1.8 MB (M4 spec A3 warns here; fails above 2.2 MB)`);

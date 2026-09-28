@@ -93,7 +93,7 @@ test('arrivals, after-fight lines, rests and lookouts point at real things', () 
 });
 
 // Flags set outside the story data, by the rules (gauntlet, migrate, world).
-const RULE_FLAGS = ['act1-complete', 'tamsin-yielded', 'starter', 'm2-save', 'intro-done', 'met-dael', 'bounty-briarmaw'];
+const RULE_FLAGS = ['act1-complete', 'tamsin-yielded', 'starter', 'm2-save', 'intro-done', 'met-dael', 'bounty-briarmaw', 'sunscorch-complete'];
 
 test('no flag is read that is never set', () => {
   const read = new Map(), set = new Set(RULE_FLAGS);

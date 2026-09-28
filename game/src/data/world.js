@@ -1,5 +1,6 @@
-// The world above the maps (M3 spec §2, §3.3, §4.2): regions, Brands, patrol zones, Hearthfires,
-// the start position, the 17 places on the illustrated map, the critical path and the optional leads.
+// The world above the maps (M3 spec §2, §3.3, §4.2; M4 spec §2): regions, Brands, patrol zones,
+// Hearthfires, the start position, the 17 places on the illustrated map, the critical paths and the
+// optional leads.
 // Coordinates: tiles for maps, viewBox 1200x800 for the illustrated map (`lore`).
 // Owner: WP3. Imports nothing from rules/.
 
@@ -8,7 +9,7 @@ import { deepFreeze } from '../core/freeze.js';
 // The M4 plug point: a region opens by adding its maps and swapping its sealed exits for exits.
 export const REGIONS = deepFreeze({
   verdant: { id: 'verdant', name: 'The Verdant Wilds', act: 1, lore: [270, 220], brands: ['brand-of-briars', 'brand-of-the-heartroot'], open: true },
-  sunscorch: { id: 'sunscorch', name: 'The Sunscorch Wastes', act: 2, lore: [870, 470], entries: ['keep-se'], brands: [], open: false },
+  sunscorch: { id: 'sunscorch', name: 'The Sunscorch Wastes', act: 2, lore: [870, 470], entries: ['keep-se'], brands: ['brand-of-glass', 'brand-of-ash'], open: true },
   ironspire: { id: 'ironspire', name: 'The Ironspire Peaks', act: 2, lore: [870, 160], entries: ['keep-e', 'fr-highfold'], brands: [], open: false },
   gloomfen: { id: 'gloomfen', name: 'The Gloomfen Marsh', act: 2, lore: [280, 530], entries: ['keep-sw', 'mf-fen-stair'], brands: [], open: false },
 });
@@ -24,9 +25,15 @@ export const ZONES = deepFreeze({
   mossfall: { id: 'mossfall', level: 7, sets: 'mossfall', backdrop: 'mossfall' },
   hindwood: { id: 'hindwood', level: 7, sets: 'hindwood', backdrop: 'verdant-wood' },
   heartroot: { id: 'heartroot', level: 8, sets: 'heartroot', backdrop: 'heartroot' },
+  // M4: the Sunscorch Wastes (spec §2.6; levels are WP-foes's to tune in Gate 4)
+  'sun-road': { id: 'sun-road', level: 9, sets: 'sun-road', backdrop: 'sun-road' },
+  'dust-trail': { id: 'dust-trail', level: 10, sets: 'dust-trail', backdrop: 'dust-trail' },
+  'deep-shaft': { id: 'deep-shaft', level: 11, sets: 'deep-shaft', backdrop: 'deep-shaft' },
+  'glass-flats': { id: 'glass-flats', level: 11, sets: 'glass-flats', backdrop: 'glass-flats' },
+  scorchgate: { id: 'scorchgate', level: 12, sets: 'scorchgate', backdrop: 'scorchgate' },
 });
 
-// The ten Hearthfires. x, y, face is the STAND (where the party wakes, rests and arrives by
+// The Hearthfires (ten in the Wilds, seven in the Sunscorch). x, y, face is the STAND (where the party wakes, rests and arrives by
 // travel), facing the fire. `cold` fires start unlit (the cold-hearth lock).
 const H = (map, x, y, lore, name, o = {}) => ({ map, x, y, face: 'n', lore, name, cold: false, ...o });
 export const HEARTHS = deepFreeze({
@@ -40,6 +47,14 @@ export const HEARTHS = deepFreeze({
   'fawnrest-stone': H('fawnrest', 11, 7, [370, 170], 'The Dreaming Stone'),
   'eldergrove-hearth': H('eldergrove', 13, 16, [200, 160], 'The Eldergrove Hearth'),
   'last-green-coal': H('heartroot-1', 4, 21, [192, 152], 'The Last Green Coal', { cold: true }),
+  // M4 (spec §2.5). Stands are placeholders until WP-maps lays the maps out.
+  waystone: H('sun-road', 12, 20, [700, 420], 'The Waystone Fire'),
+  'spire-hearth': H('sandspire', 15, 13, [870, 470], 'The Spire Hearth'),
+  'dust-cairn': H('dust-trail', 22, 12, [830, 520], 'The Dust Cairn', { cold: true }),
+  pithead: H('dusthaven', 12, 12, [780, 560], 'The Pithead Fire'),
+  'shaft-lamp': H('deep-shaft-1', 12, 6, [770, 575], 'The Shaft Lamp', { cold: true }),
+  'well-fire': H('miragewell', 11, 10, [1010, 540], 'The Well Fire'),
+  'last-watchfire': H('scorchgate', 16, 26, [930, 660], 'The Last Watchfire', { cold: true }),
 });
 export const HEARTH_IDS = Object.freeze(Object.keys(HEARTHS));
 
@@ -55,10 +70,10 @@ export const LORE = deepFreeze({
   thornhollow: P('Thornhollow', 'Outpost', 'verdant', [310, 260], 'thornhollow'),
   mosswatch: P('Mosswatch Tower', 'Watchtower', 'verdant', [140, 280], 'mosswatch-1'),
   fawnrest: P('Fawnrest Shrine', 'Sacred Site', 'verdant', [370, 170], 'fawnrest'),
-  sandspire: P('Sandspire', 'Trade City', 'sunscorch', [870, 470]),
-  dusthaven: P('Dusthaven', 'Mining Camp', 'sunscorch', [780, 560]),
-  miragewell: P('Miragewell', 'Oasis Village', 'sunscorch', [1010, 540]),
-  scorchgate: P('Scorchgate Ruins', 'Ancient Ruins', 'sunscorch', [930, 660]),
+  sandspire: P('Sandspire', 'Trade City', 'sunscorch', [870, 470], 'sandspire'),
+  dusthaven: P('Dusthaven', 'Mining Camp', 'sunscorch', [780, 560], 'dusthaven'),
+  miragewell: P('Miragewell', 'Oasis Village', 'sunscorch', [1010, 540], 'miragewell'),
+  scorchgate: P('Scorchgate Ruins', 'Ancient Ruins', 'sunscorch', [930, 660], 'scorchgate'),
   ironhold: P('Ironhold Fortress', 'Dwarven Stronghold', 'ironspire', [870, 160]),
   peaksveil: P('Peak\'s Veil', 'Monastery', 'ironspire', [750, 240]),
   stormwatch: P('Stormwatch Outpost', 'Military Post', 'ironspire', [1020, 240]),
@@ -73,6 +88,13 @@ export const LORE = deepFreeze({
 export const CRITICAL_PATH = Object.freeze(['hearthstone-keep', 'keep-vault', 'hearth-road', 'waymarker-stones', 'milestone-fire', 'bramble-toll', 'verdant-edge',
   'rotstag-glade', 'thornhollow', 'tally-camp', 'snag-wallow', 'bramble-deep', 'den-mouth', 'briarmaw-den',
   'eldergrove-hearth', 'tamsin-duel', 'hr1-grubs', 'hr1-sapwight', 'rotwarden-heart']);
+
+// M4: the Sunscorch critical path (spec §2.2) and its leads, in the same shape.
+export const SUN_PATH = Object.freeze(['waystone', 'sr-toll', 'spire-hearth', 'dt-scorpions', 'dust-cairn', 'pithead', 'ds-crew', 'shaft-lamp',
+  'kharzul-heart', 'gf-raiders', 'last-watchfire', 'sg-captain', 'tamsin-scorchgate', 'vault-guard', 'ashen-warden']);
+export const SUN_LEADS = deepFreeze({
+  caravan: ['gf-caravan'], wyrm: ['wyrm-lair'], gnash: ['gnash-camp'], well: ['wisp-queen'], aqueduct: ['dt-aqueduct'],
+});
 
 // The optional leads after the Brand (and the early optional fights), by name.
 export const LEADS = deepFreeze({

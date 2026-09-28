@@ -20,7 +20,8 @@
 //   - pack homes are roamable and inside a roam rect; roam rects stay roomy.
 // tools/map-draft.mjs draws any map as ASCII or PNG (--png, --art for the real tiles) with a lint.
 // Owner: WP3 (index, keep, keep-hall, hearth-road, thornhollow, thornway, briarmaw-den, mossfall);
-// WP3B (mosswatch-1, mosswatch-2, hindwood, fawnrest, eldergrove, heartroot-1, heartroot-2).
+// WP3B (mosswatch-1, mosswatch-2, hindwood, fawnrest, eldergrove, heartroot-1, heartroot-2); M4 P2 (the
+// Sunscorch maps).
 
 import keep from './keep.js';
 import keepHall from './keep-hall.js';
@@ -36,8 +37,21 @@ import fawnrest from './fawnrest.js';
 import eldergrove from './eldergrove.js';
 import heartroot1 from './heartroot-1.js';
 import heartroot2 from './heartroot-2.js';
+// M4: the Sunscorch Wastes (spec §2.1)
+import sunRoad from './sun-road.js';
+import sandspire from './sandspire.js';
+import dustTrail from './dust-trail.js';
+import dusthaven from './dusthaven.js';
+import deepShaft1 from './deep-shaft-1.js';
+import deepShaft2 from './deep-shaft-2.js';
+import glassFlats from './glass-flats.js';
+import miragewell from './miragewell.js';
+import scorchgate from './scorchgate.js';
+import scorchgateVaults from './scorchgate-vaults.js';
+import keepGallery from './keep-gallery.js';
 
-const LIST = [keep, keepHall, hearthRoad, thornhollow, thornway, briarmawDen, mossfall, mosswatch1, mosswatch2, hindwood, fawnrest, eldergrove, heartroot1, heartroot2];
+const LIST = [keep, keepHall, hearthRoad, thornhollow, thornway, briarmawDen, mossfall, mosswatch1, mosswatch2, hindwood, fawnrest, eldergrove, heartroot1, heartroot2,
+  sunRoad, sandspire, dustTrail, dusthaven, deepShaft1, deepShaft2, glassFlats, miragewell, scorchgate, scorchgateVaults, keepGallery];
 
 export const MAPS = Object.freeze(Object.fromEntries(LIST.map(m => [m.id, m])));
 export const MAP_IDS = Object.freeze(LIST.map(m => m.id));

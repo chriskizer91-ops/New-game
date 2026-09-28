@@ -197,7 +197,9 @@ export function move(game, walk, dir, { run = false } = {}) {
   const exit = exitAt(map, nx, ny);
   const gateClosed = at.find(e => e.kind === 'gate' && e.state === 'closed');
   if (exit && !gateClosed) {
-    if (exit.sealed) {
+    // M4 (spec §4.7): an exit with a `gate` is a way through once the gate holds; until then its
+    // `sealed` text stands (the Keep's south-east gate opens into the Sunscorch after Act I)
+    if (exit.sealed && !(exit.to && exit.gate && check(game, exit.gate))) {
       // after Act I the UI adds "The way opens in the next chapter." (spec §2.6)
       events.push({ t: 'sealed', id: exit.id, region: exit.sealed.region, text: exit.sealed.text, nextChapter: check(game, { flag: 'act1-complete' }) });
       return { game, walk: w, events };

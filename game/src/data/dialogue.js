@@ -229,6 +229,64 @@ export const DIALOGUE = deepFreeze({
   'rotwarden-after': {
     lines: [['rotwarden', '...Warden. I held the root nine hundred years. Hold it now.']],
   },
+  // ---- M4: the Sunscorch Wastes (spec §3.1, §3.6). STUBS from the M4 scaffold: every person has a
+  // first line that sets their met flag; WP-story (P3) writes the real conversations. ----
+  zara: {
+    lines: [['zara', 'The caravans stopped a month ago. So did my crate. It hums, and the Tallymen took it.']],
+    do: [{ set: 'met-zara' }],
+    choices: [LEAVE],
+  },
+  qasim: {
+    lines: [['qasim', 'Water is the only coin in Sandspire, and someone is stealing mine at the aqueduct.']],
+    do: [{ set: 'met-qasim' }],
+    choices: [LEAVE],
+  },
+  idris: {
+    lines: [['idris', 'Sunstone from the shaft, agate from your green country, pearls from the well. Look, but do not lick.']],
+    choices: [{ text: 'Buy.', do: [{ open: 'shop:idris' }] }, LEAVE],
+  },
+  'spire-guard': { lines: [['spire-guard', 'Keep your water covered and your hands where I can see them.']] },
+  'water-seller': { lines: [['water-seller', 'Sweet water, a copper the cup. Cistern water, two. It is the same water.']] },
+  luma: {
+    lines: [['luma', 'Luma. I test the ore. Do not stand so close to me, it is warm today.']],
+    do: [{ set: 'met-luma' }],
+    choices: [LEAVE],
+  },
+  ode: {
+    lines: [['ode', 'Lamp oil, tonics, rope. Everything a miner needs but courage.']],
+    choices: [{ text: 'Buy.', do: [{ open: 'shop:pithead' }] }, LEAVE],
+  },
+  miner: { lines: [['miner', 'Brask\'s lot came down the shaft with Tally-chalk and never came up.']] },
+  sabah: {
+    lines: [['sabah', 'The wisps drink the well dry every night. By morning the pilgrims find only sand.']],
+    do: [{ set: 'met-sabah' }],
+    choices: [LEAVE],
+  },
+  'pilgrim-mw': { lines: [['pilgrim-mw', 'They say the well shows you what you lost. It showed me my shoes.']] },
+  cinder: { lines: [['cinder', 'Scorchgate burned for a sword. Now it burns for nothing, and I keep it company.']] },
+  'tamsin-scorchgate': {
+    lines: [['tamsin', 'You again. Good. I have been practising on things that cannot hit back.']],
+  },
+  'zara-crate': {
+    lines: [['zara', 'My crate! Still humming. Take what is inside: it was always meant for somebody braver than me.']],
+    do: [{ set: 'met-zara' }, { set: 'crate-returned' }, { claim: 'humming-crate' }],
+  },
+  'qasim-water': {
+    lines: [['qasim', 'The cisterns fill. Sandspire drinks tonight. Wear my signet; the gates of the dry country will open for it.']],
+    do: [{ set: 'met-qasim' }, { set: 'cistern-told' }, { claim: 'cistern-water' }],
+  },
+  'luma-secret': {
+    lines: [['luma', 'You brought the lantern. Then you have earned the truth: my heart is a sunstone. It beats.']],
+    choices: [{ text: 'I will keep your secret.', do: [{ set: 'met-luma' }, { set: 'luma-trusted' }, { claim: 'sunstone-heart' }] }, LEAVE],
+  },
+  'sabah-well': {
+    lines: [['sabah', 'The well is full at dawn again. The pilgrims will cry. So will I, a little.']],
+    do: [{ set: 'met-sabah' }, { set: 'well-told' }, { claim: 'well-of-mirages' }],
+  },
+  'council-2': {
+    lines: [['isolde', 'Two coals of the Sunscorch, relit. Sit. The Council has questions, and so do I.']],
+    do: [{ set: 'council-2-done' }, { claim: 'sunscorch-waking' }, { end: 'act2' }],
+  },
 });
 
 export const ARRIVALS = deepFreeze({

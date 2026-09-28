@@ -58,13 +58,18 @@ test('every shared item kind has at least one base item', () => {
   for (const c of ['hearth-tonic', 'ember-salts', 'frost-draught']) assert.ok(CONSUMABLES[c]);
 });
 
-test('the twelve M2 relics match the shared vocabulary; M3 adds twelve heirlooms (codex 13-24)', () => {
+test('the twelve M2 relics match the shared vocabulary; M3 adds twelve heirlooms (codex 13-24), M4 fourteen more (25-38)', () => {
   for (const id of Object.keys(RELIC_TABLE)) assert.ok(RELICS[id], id);
-  assert.equal(Object.keys(RELICS).length, 24);
-  assert.deepEqual(Object.values(RELICS).map(r => r.codex).sort((a, b) => a - b), Array.from({ length: 24 }, (_, i) => i + 1));
-  for (const r of Object.values(RELICS).filter(r => r.codex > 12)) {
+  assert.equal(Object.keys(RELICS).length, 38);
+  assert.deepEqual(Object.values(RELICS).map(r => r.codex).sort((a, b) => a - b), Array.from({ length: 38 }, (_, i) => i + 1));
+  for (const r of Object.values(RELICS).filter(r => r.codex > 12 && r.codex <= 24)) {
     assert.equal(r.rarity, 'heirloom', r.id);
     assert.ok(r.power && r.mapPower, `${r.id} has a power and a map power`);
+  }
+  // M4 (spec §3.4): every Sunscorch relic is an heirloom with a map power (its signature power is WP-foes's)
+  for (const r of Object.values(RELICS).filter(r => r.codex > 24)) {
+    assert.equal(r.rarity, 'heirloom', r.id);
+    assert.ok(r.mapPower, `${r.id} has a map power`);
   }
   for (const [id, [kind, aspect]] of Object.entries(RELIC_TABLE)) {
     assert.equal(RELICS[id].kind, kind, id);
@@ -143,12 +148,13 @@ test('data tables are frozen', () => {
 
 // ---- M3 data (spec §3.2-§3.5, §6.1 WP4) ----------------------------------------------------------------
 
-test('M3 encounters: every one has a region, a valid backdrop, real families and real relics', async () => {
+test('M3 and M4 encounters: every one has a region, a valid backdrop, real families and real relics', async () => {
   const { BRANDS, PATROLS } = await import('../src/data/encounters.js');
+  const { REGIONS } = await import('../src/data/world.js');
   const { familyOf } = await import('../src/rules/foe.js');
   for (const [id, n] of Object.entries(ENCOUNTERS)) {
     assert.ok(BACKDROPS.includes(n.backdrop), `${id} backdrop`);
-    if (!GAUNTLET.includes(id)) assert.equal(n.region, 'verdant', `${id} region`);
+    if (!GAUNTLET.includes(id)) assert.ok(n.region === 'verdant' || n.region === 'sunscorch', `${id} region`);
     for (const s of n.spawns || []) {
       if (s.variant && s.variant !== '$rival') assert.ok(FOES[s.family].variants?.[s.variant], `${id}: ${s.family}/${s.variant}`);
       for (const r of [s.relic, s.wears]) if (r && r !== '$rival') assert.ok(RELICS[r], `${id}: relic ${r}`);
@@ -156,7 +162,7 @@ test('M3 encounters: every one has a region, a valid backdrop, real families and
     }
     if (n.brand) assert.ok(BRANDS[n.brand], `${id} brand`);
   }
-  for (const b of Object.values(BRANDS)) assert.equal(b.region, 'verdant', `${b.id} has a region`);
+  for (const b of Object.values(BRANDS)) assert.ok(REGIONS[b.region]?.brands.includes(b.id), `${b.id} has a region that lists it`);
   for (const [k, sets] of Object.entries(PATROLS)) for (const set of sets) for (const s of set) assert.equal(FOES[s.family].tier, 'rabble', `${k}: patrols are rabble`);
 });
 

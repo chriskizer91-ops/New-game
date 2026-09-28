@@ -26,7 +26,7 @@ export default deepFreeze({
     '#:::::::#:::::::#:::#kk#', //  8
     '#:::::::::::::::::::####', //  9
     '#:_______________::::::#', // 10
-    '#:_______________::::::#', // 11
+    '#:_______________::::::+', // 11
     '#:_______________::::::#', // 12
     '##########*#+#*#########', // 13
   ],
@@ -65,10 +65,14 @@ export default deepFreeze({
     // guarded by the flags their scenes set, not by `once` (a reload mid-scene plays it again)
     { id: 'keep-intro', kind: 'trigger', area: [0, 0, 23, 13], on: 'enter', if: { not: { flag: 'intro-done' } }, dialogue: 'keep-intro' },
     { id: 'council', kind: 'trigger', area: [0, 0, 23, 13], on: 'enter', if: { all: [{ flag: 'act1-complete' }, { not: { flag: 'council-done' } }] }, dialogue: 'council' },
+    // M4 (spec §3.6): the second council, once both Sunscorch Brands are won (flag-guarded, never `once`)
+    { id: 'council-2', kind: 'trigger', area: [0, 0, 23, 13], on: 'enter', if: { all: [{ flag: 'sunscorch-complete' }, { not: { flag: 'council-2-done' } }] }, dialogue: 'council-2' },
   ],
   exits: [
     { id: 'hall-s', area: [12, 13, 12, 13], to: 'keep', anchor: 'from-hall' },
+    // M4: the door to the Sunscorch Gallery, the reliquary's second room
+    { id: 'hall-e', area: [23, 11, 23, 11], to: 'keep-gallery', anchor: 'from-hall' },
   ],
-  anchors: { start: [12, 6, 'n'], 'from-court': [12, 12, 'n'], 'v1:hearthstone-keep': [12, 6, 'n'], 'v1:keep-vault': [18, 7, 'e'] },
+  anchors: { start: [12, 6, 'n'], 'from-court': [12, 12, 'n'], 'v1:hearthstone-keep': [12, 6, 'n'], 'v1:keep-vault': [18, 7, 'e'], 'from-gallery': [22, 11, 'w'] },
   roam: null,
 });

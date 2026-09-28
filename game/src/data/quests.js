@@ -60,6 +60,51 @@ export const QUESTS = deepFreeze({
     ],
     reward: { gold: 100, set: 'vesper-exposed' },
   },
+  // ---- M4: the Sunscorch Wastes (spec §3.6; STUBS until WP-story finishes them) ----
+  'sunscorch-waking': {
+    id: 'sunscorch-waking', name: 'The Sunscorch Waking', kind: 'main', giver: 'isolde', start: { flag: 'act1-complete' },
+    steps: [
+      step('Reach Sandspire and speak with Qasim.', { flag: 'met-qasim' }, 'sandspire', 'qasim'),
+      step('Find Luma at Dusthaven.', { any: [{ flag: 'met-luma' }, { brand: 'brand-of-glass' }] }, 'dusthaven', 'luma'),
+      step('Take the Brand of Glass in the Deep Shaft.', { brand: 'brand-of-glass' }, 'deep-shaft-2', 'kharzul-heart'),
+      step('Find a way into the Scorchgate Vaults.', { any: [{ unlocked: 'sg-vault-door' }, { brand: 'brand-of-ash' }] }, 'scorchgate', 'sg-vault-door'),
+      step('Take the Brand of Ash.', { brand: 'brand-of-ash' }, 'scorchgate-vaults', 'ashen-warden'),
+      step('Come home to the Keep.', { flag: 'council-2-done' }, 'keep-hall', 'isolde'),
+    ],
+    reward: {},
+  },
+  'humming-crate': {
+    id: 'humming-crate', name: 'The Humming Crate', kind: 'side', giver: 'zara', start: { flag: 'met-zara' },
+    steps: [
+      step('Find the Tallyman caravan on the Glass Flats.', { beaten: 'gf-caravan' }, 'glass-flats', 'gf-caravan'),
+      step('Bring the crate home to Zara.', { flag: 'crate-returned' }, 'sandspire', 'zara'),
+    ],
+    reward: { relic: 'zaras-orrery' },
+  },
+  'cistern-water': {
+    id: 'cistern-water', name: 'Water for Sandspire', kind: 'side', giver: 'qasim', start: { flag: 'met-qasim' },
+    steps: [
+      step('Clear the aqueduct on the Dust Trail.', { beaten: 'dt-aqueduct' }, 'dust-trail', 'dt-aqueduct'),
+      step('Tell Qasim the water runs.', { flag: 'cistern-told' }, 'sandspire', 'qasim'),
+    ],
+    reward: { relic: 'qasims-signet', gold: 200 },
+  },
+  'sunstone-heart': {
+    id: 'sunstone-heart', name: 'Luma\'s Secret', kind: 'side', giver: 'luma', start: { flag: 'met-luma' },
+    steps: [
+      step('Bring Luma a lantern\'s worth of sunstone.', { owns: 'sunstone-lantern' }, 'deep-shaft-1', 'ds-crew'),
+      step('Keep her secret.', { flag: 'luma-trusted' }, 'dusthaven', 'luma'),
+    ],
+    reward: { relic: 'sunstone-heart' },
+  },
+  'well-of-mirages': {
+    id: 'well-of-mirages', name: 'The Well of Mirages', kind: 'side', giver: 'sabah', start: { flag: 'met-sabah' },
+    steps: [
+      step('Quiet the Wisp-Queen.', { beaten: 'wisp-queen' }, 'miragewell', 'wisp-queen'),
+      step('Tell Sabah the well is safe.', { flag: 'well-told' }, 'miragewell', 'sabah'),
+    ],
+    reward: { gold: 150 },
+  },
 });
 
 export const BOUNTIES = deepFreeze({
@@ -69,6 +114,11 @@ export const BOUNTIES = deepFreeze({
   mags: { id: 'mags', enc: 'hr-smugglers', name: 'Mags Kestrel', gold: 100 },
   haskett: { id: 'haskett', enc: 'poachers-holm', name: 'Haskett the Poacher', gold: 250 },
   tappers: { id: 'tappers', enc: 'hr1-tappers', name: 'Dun\'s Sap-Tappers', gold: 150 },
+  // M4 (spec §3.6): the Sandspire board
+  'b-skinks': { id: 'b-skinks', enc: 'dt-skinks', name: 'The Skink Nest', gold: 60 },
+  'b-raiders': { id: 'b-raiders', enc: 'gf-raiders', name: 'Dune Raiders', gold: 90 },
+  'b-scorpions': { id: 'b-scorpions', enc: 'ds-scorpions', name: 'Shaft Scorpions', gold: 90 },
+  'b-wights': { id: 'b-wights', enc: 'sg-wights', name: 'Ash-Wights', gold: 120 },
 });
 
 export const QUEST_IDS = Object.freeze(Object.keys(QUESTS));
