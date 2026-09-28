@@ -142,7 +142,14 @@ export function openPrefight(ctx, { game, encId } = {}) {
     list.append(li);
   }
   P.append(list);
-  if (T.grudge) P.append(text('p', 'pf-grudge-note', `Grudge: ${T.grudge}. They beat you once. Settle it and every piece they drop comes one rarity higher.`));
+  if (T.grudge) {
+    // a Grudge is born from a wipe (wins) or from running (flees); say which
+    const gr = T.spawns.map(s => s.grudge && grudges[s.grudge]).find(Boolean) || { wins: 1, flees: 0 };
+    const times = n => (n === 1 ? 'once' : n === 2 ? 'twice' : `${n} times`);
+    const why = gr.wins && gr.flees ? `They beat you ${times(gr.wins)}, and you ran from them ${times(gr.flees)}.`
+      : gr.flees ? `You ran from them ${times(gr.flees)}.` : `They beat you ${times(gr.wins || 1)}.`;
+    P.append(text('p', 'pf-grudge-note', `Grudge: ${T.grudge}. ${why} Settle it and every piece they drop comes one rarity higher.`));
+  }
 
   const relics = heldList(game, T);
   if (relics.length) {
