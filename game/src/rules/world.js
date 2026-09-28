@@ -9,6 +9,8 @@
 // move(game, walk, dir, { run = false } = {}) -> { game, walk, events }      dir 'n'|'e'|'s'|'w'
 // interact(game, walk) -> { game, walk, events }          acts on the tile you face
 // tick(game, walk) -> { game, walk, events }              idle tick (every 400 ms standing still)
+// afterBattle(game, walk, { roamerId, result }) -> walk   back from a fight: grace, and the roamer
+//                                                         is gone (victory, rout) or stunned (fled)
 // commit(game, walk) -> game                              writes progress.pos; same object if unchanged
 // present(game, mapId) -> [Entity & { solid, state, glint, grudge, name, lead }]   (memoised per game object)
 // canWalk(game, mapId, x, y, { dir, roamer = false } = {}) -> boolean
@@ -20,14 +22,25 @@
 // sightEncounter(game, encId) -> game                 light(game, walk) -> 2 | Infinity
 // isWeak(game, spawns) -> boolean
 //
-// Events (in order; the UI stops at the first battle-starting one):
-//   turn { face }  step { x, y }  bump { id? }  exit { id, to, anchor, unlock? }  sealed { id, region, text }
+// Events (in order; the UI stops at the first battle-starting one: encounter, contact, rout):
+//   turn { face }  step { x, y, run }  bump { id? }  exit { id, to, anchor, unlock? }  sealed { id, region, text }
 //   encounter { id }  gate { id, text, guard }  lock { id, lock, status }  trigger { id, dialogue }
-//   sighted { relic, enc }  hazard { pct }  talk { npc, dialogue, enc? }  sign { text }  use { kind, id }
-//   chest { id, lock? }  hearthfire { id }  enter { map }  alert/roam/contact/rout (roamers; WP1)
+//   sighted { relic, enc }  hazard { pct, hurt: { heroId: hp lost } }  talk { npc, dialogue, enc? }
+//   sign { text }  use { kind, id }  chest { id, lock? }  hearthfire { id }  enter { map }
+//   alert { id }                        a roamer noticed you ("!")
+//   roam { moves: [[id, x, y, face]] }  roamers that moved this tick
+//   contact { id, enc, by: 'player'|'roamer', firstStrike, ambush }   a battle with roamer `id`
+//   rout { id, enc }                    you walked into a weak pack: it scatters (gauntlet.routPack)
 //
-// SCAFFOLD: a working first cut with no roamers yet (walk.roamers stays []), no sighting and no
-// hazard damage. WP1 owns and finishes it. registerMap() lets tests use test/fixtures/map-mini.mjs.
+// Roamers (spec §4.5 "Roamer rules"; numbers in TUNING.world): authored `pack` encounters and zone
+// patrols are seeded on enterMap from their own RNG stream (walk.rng, never game.rngState), so a
+// Walk is plain JSON and the same inputs always give the same Walk. They wander within `leash` of
+// home, notice you within `sight` (line of sight), wait, then chase on 2 of every 3 ticks and give up
+// past leash + 6 from home. Weak packs (all rabble, no relics, top level <= party level - fleeGap)
+// flee instead, on 4 of every 5 ticks, and walking into one is a Rout. Walking into a pack's back is
+// a First Strike; a pack walking into yours is an ambush. They never enter exits, doors, stairs,
+// lock or gate areas, Hearthfire stands, entity tiles or 1-wide corridors.
+// registerMap() lets tests use test/fixtures/map-mini.mjs.
 // Import direction (A6): world -> story -> cond -> gauntlet.
 // Owner: WP1.
 
@@ -36,15 +49,19 @@ import { tileOf } from '../data/tiles.js';
 import { LOCKS } from '../data/locks.js';
 import { RELICS } from '../data/relics.js';
 import { DOMAINS } from '../data/domains.js';
-import { ENCOUNTERS } from '../data/encounters.js';
+import { ENCOUNTERS, PATROLS } from '../data/encounters.js';
+import { ZONES } from '../data/world.js';
 import { TUNING } from '../data/tuning.js';
 import { createRng } from '../core/rng.js';
 import { check, ownedRelics, bestDomain, flagsOf } from './cond.js';
 import { talkTo } from './story.js';
 import { spawnsFor, partyLevel } from './gauntlet.js';
-import { familyOf } from './foe.js';
+import { familyOf, escalateSpawn } from './foe.js';
 import { generateItem } from './loot.js';
-import { aStar, DIRS } from './path.js';
+import { deriveHero } from './stats.js';
+import { aStar, DIRS, DIR_KEYS } from './path.js';
+
+const TW = TUNING.world;
 
 // ---- maps -------------------------------------------------------------------------------------------
 
@@ -131,7 +148,10 @@ export function canWalk(game, mapId, x, y, { dir = null, roamer = false } = {}) 
 
 function newWalk(game, map, pos, visit) {
   const rng = createRng(`roam:${game.seed}:${map.id}:${visit}`);
-  return { map: map.id, visit, x: pos.x, y: pos.y, face: pos.face || 's', tick: 0, rng: rng.getState(), grace: 0, gone: {}, roamers: [] };
+  const walk = { map: map.id, visit, x: pos.x, y: pos.y, face: pos.face || 's', tick: 0, rng: 0, grace: 0, gone: {}, roamers: [] };
+  walk.roamers = seedRoamers(game, map, walk, rng);
+  walk.rng = rng.getState();
+  return walk;
 }
 
 function fireTriggers(g, map, x, y, on, events) {
@@ -170,7 +190,11 @@ export function move(game, walk, dir, { run = false } = {}) {
   const exit = exitAt(map, nx, ny);
   const gateClosed = at.find(e => e.kind === 'gate' && e.state === 'closed');
   if (exit && !gateClosed) {
-    if (exit.sealed) { events.push({ t: 'sealed', id: exit.id, region: exit.sealed.region, text: exit.sealed.text }); return { game, walk: w, events }; }
+    if (exit.sealed) {
+      // after Act I the UI adds "The way opens in the next chapter." (spec §2.6)
+      events.push({ t: 'sealed', id: exit.id, region: exit.sealed.region, text: exit.sealed.text, nextChapter: check(game, { flag: 'act1-complete' }) });
+      return { game, walk: w, events };
+    }
     let g = game;
     if (exit.unlock && !flagsOf(game).unlocked?.[exit.unlock]) {
       g = structuredClone(game);
@@ -179,6 +203,8 @@ export function move(game, walk, dir, { run = false } = {}) {
     events.push({ t: 'exit', id: exit.id, to: exit.to, anchor: exit.anchor, ...(exit.unlock ? { unlock: exit.unlock } : {}) });
     return { game: g, walk: w, events };
   }
+  const rm = roamerAt(w, nx, ny);
+  if (rm) { events.push(touch(game, rm, dir)); return { game, walk: w, events }; }
   const enc = at.find(e => e.kind === 'encounter' && e.mode !== 'pack');
   if (enc) { events.push({ t: 'encounter', id: enc.enc }); return { game, walk: w, events }; }
   if (gateClosed) { events.push({ t: 'gate', id: gateClosed.id, text: gateClosed.text, guard: gateClosed.guard || null }); return { game, walk: w, events }; }
@@ -194,16 +220,51 @@ export function move(game, walk, dir, { run = false } = {}) {
     g = structuredClone(game);
     fireTriggers(g, map, nx, ny, 'step', events);
   }
+  g = sightHolders(g, w, events);
   const ichor = here.find(e => e.kind === 'lock' && e.state === 'locked' && LOCKS[e.lock]?.soft?.hpPct && covers(e, nx, ny));
-  if (ichor && !lockStatus(game, ichor.lock).open) events.push({ t: 'hazard', pct: TUNING.world.hazardPct });
-  return { game: g, walk: w, events };
+  if (ichor && !lockStatus(g, ichor.lock).open) g = burn(g, LOCKS[ichor.lock].soft.hpPct, events);
+  return { game: g, walk: tickRoamers(g, w, events), events };
+}
+
+// Soft ichor: every active hero loses pct of max HP per step, never below 1.
+function burn(game, pct, events) {
+  const g = structuredClone(game);
+  const hurt = {};
+  for (const id of g.party.active) {
+    const h = g.party.roster[id];
+    const max = deriveHero(h, g.inventory).maxHp;
+    const hp = Math.max(1, (h.hp ?? max) - Math.max(1, Math.round(max * pct)));
+    if (hp !== h.hp) { hurt[id] = (h.hp ?? max) - hp; g.party.roster[id] = { ...h, hp }; }
+  }
+  events.push({ t: 'hazard', pct, hurt });
+  return Object.keys(hurt).length ? g : game;
+}
+
+// Holders you come near are Sighted (their relics get the codex stamp; the Ladder poster is scouted).
+function sightHolders(game, walk, events) {
+  const T = TW;
+  let range = ownedRelics(game).has('thornwatch-hood') ? T.sightRelicWatchful : T.sightRelic;
+  if (light(game, walk) !== Infinity) range = Math.min(range, T.darkRadius);
+  let g = game;
+  for (const e of present(game, walk.map)) {
+    if (e.kind !== 'encounter' || e.mode === 'pack' || !e.glint || distTo(e, walk.x, walk.y) > range) continue;
+    const scouted = !!flagsOf(g).scouted?.[e.enc];
+    const relics = spawnsFor(g, e.enc).flatMap(s => [...(s.held || []).map(h => h.relic), s.wears]).filter(Boolean);
+    const unseen = relics.filter(r => !g.codex[r]?.sighted);
+    if (scouted && !unseen.length) continue;
+    g = sightEncounter(g, e.enc);
+    for (const relic of unseen) events.push({ t: 'sighted', relic, enc: e.enc });
+  }
+  return g;
 }
 
 export function interact(game, walk) {
   const nx = walk.x + DIRS[walk.face][0], ny = walk.y + DIRS[walk.face][1];
-  const at = present(game, walk.map).filter(e => covers(e, nx, ny) && e.kind !== 'trigger' && e.kind !== 'light');
-  const e = at[0];
   const events = [];
+  const rm = roamerAt(walk, nx, ny);
+  if (rm) { events.push(touch(game, rm, walk.face)); return { game, walk, events }; }
+  const at = present(game, walk.map).filter(e => covers(e, nx, ny) && e.kind !== 'trigger' && e.kind !== 'light' && !(e.kind === 'encounter' && e.mode === 'pack'));
+  const e = at[0];
   if (!e) return { game, walk, events };
   switch (e.kind) {
     case 'npc': events.push({ t: 'talk', npc: e.npc, dialogue: talkTo(game, e.npc) }); break;
@@ -224,7 +285,23 @@ export function interact(game, walk) {
 }
 
 export function tick(game, walk) {
-  return { game, walk: { ...walk, tick: walk.tick + 1, grace: Math.max(0, walk.grace - 1) }, events: [] };
+  const events = [];
+  const w = tickRoamers(game, { ...walk, tick: walk.tick + 1, grace: Math.max(0, walk.grace - 1) }, events);
+  return { game, walk: w, events };
+}
+
+// Back on the map after a fight (spec §4.5 "Grace and stun"): a few ticks with no contact; a
+// beaten or routed roamer is gone, one you fled from is stunned.
+export function afterBattle(game, walk, { roamerId = null, result = null } = {}) {
+  let roamers = walk.roamers;
+  let gone = walk.gone;
+  if (roamerId && (result === 'victory' || result === 'rout')) {
+    roamers = roamers.filter(r => r.id !== roamerId);
+    gone = { ...gone, [roamerId]: true };
+  } else if (roamerId && result === 'fled') {
+    roamers = roamers.map(r => (r.id === roamerId ? { ...r, mood: 'stunned', wait: TW.fleeStun } : r));
+  }
+  return { ...walk, roamers, gone, grace: TW.grace };
 }
 
 export function commit(game, walk) {
@@ -353,4 +430,213 @@ export function isWeak(game, spawns) {
   if (spawns.some(s => familyOf(s).tier !== 'rabble' || s.relic || s.held || s.wears)) return false;
   const gap = ownedRelics(game).has('dawnbell') ? TUNING.world.fleeGap - 1 : TUNING.world.fleeGap;
   return Math.max(...spawns.map(s => s.level)) <= partyLevel(game) - gap;
+}
+
+// ---- roamers -------------------------------------------------------------------------------------------
+
+const cheb = (ax, ay, bx, by) => Math.max(Math.abs(ax - bx), Math.abs(ay - by));
+const sq = (ax, ay, bx, by) => (ax - bx) ** 2 + (ay - by) ** 2;
+function distTo(e, x, y) {
+  const [x0, y0, x1, y1] = areaOf(e);
+  return Math.max(Math.max(x0 - x, 0, x - x1), Math.max(y0 - y, 0, y - y1));
+}
+const roamerAt = (walk, x, y) => walk.roamers.find(r => r.x === x && r.y === y) || null;
+const powerOwned = (game, power) => [...ownedRelics(game)].some(r => RELICS[r].mapPower?.id === power);
+const faceTo = (ax, ay, bx, by) => (Math.abs(bx - ax) >= Math.abs(by - ay) ? (bx >= ax ? 'e' : 'w') : (by >= ay ? 's' : 'n'));
+
+// Where packs may walk (static per map): walkable, not a ledge, door or stair, not an exit, not in
+// a lock or gate area, not a Hearthfire stand or any entity tile, and not a 1-wide corridor (a
+// walkable tile whose only walkable neighbours are two opposite ones).
+const MASKS = new WeakMap();
+export function roamMask(map) {
+  let m = MASKS.get(map);
+  if (m) return m;
+  const { w, h } = map;
+  const open = (x, y) => {
+    if (x < 0 || y < 0 || x >= w || y >= h) return false;
+    const t = tileOf(map.rows[y][x]);
+    return !t.solid && !t.oneWay;
+  };
+  const blocked = new Uint8Array(w * h);
+  const block = a => { for (let y = Math.max(0, a[1]); y <= Math.min(h - 1, a[3]); y++) for (let x = Math.max(0, a[0]); x <= Math.min(w - 1, a[2]); x++) blocked[y * w + x] = 1; };
+  for (const e of map.entities) {
+    if (e.kind === 'trigger' || e.kind === 'light' || (e.kind === 'encounter' && e.mode === 'pack')) continue;
+    block(areaOf(e));
+    if (e.kind === 'hearthfire' && e.stand) block([e.stand[0], e.stand[1], e.stand[0], e.stand[1]]);
+  }
+  for (const x of map.exits) block(x.area);
+  m = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (!open(x, y) || blocked[y * w + x] || tileOf(map.rows[y][x]).noRoam) continue;
+      const n = open(x, y - 1), s = open(x, y + 1), e = open(x + 1, y), wv = open(x - 1, y);
+      if (n + s + e + wv === 2 && ((n && s) || (e && wv))) continue;
+      m[y * w + x] = 1;
+    }
+  }
+  MASKS.set(map, m);
+  return m;
+}
+
+// Line of sight over tiles (solid tiles block it).
+function seesTiles(map, ax, ay, bx, by) {
+  let x = ax, y = ay;
+  const dx = Math.abs(bx - ax), dy = -Math.abs(by - ay), sx = ax < bx ? 1 : -1, sy = ay < by ? 1 : -1;
+  let err = dx + dy;
+  for (let guard = 0; guard < 64; guard++) {
+    if (x === bx && y === by) return true;
+    if ((x !== ax || y !== ay) && tileOf(map.rows[y][x]).solid) return false;
+    const e2 = 2 * err;
+    if (e2 >= dy) { err += dy; x += sx; }
+    if (e2 <= dx) { err += dx; y += sy; }
+  }
+  return false;
+}
+
+function leadOf(spawns) {
+  const lead = spawns.slice().sort((a, b) => LEVEL[familyOf(b).tier] - LEVEL[familyOf(a).tier] || b.level - a.level)[0];
+  const fam = familyOf(lead);
+  return { family: lead.family, variant: lead.variant || null, art: fam.art, gearTier: lead.gearTier || 0, count: spawns.length };
+}
+
+function makeRoamer(game, { id, enc, zone, spawns, x, y, leash, face }) {
+  return {
+    id, enc, zone, spawns, lead: leadOf(spawns), x, y, home: [x, y], leash, face: face || 's',
+    mood: 'wander', wait: 0, weak: isWeak(game, spawns), trackless: spawns.every(s => familyOf(s).tier === 'rabble'),
+  };
+}
+
+// Seeding (spec §4.5): authored packs that are not cleared start at home; then 1..roam.max zone
+// patrols from PATROLS[zone.sets], at least spawnDistance from you and never within 2 of an exit.
+function seedRoamers(game, map, walk, rng) {
+  const out = [];
+  for (const e of present(game, map.id)) {
+    if (e.kind !== 'encounter' || e.mode !== 'pack') continue;
+    out.push(makeRoamer(game, { id: e.id, enc: e.enc, zone: null, spawns: spawnsFor(game, e.enc), x: e.at[0], y: e.at[1], leash: e.leash ?? TW.leash, face: e.face }));
+  }
+  const zone = map.zone && ZONES[map.zone];
+  const rects = map.roam?.rects || [];
+  if (!zone || !rects.length || !PATROLS[zone.sets]) return out;
+  const mask = roamMask(map);
+  const count = rng.int(1, Math.max(1, map.roam.max || 1));
+  const nearExit = (x, y) => map.exits.some(ex => distTo(ex, x, y) <= 2);
+  for (let k = 0; k < count; k++) {
+    const set = rng.pick(PATROLS[zone.sets]);
+    const level = zone.level + rng.int(0, 1);
+    const spawns = set.map((sp, i) => ({ ...escalateSpawn({ ...sp, level }, game.progress.waking || 0, `roam:${map.id}:${walk.visit}:${k}:${i}`), spawnIndex: i }));
+    let spot = null;
+    for (let tries = 0; tries < 40 && !spot; tries++) {
+      const [x0, y0, x1, y1] = rng.pick(rects);
+      const x = rng.int(x0, x1), y = rng.int(y0, y1);
+      if (x < 0 || y < 0 || x >= map.w || y >= map.h || !mask[y * map.w + x]) continue;
+      if (cheb(x, y, walk.x, walk.y) < TW.spawnDistance || nearExit(x, y) || out.some(r => r.x === x && r.y === y)) continue;
+      spot = [x, y];
+    }
+    if (!spot) continue;
+    out.push(makeRoamer(game, { id: `patrol-${k}`, enc: null, zone: zone.id, spawns, x: spot[0], y: spot[1], leash: TW.leash, face: DIR_KEYS[rng.int(0, 3)] }));
+  }
+  return out;
+}
+
+// You walk into (or talk to) a roamer: a weak pack is Routed; otherwise a fight, with First Strike
+// when you came at its back.
+function touch(game, r, dir) {
+  if (isWeak(game, r.spawns)) return { t: 'rout', id: r.id, enc: r.enc };
+  return { t: 'contact', id: r.id, enc: r.enc, by: 'player', firstStrike: r.face === dir && r.mood !== 'chase' && r.mood !== 'alert', ambush: false };
+}
+
+// One tick for every roamer (after a step, or an idle tick). Pure: returns a new walk.
+function tickRoamers(game, walk, events) {
+  if (!walk.roamers.length) return walk;
+  const map = mapOf(walk.map);
+  const mask = roamMask(map);
+  const rng = createRng(0);
+  rng.setState(walk.rng);
+  const roamers = walk.roamers.map(r => ({ ...r }));
+  const px = walk.x, py = walk.y;
+  const dark = light(game, walk) !== Infinity;
+  const sight = dark ? TW.sightDark : TW.sight;
+  const trackless = powerOwned(game, 'trackless');
+  const alertWait = powerOwned(game, 'stillness') ? TW.alertWaitStill : TW.alertWait;
+  const taken = (x, y) => roamers.some(o => o.x === x && o.y === y);
+  const free = (x, y) => x >= 0 && y >= 0 && x < map.w && y < map.h && !!mask[y * map.w + x] && !taken(x, y) && !(x === px && y === py);
+  const moves = [];
+  let contact = null;
+  const stepTo = (r, x, y) => { r.face = faceTo(r.x, r.y, x, y); r.x = x; r.y = y; moves.push([r.id, x, y, r.face]); };
+  const toward = (r, tx, ty, target) => {
+    const path = aStar({ from: [r.x, r.y], to: [tx, ty], max: 24, w: map.w, h: map.h, passable: (x, y) => (target && x === tx && y === ty) || free(x, y) });
+    return path && path.length ? path[0] : null;
+  };
+  for (const r of roamers) {
+    if (contact) break;
+    r.weak = isWeak(game, r.spawns);
+    const d = cheb(r.x, r.y, px, py);
+    const sees = d <= sight && seesTiles(map, r.x, r.y, px, py);
+    if (r.mood === 'stunned') {
+      r.wait -= 1;
+      if (r.wait <= 0) { r.mood = 'return'; r.wait = 0; }
+      continue;
+    }
+    if (r.weak) {
+      if (sees) {
+        r.mood = 'flee';
+        if (walk.tick % 5 === 4) continue;
+        // run straight away: the free neighbour farthest from you (squared distance), if any is farther
+        let best = null, far = sq(r.x, r.y, px, py);
+        for (const k of DIR_KEYS) {
+          const x = r.x + DIRS[k][0], y = r.y + DIRS[k][1];
+          if (!free(x, y)) continue;
+          const dd = sq(x, y, px, py);
+          if (dd > far) { far = dd; best = [x, y]; }
+        }
+        if (best) stepTo(r, best[0], best[1]);
+        continue;
+      }
+      if (r.mood === 'flee' || r.mood === 'chase' || r.mood === 'alert') r.mood = 'wander';
+    }
+    if (r.mood === 'alert') {
+      r.face = faceTo(r.x, r.y, px, py);
+      r.wait -= 1;
+      if (r.wait <= 0) r.mood = 'chase';
+      continue;
+    }
+    if (r.mood === 'chase') {
+      if (cheb(r.x, r.y, r.home[0], r.home[1]) > r.leash + 6) { r.mood = 'return'; continue; }
+      if (walk.tick % 3 === 2) continue;
+      const next = toward(r, px, py, true);
+      if (!next) continue;
+      if (next[0] === px && next[1] === py) {
+        r.face = faceTo(r.x, r.y, px, py);
+        if (walk.grace > 0) continue;
+        contact = { t: 'contact', id: r.id, enc: r.enc, by: 'roamer', firstStrike: false, ambush: walk.face === r.face };
+        continue;
+      }
+      stepTo(r, next[0], next[1]);
+      continue;
+    }
+    if (r.mood === 'return') {
+      if (r.x === r.home[0] && r.y === r.home[1]) { r.mood = 'wander'; continue; }
+      const next = toward(r, r.home[0], r.home[1], false);
+      if (next) stepTo(r, next[0], next[1]); else r.mood = 'wander';
+      continue;
+    }
+    // wander (and notice)
+    if (sees && !r.weak && !(trackless && r.trackless)) {
+      r.mood = 'alert';
+      r.wait = alertWait;
+      r.face = faceTo(r.x, r.y, px, py);
+      events.push({ t: 'alert', id: r.id });
+      continue;
+    }
+    if (rng.int(0, 2) !== 0) continue;
+    const k = DIR_KEYS[rng.int(0, 3)];
+    const x = r.x + DIRS[k][0], y = r.y + DIRS[k][1];
+    const inLeash = cheb(x, y, r.home[0], r.home[1]) <= r.leash;
+    const homeward = cheb(x, y, r.home[0], r.home[1]) < cheb(r.x, r.y, r.home[0], r.home[1]);
+    if (free(x, y) && (inLeash || homeward)) stepTo(r, x, y);
+    else r.face = k;
+  }
+  if (moves.length) events.push({ t: 'roam', moves });
+  if (contact) events.push(contact);
+  return { ...walk, roamers, rng: rng.getState() };
 }

@@ -67,3 +67,16 @@ test('quests are derived from conditions; the Ladder starts in silhouette', () =
   assert.ok(lad.every(p => p.state === 'silhouette'));
   assert.equal(ladder(done)[0].state, 'settled');
 });
+
+test('dialogue check odds match the rolled distribution (a check with advantage, and a contest)', () => {
+  const g = fresh();
+  const rate = (id, i, n = 4000) => {
+    let pass = 0;
+    for (let k = 0; k < n; k++) if (choose({ ...g, rngState: (k * 2654435761) | 0 }, id, i).roll.pass) pass++;
+    return (100 * pass) / n;
+  };
+  const vesper = dialogueView(g, 'vesper').choices.find(c => c.odds);
+  assert.ok(Math.abs(rate('vesper', vesper.i) - vesper.odds.pct) < 3, `Vesper: ${vesper.odds.pct}%`);
+  const garret = dialogueView(g, 'garret').choices.find(c => c.odds);
+  assert.ok(Math.abs(rate('garret', garret.i) - garret.odds.pct) < 3, `Garret's contest: ${garret.odds.pct}%`);
+});
