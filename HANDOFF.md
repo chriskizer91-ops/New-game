@@ -122,13 +122,14 @@ export NODE_PATH=$(npm root -g)  # Playwright is global; Chromium is at /opt/pw-
 node tools/e2e-world.mjs         # 11 world scenarios at 360x740 and 1280x800 (~20 min), prints PERF lines
 node tools/e2e-flow.mjs          # the shell around the world, plus an M2 profile (~15 min)
 node tools/e2e-battle.mjs        # 16 battle scenarios (~5 min)
+node tools/e2e-codes.mjs         # pastes all 18 real M2 codes at both sizes (~10 min)
 node tools/sim.mjs --seeds 200   # balance, all modes (~5 min); --modes, --seed N, --trace
 node tools/gallery.mjs           # art gallery screenshots into tools/shots/
 node tools/dev-battle.mjs        # tools/shots/dev-battle.html#node=oldsnag&level=5
 node tools/map-draft.mjs --all   # ASCII preview of every map with entities
 ```
 
-- Private builds for parallel work: `node tools/build.mjs --out /tmp/x`, then `AETH_HTML=/tmp/x/aethermoor.html node tools/e2e-world.mjs` (same for `e2e-flow`); `node tools/e2e-battle.mjs --out /tmp/x`.
+- Private builds for parallel work: `node tools/build.mjs --out /tmp/x`, then `AETH_HTML=/tmp/x/aethermoor.html node tools/e2e-world.mjs` (same for `e2e-flow` and `e2e-codes`); `node tools/e2e-battle.mjs --out /tmp/x`.
 - `e2e-world --scenario=3,11` and `--only=phone|laptop` run a subset.
 - Screenshots go to the OS temp folder (or `--out`). To look at one, read the PNG.
 

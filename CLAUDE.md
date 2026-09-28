@@ -10,7 +10,7 @@ This is a browser JRPG built into **one self-contained HTML file** that plays on
 
 - `npm run build` writes `dist/aethermoor.html` and `dist/aethermoor.artifact.html`.
 - `npm test`, `npm run lint`.
-- E2E tests: set `NODE_PATH=$(npm root -g)`, then run `node tools/e2e-flow.mjs`, `e2e-battle.mjs` or `e2e-world.mjs`. Playwright is global, and Chromium is at `/opt/pw-browsers`.
+- E2E tests: set `NODE_PATH=$(npm root -g)`, then run `node tools/e2e-flow.mjs`, `e2e-battle.mjs`, `e2e-world.mjs` or `e2e-codes.mjs` (every real M2 save code). Playwright is global, and Chromium is at `/opt/pw-browsers`.
 
 ## Rules
 

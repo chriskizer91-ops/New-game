@@ -92,8 +92,8 @@ The tuning that got there is listed in `docs/RULES.md` ("What the tuning changed
 
 ### 2.4 Migration checklist
 
-- All 18 M2 fixtures (`test/fixtures/v1/`) migrate in the unit tests, and their `AETH1` codes were
-  pasted into the built M3 file through Settings → Load a code at both sizes: the carry-over card
+- All 18 M2 fixtures (`test/fixtures/v1/`) migrate in the unit tests, and `tools/e2e-codes.mjs`
+  pastes their `AETH1` codes into the built file through Settings → Load a code at both sizes: the carry-over card
   shows, "Walk on" lands on a walkable tile, the party walks, and Party, Codex, Journal and Atlas
   open without an error. The v1 key is never written.
 - The Codex keeps the Claimed stamps, now out of 24; Grudge titles show on their lairs.
@@ -127,5 +127,6 @@ export NODE_PATH=$(npm root -g)           # Playwright is global; Chromium is at
 node tools/e2e-world.mjs --no-build       # 11 scenarios at 360x740 and 1280x800, prints PERF lines
 node tools/e2e-flow.mjs --no-build
 node tools/e2e-battle.mjs
+node tools/e2e-codes.mjs --no-build       # all 18 real M2 codes through Settings → Load a code
 node tools/sim.mjs --seeds 200            # all balance modes; --modes, --seed N, --trace to dig in
 ```
