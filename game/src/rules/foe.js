@@ -19,14 +19,22 @@ export function familyOf(spawn) {
 }
 
 // Deterministically add `n` Omens the spawn does not already have (some Omens are not
-// allowed on some tiers: a twinned Champion would be two Champions).
-export function addOmens(omens, n, seed, tier = null) {
+// allowed on some tiers: a twinned Champion would be two Champions). A `unique` foe (Old Snag,
+// Gorrow, the Gloamwing...) never gets an Omen that copies it (twinned): if that is the pick, it
+// re-picks from the rest, so every other outcome stays what it was.
+export function addOmens(omens, n, seed, tier = null, { unique = false } = {}) {
   const out = [...(omens || [])];
   const rng = createRng(seed);
   for (let i = 0; i < n; i++) {
     const free = OMEN_IDS.filter(o => !out.includes(o) && !(tier && OMENS[o].notFor?.includes(tier)));
     if (!free.length) break;
-    out.push(rng.pick(free));
+    let pick = rng.pick(free);
+    if (unique && OMENS[pick].split) {
+      const rest = free.filter(o => !OMENS[o].split);
+      if (!rest.length) break;
+      pick = rng.pick(rest);
+    }
+    out.push(pick);
   }
   return out;
 }
@@ -46,7 +54,7 @@ export function escalateSpawn(spawn, waking = 0, salt = '') {
     ...spawn,
     level: spawn.level + waking * per,
     gearTier: Math.min(3, (spawn.gearTier || 0) + waking * W.gearTier),
-    omens: addOmens(spawn.omens, omenCount, `${spawn.family}:${spawn.level}:${waking}:${salt}`, tier),
+    omens: addOmens(spawn.omens, omenCount, `${spawn.family}:${spawn.level}:${waking}:${salt}`, tier, { unique: !!familyOf(spawn).unique }),
   };
 }
 

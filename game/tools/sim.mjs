@@ -45,6 +45,8 @@ const STARTER = arg('starter', 'mix');
 const MD = args.includes('--md');
 const ALL_MODES = ['m2', 'direct', 'leads2', 'leads-all', 'looper-w2', 'first-lead'];
 const ONLY = arg('modes', ALL_MODES.join(',')).split(',');
+const ONE_SEED = arg('seed', null) ? +arg('seed') : null; // --seed N: replay one seed
+const TRACE = args.includes('--trace');                    // print every fight
 const STARTERS = ['hearthbrand', 'stillwater-lance', 'cairnmaul'];
 const MAX_TRIES = 8; // a player who keeps wiping grinds a level each time; eight tries is 'stuck'
 
@@ -153,7 +155,7 @@ function playRoute(g, route, stats, ctx) {
     if (f.done[id] || (f.cleared[id] && !node.brand)) continue;
     const ns = nodeStats(stats, id);
     for (let tries = 1; ; tries++) {
-      if (tries > MAX_TRIES) { ns.stuck++; return { g, done: false }; }
+      if (tries > MAX_TRIES) { ns.stuck++; return { g, done: false, at: `${id} (seed ${ctx.seed}, party L${partyLevel(g)})` }; }
       const level = partyLevel(g);
       const spawns = spawnsFor(g, id);
       const started = startBattle(g, { nodeId: id });
@@ -162,6 +164,7 @@ function playRoute(g, route, stats, ctx) {
       g = res.game;
       const rep = res.report;
       ns.tries++;
+      if (TRACE) console.log(`  ${id} try ${tries}: ${rep.result}${rep.yield ? ' (yield)' : ''} at party L${level}, ${rep.rounds} rounds`);
       if (tries === 1) { ns.first++; ns.level.push(level); ns.rounds.push(rep.rounds); }
       ctx.backdrop = node.backdrop;
       if (rep.result === 'victory') {
@@ -197,13 +200,13 @@ function simulate() {
     const st = all[k];
     const r = playRoute(g, route, st, ctx);
     st.runs++;
-    if (r.done) st.cleared++; else st.stuck++;
+    if (r.done) st.cleared++; else { st.stuck++; st.stuckSeeds = [...(st.stuckSeeds || []), r.at ? `${r.at}` : '?']; }
     st.endLevel.push(partyLevel(r.g));
     return r;
   };
-  for (let seed = 1; seed <= SEEDS; seed++) {
+  for (let seed = ONE_SEED ?? 1; seed <= (ONE_SEED ?? SEEDS); seed++) {
     const starter = STARTER === 'mix' ? STARTERS[seed % 3] : STARTER;
-    const ctx0 = () => ({ rng: createRng(`sim:${seed}`), rabble: 1, backdrop: 'hearth-road' });
+    const ctx0 = () => ({ rng: createRng(`sim:${seed}`), rabble: 1, backdrop: 'hearth-road', seed });
     const need = ONLY.filter(m => m !== 'looper-w2');
     let base = null;
     if (need.length) {
@@ -263,7 +266,7 @@ function report(all) {
     out.push(table(rows, ['node', 'foes', 'lvl', 'win 1st', 'rounds', 'hp left', 'wipe 1st', 'yield', 'wipes', 'claimed', 'shattered', 'stuck']));
     const r = st.rolls;
     const drops = [...RARITY_ORDER, 'shattered'].filter(x => st.drops[x]).map(x => `${x} ${st.drops[x]}`).join(', ');
-    out.push('', `runs cleared ${st.cleared}/${st.runs} (stuck ${st.stuck}); end party level ${f1(avg(st.endLevel))}; grind fights/run ${f1(st.grindFights / Math.max(1, st.runs))}`);
+    out.push('', `runs cleared ${st.cleared}/${st.runs} (stuck ${st.stuck}${st.stuckSeeds ? `: ${st.stuckSeeds.join(', ')}` : ''}); end party level ${f1(avg(st.endLevel))}; grind fights/run ${f1(st.grindFights / Math.max(1, st.runs))}`);
     out.push(`hero attack rolls: hit ${pct((r.hit || 0), r.n)}, graze ${pct(r.graze || 0, r.n)}, crit ${pct(r.crit || 0, r.n)}, miss ${pct(r.miss || 0, r.n)}, fumble ${pct(r.fumble || 0, r.n)}`);
     out.push(`random/worn-gear drops by rarity: ${drops}; named relics dropped: ${st.relics}`);
   }

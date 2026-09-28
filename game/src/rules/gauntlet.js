@@ -7,14 +7,14 @@
 // verbatim, and never read.
 //   newGame, spawnsFor, startBattle(game, { nodeId } | { patrol: { spawns, where, backdrop, dark } },
 //   { ambush, firstStrike }), resolveBattle, routPack, rest(game, hfId), travel, partyLevel, uniqueBrands
-// The M2 road helpers (route, currentNode, canAdvance, advance, isCleared) are deprecated: they read
-// progress.node, which version 2 games do not have. They stay only until the M2 road screen is gone.
+// The M2 road helpers (route, currentNode, canAdvance, advance, isCleared, road patrols) are gone
+// with the road screen (spec §4.6).
 // Import direction (A6): never import rules/world.js, story.js or cond.js here.
 
 import { createRng } from '../core/rng.js';
 import { HEROES, HERO_IDS, STARTERS, STARTING_BAG } from '../data/heroes.js';
 import { RELICS } from '../data/relics.js';
-import { ENCOUNTERS, GAUNTLET, PATROLS, BRANDS } from '../data/encounters.js';
+import { ENCOUNTERS, GAUNTLET, BRANDS } from '../data/encounters.js';
 import { HEARTHS, START_AT, REGIONS } from '../data/world.js';
 import { FOES } from '../data/foes.js';
 import { TUNING } from '../data/tuning.js';
@@ -26,7 +26,7 @@ import { grantXp } from './progression.js';
 import { generateItem, relicItem, routSpoils } from './loot.js';
 import { rngFrom } from './util.js';
 
-const START = GAUNTLET[0];
+const START = GAUNTLET[0]; // 'hearthstone-keep', the Eternal Hearth
 const TIER_RANK = { rabble: 0, veteran: 1, 'relic-bearer': 2, champion: 3 };
 const WIN_TITLES = ['the Party-Breaker', 'the Twice-Victor', 'the Thrice-Victor', 'the Unbeaten'];
 const FLEE_TITLES = ['the Once-Fled', 'the Twice-Fled', 'the Thrice-Fled', 'the Ever-Fled'];
@@ -82,51 +82,14 @@ export function newGame({ name = 'Wren', starter = 'hearthbrand', seed = 1, base
   };
 }
 
-// ---- walking the route (M2; deprecated, see the header) ---------------------------------------------
-
-export const currentNode = game => ENCOUNTERS[game.progress.node];
-
-export function isCleared(game, nodeId) {
-  const f = game.progress.flags;
-  return ENCOUNTERS[nodeId].type === 'hearthfire' || !!f.cleared[nodeId] || !!f.done[nodeId];
-}
-
-const skipped = (game, id) => ENCOUNTERS[id].once && game.progress.flags.done[id];
-
-// The route for a map screen: every node with its state.
-export function route(game) {
-  return GAUNTLET.map((id, index) => {
-    const n = ENCOUNTERS[id];
-    const spawns = n.spawns ? spawnsFor(game, id) : [];
-    return {
-      id, index, name: n.name, type: n.type, place: n.place, backdrop: n.backdrop, text: n.text,
-      current: game.progress.node === id, cleared: isCleared(game, id), skipped: !!skipped(game, id),
-      level: spawns.length ? Math.max(...spawns.map(s => s.level)) : null,
-      boss: spawns.find(s => FOES[s.family].tier !== 'rabble')?.family || null,
-      grudges: spawns.filter(s => s.grudge).map(s => s.name),
-    };
-  });
-}
-
-export const canAdvance = game => isCleared(game, game.progress.node);
-
-export function advance(game) {
-  if (!canAdvance(game)) return game;
-  let i = GAUNTLET.indexOf(game.progress.node) + 1;
-  while (i < GAUNTLET.length && skipped(game, GAUNTLET[i])) i++;
-  if (i >= GAUNTLET.length) return game;
-  return { ...game, progress: { ...game.progress, node: GAUNTLET[i] } };
-}
-
 // Rest at a Hearthfire: full heal, the fallen get up, save point set, a new day, and the fire is
-// kindled (so the Atlas can travel to it). rest(game) without an id is the M2 form (the current
-// road node) and is deprecated with the road.
+// kindled (so the Atlas can travel to it).
 export function rest(game, hfId) {
-  const node = hfId ? ENCOUNTERS[hfId] : currentNode(game);
+  const node = ENCOUNTERS[hfId];
   if (!node || node.type !== 'hearthfire') throw new Error('You can only rest at a Hearthfire');
   const g = healAll(game);
   const flags = { ...g.progress.flags, day: g.progress.flags.day + 1 };
-  if (hfId) flags.kindled = { ...(flags.kindled || {}), [hfId]: true };
+  flags.kindled = { ...(flags.kindled || {}), [hfId]: true };
   return { ...g, progress: { ...g.progress, lastHearthfire: node.id, flags } };
 }
 
@@ -237,32 +200,20 @@ export function spawnsFor(game, nodeId) {
   });
 }
 
-// Grinding: a rabble patrol at the level of the strongest rabble you have already beaten.
-export function patrolSpawns(game, rng) {
-  const node = currentNode(game);
-  const upTo = GAUNTLET.indexOf(node.id);
-  const levels = GAUNTLET.slice(0, upTo + 1).flatMap(id => (ENCOUNTERS[id].spawns || []).filter(s => FOES[s.family].tier === 'rabble').map(s => s.level));
-  const level = Math.max(1, ...levels);
-  const set = rng.pick(PATROLS[node.backdrop] || PATROLS['hearth-road']);
-  return set.map((sp, i) => escalateSpawn({ ...sp, level }, game.progress.waking, `patrol#${i}`));
-}
-
 // ---- battles in and out --------------------------------------------------------------------------
 
 // startBattle(game, { nodeId }) fights an authored encounter; startBattle(game, { patrol: { spawns,
 // where, backdrop, dark } }) fights a roaming zone pack (no node: no cleared flags, no Grudges). The
 // third argument comes from the world: { ambush } when a pack walked into your back, { firstStrike }
 // when you walked into its back. A Forewarned party (story.forewarned) starts a `forewarned`
-// encounter Warded. The M2 form startBattle(game, { patrol: true }) (grinding on the road) is
-// deprecated with the road.
-export function startBattle(game, { nodeId = game.progress.node, patrol = false } = {}, { ambush: ambushed = false, firstStrike = false } = {}) {
-  if (patrol && typeof patrol === 'object') return startPatrol(game, patrol, { ambush: ambushed, firstStrike });
+// encounter Warded.
+export function startBattle(game, { nodeId = null, patrol = null } = {}, { ambush = false, firstStrike = false } = {}) {
+  if (patrol) return startPatrol(game, patrol, { ambush, firstStrike });
   const node = ENCOUNTERS[nodeId];
   if (!node) throw new Error(`Unknown encounter ${nodeId}`);
   const rng = rngFrom(game.rngState);
-  if (!patrol && node.type !== 'fight') throw new Error(`${node.name} is not a battle`);
-  const foes = patrol ? patrolSpawns(game, rng) : spawnsFor(game, nodeId);
-  const ambush = ambushed || (patrol && rng.chance(TUNING.ribbon.ambushChance));
+  if (node.type !== 'fight') throw new Error(`${node.name} is not a battle`);
+  const foes = spawnsFor(game, nodeId);
   const seed = rng.int(1, 2 ** 31 - 1);
   const codex = { ...game.codex };
   for (const f of foes) {
@@ -276,14 +227,14 @@ export function startBattle(game, { nodeId = game.progress.node, patrol = false 
     foes, seed, waking: game.progress.waking,
     ctx: {
       inventory: game.inventory, bag: game.bag, nodeId, where: node.place, day: flags.day,
-      gentle: !!node.gentle && !patrol, backdrop: node.backdrop, patrol, ambush,
+      gentle: !!node.gentle, backdrop: node.backdrop, patrol: false, ambush,
       ...(firstStrike ? { firstStrike } : {}),
       ...(node.forewarned && story.forewarned ? { warded: TUNING.forewarned.ward } : {}),
       ...(node.dark ? { dark: true } : {}), ...(node.duel ? { duel: true } : {}),
     },
   });
   // fought counts as scouted for the Ladder (spec §3.6)
-  const progress = patrol || !flags.scouted ? game.progress
+  const progress = !flags.scouted ? game.progress
     : { ...game.progress, flags: { ...flags, scouted: { ...flags.scouted, [nodeId]: true } } };
   return { game: { ...game, rngState: rng.getState(), codex, progress }, battle };
 }
@@ -327,7 +278,7 @@ function recordGrudge(g, battle, fled) {
   // A capped number of Grudge Omens (so a loss is never a wall), never one it already had.
   const cap = TUNING.wipe.grudgeOmens[foe.tier === 'champion' ? 'champion' : 'other'];
   const pool = [...new Set([...foe.omens, ...prev.omens])];
-  const omens = prev.omens.length >= cap ? prev.omens : [...prev.omens, ...addOmens(pool, 1, `${key}:${wins + flees}:${g.seed}`, foe.tier).slice(pool.length)];
+  const omens = prev.omens.length >= cap ? prev.omens : [...prev.omens, ...addOmens(pool, 1, `${key}:${wins + flees}:${g.seed}`, foe.tier, { unique: !!FOES[foe.family]?.unique }).slice(pool.length)];
   const baseName = foe.name.replace(/ the (Party-Breaker|Twice-Victor|Thrice-Victor|Unbeaten|Once-Fled|Twice-Fled|Thrice-Fled|Ever-Fled)$/, '');
   const grudge = { ...prev, wins, flees, title, omens, name: `${baseName} ${title}` };
   g.progress.flags.grudges[key] = grudge;

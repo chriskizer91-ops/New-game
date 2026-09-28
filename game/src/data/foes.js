@@ -338,7 +338,7 @@ export const FOES = deepFreeze({
   },
   gloamwing: {
     id: 'gloamwing', name: 'The Gloamwing', art: 'gloamwing', tier: 'relic-bearer', kind: 'beast', unique: true,
-    hp: 90, guard: 15, atk: 5, dmg: 2, speed: 13, armor: 'hide', aspect: 'radiant', weak: ['ember'],
+    hp: 180, guard: 15, atk: 6, dmg: 4, speed: 13, armor: 'hide', aspect: 'radiant', weak: ['ember'],
     saves: { STR: 1, DEX: 3, CON: 2, WIS: 3 },
     relics: ['dawnbell'],
     moves: {

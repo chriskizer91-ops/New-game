@@ -24,8 +24,9 @@ function ended(battle, result) {
   return b;
 }
 
-function win(game, nodeId) {
-  const { game: g, battle } = startBattle(game, nodeId ? { nodeId } : undefined);
+// (M2 fought wherever progress.node stood; M3 names the encounter)
+function win(game, nodeId = game.progress.node) {
+  const { game: g, battle } = startBattle(game, { nodeId });
   const b = structuredClone(battle);
   for (const u of Object.values(b.units)) if (u.side === 'foe') u.hp = 1;
   for (const u of Object.values(b.units)) if (u.side === 'hero') { u.hp = u.maxHp = 500; }
@@ -79,7 +80,7 @@ test('Hearthfires heal, save and kindle; travel needs a kindled fire and lands o
 
 test('party wipe: wake at the last Hearthfire, keep gear, lose 10% gold, and a Grudge is born', () => {
   const g0 = { ...at(newGame({ seed: 4 }), 'bramble-toll', 'milestone-fire'), gold: 200 };
-  const { game, battle } = startBattle(g0);
+  const { game, battle } = startBattle(g0, { nodeId: 'bramble-toll' });
   const gear = JSON.stringify(game.party.roster.warden.gear);
   const { game: g, report } = resolveBattle(game, ended(battle, 'defeat'));
   assert.equal(report.result, 'defeat');
@@ -104,7 +105,7 @@ test('party wipe: wake at the last Hearthfire, keep gear, lose 10% gold, and a G
 test('fleeing twice makes "Skarn the Twice-Fled"; settling the Grudge pays a tier higher', () => {
   let g = at(newGame({ seed: 5 }), 'bramble-toll', 'milestone-fire');
   for (let i = 0; i < 2; i++) {
-    const { game, battle } = startBattle(g);
+    const { game, battle } = startBattle(g, { nodeId: 'bramble-toll' });
     g = resolveBattle(game, ended(battle, 'fled')).game;
   }
   assert.equal(g.progress.flags.grudges['bramble-toll#0'].name, 'Skarn the Twice-Fled');

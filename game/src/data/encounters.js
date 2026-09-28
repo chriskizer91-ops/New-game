@@ -128,7 +128,7 @@ export const ENCOUNTERS = deepFreeze({
   },
   'mw-lantern': {
     id: 'mw-lantern', type: 'fight', name: 'The Lamp Room', place: 'Mosswatch Tower', backdrop: 'mosswatch', region: 'verdant', dark: true,
-    spawns: [S('tallyman', 8, { variant: 'signalmaster', relic: 'mosswatch-lantern', name: 'Hollis Fairweight' }), S('tallyman', 4)],
+    spawns: [S('tallyman', 5, { variant: 'signalmaster', relic: 'mosswatch-lantern', name: 'Hollis Fairweight' }), S('tallyman', 5), S('smuggler', 7)],
     text: 'The lights at midnight: Hollis Fairweight, signalling someone with the tower\'s own Lantern.',
   },
   'hw-glowcaps': {
@@ -143,7 +143,7 @@ export const ENCOUNTERS = deepFreeze({
   },
   'gloamwing-hollow': {
     id: 'gloamwing-hollow', type: 'fight', name: 'The Gloamwing\'s Hollow', place: 'The Hindwood', backdrop: 'verdant-wood', region: 'verdant',
-    spawns: [S('gloamwing', 10)],
+    spawns: [S('gloamwing', 5, { omens: ['swift'] })],
     text: 'Pale trees, pale silk, and a moth the size of a cart. The Fawnrest bell hums on its thorax.',
   },
   'vesper-stall': {
