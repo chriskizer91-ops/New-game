@@ -46,16 +46,31 @@ parseDice('2d8+6') -> { terms:[{n,sides}], flat }
 
 ## Game state (plain JSON, saved as-is)
 
+Version 2 (M3). A version 1 (M2) save is migrated on load by `rules/migrate.js` (see Save v2).
+
 ```js
 {
-  version: 1,
+  version: 2, migratedFrom?: 1,
   seed, rngState,
   party: { active: ['warden','pip','bryn','alondra'], roster: { [heroId]: HeroState } },
   inventory: [ItemInstance], bag: { [consumableId]: count }, gold,
   codex: { [relicId]: { sighted, claimed, awakened } },
-  progress: { waking: 0, brands: [], lastHearthfire: nodeId, node: nodeId,
-              flags: { cleared, done, grudges, day, runs } },
-  settings: { sound, battleSpeed, reducedMotion }
+  progress: {
+    waking: 0, brands: [],            // brands only ever grows; count them with new Set(brands).size
+    lastHearthfire: hearthfireId,     // where a wipe wakes you
+    pos: { map, x, y, face },         // where the party stands (tiles)
+    act: 1,
+    node?: nodeId,                    // M2 saves only: kept verbatim, never read
+    flags: {
+      cleared, done, grudges, day, runs,               // as in M2
+      story: { [flag]: true | day },                   // story.starter, intro-done, bell-rung, act1-complete, letter:<brand>...
+      unlocked: { [entityId]: true },                  // opened locks, the Bramble Toll chain, the kicked-down rope
+      opened: { [chestId]: true }, kindled: { [hearthfireId]: true }, visits: { [mapId]: n },
+      quests: { [questId | 'bounty:<id>']: 'claimed' }, scouted: { [encId]: true },
+      seen: { [triggerId | 'arrive:<map>']: true }, worn: { [heroId]: gearSignature }, beaten: { [encId]: n },
+    },
+  },
+  settings: { sound, battleSpeed, reducedMotion, touchControls, alwaysRun, mapZoom }
 }
 
 HeroState = { id, name, level, xp, hp, mp, surge, hpRolls:[number], base:{STR,DEX,CON,INT,WIS,CHA},
@@ -98,8 +113,10 @@ inspect(state, id)                                 // Analyze panel: weaknesses,
 - `createBattle` takes spawns already escalated for the Waking (`rules/gauntlet.js` does that);
   its `waking` only raises loot luck. ctx keys: `inventory`, `bag`, `nodeId`, `where`, `day`,
   `gentle`, `noFlee`, `backdrop`, `patrol`, `ambush`.
-- Game flow lives in `rules/gauntlet.js`: `newGame`, `route`, `currentNode`, `canAdvance`, `advance`,
-  `rest`, `startBattle(game, {nodeId?, patrol?}) -> {game, battle}`, `resolveBattle(game, battle) -> {game, report}`.
+- ctx (M3) also carries `firstStrike` (every foe's first turn comes 40 later), `warded` (a dice
+  expression: every hero starts Warded; the Forewarned Rotwarden fight), `dark` (a fight in a dark
+  map: draw the backdrop dark) and `duel` (losing is a yield).
+- Game flow lives in `rules/gauntlet.js` (see Flow below).
 - Full rules, formulas and the balance sim live in `docs/RULES.md`.
 
 `act`/`foeTurn` never mutate their input; they return a new state plus an ordered event list.
@@ -146,6 +163,99 @@ The UI animates events one by one and then renders the returned state.
   hero's best relic power fires.
 - **Party wipe**: wake at the last Hearthfire, keep all gear, lose 10% of gold.
 
+## Flow (`rules/gauntlet.js`, M3 spec §4.6)
+
+```js
+newGame({ name, starter, seed, base }) -> v2 game at START_AT (keep-hall 12,6 n), the Eternal Hearth kindled
+spawnsFor(game, encId)            // Waking escalation, Grudges, Echoes; level 'party', '$rival', lend, noWaking
+startBattle(game, { nodeId } | { patrol: { spawns, where, backdrop, dark } }, { ambush, firstStrike }) -> { game, battle }
+resolveBattle(game, battle) -> { game, report }
+  // report: { result, xp, gold, drops, claimed, consumables, rounds, levelUps, goldLost, grudge, grudgeSettled,
+  //           brand: { ...BRANDS[id], waking, first, count } | null, rematch, yield, wokeAt }
+routPack(game, { nodeId } | { spawns, where }) -> { game, report: { result: 'rout', xp, gold, drops, consumables, levelUps } }
+rest(game, hfId) -> game          // heal, day + 1, lastHearthfire, kindled
+travel(game, hfId) -> game        // needs kindled[hfId]; pos = the Hearthfire's stand
+partyLevel(game), uniqueBrands(game)
+```
+
+- A win on an authored encounter sets `cleared`, `beaten += 1`, `done` if `once`, `unlocked[opens]`,
+  and earns its `brand`. A Brand already held is a rematch (`report.rematch`, no Waking). A new
+  Brand raises the Waking and re-arms every non-`once` encounter of its region; holding both
+  Verdant Brands sets `story['act1-complete']`. There is no teleport.
+- A wipe loses 10% gold, teaches 25% of the fight's XP, makes a Grudge, heals everyone and moves
+  `pos` to the last Hearthfire's stand (`report.wokeAt`). Losing a `duel` is a yield instead: no gold
+  lost, no Grudge, a breather heal where you stand, and the encounter's `yields` flag.
+- A Rout pays full gold, `TUNING.rout.xp` of the XP and the rabble drop roll, and never makes a Grudge.
+- The Waking: rabble rise `TUNING.waking.rabbleLevels` (2) levels per Waking, everyone else 6; the
+  tier comes from `familyOf(spawn)`, so a relic-bearer variant escalates as a relic-bearer.
+- `rules/party.js` adds Hilda's temper (`temperCost`, `temper`: +1 enchant per step, at most +3) and
+  the shops (`buy`).
+
+## World (`rules/world.js`, `cond.js`, `story.js`, `path.js`; M3 spec §4.1-§4.5)
+
+Maps are data (`data/maps/*.js`: `rows` of tile characters from `data/tiles.js` LEGEND, plus
+`entities`, `exits`, `anchors`, `roam`). The world engine is pure and lockstep: the UI calls it once
+per step and once per idle tick (400 ms), and renders the events it returns.
+
+```js
+Walk   = { map, visit, x, y, face, tick, rng, grace, gone: {}, roamers: [Roamer] }   // plain JSON
+Roamer = { id, enc|null, zone|null, spawns, lead: { family, variant, art, gearTier, count }, x, y, home, leash,
+           face, mood: 'wander'|'alert'|'chase'|'return'|'flee'|'stunned', wait, weak, trackless }
+
+enterMap(game, { map, anchor } | { map, at: [x, y], face }) -> { game, walk, events }   // seeds roamers
+move(game, walk, dir, { run }) -> { game, walk, events }
+interact(game, walk) -> { game, walk, events }
+tick(game, walk) -> { game, walk, events }
+afterBattle(game, walk, { roamerId, result }) -> walk     // grace; the roamer gone (won, routed) or stunned (fled)
+commit(game, walk) -> game                               // writes progress.pos (same object if unchanged)
+present(game, mapId) -> [Entity & { solid, state, glint, grudge, name, lead }]   // memoised per game object
+canWalk, findPath (A*, 4-way), threat, keys, lockStatus, openLock, openChest, sightEncounter, light, isWeak, roamMask
+```
+
+**Events** (the UI stops at the first one that starts a battle: `encounter`, `contact`, `rout`):
+`turn`, `step`, `bump`, `exit {id, to, anchor, unlock?}`, `sealed {id, region, text, nextChapter}`,
+`encounter {id}`, `gate {id, text, guard}`, `lock {id, lock, status}`, `trigger {id, dialogue}`,
+`sighted {relic, enc}`, `hazard {pct, hurt}`, `talk {npc, dialogue, enc?}`, `sign {text}`,
+`use {kind, id}`, `chest {id, lock?}`, `hearthfire {id}`, `enter {map}`, `alert {id}`,
+`roam {moves: [[id, x, y, face]]}`, `contact {id, enc, by, firstStrike, ambush}`, `rout {id, enc}`.
+
+- **Roamers** come from their own RNG stream (`roam:<seed>:<map>:<visit>`), never `game.rngState`.
+  They wander within their leash, notice you within 5 tiles with line of sight (2 in the dark),
+  pause (the "!" beat), chase on 2 of every 3 ticks, and give up past leash + 6 from home. Weak
+  packs (all rabble, no relics, top level at least 3 below the party) flee on 4 of every 5 ticks;
+  walking into one is a Rout. Walking into a pack's back is a First Strike; a pack walking into
+  yours is an ambush. They never enter exits, doors, stairs, lock or gate areas, Hearthfire stands,
+  entity tiles or 1-wide corridors (`roamMask`).
+- **Locks** (`data/locks.js`) each open with a relic map power (owned, not shattered) OR a Domain
+  level of the best active hero. Darkness and ichor are soft: without a key you see 2 tiles, and
+  ichor burns 4% of max HP a step (never below 1).
+- **Conditions** (`rules/cond.js`): one evaluator, `check(game, cond)`, drives entity presence,
+  gates, NPC talk, dialogue choices, quests and bounties.
+- **Story** (`rules/story.js`): `talkTo`, `dialogueView`, `enterDialogue`, `choose` (Domain checks and
+  contests roll from `game.rngState`; `odds.pct` is exact), `questLog`, `nextObjective`,
+  `claimQuest`, `bounties`, `ladder`, `afterDialogue`, `restDialogue`, `pendingLetter`, `readLetter`.
+
+Import direction inside `rules/`: `world -> story -> cond -> gauntlet`; `gauntlet` never imports
+the other three, and `migrate` imports data only.
+
+## Save v2 (`core/save.js`, `rules/migrate.js`; M3 spec §4.8, §4.9)
+
+| Key | Use |
+|---|---|
+| `aethermoor.save.v2` | the live save |
+| `aethermoor.save.v1` | the M2 save: read only, never written or removed (the M2 page still plays from it) |
+| `aethermoor.save.v2.bak` | the previous v2 save (before a New Game, an import or a restore) |
+| `aethermoor.v1.migrated` | `'1'` once the M2 save has been carried over or declined |
+
+- `loadGame(migrate) -> { game, from: 'v2'|'v1' } | null`: v2 if present, else the M2 save
+  migrated in memory (nothing is written until the world's first step: `ctx.commitAdopted()`).
+- `saveGame` writes v2 only (and the marker for a carried-over save); `clearGame` removes v2 only.
+- Codes: `exportCode` gives `AETH2.` + base64 JSON; `importCode(code, migrate)` takes `AETH1.` or
+  `AETH2.`, strips angle brackets from every string (`scrub`), then migrates.
+- `migrate(save)` is pure and idempotent: it keeps every M2 field verbatim, adds the v2 flags,
+  sets `story.starter`, opens what an M2 run had passed (the Toll chain, the thornwall, kindled
+  Hearthfires, `beaten`), and places the party on the map anchor `v1:<node>`.
+
 ## Art contract (`src/art/`)
 
 - `forge.js` — `Forge`, `Xf`, `compose`, `MAT` materials; see the prototype for the pipeline.
@@ -176,7 +286,12 @@ priestess of Fawnrest).
 
 **Foe art keys** (Verdant Wilds slice): `cutpurse` `briarling` `thornhound` `bandit` `tallyman`
 `rotstag` `oldsnag` (Relic-Bearer boar) `briarmaw` (Champion boss, 3 phases).
-Humanoid foes (`cutpurse`, `bandit`, `tallyman`) show gear tiers 0-3 on the sprite.
+M3 adds `smuggler` `boglurcher` `glowcap` `rotgrub` (rabble), `feral-druid` `hollowed-ranger`
+`sapwight` (veterans), `gloamwing` `mirelord` (Relic-Bearers), `rotwarden` (Champion, 3 phases, a
+breakable mask and seed), the named holders `mags` `haskett` `hollis` `dun` `vesper` `oda` `corra`,
+and the rival `tamsin`.
+Humanoid foes (`cutpurse`, `bandit`, `tallyman`, `smuggler`, `feral-druid`, `hollowed-ranger`,
+the named holders and `tamsin`) show gear tiers 0-3 on the sprite.
 
 **Named relics** (rules own stats/powers; art owns looks via `RELIC_ART[id]`):
 
@@ -194,6 +309,20 @@ Humanoid foes (`cutpurse`, `bandit`, `tallyman`) show gear tiers 0-3 on the spri
 | `thornwatch-boots` | boots | verdant | Thornwatch Regalia 3/3 |
 | `thornwreath` | crown | verdant | Briarmaw's breakable thorn-crown |
 | `briarfang` | dagger | verdant | Briarmaw's breakable fang |
+| `lightfingers` | gloves | frost | Mags Kestrel (M3) |
+| `hartshorn` | bow | storm | Haskett the Poacher |
+| `mosswatch-lantern` | focus | ember | Hollis Fairweight |
+| `watchkeepers-kettle` | kettle | storm | Old Garret (contest or quest) |
+| `mire-pearl` | ring | tide | Gorrow the Mire-King |
+| `dawnbell` | mace | radiant | the Gloamwing |
+| `rootsong` | staff | tide | Oda the Thornmother |
+| `oathshield` | shield | stone | Sgt Corra Thistle |
+| `isoldes-oath` | sword | frost | Dun the Counter |
+| `ichor-mask` | helm | blight | the Rotwarden (breakable) |
+| `first-seed` | amulet | verdant | the Rotwarden (breakable) |
+| `vale-gauntlets` | gauntlets | storm | worn by Tamsin; drops when you win |
+
+Every relic has a map power (`RELICS[id].mapPower.id`) that opens a lock type in the world.
 
 ## Conventions
 
