@@ -152,25 +152,26 @@ export function mount(root, ctx, params = {}) {
 
   // ---- bounties -------------------------------------------------------------------------------
   // One group per board: Captain Dael's in Thornhollow, Zara's in Sandspire (once the Sunscorch is
-  // open, or a bounty of hers is already done). Either board pays for any bounty.
+  // open, or a bounty of hers is already done), then any other giver's. Either board pays for any bounty.
   function renderBounties(g) {
     const list = bounties(g);
-    const BOARDS = [
-      { giver: 'dael', met: 'met-dael', read: 'Posted on Captain Dael’s board in Thornhollow. Bring him the proof and he pays.', unread: 'Captain Dael keeps a bounty board in Thornhollow. You have not read it yet, but word gets around.' },
-      { giver: 'zara', met: 'met-zara', read: 'Posted on the Sandspire board, by Zara al-Khem’s caravanserai. She pays for proof, and either board pays for any bounty.', unread: 'Sandspire keeps a bounty board by the caravanserai. Zara al-Khem pays for proof.' },
-    ];
-    const sunOpen = regionOpen(g, 'sunscorch');
-    for (const B of BOARDS) {
-      const mine = list.filter(b => (b.giver || 'dael') === B.giver);
-      if (!mine.length) continue;
-      if (B.giver !== 'dael' && !sunOpen && !safeCheck(g, { flag: B.met }) && mine.every(b => b.state === 'active')) continue;
-      const box = el('section', { class: 'jr-board', 'data-giver': B.giver });
+    const KNOWN = {
+      dael: { met: 'met-dael', read: 'Posted on Captain Dael’s board in Thornhollow. Bring him the proof and he pays.', unread: 'Captain Dael keeps a bounty board in Thornhollow. You have not read it yet, but word gets around.' },
+      zara: { met: 'met-zara', read: 'Posted on the Sandspire board, by Zara al-Khem’s caravanserai. She pays for proof, and either board pays for any bounty.', unread: 'Sandspire keeps a bounty board by the caravanserai. Zara al-Khem pays for proof.', region: 'sunscorch' },
+    };
+    const givers = [...new Set(list.map(b => b.giver || 'dael'))].sort((a, b) => (KNOWN[b] ? 1 : 0) - (KNOWN[a] ? 1 : 0) || Object.keys(KNOWN).indexOf(a) - Object.keys(KNOWN).indexOf(b));
+    for (const giver of givers) {
+      const who = NPCS[giver]?.name || 'someone';
+      const B = KNOWN[giver] || { met: `met-${giver}`, read: `Posted by ${who}. Bring the proof and be paid.`, unread: `${who} has work posted. You have not read it yet.` };
+      const mine = list.filter(b => (b.giver || 'dael') === giver);
+      // a board in a sealed region stays out of the Journal until its road opens (or it has paid out)
+      if (B.region && !regionOpen(g, B.region) && !safeCheck(g, { flag: B.met }) && mine.every(b => b.state === 'active')) continue;
+      const box = el('section', { class: 'jr-board', 'data-giver': giver });
       box.append(el('p', { class: 'jr-lede', text: safeCheck(g, { flag: B.met }) ? B.read : B.unread }));
       const ul = el('ul', 'jr-bounties');
       for (const b of mine) {
         const li = el('li', `jr-bounty panel is-${b.state}`);
         li.dataset.id = b.id;
-        const who = NPCS[b.giver || 'dael']?.name || 'the board';
         const st = b.state === 'ready' ? `Ready: turn in to ${who}` : b.state === 'done' ? 'Paid' : 'Hunting';
         li.append(
           el('span', 'jb-txt', [el('b', { text: b.name }), el('small', { text: [whereOf(b.enc), st].filter(Boolean).join(' · ') })]),
@@ -310,7 +311,7 @@ export function mount(root, ctx, params = {}) {
     const act1 = safeCheck(g, { flag: 'act1-complete' });
     for (const r of Object.values(REGIONS).filter(r => r.open && r.entries?.length)) {
       const o = regionOpen(g, r.id);
-      seal(`The road to ${r.name.replace(/^The /, 'the ')}`, o, o ? 'Open: the Keep\'s south-east gate stands open.' : 'Sealed until both Brands of the Wilds are yours.');
+      seal(`The road to ${r.name.replace(/^The /, 'the ')}`, o, o ? 'The Keep\'s south-east gate stands open. The Sunward Road runs to Sandspire.' : 'Sealed until both Brands of the Wilds are yours.');
     }
     const closed = Object.values(REGIONS).filter(r => !r.open);
     if (closed.length) seal('The roads beyond', false, `${closed.map(r => r.name.replace(/^The /, '')).join(', ')}: sealed. ${act1 ? 'The way opens in a later chapter.' : 'Not in this chapter.'}`);

@@ -85,6 +85,21 @@ shell test can run its view model.
 - The Brand banner names the Brand's own region ("Every foe in the Sunscorch Wastes re-arms").
 - `loreAt` (the crownwall seals) delegates to `atlas-geo.js`.
 
+**world.css housekeeping (the lead's request).** I removed the M3 forge rules that P7a's `forge.css`
+re-declares under `.w-sheet.forge`: `.forge-line`, the standalone `.forge-list`, `.forge-item.on`,
+`.forge-detail`, `.forge-card` and `.forge-card-name`.
+
+I kept the base rules that forge.css builds on:
+- the `.shop-list, .forge-list` reset;
+- `.forge-item`'s grid, 44 px height and background;
+- `.forge-item canvas`;
+- `.forge-item-t`;
+- the `.forge-nums` grid;
+- `.forge-hint` and `.forge-max`.
+
+forge.css only overrides a few properties of these, so deleting them would break the sheet. A comment
+in world.css says so. Scenario 9's forge screenshots before and after match.
+
 **Music** (`core/audio.js`): a `desert` track. It is a slow flute melody in the Hijaz mode on D over a
 held pad drone and a walking low string, with an oud-like pluck and a maqsum on a new hand drum
 (`d` doum, `t` tek, `a` ka).
@@ -120,16 +135,97 @@ held pad drone and a walking low string, with an oud-like pluck and a maqsum on 
 
 ## Test results (exact)
 
-(filled in below after the final runs)
+Private build: `node tools/build.mjs --out /tmp/aeth-p7b` → `aethermoor.html` 1735 KB (under the
+1.8 MB warning).
+
+- **`npm test`:** 265 tests, 264 pass, 1 fail. The failure is not in my files: `test/art-keys.test.mjs`
+  (P6), "every encounter and patrol backdrop … has a painter", error `no backdrop sun-road`, is P6's
+  backdrops in progress. An hour earlier the same file had 3 failures ("brask still draws a stand-in",
+  …) that P6 has since fixed.
+- **`node --test test/shell.test.mjs`:** 10/10 pass.
+- **`npm run lint`:** exit 0, no warnings shown.
+- **e2e-world, full run, all 19 scenarios, phone 360×740 and laptop 1280×800:**
+  - Command: `AETH_HTML=/tmp/aeth-p7b/aethermoor.html node tools/e2e-world.mjs --out=/tmp/aeth-p7b/shots-final`.
+  - Result: `E2E-WORLD passed`, exit 0, 239 checks ok, 0 failed.
+  - 2 BLOCKED: scenario 15, both sizes. "The pre-fight card does not name the Brand of Glass yet"
+    (P7a).
+  - No console errors at either size.
+  - After that run I changed the Journal's bounty grouping and removed dead forge rules from
+    world.css. So I rebuilt and reran scenarios 9, 13 and 19 at both sizes: `E2E-WORLD passed`. The
+    forge sheet's screenshots before and after differ only in the animated sword portrait.
+  - Performance (4× CPU throttle):
+    - phone 11 (Hearth Road): p95 frame JS 1.50 ms, drawImage p95 17 / max 17
+    - laptop 11: p95 1.90 ms, drawImage p95 17 / max 18
+    - phone 17 (Glass Flats): p95 1.80 ms, drawImage p95 10 / max 12; idles ~12 fps
+    - laptop 17: p95 2.00 ms, drawImage p95 14 / max 14; idles ~12 fps
+    - In 17, three fights interrupted the walk (a walk into a pack ends as fled and is counted).
 
 ## Screenshots
 
-(filled in below)
+- **The e2e runs, both sizes (`phone-NN-*.png` / `laptop-NN-*.png`):**
+  - `/tmp/aeth-p7b/shots-final/`, the full run. The new scenarios' files are named:
+    - `se-gate-sealed`, `sun-road`, `wreck-toast` (12)
+    - `spire-hearth`, `idris-shop`, `sandspire-board`, `atlas-sunscorch` (13)
+    - `dune-glass-shut`, `dune-glass-key`, `mirage` (14)
+    - `kharzul-prefight` (15)
+    - `shaft-dark`, `shaft-lit` (16)
+    - `codex-I`, `codex-II`, `codex-III`, `codex-I-earned`, `codex-awakened` (18)
+    - `journal-grudges`, `hunter`, `toast`, `council-2`, `act2` (19)
+  - `/tmp/aeth-p7b/shots-after/`, the rerun of 9, 13 and 19.
+- **`/tmp/aeth-p7b/look/`:** the harness shots from the final build, `phone-*` and `laptop-*`.
+  - Codex: `codex-I-new`, `codex-II-new`, `codex-III`, `codex-II-default`, `codex-I-earned`,
+    `codex-awakened`.
+  - Journal: `journal-grudges`, `journal-grudges-empty`, `journal-bounties`, `journal-ladder`,
+    `journal-keys`.
+  - Atlas: `atlas-pre-act1`, `atlas-pre-realm`, `atlas-sun-travel`, `atlas-sun-realm`,
+    `atlas-sun-wilds`.
+  - World: `toast-loot`, `toast-page`, `act2-card`, `hunter` (a clip: the red "!" beside a plain
+    one), `council-2-card`, `council-2-end`.
+  - The harness is `look.mjs` in my session scratchpad.
+- I read them at both sizes and fixed what I found:
+  - long toasts shrink-wrapped to half the phone's width (a width rule in `screens.css`);
+  - "the 2 starters" now reads "the two starters";
+  - the unearned reward line now says the page needs only its own relics;
+  - "Open: … stands open" was reworded.
+  - At 360 px nothing is cramped, clipped or scrolls sideways. The Journal's five tabs drop to a 9 px
+    pixel font under 420 px and still fit.
 
 ## What is left
 
-(filled in below)
+- **Scenario 15's Brand line.** The e2e reports it as BLOCKED, not failed, until the pre-fight card
+  names the Brand (a P7a need, below).
+- Scenarios 12-17 now run for real on P2's committed maps. The lead's last message said the tool
+  listed them without code; that was an earlier state of the file.
+- **The e2e `event()` seam runs world events outside the flow lock.** Firing a trigger while a card is
+  open stacks the two overlays. It is test-only (real triggers come from steps, which the lock blocks),
+  but new e2e steps should close overlays first, as 19 does.
+- **Not done, and not asked:** a Sunscorch Longwatch (the Atlas already draws any `LOOKOUTS` entry
+  P3 adds); an Atlas "page II" link from the Codex.
 
 ## Needs from others
 
-(filled in below)
+- **P7a, `tools/e2e-flow.mjs`: three M3 checks no longer hold in M4.**
+  - The Codex summary is now per page and counts what the page needs. Change `/of 24 claimed/` to
+    `/of 22 claimed/` (`.codex-sum` still exists; the 24-pocket count still holds on Page I).
+  - Keys lists every lock type. Change `.jr-lock` count `=== 11` to `15` (P2 added dune-glass, mirage,
+    quicksand and vault-seal).
+  - The Ladder has 27 posters (25 + 2 rumours; P3). Change `posters.length === 20` to `27`.
+  - The Atlas checks (10 Hearthfires and 3 padlocks in the Wilds view before Act I; 4 `.atlas-hf.go`;
+    Underground) still hold as written: I kept them true.
+- **P7a, `ui/world/sheets.js` `openPrefight`:** name the encounter's Brand on a Champion's pre-fight card,
+  e.g. "Brand of Glass" from `ENCOUNTERS[encId].brand` → `BRANDS[...]`. Spec §8 scenario 15 asks for it,
+  and e2e-world 15 blocks until it is there.
+  - The Glass Carapace also reads "Held by" there, not "Worn by". `heldList` sees it as held; check
+    with P4 whether Kharzul's carapace should be a `wears` piece.
+- **Whoever owns `ui/theme.css` (lead):** `.toast` is `left: 50%` with no width, so on a phone a long toast
+  shrink-wraps to half the screen. I set `.toast { width: max-content }` in `screens.css` (theme.css is
+  loaded first, and its `max-width: calc(100% - 32px)` still caps it). Fold it into theme.css at
+  integration if you like.
+- **P2 / anyone moving lore points:** `test/shell.test.mjs` now requires every map's lore and every
+  Hearthfire to lie inside its region's Atlas view (Sunscorch: x 540-1140, y 350-750). If a point has
+  to move outside, widen `VIEWS.sunscorch` in `ui/lib/atlas-geo.js` (mine), keeping it 3:2.
+- **The lead, for review:** the shell test "you are here projects onto each route…" was generalized,
+  not weakened. P2's Glass Flats route branches (out to Miragewell, back through the junction, down to
+  Scorchgate), so its middle can never lie between the two ends. The test now requires every tested
+  tile (middle and four corners) to land on one of the route's legs. It keeps the old between-the-ends
+  check for 2-point routes and adds a viewBox bound for every lore point.

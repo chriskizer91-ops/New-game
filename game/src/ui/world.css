@@ -198,15 +198,11 @@
 .shop-info { display: grid; min-width: 0; }
 .shop-info b { font-size: 16px; } .shop-info small { font-size: 13px; color: var(--parchment-2); }
 .shop-have { color: var(--ash) !important; font-family: var(--f-pixel); font-size: 9px !important; }
-.forge-line { margin: 0 0 6px; color: var(--parchment-2); font-size: 15px; }
-.forge-list { max-height: 34vh; overflow-y: auto; padding: 3px; }
+/* The forge sheet's base rules. ui/forge.css (M4, P7a) re-declares the line, the list's height, the
+   selected piece, the detail and the card under .w-sheet.forge; what is left here is what it builds on. */
 .forge-item { width: 100%; display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 8px; align-items: center; min-height: 44px; padding: 3px 8px; text-align: left; cursor: pointer; background: var(--iron); border: 0; box-shadow: 0 0 0 2px var(--ink); }
-.forge-item.on { box-shadow: 0 0 0 2px var(--ink), 0 0 0 3px var(--hearth); }
 .forge-item canvas { width: 32px; height: 32px; image-rendering: pixelated; }
 .forge-item-t { display: grid; min-width: 0; } .forge-item-t b { font-size: 15px; } .forge-item-t small { font-size: 12px; color: var(--ash); }
-.forge-detail { margin-top: 12px; display: grid; gap: 8px; }
-.forge-card { padding: 10px 12px; background: linear-gradient(180deg, #2b221d, #19130f); box-shadow: 0 0 0 2px var(--ink), 0 0 0 3px var(--r-heirloom); }
-.forge-card-name { font-family: var(--f-display); font-size: 20px; }
 .forge-nums { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 6px 0 0; }
 .forge-nums dt { color: var(--ash); } .forge-nums dd { margin: 0; font-family: var(--f-pixel); font-size: 13px; }
 .forge-nums .num.next { color: var(--up); }
