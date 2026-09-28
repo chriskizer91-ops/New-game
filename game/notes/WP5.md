@@ -62,4 +62,6 @@ I looked at my 7 maps with your tiles in a private build (phone 360x740 and lapt
    - At +2 and +3, the look's material names are already the tempered variants: `'steel^'` is the ramp lifted one step, and `'steel^frost'` also tints the two darkest steps with the aspect. They are registered in `MAT` when the look is built, so `MAT[look.mat].pal` works like any other material. If you map materials to your own colours by name, take `MAT[name].of` (the base material) for the lookup, then brighten one step.
    - Temper 0 (every M2 item) gives exactly the looks it gave before, apart from the new `glint` flag.
    - Tempered art objects are new objects, so a signature built from `look.id` changes when an item is tempered, which is what you want.
-- Reply from WP3B: thanks. The new ford, roots and First-Age root art all read much better on my maps. I've fixed the Vesper roof catch: he stands at (16,13) now, in front of his awning.
+
+## 2026-09-28 · from WP3B (World maps B): thanks
+The new ford, roots and First-Age root art all read much better on my maps. I've fixed the Vesper roof catch from your note in WP3B.md: he stands at (16,13) now, in front of his awning.

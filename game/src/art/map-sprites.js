@@ -48,7 +48,7 @@ export const NPC_LOOKS = Object.freeze({
   hilda: { H: { build: 'brute', skin: 'skin', hairMat: 'hairCopper', hair: 'bun', eye: '#3a1a10', tunic: 'gambeson', tabard: 'leatherDark', gloves: 'leatherDark', boots: 'leatherDark' }, gear: { weapon: A('hammer', { headMat: 'iron', haft: 'wood', headW: 12, bandMat: 'iron' }), hands: A('gloves', { mat: 'leatherDark' }) } },
   dael: { H: { build: 'human', skin: 'skinTan', hairMat: 'hairSilver', hair: 'crop', beard: true, eye: '#24381c', cloak: 'cloakGreen', gloves: 'leather', boots: 'leatherDark' }, gear: { weapon: A('sword', { blade: 'steel', guardMat: 'bronze', grip: 'leather', pommel: 'bronze', bladeL: 44 }), body: A('leather', { mat: 'leatherDark', shirt: 'hoodGreen', pauldrons: 'hoodGreen', belt: 'leather' }) } },
   nell: { H: { build: 'youth', skin: 'skinPale', hairMat: 'hairAuburn', hair: 'pony', freckles: true, eye: '#24381c', gloves: 'skinPale', boots: 'leather' }, gear: { body: A('robe', { mat: 'hoodGreen', trim: 'gambeson', sash: 'leather' }) } },
-  corra: { H: { build: 'human', skin: 'skinPale', hairMat: 'hairBrown', hair: 'crop', eye: '#24381c', tunic: 'rags', cloak: 'hoodGreen', gloves: 'leather', boots: 'leatherDark' }, gear: { body: A('leather', { mat: 'leatherDark', shirt: 'rags', belt: 'leather' }), weapon: A('bow', { limb: 'bogwood', grip: 'leather' }) } },
+  corra: { H: { build: 'human', skin: 'skinPale', hairMat: 'hairAuburn', hair: 'braid', eye: '#24381c', tunic: 'rags', cloak: 'cloakGreen', quiver: 'leatherDark', fletch: 'cloakGreen', gloves: 'leather', boots: 'leatherDark' }, gear: { head: A('kettle', { look: 'kettle', mat: 'iron', trim: 'bronze' }), body: A('leather', { mat: 'leather', shirt: 'cloakGreen', pauldrons: 'iron', belt: 'leatherDark', trim: 'bronze' }), weapon: A('bow', { limb: 'bogwood', grip: 'leather' }) } },
   garret: { H: { build: 'human', skin: 'skinPale', hairMat: 'hairSilver', hair: 'short', beard: true, eye: '#2a2030', tunic: 'wool', cloak: 'wool', gloves: 'leather', boots: 'leather' }, gear: { head: A('kettle', { look: 'kettle', mat: 'iron' }), offhand: { look: 'lantern', metal: 'iron', glow: 'ember' } } },
   miravel: { H: { build: 'human', skin: 'skinTan', hairMat: 'hairSilver', hair: 'long', ears: 'long', eye: '#5a3a10', mantle: 'moss', gloves: 'skinTan', boots: 'bark' }, gear: { weapon: A('staff', { style: 'gnarl', haft: 'bogwood', leaves: 'moss', glow: 'verdant' }), body: A('robe', { mat: 'robeBark', trim: 'moss', sash: 'hoodGreen' }) } },
   nan: { H: { build: 'dwarf', skin: 'skinTan', hairMat: 'hairSilver', hair: 'bun', eye: '#2a2030', mantle: 'wool', gloves: 'skinTan', boots: 'leather' }, gear: { body: A('robe', { mat: 'robeBark', trim: 'leather', sash: 'wool' }), offhand: { look: 'tome', cover: 'wood' } } },
@@ -64,11 +64,14 @@ function villager(key) {
   const h = strHash(key), pick = (a, s) => a[(h >>> s) % a.length];
   return { H: { build: (h & 3) === 3 ? 'brute' : 'human', skin: pick(SKINS, 2), hairMat: pick(HAIRS, 5), hair: pick(STYLES, 9), eye: '#2a2030', tunic: pick(TUNICS, 13), gloves: pick(SKINS, 2), boots: 'leather' }, gear: {} };
 }
+// people met both as NPCs and as foes wear their battle look (art/foes.js) so they read as the same person
+const FOE_FIRST = new Set(['tamsin', 'vesper']);
 const npcCache = lru(48);
 export function npcSheet(artKey) {
   const img = npcCache.get(String(artKey), () => {
-    let look = NPC_LOOKS[artKey];
+    let look = FOE_FIRST.has(artKey) ? null : NPC_LOOKS[artKey];
     if (!look && FOE_ART[artKey] && FOE_ART[artKey].kind === 'humanoid') { const f = foeLooks(artKey, { gearTier: 0 }); if (f.H) look = { H: f.H, gear: f.gear }; }
+    if (!look) look = NPC_LOOKS[artKey];
     if (!look) look = villager(artKey);
     const { L, M } = resolveGear(look.gear);
     return rigSheet(look.H, L, { meta: M });
