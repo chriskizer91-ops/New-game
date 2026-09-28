@@ -1,17 +1,21 @@
-// Game flow for the M2 Gauntlet (no DOM): new game, walking the nodes, Hearthfire rests,
-// battles in and out, party wipes, Grudges, Brands and the Waking loop.
+// Game flow (no DOM): new game, Hearthfire rests and travel, battles in and out, Routs, party
+// wipes and the duel yield, Grudges, Brands and the Waking.
 //
-// M3 (spec §4.6; owner WP2) keeps this file name for import stability. The scaffold added, with
-// M2 behaviour unchanged: partyLevel, uniqueBrands, routPack, travel, rest(game, hfId?),
-// startBattle(game, { nodeId } | { patrol: { spawns, where, backdrop } }, { ambush, firstStrike }),
-// and spawnsFor support for level 'party', '$rival', `lend` and `noWaking`.
+// M3 (spec §4.6; owner WP2) keeps this file name for import stability. newGame makes version 2
+// games that start in the Great Hall (START_AT); where you are is progress.pos, and the world
+// (rules/world.js) decides what you can reach. progress.node is only kept on migrated M2 saves,
+// verbatim, and never read.
+//   newGame, spawnsFor, startBattle(game, { nodeId } | { patrol: { spawns, where, backdrop, dark } },
+//   { ambush, firstStrike }), resolveBattle, routPack, rest(game, hfId), travel, partyLevel, uniqueBrands
+// The M2 road helpers (route, currentNode, canAdvance, advance, isCleared) are deprecated: they read
+// progress.node, which version 2 games do not have. They stay only until the M2 road screen is gone.
 // Import direction (A6): never import rules/world.js, story.js or cond.js here.
 
 import { createRng } from '../core/rng.js';
 import { HEROES, HERO_IDS, STARTERS, STARTING_BAG } from '../data/heroes.js';
 import { RELICS } from '../data/relics.js';
 import { ENCOUNTERS, GAUNTLET, PATROLS, BRANDS } from '../data/encounters.js';
-import { HEARTHS } from '../data/world.js';
+import { HEARTHS, START_AT, REGIONS } from '../data/world.js';
 import { FOES } from '../data/foes.js';
 import { TUNING } from '../data/tuning.js';
 import { SLOTS } from '../data/items.js';
@@ -19,7 +23,7 @@ import { createBattle, outcome } from './battle.js';
 import { escalateSpawn, addOmens, buildFoe } from './foe.js';
 import { deriveHero } from './stats.js';
 import { grantXp } from './progression.js';
-import { generateItem, relicItem } from './loot.js';
+import { generateItem, relicItem, routSpoils } from './loot.js';
 import { rngFrom } from './util.js';
 
 const START = GAUNTLET[0];
@@ -52,6 +56,8 @@ function startingHero(id, rng, inventory, { name, starter, base }) {
   return { ...hero, hp: d.maxHp, mp: d.maxMp };
 }
 
+// A version 2 game (spec §4.8): the party stands in the Great Hall (START_AT), the Eternal Hearth is
+// kindled and is the last Hearthfire, and story.starter remembers the starter relic.
 export function newGame({ name = 'Wren', starter = 'hearthbrand', seed = 1, base = null } = {}) {
   if (!STARTERS[starter]) throw new Error(`Unknown starter relic ${starter}`);
   const rng = createRng(seed);
@@ -61,16 +67,22 @@ export function newGame({ name = 'Wren', starter = 'hearthbrand', seed = 1, base
   const codex = {};
   for (const r of Object.keys(STARTERS)) codex[r] = { sighted: true, claimed: r === starter, awakened: false };
   return {
-    version: 1, seed, rngState: rng.getState(),
+    version: 2, seed, rngState: rng.getState(),
     party: { active: [...HERO_IDS], roster },
     inventory, gold: 50, codex,
-    progress: { waking: 0, brands: [], lastHearthfire: START, node: START, flags: { cleared: {}, done: {}, grudges: {}, day: 1, runs: 0 } },
+    progress: {
+      waking: 0, brands: [], lastHearthfire: START, pos: { ...START_AT }, act: 1,
+      flags: {
+        cleared: {}, done: {}, grudges: {}, day: 1, runs: 0,
+        story: { starter }, unlocked: {}, opened: {}, kindled: { [START]: true }, visits: {}, quests: {}, scouted: {}, seen: {}, worn: {}, beaten: {},
+      },
+    },
     settings: { sound: true, battleSpeed: 1, reducedMotion: false },
     bag: { ...STARTING_BAG },
   };
 }
 
-// ---- walking the route ----------------------------------------------------------------------------
+// ---- walking the route (M2; deprecated, see the header) ---------------------------------------------
 
 export const currentNode = game => ENCOUNTERS[game.progress.node];
 
@@ -106,9 +118,9 @@ export function advance(game) {
   return { ...game, progress: { ...game.progress, node: GAUNTLET[i] } };
 }
 
-// Rest at a Hearthfire: full heal, the fallen get up, save point set, a new day.
-// rest(game) is the M2 form (the current node). rest(game, hfId) is the M3 form: it also marks the
-// fire kindled.
+// Rest at a Hearthfire: full heal, the fallen get up, save point set, a new day, and the fire is
+// kindled (so the Atlas can travel to it). rest(game) without an id is the M2 form (the current
+// road node) and is deprecated with the road.
 export function rest(game, hfId) {
   const node = hfId ? ENCOUNTERS[hfId] : currentNode(game);
   if (!node || node.type !== 'hearthfire') throw new Error('You can only rest at a Hearthfire');
@@ -131,30 +143,34 @@ export function partyLevel(game) {
 export const uniqueBrands = game => new Set(game?.progress?.brands || []).size;
 
 // Fast travel to a kindled Hearthfire: pos = its stand. Returns the game unchanged if not kindled.
-// SCAFFOLD: WP2 owns the final rules (the Atlas only offers kindled fires).
 export function travel(game, hfId) {
   const h = HEARTHS[hfId];
   if (!h || !game.progress.flags.kindled?.[hfId]) return game;
   return { ...game, progress: { ...game.progress, pos: { map: h.map, x: h.x, y: h.y, face: h.face } } };
 }
 
-// A Rout: a weak pack scatters. Full gold, TUNING.rout.xp of the XP, no Grudge.
+// A Rout (spec D4): a weak pack scatters when you walk into it. Full gold, TUNING.rout.xp of the XP,
+// the normal rabble drop roll (loot.routSpoils), and never a Grudge.
 // report: { result: 'rout', xp, gold, drops, consumables, levelUps }.
-// SCAFFOLD: no drops yet (WP2 adds loot.routSpoils and the rabble drop roll).
-export function routPack(game, { nodeId = null, spawns = null } = {}) {
+export function routPack(game, { nodeId = null, spawns = null, where = null } = {}) {
   const list = spawns || (nodeId ? spawnsFor(game, nodeId) : []);
   const foes = list.map((sp, i) => buildFoe(sp, { id: `r${i}`, seq: i }));
   const g = structuredClone(game);
   const rng = rngFrom(g.rngState);
   const gold = foes.reduce((a, f) => a + f.gold, 0);
   const xp = Math.round(foes.reduce((a, f) => a + f.xp, 0) * TUNING.rout.xp);
-  const report = { result: 'rout', xp, gold, drops: [], consumables: {}, levelUps: {} };
+  const place = where || (nodeId && ENCOUNTERS[nodeId]?.place) || null;
+  const { drops, consumables } = routSpoils(rng, foes, g.progress.waking, { where: place, day: g.progress.flags.day });
+  const report = { result: 'rout', xp, gold, drops, consumables, levelUps: {} };
   g.gold += gold;
+  g.inventory.push(...drops);
+  for (const [id, n] of Object.entries(consumables)) g.bag[id] = (g.bag[id] || 0) + n;
   awardXp(g, xp, rng, report);
   if (nodeId) {
     const f = g.progress.flags;
     f.beaten = { ...(f.beaten || {}), [nodeId]: (f.beaten?.[nodeId] || 0) + 1 };
     f.cleared[nodeId] = true;
+    if (ENCOUNTERS[nodeId]?.once) f.done[nodeId] = true;
   }
   g.rngState = rng.getState();
   return { game: g, report };
@@ -233,11 +249,16 @@ export function patrolSpawns(game, rng) {
 
 // ---- battles in and out --------------------------------------------------------------------------
 
-// M2: startBattle(game, { nodeId?, patrol: true|false }). M3 adds a patrol object
-// { spawns, where, backdrop } (a roaming pack; no node) and a third argument { ambush, firstStrike }.
+// startBattle(game, { nodeId }) fights an authored encounter; startBattle(game, { patrol: { spawns,
+// where, backdrop, dark } }) fights a roaming zone pack (no node: no cleared flags, no Grudges). The
+// third argument comes from the world: { ambush } when a pack walked into your back, { firstStrike }
+// when you walked into its back. A Forewarned party (story.forewarned) starts a `forewarned`
+// encounter Warded. The M2 form startBattle(game, { patrol: true }) (grinding on the road) is
+// deprecated with the road.
 export function startBattle(game, { nodeId = game.progress.node, patrol = false } = {}, { ambush: ambushed = false, firstStrike = false } = {}) {
   if (patrol && typeof patrol === 'object') return startPatrol(game, patrol, { ambush: ambushed, firstStrike });
   const node = ENCOUNTERS[nodeId];
+  if (!node) throw new Error(`Unknown encounter ${nodeId}`);
   const rng = rngFrom(game.rngState);
   if (!patrol && node.type !== 'fight') throw new Error(`${node.name} is not a battle`);
   const foes = patrol ? patrolSpawns(game, rng) : spawnsFor(game, nodeId);
@@ -248,21 +269,28 @@ export function startBattle(game, { nodeId = game.progress.node, patrol = false 
     for (const h of f.held || []) if (h.relic) codex[h.relic] = { sighted: true, claimed: false, awakened: false, ...codex[h.relic] };
     if (f.wears) codex[f.wears] = { sighted: true, claimed: false, awakened: false, ...codex[f.wears] };
   }
+  const flags = game.progress.flags;
+  const story = flags.story || {};
   const battle = createBattle({
     heroes: game.party.active.map(id => game.party.roster[id]),
     foes, seed, waking: game.progress.waking,
     ctx: {
-      inventory: game.inventory, bag: game.bag, nodeId, where: node.place, day: game.progress.flags.day,
+      inventory: game.inventory, bag: game.bag, nodeId, where: node.place, day: flags.day,
       gentle: !!node.gentle && !patrol, backdrop: node.backdrop, patrol, ambush,
       ...(firstStrike ? { firstStrike } : {}),
+      ...(node.forewarned && story.forewarned ? { warded: TUNING.forewarned.ward } : {}),
+      ...(node.dark ? { dark: true } : {}), ...(node.duel ? { duel: true } : {}),
     },
   });
-  return { game: { ...game, rngState: rng.getState(), codex }, battle };
+  // fought counts as scouted for the Ladder (spec §3.6)
+  const progress = patrol || !flags.scouted ? game.progress
+    : { ...game.progress, flags: { ...flags, scouted: { ...flags.scouted, [nodeId]: true } } };
+  return { game: { ...game, rngState: rng.getState(), codex, progress }, battle };
 }
 
-// A roaming pack's battle (M3). SCAFFOLD: WP2 owns it; nodeId is null, so resolveBattle treats it
-// like an M2 patrol (no cleared flags, no Grudges).
-function startPatrol(game, { spawns, where = 'The Wilds', backdrop = 'verdant-wood' }, { ambush = false, firstStrike = false } = {}) {
+// A roaming zone pack's battle (M3): nodeId is null, so resolveBattle sets no cleared flags and
+// records no Grudges.
+function startPatrol(game, { spawns, where = 'The Wilds', backdrop = 'verdant-wood', dark = false }, { ambush = false, firstStrike = false } = {}) {
   const rng = rngFrom(game.rngState);
   const seed = rng.int(1, 2 ** 31 - 1);
   const battle = createBattle({
@@ -270,7 +298,7 @@ function startPatrol(game, { spawns, where = 'The Wilds', backdrop = 'verdant-wo
     foes: spawns.map((s, i) => ({ ...s, spawnIndex: s.spawnIndex ?? i })), seed, waking: game.progress.waking,
     ctx: {
       inventory: game.inventory, bag: game.bag, nodeId: null, where, day: game.progress.flags.day,
-      gentle: false, backdrop, patrol: true, ambush, ...(firstStrike ? { firstStrike } : {}),
+      gentle: false, backdrop, patrol: true, ambush, ...(firstStrike ? { firstStrike } : {}), ...(dark ? { dark: true } : {}),
     },
   });
   return { game: { ...game, rngState: rng.getState() }, battle };
@@ -350,8 +378,11 @@ function winBattle(g, battle, out, rng, report) {
     }
   }
   if (battle.ctx.patrol) return;
-  g.progress.flags.cleared[node.id] = true;
-  if (node.once) g.progress.flags.done[node.id] = true;
+  const f = g.progress.flags;
+  f.cleared[node.id] = true;
+  f.beaten = { ...(f.beaten || {}), [node.id]: (f.beaten?.[node.id] || 0) + 1 };
+  if (node.once) f.done[node.id] = true;
+  if (node.opens) f.unlocked = { ...(f.unlocked || {}), [node.opens]: true };
   if (node.brand) earnBrand(g, node, report);
 }
 
@@ -364,29 +395,50 @@ function recordKills(g, kills = {}) {
   }
 }
 
-// Beating the Champion: a Brand, the Waking rises, and the Gauntlet resets re-geared.
+// Beating a Brand-holder (spec D5, §4.6). A Brand you already hold is a rematch: no Brand, no
+// Waking (report.rematch). A new Brand raises the Waking and re-arms every non-`once` encounter of
+// its region (an M2 encounter without a region is Verdant); there is no teleport. Holding every
+// Verdant Brand completes Act I. Brands are counted unique (M2 saves can hold a duplicate), and the
+// saved array is only ever appended to.
 function earnBrand(g, node, report) {
-  g.progress.brands.push(node.brand);
-  g.progress.waking += 1;
-  g.progress.flags.cleared = {};
-  g.progress.flags.runs += 1;
-  g.progress.node = START;
-  g.progress.lastHearthfire = START;
-  report.brand = { ...BRANDS[node.brand], waking: g.progress.waking };
+  const p = g.progress, f = p.flags;
+  const brand = BRANDS[node.brand];
+  if (p.brands.includes(node.brand)) { report.rematch = true; return; }
+  p.brands.push(node.brand);
+  p.waking += 1;
+  f.runs += 1;
+  for (const [id, e] of Object.entries(ENCOUNTERS)) if ((e.region || 'verdant') === brand.region && !e.once) delete f.cleared[id];
+  if (REGIONS.verdant.brands.every(b => p.brands.includes(b))) f.story = { ...(f.story || {}), 'act1-complete': true };
+  report.brand = { ...brand, waking: p.waking, first: true, count: new Set(p.brands).size };
 }
 
-// Wake at the last Hearthfire with all gear, 10% lighter in gold, and a little wiser.
+// Wake at the last Hearthfire's stand with all gear, 10% lighter in gold, and a little wiser.
 function wipe(g, battle, rng, report) {
   const lost = Math.floor(g.gold * TUNING.wipe.goldLoss);
   g.gold -= lost;
   report.goldLost = lost;
-  const worth = battle.order.map(id => battle.units[id]).filter(u => u.side === 'foe' && !u.summonedBy).reduce((a, f) => a + f.xp, 0);
-  report.xp = Math.round(worth * TUNING.wipe.lessonXp);
+  report.xp = lessonXp(battle);
   awardXp(g, report.xp, rng, report);
   report.grudge = recordGrudge(g, battle, false);
-  g.progress.node = g.progress.lastHearthfire;
+  if (!HEARTHS[g.progress.lastHearthfire]) g.progress.lastHearthfire = START;
+  const h = HEARTHS[g.progress.lastHearthfire];
+  g.progress.pos = { map: h.map, x: h.x, y: h.y, face: h.face };
   Object.assign(g, healAll(g));
-  report.wokeAt = g.progress.node;
+  report.wokeAt = g.progress.lastHearthfire;
+}
+
+const lessonXp = battle => Math.round(battle.order.map(id => battle.units[id])
+  .filter(u => u.side === 'foe' && !u.summonedBy).reduce((a, f) => a + f.xp, 0) * TUNING.wipe.lessonXp);
+
+// Losing a duel is a yield (spec D9, §3.5): no gold lost, no Grudge, the party gets its breath back
+// where it stands, the lesson XP still counts, and the encounter's `yields` flag is set (the Eldest
+// Tree door opens anyway). The duellist stays for a rematch.
+function yieldDuel(g, battle, node, rng, report) {
+  report.yield = true;
+  report.xp = lessonXp(battle);
+  awardXp(g, report.xp, rng, report);
+  breather(g);
+  g.progress.flags.story = { ...(g.progress.flags.story || {}), [node.yields || 'tamsin-yielded']: true };
 }
 
 function clampParty(g) {
@@ -406,11 +458,13 @@ export function resolveBattle(game, battle) {
   const report = {
     result: out.result, xp: out.xp, gold: out.gold, drops: out.drops, claimed: out.claimed, rounds: out.rounds,
     consumables: out.consumables || {},
-    levelUps: {}, goldLost: 0, grudge: null, grudgeSettled: null, brand: null, wokeAt: null,
+    levelUps: {}, goldLost: 0, grudge: null, grudgeSettled: null, brand: null, wokeAt: null, yield: false, rematch: false,
   };
   setRosterVitals(g, out.party);
   g.bag = { ...out.bag };
+  const node = battle.ctx.nodeId ? ENCOUNTERS[battle.ctx.nodeId] : null;
   if (out.result === 'victory') winBattle(g, battle, out, rng, report);
+  else if (out.result === 'defeat' && node?.duel && !battle.ctx.patrol) yieldDuel(g, battle, node, rng, report);
   else if (out.result === 'defeat') wipe(g, battle, rng, report);
   else {
     awardXp(g, out.xp, rng, report); // fled: keep what the fallen were worth

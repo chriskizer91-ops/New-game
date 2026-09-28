@@ -165,6 +165,10 @@ function foeDrops(rng, foe, waking, prov) {
   } else if (foe.tier === 'veteran') {
     const worn = foe.gear.find(g => g.relic) || (foe.gear.length ? rng.pick(foe.gear) : null);
     out.push(worn ? gearDrop(rng, worn, foe.level, prov, 0.35) : randomDrop(rng, foe, luck, prov));
+  } else {
+    // M3 (spec §4.7): a relic worn by a relic-bearer or a champion drops too (Tamsin's Vale Gauntlets)
+    const worn = foe.gear.find(g => g.relic);
+    if (worn) out.push(gearDrop(rng, worn, foe.level, prov));
   }
   const min = foe.tier === 'champion' ? 'tempered' : foe.tier === 'relic-bearer' ? 'wrought' : 'worn';
   const extra = (T.extra[foe.tier] || 0) + (foe.grudge ? 1 : 0); // a settled Grudge always pays out
@@ -175,7 +179,8 @@ function foeDrops(rng, foe, waking, prov) {
 
 // Drops and claims at victory. Disarmed relics are claimed; a holder killed while still
 // gripping its relic shatters it (drops with shattered:true, reforgeable later) unless the
-// battle is `gentle` (the tutorial).
+// battle is `gentle` (the tutorial). A lent relic (M3: Tamsin's counter-starter) is neither: it
+// can be disarmed, but it goes home with its owner.
 export function battleLoot(s, rng) {
   const drops = [], claimed = [], consumables = {};
   for (const id of s.order) {
@@ -183,6 +188,7 @@ export function battleLoot(s, rng) {
     if (f.side !== 'foe' || f.summonedBy) continue;
     const prov = { from: f.name, where: s.ctx.where || null, day: s.ctx.day || 1 };
     for (const piece of f.held) {
+      if (piece.lend) continue;
       const item = piece.item ? { ...piece.item, provenance: prov } : relicItem(piece.relic, rng, prov);
       if (!piece.held) claimed.push(item);
       else if (f.ko) drops.push(s.ctx.gentle ? item : { ...item, shattered: true });
@@ -196,4 +202,20 @@ export function battleLoot(s, rng) {
     }
   }
   return { drops, claimed, consumables };
+}
+
+// A Rout (M3, spec D4): a weak pack scatters and leaves its normal rabble drop roll behind.
+// foeUnits are built foes (rules/foe.js buildFoe). Returns { drops, consumables }.
+export function routSpoils(rng, foeUnits, waking = 0, { where = null, day = 1 } = {}) {
+  const drops = [], consumables = {};
+  for (const f of foeUnits) {
+    if (f.summonedBy || f.noLoot) continue;
+    const prov = { from: f.name, where, day };
+    drops.push(...foeDrops(rng, f, waking, prov));
+    if (rng.chance(T.consumable[f.tier] || 0)) {
+      const id = weightedPick(rng, Object.entries(T.consumableWeights).map(([v, w]) => ({ v, w })));
+      consumables[id] = (consumables[id] || 0) + 1;
+    }
+  }
+  return { drops, consumables };
 }

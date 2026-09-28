@@ -88,5 +88,6 @@ export const TUNING = deepFreeze({
     darkRadius: 2,                       // soft darkness: sight radius without a key
   },
   rout: { xp: 0.5 },                     // a Rout pays full gold and this share of XP
+  forewarned: { ward: '2d6+4' },         // the dream of the four Sleepers: every hero starts the Rotwarden fight Warded
   temper: { max: 3, base: 30, mult: [1, 2, 4] }, // cost = base * ceil(ilvl / 2) * mult[temper]
 });

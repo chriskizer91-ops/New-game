@@ -12,6 +12,9 @@
 //   region    'verdant' (a Brand re-arms every non-`once` encounter of its region)
 //   duel      losing is a yield (Tamsin)          talk: dialogue id played before the fight
 //   forewarned  the battle ctx gets `warded` when story.forewarned is set
+//   opens     a win sets flags.unlocked[opens] (the Bramble Toll chain stays open for good)
+//   yields    the story flag a lost duel sets (the Eldest Tree door opens anyway)
+//   dark      the fight happens in the dark (a dark map): the backdrop is drawn dark
 //   spawn.level 'party' = party level + (spawn.partyDelta || 1); variant/relic '$rival' = the rival
 //   starter (STARTERS[story.starter].rival); spawn.lend: the held relic is lent (never claimed);
 //   spawn.wakeLevels overrides levels per Waking; spawn.noWaking skips escalation.
@@ -49,7 +52,7 @@ export const ENCOUNTERS = deepFreeze({
     text: 'A coal carried from the Keep still burns in the milestone shrine. Rest while it does.',
   },
   'bramble-toll': {
-    id: 'bramble-toll', type: 'fight', name: 'The Bramble Toll', place: 'Verdant Wilds', backdrop: 'verdant-wood',
+    id: 'bramble-toll', type: 'fight', name: 'The Bramble Toll', place: 'Verdant Wilds', backdrop: 'verdant-wood', opens: 'bramble-toll-chain',
     spawns: [S('bandit', 3, { gearTier: 1, wears: 'thornwatch-hood', name: 'Skarn' }), S('cutpurse', 2), S('cutpurse', 2)],
     text: 'Bandits have strung a chain across the road. Their captain wears a Thornwatch hood he did not earn.',
   },
@@ -124,7 +127,7 @@ export const ENCOUNTERS = deepFreeze({
     text: 'Someone has been carrying crates up the watchtower stair. They would rather you did not ask what.',
   },
   'mw-lantern': {
-    id: 'mw-lantern', type: 'fight', name: 'The Lamp Room', place: 'Mosswatch Tower', backdrop: 'mosswatch', region: 'verdant',
+    id: 'mw-lantern', type: 'fight', name: 'The Lamp Room', place: 'Mosswatch Tower', backdrop: 'mosswatch', region: 'verdant', dark: true,
     spawns: [S('tallyman', 5, { variant: 'signalmaster', relic: 'mosswatch-lantern', name: 'Hollis Fairweight' }), S('tallyman', 4)],
     text: 'The lights at midnight: Hollis Fairweight, signalling someone with the tower\'s own Lantern.',
   },
@@ -155,7 +158,7 @@ export const ENCOUNTERS = deepFreeze({
   },
   'tamsin-duel': {
     id: 'tamsin-duel', type: 'fight', name: 'Tamsin at the Eldest Tree', place: 'Eldergrove', backdrop: 'eldergrove', region: 'verdant',
-    once: true, duel: true, talk: 'tamsin-door',
+    once: true, duel: true, yields: 'tamsin-yielded', talk: 'tamsin-door',
     spawns: [S('tamsin', 'party', { partyDelta: 1, variant: '$rival', relic: '$rival', lend: true, wears: 'vale-gauntlets', noWaking: true, name: 'Tamsin' })],
     text: 'Tamsin, at the Eldest Tree door, with the starter you did not choose. Losing is a yield.',
   },
@@ -181,7 +184,7 @@ export const ENCOUNTERS = deepFreeze({
   },
   'rotwarden-heart': {
     id: 'rotwarden-heart', type: 'fight', name: 'The Heart Chamber', place: 'The Heartroot', backdrop: 'heartroot', region: 'verdant',
-    brand: 'brand-of-the-heartroot', forewarned: true,
+    brand: 'brand-of-the-heartroot', forewarned: true, dark: true,
     spawns: [S('rotwarden', 7)],
     text: 'GREEN WAS A MISTAKE. THE MASK SAYS SO.',
   },

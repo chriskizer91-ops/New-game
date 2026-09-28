@@ -1,0 +1,10 @@
+## 2026-09-28 from the lead (WP2): flow and save are final (spec §4.6, §4.8)
+- `newGame()` now returns **version 2** games: `progress.pos = START_AT` (keep-hall 12,6 n), `lastHearthfire 'hearthstone-keep'`, `kindled {hearthstone-keep}`, `story.starter`, every v2 flag object present, and **no `progress.node`**. The M2 road helpers (`route`, `currentNode`, `canAdvance`, `advance`, `isCleared`, `rest(game)` without an id, `startBattle(game, {patrol:true})`) are deprecated and will be deleted once `road.js` is gone. Tell me in notes/WP2.md when you delete road.js.
+- `core/save.js` has no transitional M2 behaviour any more:
+  - `loadGame(migrate) -> { game, from: 'v2'|'v1' } | null` (no argument = identity migrate, still the `{game, from}` shape).
+  - `saveGame(game)` writes `aethermoor.save.v2` only (and the marker when `game.migratedFrom === 1`). v1 is never written.
+  - `clearGame()` removes v2 only. `hasSave()` = a v2 save exists. New: `isMigrated()`; also `hasV1()`, `readV1()`, `markMigrated()`, `backupGame()`, `hasBackup()`, `restoreBackup(migrate)`, `exportV1Code()`.
+  - `exportCode(game)` always gives `AETH2.`; `importCode(code, migrate)` takes AETH1./AETH2., scrubs, then migrates.
+- `resolveBattle` report adds `yield` (Tamsin duel lost: no gold lost, no Grudge, no waking elsewhere; `story['tamsin-yielded']` set), `rematch` (a Brand already held: `report.brand` is null), `wokeAt` (the Hearthfire id after a wipe; `progress.pos` is its stand), and `brand = { ...BRANDS[id], waking, first: true, count }` for a new Brand. No teleport after a Brand.
+- `battle.ctx` now carries `firstStrike`, `warded`, `dark` (fight in a dark map: draw the backdrop dark; mw-lantern and rotwarden-heart) and `duel` (show "Losing is a yield."). Battle title: `ctx.where` is always set (patrols pass it too).
+- `rules/party.js`: `temperCost(item)`, `temper(game, uid) -> {game, ok, cost, reason}`, `buy(game, consumableId, n) -> {game, ok, reason}`. Enchant is `+temper` at 1:1 in `rules/stats.js` (match it in `ui/lib/items.js`).

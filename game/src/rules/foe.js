@@ -32,16 +32,21 @@ export function addOmens(omens, n, seed, tier = null) {
 }
 
 // "Stronger and stronger": each Waking step adds levels, a gear tier and Omens to every spawn.
+// M3 (spec D3, §4.7): the tier comes from familyOf(spawn), so a relic-bearer variant of a rabble or
+// veteran family escalates as a relic-bearer. Rabble rise TUNING.waking.rabbleLevels (2) per Waking,
+// everyone else TUNING.waking.levels (6); a spawn may override that with `wakeLevels`, and
+// `noWaking` returns it unescalated.
 export function escalateSpawn(spawn, waking = 0, salt = '') {
-  if (!waking) return { ...spawn, omens: [...(spawn.omens || [])] };
-  const fam = FOES[spawn.family];
+  if (!waking || spawn.noWaking) return { ...spawn, omens: [...(spawn.omens || [])] };
+  const tier = familyOf(spawn).tier;
   const W = TUNING.waking;
-  const omenCount = fam.tier === 'rabble' ? Math.max(0, waking - 1) : waking * W.omens;
+  const per = spawn.wakeLevels ?? (tier === 'rabble' ? W.rabbleLevels : W.levels);
+  const omenCount = tier === 'rabble' ? Math.max(0, waking - 1) : waking * W.omens;
   return {
     ...spawn,
-    level: spawn.level + waking * W.levels,
+    level: spawn.level + waking * per,
     gearTier: Math.min(3, (spawn.gearTier || 0) + waking * W.gearTier),
-    omens: addOmens(spawn.omens, omenCount, `${spawn.family}:${spawn.level}:${waking}:${salt}`, fam.tier),
+    omens: addOmens(spawn.omens, omenCount, `${spawn.family}:${spawn.level}:${waking}:${salt}`, tier),
   };
 }
 
@@ -65,11 +70,12 @@ function heldPieces(fam, spawn) {
   const L = spawn.level;
   const ironclad = (spawn.omens || []).reduce((m, o) => m * (OMENS[o]?.gripMult || 1), 1);
   const gripFor = base => Math.round(base * (1 + 0.1 * (L - 1)) * ironclad);
-  // spawn.held: [{ relic } | { item }] (items are Echoes of relics already claimed)
-  const list = spawn.held || (spawn.relic ? [spawn.relic] : (fam.relics || [])).map(relic => ({ relic }));
+  // spawn.held: [{ relic, lend? } | { item }] (items are Echoes of relics already claimed; a lent
+  // relic can be disarmed but is never claimed and never shatters: rules/loot.js)
+  const list = spawn.held || (spawn.relic ? [spawn.relic] : (fam.relics || [])).map(relic => ({ relic, ...(spawn.lend ? { lend: true } : {}) }));
   return list.map(h => {
     const max = gripFor(h.relic ? RELICS[h.relic].grip || 20 : 20);
-    return { relic: h.relic || null, item: h.item || null, grip: max, max, held: true };
+    return { relic: h.relic || null, item: h.item || null, grip: max, max, held: true, ...(h.lend ? { lend: true } : {}) };
   });
 }
 

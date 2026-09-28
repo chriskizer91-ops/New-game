@@ -53,7 +53,8 @@ function heroUnit(hero, items, seq) {
 // FoeSpawn = { family, level, gearTier, omens, variant, relic | held:[{relic}|{item}], wears, name, title, grudge }
 // Spawns are used as given: apply rules/foe.js escalateSpawn for the Waking beforehand
 // (rules/gauntlet.js does). `waking` here only raises loot luck.
-// ctx = { inventory, bag, nodeId, where, day, gentle, noFlee, backdrop, patrol, ambush }
+// ctx = { inventory, bag, nodeId, where, day, gentle, noFlee, backdrop, patrol, ambush,
+//         firstStrike, warded, dark, duel }   (M3: spec §4.7; warded is a dice expression, e.g. '2d6+4')
 export function createBattle({ heroes = [], foes = [], seed = 1, waking = 0, ctx = {} } = {}) {
   const rng = createRng(seed);
   const items = ctx.inventory || ctx.items || [];
@@ -63,7 +64,7 @@ export function createBattle({ heroes = [], foes = [], seed = 1, waking = 0, ctx
     ctx: {
       nodeId: ctx.nodeId || null, where: ctx.where || null, day: ctx.day || 1, gentle: !!ctx.gentle,
       noFlee: !!ctx.noFlee || foes.some(f => familyData(f).noFlee), backdrop: ctx.backdrop || null, patrol: !!ctx.patrol,
-      ambush: false,
+      ambush: false, firstStrike: false, warded: ctx.warded || null, dark: !!ctx.dark, duel: !!ctx.duel,
     },
   };
   for (const h of heroes) {
@@ -80,6 +81,8 @@ export function createBattle({ heroes = [], foes = [], seed = 1, waking = 0, ctx
   const B = { s, rng, ev: [], touched: new Set() };
   rollInitiative(B);
   if (ctx.ambush) ambush(B, items, heroes);
+  if (ctx.firstStrike) firstStrike(B);
+  if (ctx.warded) ward(B, ctx.warded);
   for (const f of unitsOf(s, 'foe')) {
     f.intent = rollIntent(s, f, rng);
     B.ev.push(intentEvent(f));
@@ -108,6 +111,18 @@ function ambush(B, items, heroes) {
   B.s.ctx.ambush = true;
   for (const u of unitsOf(B.s, 'hero')) u.next += R.ambushDelay;
   B.ev.push({ t: 'text', text: 'Ambush! They were waiting in the bramble.' });
+}
+
+// M3: walking into a pack's back pushes every foe's first turn back.
+function firstStrike(B) {
+  B.s.ctx.firstStrike = true;
+  for (const f of unitsOf(B.s, 'foe')) f.next += R.firstStrikeDelay;
+  B.ev.push({ t: 'text', text: 'First strike! You caught them with their backs turned.' });
+}
+
+// M3 (Forewarned): every hero starts the fight Warded for the rolled amount.
+function ward(B, expr) {
+  for (const u of unitsOf(B.s, 'hero').filter(alive)) addStatus(B, u, 'warded', { value: rollExpr(B.rng, expr).total, source: u.id });
 }
 
 // ---- ribbon ----------------------------------------------------------------------------------

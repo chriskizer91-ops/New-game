@@ -57,7 +57,7 @@ export function itemProfile(item) {
   addStats(own, base.stats);
   for (const a of item.affixes || []) addAffix(own, a);
   // Hand-made relics carry their own numbers; generated gear gets the rarity enchant.
-  const enchant = (relic ? 0 : rarity.enchant) + Math.floor((item.temper || 0) / 2);
+  const enchant = (relic ? 0 : rarity.enchant) + (item.temper || 0); // M3 (D10): temper adds +1 enchant per step
   const slot = item.slot || base.slot;
   if (slot === 'weapon') { own.hit += enchant; own.dmg += enchant; }
   else if (slot === 'body' || (slot === 'offhand' && base.kind === 'shield')) own.guard += enchant;

@@ -12,6 +12,8 @@ import { spawnsFor, newGame, uniqueBrands } from '../src/rules/gauntlet.js';
 import { v1Anchor, MAP_IDS } from '../src/data/maps/index.js';
 import { ENCOUNTERS, GAUNTLET, PATROLS } from '../src/data/encounters.js';
 import { deepFreeze } from '../src/core/freeze.js';
+import { familyOf } from '../src/rules/foe.js';
+import { TUNING } from '../src/data/tuning.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const dir = path.join(here, 'fixtures/v1');
@@ -69,10 +71,16 @@ test('the M2 spawn tables are unchanged (test/fixtures/m2-spawns.json)', () => {
   const plain = v => JSON.parse(JSON.stringify(v));
   for (const id of GAUNTLET) assert.deepEqual(ENCOUNTERS[id].spawns ? plain(ENCOUNTERS[id].spawns) : null, snap.gauntlet[id], id);
   for (const k of Object.keys(snap.patrols)) assert.deepEqual(plain(PATROLS[k]), snap.patrols[k], k);
+  // The Waking-escalated spawns match the M2 snapshot except where M3 deliberately changes them
+  // (spec D3): rabble now rise TUNING.waking.rabbleLevels (2) levels per Waking instead of 6.
   const base = newGame({ seed: 101 });
+  const drop = TUNING.waking.levels - TUNING.waking.rabbleLevels;
   for (const w of Object.keys(snap.spawnsFor)) {
     const g = { ...base, progress: { ...base.progress, waking: +w } };
-    for (const id of Object.keys(snap.spawnsFor[w])) assert.deepEqual(plain(spawnsFor(g, id)), snap.spawnsFor[w][id], `${id} at Waking ${w}`);
+    for (const id of Object.keys(snap.spawnsFor[w])) {
+      const want = snap.spawnsFor[w][id].map(sp => (familyOf(sp).tier === 'rabble' ? { ...sp, level: sp.level - +w * drop } : sp));
+      assert.deepEqual(plain(spawnsFor(g, id)), want, `${id} at Waking ${w}`);
+    }
   }
 });
 
@@ -109,4 +117,38 @@ test('save v2: never writes v1, marks the migration, AETH2 codes, AETH1 accepted
   store.delete('aethermoor.save.v2');
   assert.equal(S.loadGame(migrate), null, 'the marker stops the M2 save from coming back');
   delete globalThis.localStorage;
+});
+
+test('save v2: clearGame keeps the M2 save and the backup; restoreBackup migrates; hasSave means v2', async () => {
+  const S = await import('../src/core/save.js');
+  const store = shim();
+  const raw = readFileSync(path.join(dir, 'v1-node-thornhollow.json'), 'utf8').trim();
+  store.set('aethermoor.save.v1', raw);
+  assert.equal(S.hasSave(), false, 'an M2 save alone is not a live save');
+  assert.equal(S.hasV1(), true);
+  assert.equal(S.isMigrated(), false);
+  const g = S.loadGame(migrate).game;
+  S.saveGame(g);
+  assert.equal(S.hasSave(), true);
+  assert.equal(S.backupGame(), true);
+  S.clearGame();
+  assert.equal(S.hasSave(), false);
+  assert.equal(store.get('aethermoor.save.v1'), raw, 'clearGame never touches the M2 save');
+  assert.equal(S.hasBackup(), true);
+  const back = S.restoreBackup(migrate);
+  assert.deepEqual(back, g);
+  assert.equal(S.hasSave(), true);
+  assert.equal(S.loadGame(migrate).from, 'v2');
+  store.set('aethermoor.save.v2', '{broken');
+  assert.equal(S.loadGame(migrate), null, 'a corrupt live save reads as none (the marker stops v1)');
+  assert.equal(store.get('aethermoor.save.v1'), raw);
+  delete globalThis.localStorage;
+});
+
+test('every fixture: present() on every map and spawnsFor on every fight', () => {
+  for (const f of FIX) {
+    const g = migrate(load(f));
+    for (const id of MAP_IDS) assert.ok(Array.isArray(present(g, id)), `${f} ${id}`);
+    for (const id of Object.keys(ENCOUNTERS)) if (ENCOUNTERS[id].type === 'fight') assert.ok(spawnsFor(g, id).length, `${f} ${id}`);
+  }
 });

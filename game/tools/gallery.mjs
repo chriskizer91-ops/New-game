@@ -5,6 +5,7 @@
 //   node tools/gallery.mjs --only=foes,icons  # only these sections (faster iteration)
 //   node tools/gallery.mjs --no-shots       # build the HTML only
 //   node tools/gallery.mjs --out=/tmp/x     # write the page and screenshots somewhere private
+//   node tools/gallery.mjs --entry=tools/gallery-foes.js  # bundle another review entry (same page shell)
 //
 // Playwright is not a project dependency: it is loaded from the global npm root, and the
 // preinstalled Chromium is used when present.
@@ -21,7 +22,7 @@ const args = Object.fromEntries(process.argv.slice(2).map(a => { const [k, v] = 
 const outDir = args.out ? path.resolve(String(args.out)) : path.join(root, 'tools/shots');
 
 const res = await build({
-  entryPoints: [path.join(root, 'tools/gallery-entry.js')],
+  entryPoints: [path.resolve(root, String(args.entry || 'tools/gallery-entry.js'))],
   bundle: true, format: 'iife', target: 'es2020', write: false, minify: false, legalComments: 'none',
 });
 const js = res.outputFiles[0].text.replace(/<\/script/gi, '<\\/script');

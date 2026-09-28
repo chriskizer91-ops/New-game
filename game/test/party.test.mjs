@@ -92,3 +92,37 @@ test('reforge restores a shattered relic for gold', () => {
   assert.equal(r.game.inventory.find(i => i.uid === shard.uid).shattered, undefined);
   assert.equal(reforge({ ...g, gold: 0 }, shard.uid).ok, false);
 });
+
+// ---- M3: Hilda's Temper and the shops (spec §3.9, D10) -------------------------------------------------
+
+test('temper: cost by item level, +1 enchant per step (1:1), at most +3; buy fills the bag', async () => {
+  const { temper, temperCost, buy } = await import('../src/rules/party.js');
+  const { game } = party();
+  const uid = game.party.roster.warden.gear.weapon;
+  const blade = game.inventory.find(i => i.uid === uid);
+  assert.equal(temperCost(blade), 30 * Math.ceil(1 / 2) * 1);
+  let g = { ...game, gold: 10000 };
+  const hit0 = deriveHero(g.party.roster.warden, g.inventory).weapon.hit;
+  const costs = [];
+  for (let k = 1; k <= 3; k++) {
+    const r = temper(g, uid);
+    assert.equal(r.ok, true, r.reason);
+    costs.push(r.cost);
+    g = r.game;
+    assert.equal(g.inventory.find(i => i.uid === uid).temper, k);
+    assert.equal(deriveHero(g.party.roster.warden, g.inventory).weapon.hit, hit0 + k, 'one enchant per step');
+  }
+  assert.deepEqual(costs, [30, 60, 120]);
+  assert.equal(g.gold, 10000 - 210);
+  const maxed = temper(g, uid);
+  assert.equal(maxed.ok, false);
+  assert.match(maxed.reason, /\+3/);
+  assert.equal(temper({ ...game, gold: 5 }, uid).ok, false, 'needs the gold');
+  const ring = generateItem(createRng(5), { base: 'ring', rarity: 'runed', ilvl: 9 });
+  assert.equal(temperCost(ring), 30 * 5);
+  const b = buy({ ...game, gold: 100 }, 'frost-draught', 2);
+  assert.equal(b.ok, true);
+  assert.equal(b.game.gold, 70);
+  assert.equal(b.game.bag['frost-draught'], game.bag['frost-draught'] + 2);
+  assert.equal(buy({ ...game, gold: 10 }, 'ember-salts').ok, false);
+});

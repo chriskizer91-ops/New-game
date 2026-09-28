@@ -2,7 +2,7 @@
 // green/red arrows. All functions return new game objects; inputs are never mutated.
 
 import { HEROES } from '../data/heroes.js';
-import { ITEMS } from '../data/items.js';
+import { ITEMS, CONSUMABLES } from '../data/items.js';
 import { RELICS } from '../data/relics.js';
 import { TUNING } from '../data/tuning.js';
 import { deriveHero } from './stats.js';
@@ -142,4 +142,40 @@ export function reforge(game, uid) {
   const fixed = { ...item };
   delete fixed.shattered;
   return { game: { ...game, gold: game.gold - cost, inventory: game.inventory.map(i => (i.uid === uid ? fixed : i)) }, ok: true, cost };
+}
+
+// ---- M3: Hilda's Temper and the shops (spec §3.9, §4.7) --------------------------------------------
+
+// Gold to temper `item` one step: base x ceil(ilvl / 2) x mult[temper] (a relic uses its data ilvl).
+// null when it is already at the maximum.
+export function temperCost(item) {
+  const T = TUNING.temper, t = item?.temper || 0;
+  if (!item || t >= T.max) return null;
+  const ilvl = RELICS[item.base]?.ilvl ?? item.ilvl ?? 1;
+  return T.base * Math.ceil(Math.max(1, ilvl) / 2) * T.mult[t];
+}
+
+// Temper one step (+1 enchant each, spec D10). Returns { game, ok, cost, reason }.
+export function temper(game, uid) {
+  const item = game.inventory.find(i => i.uid === uid);
+  if (!item) return { game, ok: false, cost: null, reason: 'Nothing to temper' };
+  if (item.shattered) return { game, ok: false, cost: null, reason: 'Shattered. Reforge it first.' };
+  const cost = temperCost(item);
+  if (cost == null) return { game, ok: false, cost: null, reason: `Tempered as far as it goes (+${TUNING.temper.max}).` };
+  if (game.gold < cost) return { game, ok: false, cost, reason: `Needs ${cost} gold` };
+  const tempered = { ...item, temper: (item.temper || 0) + 1 };
+  let g = { ...game, gold: game.gold - cost, inventory: game.inventory.map(i => (i.uid === uid ? tempered : i)) };
+  const who = wearerOf(g, uid);
+  if (who) g = setHero(g, clampVitals(g.party.roster[who.heroId], g.inventory));
+  return { game: g, ok: true, cost, reason: null };
+}
+
+// Buy n of a consumable at its price. Returns { game, ok, reason }.
+export function buy(game, consumableId, n = 1) {
+  const c = CONSUMABLES[consumableId];
+  const count = Math.max(1, Math.floor(n) || 1);
+  if (!c) return { game, ok: false, reason: 'Not for sale' };
+  const cost = c.price * count;
+  if (game.gold < cost) return { game, ok: false, reason: `Needs ${cost} gold` };
+  return { game: { ...game, gold: game.gold - cost, bag: { ...game.bag, [consumableId]: (game.bag?.[consumableId] || 0) + count } }, ok: true, reason: null };
 }

@@ -211,3 +211,22 @@ test('an ambush delays the party unless someone wears the full Thornwatch set', 
   const safe = createBattle({ heroes: g.party.active.map(id => g.party.roster[id]), foes: RABBLE, seed: 8, ctx: { inventory: g.inventory, ambush: true } });
   assert.equal(safe.ctx.ambush, false);
 });
+
+// ---- M3 battle hooks (spec §4.7) --------------------------------------------------------------------
+
+test('a First Strike pushes every foe back on the ribbon; ctx.warded Wards every hero', () => {
+  const plain = battleWith(RABBLE, { seed: 9 });
+  const first = battleWith(RABBLE, { seed: 9, ctx: { firstStrike: true } });
+  assert.equal(first.ctx.firstStrike, true);
+  assert.ok(first.openingEvents.some(e => e.t === 'text' && /First strike/.test(e.text)));
+  // the same seed rolls the same initiative, so each foe is exactly firstStrikeDelay later (or has acted already)
+  for (const id of ['f1', 'f2']) {
+    const a = plain.units[id], b = first.units[id];
+    if (a.next > 0 && plain.actor !== id) assert.equal(b.next - a.next, 40, id);
+  }
+  const w = battleWith(RABBLE, { seed: 9, ctx: { warded: '2d6+4' } });
+  for (const u of Object.values(w.units).filter(x => x.side === 'hero')) {
+    const st = u.statuses.find(x => x.id === 'warded');
+    assert.ok(st && st.value >= 6 && st.value <= 16, u.id);
+  }
+});

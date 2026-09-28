@@ -83,3 +83,36 @@ test('battle loot: veterans drop what they wear; loot is deterministic per seed'
   assert.ok(settled);
   assert.ok(RARITY[settled.rarity].rank >= RARITY.wrought.rank);
 });
+
+// ---- M3 loot rules (spec §4.7) ------------------------------------------------------------------------
+
+test('a lent relic is never claimed and never shatters; a worn relic drops from a relic-bearer', () => {
+  const tamsin = { family: 'tamsin', variant: 'cairnmaul', level: 3, held: [{ relic: 'cairnmaul', lend: true }], wears: 'vale-gauntlets' };
+  const s = battleWith([tamsin], { seed: 4 });
+  const f = s.units.f1;
+  assert.equal(f.held[0].lend, true);
+  // disarmed and beaten: still not claimed
+  const loose = structuredClone(s);
+  loose.units.f1.held[0].held = false;
+  loose.units.f1.ko = true;
+  let r = battleLoot(loose, createRng(1));
+  assert.ok(!r.claimed.some(i => i.base === 'cairnmaul'), 'disarmed, but it goes home with her');
+  assert.ok(r.drops.some(i => i.base === 'vale-gauntlets' && !i.shattered), 'the worn gauntlets drop');
+  // beaten while still gripping it: never shattered either
+  const gripping = structuredClone(s);
+  gripping.units.f1.ko = true;
+  r = battleLoot(gripping, createRng(1));
+  assert.ok(!r.drops.some(i => i.base === 'cairnmaul'));
+});
+
+test('routSpoils rolls the rabble drop per foe, deterministically', async () => {
+  const { routSpoils } = await import('../src/rules/loot.js');
+  const { buildFoe } = await import('../src/rules/foe.js');
+  const foes = [0, 1, 2].map(i => buildFoe({ family: 'cutpurse', level: 4 }, { id: `r${i}`, seq: i }));
+  const a = routSpoils(createRng('rout'), foes, 0, { where: 'Hearth Road', day: 2 });
+  assert.deepEqual(routSpoils(createRng('rout'), foes, 0, { where: 'Hearth Road', day: 2 }), a);
+  for (const it of a.drops) assert.ok(['worn', 'wrought', 'tempered'].includes(it.rarity), it.rarity);
+  let total = 0;
+  for (let k = 0; k < 40; k++) total += routSpoils(createRng(`r${k}`), foes, 0).drops.length;
+  assert.ok(total > 0, 'rabble drop something now and then');
+});

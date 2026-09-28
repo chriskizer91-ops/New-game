@@ -8,13 +8,18 @@ import { deepFreeze } from '../src/core/freeze.js';
 import { check, condErrors } from '../src/rules/cond.js';
 import { talkTo, dialogueView, enterDialogue, choose, questLog, nextObjective, ladder } from '../src/rules/story.js';
 
-const fresh = () => deepFreeze(migrate(newGame({ name: 'Tess', seed: 5 })));
+import { readFileSync } from 'node:fs';
+
+const fresh = () => deepFreeze(newGame({ name: 'Tess', seed: 5 }));
+const fixture = name => deepFreeze(migrate(JSON.parse(readFileSync(new URL(`./fixtures/v1/${name}.json`, import.meta.url), 'utf8'))));
 const withProgress = (g, patch) => ({ ...g, progress: { ...g.progress, ...patch, flags: { ...g.progress.flags, ...(patch.flags || {}) } } });
 
 test('conditions: flags, Brands counted once, combinators, owned relics', () => {
   const g = fresh();
   assert.equal(check(g, undefined), true);
-  assert.equal(check(g, { flag: 'intro-done' }), true, 'migrated saves skip the intro');
+  assert.equal(check(g, { flag: 'intro-done' }), false, 'a new game plays the intro');
+  assert.equal(check(fixture('v1-node-hearth-road'), { flag: 'intro-done' }), true, 'migrated saves skip the intro');
+  assert.equal(check(g, { flag: 'starter' }), true, 'story.starter is set by newGame');
   assert.equal(check(g, { flag: 'nope' }), false);
   const w2 = withProgress(g, { brands: ['brand-of-briars', 'brand-of-briars'], waking: 2 });
   assert.equal(check(w2, { brand: 'brand-of-briars' }), true);
@@ -50,7 +55,8 @@ test('talk, dialogue views and effects', () => {
 });
 
 test('quests are derived from conditions; the Ladder starts in silhouette', () => {
-  const g = fresh();
+  assert.deepEqual(questLog(fresh()), [], 'no quest before the intro');
+  const g = withProgress(fresh(), { flags: { story: { ...fresh().progress.flags.story, 'intro-done': true } } });
   const log = questLog(g);
   assert.deepEqual(log.map(q => q.id), ['hearth-gutters']);
   assert.equal(nextObjective(g).entity, 'keep-vault');

@@ -3,14 +3,11 @@
 //
 // M3 (spec §4.8; owner WP2). This module still imports nothing game-specific: the v1 -> v2
 // migration is injected (loadGame(migrate), importCode(code, migrate), restoreBackup(migrate)).
-//   aethermoor.save.v2       the live save (version 2 games)
-//   aethermoor.save.v1       the M2 save: read only in M3, never written, never removed
+//   aethermoor.save.v2       the live save
+//   aethermoor.save.v1       the M2 save: read only, never written, never removed (the M2 page
+//                            still plays from it)
 //   aethermoor.save.v2.bak   backup of the previous v2 save
 //   aethermoor.v1.migrated   '1' once v1 has been carried over or declined
-// SCAFFOLD (transitional, so M2 keeps working until WP2/WP8 switch newGame and app.js to v2):
-//   - loadGame() with no migrate argument keeps the M2 behaviour: returns the raw v1 game or null.
-//   - saveGame / exportCode pick by game.version: version 1 games still go to the v1 key / AETH1.
-//   - clearGame removes v2 and (M2 behaviour, until WP2 drops it) v1.
 
 const KEY_V1 = 'aethermoor.save.v1';
 const KEY_V2 = 'aethermoor.save.v2';
@@ -25,13 +22,14 @@ function parse(raw) {
   if (!raw) return null;
   try { const g = JSON.parse(raw); return g && g.version ? g : null; } catch { return null; }
 }
-const isV2 = game => !!game && (game.version || 1) >= 2;
+
+const same = g => g;
 
 // loadGame(migrate) -> { game, from: 'v2' | 'v1' } | null
-//   v2 if present; else v1 if present and not yet marked migrated, migrated in memory (nothing written).
-// loadGame() -> v1 game | null   (M2 behaviour, until app.js injects the migration)
-export function loadGame(migrate) {
-  if (typeof migrate !== 'function') return parse(safeGet(KEY_V1));
+//   v2 if present; else v1 if present and not yet marked migrated, migrated in memory (nothing
+//   written: the world screen commits it on the first step).
+export function loadGame(migrate = same) {
+  if (typeof migrate !== 'function') migrate = same;
   const v2 = parse(safeGet(KEY_V2));
   if (v2) { try { return { game: migrate(v2), from: 'v2' }; } catch { return null; } }
   if (safeGet(KEY_MARK) === '1') return null;
@@ -40,16 +38,17 @@ export function loadGame(migrate) {
   try { return { game: migrate(v1), from: 'v1' }; } catch { return null; }
 }
 
-// Writes v2 only (and the migrated marker for a carried-over M2 save). A version 1 game (the M2
-// flow, until newGame makes v2 games) still goes to the v1 key.
+// Writes v2 only, never v1 (and the migrated marker for a carried-over M2 save).
 export function saveGame(game) {
-  if (!isV2(game)) return safeSet(KEY_V1, JSON.stringify(game));
+  if (!game) return false;
   const ok = safeSet(KEY_V2, JSON.stringify(game));
   if (ok && game.migratedFrom === 1) markMigrated();
   return ok;
 }
-export const clearGame = () => { safeDel(KEY_V2); safeDel(KEY_V1); };
-export const hasSave = () => !!loadGame();
+// Removes the live save only: the M2 save and the backup stay.
+export const clearGame = () => { safeDel(KEY_V2); };
+// A live (v2) save exists. An M2 save waiting to be carried over is hasV1() && !isMigrated().
+export const hasSave = () => !!parse(safeGet(KEY_V2));
 
 // The previous v2 save, kept before a New Game, an import or a restore.
 export function backupGame() {
@@ -70,13 +69,14 @@ export function restoreBackup(migrate) {
 export const hasV1 = () => !!parse(safeGet(KEY_V1));
 export const readV1 = () => parse(safeGet(KEY_V1));
 export const markMigrated = () => safeSet(KEY_MARK, '1');
+export const isMigrated = () => safeGet(KEY_MARK) === '1';
 
 export function loadSettings(defaults) {
   try { return { ...defaults, ...(JSON.parse(safeGet(SETTINGS_KEY) || '{}')) }; } catch { return { ...defaults }; }
 }
 export const saveSettings = s => safeSet(SETTINGS_KEY, JSON.stringify(s));
 
-// Export code: "AETH2." (v2 games; "AETH1." for version 1) + base64(utf8 JSON). Long but copy/paste friendly.
+// Export code: "AETH2." + base64(utf8 JSON). Long but copy/paste friendly.
 function b64(text) {
   const bytes = new TextEncoder().encode(text);
   let bin = '';
@@ -84,7 +84,7 @@ function b64(text) {
   return btoa(bin);
 }
 export function exportCode(game) {
-  return (isV2(game) ? 'AETH2.' : 'AETH1.') + b64(JSON.stringify(game));
+  return 'AETH2.' + b64(JSON.stringify(game));
 }
 // The stored M2 save exactly as it is on disk (byte for byte), as an AETH1 code, or null.
 export function exportV1Code() {

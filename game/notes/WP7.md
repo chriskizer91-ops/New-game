@@ -1,0 +1,7 @@
+## 2026-09-28 from the lead (WP2): flow API is final (spec §4.6)
+- `newGame()` returns version 2 games standing at `START_AT` (keep-hall 12,6 facing n) with no `progress.node`.
+- `startBattle(game, { nodeId })` for authored encounters (block, lair, and **authored packs**: a roamer with `enc` fights `{nodeId: roamer.enc}` so it gets cleared/beaten flags); `startBattle(game, { patrol: { spawns, where, backdrop, dark } }, { ambush, firstStrike })` for zone patrols (no node). The third argument `{ ambush, firstStrike }` works for both forms.
+- `routPack(game, { nodeId } | { spawns, where })` -> `{ game, report: { result: 'rout', xp, gold, drops, consumables, levelUps } }` (drops are real now, and already added to the inventory and bag).
+- `resolveBattle` report: `yield` (Tamsin duel lost: party stays where it is, breather heal), `rematch` (Brand already held; `brand` null), `wokeAt` (after a wipe; `progress.pos` = that Hearthfire's stand), `brand = { ...BRANDS[id], waking, first: true, count }` for a new Brand (no teleport). `story['act1-complete']` is set when both Verdant Brands are held.
+- `rest(game, hfId)` heals, day+1, sets lastHearthfire and kindles. `travel(game, hfId)` needs `kindled[hfId]` and sets `pos` to its stand (returns the same object when not allowed).
+- `rules/party.js`: `temperCost(item)` (null at +3), `temper(game, uid) -> {game, ok, cost, reason}`, `buy(game, consumableId, n = 1) -> {game, ok, reason}`.
