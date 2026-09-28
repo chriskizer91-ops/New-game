@@ -9,8 +9,8 @@
 //   opts: { tier } for rarity-scaled sounds (reveal, equip, beam: 0 worn .. 7 primal)
 //         { voice } 0-7 (or { pitch } in Hz) for blip, the dialogue typewriter: one voice per speaker
 // music tracks: title road battle boss victory hearth, and for the world's maps (MAPS[id].music):
-//               wilds town dungeon (null stops music; victory does not loop). A change of track
-//               crossfades (the old one fades out over 0.9 s while the new one fades in).
+//               wilds town dungeon, and (M4) desert (null stops music; victory does not loop). A change
+//               of track crossfades (the old one fades out over 0.9 s while the new one fades in).
 //
 // API: unlock() setEnabled(on) setMusicEnabled(on) enabled musicEnabled sfx(name, opts)
 //      music(track) track duck(amount, seconds)
@@ -26,8 +26,21 @@ const freqOf = name => {
 // ---- the tracks ------------------------------------------------------------------------------
 // Each part is a string of step tokens: a note ("D5"), a chord ("D4+F#4"), "-" to hold the
 // previous note one more step, "." for a rest. Drum parts use k (kick) s (snare) h (hat)
-// c (ember crackle). Parts loop independently over their own length.
+// c (ember crackle), and for the hand drum (M4) d (doum, the low stroke) t (tek) a (ka, the soft
+// tek). Parts loop independently over their own length.
 const TRACKS = {
+  // the Sunscorch (M4): a slow reed melody in the Hijaz mode on D (D Eb F# G A Bb C) over a held
+  // drone, a walking low string, an oud-like pluck and a maqsum on the hand drum
+  desert: {
+    bpm: 76, sub: 2, loop: true, gain: .8,
+    parts: [
+      { v: 'flute', g: .055, s: 'D5 - - - - - Eb5 D5 C5 - Bb4 - A4 - - - Bb4 - A4 G4 F#4 - G4 - A4 - - - - - . . A4 - Bb4 - C5 - D5 - Eb5 - D5 C5 Bb4 - A4 - G4 - F#4 - Eb4 - F#4 G4 D4 - - - - - . .' },
+      { v: 'pad', g: .02, s: 'D3+A3 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - D3+A3 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -' },
+      { v: 'tri', g: .12, s: 'D2 - - - - - - - - - - - - - - - D2 - - - - - - - - - - - - - - - C2 - - - - - - - D2 - - - - - - - Bb1 - - - A1 - - - D2 - - - - - - -' },
+      { v: 'pluck', g: .03, s: '. . D4 . . A3 . D4 Eb4 . D4 . . . A3 . . . D4 . . A3 . D4 F#4 . G4 . F#4 . Eb4 .' },
+      { v: 'drum', g: .5, s: 'd t . t d . t . d t a t d . t a' },
+    ],
+  },
   // warm, hearth-lit: music-box arpeggios over a slow bass, the melody arrives on the second pass
   title: {
     bpm: 84, sub: 2, loop: true, gain: .9,
@@ -298,6 +311,10 @@ export function createAudio() {
     else if (kind === 's') noise(t, .12, { type: 'bandpass', f: 1800, q: .9, g: g * .3, a: .002 }, out);
     else if (kind === 'h') noise(t, .04, { type: 'highpass', f: 7000, g: g * .12, a: .001 }, out);
     else if (kind === 'c') { noise(t + Math.random() * .08, .025, { type: 'bandpass', f: 2000 + Math.random() * 1800, q: 3, g: g * .25, a: .001 }, out); }
+    // the hand drum (M4 desert): a round doum in the middle of the skin, a dry tek on the rim, a soft ka
+    else if (kind === 'd') { tone(104, t, .3, { to: 62, g: g * .42, type: 'sine', a: .003 }, out); noise(t, .06, { type: 'lowpass', f: 380, g: g * .16, a: .002 }, out); }
+    else if (kind === 't') { noise(t, .07, { type: 'bandpass', f: 2600, q: 1.6, g: g * .26, a: .001 }, out); tone(540, t, .05, { type: 'triangle', g: g * .05, a: .002 }, out); }
+    else if (kind === 'a') noise(t, .05, { type: 'bandpass', f: 3400, q: 2.2, g: g * .13, a: .001 }, out);
   }
 
   function startTrack(name) {

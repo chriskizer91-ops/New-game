@@ -90,6 +90,7 @@ body.ov-open { overflow: hidden; }
 .st-held { color: #ffd9cc; background: #3a1410; box-shadow: 0 0 0 2px #c0503a, 0 6px 0 rgba(0, 0, 0, .4); font-size: 11px; }
 .st-unid, .st-unsighted { color: var(--parchment-2); background: var(--ink); box-shadow: 0 0 0 2px var(--seam-2), 0 6px 0 rgba(0, 0, 0, .4); }
 .st-sighted { color: var(--parchment); background: var(--iron-3); box-shadow: 0 0 0 2px var(--parchment-2), 0 6px 0 rgba(0, 0, 0, .4); }
+.stamp.st-awakened { color: #2a1604; background: linear-gradient(180deg, #fff6d0, #ffd27a 55%, #f09a36); box-shadow: 0 0 0 2px #7a3a12, 0 0 16px rgba(255, 232, 144, .8), 0 6px 0 rgba(0, 0, 0, .4); }
 .item-name { margin: 18px 0 0; text-align: center; font-family: var(--f-display); font-weight: 700; font-size: 36px; line-height: 1; letter-spacing: .005em; text-wrap: balance; color: var(--parchment); }
 .card[data-r="heirloom"] .item-name, .card[data-r="regalia"] .item-name, .card[data-r="primal"] .item-name { text-shadow: 0 0 18px var(--rglow); }
 .epithet { margin: 4px 0 0; text-align: center; font-family: var(--f-display); font-style: italic; font-weight: 500; font-size: 20px; color: var(--parchment-2); }
@@ -248,11 +249,12 @@ body.ov-open { overflow: hidden; }
 .pips { display: inline-flex; gap: 6px; }
 .pips i { display: block; width: 10px; height: 10px; background: #2c2019; box-shadow: 0 0 0 2px var(--ink), inset 0 0 0 1px #4a3a2e; }
 .pips i.on { background: radial-gradient(circle at 40% 35%, #fff1b0, #ee8e31 55%, #7a3a12); box-shadow: 0 0 0 2px var(--ink), 0 0 6px rgba(238, 142, 49, .85); }
-.fb-deeds.st-awakened .pips i.on { background: radial-gradient(circle at 40% 35%, #fff, #ffe890 50%, #c8801c); box-shadow: 0 0 0 2px var(--ink), 0 0 8px rgba(255, 232, 144, .9); }
-.fb-stage { font-family: var(--f-pixel); font-size: 10px; letter-spacing: .06em; line-height: 1.5; text-transform: uppercase; color: var(--ash); }
-.fb-deeds.st-kindled .fb-stage { color: var(--hearth-hot); }
+.fb-deeds.stage-awakened .pips i.on { background: radial-gradient(circle at 40% 35%, #fff, #ffe890 50%, #c8801c); box-shadow: 0 0 0 2px var(--ink), 0 0 8px rgba(255, 232, 144, .9); }
+.fb-deeds { grid-template-columns: 72px minmax(0, 1fr); }
+.fb-stage { grid-column: 1 / -1; font-family: var(--f-pixel); font-size: 10px; letter-spacing: .06em; line-height: 1.5; text-transform: uppercase; color: var(--ash); }
+.fb-deeds.stage-kindled .fb-stage { color: var(--hearth-hot); }
 .fb-deeds.ready .fb-stage { color: #ffe890; }
-.fb-deeds.st-awakened .fb-stage { color: #fff3c4; text-shadow: 0 0 10px rgba(255, 203, 102, .7); }
+.fb-deeds.stage-awakened .fb-stage { color: #fff3c4; text-shadow: 0 0 10px rgba(255, 203, 102, .7); }
 .fb-deednames { margin: 0; font-size: 13px; color: var(--ash); white-space: pre-wrap; }
 .fb-note { margin: 0; font-size: 14px; color: var(--parchment-2); }
 .fb-note.awake b { font-family: var(--f-display); font-size: 17px; color: #ffe890; }
@@ -290,6 +292,7 @@ body.ov-open { overflow: hidden; }
   .item-name { font-size: 32px; }
   .flames { grid-template-columns: repeat(5, auto); }
   .fb-row { grid-template-columns: 64px auto minmax(0, 1fr); gap: 8px; }
+  .fb-deeds { grid-template-columns: 64px minmax(0, 1fr); }
   .iconrow.has-chron { grid-template-columns: auto minmax(0, 1fr); }
   .iconrow.has-chron .chron-btn { grid-column: 1 / -1; width: 100%; }
   .card-back .cb-name { font-size: 28px; }

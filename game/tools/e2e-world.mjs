@@ -29,10 +29,29 @@
 //      Hard fail: p95 > 33 ms or > 60 drawImage per frame (A7); the target is 16 ms and 40. Then,
 //      standing still with the packs in view stunned and those far off screen wandering, the loop
 //      idles at 8-17 fps.
+// M4 (spec §8, "e2e-world new scenarios"; P7b):
+//   12 the Keep's south-east gate: sealed before Act I (the message, no map change); after Act I it
+//      walks into the Sunward Road (the desert track plays), and the caravan wreck's forge loot toasts
+//   13 Sandspire: rest at the Spire Hearth (kindled), Idris's shop opens from his "Buy gems.", the
+//      board opens the Journal's bounties with Zara's Sandspire board, and the Atlas travels to the
+//      Spire Hearth from the Keep through its Sunscorch view
+//   14 a dune-glass wall: ✗ without a key, opened with Cinderfang's Melt Glass; the Glass Flats mirage
+//      opened with the Knowledge key (Knowledge 5)
+//   15 Kharzul's pre-fight card: the Champion, its pieces glinting (Cinderfang, the Glass Carapace),
+//      and the Brand (blocked, not failed, while the card does not name it: P7a's sheet)
+//   16 the Deep Shaft is dark without a light key (a Stillwater party), and lit by the Sunstone Lantern
+//   17 performance on the Glass Flats (the biggest map), measured like 11
+//   18 the Codex binder: Page I (24 pockets, 1 of 22 claimed, the reward greyed), the Page II tab (14),
+//      the sealed Page III; after a forced full claim of Page I's relics its reward shows, in gold, and
+//      an Awakened pocket glows
+//   19 the Journal's Grudges tab (one active, one settled; a saved name stays text), its empty state;
+//      a real Grudge pack seeded as a hunter shows a red "!" (emote '!hunt'); loot and Codex-page
+//      toasts; the second council's title card, then the end-of-Act-II card naming Ironspire and Gloomfen
+// Screenshots use the real fonts when tools/e2e-flow.mjs has cached them (<tmp>/aethermoor-font-cache).
 // Playwright is not a project dependency: it comes from the global npm root.
-// Owner: WP7.
+// Owner: WP7; M4 P7b (12-19).
 import { execSync } from 'node:child_process';
-import { existsSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import os from 'node:os';
@@ -58,6 +77,23 @@ const VIEWPORTS = [
   { name: 'phone', viewport: { width: 360, height: 740 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true },
   { name: 'laptop', viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 },
 ].filter(v => (args.only ? v.name === args.only : true));
+
+// Google Fonts from the cache tools/e2e-flow.mjs fills (read only here); without it the pages fall back
+// to system fonts, which is fine for every check.
+function cachedFonts() {
+  const dir = path.join(os.tmpdir(), 'aethermoor-font-cache');
+  try {
+    let css = readFileSync(path.join(dir, 'fonts.css'), 'utf8');
+    css = css.split(/(?=\/\* [a-z-]+ \*\/)/).filter(b => /^\/\* latin(-ext)? \*\//.test(b)).join('');
+    const files = {};
+    for (const [, u] of css.matchAll(/url\((https:\/\/fonts\.gstatic\.com\/[^)]+)\)/g)) {
+      const f = path.join(dir, u.replace(/[^a-z0-9.]+/gi, '_'));
+      if (existsSync(f)) files[u] = f;
+    }
+    return Object.keys(files).length ? { css, files } : null;
+  } catch { return null; }
+}
+const fonts = cachedFonts();
 
 const fails = [], blocked = [], perfLines = [];
 function check(cond, msg) { if (!cond) { fails.push(msg); console.log('  FAIL', msg); } else console.log('  ok', msg); return !!cond; }
@@ -99,6 +135,10 @@ function initScript() {
 async function run(V) {
   console.log(`\n== ${V.name} ${V.viewport.width}x${V.viewport.height}`);
   const context = await browser.newContext({ viewport: V.viewport, deviceScaleFactor: V.deviceScaleFactor, isMobile: !!V.isMobile, hasTouch: !!V.hasTouch, ignoreHTTPSErrors: true });
+  if (fonts) {
+    await context.route('https://fonts.googleapis.com/**', r => r.fulfill({ status: 200, contentType: 'text/css', body: fonts.css }));
+    await context.route('https://fonts.gstatic.com/**', r => { const f = fonts.files[r.request().url()]; return f ? r.fulfill({ status: 200, contentType: 'font/woff2', body: readFileSync(f) }) : r.abort(); });
+  }
   await context.addInitScript(initScript);
   const page = await context.newPage();
   const errors = [], failed = [];
@@ -697,6 +737,440 @@ async function run(V) {
       console.log(`  note: ${far.length} packs far off screen, ${wandered} of them moved while standing still`);
       check(idleFrames >= 16 && idleFrames <= 34, `${P} 11: standing still, the loop idles at ~${(idleFrames / 2).toFixed(1)} fps`);
     } catch (e) { check(false, `${P} 11: ${e.message.split('\n')[0]}`); }
+  }
+
+  // ================= M4 (P7b): the Sunscorch, the Codex binder, the Journal's Grudges ==================
+  // Act I done, and its council held (else the Great Hall, where a new game starts, plays it on entry)
+  const act1 = `(g) => { Object.assign(g.progress.flags.story, { 'act1-complete': true, 'council-done': true }); return g; }`;
+  // change the game in the page and re-enter the world (it stays where it stood)
+  const regame = async fn => {
+    await W(f => { const g = structuredClone(window.__world.game()); const g2 = (0, eval)(`(${f})`)(g, window.__worldTools) || g; window.__app.setGame(g2); window.__app.go('world'); }, fn.toString());
+    await page.waitForSelector('.screen-world .world-canvas');
+    await page.waitForTimeout(250);
+    await closeOverlays();
+  };
+  const noScroll = async label => { const w = await W(() => [document.documentElement.scrollWidth, window.innerWidth]); check(w[0] <= w[1], `${P} ${label}: no horizontal scroll (${w[0]} <= ${w[1]})`); };
+  const toastNow = () => W(() => { const t = document.querySelector('.toast'); return t && !t.hidden ? t.textContent : ''; });
+
+  // ================= 12. the Keep's south-east gate ==================================================
+  if (want(12)) {
+    console.log(' -- 12 the south-east gate');
+    try {
+      await setup({ patch: noIntro });
+      await teleport('keep', 22, 22, 's');
+      await W(() => window.__world.roam([]));
+      await W(() => window.__world.press('s'));
+      await page.waitForSelector('.ov-dialogue .dlg-text', { timeout: 3000 });
+      await page.waitForTimeout(600);
+      const msg = (await page.innerText('.ov-dialogue')).replace(/\s+/g, ' ');
+      check(/caravans/i.test(msg) && /Brands of the Wilds/.test(msg), `${P} 12: before Act I the south-east gate is sealed ("${msg.slice(0, 100)}…")`);
+      await shot('se-gate-sealed');
+      await playDialogue();
+      const s0 = await state();
+      check(s0.map === 'keep', `${P} 12: the party stays in the Keep (${s0.map} ${s0.x},${s0.y})`);
+      // Act I done: the gate stands open onto the Sunward Road
+      await regame(act1);
+      await teleport('keep', 22, 22, 's');
+      await W(() => window.__world.roam([]));
+      await W(() => window.__world.press('s'));
+      await page.waitForFunction(() => window.__world && window.__world.state().map === 'sun-road' && !window.__world.state().transition, null, { timeout: 6000 });
+      await closeOverlays();
+      const s1 = await state();
+      check(s1.map === 'sun-road' && s1.y <= 2, `${P} 12: after Act I the gate opens into the Sunward Road (${s1.map} ${s1.x},${s1.y})`);
+      const track = await W(() => window.__app.audio.track);
+      check(track === 'desert', `${P} 12: the Sunward Road plays the desert track (${track})`);
+      await shot('sun-road');
+      // the caravan wreck: gold, Frost Draughts and forge materials, in one toast by their names
+      await standBy('sun-road', 'sr-wreck', ['e', 'n', 's', 'w']);
+      await W(() => window.__world.roam([]));
+      const m0 = await W(() => ({ ...(window.__world.game().materials || {}) }));
+      await pressA();
+      await page.waitForFunction(() => { const t = document.querySelector('.toast'); return t && !t.hidden && /gold/.test(t.textContent); }, null, { timeout: 3000 });
+      const toast = await toastNow();
+      const m1 = await W(() => ({ ...(window.__world.game().materials || {}) }));
+      check(/scrap/i.test(toast) && /silver/i.test(toast), `${P} 12: the wreck's forge materials toast by name ("${toast}")`);
+      check((m1.scrap || 0) > (m0.scrap || 0) && (m1.silver || 0) > (m0.silver || 0), `${P} 12: the materials reach the purse (${JSON.stringify(m0)} -> ${JSON.stringify(m1)})`);
+      await shot('wreck-toast');
+    } catch (e) { check(false, `${P} 12: ${e.message.split('\n')[0]}`); }
+  }
+
+  // ================= 13. Sandspire: the Spire Hearth, Idris, the board, Atlas travel ===================
+  if (want(13)) {
+    console.log(' -- 13 Sandspire');
+    try {
+      await setup({ patch: combine(noIntro, act1, `(g) => { g.gold = 600; return g; }`) });
+      const hf = await W(() => window.__worldTools.hearth('spire-hearth'));
+      await teleport(hf.map, hf.x, hf.y, hf.face);
+      await closeOverlays();
+      await W(() => window.__world.roam([]));
+      await pressA();
+      await page.waitForSelector('.ov-hearth', { timeout: 3000 });
+      check(/Spire Hearth/.test(await page.innerText('.ov-hearth')), `${P} 13: the Spire Hearth's menu opens`);
+      await shot('spire-hearth');
+      await page.click('.ov-hearth [data-primary]');
+      await page.waitForTimeout(400);
+      await closeOverlays();
+      const g1 = await W(() => { const g = window.__world.game(); return { kindled: !!g.progress.flags.kindled['spire-hearth'], last: g.progress.lastHearthfire }; });
+      check(g1.kindled && g1.last === 'spire-hearth', `${P} 13: resting kindles the Spire Hearth (${JSON.stringify(g1)})`);
+      // Idris the Gemwright
+      await standBy('sandspire', 'idris', ['n', 'e', 'w', 's']);
+      await W(() => window.__world.roam([]));
+      await pressA();
+      await page.waitForSelector('.ov-dialogue', { timeout: 3000 });
+      check(/Idris/i.test(await page.innerText('.ov-dialogue')), `${P} 13: A talks to Idris`);
+      await playDialogue(/Buy gems/);
+      await page.waitForSelector('.ov-shop', { timeout: 3000 });
+      const shopText = await page.innerText('.ov-shop');
+      check(/Idris/.test(shopText), `${P} 13: Idris's shop opens ("${shopText.split('\n').slice(0, 2).join(' · ')}")`);
+      if (/Sunstone|Moss Agate|Glass Pearl/.test(shopText)) check(true, `${P} 13: Idris sells his gems`);
+      else block(`${P} 13: Idris's shop lists no gems yet (P7a: the shop sheet's gem rows)`);
+      await shot('idris-shop');
+      await page.click('.ov-shop [data-primary]');
+      await page.waitForTimeout(300);
+      await closeOverlays();
+      // the Sandspire board opens the Journal on the bounties, with Zara's board
+      await standBy('sandspire', 'ss-board', ['s', 'e', 'w', 'n']);
+      await W(() => window.__world.roam([]));
+      await pressA();
+      await page.waitForFunction(() => document.getElementById('app').dataset.screen === 'journal', null, { timeout: 4000 });
+      await page.waitForTimeout(200);
+      const tab = await W(() => document.querySelector('.jr-panel')?.dataset.tab);
+      const zara = await page.$('.jr-board[data-giver="zara"]');
+      check(tab === 'bounties' && !!zara, `${P} 13: the Sandspire board opens the Journal's bounties with Zara's board (${tab})`);
+      check(/Skink Nest/.test(zara ? await zara.innerText() : ''), `${P} 13: the Sandspire bounties are listed`);
+      await shot('sandspire-board');
+      await noScroll('13 bounties');
+      // the Atlas: from the Keep, through the Sunscorch view, travel to the Spire Hearth
+      await W(() => window.__app.go('world'));
+      await page.waitForSelector('.screen-world .world-canvas');
+      await closeOverlays();
+      await teleport('keep', 15, 12, 's');
+      await W(() => window.__app.go('atlas', { mode: 'travel', from: 'world' }));
+      await page.waitForSelector('.atlas-mk');
+      const views = await page.$$eval('.atlas-view', bs => bs.map(b => b.dataset.view));
+      check(views.includes('sunscorch'), `${P} 13: the Atlas has a Sunscorch view once Act I is done (${views.join(', ')})`);
+      await page.click('.atlas-view[data-view="sunscorch"]');
+      await page.waitForTimeout(400);
+      const mk = await W(() => ({ fires: document.querySelectorAll('.atlas-mk.mk-hearth').length, lit: document.querySelectorAll('.atlas-mk.mk-hearth.is-kindled').length, sealed: document.querySelectorAll('.atlas-mk.mk-sealed').length, small: [...document.querySelectorAll('.atlas-mk')].filter(e => e.getBoundingClientRect().width < 44).length, view: document.querySelector('.atlas-frame').dataset.view }));
+      check(mk.view === 'sunscorch' && mk.fires === 7 && mk.lit === 1 && mk.sealed === 2 && mk.small === 0, `${P} 13: the Sunscorch view shows its 7 Hearthfires (the Spire Hearth lit) and 2 padlocks, all 44 px (${JSON.stringify(mk)})`);
+      await shot('atlas-sunscorch');
+      await noScroll('13 atlas');
+      await page.click('.atlas-mk[data-hearth="spire-hearth"]');
+      await page.waitForFunction(() => document.getElementById('app').dataset.screen === 'world', null, { timeout: 4000 });
+      await page.waitForFunction(() => window.__world && !window.__world.state().transition, null, { timeout: 4000 });
+      await page.waitForTimeout(300);
+      const s = await state();
+      check(s.map === 'sandspire' && s.x === hf.x && s.y === hf.y, `${P} 13: Atlas travel lands on the Spire Hearth's stand (${s.map} ${s.x},${s.y})`);
+    } catch (e) { check(false, `${P} 13: ${e.message.split('\n')[0]}`); }
+  }
+
+  // ================= 14. dune-glass with Cinderfang; the mirage with the Knowledge key ================
+  if (want(14)) {
+    console.log(' -- 14 dune-glass and the mirage');
+    try {
+      await setup({ patch: combine(noIntro, act1) });
+      await standBy('sun-road', 'sr-glass-wall', ['e']);
+      await W(() => window.__world.roam([]));
+      await pressA();
+      await page.waitForSelector('.ov-lock', { timeout: 3000 });
+      const t1 = await page.innerText('.ov-lock');
+      check(/Dune-Glass/.test(t1) && /✗/.test(t1) && /Craft 5/.test(t1), `${P} 14: the dune-glass prompt lists its keys with ✗ (Craft 5)`);
+      await shot('dune-glass-shut');
+      await page.click('.ov-lock [data-primary]');
+      await page.waitForTimeout(200);
+      await regame(`(g, T) => { g.inventory.push(T.relicItem('cinderfang', 'Kharzul the Glass Scorpion')); g.codex.cinderfang = { sighted: true, claimed: true, awakened: false }; return g; }`);
+      await W(() => window.__world.roam([]));
+      await pressA();
+      await page.waitForSelector('.ov-lock', { timeout: 3000 });
+      const t2 = await page.innerText('.ov-lock');
+      check(/✓/.test(t2) && /Cinderfang/.test(t2), `${P} 14: with Cinderfang the prompt shows ✓`);
+      const use = await page.$('.ov-lock .lock-use');
+      check(!!use && /Cinderfang/.test(await use.innerText()), `${P} 14: "Use (Cinderfang)"`);
+      await shot('dune-glass-key');
+      if (use) await use.click();
+      await page.waitForTimeout(300);
+      check(await W(() => !!window.__world.game().progress.flags.unlocked?.['sr-glass-wall']), `${P} 14: the dune-glass wall melts`);
+      const s0 = await state();
+      await hold('w', 380);
+      const s1 = await state();
+      check(s1.x < s0.x, `${P} 14: the way into the hollow is open (${s0.x} -> ${s1.x})`);
+      // the Glass Flats mirage, with Knowledge 5
+      await regame(`(g) => { for (const id of g.party.active) { const h = g.party.roster[id]; h.domains = { ...(h.domains || {}), knowledge: { ...(h.domains?.knowledge || {}), level: 5 } }; } return g; }`);
+      await standBy('glass-flats', 'gf-mirage', ['n', 's']);
+      await W(() => window.__world.roam([]));
+      await pressA();
+      await page.waitForSelector('.ov-lock', { timeout: 3000 });
+      const t3 = await page.innerText('.ov-lock');
+      check(/Mirage/.test(t3) && /Knowledge 5/.test(t3) && /✓/.test(t3), `${P} 14: the mirage prompt shows the Knowledge key ✓`);
+      await shot('mirage');
+      const use2 = await page.$('.ov-lock .lock-use');
+      if (use2) await use2.click();
+      await page.waitForTimeout(300);
+      check(await W(() => !!window.__world.game().progress.flags.unlocked?.['gf-mirage']), `${P} 14: the mirage opens with Knowledge 5`);
+    } catch (e) { check(false, `${P} 14: ${e.message.split('\n')[0]}`); }
+  }
+
+  // ================= 15. Kharzul's pre-fight card =====================================================
+  if (want(15)) {
+    console.log(' -- 15 Kharzul');
+    try {
+      await setup({ patch: combine(noIntro, act1) });
+      await standBy('deep-shaft-2', 'kharzul-heart', ['s', 'n', 'w', 'e']);
+      await W(() => window.__world.roam([]));
+      await pressA();
+      await page.waitForSelector('.ov-prefight', { timeout: 3000 });
+      await page.waitForTimeout(300);
+      const pf = (await page.innerText('.ov-prefight')).replace(/\s+/g, ' ');
+      check(/Kharzul/.test(pf) && /Champion/.test(pf), `${P} 15: Kharzul's pre-fight card: the Champion ("${pf.slice(0, 80)}…")`);
+      check(/Cinderfang/.test(pf) && /Glass Carapace/.test(pf) && /Glinting/i.test(pf), `${P} 15: its pieces glint on the card: Cinderfang and the Glass Carapace`);
+      if (/Brand of Glass/.test(pf)) check(true, `${P} 15: the card names the Brand of Glass`);
+      else block(`${P} 15: the pre-fight card does not name the Brand of Glass yet (P7a: ui/world/sheets.js openPrefight)`);
+      await shot('kharzul-prefight');
+      await page.click('.ov-prefight .pf-not-yet');
+      await page.waitForTimeout(200);
+    } catch (e) { check(false, `${P} 15: ${e.message.split('\n')[0]}`); }
+  }
+
+  // ================= 16. the Deep Shaft's darkness, lit by the Sunstone Lantern ========================
+  if (want(16)) {
+    console.log(' -- 16 the Deep Shaft');
+    try {
+      // a Stillwater party carries no flame (no Kindle, no Lamplight)
+      await setup({ starter: 'stillwater-lance', patch: combine(noIntro, act1) });
+      await teleport('deep-shaft-1', 11, 2, 's');
+      await W(() => window.__world.roam([]));
+      await page.waitForTimeout(300);
+      const d0 = await state();
+      check(d0.map === 'deep-shaft-1' && d0.dark, `${P} 16: the Deep Shaft is dark without a light key (${d0.dark})`);
+      await shot('shaft-dark');
+      await regame(`(g, T) => { g.inventory.push(T.relicItem('sunstone-lantern', 'Foreman Brask')); g.codex['sunstone-lantern'] = { sighted: true, claimed: true, awakened: false }; return g; }`);
+      await W(() => window.__world.roam([]));
+      await page.waitForTimeout(300);
+      const d1 = await state();
+      check(d1.map === 'deep-shaft-1' && !d1.dark, `${P} 16: the Sunstone Lantern lights the Deep Shaft (${d1.dark})`);
+      await shot('shaft-lit');
+    } catch (e) { check(false, `${P} 16: ${e.message.split('\n')[0]}`); }
+  }
+
+  // ================= 17. performance on the Glass Flats ==============================================
+  if (want(17)) {
+    console.log(' -- 17 the Glass Flats performance');
+    try {
+      await setup({ patch: combine(noIntro, act1, levelUp.replace(/LVL/g, '12')) });
+      await teleport('glass-flats', 1, 14, 'e');
+      await closeOverlays();
+      await W(() => window.__world.grace(100000));
+      const cdp = await context.newCDPSession(page);
+      await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+      await page.waitForTimeout(400);
+      await W(() => { window.__world.resetPerf(); window.__drawSamples = []; window.__sampling = true; });
+      // walking into a pack on the track is a fight: it ends at once as fled (counted), and the walk goes on
+      await W(() => { window.__forceResult = { result: 'fled', sticky: true }; });
+      const work = [], draws = [];
+      let frames = 0, battles = 0, maxRoamers = 0, farthest = 0;
+      const collect = async () => {
+        const p = await W(() => (window.__world ? window.__world.perf() : null));
+        if (!p) return;
+        work.push(...p.work.filter(v => v > 0)); draws.push(...p.draws); frames += p.frames;
+        await W(() => window.__world.resetPerf());
+      };
+      const t0 = Date.now();
+      let legs = 0;
+      while (Date.now() - t0 < 10000) {
+        await hold(legs % 6 < 3 ? 'e' : 'w', 1150);
+        legs++;
+        if ((await screen()) !== 'world') {
+          battles++;
+          for (let i = 0; i < 6 && (await screen()) !== 'world'; i++) { await page.click('.af-foot .btn.primary').catch(() => {}); await page.waitForTimeout(300); }
+          await page.waitForSelector('.screen-world .world-canvas', { timeout: 4000 }).catch(() => {});
+          await W(() => window.__world && window.__world.grace(100000));
+          continue;
+        }
+        if (await page.$('.ov')) await closeOverlays();
+        await collect();
+        const s = await state();
+        if (s) { maxRoamers = Math.max(maxRoamers, s.roamers.length); farthest = Math.max(farthest, s.x); }
+      }
+      await W(() => { window.__sampling = false; window.__forceResult = null; });
+      await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+      const samples = await W(() => window.__drawSamples);
+      const pct = (arr, p) => { if (!arr.length) return 0; const a = [...arr].sort((x, y) => x - y); return a[Math.min(a.length - 1, Math.floor(a.length * p))]; };
+      const p95 = pct(work, 0.95), p50 = pct(work, 0.5);
+      const dMax = Math.max(0, ...draws), sMax = Math.max(0, ...samples), dP95 = pct(draws, 0.95);
+      const line = `${P} 17: Glass Flats, 4x throttle, ${frames} frames in 10 s, ${maxRoamers} roamers, walked out to x=${farthest}: frame JS p50 ${p50.toFixed(2)} ms, p95 ${p95.toFixed(2)} ms; drawImage per frame p95 ${dP95}, max ${Math.max(dMax, sMax)}${battles ? `; ${battles} fights interrupted the walk` : ''}`;
+      check(frames >= 100 && farthest >= 12, `${P} 17: the walk crossed the Flats (${frames} frames measured, out to x=${farthest})`);
+      perfLines.push(line);
+      console.log('  PERF', line);
+      check(p95 <= 33, `${P} 17: p95 frame time ${p95.toFixed(2)} ms <= 33 ms (hard gate; target 16)`);
+      check(Math.max(dMax, sMax) <= 60, `${P} 17: drawImage per frame ${Math.max(dMax, sMax)} <= 60 (hard gate; target 40)`);
+      if (p95 > 16) console.log(`  note: p95 ${p95.toFixed(2)} ms is over the 16 ms target`);
+      // idle: the packs near the view stunned, the loop drops to its idle rate
+      await W(() => {
+        const s = window.__world.state(), [cx, cy] = s.camera, [vw, vh] = s.view, m = 8 * 16;
+        const near = r => r.x * 16 > cx - m && r.x * 16 < cx + vw + m && r.y * 16 > cy - m && r.y * 16 < cy + vh + m;
+        window.__world.roam(window.__world.walkRoamers().map(r => (near(r) ? { ...r, mood: 'stunned', wait: 1e6 } : r)));
+      });
+      await page.waitForTimeout(300);
+      await W(() => window.__world.resetPerf());
+      await page.waitForTimeout(2000);
+      const idleFrames = (await W(() => window.__world.perf())).frames;
+      check(idleFrames >= 16 && idleFrames <= 34, `${P} 17: standing still on the Glass Flats, the loop idles at ~${(idleFrames / 2).toFixed(1)} fps`);
+    } catch (e) { check(false, `${P} 17: ${e.message.split('\n')[0]}`); }
+  }
+
+  // ================= 18. the Codex binder =============================================================
+  if (want(18)) {
+    console.log(' -- 18 the Codex binder');
+    try {
+      await setup({ patch: noIntro });
+      await W(() => window.__app.go('codex', { from: 'world' }));
+      await page.waitForSelector('.cx-tab');
+      await page.waitForTimeout(300);
+      const cx = () => W(() => ({
+        tabs: [...document.querySelectorAll('.cx-tab')].map(b => `${b.dataset.page}:${b.getAttribute('aria-selected')}`),
+        pockets: document.querySelectorAll('.pocket').length, spare: document.querySelectorAll('.pocket.is-spare').length,
+        name: document.querySelector('.cx-head h2')?.textContent || '', prog: document.querySelector('.cx-prog')?.textContent || '',
+        earned: document.querySelector('.cx-reward')?.dataset.earned ?? null, reward: document.querySelector('.cx-reward')?.textContent || '',
+        sealed: !!document.querySelector('.cx-sealed'), sealedText: document.querySelector('.cx-sealed')?.textContent || '',
+        awake: document.querySelectorAll('.pocket.is-awakened').length,
+      }));
+      let c = await cx();
+      check(c.tabs.join(' ') === 'verdant:true sunscorch:false ironspire:false gloomfen:false', `${P} 18: page tabs I · II · III · IV, Page I open (${c.tabs.join(' ')})`);
+      check(c.pockets === 24 && c.spare === 2 && /1 of 22 claimed/.test(c.prog), `${P} 18: Page I: 24 pockets, the two starters you passed over not counted ("${c.prog}")`);
+      check(c.earned === '0' && /Verdant Oath/.test(c.reward), `${P} 18: Page I's reward is greyed until earned ("${c.reward}")`);
+      const tabs = await page.$$eval('.cx-tab', bs => bs.map(b => { const r = b.getBoundingClientRect(); return [r.width, r.height]; }));
+      check(tabs.every(([w, h]) => w >= 44 && h >= 44), `${P} 18: the page tabs are 44 px (${tabs.map(t => t.map(Math.round).join('x')).join(', ')})`);
+      await shot('codex-I');
+      await noScroll('18 codex');
+      await page.click('.cx-tab[data-page="sunscorch"]');
+      await page.waitForTimeout(300);
+      c = await cx();
+      check(c.pockets === 14 && /Sunscorch Wastes/.test(c.name) && /0 of 14 claimed/.test(c.prog) && /Sunscorch Compact/.test(c.reward), `${P} 18: the Page II tab: 14 pockets, "${c.prog}", ${c.reward.replace(/\s+/g, ' ').slice(0, 40)}…`);
+      await shot('codex-II');
+      await page.click('.pocket[data-relic="cinderfang"]');
+      await page.waitForSelector('.ov .card', { timeout: 5000 });
+      check(true, `${P} 18: an unsighted Page II pocket opens its silhouette card`);
+      await page.keyboard.press('Escape');
+      await page.waitForSelector('.ov', { state: 'detached', timeout: 3000 });
+      await page.click('.cx-tab[data-page="ironspire"]');
+      await page.waitForTimeout(200);
+      c = await cx();
+      check(c.sealed && c.pockets === 0 && /Sealed/i.test(c.sealedText), `${P} 18: Page III is sealed, with a padlock and its region's road ("${c.sealedText.replace(/\s+/g, ' ').slice(0, 60)}…")`);
+      await shot('codex-III');
+      // a forced full claim of every relic Page I needs: its reward shows, in gold; an Awakened pocket glows
+      await page.click('.cx-tab[data-page="verdant"]');
+      const need = await page.$$eval('.pocket[data-relic]:not(.is-spare)', ps => ps.map(p => p.dataset.relic));
+      await W(ids => {
+        const g = structuredClone(window.__app.game);
+        for (const id of ids) {
+          g.codex[id] = { sighted: true, claimed: true, awakened: id === 'thornsplitter' };
+          if (!g.inventory.some(i => i.base === id)) g.inventory.push(window.__worldTools.relicItem(id));
+        }
+        window.__app.setGame(g);
+        window.__app.go('codex', { from: 'world' });
+      }, need);
+      await page.waitForSelector('.cx-tab');
+      await page.waitForTimeout(300);
+      c = await cx();
+      const gold = await W(() => { const r = document.querySelector('.cx-reward.is-earned .cx-rn'); return r ? getComputedStyle(r).color : ''; });
+      check(need.length === 22 && c.earned === '1' && /Earned/.test(c.reward) && /Verdant Oath/.test(c.reward) && /22 of 22 claimed/.test(c.prog), `${P} 18: after a forced full claim Page I's reward shows ("${c.reward.replace(/\s+/g, ' ').slice(0, 60)}", ${gold})`);
+      const glow = await W(() => { const p = document.querySelector('.pocket.is-awakened'); return p ? getComputedStyle(p).animationName : ''; });
+      check(c.awake >= 1 && /cxGlow/.test(glow), `${P} 18: an Awakened pocket glows (${c.awake}, ${glow})`);
+      const done = await W(() => document.querySelector('.cx-tab[data-page="verdant"]').classList.contains('is-done'));
+      check(done, `${P} 18: the Page I tab is ticked`);
+      await shot('codex-I-earned');
+      await page.evaluate(() => document.querySelector('.pocket.is-awakened')?.scrollIntoView({ block: 'center' }));
+      await shot('codex-awakened');
+    } catch (e) { check(false, `${P} 18: ${e.message.split('\n')[0]}`); }
+  }
+
+  // ================= 19. the Journal's Grudges; the hunter's "!"; toasts; the end of Act II ===========
+  if (want(19)) {
+    console.log(' -- 19 Grudges, the hunter, the Act II card');
+    try {
+      await setup({ patch: combine(noIntro, `(g) => {
+        g.progress.flags.grudges = { 'snag-wallow#0': { key: 'snag-wallow#0', nodeId: 'snag-wallow', wins: 2, flees: 0, omens: ['ironclad', 'frenzied'], title: 'the Twice-Victor', name: '<b>Old Snag</b> the Twice-Victor' } };
+        g.progress.flags.settled = { 'tally-camp#1': { day: 4, name: 'Bandit the Once-Fled' } };
+        return g; }`) });
+      await W(() => window.__app.go('journal', { tab: 'grudges', from: 'world' }));
+      await page.waitForSelector('.jr-tab');
+      await page.waitForTimeout(200);
+      const jr = await W(() => ({
+        tabs: [...document.querySelectorAll('.jr-tab')].map(b => b.dataset.tab), on: document.querySelector('.jr-tab[aria-selected="true"]')?.dataset.tab,
+        active: [...document.querySelectorAll('.jr-grudge[data-state="active"]')].map(e => e.innerText.replace(/\s+/g, ' ')),
+        settled: [...document.querySelectorAll('.jr-grudge[data-state="settled"]')].map(e => e.innerText.replace(/\s+/g, ' ')),
+        tags: document.querySelectorAll('.jr-grudge .jg-name *').length,
+        small: [...document.querySelectorAll('.jr-tab')].filter(b => b.getBoundingClientRect().height < 44 || b.scrollWidth > b.clientWidth).length,
+      }));
+      check(jr.tabs.join(' ') === 'quests bounties ladder keys grudges' && jr.on === 'grudges', `${P} 19: the Journal's fifth tab is Grudges (${jr.tabs.join(' ')})`);
+      check(jr.active.length === 1 && /Old Snag/.test(jr.active[0]) && /ironclad/i.test(jr.active[0]) && /frenzied/i.test(jr.active[0]) && /thornway/i.test(jr.active[0]), `${P} 19: the unsettled Grudge: name, where, its Omens ("${(jr.active[0] || '').slice(0, 90)}…")`);
+      check(jr.settled.length === 1 && /Bandit the Once-Fled/.test(jr.settled[0]) && /Day 4/.test(jr.settled[0]), `${P} 19: the settled Grudge with its day ("${jr.settled[0] || ''}")`);
+      check(jr.tags === 0 && /<b>Old Snag<\/b>/.test(jr.active[0] || ''), `${P} 19: a saved Grudge name stays text`);
+      check(jr.small === 0, `${P} 19: the five tabs fit, 44 px tall`);
+      await shot('journal-grudges');
+      await noScroll('19 journal');
+      await W(() => { const g = structuredClone(window.__app.game); g.progress.flags.grudges = {}; g.progress.flags.settled = {}; window.__app.setGame(g); window.__app.go('journal', { tab: 'grudges', from: 'world' }); });
+      await page.waitForSelector('.jr-grudge-none', { timeout: 3000 });
+      check(/No Grudges yet/.test(await page.innerText('.jr-grudge-none')), `${P} 19: the empty Grudges tab reads well`);
+      // a real Grudge pack on the Sunward Road is seeded as a hunter; its "!" is red
+      await W(() => { const g = structuredClone(window.__app.game); Object.assign(g.progress.flags.story, { 'act1-complete': true, 'council-done': true }); g.progress.flags.grudges = { 'sr-skinks#0': { key: 'sr-skinks#0', nodeId: 'sr-skinks', wins: 1, flees: 0, omens: ['swift'], title: 'the Party-Breaker', name: 'Sand-Skink the Party-Breaker' } }; window.__app.setGame(g); window.__app.go('world'); });
+      await page.waitForSelector('.screen-world .world-canvas');
+      await closeOverlays();
+      await teleport('sun-road', 12, 50, 's');
+      await W(() => window.__world.grace(100000));
+      const hunter = await W(() => window.__world.walkRoamers().find(r => r.enc === 'sr-skinks'));
+      check(!!hunter && hunter.hunter === true && hunter.weak === false, `${P} 19: the Grudge pack is seeded as a hunter (${hunter ? JSON.stringify({ hunter: hunter.hunter, weak: hunter.weak }) : 'none'})`);
+      if (hunter) {
+        // bring it into view, across open sand, and let it notice the party
+        await W(h => { const s = window.__world.state(); window.__world.roam(window.__world.walkRoamers().map(r => (r.id === h ? { ...r, x: s.x + 4, y: s.y, mood: 'wander', wait: 0 } : r)).filter(r => r.id === h)); }, hunter.id);
+        await W(() => { window.__huntSeen = null; });
+        await page.waitForFunction(() => { const e = window.__world.emotes().find(x => x.kind === '!hunt'); if (e) window.__huntSeen = e; return !!e; }, null, { timeout: 6000 }).catch(() => {});
+        const em = await W(() => window.__huntSeen);
+        check(!!em && em.target === hunter.id, `${P} 19: the hunter notices the party, and its "!" is the red one (${JSON.stringify(em)})`);
+        await W(h => window.__world.event({ t: 'alert', id: h, hunter: true }), hunter.id); // show it again for the screenshot
+        await shot('hunter');
+      }
+      // loot and Codex-page toasts
+      await W(() => window.__world.story([{ t: 'gold', n: 150 }, { t: 'gems', gems: { 'glass-pearl': 2 } }, { t: 'materials', materials: { silver: 1 } }]));
+      await page.waitForTimeout(150);
+      const t1 = await toastNow();
+      check(/\+150 gold/.test(t1) && /Glass Pearl ×2/.test(t1) && /1 silver/.test(t1), `${P} 19: story gems and materials toast by name ("${t1}")`);
+      await W(() => window.__world.story([{ t: 'page', id: 'sunscorch' }]));
+      await page.waitForTimeout(150);
+      const t2 = await toastNow();
+      check(/Codex Page II complete/.test(t2) && /Sunscorch Compact/.test(t2), `${P} 19: a finished page toasts its reward ("${t2}")`);
+      await shot('toast');
+      // the second council: its title card, the scene, then the end of Act II
+      await W(() => {
+        const g = structuredClone(window.__world.game());
+        const st = g.progress.flags.story;
+        Object.assign(st, { 'act1-complete': true, 'council-done': true, 'sunscorch-complete': true });
+        g.progress.brands = ['brand-of-briars', 'brand-of-the-heartroot', 'brand-of-glass', 'brand-of-ash'];
+        for (const b of g.progress.brands) st[`letter:${b}`] = true;
+        g.progress.flags.grudges = {};
+        window.__app.setGame(g); window.__app.go('world');
+      });
+      await page.waitForSelector('.screen-world .world-canvas');
+      await closeOverlays();
+      await teleport('keep', 15, 5, 'n');
+      await W(() => window.__world.roam([]));
+      await W(() => window.__world.press('n'));
+      await page.waitForSelector('.ov-story.council-2', { timeout: 6000 });
+      check(/Council sits again/.test(await page.innerText('.ov-story')) && /Four coals/.test(await page.innerText('.ov-story')), `${P} 19: the second council's title card`);
+      await shot('council-2');
+      await page.click('.ov-story .story-go');
+      await page.waitForSelector('.ov-dialogue', { timeout: 3000 });
+      await playDialogue(/Let the Council talk/);
+      await page.waitForSelector('.ov-story.tbc-act2', { timeout: 4000 });
+      await page.waitForTimeout(300);
+      const card = (await page.innerText('.ov-story')).replace(/\s+/g, ' ');
+      check(/End of Act II/i.test(card) && /Ironspire and Gloomfen open in the next chapter/.test(card), `${P} 19: the end-of-Act-II card names the next chapter ("${card.slice(0, 110)}…")`);
+      await noScroll('19 act II card');
+      await shot('act2');
+      await page.click('.ov-story .story-go');
+      await page.waitForTimeout(300);
+      check(await W(() => !!window.__world.game().progress.flags.story['council-2-done']), `${P} 19: the second council is done (council-2-done)`);
+    } catch (e) { check(false, `${P} 19: ${e.message.split('\n')[0]}`); }
   }
 
   const fontOnly = failed.length && failed.every(u => /fonts\.(googleapis|gstatic)\.com/.test(u));

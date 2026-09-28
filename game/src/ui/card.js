@@ -186,9 +186,10 @@ export function buildCard(itemIn, ctx, opts = {}) {
       if (toBack) paintBack();
       back.hidden = !toBack;
       card.classList.toggle('show-back', toBack);
+      // the back reads from its top; turning back lands on the Chronicle button again
       const f = toBack ? back.querySelector('.chron-back') : body.querySelector('.chron-btn');
-      if (toBack) back.scrollIntoView({ block: 'nearest' });
-      if (f) f.focus({ preventScroll: !toBack });
+      if (toBack && card.getBoundingClientRect().top < 0) card.scrollIntoView({ block: 'start' });
+      if (f) f.focus({ preventScroll: toBack });
     };
     if (isReduced()) { swap(); return; }
     turning = true;
@@ -442,7 +443,7 @@ function forgeBits(item) {
   box.append(fl);
   const st = stageInfo(item);
   if (st) {
-    const row = el('div', `fb-row fb-deeds st-${st.stage}${st.ready ? ' ready' : ''}`);
+    const row = el('div', `fb-row fb-deeds stage-${st.stage}${st.ready ? ' ready' : ''}`);
     const pips = el('span', { class: 'pips', role: 'img', 'aria-label': `${st.done} of ${st.total} deeds done` });
     for (const d of st.deeds) { const p = el('i', d.done ? 'on' : ''); p.title = `${d.name}${d.done ? ' (done)' : `: ${d.text}`}`; pips.append(p); }
     row.append(el('span', 'fb-k', 'Deeds'), pips, el('span', 'fb-stage', esc(st.line)));

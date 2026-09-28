@@ -116,3 +116,38 @@ test('routSpoils rolls the rabble drop per foe, deterministically', async () => 
   for (let k = 0; k < 40; k++) total += routSpoils(createRng(`r${k}`), foes, 0).drops.length;
   assert.ok(total > 0, 'rabble drop something now and then');
 });
+
+// ---- M4 (spec §3.3-§3.5; P4) ---------------------------------------------------------------------------
+
+test('Kharzul: a piece pried loose is claimed, a piece it still grips shatters, and a Champion pays two tempered-or-better items', async () => {
+  const { RELICS } = await import('../src/data/relics.js');
+  const s = structuredClone(battleWith([{ family: 'kharzul', level: 14 }], { seed: 9 }));
+  const k = s.units.f1;
+  k.held.find(p => p.relic === 'cinderfang').held = false; // pried loose in the fight
+  k.ko = true;
+  k.hp = 0;
+  const { drops, claimed, consumables } = battleLoot(s, createRng(31));
+  assert.deepEqual(claimed.map(i => i.base), ['cinderfang']);
+  assert.ok(!claimed[0].shattered);
+  assert.equal(claimed[0].rarity, 'heirloom');
+  const shard = drops.find(i => i.base === 'glass-carapace');
+  assert.ok(shard && shard.shattered, 'the Carapace it still wore shatters');
+  const random = drops.filter(i => !RELICS[i.base]);
+  assert.equal(random.length, 2);
+  for (const it of random) assert.ok(RARITY[it.rarity].rank >= RARITY.tempered.rank, it.rarity);
+  assert.ok(Object.values(consumables).reduce((a, n) => a + n, 0) >= 1, 'a Champion always leaves a consumable');
+});
+
+test('Sunscorch holders drop their relic when pried loose; veterans drop the gear they visibly wear', async () => {
+  const s = structuredClone(battleWith([
+    { family: 'dune-raider', variant: 'rider', relic: 'sandwalkers', level: 12, gearTier: 2 },
+    { family: 'ash-wight', level: 12, gearTier: 2 },
+  ], { seed: 3 }));
+  s.units.f1.held[0].held = false;
+  for (const id of ['f1', 'f2']) { s.units[id].ko = true; s.units[id].hp = 0; }
+  const a = battleLoot(s, createRng(8));
+  assert.deepEqual(a, battleLoot(s, createRng(8)), 'deterministic per seed');
+  assert.deepEqual(a.claimed.map(i => i.base), ['sandwalkers']);
+  const worn = new Set(s.units.f2.gear.map(g => g.base));
+  assert.ok(a.drops.some(i => worn.has(i.base) && i.provenance.from === s.units.f2.name), 'the wight drops a piece it wears');
+});

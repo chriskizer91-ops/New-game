@@ -438,7 +438,7 @@ const SCORPION_MOVES = {
   carapace: { name: 'Carapace', target: 'self', text: 'It hunkers down under its glassy shell: Guarding.', effects: [status('guarding')] },
 };
 const WISP_MOVES = {
-  'cold-touch': { name: 'Cold Touch', target: 'enemy', text: 'A touch like well-water at midnight: Chilled.', effects: [atk('1d6', 'frost', { aspect: 'frost', riders: [status('chilled')] })] },
+  'cold-touch': { name: 'Cold Touch', target: 'enemy', text: 'A touch like well-water at midnight: Chilled.', effects: [atk('1d8', 'frost', { aspect: 'frost', riders: [status('chilled')] })] },
   blink: { name: 'Blink', target: 'self', text: 'It blinks out and back a step to the left, and your blow finds shimmer: Guarding.', effects: [status('guarding')] },
   beguile: { name: 'Beguile', target: 'enemy', text: 'It shows you water where there is none. WIS save or you stand and stare (Rooted).', effects: [status('rooted', { save: 'WIS' })] },
 };
@@ -494,11 +494,11 @@ const SUNSCORCH = {
         ...RAIDER_MOVES,
         'dune-step': { name: 'Dune-Step', target: 'enemy', requires: 'sandwalkers', fallback: 'scimitar-cut', text: 'Sandwalkers skim the dune and she is behind you before you turn: 2d8 slashing, you Stagger, and Rasa is Hasted.', effects: [atk('2d8', 'slash', { riders: [status('staggered')] }), status('hasted', { self: true })] },
       }, [[1, 4, 'scimitar-cut'], [5, 6, 'sand-in-the-eyes'], [7, 8, 'dune-charge'], [9, 12, 'dune-step']], { speed: 14 }),
-      'raider-king': holder('Gnash the Raider-King', 'gnash', 80, {
+      'raider-king': holder('Gnash the Raider-King', 'gnash', 92, {
         ...RAIDER_MOVES,
         'kings-blow': { name: 'King\'s Blow', target: 'enemy', text: 'Whatever is in his hands, he swings it like a door.', effects: [atk('1d8', 'crush', { weapon: true })] },
         'dunefall': { name: 'Dunefall', target: 'all-enemies', requires: 'dunebreaker', fallback: 'kings-blow', charge: true, text: 'Gnash hefts Dunebreaker over his head, charging: the whole dune comes down on every hero, and you Stagger.', effects: [atk('2d6', 'crush', { aspect: 'stone', riders: [status('staggered')] })] },
-      }, [[1, 5, 'kings-blow'], [6, 7, 'sand-in-the-eyes'], [8, 8, 'war-cry'], [9, 12, 'dunefall']], { speed: 9 }),
+      }, [[1, 5, 'kings-blow'], [6, 7, 'sand-in-the-eyes'], [8, 8, 'war-cry'], [9, 12, 'dunefall']], { speed: 9, atk: 5, dmg: 3 }),
     },
     gear: [
       [{ base: 'arming-sword' }, { base: 'hood' }, { base: 'jerkin' }],
@@ -516,32 +516,32 @@ const SUNSCORCH = {
     table: [[1, 3, 'pincer'], [4, 6, 'glass-sting'], [7, 8, 'carapace']],
     variants: {
       // the Aqueduct Matriarch: a lair boss with no relic (spec §3.3: the cistern quest)
-      matriarch: holder('The Glass Matriarch', 'glass-matriarch', 66, {
+      matriarch: holder('The Glass Matriarch', 'glass-matriarch', 96, {
         ...SCORPION_MOVES,
         moult: { name: 'Moult', target: 'self', when: { hpBelow: 0.5 }, fallback: 'glass-sting', text: 'She splits her cracked shell and steps out of it: Regenerating.', effects: [status('regenerating', { value: { dice: '1d6', diceEvery: 3 } })] },
         'shell-rain': { name: 'Shell Rain', target: 'all-enemies', text: 'She shakes the aqueduct, and a season of shed shells comes down on everyone: Bleeding.', effects: [atk('1d8', 'pierce', { riders: [status('bleeding')] })] },
-      }, [[1, 4, 'pincer'], [5, 7, 'glass-sting'], [8, 8, 'carapace'], [9, 10, 'moult'], [11, 12, 'shell-rain']]),
+      }, [[1, 3, 'pincer'], [4, 6, 'glass-sting'], [7, 7, 'carapace'], [8, 8, 'moult'], [9, 12, 'shell-rain']], { atk: 5 }),
     },
     text: 'A scorpion the size of a dog, its shell gone to cloudy glass in the heat. It clicks when it is hungry. It is always clicking.',
   },
   'mirage-wisp': {
     id: 'mirage-wisp', name: 'Mirage Wisp', art: 'mirage-wisp', tier: 'veteran', kind: 'spirit',
-    hp: 22, guard: 16, atk: 4, dmg: 2, speed: 13, armor: 'none', aspect: 'frost',
+    hp: 22, guard: 16, atk: 5, dmg: 3, speed: 13, armor: 'none', aspect: 'frost',
     saves: { STR: 0, DEX: 3, CON: 1, WIS: 2 },
     moves: WISP_MOVES,
-    table: [[1, 4, 'cold-touch'], [5, 6, 'blink'], [7, 8, 'beguile']],
+    table: [[1, 5, 'cold-touch'], [6, 6, 'blink'], [7, 8, 'beguile']],
     variants: {
-      queen: holder('The Wisp-Queen', 'wisp-queen', 64, {
+      queen: holder('The Wisp-Queen', 'wisp-queen', 72, {
         ...WISP_MOVES,
         'drink-the-well': { name: 'Drink the Well', target: 'self', when: { hpBelow: 0.5 }, fallback: 'cold-touch', text: 'She drinks from the well until the bucket comes up dry: 2d8 healing.', effects: [{ type: 'heal', dice: '2d8', diceEvery: 3 }] },
-        'hall-of-mirrors': { name: 'Hall of Mirrors', target: 'all-enemies', requires: 'mirage-glass', fallback: 'cold-touch', text: 'The Mirage Glass flashes and there are a hundred queens: 2d6 frost to every hero, WIS save for half, and you are Chilled.', effects: [{ type: 'damage', dice: '2d6', kind: 'frost', aspect: 'frost', save: 'WIS', riders: [status('chilled')] }] },
-      }, [[1, 4, 'cold-touch'], [5, 6, 'blink'], [7, 7, 'beguile'], [8, 8, 'drink-the-well'], [9, 12, 'hall-of-mirrors']]),
+        'hall-of-mirrors': { name: 'Hall of Mirrors', target: 'all-enemies', requires: 'mirage-glass', fallback: 'cold-touch', text: 'The Mirage Glass flashes and there are a hundred queens: 2d8 frost to every hero, WIS save for half, and you are Chilled.', effects: [{ type: 'damage', dice: '2d8', kind: 'frost', aspect: 'frost', save: 'WIS', riders: [status('chilled')] }] },
+      }, [[1, 5, 'cold-touch'], [6, 6, 'blink'], [7, 7, 'beguile'], [8, 8, 'drink-the-well'], [9, 12, 'hall-of-mirrors']], { speed: 15 }),
     },
     text: 'A shimmer that walks on its own. It looks like water until it bites, and it bites cold.',
   },
   'ash-wight': {
     id: 'ash-wight', name: 'Ash-Wight', art: 'ash-wight', tier: 'veteran', kind: 'undead', humanoid: true,
-    hp: 20, guard: 13, atk: 2, dmg: 1, speed: 9, armor: 'mail', aspect: 'ember', weak: ['radiant'],
+    hp: 18, guard: 13, atk: 2, dmg: 1, speed: 9, armor: 'mail', aspect: 'ember', weak: ['radiant'],
     saves: { STR: 2, DEX: 0, CON: 2, WIS: 1 },
     names: ['Sergeant Cole', 'Tamber of the Gate', 'the Standard-Bearer', 'Old Watch'],
     moves: WIGHT_MOVES,
@@ -601,7 +601,7 @@ const SUNSCORCH = {
   },
   'ashen-warden': {
     id: 'ashen-warden', name: 'The Ashen Warden', art: 'ashen-warden', tier: 'champion', kind: 'undead', unique: true,
-    hp: 145, guard: 15, atk: 6, dmg: 3, speed: 9, armor: 'plate', aspect: 'ember', weak: ['radiant'],
+    hp: 185, guard: 15, atk: 6, dmg: 3, speed: 9, armor: 'plate', aspect: 'ember', weak: ['radiant'],
     saves: { STR: 4, DEX: 1, CON: 4, WIS: 3 },
     relics: ['ashen-aegis', 'cinder-crown'],
     noFlee: true,
@@ -611,7 +611,7 @@ const SUNSCORCH = {
       'ward-of-ash': { name: 'Ward of Ash', target: 'self', requires: 'ashen-aegis', fallback: 'ash-blade', text: 'The Aegis comes up and the ash settles on it. The next blow sinks into the ash (Warded).', effects: [status('warded', { value: { dice: '2d8', diceEvery: 3 } })] },
       'call-the-watch': { name: 'Call the Watch', target: 'self', text: 'It strikes the floor with the Aegis rim, and a wight climbs out of the ash to stand beside it.', effects: [{ type: 'summon', family: 'ash-wight', count: 1, max: 2, levelDelta: -4 }] },
       'command-of-cinders': { name: 'Command of Cinders', target: 'all-allies', requires: 'cinder-crown', fallback: 'ash-blade', text: 'The Cinder Crown flares and every soldier of Scorchgate answers at the double: every foe is Hasted.', effects: [status('hasted')] },
-      'scorch-the-vault': { name: 'Scorch the Vault', target: 'all-enemies', charge: true, text: 'It lifts its sword and the Vault fills with fire, charging: 2d8 ember to every hero, DEX save for half, and you Burn.', effects: [{ type: 'damage', dice: '2d8', kind: 'ember', aspect: 'ember', save: 'DEX', riders: [status('burning')] }] },
+      'scorch-the-vault': { name: 'Scorch the Vault', target: 'all-enemies', charge: true, text: 'It lifts its sword and the Vault fills with fire, charging: 3d8 ember to every hero, DEX save for half, and you Burn.', effects: [{ type: 'damage', dice: '3d8', kind: 'ember', aspect: 'ember', save: 'DEX', riders: [status('burning')] }] },
       'watch-unbroken': { name: 'The Watch Unbroken', target: 'all-enemies', requires: 'cinder-crown', fallback: 'ash-blade', text: 'The embers in the Crown drink the fire off you: 1d6 ember to every hero, and the Warden heals.', effects: [{ type: 'damage', dice: '1d6', kind: 'ember', aspect: 'ember' }, { type: 'heal', dice: '2d8', diceEvery: 3, self: true }] },
     },
     phases: [

@@ -76,14 +76,16 @@ const LEAD_LAIRS = { mosswatch: 'mw-lantern', mire: 'mire-shrine', bell: 'gloamw
 // M4: the Sunscorch. Home to the Keep's Eternal Hearth first, then the Sunward Road. Every SUN_PATH id
 // appears in order (checked below); the rest are the zone patrols of the maps walked through and the
 // Hearthfires passed on the way. After the Brand of Glass (Waking 3) the party walks back up the Deep
-// Shaft and the Dust Trail and rests at the Spire Hearth before the Glass Flats.
+// Shaft and the Dust Trail and rests at the Spire Hearth before the Glass Flats. As M3's route rests at
+// the Last Green Coal before the Rotwarden, the party climbs back out of the Vaults to the Last
+// Watchfire before the Ashen Warden.
 const SUN_START = ['hearthstone-keep', 'patrol:sun-road', 'waystone', 'sr-toll', 'spire-hearth'];
 const SUN_ROUTE = [...SUN_START,
   'patrol:dust-trail', 'dt-scorpions', 'dust-cairn', 'pithead',
   'patrol:deep-shaft', 'ds-crew', 'shaft-lamp', 'kharzul-heart',
   'patrol:deep-shaft@back', 'patrol:dust-trail@back', 'spire-hearth',
   'patrol:glass-flats', 'gf-raiders',
-  'patrol:scorchgate', 'last-watchfire', 'sg-captain', 'tamsin-scorchgate', 'vault-guard', 'ashen-warden'];
+  'patrol:scorchgate', 'last-watchfire', 'sg-captain', 'tamsin-scorchgate', 'vault-guard', 'last-watchfire', 'ashen-warden'];
 {
   const onPath = SUN_ROUTE.filter(id => SUN_PATH.includes(id));
   const firsts = onPath.filter((id, i) => onPath.indexOf(id) === i);

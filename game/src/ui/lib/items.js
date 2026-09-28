@@ -16,6 +16,8 @@ import { SKILLS } from '../../data/skills.js';
 import { RARITY } from '../../data/rarity.js';
 import { HEROES } from '../../data/heroes.js';
 import { GEMS, MATERIALS } from '../../data/gems.js';
+import { DEEDS } from '../../data/deeds.js';
+import { PAGES } from '../../data/codex.js';
 import { TUNING } from '../../data/tuning.js';
 import { itemProfile, POWERS } from '../../rules/stats.js';
 import { affixText, affixQuality } from '../../rules/loot.js';
@@ -99,19 +101,20 @@ export function mainStat(item) {
     const sub = [w.hands === 2 ? 'Two-handed' : w.versatile ? `Versatile (${w.versatile} with both hands)` : 'One-handed'];
     if (w.ranged) sub.push('ranged');
     if (w.weight <= -10) sub.push('quick'); else if (w.weight >= 15) sub.push('heavy');
-    // the weapon's own bonus: a relic's fixed numbers or the rarity make, plus the temper (affixes list their own)
+    // the weapon's own bonus: the rarity make plus the temper (affixes list their own); a relic's is
+    // everything it carries (its own numbers, the temper, gems, Kindled, its Awakened branch)
     const ench = enchantOf(item);
-    const hit = (relic ? relic.stats?.hit || 0 : 0) + ench, dmg = (relic ? relic.stats?.dmg || 0 : 0) + ench;
+    const hit = relic ? P.stats.hit : ench, dmg = relic ? P.stats.dmg : ench;
     if (hit || dmg) sub.push(hit === dmg ? `+${hit} to hit and damage` : [hit ? `+${hit} to hit` : '', dmg ? `+${dmg} damage` : ''].filter(Boolean).join(', '));
     return { k: 'Damage', v, sub: sub.join(' · '), used: relic ? ['hit', 'dmg'] : [] };
   }
   if (P.armor) {
-    const a = P.armor, g = (relic ? relic.stats?.guard || 0 : ITEMS[item.base]?.stats?.guard || 0) + enchantOf(item);
+    const a = P.armor, g = relic ? P.stats.guard : (ITEMS[item.base]?.stats?.guard || 0) + enchantOf(item);
     const v = `${a.base} + DEX${a.maxDex < 9 ? ` <span class="dw">(max ${a.maxDex})</span>` : ''}${g ? ` <em>+${g}</em>` : ''}`;
     return { k: 'Guard', v, sub: ARMOR_WORD[a.type] || '', used: ['guard'] };
   }
   if (item.kind === 'shield') {
-    const g = (relic ? relic.stats?.guard || 0 : ITEMS[item.base]?.stats?.guard || 0) + enchantOf(item);
+    const g = relic ? P.stats.guard : (ITEMS[item.base]?.stats?.guard || 0) + enchantOf(item);
     const bits = [makeOf(item) ? `${rarityName(item.rarity)} make +${makeOf(item)}` : '', temperOf(item) ? `tempered +${temperOf(item)}` : ''].filter(Boolean);
     return { k: 'Guard', v: `+${g}`, sub: ['Shield', ...bits].join(' · '), used: ['guard'] };
   }
@@ -394,4 +397,25 @@ export function flamesEl(temper, { next = false, box = 20, cls = '' } = {}) {
   const row = el('span', { class: `flames${cls ? ` ${cls}` : ''}${t >= 7 ? ' hot' : ''}`, role: 'img', 'aria-label': `Tempered +${t} of +${TEMPER_STEPS}` });
   for (let i = 0; i < TEMPER_STEPS; i++) row.append(flameEl(next && i === t ? 'next' : flameState(i, t), box));
   return row;
+}
+
+// What a fight did for the forge and the Codex (rules/gauntlet.js resolveBattle's and routPack's report),
+// ready for the aftermath and the Rout strip. Every field may be missing on an older report.
+//   deeds: [{ uid, name, deed, text }]  "Cinderfang: Legend Strike"
+//   kindled: [{ uid, name, bonus }]     a relic newly Kindled, and what that gives it
+//   ready: [{ uid, name }]              a relic with all three deeds: Hilda can wake it
+//   materials, gems: { id: n }          forge spoils;  pages: [{ id, no, name, reward }]  finished Codex pages
+export function reportNews(game, report) {
+  const r = report || {};
+  const inv = Array.isArray(game?.inventory) ? game.inventory : [];
+  const itemOf = (uid, relic) => inv.find(i => i.uid === uid) || (RELICS[relic] ? { uid, base: relic, name: RELICS[relic].name, slot: RELICS[relic].slot, kind: RELICS[relic].kind } : null);
+  const nameOf = (uid, relic) => itemOf(uid, relic)?.name || RELICS[relic]?.name || 'A relic';
+  const list = v => (Array.isArray(v) ? v : []);
+  const deeds = list(r.deeds).filter(d => d && DEEDS[d.deed]).map(d => ({ uid: d.uid, name: nameOf(d.uid, d.relic), deed: DEEDS[d.deed].name, text: DEEDS[d.deed].text }));
+  const relicOfUid = uid => list(r.deeds).find(d => d.uid === uid)?.relic;
+  const kindled = list(r.kindled).map(uid => { const it = itemOf(uid, relicOfUid(uid)); return { uid, name: nameOf(uid, relicOfUid(uid)), bonus: it ? kindledText(it) : '' }; });
+  const ready = list(r.ready).map(uid => ({ uid, name: nameOf(uid, relicOfUid(uid)) }));
+  const pages = list(r.pages).map(id => PAGES.find(p => p.id === id)).filter(p => p && p.reward).map(p => ({ id: p.id, no: p.no, name: p.name, reward: p.reward }));
+  const counts = o => Object.fromEntries(Object.entries(o && typeof o === 'object' ? o : {}).map(([k, n]) => [k, Math.floor(Number(n)) || 0]).filter(([, n]) => n > 0));
+  return { deeds, kindled, ready, materials: counts(r.materials), gems: counts(r.gems), pages, any: !!(deeds.length || pages.length || Object.keys(counts(r.materials)).length || Object.keys(counts(r.gems)).length) };
 }

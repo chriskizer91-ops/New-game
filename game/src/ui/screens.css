@@ -316,6 +316,9 @@ body { background-repeat: no-repeat; }
 .pocket.is-unsighted .pn { color: var(--ash); }
 .codex-foot { margin: 12px 5px 0; font-size: 14px; color: var(--ash); }
 
+/* ---------- M4: toasts carry longer lines (loot by name, a finished Codex page): size to the text ---------- */
+.toast { width: max-content; text-align: center; line-height: 1.5; }
+
 /* ---------- M4: the Codex binder (pages I-IV, rewards, the Awakened glow) ---------- */
 .cx-tabs .cx-tab { gap: 1px; padding: 5px 2px 6px; min-height: 58px; justify-content: center; }
 .cx-no { display: inline-flex; align-items: center; gap: 5px; min-height: 22px; font-family: var(--f-display); font-weight: 700; font-size: 21px; line-height: 1; color: var(--parchment); }
@@ -582,3 +585,28 @@ div.atlas-row { cursor: default; }
 .jr-seals { margin: 5px; }
 .jr-seals h2 { margin: 0 0 8px; font-weight: 400; }
 @media (min-width: 760px) { .jr-locks { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* ---------- M4: the Journal's fifth tab (Grudges) and the Sandspire board ---------- */
+.jr-tabs { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; }
+.jr-tabs .tab { padding: 6px 1px 7px; overflow: hidden; }
+@media (max-width: 420px) { .jr-tabs .tab { font-size: 9px; letter-spacing: 0; } }
+.jr-board { display: grid; gap: 8px; }
+.jr-board + .jr-board { margin-top: 8px; }
+.jr-grudges { display: grid; gap: 8px; }
+.jr-gh { margin: 6px 5px 0; font-weight: 400; }
+.jr-grudge { margin: 5px; }
+article.jr-grudge { box-shadow: 0 0 0 3px var(--ink), 0 0 0 5px #7a1d14; background: radial-gradient(120% 90% at 100% 0%, rgba(122, 29, 20, .28), rgba(0, 0, 0, 0) 60%), var(--soot-2); }
+.jr-grudge .jr-kind { color: #ff9a86; }
+.jg-name { margin: 4px 0 2px; font-size: 24px; color: #ffe6dc; overflow-wrap: anywhere; }
+.jg-title { margin: 0; font-family: var(--f-display); font-style: italic; font-size: 17px; color: #ff9a86; }
+.jg-where { margin: 2px 0 0; font-family: var(--f-pixel); font-size: 9px; letter-spacing: .06em; text-transform: uppercase; color: var(--hearth); }
+.jg-omens { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
+.jg-omen { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 8px; align-items: baseline; }
+.jg-omen .omen { justify-self: start; padding: 1px 6px; font-family: var(--f-pixel); font-size: 10px; font-weight: 400; color: #0b0910; background: var(--c, #999); }
+.jg-omen small { font-size: 13px; color: var(--parchment-2); }
+.jg-note { margin: 10px 0 0; font-size: 13px; color: var(--ash); }
+.jr-settled { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+li.jr-grudge { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; opacity: .85; }
+li.jr-grudge b { overflow-wrap: anywhere; }
+.jg-stamp { padding: 2px 8px; font-family: var(--f-pixel); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--up); border: 2px solid currentColor; transform: rotate(-6deg); }
+@media (min-width: 760px) { .jr-grudges.is-active { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; } .jr-grudges.is-active > .jr-gh, .jr-grudges.is-active > .jr-empty { grid-column: 1 / -1; } }

@@ -15,8 +15,15 @@
 //   Domain ids); an unknown kind draws a plain token
 // markIcon(ok, { size=12 }) -> ImageData        a green check (ok) or a red cross
 // statusIcon draws a neutral token for a status key it has no icon for.
+// M4 (Hilda's forge, the Sunscorch locks):
+// gemIcon(id, { size=12 }) -> ImageData       ids: GEM_ICON_KEYS (data/gems.js); an unknown id draws a plain stone
+//   in its GEMS colour, or grey
+// materialIcon(id, { size=12 }) -> ImageData  ids: MATERIAL_ICON_KEYS ('scrap', 'silver', 'embers')
+// lockIcon also draws the four Sunscorch locks: 'dune-glass', 'mirage', 'quicksand', 'vault-seal'. Their keys are
+// relic powers ('power') and the Craft, Knowledge and Survival Domains, which keyIcon already draws.
 import { MAT, hx, mix } from './forge.js';
 import { lru } from './cache.js';
+import { GEMS } from '../data/gems.js';
 
 /* ---------- digit fonts ---------- */
 const F35 = { 0: '111101101101111', 1: '010110010010111', 2: '111001111100111', 3: '111001011001111', 4: '101101111001001', 5: '111100111001111', 6: '111100111101111', 7: '111001010010010', 8: '111101111101111', 9: '111101111001111', '+': '000010111010000', '-': '000000111000000', x: '000101010101000' };
@@ -227,6 +234,27 @@ const LK = {
     stroke(C, [[1.4, 9], [4, 8.2], [8, 8.2], [10.6, 9]], .45, raw('#18300f'));
     fillDisc(C, 6, 8.8, 1.9, col('#4ec436')); px(C, 5.5, 8.2, raw('#effcc8'));
   },
+  // M4: the Sunscorch locks
+  'dune-glass': C => {
+    fillPoly(C, [[.4, 11.2], [1.8, 7], [4.4, 4.4], [7.6, 4], [10.4, 6.4], [11.6, 11.2]], col('#d0a868'));
+    fillPoly(C, [[1.4, 8.6], [3, 5.6], [5.2, 4.2], [7.8, 4], [10, 5.8], [11.2, 8.6], [9.2, 7.6], [6.6, 8.2], [4, 7.4]], col('#84c8c2'));
+    stroke(C, [[3.4, 5.8], [5.6, 4.8]], .35, raw('#effffa')); stroke(C, [[1.6, 10], [4.8, 9.4], [7.6, 10.2], [10.4, 9.6]], .35, raw('#ffb04a'));
+  },
+  mirage: C => {
+    fillDisc(C, 6, 7.2, 3.6, col('#2e6a6e'));
+    const w = (y, c) => stroke(C, [[.8, y], [2.6, y - .9], [4.4, y], [6.2, y + .9], [8, y], [9.8, y - .9], [11.2, y]], .42, c);
+    w(3.4, raw('#e6fbff')); w(6.2, raw('#94daf0')); w(9, raw('#e6fbff'));
+  },
+  quicksand: C => {
+    fillPoly(C, [[.6, 7.6], [3, 5.4], [6, 4.8], [9, 5.4], [11.4, 7.6], [9.6, 10.6], [6, 11.4], [2.4, 10.6]], col('#c89a58'));
+    const pts = []; for (let k = 0; k < 26; k++) { const a = k * .5, r = 4.6 - k * .16; pts.push([6 + Math.cos(a) * r, 8 + Math.sin(a) * r * .55]); }
+    stroke(C, pts, .38, raw('#7a5428')); fillDisc(C, 6, 8, .9, raw('#3a2410'));
+  },
+  'vault-seal': C => {
+    fillDisc(C, 6, 6, 5.3, col('#4a4040')); fillDisc(C, 6, 6, 4, col('#262024'));
+    for (const [a, b] of [[[2.4, 2.8], [4, 4.6]], [[9.4, 8.6], [8, 7.2]]]) stroke(C, [a, b], .32, raw('#6a5a52'));
+    fillDisc(C, 6, 4.9, 1.35, raw('#ff8a2a')); fillPoly(C, [[5.2, 5.6], [6.8, 5.6], [7.2, 8.6], [4.8, 8.6]], raw('#ff8a2a')); px(C, 5.6, 4.4, raw('#fff0b4'));
+  },
   lock: C => {
     stroke(C, [[3.6, 6], [3.6, 3.6], [6, 1.4], [8.4, 3.6], [8.4, 6]], .75, col('#8c96ac'));
     fillPoly(C, [[2, 5.6], [10, 5.6], [10, 11.2], [2, 11.2]], col('#c89a2e'));
@@ -298,6 +326,46 @@ export function keyIcon(kind, o = {}) {
 export function markIcon(ok, o = {}) {
   const size = o.size || 12;
   return iconCache.get('m' + (ok ? 'y' : 'n') + size, () => { const C = canvas(size, size / 12); MK[ok ? 'yes' : 'no'](C); return finish(C); });
+}
+/* ---------- gems and forge materials (M4; 12-unit space) ---------- */
+const facet = (C, cx, cy, rx, ry, dark, mid, lite) => {
+  fillPoly(C, [[cx - rx, cy], [cx - rx * .55, cy - ry], [cx + rx * .55, cy - ry], [cx + rx, cy], [cx + rx * .55, cy + ry], [cx - rx * .55, cy + ry]], col(mid));
+  fillPoly(C, [[cx - rx * .55, cy - ry], [cx + rx * .55, cy - ry], [cx + rx * .3, cy - ry * .2], [cx - rx * .3, cy - ry * .2]], raw(lite));
+  fillPoly(C, [[cx - rx, cy], [cx - rx * .3, cy + ry * .15], [cx + rx * .3, cy + ry * .15], [cx + rx, cy], [cx + rx * .55, cy + ry], [cx - rx * .55, cy + ry]], raw(dark));
+};
+const GEM_IC = {
+  sunstone: C => { facet(C, 6, 6.4, 5, 4.4, '#9a4a0c', '#f08c1c', '#ffd27a'); px(C, 4.4, 3.4, raw('#ffffff')); px(C, 7.6, 7.8, raw('#fff2c4')); },
+  'moss-agate': C => { fillDisc(C, 6, 6.4, 4.8, col('#4a8a48')); stroke(C, [[3, 9], [4.6, 6.8], [4, 4.6]], .38, raw('#1e3a1c')); stroke(C, [[4.6, 6.8], [7, 6], [8.6, 7.8]], .34, raw('#1e3a1c')); stroke(C, [[7, 6], [7.6, 3.8]], .3, raw('#1e3a1c')); px(C, 4, 3.6, raw('#dcf4c8')); },
+  'glass-pearl': C => { fillDisc(C, 6, 6.4, 4.6, col('#a4bcd8')); fillDisc(C, 6.8, 7.2, 3, raw('#7c90aa')); fillDisc(C, 5.4, 5.6, 3, raw('#dcecfc')); fillDisc(C, 4.4, 4.4, 1.1, raw('#ffffff')); },
+  'ash-garnet': C => { fillPoly(C, [[2, 3.4], [3.4, 2], [8.6, 2], [10, 3.4], [10, 8.6], [8.6, 10], [3.4, 10], [2, 8.6]], col('#b3261e')); fillPoly(C, [[3.4, 2], [8.6, 2], [7.4, 4.4], [4.6, 4.4]], raw('#e0604a')); fillPoly(C, [[4.6, 7.6], [7.4, 7.6], [8.6, 10], [3.4, 10]], raw('#5a0e10')); px(C, 7.6, 5.4, raw('#9e9690')); px(C, 4.2, 3, raw('#ffd0c0')); },
+};
+export const GEM_ICON_KEYS = Object.keys(GEM_IC);
+export function gemIcon(id, o = {}) {
+  const size = o.size || 12;
+  return iconCache.get('j' + id + size, () => {
+    const C = canvas(size, size / 12);
+    if (GEM_IC[id]) GEM_IC[id](C);
+    else { const c = GEMS[id] ? GEMS[id].color : '#8c8674'; fillDisc(C, 6, 6.4, 4.4, col(c)); fillDisc(C, 4.8, 5, 1.2, raw('#ffffff')); }
+    return finish(C);
+  });
+}
+const MAT_IC = {
+  scrap: C => {
+    for (let a = 0; a < 8; a++) { const t = a / 8 * Math.PI * 2; fillDisc(C, 7.6 + Math.cos(t) * 3.2, 7.4 + Math.sin(t) * 3.2, .95, col('#b08a30')); }
+    fillDisc(C, 7.6, 7.4, 2.7, col('#b08a30')); fillDisc(C, 7.6, 7.4, 1, raw('#2a1a08'));
+    stroke(C, [[1.4, 2.4], [4.8, 5.2], [3.6, 9.8]], .7, col('#8290a8')); fillDisc(C, 1.4, 2.4, 1, col('#566079'));
+  },
+  silver: C => { fillPoly(C, [[1, 9.6], [2.8, 4.8], [9.2, 4.8], [11, 9.6]], col('#8e94a6')); fillPoly(C, [[2.8, 4.8], [9.2, 4.8], [8.2, 6.6], [3.8, 6.6]], raw('#f6f8fc')); stroke(C, [[3.2, 8.2], [8.6, 8.2]], .3, raw('#c8cedc')); },
+  embers: C => {
+    fillPoly(C, [[.8, 11], [2, 7.6], [4.4, 6.2], [6.4, 7], [8, 5.6], [10.4, 6.8], [11.4, 11]], col('#3a1a10'));
+    stroke(C, [[2.4, 9.4], [4.4, 8], [5.6, 9.6]], .4, raw('#ee7a1c')); stroke(C, [[7, 8.8], [8.4, 7.4], [9.8, 8.8]], .4, raw('#ee7a1c'));
+    fillDisc(C, 4.4, 8, .75, raw('#ffbe48')); fillDisc(C, 8.4, 7.4, .75, raw('#ffbe48')); px(C, 6.2, 3.4, raw('#ffbe48')); px(C, 8.2, 1.8, raw('#ee7a1c'));
+  },
+};
+export const MATERIAL_ICON_KEYS = Object.keys(MAT_IC);
+export function materialIcon(id, o = {}) {
+  const size = o.size || 12;
+  return iconCache.get('q' + id + size, () => { const C = canvas(size, size / 12); (MAT_IC[id] || KEY_OTHER)(C); return finish(C); });
 }
 export function gripIcon(o = {}) {
   const size = o.size || 12;

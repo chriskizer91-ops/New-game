@@ -3,18 +3,22 @@
 // Unsmith letter, the Council title card and the to-be-continued card. Uses ui/assets/atlas-image.js
 // and falls back to a procedural parchment when the image is a placeholder or fails to load.
 // Exports (each returns a Promise that settles when it is dismissed):
-//   playBrandBanner(ctx, brand, game), playCrownwalls(ctx), showLetter(ctx, brandId), playCouncil(ctx),
-//   showToBeContinued(ctx, game), crownSeals() -> [{ id, x, y, to }], loreAt(map, tx, ty) -> [x, y],
-//   ATLAS_SRC
-// Owner: WP7.
+//   playBrandBanner(ctx, brand, game), playCrownwalls(ctx), showLetter(ctx, brandId),
+//   playCouncil(ctx, { second }) (M4: the second council), showToBeContinued(ctx, game, { act })
+//   (act 'act1' | 'act2': M4's end of Act II names the next chapter's regions),
+//   crownSeals() -> [{ id, x, y, to }], loreAt(map, tx, ty) -> [x, y], ATLAS_SRC
+// Owner: WP7; M4 P7b (the second council, the end of Act II).
 
 import * as atlasImage from '../assets/atlas-image.js';
 import { MAPS } from '../../data/maps/index.js';
-import { BRAND_TOTAL } from '../../data/world.js';
+import { BRAND_TOTAL, REGIONS } from '../../data/world.js';
+import { PAGES } from '../../data/codex.js';
 import { LETTERS } from '../../data/letters.js';
 import { RELICS } from '../../data/relics.js';
 import { CROWNWALL } from '../../data/locks.js';
 import { uniqueBrands } from '../../rules/gauntlet.js';
+import { pageProgress } from '../../rules/codex.js';
+import { loreAt as geoLoreAt } from '../lib/atlas-geo.js';
 import { openOverlay } from '../lib/overlay.js';
 import { el } from '../lib/dom.js';
 
@@ -43,7 +47,8 @@ export function playBrandBanner(ctx, brand, game) {
   const coals = el('div', { class: 'brand-coals', role: 'img', 'aria-label': `The Hearth Clock: ${lit} of ${BRAND_TOTAL} coals lit` });
   for (let i = 0; i < BRAND_TOTAL; i++) coals.append(el('i', 'coal' + (i < lit ? ' lit' : '') + (i === lit - 1 ? ' new' : '')));
   P.append(text('p', 'kick', 'Brand earned'), text('h2', 'title-display', brand.name || 'A Brand'), coals, text('p', 'brand-text', brand.text || 'One coal of the hearth relights.'));
-  if (brand.waking != null) P.append(text('p', 'brand-waking', `The Waking rises to ${brand.waking}. Every foe in the Wilds re-arms: higher levels, better gear, better loot in their hands.`));
+  const land = REGIONS[brand.region]?.name.replace(/^The /, 'the ') || 'the Wilds';
+  if (brand.waking != null) P.append(text('p', 'brand-waking', `The Waking rises to ${brand.waking}. Every foe in ${land} re-arms: higher levels, better gear, better loot in their hands.`));
   P.append(C.go);
   ctx.audio.sfx('legend');
   return C.wait();
@@ -51,15 +56,10 @@ export function playBrandBanner(ctx, brand, game) {
 
 // ---- the crownwalls fall -------------------------------------------------------------------------------
 
-// Project a tile onto the illustrated map (viewBox 1200x800) along the map's lore line (or its point).
+// Project a tile onto the illustrated map (viewBox 1200x800) along the map's lore line (or its point):
+// ui/lib/atlas-geo.js loreAt, which follows every segment of a route (M4 routes bend and branch).
 export function loreAt(map, tx, ty) {
-  const L = map?.lore;
-  if (!L || !L.length) return [600, 400];
-  if (L.length === 1) return [L[0][0], L[0][1]];
-  const [a, b] = L;
-  const vx = b[2] - a[2], vy = b[3] - a[3], len2 = vx * vx + vy * vy || 1;
-  const u = Math.max(0, Math.min(1, ((tx - a[2]) * vx + (ty - a[3]) * vy) / len2));
-  return [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u];
+  return geoLoreAt(map?.id, tx, ty) || [600, 400];
 }
 
 // Every crownwall on the maps, placed a little way toward the land it seals off.
@@ -143,25 +143,49 @@ export function showLetter(ctx, brandId) {
 
 // ---- the Council ---------------------------------------------------------------------------------------
 
-export function playCouncil(ctx) {
-  const C = card(ctx, { cls: 'council', label: 'The Council', button: 'Take your seat' });
-  C.panel.append(text('p', 'kick', 'Hearthstone Keep'), text('h2', 'title-display', 'The Council sits'),
-    text('p', 'council-text', 'Two coals burn in the Eternal Hearth. The long table is full for the first time in years, and every face turns to the door when you walk in.'), C.go);
+// { second: true } is the second council (M4, the Sunscorch won): four coals, and Sandspire's chair.
+export function playCouncil(ctx, { second = false } = {}) {
+  const C = card(ctx, { cls: `council${second ? ' council-2' : ''}`, label: 'The Council', button: 'Take your seat' });
+  C.panel.append(text('p', 'kick', 'Hearthstone Keep'), text('h2', 'title-display', second ? 'The Council sits again' : 'The Council sits'),
+    text('p', 'council-text', second
+      ? 'Four coals burn in the Eternal Hearth. The long table has a new chair at it, and every face turns to the door when you walk in.'
+      : 'Two coals burn in the Eternal Hearth. The long table is full for the first time in years, and every face turns to the door when you walk in.'), C.go);
   ctx.audio.sfx('hearth');
   return C.wait();
 }
 
 // ---- to be continued -----------------------------------------------------------------------------------
 
-export function showToBeContinued(ctx, game) {
-  const C = card(ctx, { cls: 'tbc', label: 'To be continued', button: 'Keep exploring' });
+// The end of an act (story.js { t: 'end', act }): 'act1' after the first council (M3), 'act2' after the
+// second (M4): it names the regions of the next chapter (the ones still sealed in data/world.js).
+export function showToBeContinued(ctx, game, { act = 'act1' } = {}) {
+  const two = act === 'act2';
+  const C = card(ctx, { cls: `tbc${two ? ' tbc-act2' : ''}`, label: two ? 'End of Act II' : 'To be continued', button: 'Keep exploring' });
   const P = C.panel;
   const relics = Object.keys(RELICS).filter(id => game?.codex?.[id]?.claimed).length;
   const stats = el('dl', 'tbc-stats');
-  for (const [k, v] of [['Day', game?.progress?.flags?.day || 1], ['Relics', `${relics}/${Object.keys(RELICS).length}`], ['Brands', `${game ? uniqueBrands(game) : 0}/${BRAND_TOTAL}`]]) {
-    stats.append(text('dt', '', k), text('dd', '', String(v)));
+  const rows = [['Day', game?.progress?.flags?.day || 1], ['Relics', `${relics}/${Object.keys(RELICS).length}`], ['Brands', `${game ? uniqueBrands(game) : 0}/${BRAND_TOTAL}`]];
+  if (two) {
+    const open = PAGES.filter(p => p.from != null);
+    const done = open.filter(p => game?.progress?.flags?.pages?.[p.id] || pageProgress(game, p.id).done).length;
+    rows.push(['Pages', `${done}/${open.length}`]);
   }
-  P.append(text('p', 'kick', 'End of Act I'), text('h2', 'title-display', 'To be continued'), stats, text('p', 'tbc-text', 'The way opens in the next chapter.'), C.go);
+  for (const [k, v] of rows) stats.append(text('dt', '', k), text('dd', '', String(v)));
+  if (two) {
+    // the next chapter: every region still sealed ("Ironspire and Gloomfen")
+    const next = Object.values(REGIONS).filter(r => !r.open);
+    const names = next.map(r => r.name.replace(/^The /, '').split(' ')[0]);
+    const list = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : names[0] || 'The rest of the Realm';
+    const chips = el('p', { class: 'tbc-next', 'aria-hidden': 'true' });
+    for (const r of next) chips.append(text('span', `tbc-rg rg-${r.id}`, r.name));
+    P.append(text('p', 'kick', 'The Sunscorch is yours'), text('h2', 'title-display', 'To be continued'), text('p', 'tbc-act', 'End of Act II'), stats, chips,
+      text('p', 'tbc-text', `${list} open in the next chapter.`), C.go);
+  } else {
+    // M4: once Act I is done the Keep's south-east gate stands open, so the next chapter starts here
+    const onward = Object.values(REGIONS).some(r => r.open && r.act === 2);
+    P.append(text('p', 'kick', 'End of Act I'), text('h2', 'title-display', 'To be continued'), stats,
+      text('p', 'tbc-text', onward ? 'The Keep’s south-east gate stands open. The Sunward Road runs to Sandspire.' : 'The way opens in the next chapter.'), C.go);
+  }
   ctx.audio.sfx('victory');
   return C.wait();
 }

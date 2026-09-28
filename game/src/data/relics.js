@@ -596,7 +596,7 @@ export const RELICS = deepFreeze({
   },
   'mirage-glass': {
     id: 'mirage-glass', codex: 32, name: 'The Mirage Glass', kind: 'amulet', slot: 'amulet', aspect: 'frost', rarity: 'heirloom', ilvl: 13,
-    holder: 'The Wisp-Queen of Miragewell', grip: 24,
+    holder: 'The Wisp-Queen of Miragewell', grip: 30,
     stats: { WIS: 1, mp: 4, resist: { frost: 15, ember: 10 } },
     power: {
       id: 'a-thousand-mirrors', name: 'A Thousand Mirrors', target: 'all-enemies',

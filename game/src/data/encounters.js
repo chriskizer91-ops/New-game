@@ -337,7 +337,9 @@ export const ENCOUNTERS = deepFreeze({
   'tamsin-scorchgate': {
     id: 'tamsin-scorchgate', type: 'fight', name: 'Tamsin at Scorchgate', place: 'Scorchgate Ruins', backdrop: 'scorchgate', region: 'sunscorch',
     once: true, duel: true, yields: 'tamsin-yielded-2', talk: 'tamsin-scorchgate',
-    spawns: [S('tamsin', 'party', { partyDelta: 4, gearTier: 4, variant: '$rival', relic: '$rival', lend: true, noWaking: true, name: 'Tamsin' })],
+    // Her Scorchgate kit: the M3 Arts of her lent counter-starter, the kindled look (gear tier 4 is the
+    // art's kindled tier; rules clamp gear to 3), and the Swift Omen (Gate 4: party win 55-70%).
+    spawns: [S('tamsin', 'party', { partyDelta: 4, gearTier: 4, omens: ['swift'], variant: '$rival', relic: '$rival', lend: true, noWaking: true, name: 'Tamsin' })],
     text: 'Tamsin, on Scorchgate\'s parade ground, and the relic in her hands has started to glow. Losing is a yield.',
   },
   'vault-guard': {

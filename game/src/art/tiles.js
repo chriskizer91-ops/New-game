@@ -543,7 +543,7 @@ export function worldMats() {
 worldMats();
 
 const SUN_BASE = {
-  sun: 1, grass: 'w.sand', gLo: -1.45, gHi: -.5, gDith: .34, blade: 'w.sage', clover: 'w.sage', soil: 'w.track', soilDark: 'w.clay', mud: 'w.clay', puddle: 'w.oasis',
+  sun: 1, grass: 'w.sand', gLo: -1.45, gHi: -.5, gDith: .34, blade: 'w.sage', clover: 'w.sage', soil: 'w.track', soilDark: 'w.clay', mud: 'w.track', puddle: 'w.oasis',
   stone: 'w.sandstone', wall: 'w.sandstone', cap: 'w.sandstone', cliff: 'w.sandstone', cliffDark: 'w.redrock', stair: 'w.sandstone', doorFrame: 'w.sandstone', door: 'wood',
   curtain: 'w.indigo', water: 'w.oasis', bank: 'w.sandstone', leaf: 'w.palm', leafDark: 'seaweed', trunk: 'thorn', bush: 'drake', cactus: 'drake', glass: 'w.glass', glow: 'amber',
   roof: 'w.canvas', roofEdge: 'wood', awning: ['w.saffron', 'clothWhite'], flowers: ['w.saffron', 'paintRed', 'clothWhite'], torch: 'amber', sconce: 'bronze',
@@ -555,12 +555,12 @@ const SUN_PAL = {
   'desert-town': { bankK: 'stone', tree: 'palm', bushK: 'jars', roofK: 'tile', roof: 'w.terra', roofEdge: 'w.terra', awning: ['w.indigo', 'clothWhite'], water: 'w.cistern', puddle: 'w.cistern', floorK: 'tiles', ridgeK: 'bloom', blade: 'w.palm', bridge: 'w.sandstone', rail: 'w.sandstone' },
   canyon: { paver: null, grass: 'w.dust', seed: 3, soil: 'w.ochre', soilDark: 'w.dust', stone: 'w.redrock', wall: 'w.redrock', cap: 'w.redrock', cliff: 'w.redrock', cliffDark: 'leatherRed', stair: 'w.redrock', doorFrame: 'w.redrock', bank: 'w.sandstone', wallK: 'rough', water: 'w.cistern', puddle: 'w.cistern', decK: 'dust', darkFloor: 'w.shaft', roofK: 'tent', awning: ['w.canvas', 'w.clay'], doorK: 'adit', lampK: 'lamp' },
   'mine-camp': { paver: null, ballast: 'granite', grass: 'w.grit', seed: 5, gLo: -1.5, gHi: -.5, soil: 'w.clay', soilDark: 'w.shaft', stone: 'w.shaft', cliff: 'w.shaft', cliffDark: 'dark', stair: 'w.shaft', wall: 'wood', cap: 'bogwood', wallK: 'timber', doorFrame: 'bogwood', roofK: 'tent', awning: ['w.canvas', 'w.clay'], tree: 'dead', trunk: 'bone', bushK: 'crates', rockK: 'ore', glowK: 'vein', decK: 'grit', ridgeK: 'gravel', palisade: 'wood', water: 'w.cistern', mudK: 'wet', mud: 'w.shaft', puddle: 'w.cistern', doorK: 'adit', lampK: 'lamp', darkFloor: 'w.shaft', bank: 'bogwood' },
-  mine: { paver: null, ballast: 'granite', grass: 'w.shaft', seed: 7, gLo: -1.5, gHi: -.8, gDith: .3, stone: 'w.grit', wall: 'w.shaft', cap: 'w.shaft', cliff: 'w.shaft', cliffDark: 'dark', stair: 'w.grit', doorFrame: 'bogwood', wallK: 'shaft', caveK: 'rock', tree: 'prop', bushK: 'cart', rockK: 'ore', glowK: 'vein', decK: 'shaft', ridgeK: 'gravel', mudK: 'slurry', mud: 'w.shaft', puddle: 'w.pitch', water: 'w.cistern', bank: 'w.shaft', lampK: 'lamp', doorK: 'adit', roofK: 'slab', roof: 'w.shaft', roofEdge: 'w.grit', darkFloor: 'dark', soil: 'w.grit', soilDark: 'dark', palisade: 'wood' },
-  crystal: { paver: null, ballast: 'w.cave', grass: 'w.cave', seed: 9, gLo: -1.5, gHi: -.8, gDith: .3, stone: 'w.cave', wall: 'w.cave', cap: 'w.cave', cliff: 'w.cave', cliffDark: 'dark', stair: 'w.cave', doorFrame: 'w.cave', wallK: 'crystal', caveK: 'glass', tree: 'spire', bushK: 'cluster', rockK: 'glass', glowK: 'crystal', glow: 'frost', decK: 'cave', ridgeK: 'grit', glass: 'seaglass', water: 'w.oasis', bank: 'w.cave', lampK: 'crystal', torch: 'frost', roofK: 'slab', roof: 'w.cave', roofEdge: 'w.cave', darkFloor: 'dark', soil: 'w.cave', soilDark: 'dark', mudK: 'slurry', mud: 'w.cave', puddle: 'w.oasis', doorK: 'adit' },
+  mine: { paver: null, ballast: 'granite', grass: 'w.shaft', seed: 7, gLo: -1.5, gHi: -.8, gDith: .3, stone: 'w.grit', wall: 'w.shaft', cap: 'w.shaft', cliff: 'w.shaft', cliffDark: 'dark', stair: 'w.grit', doorFrame: 'bogwood', wallK: 'shaft', caveK: 'rock', tree: 'prop', bushK: 'cart', rockK: 'ore', glowK: 'vein', decK: 'shaft', ridgeK: 'gravel', mudK: 'slurry', mud: 'w.shaft', puddle: 'w.pitch', water: 'w.cistern', bank: 'w.shaft', lampK: 'lamp', doorK: 'adit', roofK: 'slab', roof: 'w.shaft', roofEdge: 'w.grit', darkFloor: 'w.grit', rockTop: 'w.shaft', soil: 'w.grit', soilDark: 'dark', palisade: 'wood' },
+  crystal: { paver: null, ballast: 'w.cave', grass: 'w.cave', seed: 9, gLo: -1.5, gHi: -.8, gDith: .3, stone: 'w.cave', wall: 'w.cave', cap: 'w.cave', cliff: 'w.cave', cliffDark: 'dark', stair: 'w.cave', doorFrame: 'w.cave', wallK: 'crystal', caveK: 'glass', tree: 'spire', bushK: 'cluster', rockK: 'glass', glowK: 'crystal', glow: 'frost', decK: 'cave', ridgeK: 'grit', glass: 'seaglass', water: 'w.oasis', bank: 'w.cave', lampK: 'crystal', torch: 'frost', roofK: 'slab', roof: 'w.cave', roofEdge: 'w.cave', darkFloor: 'w.cave', rockTop: 'dark', soil: 'w.cave', soilDark: 'dark', mudK: 'slurry', mud: 'w.cave', puddle: 'w.oasis', doorK: 'adit' },
   dunes: { grass: 'w.dune', seed: 2, gLo: -1.35, gHi: -.45, cliff: 'w.dune', cliffDark: 'w.sand', cliffK: 'slip', tree: 'spire', bushK: 'shards', rockK: 'glass', awning: ['w.indigo', 'w.canvas'], decK: 'sand' },
   oasis: { grass: 'w.sand', seed: 4, blade: 'w.palm', clover: 'w.palm', tree: 'palm', bushK: 'shrub', bush: 'hoodGreen', ridgeK: 'bloom', roofK: 'thatch', roof: 'thorn', roofEdge: 'w.palm', glowK: 'wisp', mudK: 'wet', mud: 'bogwood', puddle: 'w.oasis', decK: 'oasis', floorK: 'tiles', bank: 'w.sandstone', curtain: 'clothTeal' },
   ash: { paver: null, ballast: 'w.ash', ties: 'w.char', grass: 'w.ash', seed: 6, stone: 'w.char', wall: 'w.char', cap: 'w.char', cliff: 'w.char', cliffDark: 'dark', stair: 'w.char', doorFrame: 'w.char', wallK: 'burnt', tree: 'charred', trunk: 'w.char', bushK: 'stump', rockK: 'rubble', roofK: 'burnt', roof: 'w.char', roofEdge: 'w.char', glowK: 'ember', ridgeK: 'cinder', decK: 'ash', mudK: 'ash', mud: 'w.ash', blade: 'w.char', water: 'w.cistern', bank: 'w.char', lampK: 'brazier', torch: 'ember', palisade: 'w.char', palisadeBand: 'blackiron', soil: 'w.char', soilDark: 'dark', darkFloor: 'w.char', floor: 'bogwood', bridge: 'w.char', rail: 'w.char', curtain: 'robeRed', door: 'w.char' },
-  vault: { paver: null, ballast: 'w.basalt', ties: 'bogwood', grass: 'w.basalt', seed: 8, gLo: -1.4, gHi: -.9, gDith: .26, stone: 'w.basalt', wall: 'w.basalt', cap: 'w.basalt', cliff: 'w.basalt', cliffDark: 'dark', stair: 'w.basalt', doorFrame: 'w.basalt', wallK: 'vault', caveK: 'masonry', tree: 'column', bushK: 'urn', rockK: 'block', glowK: 'ember', ridgeK: 'ashy', decK: 'vault', mudK: 'ash', mud: 'w.ash', lampK: 'brazier', torch: 'ember', roofK: 'slab', roof: 'w.basalt', roofEdge: 'bronze', floor: 'w.basalt', darkFloor: 'dark', doorK: 'vault', water: 'w.cistern', bank: 'w.basalt', soil: 'w.basalt', soilDark: 'dark', blade: 'w.ash', bridge: 'w.basalt', rail: 'bronze', palisade: 'blackiron', palisadeBand: 'bronze' },
+  vault: { paver: null, ballast: 'w.basalt', ties: 'bogwood', grass: 'w.basalt', seed: 8, gLo: -1.4, gHi: -.9, gDith: .26, stone: 'w.basalt', wall: 'w.basalt', cap: 'w.basalt', cliff: 'w.basalt', cliffDark: 'dark', stair: 'w.basalt', doorFrame: 'w.basalt', wallK: 'vault', caveK: 'masonry', tree: 'column', bushK: 'urn', rockK: 'block', glowK: 'ember', ridgeK: 'ashy', decK: 'vault', mudK: 'ash', mud: 'w.ash', lampK: 'brazier', torch: 'ember', roofK: 'slab', roof: 'w.basalt', roofEdge: 'bronze', floor: 'w.basalt', darkFloor: 'w.basalt', rockTop: 'dark', doorK: 'vault', water: 'w.cistern', bank: 'w.basalt', soil: 'w.basalt', soilDark: 'dark', blade: 'w.ash', bridge: 'w.basalt', rail: 'bronze', palisade: 'blackiron', palisadeBand: 'bronze' },
 };
 const SUN_BIOMES = new Set(Object.keys(SUN_PAL));
 const specOf = (biome, id) => (SUN_BIOMES.has(biome) && SUN_SPEC[id]) || SPEC[id];
@@ -887,7 +887,7 @@ function sunDoor(F, Pl, v) {
 /* ---- '^' layered cliffs and 'v' ledges ---- */
 function sunCliff(F, Pl, v) {
   if (Pl.cliffK === 'slip') { // a dune's slip face: smooth sand falling away, darker toward the foot, streaks of sliding sand
-    F.add({ mat: Pl.cliff, prof: 'flat', grp: 'face', noShadow: true, lo: 1, hi: 3, shapes: [FULL], tex: q => -.4 - q.y * .1 + ((q.x * 3 + (q.y >> 2) * 5 + v * 2) % 7 === 0 ? -.9 : 0) + bayer(q.x, q.y) * .35 });
+    F.add({ mat: Pl.cliff, prof: 'flat', grp: 'face', noShadow: true, lo: 1, hi: 3, shapes: [FULL], tex: q => -1.1 + pnoise(q.x / 4, q.y / 2, 4, 160 + v, 8) * .7 + ((q.x * 3 + (q.y >> 1) * 5 + v * 2) % 9 === 0 ? -.8 : 0) + bayer(q.x, q.y) * .3 });
     return;
   }
   // a rock wall of angular chunks (each lit on its top-left, a dark crack between them) over soft strata
@@ -920,18 +920,17 @@ function sunMud(F, Pl, v) {
   const k = Pl.mudK;
   if (k === 'wet' || k === 'slurry') return paintMud(F, Pl, v);
   if (k === 'ash') {
-    const D = decals();
-    for (const [x, y] of spots(4, 5800 + v)) D.set(x, y, 'dark', -1);
-    ground(F, Pl.mud, 77 + v, D, { lo: -1.1, hi: .1, dith: .3, fn: (x, y) => { const n = pnoise(x / 8, y / 8, 2, 78 + v); return n > .6 ? -.2 + bayer(x, y) * .3 : undefined; } });
+    sunGround(F, Pl, null);
+    const heaps = v ? [[5, 7, 4.4, 3.2], [11.4, 11, 3.8, 2.8]] : [[8, 9, 5.6, 3.8], [3.4, 4, 2.4, 1.6]];
+    heaps.forEach(([x, y, rx, ry], i) => part(F, Pl.mud, [E([x, y], rx, ry)], { prof: 'flat', grp: 'heap' + i, noShadow: true, noOutline: true, hi: 3, tex: q => { const d = Math.hypot((q.x + .5 - x) / rx, (q.y + .5 - y) / ry); return d > .8 && bayer(q.x, q.y) > .1 ? { m: Pl.grass, dd: gField(Pl)[(q.y & 15) * T + (q.x & 15)] } : -1.3 + (q.y + .5 < y - ry * .3 ? .6 : 0) - d * .4 + (rnd(q.x, q.y, 79 + i) < .06 ? { m: 'dark', dd: -1 } : 0); } }));
     return;
   }
   // cracked clay: periodic cells (every seed has its 8 wrapped copies), a dark crack where two cells meet
   const S = [[3, 4], [11, 3], [7, 10], [14, 12], [2, 13]].map(([x, y], i) => [x + (rnd(i, v, 71) - .5) * 3, y + (rnd(i, v, 72) - .5) * 3]);
   F.add({ mat: Pl.mud, prof: 'flat', grp: 'clay', noShadow: true, lo: 1, hi: 3, shapes: [FULL], tex: q => {
-    let d1 = 99, d2 = 99, n1 = 0;
-    for (let i = 0; i < S.length; i++) for (let ox = -16; ox <= 16; ox += 16) for (let oy = -16; oy <= 16; oy += 16) { const d = Math.hypot(q.x + .5 - S[i][0] - ox, q.y + .5 - S[i][1] - oy); if (d < d1) { d2 = d1; d1 = d; n1 = i; } else if (d < d2) d2 = d; }
-    if (d2 - d1 < .9) return { m: Pl.soilDark, dd: -1.4 };
-    return -.8 + (d2 - d1 < 2 ? .5 : 0) + (hash(n1, v, 73) - .5) * .7 + bayer(q.x, q.y) * .25;
+    const { d1, d2, i: n1, dx, dy } = facet(q.x, q.y, S);
+    if (d2 - d1 < .9) return { m: Pl.soilDark, dd: -1.9 };
+    return -.9 - (dx + dy) * .09 + (hash(n1, v, 73) - .5) * .6 + bayer(q.x, q.y) * .25;
   } });
 }
 /* ---- 'f' glinting glass, sunstone veins, crystal glow, embers, wisp motes (2 frames) ---- */
@@ -1005,7 +1004,7 @@ function sunPillar(F, Pl, v) {
 function sunCave(F, Pl, v, face) {
   const k = Pl.caveK, m = k === 'masonry' ? Pl.wall : Pl.cliff;
   if (!face) {
-    F.add({ mat: m, prof: 'flat', grp: 'top', noShadow: true, lo: 1, hi: 2, shapes: [FULL], tex: q => -1.7 + pnoise(q.x / 8, q.y / 8, 2, 100 + v) * .9 + (rnd(q.x, q.y, 101 + v) < .05 ? -1 : 0) + bayer(q.x, q.y) * .35 });
+    F.add({ mat: Pl.rockTop || m, prof: 'flat', grp: 'top', noShadow: true, lo: 1, hi: 2, shapes: [FULL], tex: q => -1.7 + pnoise(q.x / 8, q.y / 8, 2, 100 + v) * .9 + (rnd(q.x, q.y, 101 + v) < .05 ? -1 : 0) + bayer(q.x, q.y) * .35 });
     return;
   }
   if (k === 'masonry') return sunWall(F, Object.assign({}, Pl, { wallK: 'vault' }), v, true);

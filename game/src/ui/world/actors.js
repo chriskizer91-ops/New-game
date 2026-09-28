@@ -12,13 +12,16 @@
 //     stepLeader(toX, toY, face, t0, dur)   the leader steps; followers take the previous tiles
 //     face(dir)                        the leader turns in place
 //     syncRoamers(walk, now, dur)      diff walk.roamers by id and tween the ones that moved
-//     emote(kind, target, now, ms)     target: 'leader' | roamer id | hero id
+//     emote(kind, target, now, ms)     target: 'leader' | roamer id | hero id; kind '!hunt' (M4) is the
+//                                      red "!" of a Grudge that hunts you (the "!" recoloured: a red
+//                                      bubble, a cream mark)
+//     emotesShown() -> [{ kind, target }]   the emotes on screen (the e2e seam)
 //     showoff(heroId, now)             step out of line, face the camera, sparkle (SHOWOFF_MS)
 //     update(now) -> busy              tween every actor (no allocation)
 //     fill(list, emotes, now) -> [n, ne]   sprite and emote records for the view (no allocation)
 //     leader { px, py }, trail() -> [[x, y, face] x3], foeAt(x, y) -> encounter entity | null
 //   }
-// Owner: WP7.
+// Owner: WP7; M4 P7b (the hunter's "!").
 
 import { walkerSheet, npcSheet, mapFoeSheet, renderFoe, gearLooks, FOE_ART, RARITY_LOOK } from '../../art/index.js';
 import { NPCS } from '../../data/npcs.js';
@@ -82,6 +85,28 @@ function greyOf(sheet) {
   g.putImageData(img, 0, 0);
   sheet.grey = { ...sheet, canvas: c };
   return sheet.grey;
+}
+// A Grudge hunter's "!" (M4 spec §4.6): the "!" emote with its colours turned round, a red bubble and
+// a cream mark, so it reads at a glance from the plain one (white bubble, red mark).
+let HUNT = null;
+function huntSprite() {
+  if (HUNT) return HUNT;
+  const base = emoteSprite('!');
+  const frames = base.frames.map(src => {
+    const c = canvasOf(null, src.width, src.height), g = c.getContext('2d');
+    g.drawImage(src, 0, 0);
+    const img = g.getImageData(0, 0, c.width, c.height), d = img.data;
+    for (let i = 0; i < d.length; i += 4) {
+      if (!d[i + 3]) continue;
+      const r = d[i], gr = d[i + 1], b = d[i + 2], hi = Math.max(r, gr, b), lo = Math.min(r, gr, b);
+      if (r > 110 && r - Math.max(gr, b) > 50) { d[i] = 255; d[i + 1] = 240; d[i + 2] = 214; } // the mark: cream
+      else if (hi > 110 && hi - lo < 70) { const l = hi / 255; d[i] = Math.round(40 + 190 * l); d[i + 1] = Math.round(26 * l); d[i + 2] = Math.round(22 * l); } // the bubble: red
+    }
+    g.putImageData(img, 0, 0);
+    return c;
+  });
+  HUNT = { frames, foot: base.foot };
+  return HUNT;
 }
 function walkerFor(game, heroId) {
   const custom = heroCustom(game, heroId);
@@ -212,7 +237,7 @@ export function createActors({ reduced = false } = {}) {
     for (let i = 0; i < emotes.length; i++) if (emotes[i].target === target && emotes[i].kind === kind) { slot = emotes[i]; break; }
     if (!slot) for (let i = 0; i < emotes.length; i++) if (!emotes[i].show) { slot = emotes[i]; break; }
     if (!slot) slot = emotes[0];
-    slot.spr = emoteSprite(kind); slot.img = slot.spr.frames[0]; slot.kind = kind; slot.target = target; slot.until = ms === Infinity ? Infinity : now + ms; slot.show = true;
+    slot.spr = kind === '!hunt' ? huntSprite() : emoteSprite(kind); slot.img = slot.spr.frames[0]; slot.kind = kind; slot.target = target; slot.until = ms === Infinity ? Infinity : now + ms; slot.show = true;
   }
   function clearEmotes(target) { for (const e of emotes) if (!target || e.target === target) { e.show = false; e.target = null; } }
 
@@ -286,6 +311,7 @@ export function createActors({ reduced = false } = {}) {
       }
     },
     roamerActor: id => byRoamer.get(id) || null,
+    emotesShown: () => emotes.filter(e => e.show && e.target).map(e => ({ kind: e.kind, target: e.target.id ?? e.target.e?.id ?? null })),
     emote(kind, target, now, ms) {
       const t = target === 'leader' ? party[0] : byRoamer.get(target) || party.find(p => p.id === target) || target;
       if (t) emote(kind, t, now, ms);

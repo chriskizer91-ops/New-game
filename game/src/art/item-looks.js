@@ -7,11 +7,17 @@
 //    sword on the card is visibly the sword in the hero's hand.
 //  - Temper (M3): an ItemInstance with temper 1-3 gets tempered art: +1 a glint, +2 the metal lifted one ramp
 //    step (as MAT variants from temperMat), +3 an aspect-coloured edge. Temper 0 renders exactly as before.
-import { MAT, hx, hsl, bayer, hash, vnoise, compose, Forge, Xf, mix } from './forge.js';
+//  - M4: temper runs to +10 (the metal brightens each step, glows from +7, burns with a white flame at +10);
+//    gems set in sockets (item.gems) show on the card and in the hand; a Kindled relic (a deed done) gets a
+//    faint ember rim, an Awakened one (item.awakened 'a' | 'b') a repaint in its branch's palette and ember
+//    motes. All of it is material variants and recipe params, so the card, the bag icon, the hero sprite and
+//    the walkers agree. An item with temper 0-3, no gems set and no deeds renders exactly as in M3.
+import { MAT, hx, hsl, bayer, hash, vnoise, compose, Forge, Xf, mix, ramp } from './forge.js';
 import { RECIPE, renderItem, TX, TX2, mailTex, scaleTex } from './recipes.js';
 import { rimeTex } from './item-art.js';
 import { createRng } from '../core/rng.js';
 import { lru, objId } from './cache.js';
+import { GEMS } from '../data/gems.js';
 
 /* ==== rarity ==== */
 const R5 = s => s.split(' ');
@@ -47,6 +53,18 @@ export const ASPECT_LOOK = Object.freeze({
 });
 // rune glow when an item has no aspect, by rarity tier
 const TIER_GLOW = [null, null, null, 'frost', 'arcane', 'radiant', 'water', 'primal'];
+
+/* ==== M4 gems (data/gems.js): a material per gem, cut from its colour. GEM_MAT[gemId] -> MAT name ==== */
+const GEM_RAMP = { sunstone: '#2a0e02 #6e2a06 #b8560e #f08c1c #ffc45a #fff2c4', 'moss-agate': '#08140a #16301a #2a5230 #4a8a48 #8cc47a #dcf4c8', 'glass-pearl': '#1e2632 #465468 #7c90aa #b4cce4 #dcecfc #ffffff', 'ash-garnet': '#1a0406 #420a0e #7a1416 #b3261e #e0604a #ffc8b0' };
+export const GEM_MAT = {};
+for (const id of Object.keys(GEMS)) {
+  const key = 'gem.' + id;
+  if (!MAT[key]) {
+    const c = hx(GEMS[id].color), pal = GEM_RAMP[id] ? ramp(GEM_RAMP[id]) : [.12, .28, .5, .78, 1, 1].map((f, k) => (k < 4 ? c.map(v => v * f) : mix(c, [255, 255, 255], k === 4 ? .45 : .85)));
+    MAT[key] = id === 'glass-pearl' ? { pal, ks: 1.6, shin: 10, base: 3.4 } : { pal, gem: 1 };
+  }
+  GEM_MAT[id] = key;
+}
 
 /* aspect surface textures for metal (seeded) */
 const surfTex = (aspect, seed) => {
@@ -87,6 +105,11 @@ const oathStone = q => TX2.cracks(41, 'amber', .026)(q) || TX2.granite(7)(q);
 // corrosion on the Ichor Mask: dark tarnish, and a few spots where the rot has eaten into the iron
 const maskTarnish = ({ x, y }) => { const n = vnoise(x * .38, y * .38, 17); return n > .8 ? { m: 'rot', dd: -1 } : n > .72 ? { m: 'blackiron', dd: 0 } : 0; };
 const seedTex = ({ x, y, u, v }) => { const g = ((u - 32) * 1.3 + Math.sin(v * .3) * 1.5) % 5; return Math.abs(g) < .7 ? -1 : vnoise(x * .4, y * .4, 83) > .74 ? -1 : 0; };
+// textures for the M4 relics
+const cinderVeins = TX2.cracks(131, 'ember', .026);
+const glassFused = q => TX2.cracks(53, 'amber', .03)(q) || TX2.granite(19)(q);
+const saltCrust = ({ x, y }) => (hash(x, y, 71) < .14 ? { m: 'clothWhite', dd: 1 } : vnoise(x * .4, y * .4, 73) > .72 ? -1 : 0);
+const ashFlecks = ({ x, y }) => (hash(x, y, 29) < .14 ? { m: 'ash', dd: 0 } : 0);
 export const RELIC_ART = Object.freeze({
   hearthbrand: { r: 'sword', relic: true, fx: 'rise', aspect: 'ember', p: { heat: 1, gripEnd: 15.5, guardT: 4.2, bladeW: 4.2, bladeL: 50, tipL: 9, taper: .86, blade: 'steel', bladeTex: emberVeins, fuller: 'ember', fullerR: 1.15, guard: 'flame', guardMat: 'gold', gem: 'ruby', grip: 'leatherRed', gripR: 2.15, pommel: 'gold', pommelR: 3.6, pommelGem: 'ember' } },
   'stillwater-lance': { r: 'spear', relic: true, fx: 'fall', aspect: 'frost', p: { headT: 58, headL: 24, headW: 4.6, wings: 2.6, haft: 'bone', butt: 'silver', wrap: 'clothBlue', wrapA: 25, wrapB: 37, bands: [21, 40, 51], bandMat: 'silver', socket: 'silver', head: 'steel', headTex: rimeTex, fuller: 'frost', gem: 'sapphire', ribbon: 'clothBlue', haftR: 1.8 } },
@@ -113,6 +136,35 @@ export const RELIC_ART = Object.freeze({
   'ichor-mask': { r: 'helm', relic: true, fx: 'rise', aspect: 'blight', p: { look: 'helm', style: 'mask', mat: 'iron', tex: maskTarnish, trim: 'bronze', eyes: 'blight', ichor: 'sap', bark: 'bark', stamp: 'gold', strap: 'leatherDark', crest: false } },
   'first-seed': { r: 'amulet', relic: true, fx: 'spore', aspect: 'verdant', p: { style: 'seed', scale: 1.2, chain: 'wood', metal: 'gold', seed: 'thorn', seedTex, glow: 'verdant', veins: 1, gem: 'emerald', leaf: 'moss', bud: 'verdant', stem: 'moss' } },
   'vale-gauntlets': { r: 'gauntlets', relic: true, fx: 'spark', aspect: 'storm', p: { mat: 'silver', plate: 1, cuffMat: 'silver', flare: 1, trim: 'gold', cuffBand: 'gold', knuckles: 'gold', engrave: 'blackiron', bolt: 'storm', cuffGem: 'stormglass' } },
+  // ---- M4: Codex Page II, the Sunscorch Wastes (codex 25-38) ----
+  // wyrm-hide boots with a broad sand-sole, saffron wraps and an indigo cuff; a storm-glass bead
+  sandwalkers: { r: 'boots', relic: true, fx: 'spark', aspect: 'storm', p: { mat: 'wyrmHide', tex: scaleTex(3, 8), trim: 'clothIndigo', fold: true, wraps: 'clothSaffron', sole: 'sand', soleW: 3.5, buckle: 'brass', gem: 'stormglass' } },
+  // a brass armillary that hums an hour that has not happened yet
+  'zaras-orrery': { r: 'amulet', relic: true, fx: 'spark', aspect: 'storm', p: { style: 'orrery', chain: 'gold', metal: 'brass', gem: 'stormglass', core: 'storm', planet: 'topaz' } },
+  // one scale off the Sand Wyrm: growth ridges, a keel, a hide strap; it glints
+  wyrmscale: { r: 'shield', relic: true, fx: 'dust', aspect: 'stone', p: { style: 'scale', shape: 'heater', face: 'brass', rim: 'wyrmHide', boss: 'brass', rivets: 'bronze', runes: 'amber', gem: 'topaz' } },
+  // a fist of sunstone caged in brass, never set
+  'sunstone-lantern': { r: 'focus', relic: true, fx: 'rise', aspect: 'ember', p: { style: 'lantern', metal: 'brass', frame: 'bronze', stone: 'amber', core: 'radiant', rays: 'amber', capGem: 'topaz', gem: 'amber' } },
+  // glass lames like a scorpion's back, light in the seams
+  'glass-carapace': { r: 'plate', relic: true, fx: 'dust', aspect: 'stone', p: { style: 'carapace', mat: 'sandglass', seam: 'amber', under: 'char', trim: 'brass' } },
+  // a giant's maul: a block of sandstone fused with dune-glass, bound in black iron
+  dunebreaker: { r: 'hammer', relic: true, fx: 'dust', aspect: 'stone', k: .4, p: { headT: 51, headH: 17, headW: 16.5, haft: 'bogwood', haftR: 2.8, wrap: 'leatherDark', wrapEnd: 19, bands: [26, 36], bandMat: 'blackiron', headMat: 'sandstone', headTex: glassFused, pommelMat: 'blackiron', pommelR: 3.4, faces: 1, langets: 1, straps: 'blackiron', shards: 'glass', spike: 0 } },
+  // No. 031: a dark scimitar cracked with living fire, the edge still hot, a fang for a pommel
+  cinderfang: { r: 'sword', relic: true, fx: 'rise', aspect: 'ember', p: { shape: 'scimitar', curve: 7, gripEnd: 14, guardT: 3, bladeW: 4, bladeL: 46, tipL: 8, taper: .88, blade: 'blackiron', bladeTex: cinderVeins, edge: 'ember', guard: 'hook', guardMat: 'bronze', guardW: 8, gem: 'ruby', grip: 'leatherDark', gripR: 2.1, pommel: 'claw', pommelShape: 'hook', pommelR: 2.8 } },
+  // a lens of well-water that never spilled, in a frost-silver frame
+  'mirage-glass': { r: 'amulet', relic: true, fx: 'fall', aspect: 'frost', p: { style: 'lens', chain: 'silver', metal: 'silver', lens: 'glass', water: 'water', runes: 'frost', gem: 'water' } },
+  // the Cistern Lord's seal: a broad signet cut with water-lines
+  'qasims-signet': { r: 'ring', relic: true, fx: 'fall', aspect: 'frost', p: { style: 'signet', metal: 'silver', face: 'sapphire', seal: 'silver', runes: 'frost', gem: 'sapphire' } },
+  // a heart cut from sunstone, caged in gold; it beats
+  'sunstone-heart': { r: 'amulet', relic: true, fx: 'rise', aspect: 'ember', p: { style: 'heart', chain: 'gold', metal: 'gold', stone: 'amber', core: 'radiant', veins: 'ember', gem: 'amber' } },
+  // a key ring with no key on it
+  'scorchgate-key': { r: 'ring', relic: true, fx: 'rise', aspect: 'ember', p: { style: 'keyring', metal: 'blackiron', clasp: 'bronze', runes: 'ember', glow: 'ember', gem: 'ember' } },
+  // Scorchgate's last shield: ash-crusted, cracked with embers, the gate on its face and the fire behind it
+  'ashen-aegis': { r: 'shield', relic: true, fx: 'rise', aspect: 'ember', p: { style: 'aegis', shape: 'tower', face: 'ash', rim: 'char', emblem: 'bronze', fire: 'ember', rivets: 'bronze', boss: 'bronze', gem: 'ember' } },
+  // black iron tines, a live coal on each: every ember was a soldier of Scorchgate
+  'cinder-crown': { r: 'crown', relic: true, fx: 'rise', aspect: 'ember', p: { style: 'regal', metal: 'blackiron', tines: 7, tall: true, gem: 'ember', gem2: 'ruby', embers: 'ember', tex: ashFlecks } },
+  // cut from a glassed dune, crusted with salt, strung to sing
+  saltglass: { r: 'bow', relic: true, fx: 'spark', aspect: 'storm', p: { len: 62, bulge: 10, limbR: 3.1, tipR: 1.4, limb: 'glass', limbTex: saltCrust, nock: 'silver', grip: 'clothIndigo', bindings: [.3, .7], bindMat: 'silver', gem: 'stormglass', gemMat: 'silver', tassel: 'clothWhite', spark: 'storm' } },
 });
 export const RELIC_IDS = Object.keys(RELIC_ART);
 
@@ -237,30 +289,62 @@ const BASE_HINT = {
 };
 
 const artCache = lru(4000);
-// itemArt(item) -> { r, p, ... } recipe params. Accepts an ItemInstance ({ base, kind, rarity, aspect, seed, temper }),
-// a relic id string, or an art object (returned as-is). Deterministic: same inputs, same look.
-// An item with temper 1-3 gets its own tempered art object (art.temper = n); temper 0 returns the plain art.
+// itemArt(item) -> { r, p, ... } recipe params. Accepts an ItemInstance ({ base, kind, rarity, aspect, seed, temper,
+// gems, deeds, awakened }), a relic id string, or an art object (returned as-is). Deterministic: same inputs, same look.
+// An item with temper 1-10 gets its own tempered art object (art.temper = n); temper 0 returns the plain art. Gems set
+// in sockets and a relic's stage (M4) give a further art object of their own (art.gems, art.stage, art.branch), so every
+// cache keyed by the art object's identity (objId) sees a new look when any of them changes.
 export function itemArt(item) {
   if (!item) return null;
   if (typeof item === 'string') return RELIC_ART[item] || null;
   if (item.r && item.p) return item;
-  const n = temperOf(item);
-  for (const k of [item.base, item.relic, item.id]) if (k && RELIC_ART[k]) return n ? tempered(RELIC_ART[k], n) : RELIC_ART[k];
-  const gen = GEN[item.kind];
-  if (!gen) return null;
-  const key = `${item.kind}|${item.rarity}|${item.aspect || '-'}|${item.seed ?? 0}`;
-  const art = artCache.get(key + '|' + (item.base || ''), () => {
-    const a = gen(ctxFor(item)), h = BASE_HINT[item.base];
-    if (h) { Object.assign(a.p, h.p); if (h.k) a.k = h.k; }
-    a.kind = item.kind; a.rarity = item.rarity; a.aspect = item.aspect || null; a.base = item.base || null;
-    return a;
-  });
-  return n ? tempered(art, n) : art;
+  const n = temperOf(item), fx = forgeFx(item);
+  let art = null;
+  for (const k of [item.base, item.relic, item.id]) if (k && RELIC_ART[k]) { art = RELIC_ART[k]; break; }
+  if (!art) {
+    const gen = GEN[item.kind];
+    if (!gen) return null;
+    const key = `${item.kind}|${item.rarity}|${item.aspect || '-'}|${item.seed ?? 0}`;
+    art = artCache.get(key + '|' + (item.base || ''), () => {
+      const a = gen(ctxFor(item)), h = BASE_HINT[item.base];
+      if (h) { Object.assign(a.p, h.p); if (h.k) a.k = h.k; }
+      a.kind = item.kind; a.rarity = item.rarity; a.aspect = item.aspect || null; a.base = item.base || null;
+      return a;
+    });
+  }
+  const t = n ? tempered(art, n) : art;
+  return fx ? dressed(t, fx) : t;
+}
+// itemLookKey(item) -> a string that changes whenever the item's look does (base, kind, rarity, aspect, seed, temper,
+// gems, stage and branch): for UI caches keyed by item (sprite sheets, canvases), so they never show stale art.
+export function itemLookKey(item) {
+  if (!item || typeof item !== 'object') return String(item ?? '-');
+  if (item.r && item.p) return objId(item);
+  const fx = forgeFx(item);
+  return [item.base || '', item.kind || '', item.rarity || '', item.aspect || '', item.seed ?? 0, temperOf(item), fx ? fx.key : '-'].join('/');
+}
+// artStage(item) -> 'kindled' | 'awakened' | null (dormant, or not a relic): what rules/codex.js stageOf reads, taken
+// from the item alone (art never imports rules). Awakened: item.awakened names a branch; Kindled: a deed is done.
+export function artStage(item) {
+  if (!item || typeof item !== 'object' || item.p) return null;
+  if (item.awakened === 'a' || item.awakened === 'b') return 'awakened';
+  return item.deeds && typeof item.deeds === 'object' && Object.values(item.deeds).some(Boolean) ? 'kindled' : null;
+}
+// the forge's marks on an item: gems set (as materials, one per socket, null for an empty one) and its stage
+function forgeFx(item) {
+  const gems = Array.isArray(item.gems) ? item.gems.map(g => (typeof g === 'string' && GEM_MAT[g]) || null) : [];
+  const stage = artStage(item), set = gems.some(Boolean);
+  if (!stage && !set) return null;
+  const branch = stage === 'awakened' ? item.awakened : null;
+  return { gems: set ? gems : null, stage, branch, key: (set ? gems.map(g => g || '-').join(',') : '') + '|' + (stage || '-') + (branch || '') };
 }
 
 /* ==== temper (M3 spec §3.9): +1 adds a glint, +2 lifts the metal one ramp step, +3 adds an aspect-coloured edge ====
-   Each step keeps the ones below it. Temper 0 (every M2 item) never reaches this code. */
-export const TEMPER_MAX = 3;
+   Each step keeps the ones below it. Temper 0 (every M2 item) never reaches this code.
+   M4 (spec §6.3): +4 to +10 brighten the metal further each step, +7 to +9 glow (the metal's rim turns to the
+   aspect's glow in the recipe, P.tglow, and the card gets a glowing aura), +10 burns white (the rim is 'primal'
+   white fire and the card wears a white flame). +1 to +3 are exactly as in M3. */
+export const TEMPER_MAX = 10;
 export function temperOf(item) {
   const n = item && typeof item === 'object' ? Math.floor(+item.temper || 0) : 0;
   return n < 0 ? 0 : n > TEMPER_MAX ? TEMPER_MAX : n;
@@ -271,14 +355,55 @@ const edgeGlow = aspect => (ASPECT_LOOK[aspect] ? ASPECT_LOOK[aspect].glow : 'ra
 // aspect's glow. Registering the variants in MAT lets the hero sprite and walkers draw them by name like any other.
 export function temperMat(m, n, aspect, any = false) {
   const b = MAT[m];
-  if (n < 2 || !b || b.emit || b.temper || !(b.metal || any)) return m;
-  const edge = n >= 3 ? edgeGlow(aspect) : '', key = `${m}^${edge}`;
+  if (n < 2 || !b || b.emit || b.temper || b.stage || !(b.metal || any)) return m;
+  const edge = n >= 3 ? edgeGlow(aspect) : '', key = n <= 3 ? `${m}^${edge}` : `${m}^${edge}^${n}`;
   if (!MAT[key]) {
     const p = b.pal, pal = [p[1], p[2], p[3], p[4], p[5], mix(p[5], [255, 255, 255], .45)];
     if (edge) { const g = MAT[edge].pal; pal[0] = mix(g[1], p[1], .3); pal[1] = mix(g[2], p[2], .45); }
+    // +4 and up: each step brightens the metal, the middle toward the aspect's light, the top toward white heat
+    if (n >= 4) { const f = (n - 3) / 7, g = MAT[edge].pal; for (let k = 1; k < 6; k++) pal[k] = mix(pal[k], k >= 4 ? [255, 250, 240] : g[k + 1], f * (.2 + k * .07)); }
     MAT[key] = Object.assign({}, b, { pal: pal.map(c => c.map(Math.round)), temper: n, of: m });
   }
   return key;
+}
+/* ==== stages (M4 spec §4.3, §6.3): Kindled ('k') tints the darkest step toward ember, so the outline and the
+   shadow side read as a faint ember rim; Awakened repaints every step toward its branch's ramp by value, the Hand
+   ('a') warm and ember, the Heart ('b') cool and radiant, and swaps glows that are not of the branch's temper. ==== */
+const BRANCH_RAMP = { a: ramp('#2a0a04 #6a1e08 #b04a10 #e88a28 #ffc860 #fff0c0'), b: ramp('#0a1030 #1c3070 #3e68b8 #82b0e8 #d4e8ff #fffef0') };
+const BRANCH_GLOW = { a: ['ember', new Set(['ember', 'amber', 'radiant', 'eyeRed', 'heat'])], b: ['heartglow', new Set(['frost', 'water', 'storm', 'radiant', 'heartglow', 'primal'])] };
+export const BRANCH_LOOK = Object.freeze({ a: { name: 'the Hand', color: '#ff9a3a', aura: '#ffb04a' }, b: { name: 'the Heart', color: '#a8c8ff', aura: '#cfe0ff' } });
+const lum = c => c[0] * .3 + c[1] * .59 + c[2] * .11;
+export function stageMat(m, s) {
+  const b = MAT[m];
+  if (!b || b.stage || !s) return m;
+  if (b.emit) { if (s === 'k') return m; const [g, keep] = BRANCH_GLOW[s]; return keep.has(b.of || m) ? m : g; }
+  const key = `${m}~${s}`;
+  if (!MAT[key]) {
+    const pal = b.pal.map(c => c.slice()), E = MAT.ember.pal;
+    if (s === 'k') { pal[0] = mix(pal[0], E[1], .6); pal[1] = mix(pal[1], E[2], .2); }
+    else {
+      const T = BRANCH_RAMP[s];
+      for (let k = 0; k < 6; k++) { const l = Math.min(4.99, lum(pal[k]) / 255 * 5.4), i = Math.floor(l); pal[k] = mix(pal[k], mix(T[i], T[Math.min(5, i + 1)], l - i), .52); }
+      pal[0] = mix(pal[0], s === 'a' ? E[1] : T[1], .45);
+    }
+    MAT[key] = Object.assign({}, b, { pal: pal.map(c => c.map(Math.round)), stage: s, of: b.of || m });
+  }
+  return key;
+}
+const stageKey = art => (art.stage === 'awakened' ? (art.branch === 'b' ? 'b' : 'a') : art.stage === 'kindled' ? 'k' : null);
+// stagedArt(art, stage, branch) -> an art object painted for a stage ('kindled' | 'awakened'), for art with no item
+// behind it (a foe's kit: Tamsin at Scorchgate)
+export function stagedArt(art, stage, branch = null) { return art && art.p ? dressed(art, { gems: null, stage, branch, key: '|' + stage + (branch || '') }) : art; }
+// the art with its gems set and its stage painted: materials in p go to their stage variants, sockets to P.sockets
+const dressCache = lru(600);
+function dressed(art, fx) {
+  return dressCache.get(objId(art) + '|' + fx.key, () => {
+    const p = art.p, q = Object.assign({}, p), a = Object.assign({}, art, { p: q, stage: fx.stage, branch: fx.branch, gems: fx.gems });
+    const s = stageKey(a);
+    if (s) for (const k of Object.keys(p)) if (!NOT_MAT.has(k) && typeof p[k] === 'string' && MAT[p[k]]) q[k] = stageMat(p[k], s);
+    if (fx.gems) { q.sockets = fx.gems; q.socketMat = [q.guardMat, q.socket, q.rim, q.metal, q.trim, q.bandMat, q.frame, q.buckle].find(m => typeof m === 'string' && MAT[m] && !MAT[m].emit) || 'gold'; }
+    return a;
+  });
 }
 // recipe params that hold names but are not materials
 const NOT_MAT = new Set(['look', 'style', 'shape', 'paint', 'guard', 'pommelShape', 'back', 'glyphShape']);
@@ -290,18 +415,24 @@ const mostlySoft = art => shareCache.get(objId(art), () => { const R = itemRaste
 function temperArt(art, n) {
   const p = art.p, q = Object.assign({}, p), any = mostlySoft(art);
   if (n >= 2) for (const k of Object.keys(p)) if (!NOT_MAT.has(k) && typeof p[k] === 'string' && MAT[p[k]]) q[k] = temperMat(p[k], n, art.aspect, any);
+  if (n >= 7) { q.tglow = n >= 10 ? 'primal' : edgeGlow(art.aspect); if (any) q.tglowAll = true; }
   return Object.assign({}, art, { p: q, temper: n, temperAll: any });
 }
 const temperCache = lru(600);
 const tempered = (art, n) => temperCache.get(objId(art) + '|' + n, () => temperArt(art, n));
-// the raster with every metal pixel on its tempered variant (materials the recipe picks by default included)
+// the raster with every metal pixel on its tempered variant (materials the recipe picks by default included), and
+// every pixel on its stage variant (a Kindled rim or an Awakened repaint reaches the recipe's own defaults too)
 const tRasterCache = lru(300);
 function temperedRaster(art, size) {
   return tRasterCache.get(objId(art) + '@' + size, () => {
-    const R = itemRaster(art, size);
-    if (art.temper < 2) return R;
+    const R = itemRaster(art, size), n = art.temper || 0, s = stageKey(art);
+    if (n < 2 && !s) return R;
     const mat = R.mat.slice();
-    for (let i = 0; i < mat.length; i++) if (mat[i]) mat[i] = temperMat(mat[i], art.temper, art.aspect, !!art.temperAll);
+    for (let i = 0; i < mat.length; i++) {
+      if (!mat[i]) continue;
+      if (n >= 2) mat[i] = temperMat(mat[i], n, art.aspect, !!art.temperAll);
+      if (s && mat[i] !== 'dark' && mat[i] !== 'string') mat[i] = stageMat(mat[i], s);
+    }
     return Object.assign({}, R, { mat });
   });
 }
@@ -382,15 +513,31 @@ export function motes(kind, t, w, h, n, rampCols) {
   }
   return out;
 }
+// +10's white flame: tongues of white fire rising off the top of the item's silhouette (particles for compose)
+const topsCache = lru(120);
+function whiteFlame(R, t, reduced) {
+  const tops = topsCache.get(objId(R), () => { const T = []; for (let x = 0; x < R.w; x++) for (let y = 0; y < R.h; y++) if (R.own[y * R.w + x] >= 0) { T.push([x, y]); break; } return T; });
+  const out = [], n = Math.max(6, Math.round(R.w * .45)), C = [[255, 255, 255], [236, 242, 255], [200, 216, 255]];
+  if (!tops.length) return out;
+  for (let k = 0; k < n; k++) {
+    const [x, y] = tops[Math.floor(hash(k, 3, 41) * tops.length)], ph = reduced ? .3 : (t * (.9 + hash(k, 5, 41) * .8) + hash(k, 7, 41)) % 1, h = 3 + hash(k, 9, 41) * R.h * .1;
+    for (let j = 0; j < 3; j++) { const q = ph + j * .12; if (q > 1) continue; out.push({ x: x + Math.round(Math.sin(t * 5 + k + j) * .6), y: Math.round(y - 1 - q * h), c: C[j], a: (1 - q) * (j ? .7 : .95) }); }
+  }
+  return out;
+}
 // itemPortrait(itemOrArt, { size=64, t=0, rarity, reduced, hue, develop, silhouette }) -> ImageData (card portrait,
 // prototype treatment). develop 0..1 paints only that fraction of the item's pixels (the Storied identify ritual).
 export function itemPortrait(item, o = {}) {
   const art = itemArt(item); if (!art) return null;
   const size = o.size || 64, t = o.reduced ? 0 : (o.t || 0), rar = o.rarity || item.rarity || art.rarity || (art.relic ? 'heirloom' : 'worn');
-  const L = RARITY_LOOK[rar] || RARITY_LOOK.worn, R = art.temper ? temperedRaster(art, size) : itemRaster(art, size), k = size / 64;
-  const hue = o.hue ?? (170 + t * 30) % 360;
+  const L = RARITY_LOOK[rar] || RARITY_LOOK.worn, R = art.temper || art.stage ? temperedRaster(art, size) : itemRaster(art, size), k = size / 64;
+  const hue = o.hue ?? (170 + t * 30) % 360, n = art.temper || 0, pulse = o.reduced ? 0 : Math.sin(t * 2.2) * .06;
   const oo = { bg: portraitBg(rar, t, size), shadow: [Math.max(1, Math.round(2 * k)), Math.max(1, Math.round(2 * k)), [0, 0, 0], .35], rim: hx(L.rim), hue };
-  if (L.tier >= 3) oo.aura = [L.gem === 'prism' ? hsl(hue, .8, .62) : hx(L.aura), Math.max(1, Math.round(2 * k)), .32 + (o.reduced ? 0 : Math.sin(t * 2.2) * .06)];
+  if (L.tier >= 3) oo.aura = [L.gem === 'prism' ? hsl(hue, .8, .62) : hx(L.aura), Math.max(1, Math.round(2 * k)), .32 + pulse];
+  // M4: the aura says the forge's last word: an Awakened branch, then a glowing temper (+7), then a Kindled ember rim
+  if (art.stage === 'awakened') oo.aura = [hx(BRANCH_LOOK[art.branch === 'b' ? 'b' : 'a'].aura), Math.max(2, Math.round(2.5 * k)), .42 + pulse];
+  else if (n >= 7) oo.aura = [n >= 10 ? [240, 244, 255] : MAT[edgeGlow(art.aspect)].pal[3], Math.max(1, Math.round((n >= 9 ? 3 : 2) * k)), .3 + (n - 7) * .05 + pulse];
+  else if (art.stage === 'kindled') oo.aura = [MAT.ember.pal[2], Math.max(1, Math.round(1.5 * k)), .3 + pulse];
   if (!o.reduced && L.tier >= 2) { const cyc = (t % 4.2) / 1.3; if (cyc < 1) oo.shine = [Math.round((-20 + cyc * 150) * k), Math.max(2, Math.round(3 * k))]; }
   if (!o.reduced && L.tier >= 3) oo.flicker = Math.floor(t * 8);
   const g = glintPoint(art, size), gp = (t % 3.2) / 3.2;
@@ -398,6 +545,9 @@ export function itemPortrait(item, o = {}) {
   if (art.temper) { const g2 = temperGlint(art, size), gq = ((t + 1.1) % 2.3) / 2.3; if (g2) (oo.glints || (oo.glints = [])).push([g2[0], g2[1], o.reduced ? 1 : gq < .1 ? 2 : 1]); }
   const asp = art.aspect || item.aspect, fx = art.fx || (asp && ASPECT_LOOK[asp] ? ASPECT_LOOK[asp].mote : null);
   if (!o.reduced && fx && (L.tier >= 3 || art.relic)) { const glowMat = asp ? ASPECT_LOOK[asp].glow : 'ember'; oo.particles = motes(fx, t, size, size, Math.round((6 + L.tier) * k), MAT[glowMat].pal); }
+  // Awakened: ember motes rise off it (its own aspect motes give way); +10: a white flame licks up from it
+  if (!o.reduced && art.stage === 'awakened') oo.particles = motes('rise', t, size, size, Math.round(16 * k), MAT.ember.pal);
+  if (n >= 10) oo.particles = (oo.particles || []).concat(whiteFlame(R, t, !!o.reduced));
   // develop 0 is a pure silhouette (the Codex's unsighted relics, unidentified cards): no coloured halos round it
   if (o.develop !== undefined) { oo.develop = o.develop; oo.silhouette = hx(o.silhouette || '#0b0910'); if (o.develop <= 0) oo.glow = false; }
   if (!(art.temper >= 3) || (o.develop !== undefined && o.develop < 1)) return compose(R, oo);
@@ -407,9 +557,9 @@ export function itemPortrait(item, o = {}) {
 export function itemIcon(item, o = {}) {
   const art = itemArt(item); if (!art) return null;
   const size = o.size || 16;
-  if (!art.temper) return iconCache.get(objId(art) + '@' + size, () => compose(itemRaster(art, size), { glow: false, hue: 170 }));
+  if (!art.temper && !art.stage) return iconCache.get(objId(art) + '@' + size, () => compose(itemRaster(art, size), { glow: false, hue: 170 }));
   return iconCache.get(objId(art) + '@' + size, () => {
-    const R = temperedRaster(art, size), g = glintPoint(art, size), img = compose(R, { glow: false, hue: 170, glints: g ? [[g[0], g[1], 1]] : null });
+    const R = temperedRaster(art, size), g = art.temper ? glintPoint(art, size) : null, img = compose(R, { glow: false, hue: 170, glints: g ? [[g[0], g[1], 1]] : null });
     if (art.temper >= 3) temperEdge(img, R, art, false);
     return img;
   });
@@ -439,9 +589,25 @@ export function lookFor(slot, art) {
   if (art.relic || rarityTier(art.rarity) >= 5 || art.temper) L.glint = true;
   if (art.temper) {
     L.temper = art.temper; if (slot === 'weapon') L.relic = true;
-    if (art.temper >= 3) L.edge = '#' + MAT[edgeGlow(art.aspect)].pal[3].map(v => v.toString(16).padStart(2, '0')).join('');
+    if (art.temper >= 3) L.edge = '#' + MAT[art.temper >= 10 ? 'primal' : edgeGlow(art.aspect)].pal[3].map(v => v.toString(16).padStart(2, '0')).join('');
+    if (art.temper >= 7) L.glow7 = true;
   }
+  // M4: a worn piece shows its first set gem where its own gem would sit (a weapon sets them in its recipe);
+  // stage and branch ride along for rigs that draw more (walkers: an Awakened relic's ember motes)
+  if (art.gems && slot !== 'weapon') { const g = art.gems.find(Boolean); if (g && 'gem' in L) L.gem = g; }
+  if (art.gems) L.gems = art.gems.slice();
+  if (art.stage) { L.stage = art.stage; if (art.branch) L.branch = art.branch; }
   return L;
+}
+// awakenMotes(t, box, { branch, n }) -> [{ x, y, c, a }]: ember motes rising round an Awakened relic's bearer, for a
+// UI that draws them over a sprite (box = { x, y, w, h } in canvas px); none under reduced motion (pass t = 0)
+export function awakenMotes(t, box, { branch = 'a', n = 8 } = {}) {
+  const pal = MAT.ember.pal, out = [];
+  for (let k = 0; k < n; k++) {
+    const ph = (t * (.25 + hash(k, 2, 57) * .2) + hash(k, 3, 57)) % 1;
+    out.push({ x: box.x + hash(k, 1, 57) * box.w + Math.sin(t * 2 + k) * 1.5, y: box.y + box.h - ph * box.h * 1.1, c: k % 3 === 2 && branch === 'b' ? [220, 232, 255] : pal[3 + (k % 3 === 0 ? 1 : 0)], a: Math.min(1, (1 - ph) * 2) * .85 });
+  }
+  return out;
 }
 function lookOf(slot, art) {
   if (!art || !art.p) return null;

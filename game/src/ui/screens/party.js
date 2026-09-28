@@ -1,8 +1,12 @@
 // The party: hero tabs, the hero wearing their gear, stat tiles that count up, equipment slots,
 // the bag filtered by slot with compare arrows, skills, Domains, and Hilda's reforge.
 // mount(root, ctx, { hero?, from = 'world' }): Back returns to `from`.
-// Owner: WP8.
-import { deriveHero, heroSkills, POWERS } from '../../rules/stats.js';
+// M4 (P7a): every number is rules/stats.js heroStats, so the finished Codex pages' bonus shows (and is
+// named under the skills); the bag's compare arrows include it too (lib/items.js verdict).
+// Owner: WP8 (M3), P7a (M4).
+import { heroStats, heroSkills, POWERS } from '../../rules/stats.js';
+import { pageProgress } from '../../rules/codex.js';
+import { PAGES } from '../../data/codex.js';
 import { equip, unequip, reforge, reforgeCost, wearerOf } from '../../rules/party.js';
 import { xpForLevel, xpToNext } from '../../rules/progression.js';
 import { HEROES } from '../../data/heroes.js';
@@ -50,7 +54,7 @@ export function mount(root, ctx, params = {}) {
     tabs.replaceChildren();
     top.querySelector('.tb-gold').innerHTML = `<i class="coin"></i>${game.gold}`;
     game.party.active.forEach((id, i) => {
-      const h = game.party.roster[id], d = deriveHero(h, game.inventory);
+      const h = game.party.roster[id], d = heroStats(game, id);
       const b = el('button', { type: 'button', class: 'tab', role: 'tab', 'aria-selected': String(id === S.hero), 'data-pick': String(i + 1), id: 'tab-' + id });
       b.append(bustCanvas(game, id, { size: 24, scale: 2 }), el('span', 'nm', esc(short(h))), el('span', 'hp', `<i style="width:${Math.max(0, Math.min(100, h.hp / d.maxHp * 100))}%"></i>`));
       b.addEventListener('click', () => { if (S.hero === id) return; S.hero = id; ctx.audio.sfx('select'); render(); });
@@ -60,7 +64,7 @@ export function mount(root, ctx, params = {}) {
 
   function render(anim) {
     const game = ctx.game, h = game.party.roster[S.hero], data = HEROES[S.hero];
-    const d = deriveHero(h, game.inventory);
+    const d = heroStats(game, S.hero);
     renderTabs();
     panel.replaceChildren();
     // ---- the hero ----
@@ -172,6 +176,10 @@ export function mount(root, ctx, params = {}) {
     if (surge) sk.append(el('div', 'surge-box', `<span class="label">Legend Surge · ${d.powers[0] ? esc(by[d.powers[0].uid]?.name || '') : 'no relic power yet'}</span><b>${esc(surge.name)}</b><p>${esc(surge.text)}</p>`));
     for (const sb of d.setBonuses) sk.append(el('div', 'set-box', `<span class="label">Set · Thornwatch (${sb.n})</span><p>${esc(sb.text)}</p>`));
     for (const tr of data.traits || []) sk.append(el('div', 'trait-box', `<span class="label">Trait · ${esc(tr.name)}</span><p>${esc(tr.text)}</p>`));
+    // M4: the finished Codex pages' bonus, part of every number above
+    for (const pg of PAGES.filter(p => p.reward && (game.progress?.flags?.pages?.[p.id] || pageProgress(game, p.id).done))) {
+      sk.append(el('div', 'set-box page-box', `<span class="label">Codex · Page ${esc(pg.no)} · ${esc(pg.name)}</span><p><b>${esc(pg.reward.name)}</b>: ${esc(pg.reward.text)}</p>`));
+    }
 
     // ---- Domains ----
     const dm = el('section', 'domains-panel panel');

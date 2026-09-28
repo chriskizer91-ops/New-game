@@ -279,6 +279,15 @@
 .tbc-stats dt { grid-row: 1; font-family: var(--f-pixel); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--ash); }
 .tbc-stats dd { grid-row: 2; margin: 0; font-family: var(--f-display); font-size: 28px; font-weight: 700; color: #fff3da; }
 .tbc-text { color: var(--hearth-hot) !important; font-style: italic; }
+/* M4: the end of Act II (the Sunscorch won) and the second council */
+.ov.ov-story.tbc-act2 { background: radial-gradient(120% 80% at 50% 20%, rgba(96, 56, 14, .97), rgba(8, 5, 6, .98) 70%); }
+.tbc-act2 .tbc-stats { grid-template-columns: repeat(4, auto); gap: 4px 18px; }
+.tbc-act { margin: -6px 0 10px; font-family: var(--f-pixel); font-size: 11px !important; letter-spacing: .2em; text-transform: uppercase; color: var(--hearth) !important; }
+.tbc-next { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 2px 0 4px; }
+.tbc-rg { padding: 5px 12px; font-family: var(--f-display); font-weight: 700; font-size: 18px; color: #fff3da; background: rgba(11, 9, 16, .7); box-shadow: 0 0 0 2px var(--ink), 0 0 0 3px var(--seam-2); }
+.tbc-rg.rg-ironspire { box-shadow: 0 0 0 2px var(--ink), 0 0 0 3px #9aa4ad; }
+.tbc-rg.rg-gloomfen { box-shadow: 0 0 0 2px var(--ink), 0 0 0 3px #7a6a9c; }
+.ov.ov-story.council-2 { background: radial-gradient(120% 80% at 50% 20%, rgba(70, 40, 16, .97), rgba(6, 4, 8, .98) 70%); }
 
 @media (prefers-reduced-motion: reduce) {
   .cw-map.cracking .cw-seal .knot, .cw-map.cracking .cw-seal .crack, .brand-coals .coal.new, .w-ember.on { animation: none; }

@@ -190,13 +190,13 @@ export function mount(root, ctx, params = {}) {
       line.append(
         el('span', { class: 'cx-rk', text: r.earned ? `Earned${r.day ? ` · Day ${r.day}` : ''}` : 'Reward' }),
         el('b', { class: 'cx-rn', text: r.name }),
-        el('span', { class: 'cx-rt', text: r.earned ? `${r.text} Yours for good.` : `${r.text} Claim every relic on the page.` }),
+        el('span', { class: 'cx-rt', text: r.earned ? `${r.text} Yours for good.` : `${r.text} Yours once every relic the page needs is claimed.` }),
       );
       head.append(line);
     }
     // the page's small print: the starters on Page I, the road to Page II
     const spare = V.relics.filter(x => x.spare).length;
-    if (spare) head.append(el('p', { class: 'cx-note', text: `The page counts your starter and every relic held out in the world. The ${spare === 1 ? 'starter' : `${spare} starters`} you passed over stay${spare === 1 ? 's' : ''} in the Keep, or with Tamsin.` }));
+    if (spare) head.append(el('p', { class: 'cx-note', text: `The page counts your starter and every relic held out in the world. The ${spare === 1 ? 'starter' : `${['', 'one', 'two', 'three'][spare] || spare} starters`} you passed over stay${spare === 1 ? 's' : ''} in the Keep, or with Tamsin.` }));
     if (V.region === 'sunscorch' && !act1 && !p.sighted) head.append(el('p', { class: 'cx-note', text: 'The road to the Sunscorch opens once both Brands of the Wilds are yours.' }));
   }
 

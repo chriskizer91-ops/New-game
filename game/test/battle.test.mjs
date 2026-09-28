@@ -230,3 +230,130 @@ test('a First Strike pushes every foe back on the ribbon; ctx.warded Wards every
     assert.ok(st && st.value >= 6 && st.value <= 16, u.id);
   }
 });
+
+// ---- M4 Champions and holders (spec §3.2, §3.5; P4) -------------------------------------------------
+
+// Pry one piece loose the way the engine does it (a grip roll that finishes a 1-grip meter).
+async function pry(s, foeId, relic) {
+  const { applyGrip } = await import('../src/rules/combat.js');
+  const { createRng } = await import('../src/core/rng.js');
+  const { B } = await import('./helpers.mjs');
+  const piece = s.units[foeId].held.find(p => p.relic === relic);
+  piece.grip = 1;
+  const b = B(s, createRng(`pry:${relic}`));
+  applyGrip(b, s.units.pip, s.units[foeId], { dice: '1d4', relic });
+  return b.ev;
+}
+
+test('Kharzul: prying Cinderfang loose shuts Glasscutter and Molten Tail down; the Carapace keeps its Brace', async () => {
+  const { resolveMoveId, refreshIntent } = await import('../src/rules/ai.js');
+  const { createRng } = await import('../src/core/rng.js');
+  const s = structuredClone(battleWith([{ family: 'kharzul', level: 14 }], { seed: 12 }));
+  const k = s.units.f1;
+  assert.equal(k.die, 20);
+  assert.deepEqual(k.held.map(p => p.relic), ['cinderfang', 'glass-carapace']);
+  assert.equal(resolveMoveId(s, k, 'glasscutter'), 'glasscutter');
+  // its die shows Glasscutter, charging, when the blade comes loose
+  k.intent = { ...k.intent, move: 'glasscutter', name: 'Glasscutter', charging: true, target: null };
+  const ev = await pry(s, 'f1', 'cinderfang');
+  assert.ok(ev.some(e => e.t === 'disarm' && e.target === 'f1' && e.relic === 'cinderfang'));
+  const text = ev.find(e => e.t === 'text' && /clatters loose/.test(e.text)).text;
+  assert.match(text, /Cinderfang clatters loose!/);
+  assert.match(text, /Glasscutter/);
+  assert.match(text, /Molten Tail/);
+  assert.notEqual(k.intent.move, 'glasscutter', 'the charged Glasscutter fizzles: the intent is re-rolled');
+  assert.equal(resolveMoveId(s, k, 'glasscutter'), 'tail-lash');
+  assert.equal(resolveMoveId(s, k, 'molten-tail'), 'glass-sting');
+  assert.equal(resolveMoveId(s, k, 'carapace-brace'), 'carapace-brace', 'the Glass Carapace is still on');
+  assert.equal(refreshIntent(s, k, { face: 20, move: 'glasscutter', target: null }, createRng(2)).move, 'tail-lash');
+  assert.equal(k.die, 20, 'a Champion keeps its d20');
+  // snap the Carapace too: the Brace falls back to Tail Lash
+  await pry(s, 'f1', 'glass-carapace');
+  assert.equal(resolveMoveId(s, k, 'carapace-brace'), 'tail-lash');
+  assert.ok(k.held.every(p => !p.held));
+});
+
+test('Kharzul: its phases fire at 66% and 33% of its health, each with its own d20 table', async () => {
+  const { dealDamage } = await import('../src/rules/combat.js');
+  const { foeTable } = await import('../src/rules/ai.js');
+  const { FOES } = await import('../src/data/foes.js');
+  const { createRng } = await import('../src/core/rng.js');
+  const { B } = await import('./helpers.mjs');
+  const s = structuredClone(battleWith([{ family: 'kharzul', level: 14 }], { seed: 12 }));
+  const k = s.units.f1;
+  const b = B(s, createRng(3));
+  // bring it to exactly (floor) or just above (ceil) a share of its health
+  const hitTo = (frac, round = Math.floor) => dealDamage(b, s.units.warden, k, k.hp - round(k.maxHp * frac), { kind: 'pierce' });
+  hitTo(0.67, Math.ceil);
+  assert.equal(k.phase, 1, 'still whole above two-thirds');
+  assert.deepEqual(foeTable(k), FOES.kharzul.phases[0].table);
+  hitTo(0.66);
+  assert.equal(k.phase, 2);
+  assert.deepEqual(foeTable(k), FOES.kharzul.phases[1].table);
+  assert.ok(foeTable(k).some(([, , m]) => m === 'burrow') && foeTable(k).some(([, , m]) => m === 'carapace-brace'), 'It Burrows');
+  hitTo(0.34, Math.ceil);
+  assert.equal(k.phase, 2);
+  hitTo(0.33);
+  assert.equal(k.phase, 3);
+  assert.ok(foeTable(k).some(([, , m]) => m === 'glass-rain') && foeTable(k).some(([, , m]) => m === 'molten-tail'), 'Glass Storm');
+  const phases = b.ev.filter(e => e.t === 'phase' && e.foe === 'f1');
+  assert.deepEqual(phases.map(e => e.phase), [2, 3]);
+  assert.deepEqual(phases.map(e => e.text), [FOES.kharzul.phases[1].text, FOES.kharzul.phases[2].text]);
+});
+
+test('the Ashen Warden: snapping the Aegis ends Ward of Ash; snapping the Crown ends Command of Cinders and the Watch Unbroken', async () => {
+  const { resolveMoveId } = await import('../src/rules/ai.js');
+  const s = structuredClone(battleWith([{ family: 'ashen-warden', level: 16 }], { seed: 14 }));
+  const w = s.units.f1;
+  assert.equal(w.die, 20);
+  assert.deepEqual(w.held.map(p => p.relic), ['ashen-aegis', 'cinder-crown']);
+  for (const m of ['ward-of-ash', 'command-of-cinders', 'watch-unbroken']) assert.equal(resolveMoveId(s, w, m), m);
+  let ev = await pry(s, 'f1', 'ashen-aegis');
+  assert.match(ev.find(e => e.t === 'text' && /clatters loose/.test(e.text)).text, /The Ashen Aegis clatters loose!.*Ward of Ash/);
+  assert.equal(resolveMoveId(s, w, 'ward-of-ash'), 'ash-blade');
+  assert.equal(resolveMoveId(s, w, 'command-of-cinders'), 'command-of-cinders', 'the Crown still commands');
+  ev = await pry(s, 'f1', 'cinder-crown');
+  assert.match(ev.find(e => e.t === 'text' && /clatters loose/.test(e.text)).text, /The Cinder Crown clatters loose!.*Command of Cinders.*The Watch Unbroken/);
+  assert.equal(resolveMoveId(s, w, 'command-of-cinders'), 'ash-blade');
+  assert.equal(resolveMoveId(s, w, 'watch-unbroken'), 'ash-blade');
+  // what needs no piece keeps working: its blade, the fire, and the watch it calls out of the ash
+  for (const m of ['ash-blade', 'ember-sweep', 'scorch-the-vault', 'call-the-watch']) assert.equal(resolveMoveId(s, w, m), m);
+});
+
+test('the Ashen Warden calls at most two ash-wights out of the ash, four levels below it and worth no XP', async () => {
+  const { resolveMoveId } = await import('../src/rules/ai.js');
+  const { applyEffect } = await import('../src/rules/combat.js');
+  const { FOES } = await import('../src/data/foes.js');
+  const { createRng } = await import('../src/core/rng.js');
+  const { B } = await import('./helpers.mjs');
+  const s = structuredClone(battleWith([{ family: 'ashen-warden', level: 16 }], { seed: 14 }));
+  const w = s.units.f1;
+  const b = B(s, createRng(5));
+  const call = FOES['ashen-warden'].moves['call-the-watch'].effects[0];
+  for (let i = 0; i < 3; i++) applyEffect(b, w, w, call);
+  const watch = Object.values(s.units).filter(u => u.summonedBy === 'f1');
+  assert.equal(watch.length, 2);
+  assert.ok(watch.every(u => u.family === 'ash-wight' && u.level === w.level - 4 && u.xp === 0));
+  assert.equal(resolveMoveId(s, w, 'call-the-watch'), 'ash-blade', 'no third wight');
+});
+
+test('Sunscorch holders: each Art needs its relic; pried loose, the Art falls back and the d12 drops to a d8', async () => {
+  const { resolveMoveId } = await import('../src/rules/ai.js');
+  const { FOES } = await import('../src/data/foes.js');
+  const HOLDERS = [
+    ['dune-raider', 'rider', 'sandwalkers'], ['dune-raider', 'raider-king', 'dunebreaker'], ['mirage-wisp', 'queen', 'mirage-glass'],
+    ['ash-wight', 'captain', 'scorchgate-key'], ['tallyman', 'foreman', 'sunstone-lantern'], ['smuggler', 'sharpshooter', 'saltglass'],
+  ];
+  for (const [family, variant, relic] of HOLDERS) {
+    const s = structuredClone(battleWith([{ family, variant, relic, level: 12, gearTier: 2 }], { seed: 6 }));
+    const f = s.units.f1;
+    const moves = FOES[family].variants[variant].moves;
+    const arts = Object.entries(moves).filter(([, m]) => m.requires === relic).map(([id]) => id);
+    assert.ok(arts.length, `${variant} has an Art`);
+    assert.equal(f.die, 12, `${variant} rolls a d12`);
+    for (const id of arts) assert.equal(resolveMoveId(s, f, id), id);
+    await pry(s, 'f1', relic);
+    assert.equal(f.die, 8, `${variant}: the disarmed die`);
+    for (const id of arts) assert.equal(resolveMoveId(s, f, id), moves[id].fallback, `${variant}: ${id} falls back`);
+  }
+});

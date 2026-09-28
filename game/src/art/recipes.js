@@ -238,7 +238,35 @@ function shapedShieldR(F, X, P) {
   F.add({ X, mat: P.boss || 'iron', prof: 'round', bw: 6, grp: 'boss', shapes: [X.circ(32, cy, (P.bossR || 7) * .8)] });
   if (P.gem) F.add({ X, mat: P.gem, prof: 'round', bw: 4, grp: 'boss', noShadow: true, shapes: [X.circ(32, cy, 3.6)] });
 }
+/* shield style 'scale': one great wyrm scale, growth ridges round a raised keel, a hide strap along the top */
+function scaleShieldR(F, X, P) {
+  const pts = [];
+  for (let k = 0; k <= 14; k++) { const a = Math.PI + Math.PI * k / 14; pts.push([32 + Math.cos(a) * 25, 25 + Math.sin(a) * 21]); }
+  pts.push([56, 34], [50, 47], [41, 56.5], [32, 62], [23, 56.5], [14, 47], [8, 34]);
+  F.add({ X, mat: P.face || 'brass', prof: 'round', bw: 12, hs: .55, grp: 'face', shapes: [X.poly(pts)], tex: ({ x, y, d }) => { const r = (d + vnoise(x * .2, y * .2, 7) * 1.2) % 4.8; return r < .8 ? -1.2 : r > 4 ? 1 : hash(x, y, 5) < .05 ? -1 : 0; } });
+  F.add({ X, mat: P.face || 'brass', prof: 'ridge', hs: .9, grp: 'keel', shapes: [X.poly([[32, 5.5], [34.6, 24], [33.6, 50], [32, 58], [30.4, 50], [29.4, 24]])] });
+  if (P.runes) F.add({ X, mat: P.runes, prof: 'round', bw: .7, grp: 'keelglow', noShadow: true, detail: true, shapes: [16, 24, 32, 40, 47].map(y => X.circ(32, y + 4, .8)) });
+  F.add({ X, mat: P.rim || 'wyrmHide', prof: 'round', bw: 1.6, grp: 'strap', shapes: [X.poly(pts)], cuts: [X.ell(32, 29, 22.4, 22.6)], clip: X.poly([[0, 0], [64, 0], [64, 21], [0, 21]]), tex: ({ x, y }) => ((x + y * 2) % 5 === 0 ? -1 : 0) });
+  if (P.rivets) F.add({ X, mat: P.rivets, prof: 'round', bw: 1, grp: 'rivets', noShadow: true, detail: true, shapes: [[12, 16], [21, 8.4], [32, 5.6], [43, 8.4], [52, 16]].map(([x, y]) => X.circ(x, y, 1.2)) });
+  if (P.gem) { F.add({ X, mat: P.rim || 'wyrmHide', prof: 'round', bw: 2, grp: 'gemset', shapes: [X.circ(32, 15, 3.6)] }); F.add({ X, mat: P.gem, prof: 'round', bw: 2, grp: 'gemset', noShadow: true, shapes: [X.circ(32, 15, 2.4)] }); }
+}
+/* shield style 'aegis': a tower shield crusted with ash, cracked through with embers, the gate of Scorchgate
+   in bronze on its face with the fire still behind the gate */
+function aegisShieldR(F, X, P) {
+  const pts = [[13, 3], [51, 3], [53, 8], [53, 54], [32, 62], [11, 54], [11, 8]], cr = TX2.cracks(47, P.cracks || 'ember', .028);
+  F.add({ X, mat: P.face || 'ash', prof: 'round', bw: 12, hs: .5, grp: 'face', shapes: [X.poly(pts)], tex: q => cr(q) || (vnoise(q.x * .3, q.y * .3, 5) > .7 || q.y > 50 + hash(q.x, 1, 4) * 6 ? -1 : 0) });
+  F.add({ X, mat: P.rim || 'char', prof: 'round', bw: 2.2, grp: 'rim', shapes: [X.poly(pts)], cuts: [X.poly(inset(pts, 32, 32, .88))] });
+  const G = P.emblem || 'bronze';
+  F.add({ X, mat: 'dark', prof: 'flat', grp: 'gatein', shapes: [X.poly([[27, 44], [27, 33], [29, 29.6], [32, 28.6], [35, 29.6], [37, 33], [37, 44]])] });
+  F.add({ X, mat: P.fire || 'ember', prof: 'flat', grp: 'gatefire', noShadow: true, shapes: [X.poly([[28.6, 44], [29.4, 38], [31, 35], [32, 32.5], [33, 35], [34.6, 38], [35.4, 44]])], tex: ({ y }) => ({ dd: y > 40 ? 1 : 0 }) });
+  const tower = x0 => [X.poly([[x0, 46], [x0, 24], [x0 + 7, 24], [x0 + 7, 46]]), X.poly([[x0 - .6, 24.6], [x0 - .6, 20], [x0 + 1.6, 20], [x0 + 1.6, 22], [x0 + 2.8, 22], [x0 + 2.8, 20], [x0 + 4.4, 20], [x0 + 4.4, 22], [x0 + 5.6, 22], [x0 + 5.6, 20], [x0 + 7.6, 20], [x0 + 7.6, 24.6]])];
+  F.add({ X, mat: G, prof: 'bevel', bw: 1.2, grp: 'gate', shapes: tower(19.4).concat(tower(37.6), [X.poly([[26, 30], [38, 30], [38, 33], [36.4, 30.8], [32, 29.4], [27.6, 30.8], [26, 33]]), X.poly([[18, 45.4], [46, 45.4], [46, 48], [18, 48]])]) });
+  if (P.rivets) F.add({ X, mat: P.rivets, prof: 'round', bw: 1, grp: 'rivets', noShadow: true, detail: true, shapes: pts.map(([x, y]) => { const q = inset([[x, y]], 32, 32, .93)[0]; return X.circ(q[0], q[1], 1.2); }) });
+  if (P.gem) { F.add({ X, mat: G, prof: 'round', bw: 2, grp: 'gemset', shapes: [X.circ(32, 13.5, 3.6)] }); F.add({ X, mat: P.gem, prof: 'round', bw: 2, grp: 'gemset', noShadow: true, shapes: [X.circ(32, 13.5, 2.4)] }); }
+}
 function shieldR(F, X, P) {
+  if (P.style === 'scale') return scaleShieldR(F, X, P);
+  if (P.style === 'aegis') return aegisShieldR(F, X, P);
   if (P.style === 'oath') return oathShieldR(F, X, P);
   if (P.shape === 'heater' || P.shape === 'tower') return shapedShieldR(F, X, P);
   const r = P.r || 26;
@@ -330,14 +358,63 @@ function bootsR(F, X, P) {
   F.add({ X, mat: P.mat, prof: 'round', bw: 8, grp: 'boot', shapes: [X.poly([[18, 6], [40, 6], [40, 38], [56, 46], [58, 58], [14, 58], [16, 36]])], tex: P.tex });
   if (P.greave) F.add({ X, mat: P.greave, prof: 'round', bw: 5, grp: 'greave', shapes: [X.poly([[20, 12], [38, 12], [39, 34], [29, 40], [19, 34]])], tex: TX2.plates(7) });
   F.add({ X, mat: P.trim || 'leather', prof: 'round', bw: 3, grp: 'cuff', shapes: [P.fold ? X.poly([[14, 3], [44, 3], [42, 15], [16, 15]]) : X.cap(16, 9, 42, 9, 4)], tex: P.cuffTex });
-  F.add({ X, mat: P.sole || P.trim || 'leather', prof: 'round', bw: 2, grp: 'sole', shapes: [X.cap(14, 57, 58, 57, 2.8)] });
+  if (P.wraps) F.add({ X, mat: P.wraps, prof: 'round', bw: 1.2, grp: 'wraps', shapes: [15, 21, 27, 33].map(y => X.poly([[16.4, y], [40.4, y - 3.4], [40.4, y - .6], [16.4, y + 2.8]])), tex: ({ x, y }) => ((x + y * 2) % 5 === 0 ? -1 : 0) });
+  F.add({ X, mat: P.sole || P.trim || 'leather', prof: 'round', bw: 2, grp: 'sole', shapes: [X.cap(14 - (P.soleW || 0), 57, 58 + (P.soleW || 0), 57, 2.8)] });
   if (P.straps) F.add({ X, mat: P.straps, prof: 'round', bw: 1.2, grp: 'straps', shapes: [X.cap(16.5, 24, 40, 20, 1.5), X.cap(16.8, 31, 40, 27, 1.5)] });
   if (P.buckle) F.add({ X, mat: P.buckle, prof: 'round', bw: 1.5, grp: 'buckle', noShadow: true, detail: true, shapes: P.leaf ? [X.poly([[34, 18], [38, 22], [34, 27], [30, 22]])] : [X.circ(36, 22, 2), X.circ(36, 29, 2)] });
   if (P.vine) F.add({ X, mat: P.vine, prof: 'round', bw: 1, grp: 'vine', detail: true, shapes: chain(X, [[17, 44], [22, 38], [30, 36], [36, 40], [44, 42], [52, 48]], 1).concat(thornShapes(X, [[25, 37, -.2, -1, 3, .8], [40, 41, .3, -1, 3, .8], [48, 45, .5, -1, 3, .8]])) });
   if (P.gem) F.add({ X, mat: P.gem, prof: 'round', bw: 2, grp: 'gem', noShadow: true, shapes: [X.circ(29, 9, 2.4)] });
 }
+const amuChain = (F, X, P) => F.add({ X, mat: P.chain || 'gold', prof: 'round', bw: 2, grp: 'chain', shapes: [X.ell(32, 22, 20, 18)], cuts: [X.ell(32, 22, 16.5, 14.5)], clip: X.poly([[0, 0], [64, 0], [64, 32], [0, 32]]) });
+const bail = (F, X, m, y = 26.5) => F.add({ X, mat: m, prof: 'round', bw: 1.6, grp: 'bail', shapes: [X.circ(32, y, 2.6)], cuts: [X.circ(32, y, 1.1)] });
+/* amulet style 'orrery': a brass armillary: a meridian ring, a tilted ring of hours passing behind and in front
+   of a storm-glass sphere, planets on the rings, an axis pin */
+function orreryR(F, X, P) {
+  const m = P.metal || 'brass', cy = 43, tilt = -.38;
+  amuChain(F, X, P); bail(F, X, m);
+  F.add({ X, mat: m, prof: 'round', bw: 1, grp: 'axis', shapes: [X.cap(32, 28, 32, 60, .9)] });
+  const ring = (clip, g) => F.add({ X, mat: m, prof: 'round', bw: 1.4, grp: g, shapes: [rell(X, 32, cy, 20, 7, 30, tilt)], cuts: [rell(X, 32, cy, 17.6, 5, 30, tilt)], clip });
+  const ax = [32 - 40 * Math.cos(tilt), cy - 40 * Math.sin(tilt)], bx = [32 + 40 * Math.cos(tilt), cy + 40 * Math.sin(tilt)];
+  ring(X.poly([ax, bx, [bx[0], -20], [ax[0], -20]]), 'ringback');
+  F.add({ X, mat: m, prof: 'round', bw: 1.6, grp: 'meridian', shapes: [X.circ(32, cy, 15.5)], cuts: [X.circ(32, cy, 13)], tex: ({ x, y }) => ((x + y) % 4 === 0 ? -1 : 0) });
+  F.add({ X, mat: P.gem || 'stormglass', prof: 'round', bw: 5, grp: 'sphere', shapes: [X.circ(32, cy, 7.2)] });
+  if (P.core) F.add({ X, mat: P.core, prof: 'round', bw: 2, grp: 'sphere', noShadow: true, shapes: [X.circ(30.6, cy - 1.4, 2.6)] });
+  ring(X.poly([ax, bx, [bx[0], 90], [ax[0], 90]]), 'ringfront');
+  F.add({ X, mat: m, prof: 'round', bw: 1, grp: 'hand', shapes: [X.cap(32, cy, 36.5, cy - 4.2, .8, .5)] });
+  const pl = (a, r2, ry, mat, rr) => { const c = Math.cos(a) * r2, s = Math.sin(a) * ry; return F.add({ X, mat, prof: 'round', bw: 1.4, grp: 'planet' + mat, noShadow: true, shapes: [X.circ(32 + c * Math.cos(tilt) - s * Math.sin(tilt), cy + c * Math.sin(tilt) + s * Math.cos(tilt), rr)] }); };
+  pl(.5, 18.8, 6, P.planet || 'topaz', 2.2); pl(2.9, 18.8, 6, 'pearl', 1.8);
+  F.add({ X, mat: 'sapphire', prof: 'round', bw: 1.2, grp: 'moon', noShadow: true, shapes: [X.circ(32 - 14.2, cy - 2, 1.7)] });
+}
+/* amulet style 'lens': a silver-framed lens holding well-water that never spilled */
+function lensAmuletR(F, X, P) {
+  const m = P.metal || 'silver', cy = 43;
+  amuChain(F, X, P); bail(F, X, m);
+  F.add({ X, mat: P.lens || 'glass', prof: 'round', bw: 8, grp: 'lens', shapes: [X.circ(32, cy, 13)], tex: ({ u, v }) => (Math.hypot(u - 28, v - cy + 4) < 4 ? 1 : 0) });
+  const W = []; for (let k = 0; k <= 10; k++) { const x = 20 + k * 2.4; W.push([x, cy + 1 + Math.sin(k * 1.1) * 1.1]); }
+  for (let k = 0; k <= 8; k++) { const a = k / 8 * Math.PI; W.push([32 + Math.cos(a) * 12.2, cy + Math.sin(a) * 12.2]); }
+  F.add({ X, mat: P.water || 'water', prof: 'round', bw: 3, grp: 'water', noShadow: true, shapes: [X.poly(W)], tex: ({ v }) => ({ dd: v < cy + 3 ? 1 : v > cy + 9 ? -1 : 0 }) });
+  F.add({ X, mat: 'pearl', prof: 'flat', grp: 'sheen', noShadow: true, noOutline: true, shapes: [X.cap(24.6, cy - 6.4, 28.6, cy - 9.2, .9, .6)] });
+  F.add({ X, mat: m, prof: 'round', bw: 2, grp: 'frame', shapes: [X.circ(32, cy, 15.4)], cuts: [X.circ(32, cy, 12.8)] });
+  if (P.runes) F.add({ X, mat: P.runes, prof: 'round', bw: .7, grp: 'runes', noShadow: true, detail: true, shapes: [0, 1, 2, 3, 4, 5].map(k => { const a = k / 6 * Math.PI * 2 + .3; return X.circ(32 + Math.cos(a) * 14.1, cy + Math.sin(a) * 14.1, .8); }) });
+}
+/* amulet style 'heart': a sunstone cut as a heart and caged in gold, glowing from inside */
+function heartAmuletR(F, X, P) {
+  const m = P.metal || 'gold', cy = 43;
+  amuChain(F, X, P); bail(F, X, m, 28);
+  const H = [];
+  for (let k = 0; k <= 10; k++) { const a = Math.PI * (.8 + k / 10 * 1.2); H.push([26.4 + Math.cos(a) * 7.4, cy - 3 + Math.sin(a) * 7.4]); }
+  for (let k = 0; k <= 10; k++) { const a = Math.PI * (1 + k / 10 * 1.2); H.push([37.6 + Math.cos(a) * 7.4, cy - 3 + Math.sin(a) * 7.4]); }
+  H.push([32, cy + 14]);
+  F.add({ X, mat: P.stone || 'amber', prof: 'ridge', grp: 'heart', shapes: [X.poly(H)], tex: ({ u, v }) => ({ dd: (Math.floor((u - v * .6 + 40) / 3.2) & 1) ? 0 : 1 }) });
+  if (P.core) F.add({ X, mat: P.core, prof: 'round', bw: 2, grp: 'heart', noShadow: true, shapes: [X.circ(29.6, cy - 3.4, 2.8)] });
+  F.add({ X, mat: m, prof: 'round', bw: 1, grp: 'cage', shapes: chain(X, [[32, 30.4], [32.6, cy + 2], [32, cy + 13.4]], [1, 1.1, .8]).concat(chain(X, [[19.6, cy - 1], [26, cy + 2.6], [32, cy + 2.4], [38, cy + 2.6], [44.4, cy - 1]], [.9, 1, 1, 1, .9])) });
+  if (P.veins) F.add({ X, mat: P.veins, prof: 'flat', grp: 'veins', noShadow: true, detail: true, shapes: chain(X, [[24, cy - 6], [27, cy - 2], [26, cy + 2]], .55).concat(chain(X, [[40, cy - 6], [37.4, cy - 1], [38.4, cy + 3]], .55)) });
+}
 function amuletR(F, X, P) {
   if (P.style === 'seed') return seedAmuletR(F, X, P);
+  if (P.style === 'orrery') return orreryR(F, X, P);
+  if (P.style === 'lens') return lensAmuletR(F, X, P);
+  if (P.style === 'heart') return heartAmuletR(F, X, P);
   F.add({ X, mat: P.chain || 'gold', prof: 'round', bw: 2, grp: 'chain', shapes: [X.ell(32, 22, 20, 18)], cuts: [X.ell(32, 22, 16.5, 14.5)], clip: X.poly([[0, 0], [64, 0], [64, 32], [0, 32]]) });
   if (P.style === 'sun') {
     const S = []; for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2 + Math.PI / 12, l = k & 1 ? 20 : 23, w = k & 1 ? .19 : .16; S.push(X.poly([[32 + Math.cos(a - w) * 12, 42 + Math.sin(a - w) * 12], [32 + Math.cos(a) * l, 42 + Math.sin(a) * l], [32 + Math.cos(a + w) * 12, 42 + Math.sin(a + w) * 12]])); }
@@ -349,7 +426,30 @@ function amuletR(F, X, P) {
   if (P.core) F.add({ X, mat: P.core, prof: 'round', bw: 3, grp: 'core', noShadow: true, shapes: [X.circ(32, 42, 4.4)] });
   if (P.glyph) F.add({ X, mat: P.glyph, prof: 'round', bw: .8, grp: 'glyph', noShadow: true, detail: true, shapes: [X.cap(32, 37, 32, 47, .8), X.cap(27, 42, 37, 42, .8)] });
 }
+/* ring style 'signet': a heavy band and a broad oval seal, its face cut with the cistern's water-lines */
+function signetR(F, X, P) {
+  const m = P.metal || 'silver';
+  F.add({ X, mat: m, prof: 'round', bw: 4, grp: 'ring', shapes: [X.ell(32, 41, 19.5, 16)], cuts: [X.ell(32, 42.4, 13, 10.4)], tex: P.tex });
+  F.add({ X, mat: m, prof: 'round', bw: 3, grp: 'shoulders', shapes: [X.poly([[19, 28], [45, 28], [41, 34], [23, 34]])] });
+  F.add({ X, mat: m, prof: 'round', bw: 3.4, grp: 'bezel', shapes: [X.ell(32, 21.5, 14, 10)] });
+  F.add({ X, mat: P.face || 'sapphire', prof: 'round', bw: 3, grp: 'face', shapes: [X.ell(32, 21.5, 10.4, 7)] });
+  const S = []; for (const [y, a] of [[17.6, 1], [21.6, 1.2], [25.4, .9]]) { const P0 = []; for (let k = 0; k <= 8; k++) { const x = 24 + k * 2; P0.push([x, y + Math.sin(k * 1.4) * a]); } S.push(...chain(X, P0, .62)); }
+  F.add({ X, mat: P.seal || m, prof: 'round', bw: .7, grp: 'seal', shapes: S });
+  if (P.runes) F.add({ X, mat: P.runes, prof: 'round', bw: .7, grp: 'runes', noShadow: true, detail: true, shapes: [X.cap(15.5, 44, 17.6, 49.4, .7), X.cap(46.4, 49.4, 48.5, 44, .7)] });
+}
+/* ring style 'keyring': a jailer's hoop of black iron with a hinged clasp, and a key-loop with no key on it */
+function keyringR(F, X, P) {
+  const m = P.metal || 'blackiron';
+  F.add({ X, mat: m, prof: 'round', bw: 2.4, grp: 'loop', shapes: [X.circ(32, 56.4, 5.6)], cuts: [X.circ(32, 56.4, 3.6)] });
+  F.add({ X, mat: m, prof: 'round', bw: 3, grp: 'hoop', shapes: [X.ell(32, 32, 23, 21)], cuts: [X.ell(32, 32, 19.2, 17.4)], tex: ({ x, y }) => (hash(x, y, 13) < .1 ? { m: 'rust', dd: 0 } : 0) });
+  F.add({ X, mat: P.clasp || m, prof: 'bevel', bw: 1.6, grp: 'clasp', shapes: [X.poly([[40, 9], [50, 13], [47.6, 19.4], [37.6, 15.2]])] });
+  F.add({ X, mat: P.clasp || m, prof: 'round', bw: 1.2, grp: 'knuckles', shapes: [X.circ(41, 11, 2.4), X.circ(47.2, 13.8, 2.4)] });
+  if (P.runes) F.add({ X, mat: P.runes, prof: 'round', bw: .8, grp: 'runes', noShadow: true, shapes: [0, 1, 2, 3, 4].map(k => { const a = Math.PI * (.62 + k * .19); return X.circ(32 + Math.cos(a) * 21.1, 32 + Math.sin(a) * 19.2, .95); }) });
+  if (P.glow) F.add({ X, mat: P.glow, prof: 'flat', grp: 'hinge', noShadow: true, shapes: [X.cap(40.4, 13.6, 46.4, 16.2, .7)] });
+}
 function ringR(F, X, P) {
+  if (P.style === 'signet') return signetR(F, X, P);
+  if (P.style === 'keyring') return keyringR(F, X, P);
   if (P.style === 'pearl') return pearlRingR(F, X, P);
   F.add({ X, mat: P.metal, prof: 'round', bw: 4, grp: 'ring', shapes: [X.ell(32, 38, 21, 17)], cuts: [X.ell(32, 39, 13.5, 10)], tex: P.tex });
   if (P.runes) F.add({ X, mat: P.runes, prof: 'round', bw: .7, grp: 'runes', noShadow: true, detail: true, shapes: [X.cap(16, 44, 19, 49, .7), X.cap(23, 52, 27, 53.5, .7), X.cap(37, 53.5, 41, 52, .7), X.cap(45, 49, 48, 44, .7)] });
@@ -579,7 +679,27 @@ function leatherR(F, X, P) {
   if (P.pouch) F.add({ X, mat: P.pouch, prof: 'round', bw: 2.5, grp: 'pouch', shapes: [X.poly([[37.5, 41.5], [45, 41.5], [44.5, 49], [38, 49]])] });
   if (P.gem) F.add({ X, mat: P.gem, prof: 'round', bw: 1.5, grp: 'buckle', noShadow: true, shapes: [X.circ(32, 40, 1.9)] });
 }
+/* plate style 'carapace': a cuirass of overlapping glass lames like a scorpion's back, light glowing in the seams,
+   pincer-curved pauldrons, over sleeves of charred hide */
+function carapaceR(F, X, P) {
+  const m = P.mat || 'sandglass', seam = P.seam || 'amber', un = P.under || 'char';
+  F.add({ X, mat: un, prof: 'round', bw: 3, grp: 'arms', shapes: [X.cap(13, 22, 9.5, 42, 4.2, 3.6), X.cap(51, 22, 54.5, 42, 4.2, 3.6)], tex: scaleTex(3, 6) });
+  for (const g of [-1, 1]) F.add({ X, mat: m, prof: 'round', bw: 2.5, grp: 'vam' + g, shapes: [X.cap(32 + g * 22.8, 34, 32 + g * 23.2, 45, 3.8, 3.4)] });
+  const lame = k => { const y = 13 + k * 6.6, w = 16 - k * .9, w2 = 15.2 - k * 1.1, sag = 2.2 + k * .3; return [[32 - w, y], [32 - w * .5, y - 1.2], [32 + w * .5, y - 1.2], [32 + w, y], [32 + w2, y + 6.4], [32 + w2 * .5, y + 6.4 + sag * .7], [32, y + 6.4 + sag], [32 - w2 * .5, y + 6.4 + sag * .7], [32 - w2, y + 6.4]]; };
+  F.add({ X, mat: seam, prof: 'flat', grp: 'seams', noShadow: true, shapes: [X.poly([[17, 14], [47, 14], [45, 50], [19, 50]])] });
+  for (let k = 4; k >= 0; k--) F.add({ X, mat: m, prof: 'round', bw: 3.2, hs: .8, grp: 'lame' + k, shapes: [X.poly(lame(k))], tex: ({ x, y }) => (vnoise(x * .3, y * .3, 11 + k) > .7 ? -1 : hash(x, y, k) < .04 ? 1 : 0) });
+  F.add({ X, mat: m, prof: 'ridge', hs: .9, grp: 'keel', shapes: [X.poly([[31, 12], [33, 12], [33.4, 46], [32, 49], [30.6, 46]])] });
+  F.add({ X, mat: m, prof: 'round', bw: 3, grp: 'gorget', shapes: [X.ell(32, 10.5, 11, 5)], cuts: [X.ell(32, 7.6, 6.5, 4)] });
+  for (const g of [-1, 1]) {
+    F.add({ X, mat: m, prof: 'round', bw: 4, grp: 'pd' + g, shapes: [X.poly([[32 + g * 9, 13], [32 + g * 17, 9], [32 + g * 25, 12], [32 + g * 28, 19], [32 + g * 25, 24], [32 + g * 16, 22]])] });
+    F.add({ X, mat: m, prof: 'ridge', hs: .9, grp: 'pdspike' + g, shapes: thornShapes(X, [[32 + g * 22, 10.5, g * .5, -1, 5, 1.6], [32 + g * 26.5, 15, g, -.5, 4.2, 1.4]]) });
+    if (P.trim) F.add({ X, mat: P.trim, prof: 'round', bw: 1, grp: 'pdt' + g, shapes: [X.cap(32 + g * 11, 21, 32 + g * 24.5, 23.2, 1.1)] });
+  }
+  F.add({ X, mat: seam, prof: 'round', bw: .8, grp: 'glow', noShadow: true, detail: true, shapes: [X.circ(32, 30, 1), X.circ(32, 36.6, .9), X.circ(32, 43.2, .8)] });
+  if (P.gem) { F.add({ X, mat: P.trim || 'brass', prof: 'round', bw: 2, grp: 'gemset', shapes: [X.circ(32, 22, 3.8)] }); F.add({ X, mat: P.gem, prof: 'round', bw: 2, grp: 'gemset', noShadow: true, shapes: [X.circ(32, 22, 2.5)] }); }
+}
 function plateR(F, X, P) {
+  if (P.style === 'carapace') return carapaceR(F, X, P);
   const m = P.mat || 'steel', tr = P.trim;
   F.add({ X, mat: P.under || 'iron', prof: 'round', bw: 3, grp: 'arms', shapes: [X.cap(13, 22, 9.5, 42, 4.2, 3.6), X.cap(51, 22, 54.5, 42, 4.2, 3.6)], tex: mailTex });
   for (const g of [-1, 1]) F.add({ X, mat: m, prof: 'round', bw: 2.5, grp: 'vam' + g, shapes: [X.cap(32 + g * 22.8, 34, 32 + g * 23.2, 45, 3.8, 3.4)] });
@@ -622,6 +742,12 @@ function regalCrownR(F, X, P) {
   F.add({ X, mat: m, prof: 'round', bw: 3.2, grp: 'band', shapes: [X.poly(top.concat(bot.reverse()))], tex: P.tex });
   for (const [x, r] of [[20, 1.8], [32, 2.6], [44, 1.8]]) F.add({ X, mat: x === 32 ? (P.gem || 'ruby') : (P.gem2 || P.gem || 'ruby'), prof: 'round', bw: 1.8, grp: 'bg' + x, noShadow: true, shapes: [X.circ(x, 40.6 + cy(x), r)] });
   if (P.glow) F.add({ X, mat: P.glow, prof: 'round', bw: .7, grp: 'glowline', noShadow: true, detail: true, shapes: [X.cap(24, 40.6 + cy(24), 28, 40.6 + cy(28), .6), X.cap(36, 40.6 + cy(36), 40, 40.6 + cy(40), .6)] });
+  // M4 (the Cinder Crown): a live coal on every tine and coals set in the band
+  if (P.embers) {
+    const E = []; for (let k = 0; k < n; k++) { const x = 12 + 40 * k / (n - 1), mid = Math.abs(k - (n - 1) / 2), top = 10 + mid * 6 + (P.tall ? -3 : 0); E.push(X.circ(x, top + 2.2, 1.9 - mid * .12)); }
+    for (const x of [15, 26, 38, 49]) E.push(X.circ(x, 40.6 + cy(x), 1.3));
+    F.add({ X, mat: P.embers, prof: 'round', bw: 1.4, grp: 'embers', noShadow: true, shapes: E });
+  }
 }
 
 /* ==== M3 relic parts: new styles and details inside the existing recipes ====
@@ -827,12 +953,20 @@ function songHeadR(F, X, P, hT, hs, r, wob) {
 /* focus style 'lantern': a hanging iron lantern, glowing panes around a flame, a bronze cap grown with moss */
 function lanternR(F, X, P) {
   const m = P.metal || 'bronze', fr = P.frame || 'blackiron', gl = P.glow || 'ember';
+  if (P.rays) F.add({ X, mat: P.rays, prof: 'flat', grp: 'rays', noShadow: true, noOutline: true, detail: true, shapes: [-2.5, -1.5, -.5, .5, 1.5, 2.5].map(k => { const a = k * .5, c = Math.sin(a), s = -Math.cos(a) * .35; return X.poly([[32 + c * 12, 33 - s * 12], [32 + c * 25 - s * 1.4, 33 - s * 25 - c * 1.4], [32 + c * 25 + s * 1.4, 33 - s * 25 + c * 1.4]]); }) });
   F.add({ X, mat: m, prof: 'round', bw: 1.6, grp: 'handle', shapes: [X.circ(32, 6.4, 4.6)], cuts: [X.circ(32, 6.4, 2.6)] });
-  F.add({ X, mat: P.glass || 'amber', prof: 'round', bw: 5, hs: .4, grp: 'glass', noShadow: true, shapes: [X.poly([[20.5, 20], [43.5, 20], [45.2, 44.5], [18.8, 44.5]])], tex: ({ u, v }) => { const d = Math.hypot(u - 32, (v - 34) * .8); return { dd: d < 6.5 ? 1 : d > 11 ? -1.2 : 0 }; } });
-  F.add({ X, mat: gl, prof: 'round', bw: 3, grp: 'flame', noShadow: true, shapes: [X.poly([[32, 22.5], [35.8, 30.5], [36, 36], [34.2, 39.6], [32, 40.6], [29.8, 39.6], [28, 36], [28.2, 30.5]])], tex: ({ v }) => ({ dd: v > 33 ? 1 : 0 }) });
-  if (P.core) F.add({ X, mat: P.core, prof: 'round', bw: 2, grp: 'flame', noShadow: true, shapes: [X.poly([[32, 29], [33.8, 34], [33.2, 37.6], [32, 38.4], [30.8, 37.6], [30.2, 34]])] });
+  if (P.stone) { // a caged stone for a flame: dark behind the bars, the stone cut in facets, a white-hot heart
+    F.add({ X, mat: 'dark', prof: 'flat', grp: 'glass', shapes: [X.poly([[20.5, 20], [43.5, 20], [45.2, 44.5], [18.8, 44.5]])] });
+    const S = []; for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2 + Math.PI / 8; S.push([32 + Math.cos(a) * 9, 32.8 + Math.sin(a) * 10]); }
+    F.add({ X, mat: P.stone, prof: 'ridge', grp: 'flame', noShadow: true, shapes: [X.poly(S)], tex: ({ u, v }) => ({ dd: (Math.floor((Math.atan2(v - 32.8, u - 32) + 4) * 1.27) & 1) + (Math.hypot(u - 32, v - 32.8) < 4 ? 1 : 0) }) });
+    if (P.core) F.add({ X, mat: P.core, prof: 'round', bw: 2, grp: 'flame', noShadow: true, shapes: [X.circ(30.8, 31, 2.6)] });
+  } else {
+    F.add({ X, mat: P.glass || 'amber', prof: 'round', bw: 5, hs: .4, grp: 'glass', noShadow: true, shapes: [X.poly([[20.5, 20], [43.5, 20], [45.2, 44.5], [18.8, 44.5]])], tex: ({ u, v }) => { const d = Math.hypot(u - 32, (v - 34) * .8); return { dd: d < 6.5 ? 1 : d > 11 ? -1.2 : 0 }; } });
+    F.add({ X, mat: gl, prof: 'round', bw: 3, grp: 'flame', noShadow: true, shapes: [X.poly([[32, 22.5], [35.8, 30.5], [36, 36], [34.2, 39.6], [32, 40.6], [29.8, 39.6], [28, 36], [28.2, 30.5]])], tex: ({ v }) => ({ dd: v > 33 ? 1 : 0 }) });
+    if (P.core) F.add({ X, mat: P.core, prof: 'round', bw: 2, grp: 'flame', noShadow: true, shapes: [X.poly([[32, 29], [33.8, 34], [33.2, 37.6], [32, 38.4], [30.8, 37.6], [30.2, 34]])] });
+  }
   F.add({ X, mat: fr, prof: 'round', bw: 1.5, grp: 'posts', shapes: [X.cap(20.4, 19.5, 18.6, 45, 1.8), X.cap(43.6, 19.5, 45.4, 45, 1.8), X.cap(26.4, 19.5, 25.8, 45, 1), X.cap(37.6, 19.5, 38.2, 45, 1)] });
-  F.add({ X, mat: fr, prof: 'round', bw: 1.1, grp: 'crossbar', shapes: [X.cap(19.6, 32.4, 44.4, 32.4, 1.1)] });
+  if (!P.stone) F.add({ X, mat: fr, prof: 'round', bw: 1.1, grp: 'crossbar', shapes: [X.cap(19.6, 32.4, 44.4, 32.4, 1.1)] });
   F.add({ X, mat: m, prof: 'round', bw: 3, grp: 'cap', shapes: [X.poly([[16.4, 21.6], [47.6, 21.6], [43, 15.4], [36, 11.8], [28, 11.8], [21, 15.4]])], tex: P.capTex });
   F.add({ X, mat: m, prof: 'round', bw: 2, grp: 'finial', shapes: [X.cap(32, 12.4, 32, 10, 2.4, 1.7)] });
   F.add({ X, mat: m, prof: 'round', bw: 2.4, grp: 'base', shapes: [X.poly([[16.6, 44.2], [47.4, 44.2], [45, 50.4], [19, 50.4]])], tex: P.capTex });
@@ -900,6 +1034,49 @@ const RECIPE = {
   ring: { fn: ringR, o: [0, 0], a: [1, 0] },
   beads: { fn: beadsR, o: [0, 0], a: [1, 0] },
 };
+/* ==== M4: gems in sockets and the high-temper glow, laid over any recipe (card, bag icon, hero hand, foe) ====
+   P.sockets = [gemMat | null, ...]: each gem in its socket, in index order; an empty socket draws nothing, so an
+   item with no gems set renders exactly as before. P.socketMat is the setting's metal. P.tglow (temper +7 and up)
+   turns the outer rim of every metal part (of every part that does not glow, with P.tglowAll) into that glow. */
+const bowPt = (P, u) => { const L = P.len, b = P.bulge, h = 2 * b, R0 = (L * L / 4 + h * h) / (2 * h), al = Math.asin((L / 2) / R0), th = -al + 2 * al * u; return [L / 2 + R0 * Math.sin(th), -b + R0 - R0 * Math.cos(th) + .8]; };
+const headSock = P => (P.style === 'mask' ? [[20, 18], [44, 18]] : P.look === 'kettle' ? [[21, 34], [43, 34]] : P.look === 'hood' ? [[25, 51], [39, 51]] : P.look === 'coif' ? [[21, 38], [43, 38]] : P.look === 'circlet' ? [[19, 41], [45, 41]] : P.look === 'crown' ? [[26, 42], [38, 42]] : [[20, 30.4], [44, 30.4]]);
+const SOCKETS = {
+  sword: P => { const t = P.gripEnd + P.guardT; return [[t + 3.4, 0], [t + 7.8, 0]]; },
+  dagger: P => { const t = (P.gripEnd ?? 11) + (P.guardT ?? 3); return [[t + 3, 0], [t + 6.6, 0]]; },
+  axe: P => [[(P.headT ?? 48) - 8, 0], [(P.headT ?? 48) - 12.5, 0]],
+  hammer: P => (P.style === 'mace' ? [[P.headT - P.headW - 3, 0], [P.headT - P.headW - 7, 0]] : [[P.headT, -P.headW * .45], [P.headT, P.headW * .45]]),
+  mace: P => (P.style === 'bell' ? [[(P.headT ?? 33) + 7, 0], [(P.headT ?? 33) + 17, 0]] : [[(P.headT ?? 52) - (P.headW ?? 7.5) - 3, 0], [(P.headT ?? 52) - (P.headW ?? 7.5) - 7, 0]]),
+  spear: P => [[(P.headT ?? 62) - 9, 0], [(P.headT ?? 62) - 13, 0]],
+  staff: P => [[(P.headT ?? 64) - 5, 0], [(P.headT ?? 64) - 10, 0]],
+  bow: P => [bowPt(P, .36), bowPt(P, .64)],
+  shield: P => (P.style === 'scale' ? [[24, 26], [40, 26]] : P.shape === 'heater' || P.style === 'oath' ? [[22, 40], [42, 40]] : P.shape === 'tower' || P.style === 'aegis' ? [[21.5, 52], [42.5, 52]] : [[32 - (P.r || 26) * .52, 32 + (P.r || 26) * .45], [32 + (P.r || 26) * .52, 32 + (P.r || 26) * .45]]),
+  focus: P => (P.style === 'lantern' ? [[25, 47.4], [39, 47.4]] : P.style === 'orb' ? [[24, 40], [40, 40]] : P.style === 'tome' ? [[19, 22], [42, 19]] : [[20, 47], [44, 47]]),
+  helm: headSock, hood: P => headSock(Object.assign({ look: 'hood' }, P)), coif: P => headSock(Object.assign({ look: 'coif' }, P)),
+  kettle: P => headSock(Object.assign({ look: 'kettle' }, P)), circlet: P => headSock(Object.assign({ look: 'circlet' }, P)), crown: () => [[26, 42], [38, 42]],
+  robe: () => [[25, 24], [39, 24]], leather: () => [[24, 30], [40, 30]], mail: () => [[24, 28], [40, 28]], plate: () => [[24, 31], [40, 31]],
+  gloves: () => [[23, 52], [37, 52]], gauntlets: () => [[23, 52], [37, 52]], boots: () => [[23, 9.5], [35, 9.5]],
+  amulet: () => [[21, 44], [43, 44]], ring: () => [[23.5, 50], [40.5, 50]], beads: () => [[22, 30], [42, 30]],
+};
+function forged(F, X, P, r, n0) {
+  if (P.tglow) {
+    const g = P.tglow, rim = Math.max(.7, 1.3 * X.k);
+    for (let i = n0; i < F.parts.length; i++) {
+      const p = F.parts[i], m = MAT[p.mat];
+      if (!m || m.emit || !(m.metal || P.tglowAll)) continue;
+      const t0 = p.tex; p.tex = q => (q.d < rim ? { m: g, dd: q.d < rim * .5 ? 1 : 0, e: 1 } : t0 ? t0(q) : 0);
+    }
+  }
+  if (P.sockets && X.k >= .3 && SOCKETS[r]) {
+    const at = SOCKETS[r](P);
+    P.sockets.forEach((gem, i) => {
+      if (!gem || !at[i]) return;
+      const [t, s] = at[i];
+      F.add({ X, mat: P.socketMat || 'gold', prof: 'round', bw: 1.4, grp: 'socket' + i, shapes: [X.circ(t, s, 3.2)] });
+      F.add({ X, mat: gem, prof: 'round', bw: 1.8, grp: 'socket' + i, noShadow: true, shapes: [X.circ(t, s, 2.2)] });
+    });
+  }
+}
+for (const [r, R] of Object.entries(RECIPE)) { const fn = R.fn; R.fn = (F, X, P) => { const n0 = F.parts.length; fn(F, X, P); if (P && (P.sockets || P.tglow)) forged(F, X, P, r, n0); }; }
 function renderItem(art, size, opts = {}) {
   const R = RECIPE[art.r], k = size / 64, F = new Forge(size, size);
   const X = Xf(R.o[0] * k, R.o[1] * k, R.a[0], R.a[1], k, opts.rm || 0);

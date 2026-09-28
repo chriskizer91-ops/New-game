@@ -10,18 +10,25 @@
 // first battle-starting event. The Walk lives in ui/world/session.js so it survives the battle.
 // Saving (§5.5): ctx.setGame on map change, before a battle, after every game-changing event, every
 // 20 steps and on pagehide/visibilitychange; ctx.commitAdopted() on the first successful step.
+// M4 (spec §4.6, §5.2-5.4): a Grudge hunter's alert shows a red "!" (the alert's `hunter` flag); story
+// gems, materials and a chest's forge loot get a toast by their data names; a finished Codex page gets
+// its reward line; the second council plays its title card, and { t: 'end', act: 'act2' } the
+// end-of-Act-II card (story-fx.js showToBeContinued, which names the next chapter).
 // Test seam: with globalThis.__aethTest set, installs window.__world = { state(), teleport(map, x, y, face),
-//   press(key), step(dir, n), interact(), ... } (see installSeam below) and window.__worldTools.
-// Owner: WP7.
+//   press(key), step(dir, n), interact(), story(events), emotes(), ... } (see installSeam below) and
+//   window.__worldTools.
+// Owner: WP7; M4 P7b.
 import '../world.css';
 import { MAPS, v1Anchor } from '../../data/maps/index.js';
-import { START_AT, HEARTHS, ZONES } from '../../data/world.js';
+import { START_AT, HEARTHS, ZONES, REGIONS } from '../../data/world.js';
 import { ENCOUNTERS } from '../../data/encounters.js';
 import { FOES } from '../../data/foes.js';
 import { DIALOGUE } from '../../data/dialogue.js';
 import { NPCS } from '../../data/npcs.js';
 import { LOCKS, CROWNWALL } from '../../data/locks.js';
 import { RELICS } from '../../data/relics.js';
+import { GEMS, MATERIALS } from '../../data/gems.js';
+import { PAGES } from '../../data/codex.js';
 import { TUNING } from '../../data/tuning.js';
 import { createRng } from '../../core/rng.js';
 import * as W from '../../rules/world.js';
@@ -48,7 +55,25 @@ import {
 } from '../world/constants.js';
 
 const RATING = { easy: 'Easy', fair: 'Fair', hard: 'Hard', deadly: 'Deadly' };
-const LOCK_VERB = { thornwall: 'Cut', bramble: 'Part', stream: 'Cross', boulder: 'Break', 'cold-hearth': 'Light', 'tally-seal': 'Break', 'barred-gate': 'Open', 'rot-knot': 'Untie', 'rope-ledge': 'Climb', darkness: 'Look', ichor: 'Look' };
+const LOCK_VERB = {
+  thornwall: 'Cut', bramble: 'Part', stream: 'Cross', boulder: 'Break', 'cold-hearth': 'Light', 'tally-seal': 'Break', 'barred-gate': 'Open', 'rot-knot': 'Untie', 'rope-ledge': 'Climb', darkness: 'Look', ichor: 'Look',
+  'dune-glass': 'Break', mirage: 'Look', quicksand: 'Cross', 'vault-seal': 'Open', // M4
+};
+// Loot words for a toast (M4: materials and gems by their data names): "+40 gold · 1 scrap · Glass Pearl ×2".
+function lootWords({ gold = 0, bag = {}, materials = {}, gems = {} } = {}) {
+  const bits = [];
+  if (gold) bits.push(`+${gold} gold`);
+  for (const [id, n] of Object.entries(materials || {})) if (n > 0) bits.push(`${n} ${(MATERIALS[id]?.name || id.replace(/-/g, ' ')).toLowerCase()}`);
+  for (const [id, n] of Object.entries(gems || {})) if (n > 0) bits.push(`${GEMS[id]?.name || id.replace(/-/g, ' ')} ×${n}`);
+  for (const [id, n] of Object.entries(bag || {})) if (n > 0) bits.push(`${id.replace(/-/g, ' ')} ×${n}`);
+  return bits.join(' · ');
+}
+// A finished Codex page (story.js { t: 'page', id }): its name and reward (data/codex.js PAGES).
+function pageWords(id) {
+  const P = PAGES.find(p => p.id === id);
+  if (!P) return '';
+  return `Codex Page ${P.no} complete${P.reward ? `: ${P.reward.name}. ${P.reward.text}` : '.'}`;
+}
 const areaOf = e => e.area || [e.at[0], e.at[1], e.at[0], e.at[1]];
 const covers = (e, x, y) => { const [x0, y0, x1, y1] = areaOf(e); return x >= x0 && x <= x1 && y >= y0 && y <= y1; };
 const distTo = (e, x, y) => { const [x0, y0, x1, y1] = areaOf(e); return Math.max(Math.max(x0 - x, 0, x - x1), Math.max(y0 - y, 0, y - y1)); };
@@ -415,8 +440,11 @@ export function mount(root, ctx, params = {}) {
       if (dist > NEAR_TILES) continue;
       const count = r.lead?.count || r.spawns?.length || 1;
       const T = r.enc ? threatOf(r.enc) : null;
-      const mood = { flee: 'fleeing', chase: 'chasing you', alert: 'has seen you', stunned: 'stunned', return: 'going home' }[r.mood] || 'roaming';
-      out.push({ key: `roamer:${r.id}`, label: `${FOES[r.lead?.family]?.name || 'A pack'}${count > 1 ? ` ×${count}` : ''}`, sub: T ? `${mood} · Lv ${T.level} · ${RATING[T.rating]}` : mood, kind: 'roamer', dist, r });
+      // a Grudge's pack hunts you (M4 spec §4.6): it says so, with its title
+      const mood = (r.hunter ? { chase: 'hunting you', alert: 'has seen you' } : {})[r.mood]
+        || { flee: 'fleeing', chase: 'chasing you', alert: 'has seen you', stunned: 'stunned', return: 'going home' }[r.mood] || (r.hunter ? 'a Grudge, hunting' : 'roaming');
+      const name = `${FOES[r.lead?.family]?.name || 'A pack'}${r.hunter && T?.grudge ? ` ${T.grudge}` : ''}`;
+      out.push({ key: `roamer:${r.id}`, label: `${name}${count > 1 ? ` ×${count}` : ''}`, sub: T ? `${mood} · Lv ${T.level} · ${RATING[T.rating]}` : mood, kind: 'roamer', dist, r });
     }
     return out.sort((a, b) => a.dist - b.dist).slice(0, 10);
   }
@@ -538,7 +566,12 @@ export function mount(root, ctx, params = {}) {
     for (const e of events) {
       if (!SYNC[e.t]) { later.push(e); continue; }
       if (e.t === 'bump') { if (now - bumpAt > 260) { ctx.audio.sfx('bump'); bumpAt = now; } }
-      else if (e.t === 'alert') { actors.emote('!', e.id, now); ctx.audio.sfx('alert'); }
+      else if (e.t === 'alert') {
+        // a Grudge's hunter (M4 spec §4.6) shows a red "!"
+        actors.emote(e.hunter ? '!hunt' : '!', e.id, now);
+        ctx.audio.sfx('alert');
+        if (e.hunter) announce('A Grudge has seen you. It hunts you across this map.');
+      }
       else if (e.t === 'sighted') { gameChanged = true; sighted(e); }
       else if (e.t === 'hazard') { gameChanged = true; hazard(e); }
     }
@@ -583,7 +616,10 @@ export function mount(root, ctx, params = {}) {
         return transition({ map: e.to, anchor: e.anchor }, { door: t === '+' || t === 's' });
       }
       case 'sealed': {
-        const tail = e.nextChapter || check(game, { flag: 'act1-complete' }) ? ' The way opens in the next chapter.' : '';
+        // a region whose maps exist waits on a gate (the Sunscorch: Act I); the rest on a later chapter
+        const gated = !!REGIONS[e.region]?.open;
+        const tail = gated ? ' The gate opens once both Brands of the Wilds are yours.'
+          : e.nextChapter || check(game, { flag: 'act1-complete' }) ? ' The way opens in the next chapter.' : '';
         await openMessage(ctx, { text: `${e.text || 'The way is shut.'}${tail}`, dock: dockRect() });
         return null;
       }
@@ -605,7 +641,8 @@ export function mount(root, ctx, params = {}) {
   // ---- flows ------------------------------------------------------------------------------------------
   async function dialogueFlow(id, { enc = null } = {}) {
     if (!id || !DIALOGUE[id]) return null;
-    if (id === 'council') { await playCouncil(ctx); if (dead) return 'stop'; }
+    // the Council's title card: the first council (Act I) and the second (the Sunscorch won, M4)
+    if (id === 'council' || id === 'council-2') { await playCouncil(ctx, { second: id === 'council-2' }); if (dead) return 'stop'; }
     talking = true; loop.dirty();
     let r;
     try { r = await openDialogue(ctx, { game, id, dock: dockRect() }); } finally { talking = false; loop.dirty(); }
@@ -614,15 +651,22 @@ export function mount(root, ctx, params = {}) {
     return storyEvents(r.events, { enc });
   }
   async function storyEvents(events) {
+    // gold, materials and gems (M4) arrive together: one toast
+    const sum = t => { const out = {}; for (const e of events) if (e.t === t) for (const [id, n] of Object.entries(e[t] || {})) out[id] = (out[id] || 0) + (Number(n) || 0); return out; };
     const gold = events.filter(e => e.t === 'gold').reduce((a, e) => a + (e.n || 0), 0);
-    if (gold) { ctx.audio.sfx('coin'); ctx.toast(`+${gold} gold`); }
+    const words = lootWords({ gold, materials: sum('materials'), gems: sum('gems') });
+    if (words) { ctx.audio.sfx('coin'); ctx.toast(words, 2800); announce(words); }
     for (const e of events) {
       if (dead) return 'stop';
       if (e.t === 'fight') return encounterFlow(e.enc, { skipTalk: true });
       if (e.t === 'open') { const r = await openFlow(e.screen); if (r) return r; }
       else if (e.t === 'item') await cards(() => ctx.services.cardReveal(e.item, { source: RELICS[e.item.base] ? 'claimed' : 'drop', backdrop: mapNow()?.backdrop }));
       else if (e.t === 'letter') await showLetter(ctx, e.id);
-      else if (e.t === 'end') await showToBeContinued(ctx, game);
+      else if (e.t === 'page') {
+        // a gift finished a Codex page: its reward is for good (the Codex shows it in gold)
+        const line = pageWords(e.id);
+        if (line) { ctx.audio.sfx('stamp'); ctx.toast(line, 4200); announce(line); }
+      } else if (e.t === 'end') await showToBeContinued(ctx, game, { act: e.act });
     }
     return null;
   }
@@ -688,10 +732,9 @@ export function mount(root, ctx, params = {}) {
     game = r.game;
     ctx.audio.sfx('chest');
     save(); refreshWorld();
-    const bits = [];
-    if (r.gold) bits.push(`+${r.gold} gold`);
-    for (const [id, n] of Object.entries(r.bag || {})) bits.push(`${id.replace(/-/g, ' ')} ×${n}`);
-    if (bits.length) ctx.toast(bits.join(' · '));
+    // gold, forge materials and gems (M4: a Sunscorch chest's loot), and consumables
+    const words = lootWords({ gold: r.gold, materials: r.materials, gems: r.gems, bag: r.bag });
+    if (words) { ctx.toast(words, 2800); announce(words); }
     for (const it of r.items || []) { if (dead) return 'stop'; await cards(() => ctx.services.cardReveal(it, { source: 'drop', backdrop: mapNow()?.backdrop })); }
     return null;
   }
@@ -715,7 +758,7 @@ export function mount(root, ctx, params = {}) {
       await openMessage(ctx, { text: seen ? `An empty pedestal. ${r?.name} belongs here. ${r?.holder ? `Last seen with ${r.holder}.` : ''}` : 'An empty pedestal, waiting for a relic you have not seen yet.', dock: dockRect() });
       return null;
     }
-    if (kind === 'lookout') { await openMessage(ctx, { text: 'A long view over the trees.', dock: dockRect() }); return null; }
+    if (kind === 'lookout') { await openMessage(ctx, { text: mapNow()?.region === 'sunscorch' ? 'A long view over the sand, shimmering to the edge of the world.' : 'A long view over the trees.', dock: dockRect() }); return null; }
     if (kind === 'bellframe') { await openMessage(ctx, { text: 'An empty bell-frame. Something with wings took the bell.', dock: dockRect() }); return null; }
     return null;
   }
@@ -747,7 +790,7 @@ export function mount(root, ctx, params = {}) {
   async function contactFlow(e, before) {
     const r0 = roamerById(e.id) || roamerById(e.id, before);
     if (!r0) return null;
-    actors.emote('!', e.id, performance.now(), 600);
+    actors.emote(r0.hunter ? '!hunt' : '!', e.id, performance.now(), 600);
     ctx.audio.sfx('alert');
     if (!reduced) await sleep(260);
     if (dead) return 'stop';
@@ -1048,6 +1091,10 @@ export function mount(root, ctx, params = {}) {
       // test only: roaming packs before the engine seeds them, and synthetic events through the real handlers
       roam(roamers) { walk = setWalk({ ...walk, roamers }); actors.syncRoamers(walk, performance.now(), 0); refreshUi(); return walk.roamers.length; },
       event(e) { return runEvents([e]); },
+      // M4: story events through the real handler (toasts, the page line, the end cards), and the
+      // emotes on screen ({ kind, target }: '!hunt' is a Grudge hunter's red "!")
+      story(events) { return flow(() => storyEvents(events)); },
+      emotes: () => actors.emotesShown(),
       screenOf(x, y) {
         const r = canvas.getBoundingClientRect(), k = r.width / view.size.w;
         return [r.left + ((x * TILE + TILE / 2) - view.camera.x) * k, r.top + ((y * TILE + TILE / 2) - view.camera.y) * k];

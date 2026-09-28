@@ -20,6 +20,13 @@
 //   F. settings: export gives AETH3.; importing it round-trips through the card (.bak kept); the
 //      new world settings; reduced motion
 //   G. Briarmaw forced: the Brand, then an Echo rematch
+//   K. (M4) Idris sells a gem (rules/forge.js buyGem); Hilda's forge from her dialogue: temper the
+//      starter to +4 (the +4 step takes silver), reroll a trait on a seeded tempered sword, salvage a
+//      seeded pair of boots (asked once), set the bought gem, awaken the starter (seeded with its three
+//      deeds); the Party screen's card shows sockets, flames and pips, and its Chronicle side (foes
+//      felled, the mightiest, every bearer, the ribbon, Grudge settled); a forced Sunscorch win with
+//      every Page I relic claimed shows the page banner, the deeds, a relic Kindled and the forge
+//      spoils; the Party screen's numbers are heroStats (the page's bonus included)
 //   H. reload: the title's Continue sub-line; New game over a journey asks first
 // And an M2 profile (a v1 save seeded in localStorage):
 //   I. "Continue from the Gauntlet" -> the carry-over card -> Walk on (nothing written) -> the first
@@ -37,7 +44,7 @@
 // Fails on any console error, page exception or [audio] warning. The world screen is WP7's: this
 // test drives it only through go() and the window.__world seam, and checks the shell's own screens.
 // Playwright is not a project dependency: it comes from the global npm root.
-// Owner: WP8.
+// Owner: WP8 (M3); the M4 counts and section K: P7a.
 import { execSync } from 'node:child_process';
 import { existsSync, mkdirSync, rmSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -46,7 +53,15 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { HEARTHS } from '../src/data/world.js';
 import { MAPS } from '../src/data/maps/index.js';
+import { RELICS } from '../src/data/relics.js';
+import { LOCK_IDS } from '../src/data/locks.js';
+import { LADDER } from '../src/data/ladder.js';
+import { SHOPS } from '../src/data/shops.js';
+import { GEMS } from '../src/data/gems.js';
+import { PAGES } from '../src/data/codex.js';
+import { ENCOUNTERS } from '../src/data/encounters.js';
 import { SAVE_VERSION, toV2 } from '../src/rules/migrate.js';
+import { heroStats } from '../src/rules/stats.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = Object.fromEntries(process.argv.slice(2).map(a => { const [k, v] = a.replace(/^--/, '').split('='); return [k, v ?? true]; }));
@@ -67,6 +82,9 @@ const V2_SAVE = (() => {
 const V1_CODE = readFileSync(path.join(root, 'test/fixtures/v1/v1-grudges.code.txt'), 'utf8').trim();
 const V1_CODE_GAME = JSON.parse(readFileSync(path.join(root, 'test/fixtures/v1/v1-grudges.json'), 'utf8'));
 const stand = id => { const h = HEARTHS[id]; return { map: h.map, x: h.x, y: h.y, face: h.face }; };
+// M4 content counts, from the data (the Codex screen's and the Atlas's own checks are the lead's)
+const RELIC_TOTAL = Object.keys(RELICS).length;
+const RUMOURS = LADDER.filter(l => l.silhouette).length;
 
 const require = createRequire(import.meta.url);
 let pw;
@@ -321,11 +339,12 @@ async function run(V) {
     await noHScroll(`journal ${tab}`);
     if (tab === 'ladder') {
       const posters = await page.evaluate(() => [...document.querySelectorAll('.poster')].map(p => p.dataset.state));
-      check(posters.length === 20 && posters.filter(s => s === 'silhouette').length >= 3, `${V.name}: the Ladder has 17 posters and 3 rumours (${posters.join(' ')})`);
+      check(posters.length === LADDER.length && posters.filter(s => s === 'silhouette').length >= RUMOURS, `${V.name}: the Ladder has ${LADDER.length - RUMOURS} posters and ${RUMOURS} rumours (${posters.join(' ')})`);
     }
   }
   await click('.jr-tab[data-tab="keys"]');
-  check(await page.locator('.jr-lock').count() === 11 && await page.locator('.jl-keys li .mk').count() >= 22, `${V.name}: Keys lists all 11 lock types with a tick or cross per key`);
+  const keyRows = await page.evaluate(() => [...document.querySelectorAll('.jr-lock')].map(l => [l.dataset.lock, l.querySelectorAll('.jl-keys li .mk').length]));
+  check(keyRows.length === LOCK_IDS.length && LOCK_IDS.every(id => keyRows.some(([k, n]) => k === id && n >= 2)), `${V.name}: Keys lists all ${LOCK_IDS.length} lock types with a tick or cross per key (${keyRows.map(([k, n]) => `${k}:${n}`).join(' ')})`);
   await backToWorld();
 
   await openFromWorld('settings', 'Settings');
@@ -493,6 +512,213 @@ async function run(V) {
   await click('.af-foot .btn.primary');
   await waitScreen('world');
 
+  // ======== K. (M4) Idris's gems, Hilda's forge, the card's Chronicle, a finished Codex page ========
+  {
+    const idle = () => page.waitForFunction(() => window.__world && !window.__world.busy() && !document.querySelector('.ov'), null, { timeout: 10000 });
+    // talk to someone through the world's own dialogue flow, and pick the choice that matches `pick`
+    const talk = async (npc, dialogue, pick) => {
+      for (let i = 0; i < 4 && await page.locator('.ov').count(); i++) { await page.keyboard.press('Escape'); await page.waitForTimeout(200); }
+      await idle();
+      await page.evaluate(([n, d]) => { window.__world.event({ t: 'talk', npc: n, dialogue: d }); }, [npc, dialogue]);
+      await page.waitForSelector('.ov-dialogue', { timeout: 5000 });
+      for (let i = 0; i < 40; i++) {
+        const c = page.locator('.dlg-choice', { hasText: pick });
+        if (await c.count()) { await c.first().click(); return true; }
+        if (!(await page.locator('.ov-dialogue').count())) return false;
+        await page.locator('.dlg-next').click().catch(() => {});
+        await page.waitForTimeout(160);
+      }
+      return false;
+    };
+    const item = uid => page.evaluate(u => window.__app.game.inventory.find(i => i.uid === u) || null, uid);
+    const inForge = async (tab, uid) => {
+      await click(`.ov-forge .forge-tab[data-tab="${tab}"]`);
+      if (uid) await click(`.ov-forge .forge-item[data-uid="${uid}"]`);
+      await page.waitForTimeout(150);
+    };
+    const DEEDS_OF = Object.fromEntries(Object.values(RELICS).filter(r => r.starter).map(r => [r.id, r.deeds || []]));
+    const prov = { from: 'Skarn', where: 'The Bramble Toll', day: 3 };
+    const RR = { uid: 'e2e-reroll', base: 'longsword', kind: 'sword', slot: 'weapon', rarity: 'tempered', ilvl: 4, name: 'Hearthstone Longsword of the Smith', aspect: null, affixes: [{ id: 'hearthstone', value: 15 }, { id: 'smith', value: 3 }], gems: [], temper: 0, seed: 4242, provenance: prov, chronicle: { kills: 0 } };
+    const SV = { uid: 'e2e-salvage', base: 'boots', kind: 'boots', slot: 'feet', rarity: 'wrought', ilvl: 2, name: 'Boots of the Pathfinder', aspect: null, affixes: [{ id: 'pathfinder', value: 1 }], gems: [], temper: 0, seed: 777, provenance: prov, chronicle: { kills: 0 } };
+    // the starter back in the Warden's hands, with its three deeds done and a Chronicle to read
+    await setGame(`g => {
+      const DEEDS_OF = ${JSON.stringify(DEEDS_OF)};
+      const starter = g.progress.flags.story.starter;
+      const w = g.inventory.find(i => i.base === starter);
+      for (const h of Object.values(g.party.roster)) for (const [s, u] of Object.entries(h.gear)) if (u === w.uid) h.gear[s] = null;
+      g.party.roster.warden.gear.weapon = w.uid;
+      if (starter === 'cairnmaul') g.party.roster.warden.gear.offhand = null;
+      Object.assign(w, { temper: 0, gems: [], deeds: Object.fromEntries(DEEDS_OF[starter].map((d, i) => [d, i + 2])) });
+      delete w.awakened;
+      w.chronicle = { ...(w.chronicle || {}), kills: 7, mightiest: { name: 'Briarmaw', level: 6 }, bearers: ['warden', 'pip'] };
+      w.provenance = { ...w.provenance, grudge: 'Skarn the Party-Breaker' };
+      g.inventory.push(${JSON.stringify(RR)}, ${JSON.stringify(SV)});
+      g.gold = 6000; g.materials = { scrap: 4, silver: 5, embers: 3 }; g.gems = {};
+    }`);
+    await page.evaluate(() => window.__app.go('world', {}));
+    await waitScreen('world');
+    const starterUid = (await game()).party.roster.warden.gear.weapon;
+    const starter = (await item(starterUid)).base;
+
+    // Idris sells gems (SHOPS.idris.gems) through rules/forge.js buyGem
+    check(await talk('idris', 'idris', /gem/i), `${V.name}: Idris's dialogue offers his gems`);
+    await page.waitForSelector('.ov-shop', { timeout: 5000 });
+    await page.waitForTimeout(300);
+    const gemRows = await page.locator('.ov-shop .shop-buy[data-gem]').count();
+    check(gemRows === SHOPS.idris.gems.length, `${V.name}: Idris's shop lists his ${SHOPS.idris.gems.length} gems (${gemRows})`);
+    await shot('idris', false);
+    await noHScroll('Idris\'s shop');
+    const gold0 = (await game()).gold;
+    await click('.ov-shop .shop-buy[data-gem="sunstone"]');
+    await page.waitForTimeout(200);
+    check(/In your pouch: 1/.test(await page.locator('.ov-shop .gem-row[data-gem="sunstone"]').innerText()), `${V.name}: a Dusthaven Sunstone goes in the pouch`);
+    await click('.ov-shop [data-primary]');
+    await page.waitForSelector('.ov-shop', { state: 'detached' });
+    g = await game();
+    check(g.gems?.sunstone === 1 && g.gold === gold0 - GEMS.sunstone.price, `${V.name}: the gem is bought at Idris's price (${gold0} -> ${g.gold}, ${JSON.stringify(g.gems)})`);
+
+    // Hilda's forge, from her own dialogue
+    check(await talk('hilda', 'hilda', /Temper/), `${V.name}: Hilda's dialogue opens the forge`);
+    await page.waitForSelector('.ov-forge', { timeout: 5000 });
+    await page.waitForTimeout(300);
+    const purseKeys = await page.evaluate(() => [...document.querySelectorAll('.ov-forge .forge-purse .fp-chip[data-k]')].map(c => c.dataset.k));
+    check(await page.locator('.ov-forge .forge-tab').count() === 5 && ['gold', 'scrap', 'silver', 'embers', 'gem:sunstone'].every(k => purseKeys.includes(k)), `${V.name}: the forge has five tabs and the purse and pouch strip (${purseKeys.join(' ')})`);
+    const tabH = await page.evaluate(() => [...document.querySelectorAll('.ov-forge .forge-tab')].map(b => b.getBoundingClientRect().height));
+    check(tabH.every(h => h >= 44), `${V.name}: every forge tab is 44 px tall (${tabH.join(', ')})`);
+    await noHScroll('the forge');
+    // Temper to +4: the fourth step takes silver
+    await click(`.ov-forge .forge-item[data-uid="${starterUid}"]`);
+    for (let t = 0; t < 4; t++) {
+      if (t === 3) {
+        const need = await page.locator('.ov-forge .forge-need').innerText();
+        check(/silver/.test(need), `${V.name}: the forge says the step to +4 needs silver ("${need}")`);
+        await shot('forge-temper', false);
+      }
+      await click('.ov-forge .forge-go');
+      await page.waitForTimeout(220);
+    }
+    const lit = await page.locator('.ov-forge .forge-flames canvas.fl-on').count();
+    check(/\+4/.test(await page.locator('.ov-forge .forge-card-name').innerText()) && lit === 4, `${V.name}: the starter is +4 in the forge, four flames lit (${lit})`);
+    // Reroll one trait
+    await inForge('reroll', RR.uid);
+    await click('.ov-forge .rr-trait[data-i="0"]');
+    const trait0 = await page.locator('.ov-forge .rr-trait[data-i="0"] .rr-text').innerText();
+    await click('.ov-forge .forge-go');
+    await page.waitForTimeout(600);
+    const rolled = await page.locator('.ov-forge .rr-trait.rolled').count();
+    const trait1 = await page.locator('.ov-forge .rr-trait[data-i="0"] .rr-text').innerText();
+    check(rolled === 1 && trait1 !== trait0 && /★/.test(await page.locator('.ov-forge .rr-trait[data-i="0"] .rr-q').innerText()), `${V.name}: a rerolled trait slides in with its stars ("${trait0}" -> "${trait1}")`);
+    await shot('forge-reroll', false);
+    // Salvage: it asks once, and lists what comes back
+    await inForge('salvage', SV.uid);
+    check(/\+2 scrap/.test(await page.locator('.ov-forge .sv-yield').innerText()), `${V.name}: salvage lists what comes back (+2 scrap)`);
+    await click('.ov-forge .forge-go');
+    await page.waitForSelector('.ov-forge .sv-confirm');
+    await shot('forge-salvage', false);
+    await click('.ov-forge .forge-confirm');
+    await page.waitForTimeout(250);
+    check(await page.locator(`.ov-forge .forge-item[data-uid="${SV.uid}"]`).count() === 0 && /Boots of the Pathfinder/.test(await page.locator('.ov-forge .forge-gone').innerText()), `${V.name}: the boots go in the crucible`);
+    // Set the gem
+    await inForge('gems', starterUid);
+    await click('.ov-forge .gem-sock[data-i="0"]');
+    await click('.ov-forge .gem-pick[data-gem="sunstone"]');
+    await page.waitForTimeout(200);
+    check(await page.locator('.ov-forge .gem-sock[data-i="0"].set').count() === 1, `${V.name}: the Sunstone sits in the first socket`);
+    await shot('forge-gems', false);
+    // Awaken the ready relic
+    await inForge('awaken');
+    check(await page.locator('.ov-forge .forge-tab[data-tab="awaken"].has-dot').count() === 1 && await page.locator(`.ov-forge .forge-item.on[data-uid="${starterUid}"]`).count() === 1, `${V.name}: the Awaken tab flags the ready relic and picks it`);
+    const branches = await page.evaluate(() => [...document.querySelectorAll('.ov-forge .aw-branch')].map(b => [b.dataset.branch, b.getAttribute('aria-disabled'), b.innerText.replace(/\s+/g, ' ')]));
+    check(branches.length === 2 && branches.some(b => b[1] === 'false') && branches.some(b => b[1] === 'true' && /path is the Heart/.test(b[2])), `${V.name}: both branches show, the closed one naming whose path would open it`);
+    await shot('forge-awaken');
+    await noHScroll('the forge (Awaken)');
+    await click('.ov-forge .aw-go');
+    await page.waitForSelector('.ov-card .card', { timeout: 5000 });
+    await page.waitForTimeout(1100);
+    check(/Awakened/i.test(await page.locator('.ov-card .stamp.b').innerText()), `${V.name}: the awakened card is stamped Awakened`);
+    await shot('forge-awakened-card', false);
+    await click('.ov-card .cont');
+    await page.waitForSelector('.ov-card', { state: 'detached' });
+    await click('.ov-forge .forge-done');
+    await page.waitForSelector('.ov-forge', { state: 'detached' });
+    await page.waitForTimeout(400);
+    g = await game();
+    const w = g.inventory.find(i => i.uid === starterUid);
+    const rr = g.inventory.find(i => i.uid === RR.uid);
+    check(w.temper === 4 && w.gems[0] === 'sunstone' && w.awakened === 'a' && g.codex[starter].awakened === true, `${V.name}: the forge's game comes back to the world (+${w.temper}, ${JSON.stringify(w.gems)}, awakened ${w.awakened})`);
+    check(rr.rerolls === 1 && rr.affixes[0].id !== RR.affixes[0].id && !g.inventory.some(i => i.uid === SV.uid), `${V.name}: the reroll and the salvage are saved`);
+    check(g.materials.silver === 4 && g.materials.embers === 1 && g.materials.scrap === 5 && !g.gems.sunstone, `${V.name}: silver, embers, scrap and the gem were spent and won (${JSON.stringify(g.materials)} ${JSON.stringify(g.gems)})`);
+
+    // The card: sockets, flames, deed pips and the stage line; then its Chronicle side
+    await page.evaluate(() => window.__app.go('party', { from: 'world' }));
+    await waitScreen('party');
+    await click('.slot[data-s="weapon"]');
+    await click('.ci-acts .btn:has-text("See card")');
+    await page.waitForSelector('.ov-card .card');
+    await page.waitForTimeout(500);
+    const face = await page.evaluate(() => ({
+      socks: document.querySelectorAll('.ov-card .fb-sockets .sock.set').length, lit: document.querySelectorAll('.ov-card .fb-temper canvas.fl-on').length,
+      pips: document.querySelectorAll('.ov-card .fb-deeds .pips i.on').length, stage: document.querySelector('.ov-card .fb-stage')?.textContent || '',
+    }));
+    check(face.socks === 1 && face.lit === 4 && face.pips === 3 && /^Awakened · /.test(face.stage), `${V.name}: the card shows the gem, four flames, three deed pips and "${face.stage}"`);
+    await page.locator('.ov-card .forgebits').scrollIntoViewIfNeeded();
+    await shot('card-forgebits', false);
+    await click('.ov-card .chron-btn');
+    await page.waitForSelector('.ov-card .card-back:not([hidden])');
+    await page.waitForTimeout(500);
+    const back = await page.locator('.ov-card .card-back').innerText();
+    check(/Foes felled\s*7/i.test(back) && /Briarmaw/.test(back) && back.includes(NAME) && /Pip/.test(back) && /Grudge settled/i.test(back) && /Keep reliquary/.test(back), `${V.name}: the Chronicle side lists the felled, the mightiest, every bearer, the ribbon and Grudge settled (${back.replace(/\s+/g, ' ').slice(0, 200)})`);
+    await shot('card-chronicle', false);
+    await noHScroll('the Chronicle');
+    await click('.ov-card .chron-back');
+    await page.waitForTimeout(400);
+    check(await page.locator('.ov-card .card-back').isHidden(), `${V.name}: the card turns back to its face`);
+    await click('.ov-card .cont');
+    await page.waitForSelector('.ov', { state: 'detached' });
+    await backToWorld();
+
+    // A finished Codex page: every Page I relic claimed, a Sunscorch fight won
+    const pageOne = PAGES[0];
+    const need = Object.values(RELICS).filter(r => r.codex >= pageOne.from && r.codex <= pageOne.to && !r.starter).map(r => r.id);
+    await setGame(`g => {
+      for (const id of ${JSON.stringify(need)}) g.codex[id] = { sighted: true, claimed: true, awakened: false, ...(g.codex[id] || {}), claimed: true };
+      g.progress.flags.pages = {};
+      const seal = window.__worldTools.relicItem('wardens-seal', 'Sneck the Tallyman');
+      seal.uid = 'e2e-seal';
+      g.inventory.push(seal);
+      g.party.roster.pip.gear.amulet = seal.uid;
+    }`);
+    const fightId = ['vault-guard', 'sg-captain', 'gf-raiders'].find(id => ENCOUNTERS[id]) || 'keep-vault';
+    const mats0 = { ...(await game()).materials };
+    await startFight(fightId, { result: 'victory', xp: 120, gold: 40 });
+    await waitScreen('aftermath');
+    await page.waitForTimeout(1500);
+    const banner = await page.locator('.af-page').first().innerText().catch(() => '');
+    check(new RegExp(`Page ${pageOne.no} complete: ${pageOne.reward.name}`, 'i').test(banner), `${V.name}: a finished page shows its banner ("${banner.replace(/\s+/g, ' ').slice(0, 90)}")`);
+    const deeds = await page.locator('.af-deeds').innerText().catch(() => '');
+    check(/The Warden's Seal: First Blood/.test(deeds.replace(/\s+/g, ' ')) && /is Kindled/.test(deeds), `${V.name}: the aftermath lists the deed done and the relic Kindled (${deeds.replace(/\s+/g, ' ').slice(0, 120)})`);
+    g = await game();
+    if (ENCOUNTERS[fightId].region === 'sunscorch') {
+      const mats = await page.locator('.af-mats').innerText().catch(() => '');
+      check(/scrap/.test(mats) && g.materials.scrap > mats0.scrap, `${V.name}: the forge spoils of a Sunscorch win show and are kept (${mats.replace(/\s+/g, ' ')})`);
+    }
+    check(!!g.progress.flags.pages?.[pageOne.id], `${V.name}: the finished page is recorded (flags.pages.${pageOne.id})`);
+    await shot('aftermath-page');
+    await noHScroll('the aftermath with a page banner');
+    await click('.af-foot .btn.primary');
+    await waitScreen('world');
+    // the Party screen's numbers are heroStats, the page's bonus included
+    await page.evaluate(() => window.__app.go('party', { from: 'world' }));
+    await waitScreen('party');
+    await page.waitForTimeout(300);
+    g = await game();
+    const hpTile = Number(await page.locator('.derived .stat[data-k="hp"] .v').innerText());
+    check(hpTile === heroStats(g, 'warden').maxHp && /The Verdant Oath/.test(await page.locator('.page-box').innerText()), `${V.name}: the Party screen shows heroStats with the page's bonus (HP ${hpTile} = ${heroStats(g, 'warden').maxHp})`);
+    await shot('party-page-bonus');
+    await noHScroll('party with the page bonus');
+    await backToWorld();
+  }
+
   // ======== H. reload: the title's Continue ========
   await page.reload();
   await page.waitForSelector('.title-menu');
@@ -500,7 +726,7 @@ async function run(V) {
   g = await game();
   const sub = (await page.locator('.title-continue small').innerText()).trim();
   const want = `${NAME} · ${MAPS[g.progress.pos.map].name} · Day ${g.progress.flags.day} · Lv `;
-  check(sub.startsWith(want) && /· Lv \d+ · \d+\/24 relics$/.test(sub), `${V.name}: the Continue sub-line reads "${sub}"`);
+  check(sub.startsWith(want) && new RegExp(`· Lv \\d+ · \\d+/${RELIC_TOTAL} relics$`).test(sub), `${V.name}: the Continue sub-line reads "${sub}"`);
   await click('.title-menu >> text=New game');
   check(await page.locator('.title-confirm:visible').count() === 1, `${V.name}: New game over a journey asks first`);
   await shot('title-continue', false);
@@ -546,7 +772,7 @@ async function runM2(V) {
   await page.waitForSelector('.carry-card');
   await page.waitForTimeout(300);
   const card = await page.locator('.carry-card').innerText();
-  check(/The road has become a land/.test(card) && (await page.locator('.carry-hero').count()) === 4 && /You wake at Thornhollow/.test(card) && /of 24/.test(card) && /254/.test(card), `${V.name}: the carry-over card lists the party, relics, gold and where you wake`);
+  check(/The road has become a land/.test(card) && (await page.locator('.carry-hero').count()) === 4 && /You wake at Thornhollow/.test(card) && new RegExp(`of ${RELIC_TOTAL}\\b`).test(card) && /254/.test(card), `${V.name}: the carry-over card lists the party, relics, gold and where you wake`);
   await shot('carry-card');
   await page.screenshot({ path: path.join(outDir, `${V.name}-m2-carry-card-full.png`), fullPage: true });
   await click('.carry-go');

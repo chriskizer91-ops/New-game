@@ -5,7 +5,10 @@
 // (M3 spec §5.5): result 'victory'|'defeat'|'fled'; brand = report.brand or null; wokeAt = the
 // Hearthfire id a wipe woke you at (HEARTHS in data/world.js), else null; yield = a duel defeat
 // (Tamsin: no gold lost, no Grudge); rematch = a Brand fight won again; enc = the encounter id.
-// Owner: WP8.
+// M4 (spec §4.3-§4.4, §5.3; owner P7a): the report's news: a finished Codex page as a banner
+// ("Page I complete: The Verdant Oath"), the deeds the fight did ("Cinderfang: Legend Strike"), a relic
+// newly Kindled or ready to awaken ("Hilda can wake it"), and the forge materials and gems won.
+// Owner: WP8 (M3), P7a (M4).
 import { resolveBattle } from '../../rules/gauntlet.js';
 import { xpForLevel, xpToNext } from '../../rules/progression.js';
 import { diceIcon } from '../../art/index.js';
@@ -18,7 +21,8 @@ import { OMENS } from '../../data/omens.js';
 import { el, esc, button, toCanvas, sleep, countTo, plural } from '../lib/dom.js';
 import { isReduced } from '../lib/anim.js';
 import { bustCanvas, chestImage, iconCanvas, rarityColor, rarityName, tierOf } from '../lib/art.js';
-import { isRelic, ABIL_NAME } from '../lib/items.js';
+import { isRelic, ABIL_NAME, reportNews, matIconEl, gemIconEl, matWord } from '../lib/items.js';
+import { GEMS } from '../../data/gems.js';
 import { screenNav } from '../lib/keys.js';
 
 // A battle object resolves exactly once, even if this screen is mounted again for it.
@@ -218,6 +222,33 @@ export function mount(root, ctx, params = {}) {
     wrap.append(el('section', 'af-brand af-rematch', `<p class="kick">A rematch</p><h2 class="title-display">${esc(B ? B.name : 'The Brand')} is already yours</h2><p class="waking">No new coal, so the Waking holds at ${game.progress.waking}. The Wilds remember the first time, and so does everything in them.</p>`));
   }
 
+  // ---- M4: a finished Codex page, the deeds, the forge spoils ----
+  const news = reportNews(game, report);
+  for (const pg of news.pages) {
+    wrap.append(el('section', 'af-page', `<p class="kick">The Hearth Codex</p><h2 class="title-display">Page ${esc(pg.no)} complete: ${esc(pg.reward.name)}</h2><p class="af-page-reward">${esc(pg.reward.text)}</p><p>Every relic of ${esc(pg.name.replace(/^The /, 'the '))} is claimed. The page's bonus is yours for good.</p>`));
+    setTimeout(() => ctx.audio.sfx('stamp'), 900);
+  }
+  if (news.deeds.length || news.kindled.length || news.ready.length) {
+    const ds = el('section', 'af-deeds panel');
+    ds.append(el('h2', 'label', 'Deeds'));
+    const ul = el('ul', 'af-deed-list');
+    for (const d of news.deeds) ul.append(el('li', 'deed', `<i aria-hidden="true"></i><span><b>${esc(d.name)}</b>: ${esc(d.deed)}</span>`));
+    for (const k of news.kindled) ul.append(el('li', 'kindled', `<i aria-hidden="true"></i><span><b>${esc(k.name)}</b> is Kindled${k.bonus ? `: ${esc(k.bonus)}` : ''}.</span>`));
+    for (const k of news.ready) ul.append(el('li', 'ready', `<i aria-hidden="true"></i><span><b>${esc(k.name)}</b> has done all three deeds. Hilda can wake it.</span>`));
+    ds.append(ul);
+    wrap.append(ds);
+  }
+  const mats = Object.entries(news.materials), gems = Object.entries(news.gems);
+  if (mats.length || gems.length) {
+    const ms = el('section', 'af-mats panel');
+    ms.append(el('h2', 'label', 'For the forge'));
+    const row = el('div', 'af-mat-row');
+    for (const [k, n] of mats) { const c = el('span', 'af-mat'); c.append(matIconEl(k, 20), el('span', '', `<b>+${n}</b> ${esc(matWord(k, n))}`)); row.append(c); }
+    for (const [id, n] of gems) { const c = el('span', 'af-mat gem'); c.append(gemIconEl(id, 20), el('span', '', `<b>+${n}</b> ${esc(GEMS[id]?.name || id)}${n === 1 ? '' : 's'}`)); row.append(c); }
+    ms.append(row);
+    wrap.append(ms);
+  }
+
   // ---- the way out ----
   const foot = el('div', 'af-foot');
   const cta = button('', 'btn primary big', () => {
@@ -234,7 +265,7 @@ export function mount(root, ctx, params = {}) {
   }
   updateCta();
   // the big news first: a Brand, then the purse and XP, the chests, then the level-ups
-  for (const sel of ['.af-story', '.af-brand', '.af-gold', '.af-xp', '.af-grudge.settled', '.af-loot', '.af-empty', '.af-levels', '.af-grudge:not(.settled)', '.af-foot']) {
+  for (const sel of ['.af-story', '.af-brand', '.af-page', '.af-gold', '.af-mats', '.af-xp', '.af-grudge.settled', '.af-deeds', '.af-loot', '.af-empty', '.af-levels', '.af-grudge:not(.settled)', '.af-foot']) {
     wrap.querySelectorAll(':scope > ' + sel).forEach(n => wrap.append(n));
   }
   sleep(0).then(() => { if (res === 'victory' && chests.length) cta.focus({ preventScroll: true }); });
