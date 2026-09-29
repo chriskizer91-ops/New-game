@@ -1,6 +1,6 @@
 // Title: the Keep at dusk with the party on the road, the name, and the way in (M3 spec §5.7).
 //   - a live save: "Continue", sub-line "Wren · Thornhollow · Day 4 · Lv 5 · 9/24 relics"
-//   - no live save yet, but an earlier milestone's: "Continue from Milestone 3" (or, with only an M2
+//   - no live save yet, but an earlier milestone's: "Continue from Milestone 4" (or 3; with only an M2
 //     save, "Continue from the Gauntlet") -> the carry-over card -> "Walk on" -> ctx.adopt(game) (held
 //     in memory; the world writes it, to this milestone's own key, on the first step)
 //   - "New game" over any journey asks first; newgame's Begin backs the old save up (ctx.replaceGame)
@@ -14,7 +14,13 @@ import { screenNav } from '../lib/keys.js';
 import { openCarryCard } from '../lib/carry.js';
 import { saveLine } from '../lib/carry-facts.js';
 
-const TAG = '<span>M4</span> · Sunscorch';
+const TAG = '<span>M4.5</span> · The Road';
+// where a carried-over save comes from (ctx.carryFrom): the button, the card's kind, the old home
+const FROM = {
+  m4: { label: 'Continue from Milestone 4', kind: 'm4', who: 'Milestone 4', home: 'file' },
+  v2: { label: 'Continue from Milestone 3', kind: 'm3', who: 'Milestone 3', home: 'file' },
+  v1: { label: 'Continue from the Gauntlet', kind: 'm2', who: 'M2', home: 'page' },
+};
 
 export function mount(root, ctx) {
   const game = ctx.game || null, carry = game ? null : ctx.carry;
@@ -36,12 +42,12 @@ export function mount(root, ctx) {
   if (game) {
     menu.append(button(`Continue<small>${esc(saveLine(game))}</small>`, 'btn primary big title-continue', go('world', { arrive: 'continue' }), { 'data-primary': '' }));
   } else if (carry) {
-    const m3 = ctx.carryFrom === 'v2';
-    const cont = button(`${m3 ? 'Continue from Milestone 3' : 'Continue from the Gauntlet'}<small>${esc(saveLine(carry))}</small>`, 'btn primary big title-carry', async () => {
+    const F = FROM[ctx.carryFrom] || FROM.v1;
+    const cont = button(`${F.label}<small>${esc(saveLine(carry))}</small>`, 'btn primary big title-carry', async () => {
       ctx.audio.unlock(); ctx.audio.sfx('select');
       const ok = await openCarryCard(ctx, carry, {
-        kind: m3 ? 'm3' : 'm2',
-        note: `Your ${m3 ? 'Milestone 3' : 'M2'} save is never touched: the old ${m3 ? 'file' : 'page'} keeps playing it. This milestone keeps its own save, and nothing is saved here until you take your first step.`,
+        kind: F.kind,
+        note: `Your ${F.who} save is never touched: the old ${F.home} keeps playing it. This milestone keeps its own save, and nothing is saved here until you take your first step.`,
       });
       if (!ok) { cont.focus(); return; }
       ctx.adopt(carry);

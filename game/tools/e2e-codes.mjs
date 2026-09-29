@@ -84,7 +84,7 @@ for (const V of VIEWPORTS) {
         await b.click().catch(() => {});
         await page.waitForTimeout(180);
       }
-      const st = await page.evaluate(() => ({ live: localStorage.getItem('aethermoor.save.m4') }));
+      const st = await page.evaluate(() => ({ live: localStorage.getItem('aethermoor.save.m4.5') }));
       const g = st.live ? JSON.parse(st.live) : null;
       if (!g || g.version !== SAVE_VERSION || g.migratedFrom !== 1) problems.push('the live save is not the migrated game');
       if (g && g.gold !== gold) problems.push(`gold ${g.gold} is not the code's ${gold}`);
@@ -98,9 +98,10 @@ for (const V of VIEWPORTS) {
         await here();
       }
       if (tiles.size < 2) problems.push('the party did not walk');
-      const old = await page.evaluate(() => [localStorage.getItem('aethermoor.save.v1'), localStorage.getItem('aethermoor.save.v2')]);
+      const old = await page.evaluate(() => [localStorage.getItem('aethermoor.save.v1'), localStorage.getItem('aethermoor.save.v2'), localStorage.getItem('aethermoor.save.m4')]);
       if (old[0] !== null) problems.push('the M2 key was written');
       if (old[1] !== null) problems.push('a Milestone 3 key was written');
+      if (old[2] !== null) problems.push('a Milestone 4 key was written');
       for (const name of ['party', 'codex', 'journal', 'atlas']) {
         await page.evaluate(n => window.__app.go(n, { from: 'world' }), name);
         await page.waitForTimeout(400);

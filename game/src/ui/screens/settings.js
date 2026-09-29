@@ -5,7 +5,7 @@
 // Every milestone keeps its own save: nothing here ever writes an earlier milestone's.
 // mount(root, ctx, { from }): Back returns to `from` ('world' with a journey, else 'title').
 // Owner: WP8.
-import { exportCode, importCode, exportV1Code, exportV2Code, readV1, hasV1, readV2, hasV2, hasBackup, backupGame, restoreBackup, saveGame } from '../../core/save.js';
+import { exportCode, importCode, exportV1Code, exportV2Code, exportM4Code, readV1, hasV1, readV2, hasV2, readM4, hasM4, hasBackup, backupGame, restoreBackup, saveGame } from '../../core/save.js';
 import { el, esc, button } from '../lib/dom.js';
 import { screenNav } from '../lib/keys.js';
 import { openCarryCard } from '../lib/carry.js';
@@ -164,6 +164,13 @@ export function mount(root, ctx, params = {}) {
     sec.append(el('div', 'row-btns', [exp, carryOver]), box.box);
     root.append(sec);
   };
+  if (hasM4()) {
+    earlier({
+      cls: 'set-m4', title: 'Your Milestone 4 save', who: 'Milestone 4', kind: 'm4', read: readM4, exportOld: exportM4Code,
+      blurb: 'Sunscorch journey is still on this device, untouched: the Milestone 4 file keeps playing it. You can copy it out as an AETH3 code, or carry it into this milestone.',
+      codeLabel: 'Your Milestone 4 save code', codeCls: 'code-m4', exportLabel: 'Export M4 backup (AETH3)', carryLabel: 'Carry over my M4 save',
+    });
+  }
   if (hasV2()) {
     earlier({
       cls: 'set-m3', title: 'Your Milestone 3 save', who: 'Milestone 3', kind: 'm3', read: readV2, exportOld: exportV2Code,

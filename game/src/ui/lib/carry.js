@@ -1,11 +1,13 @@
 // The carry-over card (M3 spec §5.7): shown when an earlier milestone's save is carried into this one
 // (M2: a local v1 save, a pasted AETH1 code or "Restore my M2 save"; Milestone 3: the local v2 save,
-// a pasted AETH2 code or "Carry over my M3 save"), and for this milestone's own codes. It lists the
+// a pasted AETH2 code or "Carry over my M3 save"; Milestone 4: the local m4 save or "Carry over my M4
+// save"), and for this milestone's own codes. It lists the
 // heroes and their levels, relics claimed, gold and the Waking, says where the party wakes, and tells
 // loopers that the Wilds remember their Wakings.
 //
 //   openCarryCard(ctx, game, { kind = 'm2', note, primary = 'Walk on', cancel = 'Not yet' }) -> Promise<boolean>
-//     kind 'm2' (an M2 save), 'm3' (a Milestone 3 save) or 'code' (this milestone's code); note is an
+//     kind 'm2' (an M2 save), 'm3' (a Milestone 3 save), 'm4' (a Milestone 4 save) or 'code' (a code of
+//     this save shape, AETH3); note is an
 //     optional last line (what gets written, and when); resolves true for the primary button.
 //   carryFacts(game), inSentence(name)   re-exported from ./carry-facts.js (pure; node-tested)
 // Every save string goes through esc() or textContent.
@@ -25,6 +27,7 @@ export function openCarryCard(ctx, game, { kind = 'm2', note = null, primary = '
     const T = {
       m2: ['Your journey carries over', 'The road has become a land', 'The Gauntlet was only ever one road through the Verdant Wilds. Everything you won on it comes with you.'],
       m3: ['Your Milestone 3 journey carries over', 'The Wilds go with you', 'Everything you won in the Verdant Wilds comes with you: the party, the gear, the Codex and the purse.'],
+      m4: ['Your Milestone 4 journey carries over', 'Back on the road', 'Everything you won, forged and awakened comes with you. The road now holds: every fight on it must be won to pass, and every fight is fought in full.'],
       code: ['A saved journey', 'The road has become a land', 'Everything in this save comes with it: the party, the gear, the Codex and the purse.'],
     }[kind] || [];
     const ov = openOverlay({ cls: 'carry-ov', label: T[1], onBack: () => { ctx.audio.sfx('back'); finish(false); } });

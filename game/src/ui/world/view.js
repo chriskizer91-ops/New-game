@@ -111,7 +111,9 @@ const LOCK_KIND = {
   // M4: the Sunscorch locks (art/map-sprites.js draws them under the same names)
   'dune-glass': 'dune-glass', mirage: 'mirage', quicksand: 'quicksand', 'vault-seal': 'vault-seal',
 };
-const GATE_KIND = { gate: 'gate', chain: 'chain', crownwall: 'crownwall', door: 'door', 'vault-door': 'vault-door' };
+// M4.5: road gates also look like the obstacle their guard keeps (docs/M45-SPEC.md §3)
+const GATE_KIND = { gate: 'gate', chain: 'chain', crownwall: 'crownwall', door: 'door', 'vault-door': 'vault-door',
+  bramble: 'bramble', 'rot-knot': 'rot-knot', thornwall: 'thornwall', boulder: 'boulder', 'barred-gate': 'barred-gate', 'dune-glass': 'dune-glass' };
 const FORD_BY = { 'stillwater-lance': 'ice', rootsong: 'roots' };
 const areaOf = e => e.area || [e.at[0], e.at[1], e.at[0], e.at[1]];
 
