@@ -15,7 +15,7 @@ const status = (id, o = {}) => ({ type: 'status', status: id, ...o });
 
 // Ironhold: a month on Harrow's trail in the Ironspire, and the Ironvein Bracers on her wrists.
 const IRONHOLD_MOVES = {
-  'iron-grip': { name: 'Iron Grip', target: 'enemy', text: 'She catches your arm in an Ironvein bracer and wrenches: you Stagger.', effects: [atk('1d8', 'crush', { riders: [status('staggered')] })] },
+  'iron-grip': { name: 'Iron Grip', target: 'enemy', text: 'She catches your arm in an Ironvein bracer and wrenches: you Stagger.', effects: [atk('2d8', 'crush', { riders: [status('staggered')] })] },
   'hunters-mark': { name: 'Hunter\'s Mark', target: 'enemy', text: 'A month on Harrow\'s trail taught her where to look: you are Marked.', effects: [status('marked')] },
   'bracer-block': { name: 'Bracer Block', target: 'self', text: 'She takes the blow on the bracers: Guarding, and Warded.', effects: [status('guarding'), status('warded', { value: { dice: '1d8', diceEvery: 3 } })] },
 };

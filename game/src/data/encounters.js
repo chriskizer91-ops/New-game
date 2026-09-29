@@ -322,7 +322,8 @@ export const ENCOUNTERS = deepFreeze({
   },
   'gf-caravan': {
     id: 'gf-caravan', type: 'fight', name: 'The Tallyman Caravan', place: 'The Glass Flats', backdrop: 'glass-flats', region: 'sunscorch',
-    spawns: [SUN('tallyman', 4, { variant: 'quartermaster', name: 'The Quartermaster', wakeOmenCap: 2 }), SUN('smuggler', 5, { variant: 'sharpshooter', relic: 'saltglass', name: 'Vell Saltglass', wakeOmenCap: 2 }), S('smuggler', 7)],
+    // M5: the plain smuggler 6 (was 7): Kharzul's exact Burrow moved this lead to 25.5% first-try wipes (M4's 15-25%)
+    spawns: [SUN('tallyman', 4, { variant: 'quartermaster', name: 'The Quartermaster', wakeOmenCap: 2 }), SUN('smuggler', 5, { variant: 'sharpshooter', relic: 'saltglass', name: 'Vell Saltglass', wakeOmenCap: 2 }), S('smuggler', 6)],
     text: 'A Tallyman caravan with a sharpshooter on the lead wagon, and on the last wagon a crate that hums.',
   },
   'gnash-camp': {

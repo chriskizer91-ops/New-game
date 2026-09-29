@@ -563,7 +563,8 @@ function targetChecks(all, targets, modes) {
     const n = all[k].nodes[id];
     if (!n || !n.first) return [k, id, `${what} ${lo}-${hi}%`, '-', 'no data'];
     const v = 100 * (what === 'win' ? n.firstWins : n.first - n.firstWins - n.yields) / n.first;
-    return [k, id, `${what} 1st ${lo}-${hi}%`, `${v.toFixed(0)}%`, v >= lo - 0.5 && v <= hi + 0.5 ? 'ok' : 'MISS'];
+    // a half point shows as one (25.5%, not 26%): the check rounds a target to whole points, the table shows why
+    return [k, id, `${what} 1st ${lo}-${hi}%`, `${Number.isInteger(v) ? v : v.toFixed(1)}%`, v >= lo - 0.5 && v <= hi + 0.5 ? 'ok' : 'MISS'];
   });
   for (const k of modes.filter(m => ONLY.includes(m))) checks.push([k, '(every run)', 'stuck 0', String(all[k].stuck), all[k].stuck ? 'MISS' : 'ok']);
   return checks;

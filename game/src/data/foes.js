@@ -856,7 +856,7 @@ const IRONSPIRE = {
   // Champions (spec §3.5): each piece is a relic with its own grip meter; snapping one off shuts its moves down.
   'mother-anvil': {
     id: 'mother-anvil', name: 'Mother Anvil', art: 'mother-anvil', tier: 'champion', kind: 'construct', unique: true,
-    hp: 175, guard: 18, atk: 9, dmg: 6, speed: 10, armor: 'plate', aspect: 'ember', resist: ['crush'], weak: ['frost'],
+    hp: 170, guard: 18, atk: 9, dmg: 6, speed: 10, armor: 'plate', aspect: 'ember', resist: ['crush'], weak: ['frost'],
     saves: { STR: 5, DEX: 0, CON: 5, WIS: 2 },
     relics: ['worldforge-hammer', 'anvil-heart'],
     noFlee: true,
@@ -879,7 +879,7 @@ const IRONSPIRE = {
   },
   'rime-abbot': {
     id: 'rime-abbot', name: 'The Rime-Abbot', art: 'rime-abbot', tier: 'champion', kind: 'undead', unique: true,
-    hp: 150, guard: 21, atk: 8, dmg: 4, speed: 8, armor: 'none', aspect: 'frost',
+    hp: 160, guard: 21, atk: 8, dmg: 7, speed: 8, armor: 'none', aspect: 'frost',
     saves: { STR: 3, DEX: 1, CON: 4, WIS: 5 },
     relics: ['rime-crozier', 'hushweave-cowl'],
     noFlee: true,
@@ -896,7 +896,7 @@ const IRONSPIRE = {
     phases: [
       { at: 1, text: 'Vespers. Brother Aurel lifts his head from the ice, and the Crozier lights the cave blue.', table: [[1, 8, 'crozier-strike'], [9, 14, 'toll'], [15, 20, 'rime-ward']] },
       { at: 0.66, text: 'Compline. He sings the last office of the day, and the drowned sing it with him.', table: [[1, 5, 'crozier-strike'], [6, 10, 'drown'], [11, 15, 'call-the-choir'], [16, 20, 'hushing']] },
-      { at: 0.33, text: 'Hush. Under the ice something vast turns over in its sleep, and its heart beats.', table: [[1, 6, 'crozier-strike'], [7, 12, 'heartbeat'], [13, 20, 'rime-nova']] },
+      { at: 0.33, text: 'Hush. Under the ice something vast turns over in its sleep, and its heart beats.', table: [[1, 8, 'crozier-strike'], [9, 14, 'heartbeat'], [15, 20, 'rime-nova']] },
     ],
     text: 'Brother Aurel of Peak\'s Veil, who went down to listen to Hush and did not come up. The Crozier froze to his hand; the Cowl was woven down there, by someone who was listening.',
   },
