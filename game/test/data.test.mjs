@@ -458,10 +458,8 @@ const movesWith = (moves, pred) => Object.values(moves).filter(m => m.effects.so
 
 test('M5 foes: the Ironspire families are real (no scaffold stubs left), with the spec\'s tiers, kinds, aspects and their own art', async () => {
   const { damageMult } = await import('../src/rules/combat.js');
-  // M6: the Gloomfen's ten families are the M6 scaffold's stubs until M6 P4 writes them (M6 spec §7); every other
-  // family is real. P4 removes this list, so the check covers every family again at M6's delivery (M6 spec §8).
-  const M6_STUBS = ['mire-leech', 'marsh-light', 'lamp-moth', 'blackwater-gar', 'bog-hag', 'willow-wight', 'drowned', 'hodge', 'lantern-mother', 'blackwater-leviathan'];
-  assert.ok(Object.values(FOES).every(f => !f.stub || M6_STUBS.includes(f.id)), 'no stub family is left but the M6 scaffold\'s (spec §8)');
+  // M6 (spec §8): no stand-in family is left, the Gloomfen's ten included
+  assert.ok(Object.values(FOES).every(f => !f.stub), 'no stub family is left (M6 spec §8)');
   for (const [id, [tier, kind, aspect]] of Object.entries(IRON_FAMILIES)) {
     const f = FOES[id];
     assert.ok(f, id);
@@ -681,5 +679,324 @@ test('M5 encounters: the nineteen Ironspire fights (and the East Road\'s three) 
     const got = new Set(PATROLS[k].flat().map(s => s.family));
     assert.deepEqual([...got].sort(), [...fams].sort(), `${k} patrols`);
     for (const s of PATROLS[k].flat()) assert.equal(FOES[s.family].tier, 'rabble');
+  }
+});
+
+// ---- M6 data (spec §2.6, §2.7, §3.2-§3.5; P4) -----------------------------------------------------------
+
+// family -> [tier, kind, aspect]
+const GLOOM_FAMILIES = {
+  'mire-leech': ['rabble', 'beast', 'blight'], 'marsh-light': ['rabble', 'spirit', 'radiant'], 'lamp-moth': ['rabble', 'beast', 'radiant'],
+  'blackwater-gar': ['rabble', 'beast', 'tide'], 'bog-hag': ['veteran', undefined, 'blight'], 'willow-wight': ['veteran', 'plant', 'verdant'],
+  drowned: ['veteran', 'undead', 'tide'], hodge: ['relic-bearer', undefined, null], 'lantern-mother': ['champion', 'undead', 'radiant'],
+  'blackwater-leviathan': ['champion', 'beast', 'tide'],
+};
+// variant -> [tier, its own art key (spec §3.2's "Art keys"), the relic its Art needs (null: none)]
+const GLOOM_VARIANTS = {
+  'blackwater-gar/old-jaws': ['relic-bearer', 'old-jaws', 'gar-tooth'], 'bog-hag/grue': ['relic-bearer', 'mother-grue', 'hag-stone'],
+  'willow-wight/grandfather': ['relic-bearer', 'grandfather-willow', 'weeping-bow'], 'drowned/bell-ringer': ['veteran', 'bell-ringer', null],
+  'drowned/choir': ['veteran', 'drowned-choir', null], 'drowned/cantor': ['relic-bearer', 'drowned-cantor', 'cantors-staff'],
+  'tallyman/salvage-master': ['relic-bearer', 'salvage-master', 'salvagers-helm'], 'tallyman/bargemaster': ['relic-bearer', 'bargemaster', 'barge-gauntlets'],
+  'smuggler/reedcutter': ['rabble', 'reedcutter', null], 'smuggler/diver': ['rabble', 'salvage-diver', null], 'smuggler/bargehand': ['rabble', 'bargehand', null],
+};
+
+test('M6 foes: the ten Gloomfen families are real, with the spec\'s tiers, kinds and aspects, their own art, and what §3.2 says they do', async () => {
+  const { damageMult } = await import('../src/rules/combat.js');
+  for (const [id, [tier, kind, aspect]] of Object.entries(GLOOM_FAMILIES)) {
+    const f = FOES[id];
+    assert.ok(f && !f.stub, `${id} is real`);
+    assert.equal(f.id, id);
+    assert.deepEqual([f.tier, f.kind, f.aspect], [tier, kind, aspect], `${id}: tier, kind, aspect`);
+    assert.equal(f.art, id, `${id} draws as itself`);
+    for (const k of ['hp', 'guard', 'atk', 'dmg', 'speed']) assert.ok(Number.isFinite(f[k]) && f[k] > 0, `${id}.${k}`);
+    for (const k of ['STR', 'DEX', 'CON', 'WIS']) assert.ok(Number.isFinite(f.saves[k]), `${id} saves ${k}`);
+    assert.ok(f.name && f.text.length > 30, `${id} has a name and flavour`);
+    for (const [mid, m] of Object.entries(f.moves)) assert.ok(m.name && m.text && m.effects.length, `${id}/${mid}`);
+    for (const m of Object.values(f.moves)) if (m.fallback) assert.ok(f.moves[m.fallback] && !f.moves[m.fallback].requires, `${id}: ${m.name} falls back to a plain move`);
+  }
+  // humanoid families show gear tiers 0-3 (spec §3.2): the bog-hags, Hodge and the Tallymen
+  for (const id of ['bog-hag', 'hodge', 'tallyman', 'smuggler']) {
+    const f = FOES[id];
+    assert.equal(f.humanoid, true, `${id} is humanoid`);
+    assert.equal(f.gear.length, 4, `${id}: a gear row per gear tier`);
+    for (const row of f.gear) assert.ok(row.some(g => ITEMS[g.base].slot === 'weapon') && row.every(g => ITEMS[g.base]), `${id} gear`);
+  }
+  const unit = f => ({ side: 'foe', armor: f.armor, aspect: f.aspect, weak: f.weak || [], resist: f.resist || [], immune: [] });
+  const has = (id, pred, moves = FOES[id].moves) => movesWith(moves, pred).length > 0;
+  // the leech latches on (Bleeding) and drinks (it heals itself), and lets go when it is hurt
+  assert.ok(has('mire-leech', e => e.status === 'bleeding'), 'a leech latches on: Bleeding');
+  assert.ok(Object.values(FOES['mire-leech'].moves).some(m => m.effects.some(e => e.type === 'damage') && m.effects.some(e => e.type === 'heal' && e.self)), 'a leech drinks, and heals');
+  // the lights Lure (charmed, WIS) and Flicker (Guarding); the moths throw dust in your eyes (Frightened, DEX)
+  assert.ok(has('marsh-light', e => e.status === 'charmed' && e.save === 'WIS') && has('marsh-light', e => e.status === 'guarding'), 'Lure and Flicker');
+  assert.ok(has('lamp-moth', e => e.status === 'frightened' && e.save === 'DEX'), 'dust in the eyes');
+  // the gars leap from the channel; the hags Hex, Rot and Stir the Pot for a friend; the willows Lash and Weep
+  assert.ok(Object.values(FOES['blackwater-gar'].moves).some(m => m.charge), 'a gar leaps (a charging move)');
+  assert.ok(has('bog-hag', e => e.status === 'hexed') && has('bog-hag', e => e.status === 'rotting'), 'the hags Hex and Rot');
+  assert.ok(Object.values(FOES['bog-hag'].moves).some(m => m.target === 'ally' && m.effects.some(e => e.type === 'heal')), 'Stir the Pot heals a friend');
+  assert.ok(has('willow-wight', e => e.status === 'rooted') && has('willow-wight', e => e.status === 'regenerating'), 'Lash roots, Weep regenerates');
+  // the drowned Drag Down (Rooted and Chilled), Toll (Frightened), and their black water Rots
+  const drag = FOES.drowned.moves['drag-down'].effects[0].riders.map(r => r.status);
+  assert.deepEqual(drag, ['rooted', 'chilled'], 'Drag Down roots and chills');
+  assert.ok(has('drowned', e => e.status === 'frightened' && e.save === 'WIS') && has('drowned', e => e.status === 'rotting'), 'Toll, and the black water');
+  // weak and resist: the Lantern Mother is weak to tide (a neutral match on the wheel), the Leviathan to storm (the wheel)
+  assert.ok(damageMult(unit(FOES['lantern-mother']), 'tide', 'tide') >= 1.5, 'the Lantern Mother is weak to tide');
+  assert.ok(damageMult(unit(FOES['blackwater-leviathan']), 'storm', 'storm') >= 1.5, 'the Leviathan is weak to storm');
+  for (const id of ['hodge', 'lantern-mother', 'blackwater-leviathan']) assert.equal(FOES[id].unique, true, id);
+  // the Tallymen reuse their M3 families; the Murkway's pack reuses the boglurcher
+  assert.equal(FOES.boglurcher.tier, 'rabble');
+});
+
+test('M6 variants: Old Jaws, Mother Grue, Grandfather Willow, the drowned, and the Tallymen of the fen draw as their own art keys and use their relics through requires/fallback', () => {
+  for (const [key, [tier, art, relic]] of Object.entries(GLOOM_VARIANTS)) {
+    const [fam, name] = key.split('/');
+    const v = FOES[fam].variants?.[name];
+    assert.ok(v && v.name && v.moves && v.table, `${key}: name, moves, table`);
+    assert.equal(v.tier || FOES[fam].tier, tier, `${key} tier`);
+    assert.equal(v.art, art, `${key} art`);
+    const arts = Object.values(v.moves).filter(m => m.requires);
+    if (!relic) { assert.equal(arts.length, 0, `${key} needs no relic`); continue; }
+    assert.ok(RELICS[relic], relic);
+    const own = arts.filter(m => m.requires === relic);
+    assert.ok(own.length, `${key} has an Art that needs ${relic}`);
+    for (const m of own) assert.ok(v.moves[m.fallback] && !v.moves[m.fallback].requires, `${key}: ${m.name} falls back to a plain move`);
+    // the Art sits on the d12's high faces, which the disarmed d8 cannot roll
+    const faces = v.table.filter(([, , mid]) => v.moves[mid].requires === relic).flatMap(([lo, hi]) => Array.from({ length: hi - lo + 1 }, (_, i) => lo + i));
+    assert.ok(faces.length && faces.every(n => n > 8), `${key}: the Art is on faces 9-12`);
+  }
+  // the choir sings the hymn (Hexed) and the Cantor beats time for it; the bell-ringers' Peal is heard by everyone
+  const choir = FOES.drowned.variants.choir.moves['the-hymn'];
+  assert.ok(choir.target === 'all-enemies' && choir.effects.some(e => e.status === 'hexed' && e.save === 'WIS'), 'the hymn hexes');
+  assert.ok(FOES.drowned.variants.cantor.moves['beat-time'].target === 'all-allies', 'the Cantor beats time for his choir');
+  assert.equal(FOES.drowned.variants['bell-ringer'].moves.peal.target, 'all-enemies');
+  // the earlier variants are untouched by M6's additions
+  for (const k of ['thief', 'signalmaster', 'counter', 'apothecary', 'foreman', 'quartermaster', 'ice-cutter']) assert.ok(FOES.tallyman.variants[k], `tallyman/${k}`);
+  for (const k of ['queen', 'sharpshooter', 'sawyer']) assert.ok(FOES.smuggler.variants[k], `smuggler/${k}`);
+});
+
+test('M6 Champions: the Lantern Mother and the Blackwater Leviathan fight in the spec\'s three phases, and their pieces shut their moves down', () => {
+  const PIECES = { 'lantern-mother': ['lamplighters-lantern', 'mourning-veil'], 'blackwater-leviathan': ['corvus-harpoon', 'deep-pearl'] };
+  const NEEDS = {
+    'lantern-mother': { lure: 'lamplighters-lantern', 'lantern-nova': 'lamplighters-lantern', mourning: 'mourning-veil' },
+    'blackwater-leviathan': { 'harpoon-rage': 'corvus-harpoon', 'pearl-light': 'deep-pearl' },
+  };
+  // spec §3.5, phase by phase (each phase may also keep a plain blow on its low faces)
+  const PHASES = {
+    'lantern-mother': [['lure', 'lantern-flare', 'hush-now'], ['lead-them-down', 'moths', 'mourning'], ['snuff', 'lantern-nova', 'drown-the-light']],
+    'blackwater-leviathan': [['coil', 'tail-slap', 'sound'], ['swallow', 'undertow', 'harpoon-rage'], ['pearl-light', 'flood', 'swallow']],
+  };
+  for (const [id, pieces] of Object.entries(PIECES)) {
+    const f = FOES[id];
+    assert.deepEqual(f.relics, pieces);
+    assert.equal(f.noFlee, true);
+    assert.deepEqual(f.phases.map(p => p.at), [1, 0.66, 0.33]);
+    f.phases.forEach((ph, i) => {
+      assert.ok(ph.text.length > 10);
+      const faces = new Set();
+      for (const [lo, hi, mid] of ph.table) { assert.ok(f.moves[mid], mid); for (let n = lo; n <= hi; n++) faces.add(n); }
+      assert.equal(faces.size, 20, `${id}: every d20 face`);
+      const moves = ph.table.map(([, , m]) => m);
+      for (const m of PHASES[id][i]) assert.ok(moves.includes(m), `${id} phase ${i + 1} rolls ${m}`);
+    });
+    for (const [mid, relic] of Object.entries(NEEDS[id])) {
+      assert.equal(f.moves[mid].requires, relic, `${id}/${mid}`);
+      assert.ok(f.moves[f.moves[mid].fallback] && !f.moves[f.moves[mid].fallback].requires, `${id}/${mid} falls back`);
+    }
+    for (const r of pieces) assert.ok(Object.values(f.moves).some(m => m.requires === r), `${id}: ${r} powers something`);
+  }
+  const m = FOES['lantern-mother'].moves;
+  assert.ok(m.lure.effects.some(e => e.status === 'charmed' && e.save === 'WIS'), 'Lure charms one hero (WIS)');
+  assert.ok(m['lantern-flare'].target === 'all-enemies' && m['lantern-flare'].effects.some(e => e.type === 'damage' && e.aspect === 'radiant' && e.save === 'DEX'), 'Lantern Flare: radiant to every hero, DEX for half');
+  assert.ok(m['hush-now'].target === 'all-enemies' && m['hush-now'].effects.some(e => e.status === 'hexed' && e.save === 'WIS'), 'Hush Now: WIS or Hexed');
+  assert.equal(m['lead-them-down'].charge, true);
+  assert.ok(m['lead-them-down'].effects.some(e => e.status === 'swallowed' && e.label === 'Led away'), 'Lead Them Down: led away');
+  const moths = m.moths.effects.find(e => e.type === 'summon');
+  assert.deepEqual([moths.family, moths.max], ['lamp-moth', 2], 'Moths: a lamp-moth, two at most');
+  assert.ok(m.mourning.target === 'all-enemies' && ['frightened', 'rotting'].every(st => m.mourning.effects.some(e => e.status === st)), 'Mourning: Frightened and Rotting');
+  assert.ok(m.snuff.effects.some(e => e.status === 'exposed'), 'Snuff: Exposed');
+  assert.ok(m['lantern-nova'].effects.some(e => e.aspect === 'radiant' && e.riders?.some(r => r.status === 'burning')), 'Lantern Nova burns');
+  assert.equal(m['drown-the-light'].charge, true);
+  const v = FOES['blackwater-leviathan'].moves;
+  assert.ok(v.coil.effects.some(e => e.kind === 'crush' && e.riders?.some(r => r.status === 'rooted')), 'Coil: crushing, Rooted');
+  assert.ok(v.sound.effects.some(e => e.status === 'burrowed' && e.self) && v.sound.then === 'breach', 'Sound: it dives, then breaches');
+  assert.ok(v.breach.target === 'enemy' && v.breach.effects.some(e => e.aspect === 'tide' && e.riders?.some(r => r.status === 'staggered')), 'Breach: under one hero, Staggered');
+  assert.equal(v.swallow.charge, true);
+  assert.ok(v.swallow.effects.some(e => e.riders?.some(r => r.status === 'swallowed' && r.label === 'Swallowed whole')), 'Swallow: swallowed whole');
+  assert.ok(v.undertow.effects.some(e => e.save === 'STR' && ['rooted', 'chilled'].every(st => e.riders?.some(r => r.status === st))), 'Undertow: STR or Rooted and Chilled');
+  assert.equal(v['harpoon-rage'].effects.filter(e => e.type === 'attack').length, 2, 'Harpoon Rage: two Coils in one turn');
+  assert.ok(v['pearl-light'].effects.some(e => e.type === 'heal') && v['pearl-light'].effects.some(e => e.status === 'warded'), 'Pearl-Light heals and Wards');
+  assert.ok(v.flood.target === 'all-enemies' && v.flood.effects.some(e => e.save === 'DEX'), 'Flood: every hero, DEX for half');
+});
+
+test('M6 Hodge: party level + 6 and three Omens with Frenzied among them; Toll Is Due opens, Bridge Troll, the Cane, the Clipped Coin; he sits down at 0 HP and keeps his toll unless it is pried loose', () => {
+  const h = FOES.hodge;
+  assert.deepEqual(h.relics, ['unfair-toll']);
+  assert.equal(h.opener, 'toll-is-due', 'his first move in every fight');
+  const toll = h.moves['toll-is-due'];
+  assert.equal(toll.target, 'strongest', 'the strongest hero');
+  assert.ok(toll.effects.some(e => e.type === 'delay' && e.save === 'CHA' && (e.turns || 1) === 1), 'a CHA save or the next turn comes a whole turn later');
+  assert.ok(!h.table.some(([, , mid]) => mid === 'toll-is-due'), 'only as his opener');
+  assert.equal(h.moves['bridge-troll'].charge, true);
+  assert.ok(h.moves['bridge-troll'].effects.some(e => e.riders?.some(r => r.status === 'swallowed' && r.label === 'In the river')), 'shoved off the bridge: in the river');
+  const cane = h.moves['old-mans-cane'].effects[0];
+  assert.deepEqual([cane.dice, cane.kind, cane.riders.map(r => r.status)], ['2d10', 'crush', ['staggered']], 'Old Man\'s Cane: 2d10 crushing, Staggered');
+  const coin = h.moves['clipped-coin'];
+  assert.equal(coin.requires, 'unfair-toll');
+  assert.equal(coin.effects.filter(e => e.type === 'attack').length, 2, 'heads: he hits twice');
+  assert.ok(h.moves[coin.fallback] && !h.moves[coin.fallback].requires);
+  assert.ok(typeof h.koText === 'string' && /stool/.test(h.koText), 'he never dies: he sits down on his stool and says so');
+  assert.equal(h.keepsRelics, true, 'his toll comes loose only by grip');
+  assert.ok(!Object.values(h.moves).some(m => m.effects.some(e => e.type === 'escape')), 'he never flees');
+  const e = ENCOUNTERS.hodge;
+  assert.deepEqual([e.once, e.talk, e.region, e.backdrop], [true, 'hodge-toll', 'gloomfen', 'rotbridge']);
+  const [sp] = e.spawns;
+  assert.deepEqual([sp.family, sp.level, sp.partyDelta, sp.noWaking, sp.relic], ['hodge', 'party', 6, true, 'unfair-toll'], 'party level + 6, and the Waking does not add to it');
+  assert.equal(sp.omens.length, 3);
+  assert.ok(sp.omens.includes('frenzied') && !sp.omens.includes('twinned'), 'Frenzied among them, never Twinned');
+});
+
+// No. -> [id, slot, kind, aspect, map power]
+const GLOOM_RELICS = {
+  53: ['unfair-toll', 'amulet', 'amulet', 'tide', 'hodges-ferry'], 54: ['bogstriders', 'feet', 'boots', 'verdant', 'bogstride'],
+  55: ['weeping-bow', 'weapon', 'bow', 'verdant', 'willow-weep'], 56: ['willow-ward', 'offhand', 'shield', 'verdant', 'ward-song'],
+  57: ['hag-stone', 'ring', 'ring', 'blight', 'hag-sight'], 58: ['lamplighters-lantern', 'offhand', 'focus', 'radiant', 'mothers-light'],
+  59: ['mourning-veil', 'head', 'hood', 'tide', 'mourners-path'], 60: ['salvagers-helm', 'head', 'helm', 'tide', 'deep-breath'],
+  61: ['cantors-staff', 'weapon', 'staff', 'tide', 'still-song'], 62: ['gar-tooth', 'weapon', 'dagger', 'tide', 'gar-current'],
+  63: ['barge-gauntlets', 'hands', 'gauntlets', 'stone', 'haul'], 64: ['corvus-harpoon', 'weapon', 'spear', 'tide', 'harpoon-line'],
+  65: ['deep-pearl', 'amulet', 'amulet', 'tide', 'pearl-light'], 66: ['hexbane-shawl', 'body', 'robe', 'blight', 'hexbane'],
+};
+// who holds each (spec §3.4): an encounter's spawn relic, a family's pieces, a worn relic, or a quest (null)
+const GLOOM_HOLDERS = {
+  'unfair-toll': 'hodge', bogstriders: 'tamsin-rotbridge', 'weeping-bow': 'wm-willow', 'willow-ward': null, 'hag-stone': 'grue-hollow',
+  'lamplighters-lantern': 'lantern-mother', 'mourning-veil': 'lantern-mother', 'salvagers-helm': 'mh-salvage', 'cantors-staff': 'cantor',
+  'gar-tooth': 'old-jaws', 'barge-gauntlets': 'tf-bargemaster', 'corvus-harpoon': 'blackwater-leviathan', 'deep-pearl': 'blackwater-leviathan', 'hexbane-shawl': null,
+};
+
+test('M6 relics: Codex Nos. 53-66 follow the spec table, each with a Legend Surge, lore, and a holder that carries it or a quest', async () => {
+  const { POWERS } = await import('../src/rules/stats.js');
+  const { LOCKS } = await import('../src/data/locks.js');
+  for (const [no, [id, slot, kind, aspect, power]] of Object.entries(GLOOM_RELICS)) {
+    const r = RELICS[id];
+    assert.ok(r, id);
+    assert.equal(r.codex, +no, id);
+    assert.deepEqual([r.slot, r.kind, r.aspect, r.rarity, r.mapPower.id], [slot, kind, aspect, 'heirloom', power], id);
+    assert.ok(r.power && POWERS[r.power.id] === r.power, `${id} has a Legend Surge the engine can fire`);
+    assert.ok(r.power.text && r.power.effects.length, id);
+    assert.ok(r.lore.length > 40 && r.holder, id);
+    assert.ok(Object.keys(r.stats).length, `${id} has stats`);
+    assert.ok(r.ilvl >= 20, `${id}: a notch above Page III`);
+    if (slot === 'weapon') assert.match(r.weapon.dice, /^\d+d\d+$/);
+    if (slot === 'body') assert.ok(r.armor?.base >= 12, `${id} is armour`);
+    const enc = GLOOM_HOLDERS[id];
+    if (enc === null) { assert.equal(r.grip, undefined, `${id} is a quest reward`); continue; }
+    const spawns = ENCOUNTERS[enc].spawns;
+    if (id === 'bogstriders') { assert.ok(spawns.some(s => s.wears === id) && r.grip === undefined, 'Tamsin wears the Bogstriders'); continue; }
+    assert.ok(r.grip >= 24, `${id} is held with a grip meter`);
+    assert.ok(spawns.some(s => s.relic === id || (!s.relic && FOES[s.family].relics?.includes(id))), `${enc} holds ${id}`);
+  }
+  // Nos. 53-66 hold the spec's lock keys (§2.7), where a map power opens a lock (the new locks and five older ones)
+  const KEYS = {
+    bog: ['bogstride', 'mourners-path'], fog: ['mothers-light', 'hag-sight', 'still-song'], blackwater: ['hodges-ferry', 'harpoon-line', 'deep-breath'],
+    'witch-ward': ['ward-song', 'hag-sight', 'hexbane'], darkness: ['mothers-light', 'pearl-light'], mirage: ['hag-sight'], stream: ['gar-current'], boulder: ['haul'], bramble: ['willow-weep'],
+  };
+  for (const [lock, keys] of Object.entries(KEYS)) for (const k of keys) assert.ok(LOCKS[lock]?.powers.includes(k), `${lock} opens with ${k}`);
+  // the Champions' four pieces are hand-named, with two sockets (the all-relics test checks the names)
+  for (const id of ['lamplighters-lantern', 'mourning-veil', 'corvus-harpoon', 'deep-pearl']) assert.equal(RELICS[id].sockets, 2, id);
+  // Hodge's Unfair Toll: "+2 CHA", its Surge "Heads I Win" (every foe pays: a turn later, no save: it is always heads), the brief's line
+  const t = RELICS['unfair-toll'];
+  assert.equal(t.stats.CHA, 2);
+  assert.equal(t.power.name, 'Heads I Win');
+  assert.equal(t.power.target, 'all-enemies');
+  assert.ok(t.power.effects.some(e => e.type === 'delay' && !e.save), 'a clipped coin always comes up Hodge');
+  assert.equal(t.lore, 'Hodge charges what he likes. Now so do you.');
+  assert.match(RELICS['corvus-harpoon'].lore, /Corvus/, 'Corvus\'s harpoon is his');
+});
+
+test('M6 encounters: the twenty-five Gloomfen fights hold the spec\'s spawns and holders, fight on their maps\' backdrops, and the Waking climbs them from Waking 6', async () => {
+  const { BRANDS, PATROLS, BACKDROPS: BDS } = await import('../src/data/encounters.js');
+  const { ZONES, GLOOM_PATH, GLOOM_LEADS } = await import('../src/data/world.js');
+  const { escalateSpawn, familyOf } = await import('../src/rules/foe.js');
+  const { condErrors } = await import('../src/rules/cond.js');
+  // [map, spawns (lead first)] as spec §3.3 lists them
+  const SPEC = {
+    'mk-leeches': ['murkway', 'mire-leech', 'mire-leech', 'mire-leech'], 'mk-reedcutters': ['murkway', 'smuggler/reedcutter', 'smuggler/reedcutter', 'tallyman'],
+    'mk-bogfolk': ['murkway', 'boglurcher', 'boglurcher', 'boglurcher'], 'wm-wights': ['willowmurk', 'willow-wight', 'willow-wight'],
+    'wm-willow': ['willowmurk', 'willow-wight/grandfather:weeping-bow', 'willow-wight'], hodge: ['rotbridge', 'hodge:unfair-toll'],
+    'tamsin-rotbridge': ['rotbridge', 'tamsin/$rival:rotbridge:$rival'], 'rb-gars': ['rotbridge', 'blackwater-gar', 'blackwater-gar', 'blackwater-gar'],
+    'lf-moths': ['lanternfen', 'lamp-moth', 'lamp-moth', 'lamp-moth', 'lamp-moth'], 'lf-hags': ['lanternfen', 'bog-hag', 'bog-hag', 'mire-leech'],
+    'lf-lights': ['lanternfen', 'marsh-light', 'marsh-light', 'marsh-light'], 'grue-hollow': ['lanternfen', 'bog-hag/grue:hag-stone', 'bog-hag'],
+    'lantern-mother': ['mothers-hollow', 'lantern-mother'], 'lb-drowned': ['long-boardwalk', 'drowned', 'drowned', 'drowned'],
+    'lb-lights': ['long-boardwalk', 'marsh-light', 'marsh-light', 'lamp-moth', 'lamp-moth'],
+    'mh-salvage': ['misthollow', 'tallyman/salvage-master:salvagers-helm', 'smuggler/diver', 'smuggler/diver'],
+    'mh-ringers': ['misthollow', 'drowned/bell-ringer', 'drowned/bell-ringer', 'drowned/bell-ringer'],
+    'db-choir': ['drowned-belfry', 'drowned/choir', 'drowned/choir', 'drowned/choir'], cantor: ['drowned-belfry', 'drowned/cantor:cantors-staff', 'drowned/choir', 'drowned/choir'],
+    'br-barge': ['blackwater-reach', 'smuggler/bargehand', 'smuggler/bargehand', 'smuggler/bargehand'], 'br-gars': ['blackwater-reach', 'blackwater-gar', 'blackwater-gar', 'blackwater-gar'],
+    'old-jaws': ['blackwater-reach', 'blackwater-gar/old-jaws:gar-tooth', 'blackwater-gar', 'blackwater-gar'],
+    'tf-bargemaster': ['tidal-flats', 'tallyman/bargemaster:barge-gauntlets', 'smuggler/bargehand', 'smuggler/bargehand'],
+    'blackwater-leviathan': ['tidal-flats', 'blackwater-leviathan'], 'cw-lights': ['causeway', 'marsh-light', 'marsh-light', 'mire-leech'],
+  };
+  // met after the Brand of Lanterns (Waking 7): the long boardwalk and everything past it; the causeway after the Deep (8)
+  const DEEP = new Set(['lb-drowned', 'lb-lights', 'mh-salvage', 'mh-ringers', 'db-choir', 'cantor', 'br-barge', 'br-gars', 'old-jaws', 'tf-bargemaster', 'blackwater-leviathan']);
+  const gloom = Object.values(ENCOUNTERS).filter(e => e.region === 'gloomfen' && e.type === 'fight').map(e => e.id).sort();
+  assert.deepEqual(gloom, Object.keys(SPEC).sort());
+  for (const [id, [map, ...want]] of Object.entries(SPEC)) {
+    const e = ENCOUNTERS[id];
+    const got = e.spawns.map(s => `${s.family}${s.variant ? `/${s.variant}` : ''}${s.relic ? `:${s.relic}` : ''}`);
+    assert.deepEqual(got, want, id);
+    assert.equal(e.backdrop, map, `${id} fights on its map's backdrop (spec §6.2)`);
+    assert.ok(BDS.includes(map), `${map} is a listed backdrop`);
+    for (const s of e.spawns) {
+      if (s.level === 'party') continue;
+      assert.ok(Number.isInteger(s.level) && s.level >= 1, `${id}: a Waking-0 level of at least 1`);
+      const w = id === 'cw-lights' ? 8 : DEEP.has(id) ? 7 : 6;
+      const x = escalateSpawn(s, w, id);
+      assert.ok(x.omens.length <= 3, `${id}: at most three Waking Omens`);
+      if (familyOf(s).unique || s.relic) assert.ok(!x.omens.includes('twinned'), `${id}: a unique foe or a holder is never Twinned`);
+      if (familyOf(s).tier === 'rabble') {
+        assert.equal(s.wakeLevels, undefined, `${id}: rabble climb the usual 2 a Waking`);
+        assert.ok(x.level >= 26 && x.level <= 34, `${id}: rabble at level ${x.level} at Waking ${w}`);
+        continue;
+      }
+      // every Gloomfen foe that is not rabble climbs 4 levels a Waking (GLOOM), and is met near the party's level
+      assert.equal(s.wakeLevels, 4, `${id}: a GLOOM spawn`);
+      assert.ok(x.level >= 28 && x.level <= 38 && escalateSpawn(s, w + 1, id).level === x.level + 4, `${id}: level ${x.level} at Waking ${w}`);
+    }
+  }
+  // the named lair holders and the Champions carry chosen Omens (never Twinned)
+  for (const id of ['wm-willow', 'grue-hollow', 'lantern-mother', 'cantor', 'old-jaws', 'blackwater-leviathan', 'mh-salvage', 'tf-bargemaster']) {
+    const lead = ENCOUNTERS[id].spawns[0];
+    assert.equal(lead.wakeOmenCap, 0, `${id}: chosen Omens`);
+    assert.ok(lead.omens.length && !lead.omens.includes('twinned'), id);
+  }
+  assert.equal(ENCOUNTERS['lantern-mother'].brand, 'brand-of-lanterns');
+  assert.equal(ENCOUNTERS['blackwater-leviathan'].brand, 'brand-of-the-deep');
+  assert.ok(BRANDS['brand-of-lanterns'] && BRANDS['brand-of-the-deep']);
+  for (const id of ['lantern-mother', 'db-choir', 'cantor']) assert.equal(ENCOUNTERS[id].dark, true, `${id} is fought in the dark`);
+  for (const id of ['blackwater-leviathan', 'mh-salvage', 'wm-willow', 'hodge']) assert.ok(!ENCOUNTERS[id].dark, `${id} is not dark`);
+  // every Gloomfen Hearthfire rests on its map's backdrop too
+  for (const e of Object.values(ENCOUNTERS).filter(x => x.region === 'gloomfen' && x.type === 'hearthfire')) assert.ok(BDS.includes(e.backdrop), e.id);
+  // Tamsin at Rotbridge (spec §3.5): her fourth duel, her Rotbridge kit, the Bogstriders; gone for good after her fall
+  const t = ENCOUNTERS['tamsin-rotbridge'];
+  assert.deepEqual([t.once, t.duel, t.yields, t.talk], [true, true, 'tamsin-yielded-4', 'tamsin-rotbridge']);
+  assert.deepEqual(Object.fromEntries(['partyDelta', 'gearTier', 'lend', 'noWaking', 'wears', 'variant', 'relic'].map(k => [k, t.spawns[0][k]])),
+    { partyDelta: 4, gearTier: 4, lend: true, noWaking: true, wears: 'bogstriders', variant: '$rival:rotbridge', relic: '$rival' });
+  assert.deepEqual(t.leaves, { flag: 'tamsin-fallen' }, 'she sails off on the barge after her fall');
+  // every `leaves` condition parses (rules/world.js reads it)
+  for (const e of Object.values(ENCOUNTERS)) if (e.leaves) assert.deepEqual(condErrors(e.leaves), [], `${e.id}: leaves`);
+  // the critical path and the leads are these encounters and Hearthfires
+  for (const id of [...GLOOM_PATH, ...Object.values(GLOOM_LEADS).flat()]) assert.ok(ENCOUNTERS[id]?.region === 'gloomfen', id);
+  // the Gloomfen patrol sets (spec §2.6): rabble only, of the families the spec names, within reach at the Waking they are met
+  const SETS = {
+    murkway: ['mire-leech', 'boglurcher'], lanternfen: ['lamp-moth', 'marsh-light'], boardwalk: ['marsh-light', 'mire-leech'], misthollow: ['marsh-light', 'lamp-moth'],
+    blackwater: ['blackwater-gar', 'mire-leech'], 'tidal-flats': ['blackwater-gar', 'mire-leech'], causeway: ['marsh-light', 'mire-leech'],
+  };
+  const ZONE_WAKING = { murkway: 6, lanternfen: 6, boardwalk: 7, misthollow: 7, blackwater: 7, 'tidal-flats': 7, causeway: 8 };
+  for (const [k, fams] of Object.entries(SETS)) {
+    const got = new Set(PATROLS[k].flat().map(s => s.family));
+    assert.deepEqual([...got].sort(), [...fams].sort(), `${k} patrols`);
+    for (const s of PATROLS[k].flat()) assert.equal(FOES[s.family].tier, 'rabble');
+    const z = Object.values(ZONES).find(x => x.sets === k);
+    assert.ok(z && Number.isInteger(z.level), `${k}: a zone`);
+    const lvl = escalateSpawn({ ...PATROLS[k][0][0], level: z.level }, ZONE_WAKING[k], k).level;
+    assert.ok(lvl >= 26 && lvl <= 34, `${k}: patrols at level ${lvl}`);
   }
 });

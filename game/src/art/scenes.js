@@ -14,6 +14,9 @@
 // lamps and braziers go out; the sunstone veins and the embers in the vault floor stay lit).
 // M5 adds the eleven Ironspire places; 'ironhold-deeps:dark' and 'frostmere-below:dark' are their dark listings (the
 // lamps and the ice's own light go out; the slag, the embers and Hush's light under the ice stay lit).
+// M6 adds the twelve Gloomfen places; 'mothers-hollow:dark' and 'drowned-belfry:dark' are their dark listings (the
+// moon and the water-light go out; the Mother's lamps and the Sleeper's light stay lit). A listing with mist: true
+// (the Lanternfen, the Misthollow Ruins: the foggy maps) draws banks of mist drifting across it in renderBackdrop.
 import { hx, ramp, bayer, hash, vnoise, mix } from './forge.js';
 import { lru } from './cache.js';
 
@@ -56,6 +59,21 @@ export const BACKDROPS = Object.freeze({
   'frostmere-below': { name: 'Beneath Frostmere', horizon: .56, floor: [.64, 1], fx: 'rime' },
   'ironhold-deeps:dark': { name: 'The Deeps, the lamps out', horizon: .56, floor: [.64, 1], fx: 'sparks', dark: true },
   'frostmere-below:dark': { name: 'Beneath Frostmere, where Hush sleeps', horizon: .56, floor: [.64, 1], fx: 'rime', dark: true },
+  // M6: the Gloomfen Marsh
+  murkway: { name: 'The Murkway', horizon: .58, floor: [.66, 1], fx: 'midge' },
+  willowmurk: { name: 'Willowmurk', horizon: .58, floor: [.66, 1], fx: 'leaf' },
+  rotbridge: { name: 'Rotbridge', horizon: .56, floor: [.64, 1], fx: 'mire' },
+  bogmire: { name: 'Bogmire', horizon: .58, floor: [.66, 1], fx: 'firefly' },
+  lanternfen: { name: 'The Lanternfen', horizon: .56, floor: [.64, 1], fx: 'wisp', mist: true },
+  'mothers-hollow': { name: "The Mother's Hollow", horizon: .56, floor: [.64, 1], fx: 'moth' },
+  'long-boardwalk': { name: 'The Long Boardwalk', horizon: .58, floor: [.66, 1], fx: 'wisp' },
+  misthollow: { name: 'The Misthollow Ruins', horizon: .56, floor: [.64, 1], fx: 'bubble', mist: true },
+  'drowned-belfry': { name: 'The Drowned Belfry', horizon: .56, floor: [.64, 1], fx: 'bubble' },
+  'blackwater-reach': { name: 'The Blackwater Reach', horizon: .58, floor: [.66, 1], fx: 'midge' },
+  'tidal-flats': { name: 'The Tidal Flats', horizon: .6, floor: [.68, 1], fx: 'spray' },
+  causeway: { name: 'The Blackwater Causeway', horizon: .6, floor: [.68, 1], fx: 'wisp' },
+  'mothers-hollow:dark': { name: "The Mother's Hollow, by lamplight", horizon: .56, floor: [.64, 1], fx: 'moth', dark: true },
+  'drowned-belfry:dark': { name: 'The Drowned Belfry, where the Sleeper lies', horizon: .56, floor: [.64, 1], fx: 'bubble', dark: true },
 });
 export const BACKDROP_KEYS = Object.keys(BACKDROPS);
 // the listed dark variant of a backdrop key ('mosswatch' -> 'mosswatch:dark'), or the key itself when none is listed
@@ -1411,6 +1429,391 @@ const PAINT = {
   },
 };
 
+/* ---------- M6: helpers for the Gloomfen ---------- */
+// black water from y0 to y1: darker toward the horizon, slow ripple lines, the odd glint (cols run dark to light)
+function fenWater(L, y0, y1, cols, seed, rip = '#35524e', x0 = 0, x1 = L.w) {
+  const C = cols.map(hx), n = C.length - 1, R = hx(rip);
+  for (let y = Math.floor(y0); y < y1; y++) for (let x = Math.floor(x0); x < x1; x++) { const v = (y - y0) / Math.max(1, y1 - y0) * n * .8 + (vnoise(x * .05, y * .2, seed) - .5) * 1.2 + bayer(x, y) * .7 - .35; L.set(x, y, C[clampI(Math.round(v), n)]); }
+  for (let k = 0; k < 14; k++) { const u = (k + hash(k, 1, seed) * .6) / 14, y = y0 + 1 + u * u * (y1 - y0 - 2); for (let x = Math.floor(x0); x < x1; x++) if (vnoise(x * .08, k * 3, seed + 1) > .55) L.set(x, y + Math.sin(x * (.2 - u * .1) + k) * .6, R, .16 + u * .22); }
+}
+// a light's reflection on the water below it, broken into dashes that spread toward the viewer
+function reflect(L, x, y0, y1, c, a = .6) { const C = hx(c); for (let y = Math.floor(y0); y < y1; y += 2) { const d = (y - y0) / Math.max(1, y1 - y0), len = 1 + hash(y, x | 0, 41) * 3 * (1 - d * .5), xc = x + (hash(y, 2, 41) - .5) * (2 + d * 5); L.line(xc - len / 2, y, xc + len / 2, y, C, a * (1 - d * .7)); } }
+// a weeping willow: a leaning trunk, a heavy crown, and strands hanging from it (to `to`, or most of the way down);
+// cols: [trunk, leaf dark, leaf lit]
+function willow(L, x, y, h, lean, cols, seed, to) {
+  const [T, D, Lt] = cols.map(hx), cx = x + lean * h * .3, top = y - h, R = h * .36;
+  L.thick(x, y, cx, top + h * .42, h * .07, h * .045, T); L.thick(x - h * .06, y, x - h * .12, y + 1, h * .03, h * .02, T); L.thick(x + h * .05, y, x + h * .13, y + 1, h * .03, h * .02, T);
+  for (const [dx, dy] of [[-.3, .16], [.28, .12], [0, .06]]) L.thick(cx, top + h * .42, cx + dx * h, top + dy * h, h * .03, h * .012, T);
+  for (let k = 0; k < 11; k++) { const a = Math.PI * (1 + k / 10), px = cx + Math.cos(a) * R * .9, py = top + h * .24 + Math.sin(a) * R * .5; L.disc(px, py, R * (.3 + hash(k, 1, seed) * .12), D); }
+  const n = Math.round(h * 1.4);
+  for (let s = 0; s < n; s++) { const u = hash(s, 2, seed), sx = cx - R * 1.15 + u * R * 2.3, sy = top + h * .2 + (1 - Math.sin(u * Math.PI)) * h * .18 + hash(s, 3, seed) * 3, len = (to ? to - sy : h * (.45 + hash(s, 4, seed) * .35)) * (.75 + hash(s, 5, seed) * .25); for (let j = 0; j < len; j++) L.set(sx + Math.sin(j * .25 + s) * .5, sy + j, (j + s * 3) % 7 ? D : Lt, 1 - j / len * .4); }
+  for (let k = 0; k < h * .5; k++) L.set(cx + (hash(k, 6, seed) - .5) * R * 1.8, top + h * .08 + hash(k, 7, seed) * h * .26, Lt, .7);
+}
+// a post on stilts, cols [dark, lit]: a pile driven into the water from y (its foot) up h
+const pile = (L, x, y, h, cols, w = 1) => { const [D, Lt] = cols.map(hx); L.rect(x - w / 2, y - h, w + .5, h, D); L.line(x - w / 2, y - h, x - w / 2, y - 1, Lt, .5); };
+// a hut: walls of planks under a steep thatched roof, raised on stilts over the water (lift); a lit window when lit
+function hut(L, x, y, w, h, lift, cols, lit, lights, out) {
+  const [PD, P, RF, RL] = cols.map(hx), fy = y - lift;
+  for (const dx of [-w * .4, 0, w * .4]) pile(L, x + dx, y, lift + 1, [cols[0], cols[1]]);
+  if (lift > 0) L.rect(x - w / 2 - 1, fy - 1, w + 2, 1.5, PD);
+  for (let yy = Math.floor(fy - h); yy < fy - 1; yy++) for (let xx = Math.floor(x - w / 2); xx < x + w / 2; xx++) L.set(xx, yy, (xx - Math.floor(x - w / 2)) % 3 === 0 ? PD : P);
+  L.poly([[x - w / 2 - 2.4, fy - h + .5], [x + .4, fy - h - w * .62], [x + w / 2 + 2.4, fy - h + .5]], RF); L.line(x - w / 2 - 2.4, fy - h + .5, x + .4, fy - h - w * .62, RL, .7);
+  for (let k = 0; k < w; k += 2) L.line(x - w / 2 + k, fy - h + .5, x + .4 + (k - w / 2) * .25, fy - h - w * .45, PD, .35);
+  if (lit) { const wx = x - w * .15, wy = fy - h * .55; L.rect(wx - 1, wy - 1, 2.5, 2.5, hx(lit)); lights.push({ x: wx + .2, y: wy, r: 5 + w * .2, c: lit, a: .32, flick: 1.3 + x * .01, out }); }
+}
+// a lamp-post: a pole with an arm and a lantern hanging from it, lit (it goes out in the dark when `out`)
+function lampPost(L, x, y, h, lights, o = {}) {
+  const P = hx(o.pole || '#1a140e'), c = o.c || '#ffc46a', ax = x + (o.arm ?? 3);
+  L.rect(x - .5, y - h, 1.5, h, P); L.line(x, y - h, ax, y - h, P); L.line(ax, y - h, ax, y - h + 1.5, P);
+  L.rect(ax - 1, y - h + 1.5, 2.5, 3, hx('#2a2018')); if (o.lit !== false) { L.rect(ax - .4, y - h + 2.2, 1.2, 1.6, hx(c)); lights.push({ x: ax + .2, y: y - h + 3, r: o.r || 7, c, a: o.a || .4, flick: 1.7 + x * .013, out: o.out }); }
+}
+// reeds and cattails from base (a front bed when base is the bottom edge): cols [stem, tip, cattail, cattail lit]
+function reedBed(L, x0, x1, base, hmin, hmax, seed, skip = .35, cols = ['#101a0c', '#4a5a2c', '#3e2612', '#6a4424']) {
+  const [R, RT, CT, CTL] = cols.map(hx);
+  for (let x = Math.floor(x0); x < x1; x++) { if (hash(x, 7, seed) < skip) continue; const h = hmin + hash(x, 8, seed) * (hmax - hmin), lean = (hash(x, 9, seed) - .5) * 4; L.line(x, base, x + lean, base - h, R); L.set(x + lean + (lean > 0 ? 1 : 0), base - h * .9, RT, .6); if (hash(x, 10, seed) < .16) { L.rect(x + lean * .85 - .5, base - h + 1, 2, 5, CT); L.set(x + lean * .85 - .5, base - h + 1, CTL); } }
+}
+// a thin band of mist lying over y, x0..x1, dithered (alpha a)
+function mistBand(L, x0, x1, y, th, c, a) { const C = hx(c); for (let x = Math.floor(x0); x < x1; x++) { const u = (x - x0) / (x1 - x0), t = Math.max(1, Math.round(Math.sin(u * Math.PI) * th)); for (let k = 0; k < t; k++) if (((x + k + y) & 1) === 0 || k === t - 1) L.set(x, y + k, C, a * Math.sin(u * Math.PI)); } }
+// planks laid across the view from gy down (a boardwalk or a bridge deck), crowding toward the horizon, with gaps
+// and nail-heads; cols run dark to light, gap is the colour between boards
+function planks(L, y0, y1, cols, gap, seed, x0 = 0, x1 = L.w) {
+  const C = cols.map(hx), G = hx(gap), n = C.length - 1;
+  let y = y0, k = 0;
+  while (y < y1) { const d = (y - y0) / Math.max(1, y1 - y0), th = Math.max(1, Math.round(1 + d * 4.4)); for (let yy = y; yy < Math.min(y1, y + th); yy++) for (let x = Math.floor(x0); x < x1; x++) { const seam = (x + k * 17 + Math.floor(hash(k, 1, seed) * 30)) % Math.round(22 + d * 30) === 0; const l = clampI(Math.round(1 + d * 1.4 + (vnoise(x * .1, k, seed) - .5) * 1.4 + (yy === y ? .6 : 0) + bayer(x, yy) * .5 - .25 - (hash(k, x >> 4, seed + 1) < .08 ? 1.5 : 0)), n); L.set(x, yy, seam ? G : C[l]); } L.rect(x0, y + th, x1 - x0, d > .3 ? 1 : .6, G); y += th + (d > .3 ? 1 : 1); k++; }
+}
+
+/* ---------- M6: the Gloomfen's twelve places ---------- */
+Object.assign(PAINT, {
+  // the Murkway: the safe paths through the bog, at the foot of Mossfall's fen stair; marker poles with rags, tussocks
+  // and black pools, dead trees, a low moon in the haze
+  murkway(W, H, gy) {
+    const sky = layer(W, H), far = layer(W, H), mid = layer(W, H), gnd = layer(W, H), lights = [];
+    skyFill(sky, ['#060908', '#0a100d', '#0f1812', '#162218', '#1f2d1e', '#2c3a26', '#3e4a30'], 0, gy + 2);
+    const mx = Math.round(W * .74), my = Math.round(gy - H * .3);
+    sky.glow(mx, my, 30, hx('#a8b890'), .2); sky.disc(mx, my, 4.4, hx('#c8d2b0')); sky.disc(mx - 1, my - 1, 3.2, hx('#e4e8cc'), .8);
+    for (let k = 0; k < 5; k++) mistBand(sky, hash(k, 1, 601) * W - 30, hash(k, 1, 601) * W + 50 + hash(k, 2, 601) * 40, gy - 20 + k * 4, 2, '#7a8a70', .14);
+    // far: Mossfall's cliff at the left with the fen stair zigzagging down its face; the bog's far treeline
+    const cliff = y => 6 + (gy - y) * .18 + vnoise(0, y * .1, 603) * 5;
+    for (let y = Math.round(gy - H * .42); y < gy + 2; y++) for (let x = 0; x < cliff(y) + 16; x++) far.set(x, y, hx(vnoise(x * .2, y * .1, 604) > .6 ? '#141c14' : '#0d130e'));
+    const st = hx('#3a4632'); for (let k = 0; k < 6; k++) { const y0 = gy - H * .38 + k * 6, xa = 4 + (k % 2) * 10, xb = 14 - (k % 2) * 10; far.line(xa, y0, xb, y0 + 6, st, .8); for (let s = 0; s < 4; s++) far.set(xa + (xb - xa) * s / 4, y0 + s * 1.5 - 1, hx('#56624a'), .7); }
+    ridge(far, x => gy - 3 - vnoise(x * .06, 0, 605) * 5 - (hash(Math.floor(x / 4), 1, 605) < .2 ? 2 : 0), gy + 2, '#0c140e', '#34462e', .5);
+    for (const [x, h, sd] of [[W * .36, 16, 1], [W * .6, 12, 2], [W * .88, 19, 3]]) branch(far, x, gy + 1, -Math.PI / 2 + (hash(sd, 1, 606) - .5) * .3, h * .45, 1.6, 3, hx('#0c130d'), 606 + sd);
+    // mid: tussock islands and the marker poles of the safe path, rags tied on them
+    for (const [x, y, r] of [[W * .2, gy + 4, 8], [W * .5, gy + 3, 6], [W * .78, gy + 5, 9]]) { mid.poly([[x - r, y + 1], [x - r * .6, y - 2.4], [x, y - 3.4], [x + r * .6, y - 2.2], [x + r, y + 1]], hx('#1a2616')); reedBed(mid, x - r * .7, x + r * .7, y - 1, 2, 6, 607 + (x | 0), .5); }
+    for (const [x, y, h] of [[W * .3, gy + 6, 10], [W * .47, gy + 4, 7], [W * .64, gy + 5, 8]]) { mid.rect(x, y - h, 1, h, hx('#241a12')); mid.poly([[x + 1, y - h + 1], [x + 4, y - h + 2], [x + 3, y - h + 3.4], [x + 1, y - h + 3]], hx('#b8ae92')); }
+    // ground: black pools and bog between tussocks, the safe path of stepping stones and a sunk plank or two winding up
+    // from the viewer; reeds framing the view; marsh-lights over the pools
+    const G = ['#0a0f0a', '#101810', '#182216', '#22301c'].map(hx), WA = ['#050a0b', '#08110f', '#0c1818'].map(hx);
+    for (let y = gy; y < H; y++) for (let x = 0; x < W; x++) {
+      const wet = vnoise(x * .045, y * .11, 608) + (y - gy) / (H - gy) * .1 > .56;
+      if (wet) gnd.set(x, y, WA[clampI(Math.round((y - gy) / (H - gy) * 2 + bayer(x, y) * .8 - .4), 2)]);
+      else gnd.set(x, y, G[clampI(Math.round(1 + (y - gy) / (H - gy) * 2 + (vnoise(x * .2, y * .3, 609) - .5) * 1.6 + bayer(x, y) * .6 - .3), 3)]);
+    }
+    const path = y => W * .5 + Math.sin((y - gy) * .16) * W * .12 * (1 - (y - gy) / (H - gy) * .4);
+    for (let y = gy + 2; y < H + 4; y += 3 + (y - gy) * .08) { const d = (y - gy) / (H - gy), r = 1.4 + d * 4.4, x = path(y) + (hash(y | 0, 1, 610) - .5) * 4; gnd.disc(x, y, r, hx('#3a4230')); gnd.disc(x - r * .25, y - r * .3, r * .7, hx('#566046')); gnd.line(x - r * .6, y - r * .8, x + r * .2, y - r * .9, hx('#7a8462'), .6); }
+    for (let k = 0; k < 50; k++) { const x = hash(k, 1, 611) * W, y = gy + 3 + hash(k, 2, 611) * (H - gy - 3); gnd.line(x, y, x + (hash(k, 3, 611) < .5 ? -1 : 1), y - 1.6 - hash(k, 4, 611) * 2.4, hx('#34442a'), .8); }
+    reedBed(gnd, 0, W * .14, H, H * .26, H * .5, 612); reedBed(gnd, W * .88, W, H, H * .22, H * .46, 613);
+    for (const [x, y, sd] of [[W * .24, gy + 8, 1], [W * .7, gy + 10, 2], [W * .9, gy + 4, 3]]) lights.push({ x, y, r: 6, c: '#c8f070', a: .3, pulse: 1, flick: .6 + sd * .3, core: [[Math.round(x), Math.round(y)]] });
+    return { layers: [sky, far, mid, gnd], lights, fx: 'midge' };
+  },
+  // Willowmurk: the hidden village under the great willows: huts on low stilts, lit windows, the ward-stones hung
+  // from the boughs (some of them dark now: the wards are failing), a plank path, willow strands framing the view
+  willowmurk(W, H, gy) {
+    const sky = layer(W, H), far = layer(W, H), mid = layer(W, H), gnd = layer(W, H), lights = [];
+    skyFill(sky, ['#070a06', '#0c1109', '#12190d', '#1a2412', '#243018', '#303c1e', '#404a26'], 0, gy + 2);
+    sky.glow(W * .5, gy - H * .2, 44, hx('#c8c070'), .12);
+    const WC = ['#0e120a', '#16200e', '#2c3c1a'];
+    willow(far, W * .12, gy + 1, H * .56, .1, WC, 621, gy + 2); willow(far, W * .5, gy + 1, H * .62, -.05, WC, 622, gy + 2); willow(far, W * .88, gy + 1, H * .58, -.1, WC, 623, gy + 2);
+    // mid: the huts under the willows, lanterns, the ward-stones on their cords
+    const HC = ['#140e0a', '#2a1e14', '#1c1c10', '#3e3c22'];
+    hut(mid, W * .25, gy + 3, 12, 8, 3, HC, '#ffb858', lights); hut(mid, W * .64, gy + 2, 10, 7, 3, HC, '#ffc870', lights); hut(mid, W * .82, gy + 4, 13, 9, 3, HC, null, lights);
+    for (const [x, y, h] of [[W * .42, gy + 6, 12], [W * .74, gy + 6, 11]]) lampPost(mid, x, y, h, lights, { c: '#ffc46a', r: 7 });
+    for (const [x, len, on] of [[W * .08, 14, 1], [W * .18, 20, 0], [W * .37, 12, 1], [W * .56, 18, 0], [W * .7, 13, 1], [W * .94, 17, 0]]) { const y = gy - H * .44 + len; mid.line(x, gy - H * .44, x, y, hx('#3a3424'), .8); mid.disc(x, y + 1.6, 1.8, hx('#5a5e52')); mid.set(x - .6, y + 1, hx('#8a8e80')); if (on) { mid.set(x, y + 1.6, hx('#a8f07a')); lights.push({ x, y: y + 1.6, r: 5, c: '#8ae06a', a: .3, pulse: 1, flick: .4 + x * .01 }); } }
+    // ground: moss and mud, puddles, a plank path through the village, willow strands hanging in front
+    const G = ['#0c120a', '#141c0e', '#1c2812', '#283618'].map(hx);
+    for (let y = gy; y < H; y++) for (let x = 0; x < W; x++) gnd.set(x, y, G[clampI(Math.round(1 + (y - gy) / (H - gy) * 2 + (vnoise(x * .15, y * .25, 624) - .5) * 1.6 + bayer(x, y) * .6 - .3), 3)]);
+    for (const [px, py, rx] of [[W * .2, H - 12, 10], [W * .8, gy + 12, 8], [W * .6, H - 5, 12]]) for (let y = Math.floor(py - 2); y <= py + 2; y++) for (let x = Math.floor(px - rx); x <= px + rx; x++) { const e = ((x - px) / rx) ** 2 + ((y - py) / 2.4) ** 2; if (e < 1) gnd.set(x, y, hx(e > .6 && y <= py ? '#2a3e2e' : '#0a1612')); }
+    const PL = ['#1e140c', '#3a2818', '#56402a'].map(hx);
+    for (let i = 0; i <= 9; i++) { const v = i / 9, y = H - 2 - v * (H - gy - 5), c = W * (.46 + Math.sin(v * 3) * .05), half = 9 - v * 5.4, th = 1.4 - v * .5; if (hash(i, 5, 625) < .12) continue; gnd.thick(c - half, y, c + half, y, th, th, PL[1]); gnd.line(c - half, y - th + .5, c + half, y - th + .5, PL[2], .8); }
+    for (let s = 0; s < 44; s++) { const sd = s < 22 ? 0 : 1, x = sd ? W - 1 - hash(s, 1, 626) * W * .14 : hash(s, 1, 626) * W * .14, len = H * (.2 + hash(s, 2, 626) * .3); for (let j = 0; j < len; j++) gnd.set(x + Math.sin(j * .2 + s) * .6, j, hx((j + s * 3) % 6 ? '#16200e' : '#3a5020'), 1 - j / len * .3); }
+    return { layers: [sky, far, mid, gnd], lights, fx: 'leaf' };
+  },
+  // Rotbridge: on the old bridge over the Blackwater Channel: the deck of timbers and stones, the far parapet with its
+  // carved posts, Hodge's toll-house and toll-lamp at the east end, the channel wide and black, fog coming up it
+  rotbridge(W, H, gy) {
+    const sky = layer(W, H), far = layer(W, H), mid = layer(W, H), gnd = layer(W, H), lights = [];
+    skyFill(sky, ['#080a0a', '#0d1110', '#121816', '#18201c', '#202a24', '#2a342c', '#38402f'], 0, gy + 2);
+    for (let k = 0; k < 6; k++) mistBand(sky, W * .45 + hash(k, 1, 631) * W * .3, W * 1.1, gy - 16 + k * 3, 3, '#8a9480', .16);
+    // far: the channel's far bank low and dark, dead trees, fog lying on the water downstream (right)
+    ridge(far, x => gy - 4 - vnoise(x * .05, 0, 632) * 4, gy - 1, '#0a0f0c', '#2e3a2c', .5);
+    for (const [x, h, sd] of [[W * .08, 18, 1], [W * .3, 13, 2], [W * .56, 16, 3]]) branch(far, x, gy - 3, -Math.PI / 2 + (hash(sd, 1, 633) - .5) * .4, h * .42, 1.4, 3, hx('#0b100d'), 633 + sd);
+    fenWater(far, gy - 1, gy + 5, ['#050909', '#08100f', '#0c1616'], 634);
+    for (let k = 0; k < 4; k++) mistBand(far, W * .5 + k * 8, W + 20, gy - 3 + k * 1.6, 2, '#9aa494', .2);
+    // mid: the far parapet: a timber rail on squat stone posts, faces carved in the posts (they seem to shift)
+    const PY = gy + 4, ST = ['#1a1a18', '#2c2a24', '#46423a'].map(hx);
+    for (let x = 0; x < W; x++) { mid.set(x, PY - 6, ST[1]); mid.set(x, PY - 5, hash(x, 1, 635) < .3 ? ST[0] : ST[1]); mid.set(x, PY - 7, ST[2], .5); }
+    for (let k = 0; k < 7; k++) { const x = 8 + k * (W - 16) / 6, hh = 10; mid.rect(x - 2.5, PY - hh, 5, hh, ST[1]); mid.rect(x - 2.5, PY - hh, 1, hh, ST[2]); mid.rect(x - 3, PY - hh - 1.5, 6, 1.5, ST[2]); mid.set(x - 1, PY - hh + 3, ST[0]); mid.set(x + 1, PY - hh + 3, ST[0]); mid.line(x - 1, PY - hh + 6, x + 1, PY - hh + 6 + (k % 2), ST[0]); }
+    // the toll-house at the east end (right), its lamp lit, and the toll-bar
+    const tx = W * .86, ty = PY;
+    mid.rect(tx - 8, ty - 19, 16, 13, hx('#221a12')); mid.poly([[tx - 10, ty - 19], [tx, ty - 27], [tx + 10, ty - 19]], hx('#2e2418')); mid.line(tx - 10, ty - 19, tx, ty - 27, hx('#54442c'), .7);
+    mid.rect(tx - 5, ty - 15, 3, 3, hx('#ffb858')); lights.push({ x: tx - 3.5, y: ty - 13.5, r: 6, c: '#ffb858', a: .3, flick: 1.3 });
+    lampPost(mid, tx - 13, ty + 1, 18, lights, { c: '#ffc46a', r: 9, a: .45, arm: -3 });
+    for (let x = tx - 30; x < tx - 14; x++) mid.set(x, ty - 8 + (x - tx + 30) * .35, hx(((x | 0) >> 1) & 1 ? '#c8c0a8' : '#8a2a1e'));
+    // ground: the deck: timbers across, stone slabs at the ends, the near edge worn; a rope coil, a lantern's pool of light
+    planks(gnd, gy + 5, H, ['#140e0a', '#22170f', '#322216', '#44301e', '#5a4028'], '#070504', 636);
+    for (let k = 0; k < 16; k++) { const x = hash(k, 1, 637) * W, y = gy + 8 + hash(k, 2, 637) * (H - gy - 10); gnd.set(x, y, hx('#6a6258'), .8); }
+    for (let x = 0; x < W; x++) for (let y = gy + 5; y < gy + 7; y++) gnd.set(x, y, hx('#0a0806'), .7);
+    return { layers: [sky, far, mid, gnd], lights, fx: 'mire' };
+  },
+  // Bogmire: the stilt town's market square: plank streets on piles over black water, houses crowding on stilts with
+  // lit windows, rope bridges between them, lanterns on poles, the moot-hall's roof
+  bogmire(W, H, gy) {
+    const sky = layer(W, H), far = layer(W, H), mid = layer(W, H), gnd = layer(W, H), lights = [];
+    skyFill(sky, ['#06080b', '#0a0e12', '#0f1418', '#151c1e', '#1d2624', '#28302a', '#343a2e'], 0, gy + 2);
+    stars(sky, 40, gy - 20, 641);
+    // far: the far houses on their stilts, lit windows, a rope bridge sagging between two of them
+    const HF = ['#0a0c0c', '#121414', '#101210', '#1c1e18'];
+    for (const [x, w, h, lit] of [[W * .06, 10, 7, '#ffb050'], [W * .2, 12, 9, null], [W * .34, 9, 6, '#ffc060'], [W * .58, 11, 8, '#ffb050'], [W * .72, 14, 10, null], [W * .9, 10, 7, '#ffc870']]) hut(far, x, gy + 1, w, h, 5, HF, lit, lights);
+    for (const [x0, x1, y] of [[W * .2 + 6, W * .34 - 4, gy - 16], [W * .72 + 7, W * .9 - 5, gy - 14]]) for (let x = x0; x < x1; x++) { const u = (x - x0) / (x1 - x0), yy = y + Math.sin(u * Math.PI) * 3; far.set(x, yy, hx('#2a2418')); if ((x | 0) % 3 === 0) far.line(x, yy, x, yy - 2.5, hx('#2a2418'), .6); }
+    fenWater(far, gy - 3, gy + 2, ['#04070a', '#070c0e', '#0a1212'], 642);
+    // mid: the moot-hall (a long roof on stilts), nearer houses, lanterns on poles, washing on a line
+    const HM = ['#140e0a', '#2a1e14', '#221a10', '#4a3a22'];
+    mid.rect(W * .42, gy - 14, 26, 12, hx('#241a12')); mid.poly([[W * .42 - 3, gy - 14], [W * .42 + 13, gy - 24], [W * .42 + 29, gy - 14]], hx('#2e2214')); mid.line(W * .42 - 3, gy - 14, W * .42 + 13, gy - 24, hx('#5a4428'), .7);
+    for (const dx of [2, 8, 14, 20]) { mid.rect(W * .42 + dx, gy - 10, 2.5, 4, hx(dx % 12 === 2 ? '#ffc060' : '#1a120c')); if (dx % 12 === 2) lights.push({ x: W * .42 + dx + 1, y: gy - 8, r: 5, c: '#ffc060', a: .28, flick: 1.1 + dx * .1 }); }
+    for (const dx of [1, 7, 13, 19, 25]) pile(mid, W * .42 + dx, gy + 3, 5, ['#140e0a', '#2a1e14']);
+    hut(mid, W * .14, gy + 5, 14, 10, 4, HM, '#ffb050', lights); hut(mid, W * .84, gy + 6, 15, 11, 4, HM, '#ffc870', lights);
+    for (const [x, y, h] of [[W * .3, gy + 7, 15], [W * .66, gy + 8, 16]]) lampPost(mid, x, y, h, lights, { r: 8 });
+    for (let x = W * .56; x < W * .74; x++) { const u = (x - W * .56) / (W * .18), y = gy - 6 + Math.sin(u * Math.PI) * 2.4; mid.set(x, y, hx('#3a3024')); if (Math.floor(x) % 5 === 0) mid.rect(x, y + 1, 2.5, 3, hx(['#8a8466', '#6a3a2a', '#5a6a7a'][Math.floor(x) % 3])); }
+    // ground: the plank square, black water showing between the boards at the edges, barrels and crates
+    planks(gnd, gy + 6, H, ['#120c08', '#1e150e', '#2c2014', '#3c2c1a', '#503a22'], '#040505', 643);
+    fenWater(gnd, gy + 2, gy + 6, ['#04070a', '#070c0e', '#0a1212'], 644);
+    for (const [x, y, r] of [[W * .08, H - 10, 5], [W * .14, H - 6, 4.4], [W * .93, H - 14, 4.6]]) { gnd.rect(x - r, y - r * 1.8, r * 2, r * 1.8, hx('#2e1e12')); gnd.line(x - r, y - r * 1.4, x + r, y - r * 1.4, hx('#14100c')); gnd.line(x - r, y - r * .5, x + r, y - r * .5, hx('#14100c')); gnd.line(x - r, y - r * 1.8, x - r, y, hx('#4a3420'), .6); }
+    gnd.rect(W * .86, H - 12, 10, 8, hx('#3a2a18')); gnd.line(W * .86, H - 12, W * .86 + 10, H - 4, hx('#22180e')); gnd.line(W * .86 + 10, H - 12, W * .86, H - 4, hx('#22180e'));
+    return { layers: [sky, far, mid, gnd], lights, fx: 'firefly' };
+  },
+});
+
+Object.assign(PAINT, {
+  // the Lanternfen: open bog and dead trees in fog; small lights hanging over the water that the children follow
+  lanternfen(W, H, gy) {
+    const sky = layer(W, H), far = layer(W, H), mid = layer(W, H), gnd = layer(W, H), lights = [];
+    skyFill(sky, ['#0c100e', '#111713', '#161e18', '#1c251d', '#232c23', '#2b3429', '#343d30'], 0, gy + 2, .7);
+    // far: dead trees going grey into the fog, three depths
+    for (const [x, h, sd, c, a] of [[W * .1, 20, 1, '#243024', .55], [W * .42, 16, 2, '#243024', .5], [W * .7, 22, 3, '#243024', .55], [W * .26, 26, 4, '#1a241a', .8], [W * .86, 24, 5, '#1a241a', .8]]) { const T = layer(W, H); branch(T, x, gy + 1, -Math.PI / 2 + (hash(sd, 1, 651) - .5) * .35, h * .4, 1.8, 3, hx(c), 651 + sd); for (let i = 0; i < T.d.length; i += 4) if (T.d[i + 3]) far.set((i / 4) % W, Math.floor(i / 4 / W), [T.d[i], T.d[i + 1], T.d[i + 2]], a); }
+    ridge(far, x => gy - 1 - vnoise(x * .08, 0, 652) * 2, gy + 2, '#141a14', '#2e382c', .4);
+    for (let k = 0; k < 8; k++) mistBand(far, hash(k, 1, 653) * W - 40, hash(k, 1, 653) * W + 30 + hash(k, 2, 653) * 60, gy - 22 + k * 3.4, 3, '#9aa896', .18);
+    // mid: nearer dead trees, a cairn, the lights hanging over the pools
+    branch(mid, W * .16, gy + 8, -Math.PI / 2 - .12, 13, 2.4, 3, hx('#0e140e'), 654); branch(mid, W * .78, gy + 7, -Math.PI / 2 + .15, 11, 2.2, 3, hx('#0e140e'), 655);
+    for (const [x, y, sd] of [[W * .32, gy - 4, 1], [W * .48, gy - 9, 2], [W * .6, gy - 2, 3], [W * .9, gy - 6, 4], [W * .06, gy - 3, 5]]) { mid.disc(x, y, 1, hx('#e8f4a0')); lights.push({ x, y, r: 7, c: '#d8f080', a: .38, pulse: 1, flick: .5 + sd * .23, core: [[Math.round(x), Math.round(y)]] }); }
+    // ground: bog and black pools, tussocks, small bootprints all going one way, reeds framing, a fog bank on the water
+    const G = ['#0c110c', '#131a12', '#1a2418', '#232e1e'].map(hx), WA = ['#070b0b', '#0a1111', '#0e1716'].map(hx);
+    for (let y = gy; y < H; y++) for (let x = 0; x < W; x++) {
+      if (vnoise(x * .05, y * .12, 656) + (y - gy) / (H - gy) * .08 > .54) gnd.set(x, y, WA[clampI(Math.round((y - gy) / (H - gy) * 2 + bayer(x, y) * .8 - .4), 2)]);
+      else gnd.set(x, y, G[clampI(Math.round(1 + (y - gy) / (H - gy) * 2 + (vnoise(x * .2, y * .3, 657) - .5) * 1.6 + bayer(x, y) * .6 - .3), 3)]);
+    }
+    for (const [x, y] of [[W * .5, gy + 6], [W * .3, gy + 3], [W * .9, gy + 6]]) reflect(gnd, x, y, y + 10, '#d8f080', .4);
+    for (let k = 0; k < 9; k++) { const u = k / 8, x = W * (.44 + u * .08) + (k & 1 ? 2 : -2), y = H - 4 - u * (H - gy - 8); gnd.disc(x, y, 1 - u * .5 + .4, hx('#060806')); }
+    reedBed(gnd, 0, W * .12, H, H * .24, H * .46, 658); reedBed(gnd, W * .9, W, H, H * .2, H * .42, 659);
+    for (let k = 0; k < 5; k++) mistBand(gnd, hash(k, 1, 660) * W - 50, hash(k, 1, 660) * W + 40 + hash(k, 2, 660) * 50, gy + 2 + k * 3, 3, '#a8b4a2', .14);
+    return { layers: [sky, far, mid, gnd], lights, fx: 'wisp' };
+  },
+  // the Mother's Hollow: a drowned grove of black willows round a sunken house whose lamps are all lit; lamp-posts
+  // standing in the water; the lamps' light on the black water (in the dark, only the lamps are left)
+  'mothers-hollow'(W, H, gy, dark) {
+    const sky = layer(W, H), far = layer(W, H), mid = layer(W, H), gnd = layer(W, H), lights = [];
+    skyFill(sky, ['#040506', '#06080a', '#090c0e', '#0c1012', '#101614', '#141a16'], 0, gy + 2);
+    lights.push({ x: W * .5, y: gy - H * .3, r: 40, c: '#40584a', a: .16, out: true, flick: .2 });
+    const WC = ['#07090a', '#0a0e0c', '#1a241c'];
+    willow(far, W * .08, gy + 2, H * .6, .1, WC, 661, gy + 1); willow(far, W * .3, gy + 1, H * .5, 0, WC, 662, gy); willow(far, W * .74, gy + 1, H * .52, -.05, WC, 663, gy); willow(far, W * .95, gy + 2, H * .62, -.12, WC, 664, gy + 1);
+    // mid: the sunken house, down at one corner in the water, every window lit; lamp-posts in the water round it
+    const hx0 = W * .5, hy0 = gy + 2, HW = 28;
+    mid.poly([[hx0 - HW / 2, hy0], [hx0 - HW / 2 + 1, hy0 - 15], [hx0 + HW / 2 + 1, hy0 - 12], [hx0 + HW / 2, hy0]], hx('#16110c'));
+    mid.poly([[hx0 - HW / 2 - 3, hy0 - 14.4], [hx0 - 1, hy0 - 27], [hx0 + HW / 2 + 4, hy0 - 11.4]], hx('#1c150e')); mid.line(hx0 - HW / 2 - 3, hy0 - 14.4, hx0 - 1, hy0 - 27, hx('#3a2c1c'), .8);
+    mid.rect(hx0 + 4, hy0 - 32, 3, 7, hx('#16110c'));
+    for (const [dx, dy] of [[-10, -9], [-3, -8.6], [5, -8], [11, -7.4], [-5, -18]]) { mid.rect(hx0 + dx, hy0 + dy, 3, 3, hx('#ffc060')); mid.set(hx0 + dx + 1, hy0 + dy + 1, hx('#fff0c0')); lights.push({ x: hx0 + dx + 1.5, y: hy0 + dy + 1.5, r: 7, c: '#ffb450', a: .36, flick: 1.1 + dx * .07 }); }
+    for (const [x, y, h] of [[W * .18, gy + 8, 16], [W * .36, gy + 5, 12], [W * .66, gy + 6, 13], [W * .84, gy + 9, 17]]) lampPost(mid, x, y, h, lights, { c: '#ffc46a', r: 8, a: .42, arm: x < W / 2 ? 3 : -3 });
+    // ground: black water holding every lamp, the roots of the willows, lily pads, the children's lanterns set down
+    fenWater(gnd, gy, H, ['#030506', '#05090a', '#080e0e', '#0b1413'], 665, '#1e3430');
+    for (const [x, y] of [[W * .5 - 8, gy + 3], [W * .5 + 7, gy + 3], [W * .18 + 3, gy + 9], [W * .36 + 3, gy + 6], [W * .66 - 3, gy + 7], [W * .84 - 3, gy + 10]]) reflect(gnd, x, y, Math.min(H, y + 22), '#ffb450', .55);
+    for (const [pts, r] of [[[[0, H - 20], [14, H - 14], [26, H - 12], [34, H - 4]], 2.4], [[[W, H - 24], [W - 16, H - 16], [W - 22, H - 6]], 2.2], [[[W * .3, gy + 12], [W * .24, gy + 18], [W * .2, gy + 26]], 1.4]]) barkRoot(gnd, pts, r, r * .4, hx('#0e0c0a'), hx('#2a2218'));
+    for (let k = 0; k < 10; k++) { const x = hash(k, 1, 666) * W, y = gy + 6 + hash(k, 2, 666) * (H - gy - 8); gnd.poly([[x - 2.4, y], [x, y - 1.2], [x + 2.6, y], [x, y + 1.2]], hx('#16261a')); gnd.set(x, y, hx('#060a08')); }
+    return { layers: [sky, far, mid, gnd], lights, fx: 'moth', darkAmb: .08 };
+  },
+  // the Long Boardwalk: planks on stilts over open water to the horizon, lamp-posts marching away along it, the
+  // broken middle patched with barge-planks, Misthollow's towers far off in the mist
+  'long-boardwalk'(W, H, gy) {
+    const sky = layer(W, H), far = layer(W, H), mid = layer(W, H), gnd = layer(W, H), lights = [];
+    skyFill(sky, ['#06080d', '#0a0e14', '#0f151b', '#151d21', '#1d2727', '#28322e', '#384034'], 0, gy + 2);
+    stars(sky, 50, gy - 18, 671);
+    const mx = Math.round(W * .22), my = Math.round(gy - H * .34); sky.glow(mx, my, 26, hx('#a8b8b0'), .2); sky.disc(mx, my, 3.8, hx('#d8e2d4'));
+    // far: open water to a low horizon, Misthollow's towers far off (right) in the mist, the boardwalk's far lamps
+    fenWater(far, gy - 2, gy + 3, ['#060a0c', '#091012', '#0d1716'], 672);
+    for (const [x, w, h, lean] of [[W * .78, 4, 14, .08], [W * .84, 5, 20, -.05], [W * .9, 3.4, 11, .12]]) { far.poly([[x - w / 2, gy - 1], [x - w / 2 + lean * h, gy - 1 - h], [x + w / 2 + lean * h, gy - 1 - h], [x + w / 2, gy - 1]], hx('#1a2224'), .7); far.poly([[x - w / 2 - 1 + lean * h, gy - 1 - h], [x + lean * h, gy - 5 - h], [x + w / 2 + 1 + lean * h, gy - 1 - h]], hx('#1a2224'), .7); }
+    for (let k = 0; k < 5; k++) mistBand(far, W * .55, W + 10, gy - 12 + k * 2.4, 2, '#9aa6a0', .2);
+    // mid: another stretch of the boardwalk far off across the water, its lamps small
+    for (let x = 0; x < W * .6; x++) { const y = gy - 3 + x * .012; mid.set(x, y, hx('#1a140e'), .8); if (Math.floor(x) % 9 === 0) mid.line(x, y, x, y + 3, hx('#140e0a'), .7); }
+    for (let k = 0; k < 4; k++) { const x = 8 + k * 24, y = gy - 3 + x * .012; mid.set(x + 1, y - 4, hx('#ffc46a')); mid.line(x, y - 4, x, y, hx('#1a140e')); lights.push({ x: x + 1, y: y - 4, r: 3, c: '#ffc46a', a: .3, flick: 1.2 + k * .3 }); }
+    // ground: the boardwalk: planks across, stilts and open water under its near edge, the broken middle patched
+    fenWater(gnd, gy, gy + 7, ['#05090b', '#081012', '#0c1616'], 673);
+    for (let x = 4; x < W; x += 12) pile(gnd, x, gy + 7, 5, ['#140e0a', '#2a1e14'], 1.4);
+    planks(gnd, gy + 7, H, ['#130d08', '#20160e', '#2e2014', '#3e2c1a', '#523a22'], '#050405', 674);
+    const px0 = W * .42, px1 = W * .62;
+    for (let y = gy + 16; y < H; y++) for (let x = px0 + (y - gy) * .1; x < px1 + (y - gy) * .1; x++) if ((y + (x >> 3)) % 5) gnd.set(x, y, hx(((x >> 3) & 1) ? '#3a3a30' : '#2c2c24'), .9);
+    gnd.line(px0 + 1.6, gy + 16, px0 + 1.6 + (H - gy) * .1, H, hx('#0a0806')); gnd.line(px1 + 1.6, gy + 16, px1 + 1.6 + (H - gy) * .1, H, hx('#0a0806'));
+    for (let k = 0; k < 10; k++) gnd.set(px0 + 3 + hash(k, 1, 675) * (px1 - px0 - 6), gy + 18 + hash(k, 2, 675) * (H - gy - 20), hx('#8a8474'));
+    // the far rail along the boardwalk's edge, and its lamp-posts
+    for (let x = 0; x < W; x++) { gnd.set(x, gy + 3, hx('#2a1e14')); gnd.set(x, gy + 4, hx('#1a120c'), .8); }
+    for (let x = 6; x < W; x += 14) gnd.rect(x, gy + 3, 1, 5, hx('#1a120c'));
+    for (let k = 0; k < 4; k++) { const x = W * (.08 + k * .28); lampPost(gnd, x, gy + 8, 22, lights, { c: '#ffc46a', r: 9, a: .42, arm: 3 }); }
+    return { layers: [sky, far, mid, gnd], lights, fx: 'wisp' };
+  },
+  // the Misthollow Ruins: the sunken city in the fog: towers leaning out of the water, a belltower, arches of a
+  // half-drowned street; the street's old cobbles under a hand's depth of black water
+  misthollow(W, H, gy) {
+    const sky = layer(W, H), far = layer(W, H), mid = layer(W, H), gnd = layer(W, H), lights = [];
+    skyFill(sky, ['#0b0f10', '#101517', '#151b1d', '#1b2223', '#212928', '#28302d', '#303832'], 0, gy + 2, .7);
+    // far: towers leaning out of the water, grey in the fog (three depths)
+    const tower = (L, x, w, h, lean, c, a, bell) => {
+      const C = hx(c), top = gy - h, sx = lean * h;
+      L.poly([[x - w / 2, gy + 1], [x - w / 2 + sx, top], [x + w / 2 + sx, top], [x + w / 2, gy + 1]], C, a);
+      L.poly([[x - w / 2 - 1 + sx, top], [x + sx, top - w * .9], [x + w / 2 + 1 + sx, top]], C, a);
+      for (let k = 0; k < 3; k++) { const u = .25 + k * .22, wx = x + sx * (1 - u) - .6, wy = gy - h * (1 - u); L.rect(wx, wy, 1.4, 2.4, hx('#070a0b'), a); }
+      if (bell) { L.rect(x + sx - w * .3, top + 1.4, w * .6, 4, hx('#070a0b'), a); L.disc(x + sx, top + 3, 1.2, hx('#6a5a2a'), a); }
+    };
+    tower(far, W * .12, 6, 22, .06, '#222a2a', .45); tower(far, W * .56, 5, 18, -.1, '#222a2a', .45); tower(far, W * .9, 7, 26, .04, '#222a2a', .45, true);
+    tower(far, W * .32, 8, 30, -.08, '#161c1d', .75, true); tower(far, W * .74, 7, 24, .12, '#161c1d', .75);
+    for (let k = 0; k < 8; k++) mistBand(far, hash(k, 1, 681) * W - 40, hash(k, 1, 681) * W + 40 + hash(k, 2, 681) * 50, gy - 24 + k * 3.6, 3, '#9aa6a4', .2);
+    // mid: the arches of the drowned street, a broken wall, a lamp left burning in a high window
+    const A = hx('#12181a'), AL = hx('#2a3434');
+    for (const [x0, n] of [[W * .02, 2], [W * .64, 3]]) for (let k = 0; k < n; k++) { const x = x0 + k * 14; mid.rect(x, gy - 16, 3, 20, A); mid.rect(x + 11, gy - 16, 3, 20, A); for (let a = 0; a <= 12; a++) { const t = Math.PI * a / 12, ax = x + 7 + Math.cos(t) * 5.5, ay = gy - 16 - Math.sin(t) * 4; mid.disc(ax, ay, 1.6, A); } mid.rect(x, gy - 21, 14, 2, A); mid.line(x, gy - 21, x + 14, gy - 21, AL, .6); }
+    mid.rect(W * .44, gy - 12, 12, 16, A); mid.poly([[W * .44, gy - 12], [W * .44 + 3, gy - 16], [W * .44 + 7, gy - 13], [W * .44 + 12, gy - 17], [W * .44 + 12, gy - 12]], A);
+    mid.rect(W * .44 + 4, gy - 9, 2, 3, hx('#ffc060')); lights.push({ x: W * .44 + 5, y: gy - 7.5, r: 6, c: '#ffb450', a: .3, flick: 1.4 });
+    // ground: the half-drowned street: old cobbles under shallow black water, stones breaking the surface
+    paving(gnd, gy, gy - 20, ['#141a1a', '#1c2424', '#262e2c', '#303836'], '#0a0e0e', 18, 5, 682, (x, y) => 1 + (y - gy) / (H - gy) * 1.4);
+    for (let y = gy; y < H; y++) for (let x = 0; x < W; x++) { const deep = vnoise(x * .04, y * .1, 683) > .45; gnd.set(x, y, hx(deep ? '#060b0c' : '#0a1212'), deep ? .78 : .45); }
+    for (let k = 0; k < 14; k++) { const u = k / 13, y = gy + 2 + u * u * (H - gy - 3); for (let x = 0; x < W; x++) if (vnoise(x * .08, k * 3, 684) > .6) gnd.set(x, y, hx('#3a5654'), .12 + u * .2); }
+    for (const [x, y, r] of [[W * .2, H - 8, 5], [W * .8, H - 12, 6], [W * .56, gy + 12, 3]]) { gnd.disc(x, y, r, hx('#2a3230')); gnd.disc(x - r * .3, y - r * .3, r * .6, hx('#3c4644')); }
+    return { layers: [sky, far, mid, gnd], lights, fx: 'bubble' };
+  },
+});
+
+Object.assign(PAINT, {
+  // the Drowned Belfry: a bell-hall under the city: bells hanging from their beams in green water-light, air pockets,
+  // the choir-stalls, flagstones with the water standing on them; under the floor, the Sleeper's slow light (in the
+  // dark only the Sleeper and the bells' faint glow are left)
+  'drowned-belfry'(W, H, gy, dark) {
+    const sky = layer(W, H), far = layer(W, H), mid = layer(W, H), gnd = layer(W, H), lights = [];
+    // the back wall: green-black coursed stone, water-light moving over it from above
+    masonry(sky, 0, 0, W, gy + 2, ['#060c0a', '#0a1410', '#0e1c16', '#14261c'], '#030605', 9, 5, 691, (x, y) => 1 + Math.sin(x * .08 + vnoise(x * .05, y * .05, 692) * 4) * .8 - y / gy * .6);
+    for (let k = 0; k < 7; k++) { const x0 = hash(k, 1, 693) * W; for (let y = 0; y < gy; y++) sky.set(x0 + Math.sin(y * .15 + k) * 3, y, hx('#3a8a6a'), .1 + .08 * Math.sin(y * .2 + k)); }
+    lights.push({ x: W * .5, y: 4, r: 40, c: '#3aa080', a: .22, out: true, flick: .25 }, { beam: [[W * .36, 0], [W * .5, 0], [W * .62, H], [W * .3, H]], a: .08, out: true });
+    // far: the columns and pointed arches of the hall, going back into the dark
+    const CO = ['#0c1612', '#14221a', '#1e3024'].map(hx);
+    for (const x of [W * .1, W * .34, W * .66, W * .9]) { for (let y = 8; y < gy + 2; y++) for (let xx = Math.floor(x - 3); xx < x + 3; xx++) far.set(xx, y, CO[xx - x < -1.5 ? 2 : xx - x > 1.5 ? 0 : 1]); far.rect(x - 4, gy - 1, 8, 3, CO[0]); far.rect(x - 4, 8, 8, 2, CO[2]); }
+    for (const [x0, x1] of [[W * .1, W * .34], [W * .34, W * .66], [W * .66, W * .9]]) for (let a = 0; a <= 20; a++) { const t = a / 20, x = x0 + (x1 - x0) * t, y = 9 - Math.sin(t * Math.PI) * 8 * (t < .5 ? 1 : 1); far.disc(x, y, 1.6, CO[1]); }
+    // the bells on their beam, ropes hanging down into the dark; an air pocket's silver skin against the roof
+    for (let x = 0; x < W; x++) { far.set(x, 18, hx('#1a140e')); far.set(x, 19, hx('#2c2016')); }
+    for (const [x, r, rope] of [[W * .22, 5, 20], [W * .5, 7, 16], [W * .78, 5.4, 22]]) {
+      const B = ['#2a2210', '#4a3c1c', '#6e5a2c', '#3a6a58'].map(hx), top = 20;
+      far.rect(x - .5, top, 1, 2, B[0]);
+      for (let y = 0; y < r * 1.6; y++) { const w = r * (.45 + .55 * Math.pow(y / (r * 1.6), .7)); for (let xx = Math.floor(x - w); xx < x + w; xx++) far.set(xx, top + 2 + y, (xx < x - w * .4 ? B[2] : xx > x + w * .5 ? B[0] : B[1])); }
+      for (let xx = Math.floor(x - r); xx < x + r; xx++) if (hash(xx, 3, 694) < .5) far.set(xx, top + 2 + r * 1.6 - 1, B[3]);
+      far.line(x, top + 2 + r * 1.6, x, top + 2 + r * 1.6 + rope, hx('#4a4030'), .7);
+      lights.push({ x, y: top + 2 + r, r: r * 1.6, c: '#8ac8a0', a: .12, pulse: 1, flick: .3 });
+    }
+    for (let x = W * .56; x < W * .96; x++) far.set(x, 3 + Math.sin(x * .3) * .6, hx('#a8d8c8'), .5);
+    // mid: the choir-stalls down both sides, a lectern, candles gone out on the stall ends
+    const PW = ['#120c08', '#1e150e', '#2e2014'].map(hx);
+    for (const sd of [-1, 1]) for (let k = 0; k < 3; k++) { const x = sd < 0 ? 2 + k * 14 : W - 16 - k * 14, y = gy + 2 + k; mid.rect(x, y - 8, 14, 8, PW[1]); mid.rect(x, y - 9, 14, 1.4, PW[2]); mid.rect(x, y - 14, 1.4, 6, PW[1]); mid.rect(x + 12.6, y - 14, 1.4, 6, PW[1]); for (let xx = x + 2; xx < x + 13; xx += 3) mid.line(xx, y - 7, xx, y - 1, PW[0]); mid.rect(x + 6, y - 11, 1, 2, hx('#c8c0a0')); }
+    mid.poly([[W * .5 - 3, gy + 3], [W * .5 - 1, gy - 8], [W * .5 + 1, gy - 8], [W * .5 + 3, gy + 3]], PW[1]); mid.poly([[W * .5 - 5, gy - 8], [W * .5 + 5, gy - 10], [W * .5 + 5, gy - 8.6], [W * .5 - 5, gy - 6.6]], PW[2]);
+    // ground: flagstones with the water standing on them; a crack in the floor with the Sleeper's light under it
+    paving(gnd, gy, gy - 26, ['#0c1410', '#121c16', '#18241c', '#1e2c22'], '#040806', 16, 5, 695, (x, y) => 1 + (y - gy) / (H - gy) * 1.2);
+    for (let y = gy; y < H; y++) for (let x = 0; x < W; x++) if (vnoise(x * .05, y * .14, 696) > .52) gnd.set(x, y, hx('#081612'), .6);
+    const cx = W * .5, cy = gy + (H - gy) * .55, crack = [[cx - 26, cy + 2], [cx - 14, cy - 1], [cx - 4, cy + 2], [cx + 6, cy - 1], [cx + 18, cy + 1], [cx + 30, cy - 2]];
+    for (let s = 0; s < crack.length - 1; s++) gnd.thick(crack[s][0], crack[s][1], crack[s + 1][0], crack[s + 1][1], 1.2, 1, hx('#020403'));
+    lights.push({ cracks: [crack], c: '#9a8cff' }, { x: cx, y: cy, r: 14, c: '#7a70e8', a: .3, pulse: 1, flick: .15 });
+    lights.push({ drips: [[W * .12, 24], [W * .4, 20], [W * .62, 26], [W * .86, 22]], c: '#6ac0a8' });
+    return { layers: [sky, far, mid, gnd], lights, fx: 'bubble', darkAmb: .1 };
+  },
+  // the Blackwater Reach: the lower channel between reed-banks, the sunk boats (the Leviathan's work) showing their
+  // ribs, a drowned mill on the far bank; the fight is on the muddy towpath
+  'blackwater-reach'(W, H, gy) {
+    const sky = layer(W, H), far = layer(W, H), mid = layer(W, H), gnd = layer(W, H), lights = [];
+    skyFill(sky, ['#07080b', '#0c0f12', '#111618', '#171d1e', '#1f2624', '#292f2a', '#383c30'], 0, gy + 2);
+    for (let k = 0; k < 4; k++) mistBand(sky, hash(k, 1, 701) * W - 30, hash(k, 1, 701) * W + 60, gy - 18 + k * 4, 2, '#7a8478', .12);
+    // far: the reed-banks closing in toward the horizon, the channel between, the drowned mill and its wheel
+    ridge(far, x => gy - 3 - vnoise(x * .06, 0, 702) * 4, gy + 1, '#0c120c', '#2e3a28', .45);
+    const mx = W * .72, my = gy - 1;
+    far.rect(mx - 8, my - 14, 14, 13, hx('#141414')); far.poly([[mx - 10, my - 14], [mx - 2, my - 21], [mx + 7, my - 14]], hx('#1a1814')); far.poly([[mx + 1, my - 20], [mx + 3, my - 18], [mx + 1, my - 15]], hx('#070707'));
+    for (let a = 0; a < 12; a++) { const t = a / 12 * Math.PI * 2; far.line(mx - 11, my - 6, mx - 11 + Math.cos(t) * 6, my - 6 + Math.sin(t) * 6, hx('#1e1812')); } far.disc(mx - 11, my - 6, 1.4, hx('#2a2018'));
+    fenWater(far, gy - 1, gy + 4, ['#050809', '#080d0e', '#0b1313'], 703);
+    // mid: sunk boats: a hull's ribs, a mast leaning out of the water, a keel
+    const HB = ['#140e0a', '#2a1e14', '#3e2c1c'].map(hx);
+    for (let k = 0; k < 6; k++) { const x = W * .22 + k * 3; mid.thick(x, gy + 3, x - 1 + k * .4, gy - 4 - Math.sin(k / 5 * Math.PI) * 3, .8, .6, HB[1]); }
+    mid.line(W * .22 - 1, gy + 2, W * .22 + 16, gy + 2, HB[2]);
+    mid.thick(W * .52, gy + 4, W * .56, gy - 18, 1, .6, HB[1]); mid.line(W * .56, gy - 18, W * .62, gy - 12, HB[0]); mid.line(W * .53, gy - 10, W * .47, gy - 6, HB[0], .8);
+    mid.poly([[W * .86, gy + 4], [W * .92, gy - 3], [W * .97, gy + 4]], HB[1]);
+    // ground: the channel in front of the towpath, then the towpath: mud, ruts, puddles, a mooring post and its rope
+    fenWater(gnd, gy, gy + (H - gy) * .3 + 1, ['#050809', '#080d0e', '#0b1313', '#0f1817'], 704);
+    const M = ['#120e0a', '#1a140e', '#241c12', '#302418', '#3c2e1e'].map(hx);
+    for (let y = Math.ceil(gy + (H - gy) * .3); y < H; y++) for (let x = 0; x < W; x++) gnd.set(x, y, M[clampI(Math.round(1.4 + (y - gy) / (H - gy) * 2 + (vnoise(x * .1, y * .3, 705) - .5) * 1.8 + bayer(x, y) * .6 - .3), 4)]);
+    for (const off of [-.18, .12]) for (let x = 0; x < W; x++) { const y = gy + (H - gy) * (.62 + off) + Math.sin(x * .05) * 1.5; gnd.set(x, y, hx('#0c0906')); gnd.set(x, y - 1, hx('#4a3a26'), .5); }
+    for (const [px, py, rx] of [[W * .3, H - 10, 8], [W * .74, gy + (H - gy) * .5, 6]]) for (let y = Math.floor(py - 1.6); y <= py + 1.6; y++) for (let x = Math.floor(px - rx); x <= px + rx; x++) if (((x - px) / rx) ** 2 + ((y - py) / 1.8) ** 2 < 1) gnd.set(x, y, hx('#0e1616'));
+    gnd.rect(W * .9, gy + (H - gy) * .3 - 6, 3, 12, hx('#1e150e')); gnd.rect(W * .9, gy + (H - gy) * .3 - 6, 1, 12, hx('#3e2c1c')); gnd.line(W * .9, gy + (H - gy) * .3 - 3, W * .7, gy + (H - gy) * .3 + 1, hx('#6a5a40'), .8);
+    reedBed(gnd, 0, W * .1, H, H * .22, H * .44, 706); reedBed(gnd, W * .94, W, H, H * .2, H * .4, 707);
+    return { layers: [sky, far, mid, gnd], lights, fx: 'midge' };
+  },
+  // the Tidal Flats: mudflats and tide-pools where the channel meets the sea, a wreck on the horizon, the Tallymen's
+  // barge-camp and its crane, and the great chain running from its post across the mud and out into the deep
+  'tidal-flats'(W, H, gy) {
+    const sky = layer(W, H), far = layer(W, H), mid = layer(W, H), gnd = layer(W, H), lights = [];
+    skyFill(sky, ['#0a0c10', '#0f1319', '#151b21', '#1c2428', '#252e2e', '#303a34', '#46483a'], 0, gy + 2);
+    sky.glow(W * .3, gy - 2, 50, hx('#a09a7a'), .16);
+    for (let k = 0; k < 5; k++) mistBand(sky, hash(k, 1, 711) * W - 40, hash(k, 1, 711) * W + 70, 10 + k * 7, 3, '#5a6268', .16);
+    // far: the sea's line, a wreck, the deep off to the right where the water goes black
+    fenWater(far, gy - 2, gy + 2, ['#0a1014', '#0e161a', '#141e20'], 712, '#5a6a68');
+    for (let y = gy - 2; y < gy + 2; y++) for (let x = Math.floor(W * .7); x < W; x++) far.set(x, y, hx('#040708'), .6);
+    far.poly([[W * .12, gy - 1], [W * .16, gy - 5], [W * .26, gy - 4], [W * .28, gy - 1]], hx('#0e0c0a')); far.line(W * .2, gy - 5, W * .21, gy - 17, hx('#0e0c0a')); far.line(W * .2, gy - 13, W * .25, gy - 9, hx('#0e0c0a'), .8);
+    // mid: the barge-camp: a barge hull with tents on it, the crane's arm, the beacon lit; the chain-post
+    const bx = W * .56, by = gy + 3;
+    mid.poly([[bx - 18, by - 5], [bx + 18, by - 5], [bx + 15, by], [bx - 15, by]], hx('#1a120c')); mid.line(bx - 18, by - 5, bx + 18, by - 5, hx('#3a2a1a'));
+    mid.poly([[bx - 14, by - 5], [bx - 9, by - 12], [bx - 4, by - 5]], hx('#4a4438')); mid.poly([[bx - 2, by - 5], [bx + 3, by - 11], [bx + 8, by - 5]], hx('#3e3a30'));
+    mid.line(bx + 12, by - 5, bx + 12, by - 22, hx('#1e150e')); mid.line(bx + 12, by - 22, bx - 2, by - 26, hx('#1e150e')); mid.line(bx - 2, by - 26, bx - 2, by - 18, hx('#4a4030'), .8); mid.rect(bx - 3, by - 18, 2, 2, hx('#2a2a2a'));
+    mid.rect(bx + 16, by - 16, 1.5, 11, hx('#1e150e')); mid.rect(bx + 15, by - 18, 3.5, 2.4, hx('#ffb450')); lights.push({ x: bx + 16.8, y: by - 17, r: 10, c: '#ffb450', a: .45, flick: 2.1 });
+    const cp = [W * .2, gy + 16];
+    // ground: the flats: wet mud in sheens, tide-pools holding the sky, ripples of sand, shells; the great chain
+    const M = ['#100e0c', '#18140f', '#221c14', '#2c2419', '#382e20'].map(hx);
+    for (let y = gy; y < H; y++) for (let x = 0; x < W; x++) gnd.set(x, y, M[clampI(Math.round(1 + (y - gy) / (H - gy) * 2.4 + (vnoise(x * .06, y * .2, 713) - .5) * 2 + bayer(x, y) * .6 - .3), 4)]);
+    for (let k = 0; k < 16; k++) { const u = (k + .5) / 16, y0 = gy + 2 + u * u * (H - gy - 2); for (let x = 0; x < W; x++) if (vnoise(x * .07, k * 2, 714) > .5) gnd.set(x, y0 + Math.sin(x * (.16 - u * .08) + k) * (.5 + u), hx('#4a3e2c'), .35); }
+    for (const [px, py, rx] of [[W * .36, gy + 10, 12], [W * .82, gy + 16, 14], [W * .14, H - 12, 10], [W * .6, H - 8, 16]]) for (let y = Math.floor(py - 3); y <= py + 3; y++) for (let x = Math.floor(px - rx); x <= px + rx; x++) { const e = ((x - px) / rx) ** 2 + ((y - py) / 3) ** 2; if (e < 1) gnd.set(x, y, hx(e > .7 && y <= py ? '#5a6468' : y < py ? '#2e383c' : '#1e2628')); }
+    for (let k = 0; k < 24; k++) { const x = hash(k, 1, 715) * W, y = gy + 4 + hash(k, 2, 715) * (H - gy - 4); gnd.set(x, y, hx(k % 3 ? '#b8ae98' : '#e0d8c4'), .8); }
+    // the chain-post, and the great chain from it across the mud and out into the deep
+    gnd.rect(cp[0] - 2.4, cp[1] - 18, 5, 19, hx('#241a12')); gnd.rect(cp[0] - 2.4, cp[1] - 18, 1.4, 19, hx('#4a3622')); gnd.rect(cp[0] - 3.4, cp[1] - 19.4, 7, 2, hx('#2e2014')); gnd.line(cp[0] - 2.4, cp[1] + 1, cp[0] + 2.6, cp[1] + 1, hx('#0a0806'));
+    const ch = []; for (let i = 0; i <= 30; i++) { const u = i / 30, x = cp[0] + 1 + (W + 6 - cp[0]) * u, y = cp[1] - 13 + u * 18 + Math.sin(u * Math.PI) * 7; ch.push([x, y]); }
+    ch.forEach(([x, y], i) => { const s = .8 + i / 30 * .9; if (i & 1) { gnd.rect(x - .6 * s, y - 1.3 * s, 1.3 * s, 2.6 * s, hx('#101012')); gnd.set(x - .6 * s, y - 1.3 * s, hx('#6a6a70')); } else { gnd.rect(x - 1.5 * s, y - .7 * s, 3 * s, 1.5 * s, hx('#3a3a40')); gnd.line(x - 1.5 * s, y - .7 * s, x + 1.4 * s, y - .7 * s, hx('#8a8a90'), .8); gnd.set(x, y + .4, hx('#6a4a2a'), .7); } });
+    return { layers: [sky, far, mid, gnd], lights, fx: 'spray' };
+  },
+  // the Blackwater Causeway: a raised stone causeway across Mirrordeep's shallows, out of the water now: wet flags
+  // with weed on them, the water-mark on a marker stone, reeds, the Keep far off at the end of it
+  causeway(W, H, gy) {
+    const sky = layer(W, H), far = layer(W, H), mid = layer(W, H), gnd = layer(W, H), lights = [];
+    skyFill(sky, ['#0b1016', '#11171e', '#172026', '#1e2a2c', '#27342f', '#334034', '#4a4e3a'], 0, gy + 2);
+    sky.glow(W * .7, gy - 6, 40, hx('#c8b888'), .14);
+    // far: Mirrordeep's shallows to the far shore, the Keep's towers far off where the causeway ends
+    fenWater(far, gy - 3, gy + 3, ['#10181e', '#141e24', '#1a2628'], 721, '#6a7a78');
+    ridge(far, x => gy - 4 - vnoise(x * .05, 0, 722) * 3, gy - 2, '#141c1a', '#3a463c', .4);
+    const kx = W * .5; far.rect(kx - 6, gy - 14, 12, 11, hx('#141a1c')); far.rect(kx - 9, gy - 18, 4, 15, hx('#141a1c')); far.rect(kx + 5, gy - 17, 4, 14, hx('#141a1c')); far.poly([[kx - 10, gy - 18], [kx - 7, gy - 22], [kx - 4, gy - 18]], hx('#141a1c')); far.set(kx - 1, gy - 9, hx('#ffc060')); lights.push({ x: kx - 1, y: gy - 9, r: 4, c: '#ffc060', a: .3, flick: 1.1 });
+    // mid: reeds along both sides of the causeway, a marker stone with the water-mark on it
+    reedBed(mid, W * .02, W * .3, gy + 5, 3, 8, 723, .45); reedBed(mid, W * .7, W * .98, gy + 5, 3, 8, 724, .45);
+    const ms = W * .8; mid.rect(ms, gy - 8, 5, 12, hx('#2a2e2a')); mid.rect(ms, gy - 8, 1.4, 12, hx('#4a524a')); mid.line(ms - .5, gy - 3, ms + 5.5, gy - 3, hx('#6a8a6a')); mid.line(ms - .5, gy - 2, ms + 5.5, gy - 2, hx('#1e2a1e'));
+    // ground: water on either side, the causeway's paving narrowing toward the Keep, weed drying on its stones
+    fenWater(gnd, gy, H, ['#0c1418', '#10191d', '#152022', '#1a2728'], 725, '#5a6c6a');
+    for (let y = gy; y < H; y++) { const d = (y - gy) / (H - gy), hw = 6 + d * W * .42, cx = W * .5; for (let x = Math.floor(cx - hw); x < cx + hw; x++) { const X = (x - cx) / (hw / 6), row = Math.floor(Math.pow(d, .7) * 14), col = Math.floor(X + (row & 1) * .5), edge = Math.abs(x - cx) > hw - 1.5; gnd.set(x, y, hx(edge ? '#141a18' : Math.abs(X - col - .5) > .45 || (Math.pow(d, .7) * 14) % 1 < .08 ? '#1c201c' : ['#3a3e36', '#44483e', '#4e5246'][clampI(Math.round(1 + (hash(col, row, 726) - .5) * 1.4), 2)])); } }
+    for (let k = 0; k < 20; k++) { const d = hash(k, 1, 727), y = gy + d * (H - gy), hw = 6 + d * W * .42, x = W * .5 + (hash(k, 2, 727) - .5) * 2 * hw * .9; gnd.line(x - 1.5, y, x + 1.5, y + .5, hx('#2e4a2a'), .8); }
+    return { layers: [sky, far, mid, gnd], lights, fx: 'wisp' };
+  },
+});
+
 // the dark treatment: everything falls toward a violet-black, except around the lights that stay lit
 // (a light with out: true goes out in the dark) and inside beams of moonlight
 function inPoly(px, py, pts) { let ins = false; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [xi, yi] = pts[i], [xj, yj] = pts[j]; if ((yi > py) !== (yj > py) && px < (xj - xi) * (py - yi) / (yj - yi) + xi) ins = !ins; } return ins; }
@@ -1477,6 +1880,13 @@ export function ambient(key, t, o = {}) {
       case 'snow': { const ph = (t * .05 * sp + r3) % 1; out.push({ x: (r1 * w + ph * 30 + Math.sin(t * 1.1 + k) * 3) % w, y: ph * h, c: k % 4 === 0 ? [255, 255, 255] : [214, 228, 244], a: k % 4 === 0 ? .95 : .7 }); break; }
       case 'sparks': { const ph = (t * .1 * sp + r3) % 1; out.push({ x: r1 * w + Math.sin(t * 2.2 + k * 1.3) * 3 + ph * 6, y: h - ph * h * .9, c: r2 > .6 ? [255, 236, 170] : [255, 150, 60], a: Math.min(1, (1 - ph) * 2.5) * (ph < .7 ? .95 : .5) }); break; }
       case 'rime': { const s = Math.sin(t * 1.3 * sp + k * 2.3), ph = (t * .02 * sp + r3) % 1; out.push(k % 3 === 0 ? { x: r1 * w + Math.sin(t * .4 + k) * 4, y: gy + r2 * (h - gy) - ph * 12, c: [180, 170, 255], a: Math.min(1, (1 - ph) * 3) * .7 } : { x: r1 * w + Math.sin(t * .4 + k) * 4, y: ph * h, c: [200, 232, 255], a: s > .5 ? (s - .5) * 1.6 : .15 }); break; }
+      // M6: midges dancing over the fen, wisps drifting low over the water, moths round the lamps, bubbles coming up
+      // through the water, spray off the sea
+      case 'midge': { const cx = (hash(k % 3, 4, 7) * .8 + .1) * w, cy = gy - 8 + hash(k % 3, 5, 7) * (h - gy) * .5; out.push({ x: cx + Math.sin(t * 3.1 * sp + k * 1.7) * 5 + Math.sin(t * 7.3 + k) * 1.2, y: cy + Math.cos(t * 2.6 * sp + k * 2.3) * 3.4, c: [176, 186, 150], a: .5 }); break; }
+      case 'wisp': out.push({ x: r1 * w + Math.sin(t * .35 * sp + k) * 9, y: gy - 6 + r3 * (h - gy) * .7 + Math.cos(t * .5 + k * 1.3) * 3, c: k % 3 ? [206, 240, 128] : [255, 240, 176], a: Math.max(0, Math.sin(t * 1.3 * sp + k * 2.1)) * .85 }); break;
+      case 'moth': { const cx = (hash(k % 4, 4, 8) * .7 + .15) * w, cy = gy - 14 + hash(k % 4, 5, 8) * 16; out.push({ x: cx + Math.cos(t * 2.2 * sp + k * 1.9) * 7 + Math.sin(t * 9 + k) * 1, y: cy + Math.sin(t * 1.7 * sp + k * 2.7) * 5, c: k % 2 ? [236, 226, 196] : [255, 236, 170], a: .75 }); break; }
+      case 'bubble': { const ph = (t * .07 * sp + r3) % 1; out.push({ x: r1 * w + Math.sin(t * 2 + k) * 1.2, y: h - ph * (h - gy * .4), c: k % 3 ? [150, 214, 196] : [214, 250, 236], a: Math.min(1, ph * 6) * (1 - ph) * .75 }); break; }
+      case 'spray': { const ph = (t * .28 * sp + r3) % 1; out.push({ x: (r1 * w + ph * 18) % w, y: gy + r2 * (h - gy) * .3 - Math.sin(ph * Math.PI) * 9, c: [206, 222, 226], a: Math.sin(ph * Math.PI) * .6 }); break; }
     }
   }
   if (S.dark) for (const p of out) p.a *= .55;
@@ -1495,6 +1905,16 @@ export function renderBackdrop(key, o = {}) {
     if (g.core) for (const [x, y] of g.core) L.set(x, y, hx('#fff0c0'), .7 + .3 * fl);
     if (g.torch) { const fx = Math.round(g.x), fy = Math.round(g.y), f2 = Math.floor(t * 9) % 3; L.set(fx, fy + 1, hx('#ff8a2a')); L.set(fx, fy, hx('#ffd27a')); L.set(fx + (f2 === 1 ? 1 : f2 === 2 ? -1 : 0), fy - 1, hx('#ffb04a')); if (f2 !== 2) L.set(fx, fy - 2, hx('#ff8a2a'), .7); }
   }
+  if (P.B.mist) drawMist(L, t, P.gy, w, h, P.B.dark);
   if (!o.reduced) for (const p of ambient(key, t, { w, h, dark: o.dark })) if (p.a > .05) L.set(p.x, p.y, p.c, p.a);
   return L.img();
+}
+// M6: the fog on a foggy map (a listing with mist: true): banks of it drifting slowly across, at t (still when reduced)
+function drawMist(L, t, gy, W, H, dark) {
+  const C = hx(dark ? '#4a5048' : '#b4c0b0'), top = gy - H * .22;
+  for (let b = 0; b < 4; b++) {
+    const yc = top + b * (H - top) / 3.4, th = 4 + b * 2.2, off = t * (1.6 + b * .7) * (b & 1 ? -1 : 1), col = new Float32Array(W);
+    for (let x = 0; x < W; x++) col[x] = vnoise((x + off) * .03, b * 7.3, 731);
+    for (let y = Math.floor(yc - th); y < yc + th; y++) { const f = 1 - Math.abs(y + .5 - yc) / th; for (let x = 0; x < W; x++) { const a = (col[x] * f - .22) * .55; if (a > 0 && a + bayer(x, y) * .1 > .07) L.set(x, y, C, Math.min(.3, a)); } }
+  }
 }

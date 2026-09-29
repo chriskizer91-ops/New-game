@@ -215,3 +215,84 @@ test('Ironspire spoils: the Sunscorch\'s tiers, and Frost Opals only from the fi
   for (const id of Object.keys(F.garnets)) assert.equal(ENCOUNTERS[id].region, 'sunscorch');
   assert.deepEqual(F.spoils.champion, { silver: 2, embers: 2 }, 'the tiers the Sunscorch pays');
 });
+
+// ---- M6 (spec §3.4, §3.5, §3.7; P4) ---------------------------------------------------------------------
+
+test('the Gloomfen Champions: a piece pried loose is claimed, a piece still held shatters, and each pays two tempered-or-better items', async () => {
+  const { RELICS } = await import('../src/data/relics.js');
+  for (const [family, loose, held] of [['lantern-mother', 'lamplighters-lantern', 'mourning-veil'], ['blackwater-leviathan', 'deep-pearl', 'corvus-harpoon']]) {
+    const s = structuredClone(battleWith([{ family, level: 33 }], { seed: 9 }));
+    const f = s.units.f1;
+    f.held.find(p => p.relic === loose).held = false; // pried loose in the fight
+    f.ko = true;
+    f.hp = 0;
+    const { drops, claimed, consumables } = battleLoot(s, createRng(31));
+    assert.deepEqual(claimed.map(i => i.base), [loose], family);
+    assert.ok(!claimed[0].shattered && claimed[0].rarity === 'heirloom', family);
+    assert.ok(drops.find(i => i.base === held)?.shattered, `${family}: the piece it still held shatters`);
+    const random = drops.filter(i => !RELICS[i.base]);
+    assert.equal(random.length, 2, family);
+    for (const it of random) assert.ok(RARITY[it.rarity].rank >= RARITY.tempered.rank, it.rarity);
+    assert.ok(Object.values(consumables).reduce((a, n) => a + n, 0) >= 1, 'a Champion always leaves a consumable');
+  }
+});
+
+test('Gloomfen holders drop their relic when pried loose (Hodge\'s toll too); Tamsin\'s Bogstriders drop when she falls, while her lent relic goes home', async () => {
+  const s = structuredClone(battleWith([
+    { family: 'blackwater-gar', variant: 'old-jaws', relic: 'gar-tooth', level: 34 },
+    { family: 'tallyman', variant: 'bargemaster', relic: 'barge-gauntlets', level: 33, gearTier: 3 },
+    { family: 'drowned', variant: 'choir', level: 33 },
+  ], { seed: 3 }));
+  s.units.f1.held[0].held = false;
+  s.units.f2.held[0].held = false;
+  for (const id of ['f1', 'f2', 'f3']) { s.units[id].ko = true; s.units[id].hp = 0; }
+  const a = battleLoot(s, createRng(8));
+  assert.deepEqual(a, battleLoot(s, createRng(8)), 'deterministic per seed');
+  assert.deepEqual(a.claimed.map(i => i.base).sort(), ['barge-gauntlets', 'gar-tooth']);
+  // the choir, a veteran, drops a piece it wears (it wears nothing: a random piece)
+  assert.ok(a.drops.some(i => i.provenance.from === s.units.f3.name), 'the chorister leaves something');
+  // Hodge's Unfair Toll, pried loose in the terrible fight, is yours
+  const h = structuredClone(battleWith([{ family: 'hodge', level: 37, relic: 'unfair-toll', gearTier: 3, omens: ['frenzied', 'swift', 'ironclad'] }], { seed: 5 }));
+  h.units.f1.held[0].held = false;
+  h.units.f1.ko = true;
+  const hl = battleLoot(h, createRng(2));
+  assert.deepEqual(hl.claimed.map(i => i.base), ['unfair-toll']);
+  assert.ok(!hl.claimed[0].shattered);
+  // Tamsin on Rotbridge: her lent starter is never claimed, the Bogstriders she wears are yours
+  const t = structuredClone(battleWith([{ family: 'tamsin', variant: 'cairnmaul', kit: 'rotbridge', level: 35, gearTier: 4, held: [{ relic: 'cairnmaul', lend: true }], wears: 'bogstriders' }], { seed: 4 }));
+  t.units.f1.held[0].held = false;
+  t.units.f1.ko = true;
+  const r = battleLoot(t, createRng(1));
+  assert.ok(!r.claimed.some(i => i.base === 'cairnmaul'), 'her relic goes home with her');
+  assert.ok(r.drops.some(i => i.base === 'bogstriders' && !i.shattered && i.rarity === 'heirloom'), 'the Bogstriders drop');
+});
+
+test('Gloomfen spoils: a won fight in the fen pays the Sunscorch\'s tiers, and Bog Amber comes only from the bogs\' fights', async () => {
+  const { TUNING } = await import('../src/data/tuning.js');
+  const { ENCOUNTERS } = await import('../src/data/encounters.js');
+  const { GEMS } = await import('../src/data/gems.js');
+  const { newGame, startBattle, resolveBattle } = await import('../src/rules/gauntlet.js');
+  const F = TUNING.forge;
+  assert.ok(GEMS['bog-amber'], 'the Bog Amber is a gem');
+  const ambers = Object.entries(F.ambers);
+  assert.ok(ambers.length >= 3, 'several bog fights pay one');
+  const BOGS = ['The Lanternfen', 'The Mother\'s Hollow', 'Willowmurk'];
+  for (const [id, n] of ambers) {
+    const e = ENCOUNTERS[id];
+    assert.ok(e && e.type === 'fight' && e.region === 'gloomfen', id);
+    assert.ok(BOGS.includes(e.place), `${id}: Bog Amber comes from the bogs (${e.place})`);
+    assert.ok(Number.isInteger(n) && n >= 1 && n <= 2, `${id}: ${n}`);
+  }
+  assert.equal(F.ambers['lantern-mother'], 2, 'the Lantern Mother pays the most');
+  for (const e of Object.values(ENCOUNTERS)) if (e.type === 'fight' && e.region !== 'gloomfen') assert.equal(F.ambers[e.id], undefined, e.id);
+  for (const id of Object.keys(F.opals)) assert.equal(ENCOUNTERS[id].region, 'ironspire');
+  // a won fight at the hags' pot: two veterans' scrap, and one Bog Amber
+  const game = newGame({ name: 'Tess', seed: 3 });
+  const { game: g, battle } = startBattle(game, { nodeId: 'lf-hags' });
+  const won = structuredClone(battle);
+  for (const u of Object.values(won.units)) if (u.side === 'foe') { u.ko = true; u.hp = 0; }
+  won.ended = { result: 'victory', xp: 0, gold: 0, drops: [], claimed: [], consumables: {} };
+  const { report } = resolveBattle(g, won);
+  assert.deepEqual(report.materials, { scrap: 2 }, 'the hags pay scrap; the leech (rabble) nothing');
+  assert.deepEqual(report.gems, { 'bog-amber': 1 });
+});

@@ -112,6 +112,7 @@ function entityState(game, e) {
   switch (e.kind) {
     case 'encounter': {
       if (f.done?.[e.enc] || f.cleared?.[e.enc]) return null;
+      if (ENCOUNTERS[e.enc]?.leaves && check(game, ENCOUNTERS[e.enc].leaves)) return null; // M6: gone for good (Tamsin's fall)
       const info = encounterInfo(game, e.enc);
       return { solid: e.mode !== 'pack', state: 'present', glint: info.glint, grudge: info.grudge, name: info.name, lead: info.lead };
     }

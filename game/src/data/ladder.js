@@ -1,11 +1,11 @@
-// The Ladder (M3 spec §3.6, M4 spec §3.6, M5 spec §3.6): one poster per villain, in order: Act I, then
-// the Act II posters of the Sunscorch and the Ironspire, then the rumours: the Gloomfen, still sealed,
-// and Harrow himself, still missing (the Ironspire finds his forge, his hammer and his journeyman, not him).
+// The Ladder (M3 spec §3.6, M4 spec §3.6, M5 spec §3.6, M6 spec §3.6): one poster per villain, in order: Act I,
+// then the Act II posters of the Sunscorch, the Ironspire and the Gloomfen, then the rumours: Harrow himself,
+// still missing (the Ironspire finds his forge, his hammer and his journeyman, not him).
 // LADDER = [{ id, enc?, spawn?, name, silhouette?, act }]
 //   enc/spawn  the encounter and spawn index whose foe the poster shows (renderFoe silhouette)
 //   silhouette a rumour: no encounter yet, only a name
 //   state      silhouette -> scouted (flags.scouted[id], sighted or fought) -> settled ({ beaten: enc })
-// Owner: WP3S (M3), P3 story (M4, M5).
+// Owner: WP3S (M3), P3 story (M4, M5, M6).
 
 import { deepFreeze } from '../core/freeze.js';
 
@@ -59,4 +59,6 @@ export const LADDER = deepFreeze([
   P2('blackwater-leviathan', 'blackwater-leviathan', 'The Blackwater Leviathan'),
   // Act II rumours: Harrow is still missing
   { id: 'missing-smith', name: 'the missing smith', silhouette: true, act: 2 },
+  // M6: the man on the barge who took Tamsin: a rumour once she has fallen (her duel over, won or yielded)
+  { id: 'man-on-the-barge', name: 'the man on the barge', silhouette: true, act: 2, if: { any: [{ flag: 'tamsin-fallen' }, { beaten: 'tamsin-rotbridge' }, { flag: 'tamsin-yielded-4' }] } },
 ]);

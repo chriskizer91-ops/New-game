@@ -3,7 +3,9 @@
 // as the image).
 //
 //   VIEWS                      { wilds, sunscorch, ironspire, gloomfen, realm }: the crop each Atlas view shows, { x, y, w, h }
-//                              (every view is 3:2, like the frame)
+//                              (every view is 3:2, like the frame). M6: the Gloomfen's is framed from its data
+//                              (framed(region): every one of its maps' lore and its Hearthfires, with a margin), so
+//                              it holds the four places and the long way down from Mossfall's fen stair to the Flats
 //   REGION_VIEW                { [regionId]: viewId } the view that frames each open region
 //   regionOpen(game, id)       -> boolean   a region is open on the Atlas when REGIONS says so and one of
 //                              its entry exits can be walked (the Keep's south-east gate after Act I)
@@ -23,14 +25,27 @@
 //                              node: { x0, y0, weight? } in, { x, y } out. Deterministic.
 //   RELIC_SITE                 { [relicId]: encounterId } where each relic is held or worn (data only;
 //                              '$rival' and gifts are left out)
-// Owner: WP8; M4 P7b (the Sunscorch view, regionOpen, placeOf).
+// Owner: WP8; M4 P7b (the Sunscorch view, regionOpen, placeOf); M6 P7 (the Gloomfen view).
 import { MAPS } from '../../data/maps/index.js';
 import { ENCOUNTERS } from '../../data/encounters.js';
 import { FOES } from '../../data/foes.js';
-import { REGIONS, LORE } from '../../data/world.js';
+import { REGIONS, LORE, HEARTHS } from '../../data/world.js';
 import { check } from '../../rules/cond.js';
 
 export const VIEWBOX = Object.freeze({ w: 1200, h: 800 });
+// A region's view from its data: the bounds of its maps' lore and its Hearthfires' points, `pad` wider all round,
+// widened (or heightened) to 3:2 about their middle, and kept on the painting.
+export function framed(region, pad = 12) {
+  const pts = [];
+  for (const m of Object.values(MAPS)) if (m.region === region) for (const l of m.lore || []) pts.push([l[0], l[1]]);
+  for (const h of Object.values(HEARTHS)) if (MAPS[h.map]?.region === region) pts.push(h.lore);
+  if (!pts.length) return null;
+  const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+  const x0 = Math.min(...xs) - pad, x1 = Math.max(...xs) + pad, y0 = Math.min(...ys) - pad, y1 = Math.max(...ys) + pad;
+  const w = Math.min(VIEWBOX.w, Math.max(x1 - x0, (y1 - y0) * 1.5)), h = w / 1.5;
+  const x = Math.max(0, Math.min(VIEWBOX.w - w, (x0 + x1 - w) / 2)), y = Math.max(0, Math.min(VIEWBOX.h - h, (y0 + y1 - h) / 2));
+  return Object.freeze({ x, y, w, h });
+}
 export const VIEWS = Object.freeze({
   wilds: Object.freeze({ x: 105, y: 100, w: 516, h: 344 }), // the Verdant quarter, and the Keep's island
   // the Sunscorch: from the Keep's south-east shore to Miragewell, and down to the Scorchgate Vaults
@@ -38,9 +53,8 @@ export const VIEWS = Object.freeze({
   // M5: the Ironspire, from the Highfold and the Keep's east shore up to Frostmere (a first framing from the
   // M5 scaffold; P7 may reframe it)
   ironspire: Object.freeze({ x: 520, y: 60, w: 600, h: 400 }),
-  // M6: the Gloomfen, from Mossfall's fen stair down to the Tidal Flats (a first framing from the M6 scaffold; P7 may
-  // reframe it)
-  gloomfen: Object.freeze({ x: 30, y: 320, w: 660, h: 440 }),
+  // M6: the Gloomfen, from Mossfall's fen stair down to the Tidal Flats, framed from its data
+  gloomfen: framed('gloomfen') || Object.freeze({ x: 0, y: 280, w: 726, h: 484 }),
   realm: Object.freeze({ x: 0, y: 0, w: 1200, h: 800 }),
 });
 export const REGION_VIEW = Object.freeze({ verdant: 'wilds', sunscorch: 'sunscorch', ironspire: 'ironspire', gloomfen: 'gloomfen' });

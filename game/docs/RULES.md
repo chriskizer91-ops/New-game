@@ -116,6 +116,8 @@ over time ticks at the start of the bearer's turn.
 | burrowed (M5) | under the floor: nothing can target it, and area moves pass over it | until its next turn starts |
 | swallowed (M5) | out of the line: loses its turns, cannot be targeted, takes 1d6 of the swallower's aspect at the start of each; spat out when the swallower takes a hit of 15% of its max HP, falls or runs, or the turns run out (the last hero standing is caught and spat straight back out). The Roc's is "Carried off", the Abbot's "Held under" | 2 turns |
 | charmed (M5) | its next turn is played for it: a plain attack on a random ally (never itself); a hit from its own side wakes it | until that turn |
+| rotting (M6) | 1d6 blight per stack at the start of each turn, and every heal it gets is halved (rounded down: potions, moves and regeneration alike); a cleanse clears it | 3 turns, 3 stacks |
+| hexed (M6) | its attack and save d20s roll with disadvantage; advantage cancels it (one die), as in D&D | 2 turns |
 
 ## 5. Foes: intent dice, move tables, phases
 
@@ -257,6 +259,56 @@ half at Waking 5, after the Brand of Iron):
   a free round for the party (nothing to hit, so it braced and healed) and Kharzul fell to 27% wipes: the
   Erupt's 4d10 and its riders put him back at 32%.
 
+**M6 foes** (the Gloomfen Marsh; a player arrives at Waking 6, every earlier Brand held, and meets the Deep half past the
+long boardwalk at Waking 7, after the Brand of Lanterns):
+- **The Gloomfen Waking.** Every Gloomfen spawn that is not rabble climbs 4 levels per Waking (the `GLOOM` spawns in
+  `data/encounters.js`): +24 on arrival, +28 after the Brand of Lanterns. Rabble climb the usual 2. At most three Waking
+  Omens on any Gloomfen spawn; the Champions and the named lair holders carry chosen Omens, never Twinned (M5's rule).
+  Hodge and Tamsin are levelled on the party instead (`level: 'party'`, `noWaking`).
+- **Two statuses** (§4): *rotting* (the bog-hags' Rot, the drowned's Black Water, the Lantern Mother's Mourning) and
+  *hexed* (the bog-hags' Hex, Mother Grue's Evil Eye, the drowned choir's Hymn, the Cantor's Downbeat, the Lantern
+  Mother's Hush Now).
+- Rabble: mire-leech (blight; Latch On Bleeds, Drink hurts you and heals it, Sink: it lets go and sinks away when hurt),
+  marsh-light (radiant spirit; Cold Fire; **Lure**: WIS save or Charmed; Flicker: Guarding), lamp-moth (radiant; Batter;
+  Dust in the Eyes: DEX save or Frightened; Circle the Light: Hasted), blackwater-gar (tide; Bite; Leap: charging, and
+  you Stagger; Dive: Guarding), and the Tallymen's reed-cutters, salvage divers (Grapnel: Exposed) and bargehands
+  (Punt-Pole: Staggered).
+- Veterans: bog-hag (humanoid, blight; Ladle; **Hex**: WIS or Hexed; **Rot**: 2d6 blight, CON for half, and a failed save
+  Rots; Stir the Pot heals her worst-hurt friend), willow-wight (verdant plant; Lash Roots; Bough-Fall charges and
+  Staggers; Weep Regenerates), the drowned (tide undead; Cold Hands; **Drag Down** Roots and Chills; Toll: WIS or
+  Frightened; **Black Water**: CON or Rotting), with the bell-ringers (Peal: 1d4 tide to every hero, CON or Staggered)
+  and the choir (the Hymn: every hero WIS or Hexed).
+- Relic-Bearers, each with its Art on the d12's 9-12: Old Jaws (The Tooth, the Gar's Tooth; Death Roll charges and
+  Roots), Mother Grue (The Evil Eye, the Hag-Stone), Grandfather Willow (Weeping Volley, the Weeping Bow), the Drowned
+  Cantor (Downbeat, the Cantor's Staff; Beat Time hastes his choir), the Salvage-Master (The Diving Bell, the Salvager's
+  Helm), the Bargemaster (Haul Away, the Barge-Chain Gauntlets).
+- **Hodge** (relic-bearer, humanoid, unique; party level + 6, gear tier 3, Frenzied, Swift and Ironclad; 72 HP, Guard 19,
+  atk 6, dmg 4): his family's `opener` is **Toll Is Due**, so it is always his first move: the strongest hero (the
+  highest level, then the most max HP, past a Challenge) makes a CHA save against DC 20 or its next turn comes a whole
+  turn later. Then Old Man's Cane (2d10 crushing, Staggered), **Bridge Troll** (charging: one hero is shoved off the
+  bridge, `swallowed` as "In the river") and **Clipped Coin** (needs the Unfair Toll: two blows; it is always heads). He
+  never flees; at 0 HP he sits down on his stool and says so (his `koText` rides on the `ko` event). Fought once, from his
+  toll dialogue; losing is an ordinary loss.
+- **The Lantern Mother** (Champion, radiant undead, weak to tide; 215 HP, Guard 19, atk 9, dmg 7, speed 11; Frenzied,
+  Swift and Ironclad): *Lamplight* (Lamp-Pole 2d10 crushing; Lantern Flare, 3d8 radiant to every hero, DEX for half;
+  **Lure** needs the Lamplighter's Lantern: WIS or Charmed; Hush Now: every hero WIS or Hexed); at 66% *The Children's
+  Road* (**Lead Them Down**: charging, WIS or led under the water, `swallowed` as "Led away" for up to two turns;
+  Moths: a lamp-moth four levels down, at most two; **Mourning** needs the Mourning Veil: every hero Frightened and
+  Rotting); at 33% *Lights Out* (Snuff: every hero Exposed; **Lantern Nova** needs the Lantern: 3d8 radiant to every hero
+  and Burning; Drown the Light: charging, 4d10 tide). Snapped off, a piece's moves become the Lamp-Pole.
+- **The Blackwater Leviathan** (Champion, tide beast, hide; storm beats tide on the wheel; 160 HP, Guard 22, atk 8, dmg 6,
+  speed 7 with Swift, and Frenzied): *The Wake* (Coil, 2d10 crushing and Rooted; Tail Slap, 2d6 tide to every hero, DEX
+  for half; **Sound**: it dives, `burrowed`, and its next intent is forced to **Breach**: charging, 4d10 tide under one
+  hero, Staggered); at 66% *The Deep* (**Swallow**: charging, `swallowed` as "Swallowed whole"; Undertow: 1d6 tide to
+  every hero, STR or Rooted and Chilled; **Harpoon Rage** needs Corvus's Harpoon: two Coils in one turn); at 33%
+  *Blackwater* (**Pearl-Light** needs the Deep-Pearl: it heals 2d8 and is Warded, else a Tail Slap; Flood, 3d8 tide to
+  every hero, DEX for half; Swallow).
+- **Tamsin at Rotbridge** (`variant: '$rival:rotbridge'`): her Rotbridge kit (`data/rivals.js`, the same for each starter)
+  on the d12: Riposte 1-3, Fen-Step 4 (2d10 slashing, and the Bogstriders Haste her), Cheap Shot 5, Mire-Footing 6 (DEX or
+  Rooted), All In 7 (charging, 4d10 slashing, then she is Exposed), her lent counter-starter's Art 8-11, Not Like This 12.
+  Party level + 4, gear tier 4, and the Swift, Ironclad and Thornskinned Omens; she wears the Bogstriders, which drop
+  when you win (and which she leaves behind when she goes, after a yield).
+
 **Omens** (stack on elites; the Waking and Grudges add them): emberblooded (hits Burn, resists
 ember), thornskinned (reflects 25% of melee damage), twinned (splits in two at half HP; never on
 Champions), frenzied (acts twice as often under 25%), ironclad (+2 Guard, grip ×1.5), swift
@@ -293,6 +345,16 @@ A holder shows a grip meter per relic: `max = relic grip × (1 + 0.1(L−1))` (�
   so her grips are half again as strong. The M5 holders' relics: the Windstep Boots 26, Ironwall 30, the
   Drowned Censer 28, the Roc-Feather Cloak 30, the Trollhide Mantle 32, Harrow's Runestaff 28, the Cutter's
   Pick 28.
+
+- **M6 Champions** hold two pieces each (base grip before the level scaling): the Lantern Mother the Lamplighter's
+  Lantern 44 (held) and the Mourning Veil 30 (worn), the Leviathan Corvus's Harpoon 44 (lodged in its side) and the
+  Deep-Pearl 34 (in its brow). Without the Lantern her Lure and Lantern Nova are a Lamp-Pole, without the Veil her
+  Mourning; without the Harpoon the Leviathan's Harpoon Rage is a Coil, without the Pearl its Pearl-Light a Tail Slap.
+  The Lantern Mother is Ironclad, so her grips are half again as strong. The M6 holders' relics: the Unfair Toll 30
+  (Hodge is Ironclad too), the Weeping Bow 30, the Hag-Stone 28, the Salvager's Helm 30, the Cantor's Staff 30, the Gar's
+  Tooth 28, the Barge-Chain Gauntlets 32.
+- **Hodge's toll comes loose only by grip** (M6 spec §3.2, §3.5): `FOES.hodge.keepsRelics`. Pried loose, the Unfair Toll
+  is claimed as any held relic; beaten with it still in his hand, he keeps it (he never dies: he sits down on his stool).
 
 ## 7. Legend Surge
 
@@ -334,6 +396,26 @@ socket (the four Champions' pieces two) and two awakened branches; the Champions
 names (the Anvil Heart: The Forge-Heart / The Banked Fire; the Worldforge Hammer: The Worldbreaker / The
 Maker's Hammer; the Rime Crozier: The Bell-Clapper / The Abbot's Light; the Hushweave Cowl: The Silent Step /
 The Listener's Hood), the rest read "the Gale-Footed Hand", "the Wandering Heart".
+
+**M6 relics (Codex Nos. 53-66)** each carry a signature Surge: **Heads I Win** (Hodge's Unfair Toll: every foe stops to pay
+the toll, and its next turn comes a whole turn later, with no save: a clipped coin always comes up Hodge), Fen-Footed (the
+Bogstriders: every ally Hasted and free of Rooted and Chilled), Willow Rain (the Weeping Bow: a shot at every foe, each hit
+Roots), The Wards Hold (the Willow-Ward: every ally Warded 3d6 and free of Hexed and Charmed), Through the Hole (the
+Hag-Stone: every foe Exposed and Hexed), **Every Lamp Lit** (the Lamplighter's Lantern: every ally Warded 3d8 and free of
+Frightened, Hexed and Charmed), **Veil of Tears** (the Mourning Veil: every foe Frightened and two stacks of Rotting), Air
+for Everyone (the Salvager's Helm: every ally Warded 2d8 and free of Rooted, Chilled and Frozen), The Downbeat (the
+Cantor's Staff: every foe Staggers and is Hexed), Snap (the Gar's Tooth: an auto-crit strike and three stacks of
+Bleeding), Haul Away (the Barge-Chain Gauntlets: 3d6 grip damage to every foe, and Rooted), **Harpoon and Line** (Corvus's
+Harpoon: 4d10 piercing, 3d6 grip damage, Rooted) and **Pearl-Glow** (the Deep-Pearl: every ally heals 3d8 and Regenerates
+1d8), and Undo the Knot (Nettie's Hexbane Shawl: every ally sheds up to three harmful statuses and heals 2d6). The
+Champions' pieces are hand-named (the Lamplighter's Lantern: The Lamp-Bearer / The Window-Lamp; the Mourning Veil: The
+Widow's Step / The Last Lament; Corvus's Harpoon: The Leviathan-Hook / The Diver's Line; the Deep-Pearl: The Deep-Eye /
+The Drowned Moon), with two sockets.
+
+**Toll Is Due** (M6 spec §4.4; `rules/battle.js`): while a standing hero wears Hodge's Unfair Toll, the strongest foe (the
+highest level, then the most max HP) makes a CHA save against DC 13 at the start of every fight, or its first turn comes two
+First Strikes (80) later. A family with no CHA save rolls a bare d20 (so about 40% save). Hodge's own move of the same
+name does it to your strongest hero instead (DC 20, a whole turn).
 
 **Deeds, sockets and awakening (M4 data; rules in `rules/forge.js` and `rules/codex.js`).** Every relic
 names three deeds (`data/deeds.js`), gem `sockets` (0-2: the starters and the Champions' pieces 2, the
@@ -412,6 +494,9 @@ veteran 1, relic-bearer 2, champion 3) + Waking + ½ per Omen + 1 for a Grudge.
   1, the Ashen Warden 2) and Frostmere's pay **Frost Opals** (`TUNING.forge.opals`: the Drowned 1, the Drowned
   Shrine 1, the Choir 1, the Rime-Abbot 2); three Frostmere chests, Rook's Ledger and Durra's armoury in
   Ironhold have them too.
+- **Gloomfen spoils** (M6): a won Gloomfen fight pays the same materials by tier, and the bogs' fights pay **Bog Amber**
+  (`TUNING.forge.ambers`: the hags' pot 1, Mother Grue 1, Grandfather Willow 1, the Lantern Mother 2); bog amber is
+  otherwise found only in chests (and sold by Nettie).
 - **Generated items:** base type by slot (newer bases likelier at higher item level), rarity,
   affixes (≤2 prefixes named for regions, ≤2 suffixes named for Domains, no duplicates within a
   family), value = roll × rarity multiplier + item level × per-level. Names: "Patched Leather

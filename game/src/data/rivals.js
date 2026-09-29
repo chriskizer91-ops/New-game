@@ -6,7 +6,8 @@
 //   gearTier  her look's gear tier for that duel (optional)
 // '$rival' alone keeps its M3/M4 meaning: the Eldest Tree and Scorchgate duels use no kit.
 // withKit(family, variant, kit) merges a kit over a family already merged with its variant.
-// Owner: P1 (M5). The numbers are tuned with tools/sim.mjs (P4: Tamsin at Ironhold, party win 55-70%).
+// Owner: P1 (M5). The numbers are tuned with tools/sim.mjs (P4: Tamsin at Ironhold, party win 55-70%; M6 P4: the
+// Rotbridge kit, the same for each starter, party win 55-70%).
 
 import { deepFreeze } from '../core/freeze.js';
 
@@ -25,10 +26,22 @@ const ironhold = art => ({
   table: [[1, 3, 'riposte'], [4, 4, 'iron-grip'], [5, 5, 'cheap-shot'], [6, 6, 'hunters-mark'], [7, 7, 'bracer-block'], [8, 11, art], [12, 12, 'not-like-this']],
 });
 
+// Rotbridge (M6 spec §4.3): a month in the fen following the soot-sealed letters, the Bogstriders on her feet, and
+// nothing much left to lose. Something fen-footed (Fen-Step, Mire-Footing) and something desperate (All In).
+const ROTBRIDGE_MOVES = {
+  'fen-step': { name: 'Fen-Step', target: 'enemy', text: 'The Bogstriders carry her across the mud where you would sink, and she is behind you before you turn: 2d10 slashing, and she is Hasted.', effects: [atk('2d10', 'slash'), status('hasted', { self: true })] },
+  'mire-footing': { name: 'Mire-Footing', target: 'enemy', text: 'She finds the one plank that holds and leaves you the rotten one. DEX save or Rooted.', effects: [status('rooted', { save: 'DEX' })] },
+  'all-in': { name: 'All In', target: 'enemy', charge: true, text: 'She stops guarding and puts everything she has left into one cut, charging: 4d10 slashing, and it leaves her wide open (Exposed).', effects: [atk('4d10', 'slash'), status('exposed', { self: true })] },
+};
+const rotbridge = art => ({
+  moves: ROTBRIDGE_MOVES,
+  table: [[1, 3, 'riposte'], [4, 4, 'fen-step'], [5, 5, 'cheap-shot'], [6, 6, 'mire-footing'], [7, 7, 'all-in'], [8, 11, art], [12, 12, 'not-like-this']],
+});
+
 export const RIVAL_KITS = deepFreeze({
-  hearthbrand: { ironhold: ironhold('kindled-cut') },
-  'stillwater-lance': { ironhold: ironhold('still-point') },
-  cairnmaul: { ironhold: ironhold('cairn-swing') },
+  hearthbrand: { ironhold: ironhold('kindled-cut'), rotbridge: rotbridge('kindled-cut') },
+  'stillwater-lance': { ironhold: ironhold('still-point'), rotbridge: rotbridge('still-point') },
+  cairnmaul: { ironhold: ironhold('cairn-swing'), rotbridge: rotbridge('cairn-swing') },
 });
 
 export function withKit(fam, variant, kit) {

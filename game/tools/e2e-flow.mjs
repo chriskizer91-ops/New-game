@@ -57,14 +57,17 @@
 // And a Milestone 5 profile (the M2, M3, M4, M4.5 and M5 saves seeded, with M4.5's and M5's started markers;
 // aethermoor.save.m5 is the newest):
 //   N. "Continue from Milestone 5" (offered first) -> the Milestone 5 card -> Walk on (nothing written)
-//      -> the first step writes this milestone's own save; Settings lists all five old saves; Export M5
-//      backup is the M5 save byte for byte (AETH4); Carry over my M5 save, "Not yet" changes nothing, then
-//      carries it over again with a backup; after a reload the title continues it. All five old saves,
+//      -> the first step writes this milestone's own save; the Codex's Page IV (the Gloomfen) shows in the carried
+//      journey (open, its pockets and reward, its road note: the fen stair); Settings lists all five old saves;
+//      Export M5 backup is the M5 save byte for byte (AETH4); Carry over my M5 save, "Not yet" changes nothing,
+//      then carries it over again with a backup; after a reload the title continues it. All five old saves,
 //      and the M4.5 and M5 markers, stay byte-identical throughout; nothing of Milestone 5's is written.
 // Fails on any console error, page exception or [audio] warning. The world screen is WP7's: this
 // test drives it only through go() and the window.__world seam, and checks the shell's own screens.
 // Playwright is not a project dependency: it comes from the global npm root.
-// Owner: WP8 (M3); the M4 counts and section K: P7a; M5's keys and section M: the lead; M6's keys and section N: the lead.
+// Owner: WP8 (M3); the M4 counts and section K: P7a; M5's keys and section M: the lead; M6's keys and section N: the lead;
+// M6 P7: Page IV in section N, the fen track among the tracks played, and B's Ladder is the rules' ladder() (an
+// entry with an `if`, the man on the barge, shows only once it holds).
 import { execSync } from 'node:child_process';
 import { existsSync, mkdirSync, rmSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -82,6 +85,7 @@ import { GEMS } from '../src/data/gems.js';
 import { PAGES } from '../src/data/codex.js';
 import { ENCOUNTERS } from '../src/data/encounters.js';
 import { SAVE_VERSION, toV2, toV3, toV4 } from '../src/rules/migrate.js';
+import { ladder } from '../src/rules/story.js';
 import { heroStats } from '../src/rules/stats.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -183,7 +187,7 @@ const note = msg => console.log('  note', msg);
 
 const SFX = ['select', 'confirm', 'back', 'dice', 'hit', 'graze', 'miss', 'crit', 'heal', 'status', 'disarm', 'ko', 'surge', 'legend', 'victory', 'defeat', 'phase', 'chest', 'reveal', 'equip', 'levelup', 'hearth', 'beam', 'tick', 'stamp', 'coin', 'page', 'identify', 'slam', 'error',
   'bump', 'alert', 'door', 'blip', 'unlock', 'chime'];
-const TRACKS = ['road', 'wilds', 'town', 'dungeon', 'battle', 'boss', 'hearth', 'victory', 'title', 'desert', 'peaks'];
+const TRACKS = ['road', 'wilds', 'town', 'dungeon', 'battle', 'boss', 'hearth', 'victory', 'title', 'desert', 'peaks', 'fen'];
 
 async function openPage(V, { seedV1 = null, seedV2 = null, seedM4 = null, seedM45 = null, seedM5 = null } = {}) {
   const context = await browser.newContext({ viewport: V.viewport, deviceScaleFactor: V.deviceScaleFactor, isMobile: !!V.isMobile, hasTouch: !!V.hasTouch, ignoreHTTPSErrors: true });
@@ -401,8 +405,15 @@ async function run(V) {
     await shot(`journal-${tab}`);
     await noHScroll(`journal ${tab}`);
     if (tab === 'ladder') {
-      const posters = await page.evaluate(() => [...document.querySelectorAll('.poster')].map(p => p.dataset.state));
-      check(posters.length === LADDER.length && posters.filter(s => s === 'silhouette').length >= RUMOURS, `${V.name}: the Ladder has ${LADDER.length - RUMOURS} posters and ${RUMOURS} rumours (${posters.join(' ')})`);
+      // M6: an entry with an `if` shows once it holds (the man on the barge, after Tamsin's fall), so the Ladder is
+      // the rules' ladder() for this game, in its order: every entry without an `if`, the rumours as silhouettes
+      const posters = await page.evaluate(() => [...document.querySelectorAll('.poster')].map(p => ({ id: p.dataset.id, state: p.dataset.state })));
+      const want = ladder(await game());
+      const rumours = want.filter(p => LADDER.find(l => l.id === p.id)?.silhouette);
+      const waiting = LADDER.filter(l => !want.some(p => p.id === l.id)).map(l => l.id);
+      check(posters.length === want.length && want.every((p, i) => posters[i].id === p.id && posters[i].state === p.state)
+        && LADDER.filter(l => !l.if).every(l => posters.some(p => p.id === l.id)) && rumours.every(r => posters.find(p => p.id === r.id)?.state === 'silhouette') && rumours.length <= RUMOURS,
+      `${V.name}: the Ladder has ${want.length - rumours.length} posters and ${rumours.length} rumours${waiting.length ? `, ${waiting.join(', ')} not yet` : ''} (${posters.map(p => p.state).join(' ')})`);
     }
   }
   await click('.jr-tab[data-tab="keys"]');
@@ -1216,6 +1227,24 @@ async function runM5(V) {
   const live = s.live && JSON.parse(s.live);
   check(!!live && live.version === SAVE_VERSION && live.gold === 1111 && s.mark === '1', `${V.name}: the first step writes this milestone's own save from the Milestone 5 one`);
   await untouched('after the carry-over');
+
+  // M6: the Codex's Page IV (the Gloomfen) is open in the carried-over journey: its pockets and reward from the data,
+  // and, the third council not yet sat, what opens its road (the fen stair)
+  await page.evaluate(() => window.__app.go('codex', { from: 'world', page: 'gloomfen' }));
+  await waitScreen('codex');
+  const IV = PAGES.find(P => P.id === 'gloomfen');
+  const nIV = Object.values(RELICS).filter(r => r.codex >= IV.from && r.codex <= IV.to).length;
+  const cx = await page.evaluate(() => ({
+    tab: document.querySelector('.cx-tab[aria-selected="true"]')?.dataset.page, tabs: document.querySelectorAll('.cx-tab').length, sealed: document.querySelectorAll('.cx-tab.is-sealed, .cx-sealed').length,
+    pockets: document.querySelectorAll('.pocket').length, prog: document.querySelector('.cx-prog')?.textContent || '', reward: document.querySelector('.cx-reward')?.textContent || '', road: document.querySelector('.cx-road')?.textContent || '',
+  }));
+  check(cx.tab === 'gloomfen' && cx.tabs === PAGES.length && !cx.sealed && nIV === 14 && cx.pockets === nIV && new RegExp(`0 of ${nIV} claimed`).test(cx.prog) && cx.reward.includes(IV.reward.name),
+    `${V.name}: the Codex's Page IV shows in the carried-over journey: ${cx.pockets} pockets, "${cx.prog}", ${IV.reward.name}`);
+  check(/fen stair/.test(cx.road), `${V.name}: Page IV says what opens the Gloomfen's road ("${cx.road}")`);
+  await shot('codex-IV');
+  await page.evaluate(() => window.__app.go('world'));
+  await waitScreen('world');
+  await untouched('after the Codex');
 
   await page.evaluate(() => window.__app.go('settings', { from: 'world' }));
   await waitScreen('settings');

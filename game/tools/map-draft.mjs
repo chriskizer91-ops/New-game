@@ -29,8 +29,11 @@
 // can reach. M4: the fill walks through a gated exit (the Keep's south-east gate) once its gate holds, the
 // four Sunscorch locks have short names, and the Sunscorch biomes draw as sand, ash or stone. M5: the 'all'
 // state holds every Brand and the Ironspire's story flags (the second council, the Highfold, the third duel's
-// yield), the four Ironspire locks have short names, and the Ironspire biomes draw as snow, rock or ice.
-// Owner: WP3; M4 P2; M5 P2.
+// yield), the four Ironspire locks have short names, and the Ironspire biomes draw as snow, rock or ice. M6: the
+// 'all' state holds the Gloomfen's Brands and flags too (the third council, Hodge's toll, the fourth duel's yield),
+// the four Gloomfen locks have short names, and the Gloomfen biomes draw as marsh, planks, sand or drowned stone
+// (black water, dark mud, green reeds).
+// Owner: WP3; M4 P2; M5 P2; M6 P2.
 import { createRequire } from 'node:module';
 import { execSync } from 'node:child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -95,13 +98,16 @@ async function reachGame(mode) {
   const rng = createRng('map-draft');
   for (const id of g.party.active) { let h = g.party.roster[id]; while (h.level < 20) h = levelUp(h, rng).hero; g.party.roster[id] = h; }
   for (const r of Object.keys(RELICS)) if (!g.inventory.some(i => i.base === r)) g.inventory.push({ uid: `draft-${r}`, base: r, kind: RELICS[r].kind });
-  // M4.5: the Glass Flats open with the Brand of Glass; M5: Stormwatch's north gate with the Brand of Iron
-  g.progress.brands = ['brand-of-briars', 'brand-of-the-heartroot', 'brand-of-glass', 'brand-of-ash', 'brand-of-iron', 'brand-of-frost'];
+  // M4.5: the Glass Flats open with the Brand of Glass; M5: Stormwatch's north gate with the Brand of Iron; M6: the long
+  // boardwalk's east end with the Brand of Lanterns, the causeway with the Brand of the Deep
+  g.progress.brands = ['brand-of-briars', 'brand-of-the-heartroot', 'brand-of-glass', 'brand-of-ash', 'brand-of-iron', 'brand-of-frost', 'brand-of-lanterns', 'brand-of-the-deep'];
   const f = g.progress.flags;
   for (const [id, e] of Object.entries(ENCOUNTERS)) if (e.type === 'fight') { f.beaten[id] = 1; f.cleared[id] = true; if (e.once) f.done[id] = true; if (e.opens) f.unlocked[e.opens] = true; }
   Object.assign(f.story, { 'tamsin-yielded': true, 'tamsin-yielded-2': true, 'act1-complete': true, 'intro-done': true });
   // M5: the second council opens the Keep's east postern, the monks the Highfold, a yield the Deeps stair
   Object.assign(f.story, { 'sunscorch-complete': true, 'council-2-done': true, 'highfold-open': true, 'tamsin-yielded-3': true });
+  // M6: the third council opens the fen stair; Hodge's toll paid, the fourth duel yielded
+  Object.assign(f.story, { 'ironspire-complete': true, 'council-3-done': true, 'toll-paid': true, 'tamsin-yielded-4': true });
   for (const m of Object.values(MAPS)) for (const e of m.entities) if (e.kind === 'lock' || e.kind === 'gate') f.unlocked[e.id] = true;
   return g;
 }
@@ -185,11 +191,16 @@ function paint(d) {
   // M4: the Sunscorch biomes read as sand, ash or stone instead of grass (the draft only; --art paints the real tiles)
   const SUN = { desert: '#d6bb83', 'desert-town': '#d9c08c', canyon: '#c9a46e', 'mine-camp': '#bfa27a', dunes: '#dcc18a', oasis: '#cdb887', ash: '#8a8580', mine: '#4a4038', crystal: '#3b4a57', vault: '#46403c',
     // M5: the Ironspire (snow and scree outside, worked stone and ice below)
-    mountain: '#a7aea9', monastery: '#c3c6c2', scree: '#9d9a93', 'dwarf-hall': '#6c6660', forge: '#4a3c36', outpost: '#b9bcb6', tundra: '#dfe6ea', 'frozen-lake': '#d6e2e8', 'ice-cave': '#3f5a6e' }[d.biome];
+    mountain: '#a7aea9', monastery: '#c3c6c2', scree: '#9d9a93', 'dwarf-hall': '#6c6660', forge: '#4a3c36', outpost: '#b9bcb6', tundra: '#dfe6ea', 'frozen-lake': '#d6e2e8', 'ice-cave': '#3f5a6e',
+    // M6: the Gloomfen (dark marsh, planks over black water, sand at the sea, drowned stone below)
+    'willow-village': '#4f6b3a', channel: '#556b3f', 'stilt-town': '#5a4a36', bog: '#4d5a36', 'drowned-grove': '#2f3b2c', boardwalk: '#4a5a44',
+    'sunken-city': '#7d837c', belfry: '#34413d', mudflat: '#b7a782', causeway: '#6f7a5e' }[d.biome];
   const GRASS = SUN || '#5b8c3a';
   const ICY = ['mountain', 'monastery', 'scree', 'outpost', 'tundra', 'frozen-lake'].includes(d.biome); // M5: 'm' is a snowdrift there
-  const ground = { '.': GRASS, ',': GRASS, '"': SUN ? '#b9a35e' : '#4d7d31', '=': SUN ? '#a88a58' : '#c9a96c', ':': '#9c968b', _: '#8c6b49', m: ICY ? '#f6f9fb' : SUN ? '#e4cc98' : '#6d5333', f: '#2f4a3d', r: '#5e4731', k: '#2c2931',
-    T: GRASS, t: GRASS, Y: '#5b3f25', R: '#3d2b1d', o: GRASS, '#': '#6b6771', H: '#9b4531', '|': GRASS, '*': '#6b6771', '~': '#2f69a9', w: '#5b99c9',
+  // M6: in the Gloomfen 'm' is dark mud, '"' green reeds, and the water is black (the mudflat's sand stays sand)
+  const FEN = ['willow-village', 'channel', 'stilt-town', 'bog', 'drowned-grove', 'boardwalk', 'sunken-city', 'belfry', 'mudflat', 'causeway'].includes(d.biome);
+  const ground = { '.': GRASS, ',': GRASS, '"': FEN ? '#55693a' : SUN ? '#b9a35e' : '#4d7d31', '=': SUN ? '#a88a58' : '#c9a96c', ':': '#9c968b', _: '#8c6b49', m: ICY ? '#f6f9fb' : FEN ? '#43342a' : SUN ? '#e4cc98' : '#6d5333', f: '#2f4a3d', r: '#5e4731', k: '#2c2931',
+    T: GRASS, t: GRASS, Y: '#5b3f25', R: '#3d2b1d', o: GRASS, '#': '#6b6771', H: '#9b4531', '|': GRASS, '*': '#6b6771', '~': FEN ? '#1e3a45' : '#2f69a9', w: FEN ? '#3f6668' : '#5b99c9',
     b: '#a27d51', '^': '#7b6551', v: GRASS, '+': '#5b3b1f', s: '#9b9b9b', i: '#1d1519', x: '#000000' };
   // pass 1: ground
   for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) {
@@ -202,7 +213,7 @@ function paint(d) {
       case '=': g.fillStyle = '#b89456'; g.fillRect(px, py + S * 0.8, S, S * 0.2); dot('#d9bd84', px + rnd() * S, py + rnd() * S, S * 0.07); break;
       case ':': g.strokeStyle = '#7e786d'; g.strokeRect(px + 0.5, py + 0.5, S - 1, S - 1); break;
       case '_': g.fillStyle = '#76583a'; g.fillRect(px, py + S / 2, S, 1); g.fillRect(px, py + S - 1, S, 1); break;
-      case 'm': if (SUN) { g.strokeStyle = 'rgba(120,90,40,0.5)'; g.beginPath(); g.moveTo(px + 1, py + S * 0.6); g.quadraticCurveTo(px + S / 2, py + S * 0.3, px + S - 1, py + S * 0.6); g.stroke(); } else dot('#5b4427', px + rnd() * S, py + rnd() * S, S * 0.18); break;
+      case 'm': if (SUN && !FEN) { g.strokeStyle = 'rgba(120,90,40,0.5)'; g.beginPath(); g.moveTo(px + 1, py + S * 0.6); g.quadraticCurveTo(px + S / 2, py + S * 0.3, px + S - 1, py + S * 0.6); g.stroke(); } else dot(FEN ? '#2c2119' : '#5b4427', px + rnd() * S, py + rnd() * S, S * 0.18); break;
       case 'f': dot('#8af7da', px + S * 0.3, py + S * 0.6, S * 0.12); dot('#8af7da', px + S * 0.7, py + S * 0.35, S * 0.09); break;
       case 'r': g.strokeStyle = '#43301f'; g.beginPath(); g.moveTo(px, py + S * 0.3); g.lineTo(px + S, py + S * 0.6); g.stroke(); break;
       case 't': dot('#2f6d25', px + S / 2, py + S * 0.55, S * 0.46); dot('#4f9a38', px + S * 0.4, py + S * 0.42, S * 0.2); break;
@@ -213,8 +224,8 @@ function paint(d) {
       case 'H': g.fillStyle = '#7d3524'; for (let i = 1; i < 4; i++) g.fillRect(px, py + i * S / 4, S, 1); break;
       case '|': g.fillStyle = '#7a5530'; for (let i = 0; i < 3; i++) g.fillRect(px + 1 + i * S / 3, py, S / 3 - 2, S); g.fillStyle = '#a07845'; for (let i = 0; i < 3; i++) g.fillRect(px + 1 + i * S / 3, py, S / 3 - 2, 2); break;
       case '*': g.fillStyle = '#58545e'; g.fillRect(px, py + S / 2, S, 1); dot('#ffb13c', px + S / 2, py + S * 0.35, S * 0.18); dot('#fff0a0', px + S / 2, py + S * 0.38, S * 0.08); break;
-      case '~': g.strokeStyle = '#5d92cb'; g.beginPath(); g.moveTo(px + 2, py + S * 0.4); g.lineTo(px + S * 0.4, py + S * 0.3); g.lineTo(px + S * 0.7, py + S * 0.4); g.stroke(); break;
-      case 'w': g.fillStyle = '#8fc4e4'; g.fillRect(px, py + S * 0.3, S, 1); g.fillRect(px, py + S * 0.7, S, 1); break;
+      case '~': g.strokeStyle = FEN ? '#3a6470' : '#5d92cb'; g.beginPath(); g.moveTo(px + 2, py + S * 0.4); g.lineTo(px + S * 0.4, py + S * 0.3); g.lineTo(px + S * 0.7, py + S * 0.4); g.stroke(); break;
+      case 'w': g.fillStyle = FEN ? '#6d9a98' : '#8fc4e4'; g.fillRect(px, py + S * 0.3, S, 1); g.fillRect(px, py + S * 0.7, S, 1); break;
       case 'b': g.fillStyle = '#7d5c39'; for (let i = 1; i < 4; i++) g.fillRect(px + i * S / 4, py, 1, S); break;
       case '^': g.fillStyle = '#5d4b3b'; for (let i = 0; i < 3; i++) g.fillRect(px, py + S * 0.25 + i * S / 4, S, 1); break;
       case 'v': g.fillStyle = '#8b7151'; g.fillRect(px, py + S * 0.35, S, S * 0.4); g.strokeStyle = '#e8d8b0'; g.beginPath(); g.moveTo(px + S * 0.3, py + S * 0.45); g.lineTo(px + S * 0.5, py + S * 0.65); g.lineTo(px + S * 0.7, py + S * 0.45); g.stroke(); break;
@@ -248,7 +259,8 @@ function paint(d) {
   for (const [x, y] of d.dead) { g.fillStyle = 'rgba(255,0,0,0.35)'; g.fillRect(X(x), Y(y), S, S); g.strokeStyle = 'rgba(255,60,60,0.9)'; g.beginPath(); g.moveTo(X(x), Y(y)); g.lineTo(X(x) + S, Y(y) + S); g.stroke(); }
   for (const [x, y] of d.corr) dot('rgba(255,140,0,0.95)', X(x) + S / 2, Y(y) + S / 2, S * 0.12);
   const LOCK = { thornwall: 'Th', bramble: 'Br', stream: 'St', boulder: 'Bo', 'cold-hearth': 'Co', 'tally-seal': 'Ta', 'barred-gate': 'Ba', darkness: 'Dk', 'rot-knot': 'Rk', 'rope-ledge': 'Ro', ichor: 'Ic',
-    'dune-glass': 'Dg', mirage: 'Mi', quicksand: 'Qs', 'vault-seal': 'Vs', chasm: 'Ch', ice: 'Iw', 'rune-seal': 'Rs', drift: 'Dr' };
+    'dune-glass': 'Dg', mirage: 'Mi', quicksand: 'Qs', 'vault-seal': 'Vs', chasm: 'Ch', ice: 'Iw', 'rune-seal': 'Rs', drift: 'Dr',
+    bog: 'Bg', fog: 'Fg', blackwater: 'Bw', 'witch-ward': 'Ww' };
   const big = [];
   for (const e of d.m.entities) {
     const [x0, y0] = e.area ? e.area : e.at;

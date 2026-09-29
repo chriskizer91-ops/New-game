@@ -11,10 +11,14 @@
 // M5 (spec §4.2, §5): the engine keeps a held (swallowed) hero and a burrowed foe out of every target
 // list; the screen shows why a tap on one does nothing, keeps a burrowed foe sunk into the floor after
 // every sync, and gives the hero cards the swallower's name for their "Held under" badge.
+// M6 (spec §5): the Blackwater Leviathan dives into the water rather than under the floor (the stage, the plate
+// and a tap on it say so); the hero cards show Hexed and Rotting, and the new holds ("Led away", "In the river");
+// a fight on a foggy map's backdrop lies in drifting mist (the stage's `fog`).
 import '../battle.css';
 import { current, act, foeTurn, outcome, commands, targets, timeline, inspect } from '../../rules/battle.js';
 import { autoCommand } from '../../rules/autoplay.js';
 import { ENCOUNTERS } from '../../data/encounters.js';
+import { MAPS } from '../../data/maps/index.js';
 import { BACKDROPS, renderBackdrop } from '../../art/scenes.js';
 import { Stage } from '../battle/stage.js';
 import { Party } from '../battle/party.js';
@@ -22,13 +26,15 @@ import { Hud } from '../battle/hud.js';
 import { Tray } from '../battle/tray.js';
 import { CommandInput, inspectSheet } from '../battle/menu.js';
 import { Player, intentTarget } from '../battle/player.js';
-import { Labels, makeDisp, syncDisp, isSunk, holdInfo, untargetable } from '../battle/model.js';
+import { Labels, makeDisp, syncDisp, isSunk, holdInfo, holdPhrase, untargetable, divesUnderWater } from '../battle/model.js';
 import { runJobs, foeLook } from '../battle/sprites.js';
 import { familyData } from '../../rules/ai.js';
 import { heldByPreview, pieceItem } from '../battle/slam.js';
 import { el, Clock, toCanvas } from '../battle/util.js';
 
 const SPEEDS = [1, 2, 4];
+// M6 (spec §5): the backdrops of the foggy maps (the Lanternfen, the Misthollow Ruins): their fights lie in mist
+const FOGGY = new Set(Object.values(MAPS).filter(m => m.fog).map(m => m.backdrop).filter(Boolean));
 
 export function mount(root, ctx, { battle, returnTo = 'world', auto: startAuto = false } = {}) {
   if (!battle) {
@@ -94,7 +100,7 @@ export function mount(root, ctx, { battle, returnTo = 'world', auto: startAuto =
   if (reduced) shell.classList.add('reduced');
 
   // ---- components ---------------------------------------------------------------------------------------
-  const stage = new Stage(stageHost, { backdrop, reduced, dark: !!state.ctx.dark });
+  const stage = new Stage(stageHost, { backdrop, reduced, dark: !!state.ctx.dark, fog: FOGGY.has(backdrop) });
   stageHost.append(intro);
   const nameOf = id => disp.units[id]?.label || '';
   const hud = new Hud({ stageHost, ribbonHost, onFoe: id => tapUnit(id), onGrip: (id, i) => tapGrip(id, i) });
@@ -150,7 +156,7 @@ export function mount(root, ctx, { battle, returnTo = 'world', auto: startAuto =
     else {
       hud.update(u);
       stage.setLook(id, u);
-      stage.sink(id, isSunk(u) && !u.ko && !u.gone); // M5: a burrowed foe stays under the floor
+      stage.sink(id, isSunk(u) && !u.ko && !u.gone, { water: divesUnderWater(u) }); // M5: a burrowed foe stays under the floor (M6: or the water)
       prewarmNext(u);
       const v = stage.foes.get(id);
       if (v && !v.removed) hud.place(id, stage.geom(id));
@@ -374,7 +380,7 @@ export function mount(root, ctx, { battle, returnTo = 'world', auto: startAuto =
       if (u && !u.ko && untargetable(u)) {
         const held = holdInfo(u, nameOf);
         sfx('back');
-        caption(held ? `${u.label} is ${held.label.toLowerCase()}${held.by ? ` by ${held.by}` : ''}: out of reach until freed.` : `${u.label} is under the floor: it cannot be targeted until it comes up.`, 'warn');
+        caption(held ? `${u.label} is ${holdPhrase(held.label, held.by)}: out of reach until freed.` : `${u.label} is under the ${divesUnderWater(u) ? 'water' : 'floor'}: it cannot be targeted until it comes up.`, 'warn');
         return;
       }
       input.pick(id);

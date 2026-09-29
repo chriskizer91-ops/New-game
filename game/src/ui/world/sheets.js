@@ -10,7 +10,7 @@
 //                                                          rules/forge.js; resolves with the new game
 //   previewRelic(game, held, holder) -> ItemInstance   the grey card's item for a held relic or an Echo
 // Every user-visible string goes in through textContent (or esc() for the few html fragments).
-// Owner: WP7 (M3); openShop and openForge: P7a (M4); M5 P7 (a soft lock's cost from its data).
+// Owner: WP7 (M3); openShop and openForge: P7a (M4); M5 P7 (a soft lock's cost from its data); M6 P7 (the bog, the fog).
 
 import { ENCOUNTERS, BRANDS } from '../../data/encounters.js';
 import { HEARTHS } from '../../data/world.js';
@@ -268,9 +268,11 @@ export function openLockPrompt(ctx, { game, entity, lockType, status, crownwall 
     if (k.have && !useWith) useWith = k.label;
   }
   P.append(keys);
-  // a soft lock's cost comes from its data (ichor burns 4% a step; M5's snowdrift bites for 3%)
-  const hurt = { ichor: 'it burns', drift: 'the cold bites' }[lockType] || 'it hurts';
-  if (L.soft) P.append(text('p', 'lock-soft', L.soft.vision ? `Without a key you can still walk in, seeing ${L.soft.vision === 2 ? 'two' : L.soft.vision} steps ahead.` : `Without a key ${hurt}: ${Math.round((L.soft.hpPct || 0.04) * 100)}% of everyone's max HP per step, never below 1.`));
+  // a soft lock's cost comes from its data (ichor burns 4% a step; M5's snowdrift bites for 3%; M6's bog drags
+  // for 3%, and its fog closes in to three steps as the dark does to two)
+  const hurt = { ichor: 'it burns', drift: 'the cold bites', bog: 'the mud drags at you' }[lockType] || 'it hurts';
+  const steps = n => ['no', 'one', 'two', 'three', 'four', 'five'][n] || n;
+  if (L.soft) P.append(text('p', 'lock-soft', L.soft.vision ? `Without a key you can still walk in, seeing ${steps(L.soft.vision)} steps ahead.` : `Without a key ${hurt}: ${Math.round((L.soft.hpPct || 0.04) * 100)}% of everyone's max HP per step, never below 1.`));
   const notYet = btn('Not yet', 'btn big', () => { ctx.audio.sfx('back'); S.close('not-yet'); });
   if (st.open && !L.soft) {
     const use = btn(`Use (${useWith || 'key'})`, 'btn primary big lock-use', () => { S.close('use'); }, { 'data-primary': '' });

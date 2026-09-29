@@ -1,6 +1,7 @@
 // The dice tray: pops up in the bottom panel whenever a d20 is rolled in the open. The d20
 // tumbles through random faces, lands on the kept value (both dice for advantage, the dropped
-// one dimmed), then shows the maths and the verdict; damage dice follow as small chips.
+// one dimmed), then shows the maths and the verdict; damage dice follow as small chips. M6: a hexed roller's
+// disadvantage says it is the hex (and a hex that cancels advantage says so).
 import { diceIcon } from '../../art/icons.js';
 import { el, pixelIcon } from './util.js';
 
@@ -25,8 +26,8 @@ export class Tray {
   get open() { return !this.box.hidden; }
   hide() { this.box.hidden = true; clearInterval(this.timer); this.box.classList.remove('show'); }
 
-  // ev: roll event; names(id) -> display name. Returns after the verdict is shown.
-  async roll(ev, { clock, reduced, sfx, names }) {
+  // ev: roll event; names(id) -> display name; hexed: the roller is hexed. Returns after the verdict is shown.
+  async roll(ev, { clock, reduced, sfx, names, hexed = false }) {
     clearInterval(this.timer);
     const purpose = ev.purpose || 'attack';
     const actor = names(ev.actor), target = ev.target ? names(ev.target) : '';
@@ -67,7 +68,8 @@ export class Tray {
       slots[i].classList.toggle('dropped', !kept && rolls.length > 1);
       slots[i].classList.add('land');
     });
-    if (rolls.length > 1) this.head.append(el('span.bt-adv', { text: ev.adv && !ev.dis ? '· advantage' : '· disadvantage' }));
+    if (rolls.length > 1) this.head.append(el('span.bt-adv', { text: ev.adv && !ev.dis ? '· advantage' : hexed ? '· disadvantage: hexed' : '· disadvantage' }));
+    else if (hexed && ev.adv && ev.dis) this.head.append(el('span.bt-adv', { text: '· the hex cancels advantage' }));
     const sign = ev.bonus >= 0 ? '+' : '-';
     const vsLabel = purpose === 'attack' ? 'Guard' : purpose === 'flee' ? 'DC' : 'DC';
     this.math.replaceChildren(

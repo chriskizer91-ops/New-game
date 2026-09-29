@@ -8,11 +8,14 @@
 //     end through rules/story.js (enterDialogue applies node.do; choose rolls checks and contests)
 //   openMessage(ctx, { text, name, speaker, dock }) -> Promise<void>        a sign, a gate, a sealed road
 //   dock: { left, width, bottom } in CSS px (laptop: over the canvas); omitted on phones
+//   priceText(price) -> "120 gold", "2 Hearth Tonics", "1 silver" (M6: a choice's price, and the toast of a
+//     price paid)
 // Owner: WP7.
 
 import { enterDialogue, dialogueView, choose } from '../../rules/story.js';
 import { NPCS } from '../../data/npcs.js';
 import { CONSUMABLES } from '../../data/items.js';
+import { MATERIALS } from '../../data/gems.js';
 import { HEROES } from '../../data/heroes.js';
 import { npcSheet } from '../../art/index.js';
 import { openOverlay } from '../lib/overlay.js';
@@ -21,10 +24,10 @@ import { bustCanvas } from '../lib/art.js';
 import { TYPE_CPS } from './constants.js';
 
 // M6: a choice's price as a chip ("120 gold", "2 Hearth Tonics", "1 silver")
-const priceText = p => [
+export const priceText = (p = {}) => [
   p.gold ? `${p.gold} gold` : '',
   ...Object.entries(p.bag || {}).map(([id, n]) => `${n} ${CONSUMABLES[id]?.name || id}${n > 1 && CONSUMABLES[id] && !/s$/.test(CONSUMABLES[id].name) ? 's' : ''}`),
-  ...Object.entries(p.materials || {}).map(([id, n]) => `${n} ${id}`),
+  ...Object.entries(p.materials || {}).map(([id, n]) => `${n} ${(MATERIALS[id]?.name || id).toLowerCase()}`),
 ].filter(Boolean).join(', ');
 
 const voiceOf = speaker => { let h = 5; for (const c of String(speaker || '')) h = (h * 33 + c.charCodeAt(0)) >>> 0; return h % 8; };

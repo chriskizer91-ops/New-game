@@ -1,8 +1,9 @@
-// The Gloomfen Gallery (M6 spec §2.1, §2.4): the reliquary's fourth room, through the door on the
-// Ironspire Gallery's east wall. Codex Page IV's 14 pedestals stand in codex order on rows 2 and 5 (west to
-// east), seven a side, with the walkway between. STUB from the M6 scaffold: P2 (maps) may dress it (the
-// Ironspire Gallery is the model).
-// Tiles (keep): '#' stone walls, '*' torches, ':' flagstones, '_' the runner, '+' the door to the Gallery.
+// The Gloomfen Gallery (M6 spec §2.1, §2.4): the reliquary's fourth room, through the door on the Ironspire
+// Gallery's east wall (0,4). A torch-lit gallery like the three before it, the last of them for now: the runner
+// goes from the door to the plaque at the east end (16,4). Codex Page IV's 14 pedestals stand in codex order on
+// rows 2 and 5 (west to east), seven a side, with the walkway between; the flagstone aisles behind them let you
+// walk round every one.
+// Tiles (keep): '#' stone walls, '*' torches, ':' flagstones, '_' the runner, '+' the door to the Ironspire Gallery.
 // Format: src/data/maps/index.js. Owner: M6 P2.
 import { deepFreeze } from '../../core/freeze.js';
 

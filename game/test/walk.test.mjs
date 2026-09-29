@@ -10,12 +10,16 @@
 // Brands, the second council sat, at the Keep, level 8 with only its starter relic) through the Keep's east
 // postern, asks Thane Brundar for the Rune-Key once Tamsin's duel is settled, earns both Ironspire Brands and
 // comes home to the Great Hall for the third council.
+// M6 (spec §2.2, §8; owner M6 P2): the same bot walks GLOOM_PATH from an Ironspire-complete save (all six earlier
+// Brands, the third council sat, at the Keep, level 8 with only its starter relic and the purse the Ironspire left
+// it) down Mossfall's fen stair, pays Hodge the day's price at his bar, earns both Gloomfen Brands and comes home
+// across the causeway and through the Keep's south-west gate to the Great Hall for the fourth council.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { newGame, startBattle, resolveBattle, rest } from '../src/rules/gauntlet.js';
 import { enterMap, move, interact, findPath, present, lockStatus, openLock, afterBattle } from '../src/rules/world.js';
 import { enterDialogue, choose, dialogueView } from '../src/rules/story.js';
-import { START_AT, CRITICAL_PATH, SUN_PATH, IRON_PATH, HEARTHS } from '../src/data/world.js';
+import { START_AT, CRITICAL_PATH, SUN_PATH, IRON_PATH, GLOOM_PATH, HEARTHS } from '../src/data/world.js';
 import { MAPS, ENTITY_OF } from '../src/data/maps/index.js';
 import { ENCOUNTERS } from '../src/data/encounters.js';
 import { DIALOGUE } from '../src/data/dialogue.js';
@@ -41,7 +45,7 @@ function forceWin(game, where) {
 // `game` (a save to start from), `path` (the targets, in order) and `start` (where to enter) default to
 // M3's long walk: newGame, CRITICAL_PATH, the Great Hall.
 function makeBot(starter, { game = null, path = CRITICAL_PATH, start = null } = {}) {
-  const s = { game: game || newGame({ name: 'Tess', seed: 9, starter }), walk: null, log: [], steps: 0, held: 0 };
+  const s = { game: game || newGame({ name: 'Tess', seed: 9, starter }), walk: null, log: [], steps: 0, held: 0, exits: new Set() };
   const log = m => { s.log.push(m); if (s.log.length > 40) s.log.shift(); };
   const where = () => `${s.walk?.map} (${s.walk?.x},${s.walk?.y})`;
   const stuck = m => { throw new Stuck(`${starter}: ${m} at ${where()}\n  ${s.log.slice(-12).join('\n  ')}`); };
@@ -101,7 +105,7 @@ function makeBot(starter, { game = null, path = CRITICAL_PATH, start = null } = 
           }
           break;
         case 'talk': log(`talk ${e.dialogue}`); dialogue(e.dialogue); return 'talk';
-        case 'exit': log(`exit ${e.id}`); enter({ map: e.to, anchor: e.anchor }); return 'exit';
+        case 'exit': log(`exit ${e.id}`); s.exits.add(e.id); enter({ map: e.to, anchor: e.anchor }); return 'exit';
         case 'sealed': stuck(`walked into sealed exit ${e.id}`); break;
         default: break;
       }
@@ -277,10 +281,48 @@ function makeBot(starter, { game = null, path = CRITICAL_PATH, start = null } = 
     return null;
   }
 
+  // M6: a path step 'pay:<npc>' walks up to that person and pays what the day asks: the dialogue choice that carries a
+  // price and is not disabled (Hodge's toll; the lead's `pay` effect, P3's toll lines). The gate it opens held the road
+  // until then.
+  function pay(npc) {
+    const where = Object.values(MAPS).find(m => m.entities.some(e => e.kind === 'npc' && e.npc === npc));
+    if (!where) stuck(`nobody called ${npc} stands on a map`);
+    const e = where.entities.find(x => x.kind === 'npc' && x.npc === npc);
+    goToMap(where.id);
+    const bar = where.entities.find(g => g.kind === 'gate' && JSON.stringify(g.open || {}).includes(`"${npc}"`));
+    if (bar) {
+      const road = where.roads.find(r => r.gates.includes(bar.id));
+      const exit = where.exits.find(x => x.id === road.to);
+      if (findPath(s.game, s.walk, [exit.area[0], exit.area[1]], { max: 800 })) stuck(`the road past ${bar.id} is open before the toll is paid`);
+      s.held++;
+    }
+    if (walkTo(e.at[0], e.at[1], { adjacent: true }) === 'exit') return pay(npc);
+    face(e.at[0], e.at[1]);
+    const r = interact(s.game, s.walk);
+    const ev = r.events.find(x => x.t === 'talk');
+    if (!ev?.dialogue) stuck(`could not talk to ${npc}`);
+    const d = enterDialogue(s.game, ev.dialogue);
+    s.game = d.game;
+    handle(d.events);
+    const v = dialogueView(s.game, ev.dialogue);
+    const pick = v.choices.find(c => c.price && !c.disabled);
+    if (!pick) stuck(`${npc} asks a price the party cannot pay: ${v.choices.map(c => c.text).join(' / ')}`);
+    const c = choose(s.game, ev.dialogue, pick.i);
+    s.game = c.game;
+    handle(c.events);
+    log(`paid ${npc}: ${JSON.stringify(pick.price)}`);
+    return null;
+  }
+
   return {
     run() {
       enter(start || { map: START_AT.map, at: [START_AT.x, START_AT.y], face: START_AT.face });
-      for (const id of path) { log(`-> ${id}`); if (id.startsWith('npc:')) talk(id.slice(4)); else reach(id); }
+      for (const id of path) {
+        log(`-> ${id}`);
+        if (id.startsWith('npc:')) talk(id.slice(4));
+        else if (id.startsWith('pay:')) pay(id.slice(4));
+        else reach(id);
+      }
       return s;
     },
     // walk (across maps) into `mapId`
@@ -389,5 +431,56 @@ for (const starter of ['hearthbrand', 'stillwater-lance', 'cairnmaul']) {
     assert.equal(s.game.progress.flags.story['council-3-done'], true, 'the third council plays in the Great Hall');
     assert.ok(s.steps > 300, `${s.steps} steps`);
     assert.ok(s.held >= 9, `the road held before ${s.held} fights (M4.5)`);
+  });
+}
+
+// ---- M6: the Gloomfen walk (spec §2.2, §8) ------------------------------------------------------------
+
+// An Ironspire-complete save: the M3, M4 and M5 critical paths behind it (all six earlier Brands, the Waking at 6, the
+// three councils sat), standing in the Keep's courtyard, every hero at level 8 (the worst case the map tests allow),
+// only the starter relic in the pack, and the purse the Ironspire left it: enough to meet any of Hodge's three prices.
+function ironspireSave(starter) {
+  const g = sunscorchSave(starter);
+  g.progress.brands.push('brand-of-iron', 'brand-of-frost');
+  g.progress.waking = 6;
+  const f = g.progress.flags;
+  for (const id of IRON_PATH) {
+    const e = ENCOUNTERS[id];
+    if (e.type === 'hearthfire') { f.kindled[id] = true; continue; }
+    f.beaten[id] = 1;
+    if (e.once) f.done[id] = true;
+    if (e.opens) f.unlocked[e.opens] = true;
+  }
+  Object.assign(f.story, { 'tamsin-yielded-3': true, 'met-wynn': true, 'highfold-open': true, 'rune-given': true, 'ironspire-complete': true, 'council-3-done': true });
+  g.gold = 600;
+  g.materials = { ...g.materials, silver: 3 };
+  g.bag = { ...g.bag, 'hearth-tonic': (g.bag['hearth-tonic'] || 0) + 4 };
+  return g;
+}
+
+// GLOOM_PATH as a player walks it: Hodge is paid at his bar before Tamsin's gate
+const GLOOM_WALK = GLOOM_PATH.flatMap(id => (id === 'tamsin-rotbridge' ? ['pay:hodge', id] : [id]));
+
+for (const starter of ['hearthbrand', 'stillwater-lance', 'cairnmaul']) {
+  test(`the Gloomfen walk (${starter}): from an Ironspire-complete save down the fen stair, GLOOM_PATH to both Brands, then home across the causeway`, () => {
+    const bot = makeBot(starter, { game: ironspireSave(starter), path: GLOOM_WALK, start: { map: 'keep', anchor: 'from-hall' } });
+    const s = bot.run();
+    const f = s.game.progress.flags;
+    assert.ok(s.game.progress.brands.includes('brand-of-lanterns') && s.game.progress.brands.includes('brand-of-the-deep'), 'both Gloomfen Brands');
+    assert.equal(f.story['gloomfen-complete'], true);
+    for (const id of GLOOM_PATH) {
+      if (HEARTHS[id]) assert.ok(f.kindled[id], `${id} kindled`);
+      else assert.ok(f.beaten[id] || f.story[ENCOUNTERS[id].yields], `${id} fought`);
+    }
+    assert.ok(s.exits.has('mf-fen-stair'), 'in down the fen stair below Mossfall');
+    assert.equal(f.story['toll-paid'], true, 'Hodge was paid the day\'s price');
+    assert.ok(!f.beaten.hodge, 'and nobody fought him');
+    // the way home: the Blackwater has fallen, the causeway is dry, and the Keep's south-west gate is open
+    bot.home('keep-hall');
+    assert.equal(s.walk.map, 'keep-hall');
+    assert.ok(s.exits.has('bm-causeway') && s.exits.has('cw-n'), 'home across the causeway and through the Keep\'s south-west gate');
+    assert.equal(s.game.progress.flags.story['council-4-done'], true, 'the fourth council plays in the Great Hall');
+    assert.ok(s.steps > 300, `${s.steps} steps`);
+    assert.ok(s.held >= 13, `the road held before ${s.held} fights and Hodge's bar (M4.5)`);
   });
 }

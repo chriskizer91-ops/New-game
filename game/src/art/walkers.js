@@ -122,6 +122,8 @@ const WEAPON_MATS = w => {
     case 'bow': return { limb: mt(p.limb, 'wood'), grip: mt(p.grip, 'leather'), nock: mt(p.nock, 'bone'), gem: mt(p.gem, null), tassel: mt(p.tassel, null) };
     case 'pick': return { haft: mt(p.haft, 'wood'), head: mt(p.headMat, 'iron') };
     case 'saw': return { blade: mt(p.blade, 'steel'), haft: mt(p.haft, 'wood') };
+    case 'club': return { haft: mt(p.haft, 'bogwood'), stud: mt(p.studs, null) }; // M6
+    case 'hook': return { blade: mt(p.blade, 'iron'), haft: mt(p.haft, 'wood') }; // M6
   }
   return { blade: 'steel', guard: 'iron', grip: 'leather', pommel: 'iron' };
 };
@@ -185,6 +187,7 @@ function weaponParts(F, w, J, anchors) {
     part({ mat: M.head, prof: 'ridge', hs: .6, tex: () => 1, shapes: [P([at(hi - .6, -.95 - (p.wings ? .5 : 0)), at(hi + 1.2, -.75), at(hi + 3.6, 0), at(hi + 1.2, .75), at(hi - .6, .95 + (p.wings ? .5 : 0))])] });
     if (M.glow) part({ mat: M.glow, prof: 'flat', noShadow: true, noOutline: true, shapes: [C(at(hi + .2), at(hi + 2.2), .4)] });
     part({ mat: M.socket, prof: 'round', bw: .5, shapes: [C(at(hi - 1.1), at(hi - .3), .62)] });
+    if (p.hook) part({ mat: M.head, prof: 'round', bw: .4, shapes: [C(at(hi - .4, .5), at(hi + .6, 1.9), .42), C(at(hi + .6, 1.9), at(hi + 1.6, 1.4), .36)] }); // M6: a boathook
     if (M.ribbon) part({ mat: M.ribbon, prof: 'flat', noShadow: true, shapes: [C(at(hi - 1.4, .4), at(hi - 3.2, 1.3), .45)] });
     tip = at(hi + 3.2); mid = at(hi + 1.5);
   } else if (r === 'staff') {
@@ -209,6 +212,12 @@ function weaponParts(F, w, J, anchors) {
     } else if (st === 'quarter') { // a plain quarterstaff, iron-capped at both ends
       part({ mat: M.metal, prof: 'round', bw: .5, noShadow: true, shapes: [C(at(hi - .6), at(hi + .9), .62), C(at(lo), at(lo + 1.4), .62)] });
       tip = at(hi + .8);
+    } else if (st === 'lamp') { // M6: a lantern hung from a crook at the top of a pole (Bogmire's lanterns on poles)
+      const ho = dir === 'n' ? -1 : 1, lc = at(hi - .9, ho * 2.8); // hung in toward the head, so it stays in the frame
+      part({ mat: M.haft, prof: 'round', bw: .6, shapes: [C(at(hi + .8), at(hi + 1.6, ho * 1.6), .5), C(at(hi + 1.6, ho * 1.6), at(hi + 1, ho * 2.8), .45)] });
+      part({ mat: M.metal || 'iron', prof: 'round', bw: .6, shapes: [RECT(lc[0] - 1.1, lc[1] - 1.3, lc[0] + 1.1, lc[1] + 1.2)] });
+      part({ mat: M.glow || 'amber', prof: 'flat', noShadow: true, shapes: [RECT(lc[0] - .5, lc[1] - .6, lc[0] + .5, lc[1] + .6)] });
+      tip = lc;
     } else { // gnarl
       part({ mat: M.haft, prof: 'round', bw: .7, shapes: [O(at(hi + .5, .4), 1.2), C(at(hi + .5), at(hi + 2.2, -1), .45)] });
       if (M.glow || M.gem) part({ mat: M.glow || M.gem, prof: 'flat', noShadow: true, shapes: [O(at(hi + .8, .5), .55)] });
@@ -226,6 +235,16 @@ function weaponParts(F, w, J, anchors) {
     part({ mat: M.haft || 'wood', prof: 'round', bw: .6, shapes: [C(at(-1.2), at(L + 1), .5)] });
     part({ mat: M.head || 'iron', prof: 'ridge', hs: .6, shapes: [P([at(L + .2, -3), at(L + 1.3, -.5), at(L + 1.5, 0), at(L + 1.3, .5), at(L + .2, 3), at(L + .8, 0)])] });
     tip = at(L + .2, 3); mid = at(L + 1, 0);
+  } else if (r === 'club') { // M6: a knotted cudgel carried low, thin at the grip, a heavy knobbed head (Hodge's)
+    const L = 3.6;
+    part({ mat: M.haft, prof: 'round', bw: .7, shapes: [C(at(-1.2), at(L), .5, 1.05), O(at(L + .2), 1.15), O(at(L - 1.2, .75), .5), O(at(L - 2.2, -.6), .45)] });
+    if (M.stud) part({ mat: M.stud, prof: 'flat', noShadow: true, noOutline: true, shapes: [O(at(L + .4, -.5), .4), O(at(L - .6, .7), .4)] });
+    tip = at(L + 1); mid = at(L - 1);
+  } else if (r === 'hook') { // M6: a reed-hook, a short handle and a curved blade
+    const L = 1.8;
+    part({ mat: M.haft, prof: 'round', bw: .6, shapes: [C(at(-1.2), at(L), .5)] });
+    part({ mat: M.blade, prof: 'ridge', hs: .6, tex: () => 1, shapes: [C(at(L), at(L + 2.2, .8), .5, .45), C(at(L + 2.2, .8), at(L + 2.6, 2.4), .45, .35), C(at(L + 2.6, 2.4), at(L + 1.6, 3.2), .35, .25)] });
+    tip = at(L + 1.6, 3.2); mid = at(L + 2.2, .8);
   } else if (r === 'bow') {
     const out = dir === 'e' ? 1 : dir === 's' ? -1 : 1;
     const top = add(h, [0, -6.6]), bot = add(h, [0, 5.6]), bulge = out * 1.9;
@@ -283,6 +302,12 @@ function offhandParts(F, o, J, anchors) {
     F.add({ mat: m, prof: 'round', bw: 1.4, grp: 'jar', shapes: [E(c, 2, 2.3), RECT(c[0] - .8, c[1] - 3.4, c[0] + .8, c[1] - 1.6)], tex: ({ y }) => (Math.abs(y - c[1]) < .6 ? { m: mt(o.band, 'clothWhite'), dd: -1 } : 0) });
     F.add({ mat: 'dark', prof: 'flat', grp: 'jarmouth', noShadow: true, shapes: [E([c[0], c[1] - 3.3], .8, .4)] });
     anchors.g_offhand = [c[0] - .8, c[1] - 1];
+  } else if (o.look === 'bell') { // M6: a hand-bell held by its handle, mouth down (Misthollow's bell-ringers)
+    const c = [h[0] + (dir === 'e' ? .2 : 0), h[1] + 2.4], m = mt(o.metal, 'bronze');
+    F.add({ mat: 'wood', prof: 'round', bw: .4, grp: 'bellhandle', shapes: [C(add(h, [0, -.4]), add(h, [0, .9]), .45)] });
+    F.add({ mat: m, prof: 'round', bw: 1, grp: 'bell', shapes: [P([[c[0] - .9, c[1] - 1.5], [c[0] + .9, c[1] - 1.5], [c[0] + 1.7, c[1] + 1.2], [c[0] - 1.7, c[1] + 1.2]])] });
+    F.add({ mat: 'dark', prof: 'flat', grp: 'bellmouth', noShadow: true, shapes: [E([c[0], c[1] + 1.2], 1.3, .35)] });
+    anchors.g_offhand = [c[0] - .6, c[1] - .6];
   } else { // sigil on a chain
     F.add({ mat: mt(o.metal, 'gold'), prof: 'round', bw: .5, grp: 'focus', shapes: [C(add(h, [0, .5]), add(h, [0, 1.8]), .35), O(add(h, [0, 2.8]), 1.25)] });
     F.add({ mat: gem, prof: 'flat', grp: 'focus', noShadow: true, shapes: [O(add(h, [0, 2.8]), .5)] });
@@ -290,7 +315,7 @@ function offhandParts(F, o, J, anchors) {
 }
 
 /* ---------- headgear by look ---------- */
-const headInfo = h => ({ hood: h.look === 'hood' || h.look === 'coif', helm: h.look === 'helm' && h.style !== 'mask', hideFace: h.look === 'helm', wrap: h.look === 'wrap' });
+const headInfo = h => ({ hood: h.look === 'hood' || h.look === 'coif' || h.look === 'veil', helm: h.look === 'helm' && h.style !== 'mask', hideFace: h.look === 'helm', wrap: h.look === 'wrap' });
 function headgear(F, h, J) {
   const [cx, cy] = J.hc, rx = J.hrx, ry = J.hry, dir = J.dir, e = dir === 'e', n = dir === 'n';
   const look = h.look;
@@ -374,6 +399,24 @@ function headgear(F, h, J) {
       F.add({ mat: mt(h.metal, 'bronze'), prof: 'round', bw: .6, grp: 'lampcup', shapes: [O(at, 1.25)] });
       F.add({ mat: mt(h.glow, 'amber'), prof: 'flat', grp: 'lamp', noShadow: true, shapes: [O(at, .7)] });
     }
+    return {};
+  }
+  if (look === 'hat') { // M6: a hat with a brim: 'wide' (a battered felt hat), 'witch' (tall and pointed, the tip bent over)
+    const m = mt(h.mat, 'leatherDark'), by = cy - 1.3, ox = e ? -.3 : 0;
+    if (h.style === 'witch') {
+      const tip = e ? [cx - 3.8, cy - ry - 5.2] : [cx + 3, cy - ry - 5.2];
+      F.add({ mat: m, prof: 'round', bw: 1.4, grp: 'hatcone', shapes: [P([[cx - 3.1 + ox, by - .3], [cx + 3.1 + ox, by - .3], [cx + .9 + ox, cy - ry - 2.8], tip, [cx - 1 + ox, cy - ry - 2.2]])], tex: ({ x, y }) => ((x * 3 + y) % 7 === 0 ? -1 : 0) });
+    } else F.add({ mat: m, prof: 'round', bw: 1.8, grp: 'hatcrown', shapes: [E([cx + ox, cy - 2.3], rx - .5, ry - .9)], clip: RECT(-2, -3, 18, by + .2) });
+    if (h.band) F.add({ mat: mt(h.band, 'leather'), prof: 'round', bw: .4, grp: 'hatband', noShadow: true, shapes: [C([cx - rx + 1.5 + ox, by - .8], [cx + rx - 1.5 + ox, by - .8], .45)] });
+    const wb = h.style === 'witch' ? 1.8 : 2.3;
+    F.add({ mat: m, prof: 'round', bw: .7, grp: 'hatbrim', shapes: [e ? C([cx - rx - 1.2, by + .1], [cx + rx + wb, by - .3], .75) : C([cx - rx - wb, by + (h.droop ? .6 : 0)], [cx + rx + wb, by], .75)] });
+    return {};
+  }
+  if (look === 'veil') { // M6: a mourning veil of black lace over the head, open at the face, falling past the shoulders
+    const m = mt(h.mat, 'dark'), cuts = n ? [] : [e ? E([cx + 2.2, cy + 1.25], 2.4, 2.8) : E([cx, cy + 1.4], rx - 1.4, ry - 1.4)];
+    F.add({ mat: m, prof: 'round', bw: 2, grp: 'veil', shapes: [E([cx + (e ? -.5 : 0), cy - .2], rx + .8, ry + .6), P([[cx - rx - .6 + (e ? 1 : 0), cy], [cx + rx + .6, cy], [cx + rx + 1.8 - (e ? 1.4 : 0), J.sh + 3], [cx - rx - 1.8 + (e ? .4 : 0), J.sh + 3]])], cuts,
+      tex: ({ x, y }) => ((x + y) % 2 && y > cy - 1 ? -.7 : 0) });
+    if (h.trim && !n) F.add({ mat: mt(h.trim, 'clothGrey'), prof: 'round', bw: .4, grp: 'veiltrim', noShadow: true, shapes: [e ? E([cx + 2.2, cy + 1.25], 3, 3.3) : E([cx, cy + 1.4], rx - .7, ry - .8)], cuts, tex: ({ x, y }) => ((x + y) % 2 ? -.8 : 0) });
     return {};
   }
   if (look === 'crown') {
@@ -511,12 +554,19 @@ function rigFrame(H, L, M, dir, f) {
   if (H.trinket && !n) { // hanging at the hip, on the side away from the weapon hand
     const T = H.trinket, m = mt(T.mat, 'iron'), c = e ? [tx - 1.2, J.waY + 2] : [tx + ww + .2, J.waY + 1.8];
     const sh = T.kind === 'key' ? [O([c[0], c[1] - .6], .95), C([c[0], c[1]], [c[0], c[1] + 2.6], .42), C([c[0], c[1] + 2.4], [c[0] + .9, c[1] + 2.4], .38)]
-      : T.kind === 'ledger' ? [RECT(c[0] - 1.1, c[1] - .6, c[0] + 1.1, c[1] + 2.2)] : T.kind === 'gourd' ? [O([c[0], c[1] + 1.4], 1.3), O([c[0], c[1] - .2], .75)] : [E([c[0], c[1] + 1], 1.2, 1.4)];
-    F.add({ mat: m, prof: 'round', bw: .6, grp: 'trinket', shapes: sh, cuts: T.kind === 'key' ? [O([c[0], c[1] - .6], .4)] : undefined });
+      : T.kind === 'ledger' ? [RECT(c[0] - 1.1, c[1] - .6, c[0] + 1.1, c[1] + 2.2)] : T.kind === 'gourd' ? [O([c[0], c[1] + 1.4], 1.3), O([c[0], c[1] - .2], .75)]
+      : T.kind === 'bottle' ? [RECT(c[0] - .8, c[1] + .2, c[0] + .8, c[1] + 2.6), RECT(c[0] - .35, c[1] - .8, c[0] + .35, c[1] + .4)] // M6
+      : T.kind === 'basket' ? [P([[c[0] - 1.7, c[1] + .2], [c[0] + 1.7, c[1] + .2], [c[0] + 1.2, c[1] + 2.6], [c[0] - 1.2, c[1] + 2.6]])] : [E([c[0], c[1] + 1], 1.2, 1.4)]; // M6
+    F.add(Object.assign({ mat: m, prof: 'round', bw: .6, grp: 'trinket', shapes: sh, cuts: T.kind === 'key' ? [O([c[0], c[1] - .6], .4)] : undefined }, T.kind === 'basket' ? { tex: ({ x, y }) => ((x + y) % 2 ? -.7 : 0) } : {}));
+    if (T.kind === 'basket' && T.herbs) F.add({ mat: mt(T.herbs, 'moss'), prof: 'round', bw: .5, grp: 'herbs', shapes: [E([c[0] - .6, c[1] - .2], .9, .8), E([c[0] + .7, c[1] - .4], .8, .8)] });
     if (T.gem) F.add({ mat: mt(T.gem, 'ember'), prof: 'flat', grp: 'trinketgem', noShadow: true, shapes: [O([c[0], c[1] + (T.kind === 'key' ? -.6 : 1)], .5)] });
     anchors.g_trinket = [c[0] - .5, c[1] - .5];
   }
 
+  if (Array.isArray(H.bottleRow) && !n) { // M6: a row of stoppered bottles along the belt (Nettie's; M3's 'vials' is a battle-art hint)
+    const xs = e ? [tx + 1.3] : [tx - 1.7, tx, tx + 1.7];
+    H.bottleRow.slice(0, xs.length).forEach((vm, i) => F.add({ mat: mt(vm, 'seaglass'), prof: 'round', bw: .4, grp: 'vial' + i, noShadow: true, shapes: [RECT(xs[i] - .5, J.waY + .3, xs[i] + .5, J.waY + 2)] }));
+  }
   // a chain slung from one shoulder to the other hip (Rhune's toll chain), over the back too
   if (H.slungChain) F.add({ mat: mt(H.slungChain, 'iron'), prof: 'round', bw: .5, grp: 'slungchain', noShadow: true, shapes: [e ? C([tx - .6, J.sh + .2], [tx + 1.6, J.waY + .6], .6) : n ? C([tx + sw - .8, J.sh + .3], [tx - ww - .2, J.waY + .5], .6) : C([tx - sw + .8, J.sh + .3], [tx + ww + .2, J.waY + .5], .6)], tex: TEXW.mail });
   if (H.pack && n) {

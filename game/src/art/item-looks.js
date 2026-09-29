@@ -1,7 +1,8 @@
 // Item looks for the battle layer.
 //  - RARITY_LOOK / ASPECT_LOOK: shared styling tables (colours, frame materials, glow materials).
 //  - RELIC_ART: hand-made recipe params for every named relic (RELIC_IDS in codex order: the 24 of M2-M3, the 14 of
-//    the Sunscorch and the 14 of the Ironspire, M5's through new recipe styles that older relics never reach).
+//    the Sunscorch, the 14 of the Ironspire and the 14 of the Gloomfen, M5's and M6's through new recipe styles that
+//    older relics never reach).
 //  - itemArt(item): deterministic recipe params for ANY rolled item from { kind, rarity, aspect, seed }.
 //  - itemPortrait / itemIcon / cardCorner: the card portrait (prototype treatment) and bag icon.
 //  - lookFor / gearLooks: turn item art into the layer "looks" the hero sprite draws, so the
@@ -15,6 +16,9 @@
 //    the walkers agree. An item with temper 0-3, no gems set and no deeds renders exactly as in M3.
 //  - M5: the Frost Opal's gem ramp (gem.frost-opal), and the Ironspire relics' textures (rime on the bell, tarnish on
 //    the censer, an iron haft, forge scale).
+//  - M6: the fourteen Gloomfen relics (Codex Page IV), each through recipe styles of its own (a clipped coin, a bog-shoe,
+//    willow fronds, a wicker ward-shield, a holed stone, a street-lamp, a lace veil, a diving-helm, a choirmaster's
+//    staff, a gar's tooth, a chain-link gauntlet, a harpoon, a glowing pearl, a knotted shawl).
 import { MAT, hx, hsl, bayer, hash, vnoise, compose, Forge, Xf, mix, ramp } from './forge.js';
 import { RECIPE, renderItem, TX, TX2, mailTex, scaleTex } from './recipes.js';
 import { rimeTex } from './item-art.js';
@@ -118,6 +122,11 @@ const bellRime = q => rimeTex(q) || bellPatina(q);
 const censerTarnish = ({ x, y, nx, ny }) => (vnoise(x * .45, y * .45, 143) > .64 && (nx + ny) > -.1 ? { m: 'verdigris', dd: 0 } : hash(x, y, 144) < .05 ? -1 : 0);
 const ironHaft = ({ u }) => (Math.floor(u / 3.2) % 2 ? -.5 : 0);
 const forgeScale = ({ x, y }) => (hash(x, y, 141) < .07 ? -1 : vnoise(x * .4, y * .4, 142) > .76 ? { m: 'char', dd: 1 } : 0);
+// textures for the M6 relics
+const coinWear = ({ x, y, nx, ny }) => (vnoise(x * .5, y * .5, 151) > .7 && (nx + ny) > -.15 ? { m: 'verdigris', dd: 0 } : hash(x, y, 152) < .05 ? -1 : 0);
+const copperGreen = ({ x, y, nx, ny }) => { const n = vnoise(x * .35, y * .35, 155); return n > .7 && (nx + ny) > -.3 ? { m: 'verdigris', dd: n > .8 ? 1 : 0 } : hash(x, y, 156) < .04 ? -1 : 0; };
+const linkRust = ({ x, y }) => (vnoise(x * .45, y * .45, 157) > .72 ? { m: 'rust', dd: hash(x, y, 158) < .4 ? -1 : 0 } : hash(x, y, 159) < .06 ? -1 : 0);
+const bogPits = ({ x, y }) => (hash(x, y, 162) < .12 ? -1 : vnoise(x * .5, y * .5, 163) > .74 ? { m: 'rust', dd: 0 } : 0);
 export const RELIC_ART = Object.freeze({
   hearthbrand: { r: 'sword', relic: true, fx: 'rise', aspect: 'ember', p: { heat: 1, gripEnd: 15.5, guardT: 4.2, bladeW: 4.2, bladeL: 50, tipL: 9, taper: .86, blade: 'steel', bladeTex: emberVeins, fuller: 'ember', fullerR: 1.15, guard: 'flame', guardMat: 'gold', gem: 'ruby', grip: 'leatherRed', gripR: 2.15, pommel: 'gold', pommelR: 3.6, pommelGem: 'ember' } },
   'stillwater-lance': { r: 'spear', relic: true, fx: 'fall', aspect: 'frost', p: { headT: 58, headL: 24, headW: 4.6, wings: 2.6, haft: 'bone', butt: 'silver', wrap: 'clothBlue', wrapA: 25, wrapB: 37, bands: [21, 40, 51], bandMat: 'silver', socket: 'silver', head: 'steel', headTex: rimeTex, fuller: 'frost', gem: 'sapphire', ribbon: 'clothBlue', haftR: 1.8 } },
@@ -205,22 +214,44 @@ export const RELIC_ART = Object.freeze({
   // a deep cowl woven from something that was not wool, under the ice, by someone who was listening: threads of cold
   // light in the weave, a spiral stitched on the brow
   'hushweave-cowl': { r: 'hood', relic: true, fx: 'fall', aspect: 'frost', p: { look: 'hood', mat: 'hushweave', tex: TX2.folds(29), weave: 'frost', spiral: 'silver', trim: 'silver', clasp: 'silver', gem: 'pearl', tip: 0 } },
-  // ---- M6: Codex Page IV, the Gloomfen Marsh (codex 53-66). STAND-INS from the M6 scaffold (stub: true), each
-  // its own look; P6 draws the real ones. ----
-  'unfair-toll': { r: 'amulet', relic: true, stub: true, fx: 'bubble', aspect: 'tide', p: { style: 'sun', chain: 'bronze', metal: 'bronze', rays: 'bronze', frame: 'iron', gem: 'pearl', core: 'water' } },
-  bogstriders: { r: 'boots', relic: true, stub: true, fx: 'spore', aspect: 'verdant', p: { mat: 'leatherDark', trim: 'moss', fold: true, buckle: 'iron', gem: 'emerald', straps: 'leather' } },
-  'weeping-bow': { r: 'bow', relic: true, stub: true, fx: 'spore', aspect: 'verdant', p: { len: 62, bulge: 9.5, limbR: 3.2, tipR: 1.5, limb: 'bark', nock: 'bronze', grip: 'moss', bindings: [.35, .65], bindMat: 'bronze', gem: 'emerald', gemMat: 'bronze', tassel: 'moss', spark: 'verdant' } },
-  'willow-ward': { r: 'shield', relic: true, stub: true, fx: 'spore', aspect: 'verdant', p: { style: 'scale', shape: 'heater', face: 'bark', rim: 'bronze', boss: 'bronze', rivets: 'bronze', runes: 'verdant', gem: 'emerald' } },
-  'hag-stone': { r: 'ring', relic: true, stub: true, fx: 'spore', aspect: 'blight', p: { style: 'signet', metal: 'iron', face: 'granite', seal: 'iron', runes: 'blight', gem: 'blight' } },
-  'lamplighters-lantern': { r: 'focus', relic: true, stub: true, fx: 'rise', aspect: 'radiant', p: { style: 'lantern', metal: 'bronze', frame: 'iron', stone: 'topaz', core: 'radiant', rays: 'gold', capGem: 'topaz', gem: 'radiant' } },
-  'mourning-veil': { r: 'hood', relic: true, stub: true, fx: 'bubble', aspect: 'tide', p: { look: 'hood', mat: 'dark', trim: 'silver', clasp: 'silver', gem: 'pearl', tip: 1, tex: TX2.folds(9) } },
-  'salvagers-helm': { r: 'helm', relic: true, stub: true, fx: 'bubble', aspect: 'tide', p: { look: 'helm', style: 'mask', mat: 'bronze', trim: 'iron', eyes: 'water', strap: 'leatherDark', crest: false } },
-  'cantors-staff': { r: 'staff', relic: true, stub: true, fx: 'bubble', aspect: 'tide', p: { style: 'song', headT: 54, haft: 'bogwood', haftR: 2.2, wobble: .2, spiral: 'bronze', holes: 'dark', holeRim: 'bronze', foot: 'bronze', bands: [], orb: 'water', orbR: 5.8, roots: 'bronze', leaves: 'seaweed', berries: 'pearl', thorns: 'bronze' } },
-  'gar-tooth': { r: 'dagger', relic: true, stub: true, fx: 'bubble', aspect: 'tide', p: { shape: 'fang', curve: 5, gripEnd: 13, guardT: 2.6, bladeL: 40, bladeW: 5.6, blade: 'bone', vein: 'water', guard: 'thorn', guardMat: 'bronze', thornMat: 'bone', guardW: 5.6, grip: 'leatherDark', gripR: 2.2, pommel: 'bronze', pommelShape: 'knot', pommelR: 3.2, pommelGem: 'pearl' } },
-  'barge-gauntlets': { r: 'gauntlets', relic: true, stub: true, fx: 'dust', aspect: 'stone', p: { mat: 'iron', plate: 1, cuffMat: 'iron', flare: 1, trim: 'bronze', cuffBand: 'iron', knuckles: 'iron', engrave: 'bronze', bolt: 'granite', cuffGem: 'topaz' } },
-  'corvus-harpoon': { r: 'spear', relic: true, stub: true, fx: 'bubble', aspect: 'tide', p: { headT: 58, headL: 22, headW: 5, wings: 3.4, haft: 'bogwood', butt: 'bronze', wrap: 'leatherDark', wrapA: 25, wrapB: 37, bands: [21, 40], bandMat: 'bronze', socket: 'bronze', head: 'steel', fuller: 'water', gem: 'pearl', ribbon: 'clothGrey', haftR: 1.9 } },
-  'deep-pearl': { r: 'amulet', relic: true, stub: true, fx: 'bubble', aspect: 'tide', p: { style: 'heart', chain: 'silver', metal: 'silver', stone: 'pearl', core: 'water', veins: 'water', gem: 'pearl' } },
-  'hexbane-shawl': { r: 'robe', relic: true, stub: true, fx: 'spore', aspect: 'blight', p: { mat: 'robeBark', trim: 'moss', sash: 'clothGrey', cowl: 'moss' } },
+  // ---- M6: Codex Page IV, the Gloomfen Marsh (codex 53-66) ----
+  // a bronze coin worn smooth, a bite clipped off its rim, Hodge's own head struck on its face; a ring through the hole
+  'unfair-toll': { r: 'amulet', relic: true, fx: 'bubble', aspect: 'tide', p: { style: 'coin', chain: 'iron', metal: 'bronze', tex: coinWear, gem: 'bronze' } },
+  // tall fen boots of oiled leather laced up the shin, a bog-shoe of bent withies strapped under the sole, the fen's moss
+  // still on them and a reed in the cuff
+  bogstriders: { r: 'boots', relic: true, fx: 'spore', aspect: 'verdant', p: { mat: 'leatherDark', trim: 'moss', fold: true, sole: 'leatherDark', splay: 'willowWood', shoeLace: 'reed', strapMat: 'leather', lacing: 'string', moss: 'moss', reed: 'reed', gem: 'emerald' } },
+  // pale willow strung with a hair of the oldest willow in the fen (it glows), fronds weeping from its limbs, tears on them
+  'weeping-bow': { r: 'bow', relic: true, fx: 'spore', aspect: 'verdant', p: { len: 62, bulge: 10, limbR: 3.1, tipR: 1.4, limb: 'willowWood', limbTex: TX.grain(153), nock: 'bronze', grip: 'leatherDark', bindings: [.36, .64], bindMat: 'bronze', gem: 'emerald', gemMat: 'bronze', stringMat: 'verdant', fronds: 'willowLeaf', tears: 'water' } },
+  // Willowmurk's last ward-shield: withies woven round like a basket lid, a ward-stone in the boss with the ward alight,
+  // charms on cords from the rim
+  'willow-ward': { r: 'shield', relic: true, fx: 'spore', aspect: 'verdant', p: { style: 'wicker', r: 27, face: 'willowWood', rim: 'bark', binding: 'leather', boss: 'bronze', stone: 'scree', runes: 'verdant', charms: 'bone', gem: 'emerald' } },
+  // a flat river stone with a hole worn through it, bound with twine to a band of bog iron; through the hole, an eye
+  'hag-stone': { r: 'ring', relic: true, fx: 'rise', aspect: 'blight', p: { style: 'holed', metal: 'bogIron', tex: bogPits, stone: 'scree', eye: 'blight', twine: 'string', gem: 'amethyst' } },
+  // a street-lamp's head on a ring for the lamplighter's hook: tapered panes in a leaded frame, a candle burning
+  // white-gold in it, verdigris on the cap, water still running off its foot
+  'lamplighters-lantern': { r: 'focus', relic: true, fx: 'sparkle', aspect: 'radiant', p: { style: 'lamplighter', metal: 'bronze', frame: 'blackiron', glass: 'radiant', flame: 'radiant', core: 'primal', candle: 'clothWhite', leading: 'blackiron', capTex: verdSpots, capGem: 'pearl', rays: 'radiant', drips: 'water', gem: 'pearl', glow: 'radiant' } },
+  // black lace, still wet, hung from a silver comb and falling past the shoulders; a pearl tear at the brow
+  'mourning-veil': { r: 'hood', relic: true, fx: 'bubble', aspect: 'tide', p: { look: 'hood', style: 'veil', mat: 'lace', comb: 'silver', trim: 'silver', clasp: 'silver', gem: 'pearl', drips: 'water', tip: 0 } },
+  // a copper diving-helm with a Tallyman stamp on its collar: a bolted faceport behind a grille, the side ports, the
+  // air-cock and a length of hose; verdigris where the channel got at it
+  'salvagers-helm': { r: 'helm', relic: true, fx: 'bubble', aspect: 'tide', p: { look: 'helm', style: 'diving', mat: 'copper', tex: copperGreen, trim: 'brass', glass: 'glass', eyes: 'water', stamp: 'dark', hose: 'leatherDark', crest: false } },
+  // the choirmaster's staff of Misthollow: a silver yoke with a bell hung in it, a pearl in the knop, the choir's ribbon,
+  // weed trailing from it and barnacles up the haft
+  'cantors-staff': { r: 'staff', relic: true, fx: 'bubble', aspect: 'tide', p: { style: 'cantor', headT: 49, haft: 'bogwood', haftR: 2.1, wobble: 0, foot: 'silver', bands: [24, 36], bandMat: 'silver', metal: 'silver', tex: censerTarnish, bell: 'bronze', bellTex: bellPatina, pearl: 'pearl', barnacles: 'barnacle', weed: 'weed', ribbon: 'clothTeal', gem: 'pearl' } },
+  // one of Old Jaws's teeth for a blade, as long as a hand, bound onto a bog-oak grip with fishing line; one of his
+  // scales for a guard and a bronze fish-hook for a pommel
+  'gar-tooth': { r: 'dagger', relic: true, fx: 'bubble', aspect: 'tide', p: { shape: 'tooth', curve: 3.4, gripEnd: 13, guardT: 2.6, bladeL: 38, bladeW: 4.6, blade: 'bone', vein: 'water', binding: 'string', guard: 'scale', guardMat: 'garScale', guardW: 5.4, grip: 'bogwood', gripR: 2.1, pommel: 'bronze', pommelShape: 'hook', pommelR: 2.8 } },
+  // iron gauntlets with a link of the Leviathan's chain riveted across each hand, and a length of it hanging from the cuff
+  'barge-gauntlets': { r: 'gauntlets', relic: true, fx: 'dust', aspect: 'stone', p: { mat: 'iron', plate: 1, cuffMat: 'blackiron', flare: 1, trim: 'bronze', cuffBand: 'bronze', knuckles: 'iron', link: 'blackiron', linkTex: linkRust, rivet: 'bronze', linkGlow: 'amber', chainCuff: 'blackiron', cuffGem: 'topaz' } },
+  // Corvus's harpoon: a barbed iron head on a long shank, a coil of line on a ring at the socket, the butt carved as a
+  // crow's head with crow feathers bound under the wrap
+  'corvus-harpoon': { r: 'spear', relic: true, fx: 'bubble', aspect: 'tide', p: { headT: 52, headL: 26, headW: 3.4, barbs: 2.6, haft: 'bogwood', haftR: 1.9, butt: 'blackiron', wrap: 'leatherDark', wrapA: 22, wrapB: 34, bands: [20, 36], bandMat: 'blackiron', socket: 'blackiron', head: 'iron', headTex: TX.rust(159), fuller: 'water', line: 'string', crow: 'hairBlack', crowEye: 'amber', feathers: 'rocFeather', gem: 'pearl' } },
+  // a great pearl grown in the Leviathan's brow, warm and glowing green-white from inside, in four prongs of black coral
+  // on a silver cup crusted with barnacles
+  'deep-pearl': { r: 'amulet', relic: true, fx: 'bubble', aspect: 'tide', p: { style: 'deep', chain: 'silver', metal: 'silver', tex: censerTarnish, pearl: 'pearl', glow: 'deepglow', coral: 'rotwood', barnacles: 'barnacle', gem: 'pearl' } },
+  // Nettie's shawl, knotted from bog-cotton and hag's hair over a bark-brown robe: an open net of knots, tassels and a
+  // few charms on its edges, one thread through it that glows
+  'hexbane-shawl': { r: 'robe', relic: true, fx: 'rise', aspect: 'blight', p: { mat: 'robeBark', tex: TX2.folds(66), trim: 'moss', sash: 'clothGrey', shawl: 'bogCotton', hexline: 'blight', charms: 'bone', pauldrons: 'bogCotton', gem: 'amethyst' } },
 });
 export const RELIC_IDS = Object.keys(RELIC_ART);
 

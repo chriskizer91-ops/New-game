@@ -12,7 +12,7 @@
 // claimQuest(game, id) -> { game, events }               id may be 'bounty:<bountyId>' to turn a bounty in,
 //                                                        or 'bounties' to turn in every settled one
 // bounties(game) -> [{ id, enc, name, gold, state: 'active'|'ready'|'done' }]
-// ladder(game) -> [{ id, name, act, state: 'silhouette'|'scouted'|'settled' }]
+// ladder(game) -> [{ id, name, act, state: 'silhouette'|'scouted'|'settled' }]   M6: an entry with an `if` shows once it holds
 // afterDialogue(game, encId, result) -> dialogueId | null   what to play back from a fight ('victory'|'yield')
 // restDialogue(game, hfId) -> dialogueId | null             what to play after resting (the Fawnrest dream)
 // pendingLetter(game) -> brandId | null                     a held Brand whose Unsmith letter is unread
@@ -21,7 +21,9 @@
 //         M4: { t: 'gems', gems } { t: 'materials', materials } { t: 'page', id } (a gift finished a Codex page)
 // M4 effects: { gems: { [gemId]: n } }, { materials: { scrap?, silver?, embers? } }; quest rewards may
 // carry `gems` and `materials` too.
-// M6 effect: { pay: { gold?, bag?: { [id]: n }, materials?: { [id]: n } } } takes the price (event { t: 'paid', price });
+// M6 effects: { scout: encId } marks an encounter scouted, as walking near its holders does (its Ladder poster, its
+// relics Sighted: Hodge, whose fight never stands on the map); { pay: { gold?, bag?: { [id]: n }, materials?: { [id]: n } } }
+// takes the price (event { t: 'paid', price });
 // a choice whose `do` pays is refused (and shown disabled) while the party cannot afford it (cond.js canAfford).
 // A check or a contest's check may name an `ability` as well as (or instead of) a `domain`, and a `name` for its
 // label (Hodge's toll game: "Deception DC 13").
@@ -38,6 +40,7 @@ import { DOMAINS } from '../data/domains.js';
 import { check, questState, bountyState, flagsOf, storyOf, canAfford } from './cond.js';
 import { deriveHero } from './stats.js';
 import { generateItem, relicItem } from './loot.js';
+import { spawnsFor } from './gauntlet.js';
 import { pageBonus, markPages } from './codex.js';
 import { mod, ibFor, rngFrom, addCounts } from './util.js';
 
@@ -162,6 +165,7 @@ function apply(g, effects, rng, events) {
     else if ('gems' in e) { g.gems = addCounts(g.gems, e.gems); events.push({ t: 'gems', gems: { ...e.gems } }); }
     else if ('materials' in e) { g.materials = addCounts(g.materials, e.materials); events.push({ t: 'materials', materials: { ...e.materials } }); }
     else if ('pay' in e) payInto(g, e.pay, events);
+    else if ('scout' in e) scoutInto(g, e.scout);
     else if ('unlock' in e) f.unlocked = { ...(f.unlocked || {}), [e.unlock]: true };
     else if ('heal' in e) healAll(g);
     else if ('fight' in e) events.push({ t: 'fight', enc: e.fight });
@@ -170,6 +174,14 @@ function apply(g, effects, rng, events) {
     else if ('letter' in e) { f.story[`letter:${e.letter}`] = true; events.push({ t: 'letter', id: e.letter }); }
     else if ('end' in e) events.push({ t: 'end', act: e.end });
   }
+}
+
+// M6: an encounter scouted from talk (world.js sightEncounter does the same when you walk near its holders)
+function scoutInto(g, encId) {
+  const f = g.progress.flags;
+  if (f.scouted?.[encId]) return;
+  for (const s of spawnsFor(g, encId)) for (const r of [...(s.held || []).map(h => h.relic), s.wears].filter(Boolean)) g.codex[r] = { claimed: false, awakened: false, ...g.codex[r], sighted: true };
+  f.scouted = { ...(f.scouted || {}), [encId]: true };
 }
 
 // M6: take a price the party can afford (choose() refuses a choice it cannot)
@@ -272,7 +284,7 @@ export function bounties(game) {
 
 export function ladder(game) {
   const scouted = flagsOf(game).scouted || {};
-  return LADDER.map(p => ({
+  return LADDER.filter(p => check(game, p.if)).map(p => ({
     id: p.id, name: p.name, act: p.act, enc: p.enc || null, spawn: p.spawn ?? null,
     state: p.enc && check(game, { beaten: p.enc }) ? 'settled' : (scouted[p.enc] || scouted[p.id]) ? 'scouted' : 'silhouette',
   }));

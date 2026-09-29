@@ -47,11 +47,17 @@ body { background-repeat: no-repeat; }
 .tap-hint.gone { opacity: 0; animation: none; }
 @keyframes blink { 50% { opacity: .35; } }
 .title-foot { margin: 14px auto 0; font-size: 13px; color: var(--ash); max-width: 44ch; }
+/* M6 (spec A10): the player's world painting behind the title. The painting's own lettering is scaled off the
+   top (the title is the game's); the party's rise (the canvas) stands in front of it, and the fade over both */
+.title-scene.painted { isolation: isolate; background: #1a140e; }
+.title-still { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 60%; transform: scale(1.16); transform-origin: 50% 94%; pointer-events: none; -webkit-user-select: none; user-select: none; }
+.title-scene.painted canvas { position: relative; z-index: 1; }
+.title-scene.painted .title-fade { z-index: 2; }
 /* wide screens: the scene fills the window and the title sits on its left */
 @media (min-width: 1000px) and (min-aspect-ratio: 5/4) {
   .screen-title { position: relative; overflow: hidden; }
   .title-scene { position: absolute; inset: 0; }
-  .title-scene canvas { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); }
+  .title-scene canvas, .title-scene.painted canvas { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); }
   .title-fade { inset: 0; height: auto; background: linear-gradient(90deg, rgba(18, 14, 12, .94) 0, rgba(18, 14, 12, .72) 30%, rgba(18, 14, 12, 0) 56%), linear-gradient(180deg, rgba(18, 14, 12, 0) 72%, rgba(18, 14, 12, .8)); }
   .title-card { margin: 0; padding: max(9vh, 48px) 0 40px 7vw; max-width: 560px; text-align: left; }
   .title-tag, .title-foot { margin-left: 0; }
@@ -474,9 +480,11 @@ textarea.code:focus { outline: none; border-color: var(--hearth); }
 .mk-region .mk-ico { width: 34px; height: 34px; color: #b4f0a4; background: #1f4a1a; }
 .mk-region.rg-sunscorch .mk-ico { color: #ffd27a; background: #7a4212; }
 .mk-region.rg-ironspire .mk-ico { color: #c8d6e4; background: #34465a; }
-/* M5: four views (Wilds, Sunscorch, Ironspire, Realm) go two by two on a phone */
+.mk-region.rg-gloomfen .mk-ico { color: #bfe4c8; background: #2c4a3c; }
+/* M5: four views (Wilds, Sunscorch, Ironspire, Realm) go two by two on a phone; M6: five go three and two */
 @media (max-width: 520px) {
   .atlas-views[data-n="4"], .atlas-views[data-n="5"] { grid-template-columns: repeat(2, minmax(0, 1fr)); flex: 1 1 100%; }
+  .atlas-views[data-n="5"] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .atlas-views[data-n="4"] .atlas-view, .atlas-views[data-n="5"] .atlas-view { padding: 0 6px; }
 }
 .mk-here { z-index: 3; }

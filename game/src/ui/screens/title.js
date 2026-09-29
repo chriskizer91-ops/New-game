@@ -1,12 +1,15 @@
-// Title: the Keep at dusk with the party on the road, the name, and the way in (M3 spec §5.7).
+// Title: the Keep at dusk with the party on the road, the name, and the way in (M3 spec §5.7). M6 (spec A10):
+// the player's world painting (CUTS['title-world']) is the backdrop, and the party stands on a dark rise in
+// front of it, looking out over the realm; without the still (or when it fails to load) the drawn scene plays.
 //   - a live save: "Continue", sub-line "Wren · Thornhollow · Day 4 · Lv 5 · 9/24 relics"
 //   - no live save yet, but an earlier milestone's: "Continue from Milestone 5" (or 4.5, 4 or 3; with only an M2
 //     save, "Continue from the Gauntlet") -> the carry-over card -> "Walk on" -> ctx.adopt(game) (held
 //     in memory; the world writes it, to this milestone's own key, on the first step)
 //   - "New game" over any journey asks first; newgame's Begin backs the old save up (ctx.replaceGame)
 //   - the milestone tag (TAG)
-// Owner: WP8.
+// Owner: WP8; M6 P7 (the painted backdrop).
 import { renderBackdrop, renderHero } from '../../art/index.js';
+import { CUTS } from '../assets/cuts/index.js';
 import { el, esc, button, toCanvas } from '../lib/dom.js';
 import { animate, isReduced } from '../lib/anim.js';
 import { gearOf, customOf } from '../lib/art.js';
@@ -79,10 +82,19 @@ export function mount(root, ctx) {
   card.append(el('p', 'title-foot', 'Plays on a phone or a laptop. Arrows or WASD to move, Enter or Z to confirm, Esc or X to go back.'));
   root.append(scene, card);
 
-  // the painted scene: the Keep at dusk, the party on the road
+  // the painted scene: the Keep at dusk, the party on the road. M6: the player's world painting behind a dark
+  // rise the party stands on (the canvas draws only the rise and the party over it)
+  const still = CUTS['title-world'];
+  let painted = !!still;
+  if (painted) {
+    scene.classList.add('painted');
+    const img = el('img', { class: 'title-still', src: still.src, alt: '', 'aria-hidden': 'true', width: still.w, height: still.h, draggable: 'false', decoding: 'async' });
+    img.addEventListener('error', () => { if (!painted) return; painted = false; img.remove(); scene.classList.remove('painted'); draw(performance.now() / 1000); });
+    scene.prepend(img);
+  }
   const heroes = ['alondra', 'bryn', 'pip', 'warden'];
   const tmp = document.createElement('canvas');
-  let W = 0, H = 0, k = 3;
+  let W = 0, H = 0, k = 3, rise = null;
   const wideMQ = matchMedia('(min-width: 1000px) and (min-aspect-ratio: 5/4)');
   const layout = () => {
     const vw = scene.clientWidth || innerWidth, wide = wideMQ.matches;
@@ -91,14 +103,19 @@ export function mount(root, ctx) {
     W = Math.ceil(vw / k); H = Math.max(84, Math.ceil(vh / k));
     cv.width = W; cv.height = H;
     cv.style.width = W * k + 'px'; cv.style.height = H * k + 'px';
+    rise = null;
   };
   layout();
   const draw = t => {
     const g = cv.getContext('2d');
     g.imageSmoothingEnabled = false;
-    g.putImageData(renderBackdrop('hearth-road', { w: W, h: H, t, reduced: isReduced() }), 0, 0);
     const floor = Math.round(H * .86);
     const baseX = Math.round(W * (W < 140 ? .58 : wideMQ.matches ? .66 : .62));
+    if (painted) {
+      g.clearRect(0, 0, W, H);
+      if (!rise) rise = riseCanvas(W, H, floor, baseX);
+      g.drawImage(rise, 0, 0);
+    } else g.putImageData(renderBackdrop('hearth-road', { w: W, h: H, t, reduced: isReduced() }), 0, 0);
     heroes.forEach((id, i) => {
       const gear = shown ? gearOf(shown, id) : undefined;
       const img = renderHero(id, gear, { pose: 'idle', t: t + i * .37, custom: shown ? customOf(shown, id) : undefined, reduced: isReduced() });
@@ -120,4 +137,37 @@ export function mount(root, ctx) {
     unmount() { removeEventListener('resize', onResize); root.removeEventListener('pointerdown', unlock); clearTimeout(rt); },
     onAction(a) { if (!hint.classList.contains('gone')) { hint.classList.add('gone'); } return nav(a); },
   };
+}
+
+// The dark rise the party stands on in front of the painting (M6): a silhouette across the bottom that climbs
+// to the party's feet, its edge lit by the dusk, with a few tufts of grass. Pixel art at 1 px per art px.
+function riseCanvas(W, H, floor, baseX) {
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  const hash = x => { let h = Math.imul(x | 0, 374761393) ^ 0x5bd1e995; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+  const top = x => {
+    // the ground climbs toward the party and falls away past it
+    const d = (x - baseX) / W;
+    const lift = d < -.08 ? Math.min(1, (-.08 - d) / .5) : d > .22 ? Math.min(1, (d - .22) / .2) : 0;
+    return Math.round(floor + 1 + lift * H * .07 + (hash(x >> 2) - .5) * 2);
+  };
+  for (let x = 0; x < W; x++) {
+    const y0 = top(x);
+    g.fillStyle = '#0d0a0f';
+    g.fillRect(x, y0, 1, H - y0);
+    g.fillStyle = '#1a1210';
+    g.fillRect(x, y0 + 1, 1, 2);
+    g.fillStyle = hash(x) < .5 ? '#5a3a20' : '#7a4e26';
+    g.fillRect(x, y0, 1, 1);
+    // tufts of grass on the edge, lit on their tips
+    if (hash(x * 7 + 3) < .16) {
+      const h = 1 + Math.floor(hash(x * 13) * 3);
+      g.fillStyle = '#1a1210';
+      g.fillRect(x, y0 - h, 1, h);
+      g.fillStyle = '#8a5a2a';
+      g.fillRect(x, y0 - h, 1, 1);
+    }
+  }
+  return c;
 }

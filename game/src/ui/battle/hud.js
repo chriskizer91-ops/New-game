@@ -2,11 +2,12 @@
 // the Initiative Ribbon, floating numbers and banners. Positions come from Stage.geom().
 // M5: a burrowed foe's plate says so (.bt-foe.sunk: "Burrowed · out of reach"), and its box is never a
 // valid target; on the ribbon a held hero's turn is iced over (.held) and a charmed one's pink (.charmed).
+// M6: a foe that dives into water (the Blackwater Leviathan) reads "Dived · out of reach" (.bt-foe.sunk.water).
 import { statusIcon, diceIcon, gripIcon, INTENT_DIE } from '../../art/icons.js';
 import { STATUSES } from '../../data/statuses.js';
 import { RELICS } from '../../data/relics.js';
 import { el, pixelIcon, toCanvas, clamp } from './util.js';
-import { heldStatus, isCharmed, isSunk, untargetable } from './model.js';
+import { heldStatus, isCharmed, isSunk, untargetable, divesUnderWater } from './model.js';
 
 // ---- small shared pieces ----------------------------------------------------------------------------
 
@@ -87,7 +88,10 @@ export class Hud {
     const plateW = clamp(Math.round(g.slotW - 6), 86, 200);
     f.plateW = plateW;
     const hitPad = 6;
-    Object.assign(f.hit.style, { left: `${Math.round(g.left - hitPad)}px`, top: `${Math.round(g.top - hitPad)}px`, width: `${Math.round(g.right - g.left + hitPad * 2)}px`, height: `${Math.round(g.floor - g.top + hitPad)}px` });
+    // never under 44 px (M6: a foe gone down into the water shows only its back, and is still tapped to see why it
+    // cannot be targeted): a short box grows up from the floor, a narrow one out from its middle
+    const hw = Math.max(44, g.right - g.left + hitPad * 2), hh = Math.max(44, g.floor - g.top + hitPad);
+    Object.assign(f.hit.style, { left: `${Math.round((g.left + g.right) / 2 - hw / 2)}px`, top: `${Math.round(g.floor - hh)}px`, width: `${Math.round(hw)}px`, height: `${Math.round(hh)}px` });
     // a short stage keeps the plate in view, overlapping the legs
     Object.assign(f.plate.style, { left: `${Math.round(g.cx - plateW / 2)}px`, width: `${plateW}px`, top: `${Math.round(Math.min(g.floor + 3, g.stageH - ph - 3))}px` });
     // the intent bubble is centred on the foe (-50% translate) but stays inside the stage
@@ -108,9 +112,11 @@ export class Hud {
     f.box.dataset.tier = u.tier || '';
     // M5: under the floor (burrowed): out of reach until its own turn comes round
     const sunk = isSunk(u) && !u.ko && !u.gone;
+    const water = sunk && divesUnderWater(u);
     f.box.classList.toggle('sunk', sunk);
+    f.box.classList.toggle('water', water);
     f.state.hidden = !sunk;
-    if (sunk) f.state.textContent = `${STATUSES[u.statuses.find(s => STATUSES[s.id]?.untargetable)?.id]?.name || 'Out of reach'} · out of reach`;
+    if (sunk) f.state.textContent = `${water ? 'Dived' : STATUSES[u.statuses.find(s => STATUSES[s.id]?.untargetable)?.id]?.name || 'Out of reach'} · out of reach`;
     // statuses
     const key = u.statuses.map(s => `${s.id}${s.stacks}`).join(',');
     const room = Math.max(2, Math.floor(((f.plateW || 120) - 12) / 26));

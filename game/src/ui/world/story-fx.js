@@ -4,14 +4,20 @@
 // and falls back to a procedural parchment when the image is a placeholder or fails to load.
 // Exports (each returns a Promise that settles when it is dismissed):
 //   playBrandBanner(ctx, brand, game), playCrownwalls(ctx), showLetter(ctx, brandId),
-//   playCouncil(ctx, { second, third }) (M4: the second council; M5: the third),
-//   showToBeContinued(ctx, game, { act }) (act 'act1' | 'act2' | 'ironspire': the end of a chapter,
-//   naming the roads that open now and the regions of the next chapter; M5's 'ironspire' is the third
-//   council's card, "The Ironspire is yours"), chapterEnd(game, act) (its pure view model),
+//   playCouncil(ctx, { second, third, fourth }) (M4: the second council; M5: the third; M6: the fourth),
+//   showToBeContinued(ctx, game, { act }) (act 'act1' | 'act2' | 'ironspire' | 'gloomfen': the end of a
+//   chapter, naming the roads that open now and the regions of the next chapter; M5's 'ironspire' is the third
+//   council's card, "The Ironspire is yours", which since M6 names the fen stair open; M6's 'gloomfen' is the
+//   fourth council's, the end of Act II, which opens nothing), chapterEnd(game, act) (its pure view model),
+//   showRegionCard(ctx, regionId) and hasRegionCard(regionId) (M6 spec A10: the player's painting of a region,
+//   under its name, the first time the party comes down into it),
 //   crownSeals() -> [{ id, x, y, to }], loreAt(map, tx, ty) -> [x, y], ATLAS_SRC
-// Owner: WP7; M4 P7b (the second council, the end of Act II); M5 P7 (the Ironspire card, the third council).
+// Owner: WP7; M4 P7b (the second council, the end of Act II); M5 P7 (the Ironspire card, the third council);
+// M6 P7 (the Gloomfen card, the fourth council, the end of Act II).
 
 import * as atlasImage from '../assets/atlas-image.js';
+import { CUTS } from '../assets/cuts/index.js';
+import { renderBackdrop, BACKDROPS } from '../../art/scenes.js';
 import { MAPS } from '../../data/maps/index.js';
 import { BRAND_TOTAL, REGIONS } from '../../data/world.js';
 import { PAGES } from '../../data/codex.js';
@@ -22,7 +28,7 @@ import { uniqueBrands } from '../../rules/gauntlet.js';
 import { pageProgress } from '../../rules/codex.js';
 import { loreAt as geoLoreAt, regionOpen } from '../lib/atlas-geo.js';
 import { openOverlay } from '../lib/overlay.js';
-import { el } from '../lib/dom.js';
+import { el, toCanvas } from '../lib/dom.js';
 
 export const ATLAS_SRC = atlasImage.default;
 const text = (tag, cls, t) => { const n = el(tag, cls); n.textContent = t ?? ''; return n; };
@@ -147,15 +153,59 @@ export function showLetter(ctx, brandId) {
 
 // { second: true } is the second council (M4, the Sunscorch won): four coals, and Sandspire's chair.
 // { third: true } is the third (M5, the Ironspire won): six coals, and the Thane of Ironhold at the table.
-export function playCouncil(ctx, { second = false, third = false } = {}) {
-  const C = card(ctx, { cls: `council${third ? ' council-3' : second ? ' council-2' : ''}`, label: 'The Council', button: 'Take your seat' });
-  C.panel.append(text('p', 'kick', 'Hearthstone Keep'), text('h2', 'title-display', third ? 'The Council sits a third time' : second ? 'The Council sits again' : 'The Council sits'),
-    text('p', 'council-text', third
-      ? 'Six coals burn in the Eternal Hearth. One chair at the long table is still empty, and every face turns to the door when you walk in.'
-      : second
-        ? 'Four coals burn in the Eternal Hearth. The long table has a new chair at it, and every face turns to the door when you walk in.'
-        : 'Two coals burn in the Eternal Hearth. The long table is full for the first time in years, and every face turns to the door when you walk in.'), C.go);
+// { fourth: true } is the fourth (M6, the Gloomfen won): eight coals, and four boxes sealed in soot on the table.
+export function playCouncil(ctx, { second = false, third = false, fourth = false } = {}) {
+  const C = card(ctx, { cls: `council${fourth ? ' council-4' : third ? ' council-3' : second ? ' council-2' : ''}`, label: 'The Council', button: 'Take your seat' });
+  C.panel.append(text('p', 'kick', 'Hearthstone Keep'), text('h2', 'title-display', fourth ? 'The Council sits a fourth time' : third ? 'The Council sits a third time' : second ? 'The Council sits again' : 'The Council sits'),
+    text('p', 'council-text', fourth
+      ? 'Eight coals burn in the Eternal Hearth, and every chair at the long table is filled. Four boxes sealed in soot sit in the middle of it, and nobody has touched them.'
+      : third
+        ? 'Six coals burn in the Eternal Hearth. One chair at the long table is still empty, and every face turns to the door when you walk in.'
+        : second
+          ? 'Four coals burn in the Eternal Hearth. The long table has a new chair at it, and every face turns to the door when you walk in.'
+          : 'Two coals burn in the Eternal Hearth. The long table is full for the first time in years, and every face turns to the door when you walk in.'), C.go);
   ctx.audio.sfx('hearth');
+  return C.wait();
+}
+
+// ---- a region's own painting (M6 spec A10) ----------------------------------------------------------------
+
+// The regions with a card of their own: the player's painting of the region (a CUTS still) under its name, the
+// first time the party comes down into it (the world screen keeps it once a save), and a line to walk on with.
+// Without the still (or when it fails to load) the card draws its own scene: the region's battle backdrop.
+const REGION_CARD = {
+  gloomfen: {
+    cut: 'region-gloomfen', backdrop: 'murkway', fallback: 'mossfall',
+    text: 'Mist on black water, and lights where nobody lives. Somewhere below the stair, Willowmurk’s elders are waiting for the Warden.',
+  },
+};
+const ACT_NO = ['', 'I', 'II', 'III', 'IV'];
+export const hasRegionCard = id => !!REGION_CARD[id] && !!REGIONS[id];
+
+export function showRegionCard(ctx, regionId) {
+  const R = REGIONS[regionId], Q = REGION_CARD[regionId];
+  if (!R || !Q) return Promise.resolve();
+  const reduced = ctx.reduced();
+  const C = card(ctx, { cls: `region region-${regionId}`, label: R.name, button: 'Walk on' });
+  const P = C.panel;
+  const head = el('div', 'region-head');
+  head.append(text('p', 'kick', `Act ${ACT_NO[R.act] || R.act}`), text('h2', 'title-display', R.name));
+  const view = el('div', { class: `region-view${reduced ? '' : ' drift'}`, role: 'img', 'aria-label': `${R.name}, painted` });
+  // the drawn scene: the region's backdrop, pixel for pixel (when the painting is missing or will not load)
+  const drawn = () => {
+    view.classList.add('drawn');
+    view.replaceChildren();
+    const key = BACKDROPS[Q.backdrop] ? Q.backdrop : Q.fallback;
+    try { const cv = toCanvas(renderBackdrop(key, { w: 180, h: 120, t: 0, reduced: true })); cv.classList.add('region-drawn'); view.append(cv); } catch { /* the name alone */ }
+  };
+  const still = CUTS[Q.cut];
+  if (still) {
+    const img = el('img', { class: 'region-still', src: still.src, alt: '', width: still.w, height: still.h, draggable: 'false', decoding: 'async' });
+    img.addEventListener('error', drawn);
+    view.append(img);
+  } else drawn();
+  P.append(head, view, text('p', 'region-text', Q.text), C.go);
+  ctx.audio.sfx('page');
   return C.wait();
 }
 
@@ -166,6 +216,7 @@ export function playCouncil(ctx, { second = false, third = false } = {}) {
 const ROAD_OPEN = {
   sunscorch: 'The Keep’s south-east gate stands open. The Sunward Road runs to Sandspire.',
   ironspire: 'The Keep’s east postern stands open. The Rockslide Pass climbs to Peak’s Veil.',
+  gloomfen: 'The fen stair below Mossfall stands open. Willowmurk’s safe paths lead down into the Gloomfen.',
 };
 const shortName = r => r.name.replace(/^The /, '').split(' ')[0];
 const andList = names => (names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : names[0] || '');
@@ -174,8 +225,11 @@ const andList = names => (names.length > 1 ? `${names.slice(0, -1).join(', ')} a
 //   'act1'       after the first council (M3): Act I is done; the Sunscorch road opens (M4)
 //   'act2'       after the second (M4): the Sunscorch is yours; the Ironspire road opens with it (M5),
 //                and every region still sealed opens in the next chapter
-//   'ironspire'  after the third (M5): the Ironspire is yours; the Blackwater still holds the causeway,
-//                and the Gloomfen Marsh is the next chapter
+//   'ironspire'  after the third (M5): the Ironspire is yours; the Blackwater still holds the causeway, and
+//                (M6) the fen stair below Mossfall stands open onto the Gloomfen (the council opened it); before
+//                that, the Gloomfen Marsh is the next chapter
+//   'gloomfen'   after the fourth (M6): the Gloomfen is yours and Act II ends: all eight coals lit, the Hollow
+//                Council waiting, Act III named and nothing opened
 // -> { act, cls, label, kick, title, sub, stats: [[k, v]], chips: [{ id, name, open }], lines: [text] }
 export function chapterEnd(game, act = 'act1') {
   const relics = Object.keys(RELICS).filter(id => game?.codex?.[id]?.claimed).length;
@@ -195,10 +249,22 @@ export function chapterEnd(game, act = 'act1') {
     if (later.length) lines.push(`${andList(later.map(full ? r => r.name : shortName))} ${later.length > 1 ? 'open' : 'opens'} in the next chapter.`);
     return { chips: regions.map(r => ({ id: r.id, name: r.name, open: now.includes(r) })), lines };
   };
+  if (act === 'gloomfen') {
+    // M6: the eight coals lit, and the end of Act II; nothing opens here: Act III is the next chapter
+    return {
+      act, cls: 'tbc tbc-act2 tbc-gloomfen', label: 'End of Act II', kick: 'The Gloomfen is yours', title: 'End of Act II', sub: 'Eight coals in the Eternal Hearth',
+      stats: [...stats, pages()], chips: [{ id: 'act3', name: 'Act III', open: false }],
+      lines: ['All eight coals are lit. The Hollow Council waits.', 'Act III begins in the next chapter.'],
+    };
+  }
   if (act === 'ironspire') {
     const next = say(ahead(['sunscorch', 'ironspire']), { full: true });
-    // while the Gloomfen is still sealed, the story's word on what bars it comes just before it is named
-    if (next.chips.some(c => c.id === 'gloomfen' && !c.open)) next.lines.splice(next.lines.length - 1, 0, 'The Blackwater still holds the causeway.');
+    // the story's word on the Blackwater comes just before the Gloomfen's line: before its road (M5: the next
+    // chapter), or (M6) before the fen stair the third council opens
+    if (next.chips.some(c => c.id === 'gloomfen')) {
+      const at = next.lines.findIndex(l => l === ROAD_OPEN.gloomfen);
+      next.lines.splice(at >= 0 ? at : next.lines.length - 1, 0, 'The Blackwater still holds the causeway.');
+    }
     return { act, cls: 'tbc tbc-act2 tbc-ironspire', label: 'The Ironspire is yours', kick: 'The Ironspire is yours', title: 'To be continued', sub: 'Six coals in the Eternal Hearth', stats: [...stats, pages()], ...next };
   }
   if (act === 'act2') {

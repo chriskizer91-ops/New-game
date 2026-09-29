@@ -1,8 +1,9 @@
 // Plain-language battle log lines for every event (the accessible record of the fight).
 // M5: a hold reads by its label ("Pip is held under by the Rime-Abbot"); a hold's lost turn, a release and
 // a charmed hero's turn are said by the engine's own text and move lines, so they add no line of their own.
+// M6: a heal a Rotting unit got half of says so; a `ko` with its own words (Hodge's) is said in them.
 import { STATUSES } from '../../data/statuses.js';
-import { statusName, relicLabel } from './model.js';
+import { statusName, relicLabel, holdPhrase } from './model.js';
 
 const RES = { crit: 'LEGEND STRIKE', hit: 'hit', graze: 'graze', miss: 'miss', fumble: 'fumble', save: 'saved', fail: 'failed' };
 const EFF = { weak: ' (weak!)', resist: ' (resisted)', immune: ' (immune)', normal: '' };
@@ -26,11 +27,11 @@ export function logLine(ev, disp) {
       const what = ev.aspect && ev.aspect !== ev.kind ? `${ev.kind} ${ev.aspect}` : ev.kind || '';
       return { text: `${N(ev.target)} takes ${ev.amount} ${what}${EFF[ev.eff] || ''}${ev.absorbed ? `, ${ev.absorbed} warded` : ''}${ev.graze ? ' (graze)' : ''}`, kind: 'damage' };
     }
-    case 'heal': return ev.amount ? { text: `${N(ev.target)} recovers ${ev.amount} HP`, kind: 'heal' } : null;
+    case 'heal': return ev.amount ? { text: `${N(ev.target)} recovers ${ev.amount} HP${ev.rot ? ' (halved by rot)' : ''}`, kind: 'heal' } : null;
     case 'status': {
       const def = STATUSES[ev.status] || {};
       if (ev.op === 'add') {
-        if (def.held && ev.label) return { text: `${N(ev.target)} is ${ev.label.toLowerCase()}${ev.source && U(ev.source) ? ` by ${N(ev.source)}` : ''}`, kind: 'status' };
+        if (def.held && ev.label) return { text: `${N(ev.target)} is ${holdPhrase(ev.label, ev.source && U(ev.source) ? N(ev.source) : '')}`, kind: 'status' };
         return { text: `${N(ev.target)} is ${statusName(ev.status)}${ev.stacks > 1 ? ` x${ev.stacks}` : ''}`, kind: 'status' };
       }
       if (ev.op === 'remove') return { text: def.held ? `${N(ev.target)} is back in the line` : `${N(ev.target)} is no longer ${statusName(ev.status)}`, kind: 'status' };

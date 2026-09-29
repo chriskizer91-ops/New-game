@@ -4,7 +4,10 @@
 // M5 (spec §3.1, §3.5, §3.6): the Ironspire's the same way: the bell, the ledger, the oath and the
 // Rune-Key, the hammer, Tamsin at Ironhold, the third council, Hush's scene, Kesh, the Stormwatch
 // board and the notices.
-// Owner: WP1 (M3), P3 story (M4, M5 tests).
+// M6 (spec §2.4, §3.1, §3.5, §3.6): the Gloomfen's: Hodge's toll, Tamsin's duel and her fall, the wards, Nettie's
+// remedy, Corvus's harpoon and the dead tongue, the main quest and the fourth council, the Champions, the children's
+// homecoming and Lull, the Bogmire board, the shops, the notices and the Keep's news.
+// Owner: WP1 (M3), P3 story (M4, M5, M6 tests).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { newGame } from '../src/rules/gauntlet.js';
@@ -734,4 +737,395 @@ test('Captain Ysolde takes the Stormwatch bounties in; Durra and Quill sell; the
   // Fawnrest's Brother Ivo, once the Highfold path is open (and only after he has told you of his bell)
   assert.equal(talkTo(story(a, { 'highfold-open': true }), 'ivo'), 'ivo', 'Ivo\'s first meeting still comes first');
   assert.equal(talkTo(story(a, { 'highfold-open': true, 'met-ivo': true }), 'ivo'), 'ivo-highfold');
+});
+
+// ---- M6: the Gloomfen's story (P3) -----------------------------------------------------------------
+
+// A save that has won the Ironspire and sat the third council (and heard Isolde's word after it): the fen stair is open.
+const ironspire = () => deepFreeze(story(brand(sunscorch(), 'brand-of-iron', 'brand-of-frost'), { 'ironspire-complete': true, 'council-3-done': true, 'heard-gloomfen': true }));
+const onDay = (g, day) => withProgress(g, { flags: { day } });
+const FALL_LINE = 'Tell Isolde I was the better Warden. Tell her I had to prove it somewhere.';
+const HODGE_LINE = 'She paid her toll. Heavier than yours.';
+const texts = (g, id) => dialogueView(g, id).choices.map(c => c.text);
+// the toll game's two outcomes, found by trying seeds (the rolls come from game.rngState)
+function tollGame(g, id) {
+  const i = dialogueView(g, id).choices.find(c => /toll game/.test(c.text)).i;
+  let win = null, lose = null;
+  for (let k = 1; k < 400 && !(win && lose); k++) {
+    const r = choose({ ...g, rngState: (k * 2654435761) | 0 }, id, i);
+    if (r.roll.pass) win = win || r; else lose = lose || r;
+  }
+  assert.ok(win && lose, 'both outcomes are possible');
+  return { win, lose };
+}
+
+test('Hodge\'s toll: the day\'s price in his words, paid once for good; the game once a day for his coin; the terrible fight', () => {
+  let g = ironspire();
+  assert.equal(talkTo(g, 'hodge'), 'hodge', 'the first meeting');
+  assert.ok(dialogueView(g, 'hodge').choices.filter(c => c.price).length === 1, 'it already offers the day\'s price');
+  g = enterDialogue(g, 'hodge').game;
+  assert.ok(flag(g, 'met-hodge'));
+  for (const [day, id, price] of [[1, 'hodge-gold', { gold: 120 }], [2, 'hodge-silver', { materials: { silver: 1 } }], [3, 'hodge-tonics', { bag: { 'hearth-tonic': 2 } }], [4, 'hodge-gold', { gold: 120 }]]) {
+    const d = onDay(g, day);
+    assert.equal(talkTo(d, 'hodge'), id, `day ${day}: his opener`);
+    assert.deepEqual(dialogueView(d, id).choices.filter(c => c.price).map(c => c.price), [price], `day ${day}: the price`);
+  }
+  assert.match(said(g, 'hodge-gold'), /hundred and twenty/);
+  assert.match(said(g, 'hodge-silver'), /silver/);
+  assert.match(said(g, 'hodge-tonics'), /Hearth Tonics/);
+  // paid on a silver day: the bar stays up for good, and the price is never asked again
+  const d2 = { ...onDay(g, 2), materials: { ...g.materials, silver: 3 } };
+  const paid = pick(d2, 'hodge-silver', /Pay today/);
+  assert.equal(paid.next, 'hodge-paid-up');
+  assert.equal(paid.game.materials.silver, 2);
+  assert.ok(flag(paid.game, 'toll-paid'));
+  assert.equal(talkTo(paid.game, 'hodge'), 'hodge-paid');
+  assert.ok(!dialogueView(onDay(paid.game, 3), 'hodge-paid').choices.some(c => c.price), 'paid once is paid for good');
+  assert.deepEqual(texts(paid.game, 'hodge-paid'), ['Play his toll game: best of three.', 'Shift him off his stool.', 'Leave.'], 'his coin is still there to play for, and the fight');
+  // the toll game, once a day: lost costs the day; won, the coin and passage for good
+  const { win, lose } = tollGame(g, 'hodge-gold');
+  assert.equal(lose.next, 'hodge-lost');
+  assert.equal(lose.roll.parts.length, 3);
+  assert.ok(!flag(lose.game, 'toll-paid'));
+  assert.ok(!texts(lose.game, 'hodge-gold').some(t => /toll game/.test(t)), 'once a day');
+  assert.ok(texts(onDay(lose.game, 2), 'hodge-silver').some(t => /toll game/.test(t)), 'again tomorrow');
+  assert.equal(win.next, 'hodge-won');
+  const coin = enterDialogue(win.game, 'hodge-won');
+  assert.ok(coin.events.some(e => e.t === 'item' && e.item.base === 'unfair-toll'));
+  assert.ok(owns(coin.game, 'unfair-toll') && flag(coin.game, 'toll-paid'));
+  assert.equal(coin.game.codex['unfair-toll'].claimed, true);
+  assert.ok(!texts(onDay(coin.game, 2), 'hodge-paid').some(t => /toll game/.test(t)), 'no second coin');
+  assert.equal(talkTo(wear(coin.game, 'unfair-toll'), 'hodge'), 'notice-hodge-coin', 'the world notices');
+  assert.equal(talkTo(wear(g, 'unfair-toll'), 'hodge'), 'notice-hodge-coin');
+  // the terrible fight: refused at the bar, it is a full battle; never offered once he is beaten
+  assert.deepEqual(pick(g, 'hodge-gold', /Refuse, and make him move/).events, [{ t: 'fight', enc: 'hodge' }]);
+  assert.deepEqual(pick(paid.game, 'hodge-paid', /Shift him/).events, [{ t: 'fight', enc: 'hodge' }]);
+  const beaten = beat(g, 'hodge');
+  assert.equal(talkTo(beaten, 'hodge'), 'hodge-stool');
+  assert.deepEqual(texts(beaten, 'hodge-stool'), ['Play his toll game: best of three.', 'Leave.'], 'no price, no fight, the coin still there');
+  assert.equal(stepAt(story(beaten, { 'met-moss': true }), 'gloomfen-waking'), 'tamsin-rotbridge', 'the bar is up');
+  // his lines after the fight: he sits down and says so (and knows his coin on you); after a loss, twice
+  assert.equal(afterDialogue(beaten, 'hodge', 'victory'), 'hodge-sits');
+  assert.equal(afterDialogue(own(beaten, 'unfair-toll'), 'hodge', 'victory'), 'hodge-sits-coin');
+  assert.equal(afterDialogue(own(beaten, 'unfair-toll', { shattered: true }), 'hodge', 'victory'), 'hodge-sits', 'a shattered coin is no coin');
+  assert.equal(afterDialogue(g, 'hodge', 'defeat'), 'hodge-knocked');
+  assert.equal(afterDialogue(enterDialogue(g, 'hodge-knocked').game, 'hodge', 'defeat'), 'hodge-knocked-again');
+  assert.equal(afterDialogue(g, 'hodge', 'yield'), null, 'he is no duel');
+  // the encounter's own talk (however the map places him) offers the same toll
+  assert.deepEqual(texts(g, 'hodge-toll'), texts(g, 'hodge-gold'));
+});
+
+test('Tamsin at Rotbridge: her talk starts the duel; a win or a yield leads into her fall; the boots are yours either way; the world hears of it', () => {
+  const g = story(ironspire(), { 'met-moss': true, 'met-hodge': true, 'toll-paid': true });
+  assert.deepEqual(pick(g, 'tamsin-rotbridge', /^Try/).events, [{ t: 'fight', enc: 'tamsin-rotbridge' }]);
+  assert.deepEqual(pick(g, 'tamsin-rotbridge', /Not yet/).events, []);
+  assert.match(said(g, 'tamsin-rotbridge'), /letters/);
+  assert.equal(stepAt(g, 'gloomfen-waking'), 'tamsin-rotbridge');
+  // won: her lines, then down the river into her fall
+  const won = beat(g, 'tamsin-rotbridge');
+  assert.equal(afterDialogue(won, 'tamsin-rotbridge', 'victory'), 'tamsin-rb-win');
+  const look = pick(won, 'tamsin-rb-win', /Look downstream/);
+  assert.equal(look.next, 'tamsin-fall');
+  const fall = enterDialogue(look.game, 'tamsin-fall');
+  assert.ok(flag(fall.game, 'tamsin-fallen'));
+  assert.ok(!ladder(g).some(p => p.id === 'man-on-the-barge'), 'no rumour of the barge before her duel');
+  assert.ok(ladder(fall.game).some(p => p.id === 'man-on-the-barge' && p.state === 'silhouette'), 'then the rumour of the man on the barge');
+  assert.deepEqual(dialogueView(fall.game, 'tamsin-fall').choices.map(c => c.text), ['Tamsin. Don\'t.']);
+  assert.equal(pick(fall.game, 'tamsin-fall', /Don't/).next, 'tamsin-traded');
+  const traded = dialogueView(fall.game, 'tamsin-traded').lines;
+  assert.ok(traded.some(l => l.name === 'Tamsin' && l.text === FALL_LINE));
+  assert.ok(traded.some(l => l.name === 'Hodge' && l.text === HODGE_LINE));
+  assert.equal(afterDialogue(fall.game, 'tamsin-rotbridge', 'victory'), null, 'the fall plays once');
+  assert.equal(stepAt(won, 'gloomfen-waking'), 'gretch', 'on to Bogmire');
+  // yielded: she leaves the boots on the bridge, and falls the same way
+  assert.equal(afterDialogue(g, 'tamsin-rotbridge', 'yield'), 'tamsin-rb-yield');
+  const y = enterDialogue(g, 'tamsin-rb-yield');
+  assert.ok(flag(y.game, 'tamsin-yielded-4'));
+  assert.ok(y.events.some(e => e.t === 'item' && e.item.base === 'bogstriders'));
+  assert.ok(owns(y.game, 'bogstriders'));
+  assert.equal(pick(y.game, 'tamsin-rb-yield', /Look downstream/).next, 'tamsin-fall');
+  assert.equal(stepAt(y.game, 'gloomfen-waking'), 'gretch');
+  // Hodge saw it all from his stool: once (and it marks her fallen, should her scene have been cut short)
+  const cut = story(won, {});
+  assert.equal(talkTo(cut, 'hodge'), 'hodge-heavier');
+  const h = enterDialogue(cut, 'hodge-heavier').game;
+  assert.ok(flag(h, 'tamsin-fallen'));
+  assert.equal(talkTo(h, 'hodge'), 'hodge-paid');
+  assert.equal(talkTo(wear(h, 'bogstriders'), 'hodge'), 'notice-hodge-boots');
+  // and sits at your fire that night, once
+  assert.equal(restDialogue(h, 'toll-lamp'), 'toll-lamp-night');
+  assert.equal(restDialogue(enterDialogue(h, 'toll-lamp-night').game, 'toll-lamp'), null);
+  assert.equal(restDialogue(g, 'toll-lamp'), null, 'not before she has gone');
+  // the Keep: Isolde will hear it at the Council table; Hilda knows the mark on his clasp (once)
+  const home = fall.game;
+  assert.equal(talkTo(home, 'isolde'), 'isolde-rotbridge');
+  assert.equal(talkTo(story(home, { 'heard-gloomfen': false }), 'isolde'), 'isolde-rotbridge', 'never the stale send-off');
+  assert.equal(talkTo(wear(home, 'bogstriders'), 'isolde'), 'notice-isolde-boots');
+  const hild = story(home, { 'heard-hild': true });
+  assert.equal(talkTo(hild, 'hilda'), 'hilda-barge');
+  assert.match(said(hild, 'hilda-barge'), /broken ring/);
+  assert.equal(talkTo(enterDialogue(hild, 'hilda-barge').game, 'hilda'), 'hilda-waits');
+  assert.equal(talkTo(story(home, {}), 'hilda'), 'hilda-letter', 'her brother\'s letter comes first');
+});
+
+test('the Failing Wards: Elder Moss\'s riddles, Grandfather Willow quieted, the last Willow-Ward; and the willow quieted first', () => {
+  let g = ironspire();
+  let t = talk(g, 'moss');
+  assert.equal(t.id, 'moss');
+  assert.match(said(g, 'moss'), /Grandfather Willow/);
+  g = t.game;
+  assert.equal(questState(g, 'failing-wards'), 'active');
+  assert.equal(stepAt(g, 'failing-wards'), 'wm-willow');
+  assert.equal(talkTo(g, 'moss'), 'moss-again', 'no second first meeting');
+  for (const [re, id] of [[/lights/, 'moss-lights'], [/Rotbridge/, 'moss-bridge'], [/bells/, 'moss-bells']]) assert.equal(pick(g, 'moss-again', re).next, id);
+  assert.match(said(g, 'moss-bridge'), /troll/);
+  assert.equal(talkTo(g, 'sedge'), 'sedge');
+  assert.equal(talkTo(g, 'wm-villager'), 'wm-villager');
+  g = beat(g, 'wm-willow');
+  assert.equal(afterDialogue(g, 'wm-willow', 'victory'), 'willow-rest');
+  assert.equal(stepAt(g, 'failing-wards'), 'moss');
+  t = talk(g, 'moss');
+  assert.equal(t.id, 'moss-wards');
+  assert.ok(t.game !== g && enterDialogue(g, 'moss-wards').events.some(e => e.t === 'item' && e.item.base === 'willow-ward'));
+  g = t.game;
+  assert.equal(questState(g, 'failing-wards'), 'done');
+  assert.ok(owns(g, 'willow-ward'));
+  assert.equal(talkTo(g, 'moss'), 'moss-after');
+  assert.equal(afterDialogue(g, 'wm-willow', 'victory'), null, 'the willow is quieted once');
+  assert.equal(talkTo(g, 'sedge'), 'sedge-wards');
+  assert.equal(talkTo(g, 'wm-villager'), 'wm-villager-wards');
+  assert.equal(talkTo(wear(g, 'willow-ward'), 'moss'), 'notice-moss-ward', 'the world notices');
+  assert.equal(restDialogue(g, 'willow-hearth'), 'wards-night');
+  assert.equal(restDialogue(enterDialogue(g, 'wards-night').game, 'willow-hearth'), null, 'once');
+  // out of order: the willow quieted before Moss was met: the thanks is the first meeting
+  const o = talk(beat(ironspire(), 'wm-willow'), 'moss');
+  assert.equal(o.id, 'moss-wards');
+  assert.ok(flag(o.game, 'met-moss'));
+  assert.equal(questState(o.game, 'failing-wards'), 'done');
+  assert.equal(talkTo(wear(ironspire(), 'willow-ward'), 'moss'), 'moss', 'he notices nothing before you have met');
+  // a claim still needs every step
+  const early = enterDialogue(story(ironspire(), { 'met-moss': true }), 'moss-wards').game;
+  assert.notEqual(questState(early, 'failing-wards'), 'done');
+  assert.ok(!owns(early, 'willow-ward'));
+});
+
+test('Nettie\'s Remedy: Mother Grue\'s stone, the Hexbane Shawl and a bog amber; the hut\'s gems; one day, perhaps, a witch for the Keep', () => {
+  let g = story(ironspire(), { 'toll-paid': true, 'tamsin-yielded-4': true, 'tamsin-fallen': true });
+  let t = talk(g, 'nettie');
+  assert.equal(t.id, 'nettie');
+  g = t.game;
+  assert.equal(questState(g, 'nettie-remedy'), 'active');
+  assert.equal(stepAt(g, 'nettie-remedy'), 'grue-hollow');
+  assert.equal(talkTo(g, 'nettie'), 'nettie-again');
+  assert.deepEqual(pick(g, 'nettie-again', /Buy/).events, [{ t: 'open', screen: 'shop:nettie' }]);
+  g = beat(g, 'grue-hollow');
+  assert.equal(afterDialogue(g, 'grue-hollow', 'victory'), 'grue-rest');
+  assert.equal(stepAt(g, 'nettie-remedy'), 'nettie');
+  const ambers = g.gems?.['bog-amber'] || 0;
+  t = talk(g, 'nettie');
+  assert.equal(t.id, 'nettie-grue');
+  g = t.game;
+  assert.equal(questState(g, 'nettie-remedy'), 'done');
+  assert.ok(owns(g, 'hexbane-shawl'));
+  assert.equal(g.gems['bog-amber'], ambers + 1);
+  assert.equal(afterDialogue(g, 'grue-hollow', 'victory'), null);
+  assert.equal(talkTo(g, 'nettie'), 'nettie-after');
+  assert.equal(talkTo(brand(g, 'brand-of-lanterns'), 'nettie'), 'nettie-someday', 'a hint, and only a hint');
+  for (const [relic, d] of [['hag-stone', 'notice-nettie-stone'], ['hexbane-shawl', 'notice-nettie-shawl'], ['mourning-veil', 'notice-nettie-veil']]) assert.equal(talkTo(wear(g, relic), 'nettie'), d);
+  assert.equal(talkTo(wear(g, 'hexbane-shawl'), 'sedge'), 'notice-sedge-shawl');
+  assert.equal(talkTo(wear(g, 'hexbane-shawl'), 'gretch'), 'gretch', 'Gretch notices nothing before you have met');
+  // out of order: Grue beaten before Nettie was met: the thanks is the first meeting
+  const o = talk(beat(ironspire(), 'grue-hollow'), 'nettie');
+  assert.equal(o.id, 'nettie-grue');
+  assert.ok(flag(o.game, 'met-nettie'));
+  assert.equal(questState(o.game, 'nettie-remedy'), 'done');
+  const early = enterDialogue(story(ironspire(), { 'met-nettie': true }), 'nettie-grue').game;
+  assert.notEqual(questState(early, 'nettie-remedy'), 'done', 'a claim still needs every step');
+});
+
+test('Corvus: his harpoon out of the Leviathan (known on sight); the sealed chest read by Elder Moss; the page is yours; and each out of order', () => {
+  let g = story(ironspire(), { 'met-moss': true });
+  let t = talk(g, 'corvus');
+  assert.equal(t.id, 'corvus');
+  g = t.game;
+  for (const q of ['corvus-harpoon', 'dead-tongue']) assert.equal(questState(g, q), 'active', q);
+  assert.equal(stepAt(g, 'corvus-harpoon'), 'blackwater-leviathan');
+  assert.equal(stepAt(g, 'dead-tongue'), 'mh-salvage');
+  assert.equal(talkTo(g, 'corvus'), 'corvus-again');
+  // the chest: taken at the salvage camp, read by Moss, told to Corvus
+  g = beat(g, 'mh-salvage');
+  assert.equal(afterDialogue(g, 'mh-salvage', 'victory'), 'salvage-chest');
+  assert.equal(talkTo(g, 'corvus'), 'corvus-chest-taken');
+  assert.equal(stepAt(g, 'dead-tongue'), 'moss');
+  t = talk(g, 'moss');
+  assert.equal(t.id, 'moss-chest');
+  assert.match(said(g, 'moss-chest'), /Worldforge/);
+  g = t.game;
+  assert.ok(flag(g, 'chest-read'));
+  assert.equal(afterDialogue(g, 'mh-salvage', 'victory'), null);
+  const gold = g.gold, ambers = g.gems?.['bog-amber'] || 0;
+  t = talk(g, 'corvus');
+  assert.equal(t.id, 'corvus-chest');
+  g = t.game;
+  assert.equal(questState(g, 'dead-tongue'), 'done');
+  assert.equal(g.gold, gold + 250);
+  assert.equal(g.gems['bog-amber'], ambers + 1);
+  assert.ok(flag(g, 'worldforge-page'), 'the chest\'s secret is yours');
+  // the harpoon: a shattered one is not his; a whole one he knows on sight
+  assert.equal(talkTo(own(g, 'corvus-harpoon', { shattered: true }), 'corvus'), 'corvus-again');
+  g = own(brand(g, 'brand-of-lanterns', 'brand-of-the-deep'), 'corvus-harpoon');
+  const silver = g.materials.silver;
+  t = talk(g, 'corvus');
+  assert.equal(t.id, 'corvus-harpoon');
+  g = t.game;
+  assert.equal(questState(g, 'corvus-harpoon'), 'done');
+  assert.equal(g.gold, gold + 250 + 300);
+  assert.equal(g.materials.silver, silver + 2);
+  assert.equal(talkTo(g, 'corvus'), 'corvus-after');
+  for (const [relic, d] of [['corvus-harpoon', 'notice-corvus-harpoon'], ['salvagers-helm', 'notice-corvus-helm'], ['gar-tooth', 'notice-corvus-tooth'], ['deep-pearl', 'notice-corvus-pearl']]) assert.equal(talkTo(wear(g, relic), 'corvus'), d);
+  // out of order: the harpoon brought before Corvus was ever met; the chest read before he was met
+  const o = talk(own(ironspire(), 'corvus-harpoon'), 'corvus');
+  assert.equal(o.id, 'corvus-harpoon');
+  assert.ok(flag(o.game, 'met-corvus'));
+  assert.equal(questState(o.game, 'corvus-harpoon'), 'done');
+  const read = talk(beat(ironspire(), 'mh-salvage'), 'moss');
+  assert.equal(read.id, 'moss-chest', 'Moss reads it for a Warden he has not met (also his first meeting)');
+  assert.ok(flag(read.game, 'met-moss'));
+  const c = talk(read.game, 'corvus');
+  assert.equal(c.id, 'corvus-chest');
+  assert.equal(questState(c.game, 'dead-tongue'), 'done');
+  const early = enterDialogue(story(ironspire(), { 'met-corvus': true, 'chest-read': true }), 'corvus-chest').game;
+  assert.notEqual(questState(early, 'dead-tongue'), 'done', 'a claim still needs every step');
+});
+
+test('the Gloomfen Waking: Isolde and the gate guard send you by the fen stair, the steps close with their Brands, and the fourth council ends Act II', () => {
+  let g = story(brand(sunscorch(), 'brand-of-iron', 'brand-of-frost'), { 'ironspire-complete': true });
+  assert.equal(questState(g, 'gloomfen-waking'), 'active', 'it shows the moment the Ironspire is won');
+  assert.equal(stepAt(g, 'gloomfen-waking'), 'isolde', 'first, the third council');
+  g = enterDialogue(g, 'council-3').game;
+  assert.equal(nextObjective(g).entity, 'moss');
+  assert.equal(talkTo(g, 'isolde'), 'isolde-gloomfen');
+  assert.match(said(g, 'isolde-gloomfen'), /reed-token/);
+  assert.equal(talkTo(g, 'gate-guard-sw'), 'guard-sw-fen');
+  assert.equal(talkTo(sunscorch(), 'gate-guard-sw'), 'guard-sw');
+  // down the road, one step at a time
+  let s = g;
+  for (const [f, next] of [
+    [x => story(x, { 'met-moss': true }), 'rb-hodge'],
+    [x => story(x, { 'toll-paid': true }), 'tamsin-rotbridge'],
+    [x => story(x, { 'tamsin-yielded-4': true }), 'gretch'],
+    [x => story(x, { 'met-gretch': true }), 'lantern-mother'],
+    [x => brand(x, 'brand-of-lanterns'), 'corvus'],
+    [x => story(x, { 'met-corvus': true }), 'blackwater-leviathan'],
+  ]) { s = f(s); assert.equal(stepAt(s, 'gloomfen-waking'), next); }
+  // straight down: both Brands, and not a word to Moss, Hodge, Gretch or Corvus
+  const done = story(brand(g, 'brand-of-lanterns', 'brand-of-the-deep'), { 'gloomfen-complete': true });
+  assert.equal(questState(done, 'gloomfen-waking'), 'active');
+  assert.equal(nextObjective(done).entity, 'isolde', 'the talk steps close with their Brands');
+  assert.equal(talkTo(done, 'gate-guard-sw'), 'guard-sw-open', 'the causeway is dry');
+  assert.equal(talkTo(story(done, { 'met-gretch': true }), 'gretch'), 'gretch-summons', 'Gretch rides for the Keep');
+  const hall = enterMap(done, { map: 'keep-hall', at: [12, 6], face: 'n' });
+  assert.deepEqual(hall.events.filter(e => e.t === 'trigger').map(e => e.id), ['council-4']);
+  const c = enterDialogue(hall.game, 'council-4').game;
+  assert.equal(questState(c, 'gloomfen-waking'), 'done');
+  assert.ok(dialogueView(c, 'council-4').lines.some(l => l.name === 'Mayor Gretch'), 'Gretch takes the Gloomfen\'s chair');
+  assert.deepEqual(pick(c, 'council-4', /Let the Council/).events.filter(e => e.t === 'end'), [{ t: 'end', act: 'gloomfen' }]);
+  const told = pick(c, 'council-4', /Tamsin/);
+  assert.equal(told.next, 'council-4-tamsin');
+  assert.deepEqual(texts(told.game, 'council-4-tamsin'), ['Let the Council talk.'], 'no page without the chest\'s secret');
+  assert.deepEqual(pick(told.game, 'council-4-tamsin', /Let the Council/).events.filter(e => e.t === 'end'), [{ t: 'end', act: 'gloomfen' }]);
+  // with the dead tongue's page: Fenwick knows the hand, and it goes into the vault
+  const page = story(told.game, { 'worldforge-page': true });
+  assert.equal(pick(page, 'council-4-tamsin', /Worldforge page/).next, 'council-4-page');
+  assert.deepEqual(enterDialogue(page, 'council-4-page').events.filter(e => e.t === 'end'), [{ t: 'end', act: 'gloomfen' }]);
+  // guarded by the flag its scene sets: a reload mid-scene plays it again; once it has played, never
+  assert.ok(enterMap(hall.game, { map: 'keep-hall', at: [12, 6], face: 'n' }).events.some(e => e.id === 'council-4'));
+  assert.ok(!enterMap(c, { map: 'keep-hall', at: [12, 6], face: 'n' }).events.some(e => e.id === 'council-4'));
+  // after it: the boxes in the vault, the eighth coal, Gretch and Miravel
+  assert.equal(talkTo(c, 'isolde'), 'isolde-boxes');
+  assert.equal(talkTo(c, 'fenwick'), 'fenwick-eight');
+  assert.equal(talkTo(story(c, { 'met-gretch': true }), 'gretch'), 'gretch-council');
+  assert.equal(talkTo(story(c, { 'met-miravel-rot': true }), 'miravel'), 'miravel-box');
+  // a Warden who never sat the third council hears both, the third one first
+  const skipped = story(done, { 'council-3-done': false });
+  assert.deepEqual(enterMap(skipped, { map: 'keep-hall', at: [12, 6], face: 'n' }).events.filter(e => e.t === 'trigger').map(e => e.id), ['council-3', 'council-4']);
+});
+
+test('after the Champions: the Lantern Mother (lantern claimed or broken) and the children home; the Leviathan, then Lull; rematches', () => {
+  const g = story(ironspire(), { 'met-gretch': true, 'toll-paid': true, 'tamsin-fallen': true });
+  const l = brand(g, 'brand-of-lanterns');
+  assert.equal(afterDialogue(own(l, 'lamplighters-lantern'), 'lantern-mother', 'victory'), 'mother-after-lantern');
+  assert.equal(afterDialogue(own(l, 'lamplighters-lantern', { shattered: true }), 'lantern-mother', 'victory'), 'mother-after', 'a broken lantern');
+  assert.ok(dialogueView(l, 'mother-after').lines.some(x => x.name === 'The Lantern Mother'), 'she speaks');
+  const home = enterDialogue(l, 'mother-after').game;
+  assert.ok(flag(home, 'children-home'));
+  assert.equal(afterDialogue(home, 'lantern-mother', 'victory'), 'mother-again', 'a rematch is not a first win');
+  // Bogmire: the town's thanks (once, 150 gold), Widow Pell's boy, the watch, the lamps lit
+  const t = talk(home, 'gretch');
+  assert.equal(t.id, 'gretch-children');
+  assert.equal(t.game.gold, home.gold + 150);
+  assert.equal(talkTo(t.game, 'gretch'), 'gretch-home');
+  assert.equal(talkTo(home, 'pell'), 'pell-home');
+  assert.equal(talkTo(g, 'pell'), 'pell');
+  assert.equal(pick(home, 'pell-home', /true/).next, 'pell-true');
+  assert.equal(talkTo(home, 'bm-watch'), 'bm-watch-home');
+  assert.equal(talkTo(g, 'bm-watch'), 'bm-watch');
+  assert.equal(restDialogue(home, 'stilt-hearth'), 'bogmire-lamps');
+  assert.equal(restDialogue(enterDialogue(home, 'bogmire-lamps').game, 'stilt-hearth'), null, 'once');
+  assert.equal(restDialogue(g, 'stilt-hearth'), null, 'not before the children are home');
+  assert.equal(talkTo(home, 'moss'), 'moss', 'Moss still gets his first meeting');
+  assert.equal(talkTo(story(home, { 'met-moss': true }), 'moss'), 'moss-lanterns');
+  assert.equal(talkTo(home, 'fenwick'), 'fenwick-seven');
+  // the children home before Gretch was ever met: the thanks is her first meeting
+  const straight = talk(story(home, { 'met-gretch': false }), 'gretch');
+  assert.equal(straight.id, 'gretch-children');
+  assert.ok(flag(straight.game, 'met-gretch'));
+  // the Blackwater Leviathan: the collar breaks, the water falls, and in the quiet, Lull
+  const d = story(brand(home, 'brand-of-the-deep'), { 'gloomfen-complete': true });
+  assert.equal(afterDialogue(own(d, 'corvus-harpoon'), 'blackwater-leviathan', 'victory'), 'leviathan-after-harpoon');
+  assert.equal(afterDialogue(d, 'blackwater-leviathan', 'victory'), 'leviathan-after');
+  const down = x => { const v = dialogueView(x, 'leviathan-after').choices; assert.equal(v.length, 1); return choose(x, 'leviathan-after', v[0].i).next; };
+  assert.equal(down(d), 'lull');
+  assert.equal(down(story(d, { 'met-moss': true })), 'lull-moss');
+  const by = (id, who) => dialogueView(d, id).lines.filter(x => x.speaker === who).map(x => x.text).join(' ');
+  assert.match(by('lull-moss', 'moss'), /Lull/);
+  assert.match(by('lull', 'narrator'), /Lull/);
+  for (const id of ['lull', 'lull-moss']) assert.match(by(id, 'alondra'), /Three/);
+  assert.equal(afterDialogue(enterDialogue(d, 'leviathan-after').game, 'blackwater-leviathan', 'victory'), 'leviathan-again');
+  assert.equal(talkTo(d, 'bm-watch'), 'bm-watch-deep');
+  assert.equal(talkTo(story(d, { 'met-corvus': true }), 'corvus'), 'corvus-deep');
+  assert.equal(talkTo(story(d, { 'met-moss': true }), 'moss'), 'moss-deep');
+  assert.equal(talkTo(d, 'wm-villager'), 'wm-villager-deep');
+  // the Drowned Cantor's lead: his last beat, once
+  assert.equal(afterDialogue(g, 'cantor', 'victory'), 'cantor-rest');
+  assert.equal(afterDialogue(enterDialogue(g, 'cantor-rest').game, 'cantor', 'victory'), null);
+  // the Ladder: the Lantern Mother's poster is settled once she falls; Harrow himself is still a rumour
+  const poster = (x, id) => ladder(x).find(p => p.id === id).state;
+  assert.equal(poster(beat(g, 'lantern-mother'), 'lantern-mother'), 'settled');
+  assert.equal(poster(beat(g, 'hodge'), 'hodge'), 'settled');
+  assert.equal(poster(beat(d, 'lantern-mother', 'blackwater-leviathan'), 'missing-smith'), 'silhouette', 'Harrow is still missing');
+});
+
+test('Mayor Gretch takes the Bogmire board\'s bounties in; Sedge and Nettie sell; the Gloomfen notices what you wear', () => {
+  const g = story(beat(ironspire(), 'mk-bogfolk', 'old-jaws'), { 'met-gretch': true });
+  assert.deepEqual(bounties(g).filter(b => b.giver === 'gretch').map(b => b.state), ['ready', 'active', 'active', 'ready']);
+  const r = pick(g, talkTo(g, 'gretch'), /Turn in bounties/);
+  assert.equal(r.next, 'gretch-paid');
+  assert.equal(r.game.gold, g.gold + 100 + 170);
+  assert.deepEqual(bounties(r.game).filter(b => b.state === 'done').map(b => b.id), ['b-bogfolk', 'b-jaws']);
+  assert.ok(!dialogueView(r.game, 'gretch-again').choices.some(c => /Turn in/.test(c.text)), 'nothing left to turn in');
+  assert.equal(pick(g, 'gretch-again', /soot-sealed/).next, 'gretch-box');
+  assert.match(said(g, 'gretch-box'), /Sealed in soot|sealed in soot/);
+  assert.equal(talkTo(ironspire(), 'gretch'), 'gretch', 'the first meeting');
+  assert.match(said(g, 'gretch'), /fear and favours/);
+  const a = ironspire();
+  assert.deepEqual(pick(a, 'sedge', /Buy/).events, [{ t: 'open', screen: 'shop:sedge' }]);
+  assert.deepEqual(pick(story(a, { 'met-nettie': true }), 'nettie-again', /Buy/).events, [{ t: 'open', screen: 'shop:nettie' }]);
+  const met = story(a, { 'met-moss': true, 'met-hodge': true, 'met-gretch': true, 'met-nettie': true, 'met-corvus': true, 'heard-hild': true });
+  for (const [npc, relic, d] of [
+    ['moss', 'weeping-bow', 'notice-moss-bow'], ['moss', 'cantors-staff', 'notice-moss-staff'], ['wm-villager', 'weeping-bow', 'notice-villager-bow'],
+    ['gretch', 'lamplighters-lantern', 'notice-gretch-lantern'], ['gretch', 'hexbane-shawl', 'notice-gretch-shawl'], ['pell', 'lamplighters-lantern', 'notice-pell-lantern'],
+    ['bm-watch', 'barge-gauntlets', 'notice-watch-chain'], ['hilda', 'barge-gauntlets', 'notice-hilda-chain'], ['hilda', 'corvus-harpoon', 'notice-hilda-harpoon'],
+    ['fenwick', 'lamplighters-lantern', 'notice-fenwick-lantern'], ['isolde', 'bogstriders', 'notice-isolde-boots'],
+  ]) assert.equal(talkTo(wear(met, relic), npc), d, `${npc} notices ${relic}`);
 });

@@ -9,14 +9,20 @@
 // Rime-Abbot holding a hero under the ice ("Held under", by him, the turns left, out of the line) and
 // letting go early (abbot); Kharzul's exact Burrow: sunk into the floor, out of reach, up again at its
 // turn with its forced blow (burrow); a charmed hero ("Charmed", then its turn played against a friend)
-// (charm). A scenario whose foes are still the scaffold's stand-ins reports BLOCKED, not a pass, and fails the run.
+// (charm). M6 (spec §8, P7): the Lantern Mother through three phases with the Lamplighter's Lantern and the Mourning
+// Veil snapped off (lantern); a hero led away under the water ("Led away", by her) and back in the line (led-away);
+// the Blackwater Leviathan diving ("Dived · out of reach") and swallowing a hero whole (leviathan); Hodge's Toll Is Due
+// at the strongest hero and his shove off the bridge ("In the river"), and his words when he sits down (hodge); a hexed
+// hero and a rotting one, and a heal halved by rot (fen). A fight that needs a rare moment is found by the rules first
+// (a starter, level and seed that has it; the harness plays the same fight).
+// A scenario whose foes are still the scaffold's stand-ins reports BLOCKED, not a pass, and fails the run.
 // Asserts no console errors or uncaught exceptions, no horizontal scroll, 44px tap targets, and the
 // aftermath hand-off. Screenshots of the key moments go to tools/shots/battle-*.png.
 //
 //   node tools/e2e-battle.mjs                 # everything
 //   node tools/e2e-battle.mjs --only=snag,boss  # some scenarios (names below)
 //   node tools/e2e-battle.mjs --out=/tmp/x    # private harness page and screenshots (parallel runs)
-// Owner: WP8; M5 P7 (the Ironspire scenarios).
+// Owner: WP8; M5 P7 (the Ironspire scenarios); M6 P7 (the Gloomfen's).
 import { createRequire } from 'node:module';
 import { execSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -759,6 +765,163 @@ await scenario('charm', async rec => {
     break;
   }
   check(done, 'no seed had a wisp charm a hero');
+});
+
+// ---- M6 (spec §8): the Gloomfen's Champions, Hodge, and the fen's two statuses -----------------------------
+
+// M6: a fight (starter, level, seed) the rules play with want(events, endState), and its events in order
+function pickFight(node, want, opts) {
+  const pick = findFight(node, ev => want(ev), opts);
+  return pick ? { ...pick, events: harnessFight(node, pick).events } : null;
+}
+const isHeroId = id => ['warden', 'pip', 'bryn', 'alondra'].includes(id);
+const holdAdd = label => ev => ev.t === 'status' && ev.status === 'swallowed' && ev.op === 'add' && ev.label === label;
+const dived = ev => ev.t === 'status' && ev.status === 'burrowed' && ev.op === 'add';
+// what a foe's plate says while paused on an event about it (M5's burrow, M6's dive)
+const foeProbe = ev => {
+  const box = document.querySelector(`.bt-foe[data-id="${ev.t === 'intent' ? ev.foe : ev.target || ev.actor || ev.foe}"]`);
+  return {
+    sunk: !!box?.classList.contains('sunk'), water: !!box?.classList.contains('water'), aria: box?.querySelector('.bt-foe-hit')?.getAttribute('aria-label') || '',
+    state: box?.querySelector('.bt-foe-state')?.hidden ? '' : box?.querySelector('.bt-foe-state')?.textContent || '',
+    intent: box?.querySelector('.bt-int-name')?.textContent || '', target: box?.querySelector('.bt-int-tgt')?.textContent || '',
+  };
+};
+
+await scenario('lantern', async rec => {
+  // the Lantern Mother through three phases with the Lamplighter's Lantern and the Mourning Veil snapped off (each
+  // piece shuts its moves down)
+  if (stubbed('lantern-mother').length) { blocked(rec, 'the Lantern Mother is still the scaffold stand-in (P4: data/foes.js)'); return; }
+  await championFight(rec, 'lantern-mother', ['lamplighters-lantern', 'mourning-veil'], 'lantern', { level: levelFor('lantern-mother') });
+});
+
+await scenario('led-away', async rec => {
+  // M6: her Lead Them Down takes a hero under the water: its card says "Led away", by her, with the turns left, and it
+  // is out of the line; then it comes back (let go early, or the turns run out)
+  if (stubbed('lantern-mother').length) { blocked(rec, 'the Lantern Mother is still the scaffold stand-in (P4: data/foes.js)'); return; }
+  const lvl = levelFor('lantern-mother');
+  const led = holdAdd('Led away');
+  const pick = pickFight('lantern-mother', ev => { const i = ev.findIndex(led); return i >= 0 && ev.slice(i).some(e => e.t === 'status' && e.status === 'swallowed' && e.target === ev[i].target && ['release', 'remove'].includes(e.op)); }, { levels: [lvl, lvl + 2, lvl - 2], seeds: 20 });
+  check(pick, 'by the rules, no starter, level or seed has the Lantern Mother lead a hero away and let it come back');
+  rec.notes.push(`${pick.starter}, level ${pick.level}, seed ${pick.seed}`);
+  const s = await open(PHONE360, `node=lantern-mother&level=${pick.level}&speed=4&auto=1&starter=${pick.starter}&seed=${pick.seed}`);
+  const h = await pauseWhen(s.page, ev => ev.t === 'status' && ev.status === 'swallowed' && ev.op === 'add' && ev.label === 'Led away', 'phone360-led-away', { hurry: true, probe: heroProbe });
+  check(h, 'nobody was led away (the rules said someone would be)');
+  rec.shots.push(h.path);
+  check(h.info.held && /^led away$/i.test(h.info.k) && /Lantern Mother/.test(h.info.by) && /^\d turns? left$/.test(h.info.t), `the led-away hero's card reads "${h.info.k} ${h.info.by} ${h.info.t}"`);
+  check(/Led away/.test(h.info.aria) && /out of the line/.test(h.info.aria), `the card's label says the hero is out of the line ("${h.info.aria}")`);
+  await layoutChecks(s.page, 'led-away/held');
+  const back = await pauseWhen(s.page, (ev, id) => ev.t === 'status' && ev.target === id && ev.status === 'swallowed' && ['release', 'remove'].includes(ev.op), 'phone360-led-back', { hurry: true, arg: h.ev.target, probe: heroProbe });
+  check(back && !back.info.held, `back in the line, the card drops "Led away" (${back?.ev.op})`);
+  rec.shots.push(back.path);
+  s.aftermath = await toAftermath(s.page, { timeout: 400000, hurry: true });
+  const log = await logText(s.page);
+  await finishCommon(rec, s);
+  await s.context.close();
+  check(log.some(l => /is led away by The Lantern Mother/.test(l)), 'the log says who led the hero away');
+});
+
+await scenario('leviathan', async rec => {
+  // M6: the Blackwater Leviathan's Sound takes it down into the water (its plate "Dived · out of reach", its hit box no
+  // target), and it breaches at its own turn; its Swallow takes a hero whole ("Swallowed whole", by it)
+  if (stubbed('blackwater-leviathan').length) { blocked(rec, 'the Blackwater Leviathan is still the scaffold stand-in (P4: data/foes.js)'); return; }
+  const lvl = levelFor('blackwater-leviathan');
+  const whole = holdAdd('Swallowed whole');
+  const pick = pickFight('blackwater-leviathan', ev => ev.some(dived) && ev.some(whole), { levels: [lvl, lvl + 2, lvl + 4], seeds: 20 });
+  check(pick, 'by the rules, no starter, level or seed has the Leviathan both dive and swallow a hero');
+  rec.notes.push(`${pick.starter}, level ${pick.level}, seed ${pick.seed}`);
+  const diveFirst = pick.events.findIndex(dived) < pick.events.findIndex(whole);
+  const s = await open(PHONE360, `node=blackwater-leviathan&level=${pick.level}&speed=4&auto=1&starter=${pick.starter}&seed=${pick.seed}`);
+  const { page } = s;
+  const seeDive = async () => {
+    const down = await pauseWhen(page, ev => ev.t === 'status' && ev.status === 'burrowed' && ev.op === 'add', 'phone360-leviathan-dive', { hurry: true, probe: foeProbe });
+    check(down, 'the Leviathan never dived (the rules said it would)');
+    rec.shots.push(down.path);
+    check(down.info.sunk && down.info.water && /^Dived · out of reach$/.test(down.info.state) && /cannot be targeted/.test(down.info.aria), `the dived plate reads "${down.info.state}" (${down.info.aria})`);
+    await layoutChecks(page, 'leviathan/dived');
+    const up = await pauseWhen(page, (ev, id) => ev.t === 'status' && ev.target === id && ev.status === 'burrowed' && ev.op === 'remove', 'phone360-leviathan-up', { hurry: true, arg: down.ev.target, probe: foeProbe });
+    check(up && !up.info.sunk && !up.info.state, `up again, the plate drops "Dived" (${JSON.stringify(up?.info)})`);
+    if (up) rec.shots.push(up.path);
+  };
+  const seeSwallow = async () => {
+    const sw = await pauseWhen(page, ev => ev.t === 'status' && ev.status === 'swallowed' && ev.op === 'add' && ev.label === 'Swallowed whole', 'phone360-swallowed-whole', { hurry: true, probe: heroProbe });
+    check(sw, 'nobody was swallowed (the rules said someone would be)');
+    rec.shots.push(sw.path);
+    check(sw.info.held && /^swallowed whole$/i.test(sw.info.k) && /Blackwater Leviathan/.test(sw.info.by) && /out of the line/.test(sw.info.aria), `the swallowed hero's card reads "${sw.info.k} ${sw.info.by} ${sw.info.t}"`);
+    await layoutChecks(page, 'leviathan/swallowed');
+  };
+  if (diveFirst) { await seeDive(); await seeSwallow(); } else { await seeSwallow(); await seeDive(); }
+  s.aftermath = await toAftermath(page, { timeout: 400000, hurry: true });
+  const log = await logText(page);
+  await finishCommon(rec, s);
+  await s.context.close();
+  check(log.some(l => /The Blackwater Leviathan: Sound/.test(l)) && log.some(l => /is swallowed whole by The Blackwater Leviathan/.test(l)), 'the log has the dive and the swallow');
+});
+
+await scenario('hodge', async rec => {
+  // M6: Hodge opens with Toll Is Due at the strongest hero (a CHA save, or it loses a turn); his Bridge Troll shoves a
+  // hero off the bridge ("In the river", by him); at 0 HP he sits down on his stool and says so
+  if (stubbed('hodge').length) { blocked(rec, 'Hodge is still the scaffold stand-in (P4: data/foes.js)'); return; }
+  const river = holdAdd('In the river');
+  const pick = pickFight('hodge', ev => ev.some(river) && ev.some(e => e.t === 'ko' && !isHeroId(e.target) && e.text), { levels: [16, 18, 20, 14], seeds: 20 })
+    || pickFight('hodge', ev => ev.some(river), { levels: [16, 18, 20, 14, 12], seeds: 20 });
+  check(pick, 'by the rules, no starter, level or seed has Hodge shove a hero off the bridge');
+  rec.notes.push(`${pick.starter}, level ${pick.level}, seed ${pick.seed}`);
+  // (paused on the fight's first intent from the very start: the opening's intents roll before a test could arm a pause)
+  const s = await open(PHONE360, `node=hodge&level=${pick.level}&speed=4&auto=1&starter=${pick.starter}&seed=${pick.seed}&pause=intent`);
+  const { page } = s;
+  // his first intent is the toll, aimed at the strongest hero
+  const first = await waitPaused(page, 'phone360-hodge-toll', { probe: foeProbe });
+  check(first && first.ev.move === 'toll-is-due' && /Toll Is Due/.test(first.info.intent) && /^at /.test(first.info.target), `Hodge opens with Toll Is Due at a hero ("${first?.info.intent} ${first?.info.target}")`);
+  rec.shots.push(first.path);
+  const shove = await pauseWhen(page, ev => ev.t === 'status' && ev.status === 'swallowed' && ev.op === 'add' && ev.label === 'In the river', 'phone360-in-the-river', { hurry: true, probe: heroProbe });
+  check(shove, 'nobody went into the river (the rules said someone would)');
+  rec.shots.push(shove.path);
+  check(shove.info.held && /^in the river$/i.test(shove.info.k) && /Hodge/.test(shove.info.by) && /out of the line/.test(shove.info.aria), `the shoved hero's card reads "${shove.info.k} ${shove.info.by} ${shove.info.t}"`);
+  await layoutChecks(page, 'hodge/river');
+  s.aftermath = await toAftermath(page, { timeout: 400000, hurry: true });
+  const log = await logText(page);
+  await finishCommon(rec, s);
+  await s.context.close();
+  check(log.some(l => /Hodge: Toll Is Due/.test(l)) && log.some(l => /CHA save/.test(l)), 'the log has the toll and its CHA save');
+  check(log.some(l => /stops to count out the toll|pays it no mind|loses a turn/.test(l)) || log.some(l => /CHA save: .* saved/.test(l)), 'the log says how the toll went');
+  if (s.aftermath.result.result === 'victory') check(log.some(l => /sits down on his stool/.test(l)), 'beaten, Hodge sits down on his stool (his own words on his fall)');
+});
+
+await scenario('fen', async rec => {
+  // M6: the Lanternfen's hags: a hexed hero's card says "Hexed", a rotting one's "Rotting"; a heal a rotting unit gets
+  // half of says so
+  if (stubbed('bog-hag').length) { blocked(rec, 'the bog-hags are still the scaffold stand-in (P4: data/foes.js)'); return; }
+  const on = (st, ev) => ev.t === 'status' && ev.status === st && ev.op === 'add' && isHeroId(ev.target);
+  // (a party near the hags' own level, so the fight lasts long enough for both)
+  const lvl = Math.max(...ENCOUNTERS['lf-hags'].spawns.filter(sp => sp.family === 'bog-hag').map(sp => sp.level)) + 6;
+  const pick = pickFight('lf-hags', ev => ev.some(e => on('hexed', e)) && ev.some(e => on('rotting', e)) && ev.some(e => e.t === 'heal' && e.rot), { levels: [lvl, lvl + 2, lvl + 4, lvl + 6], seeds: 20 })
+    || pickFight('lf-hags', ev => ev.some(e => on('hexed', e)) && ev.some(e => on('rotting', e)), { levels: [lvl, lvl + 2, lvl + 4, lvl + 6], seeds: 20 });
+  check(pick, 'by the rules, no starter, level or seed has the hags hex one hero and rot one');
+  const rotHeal = pick.events.some(e => e.t === 'heal' && e.rot);
+  rec.notes.push(`${pick.starter}, level ${pick.level}, seed ${pick.seed}${rotHeal ? ', a heal halved by rot' : ''}`);
+  const order = ['hexed', 'rotting'].sort((a, b) => pick.events.findIndex(e => on(a, e)) - pick.events.findIndex(e => on(b, e)));
+  const s = await open(LAPTOP, `node=lf-hags&level=${pick.level}&speed=4&auto=1&starter=${pick.starter}&seed=${pick.seed}`);
+  const { page } = s;
+  for (const st of order) {
+    const p = await pauseWhen(page, (ev, x) => ev.t === 'status' && ev.status === x && ev.op === 'add' && ['warden', 'pip', 'bryn', 'alondra'].includes(ev.target), `laptop-${st}`, { hurry: true, arg: st, probe: heroProbe });
+    check(p, `nobody was ${st} (the rules said someone would be)`);
+    rec.shots.push(p.path);
+    const word = st === 'hexed' ? 'Hexed' : 'Rotting';
+    const cls = await page.evaluate(([id, c]) => document.querySelector(`.bt-hero[data-id="${id}"]`)?.classList.contains(c), [p.ev.target, st]);
+    check(p.info.tag.includes(word) && cls && new RegExp(st === 'hexed' ? 'hexed: its rolls at a disadvantage' : 'rotting.*heals halved').test(p.info.aria), `the ${st} hero's card says "${word}" (${p.info.tag}; ${p.info.aria})`);
+    await layoutChecks(page, `fen/${st}`);
+  }
+  if (rotHeal) {
+    const hl = await pauseWhen(page, ev => ev.t === 'heal' && ev.rot, 'laptop-rot-heal', { hurry: true, probe: () => [...document.querySelectorAll('.bt-float.heal.rot small')].map(e => e.textContent) });
+    check(hl && hl.info.some(t => /halved by rot/i.test(t)), `a heal a rotting unit gets says it was halved (${JSON.stringify(hl?.info)})`);
+    if (hl) rec.shots.push(hl.path);
+  }
+  s.aftermath = await toAftermath(page, { timeout: 400000, hurry: true });
+  const log = await logText(page);
+  await finishCommon(rec, s);
+  await s.context.close();
+  check(log.some(l => / is Hexed/.test(l)) && log.some(l => / is Rotting/.test(l)), 'the log has the hex and the rot');
+  if (rotHeal) check(log.some(l => /\(halved by rot\)/.test(l)), 'the log says a heal was halved by rot');
 });
 
 // ---- laptop ------------------------------------------------------------------------------------------

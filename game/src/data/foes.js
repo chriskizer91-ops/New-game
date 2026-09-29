@@ -14,6 +14,9 @@
 // M5: then (a move id: the foe's next intent is forced to it, e.g. Kharzul's Burrow, then Erupt); a
 // `swallowed` status effect may carry a `label` for the hero's plate ("Held under", "Carried off");
 // a summon may name a `variant` of its family (the Rime-Abbot's choir).
+// M6: target 'strongest' (the strongest hero) and 'ally' (the worst-hurt friend); the `delay` effect (a whole turn
+// later unless the target saves); a family's `opener` (its first move in every fight), `koText` (said instead of
+// falling) and `keepsRelics` (beaten, it keeps what it still grips: its relic comes loose only by grip).
 
 import { deepFreeze } from '../core/freeze.js';
 
@@ -931,39 +934,271 @@ const TALLY_IRON = {
   },
 };
 
-// ---- M6: the Gloomfen Marsh (spec §3.2; owner P4). STUBS from the M6 scaffold: each borrows an earlier
-// family's numbers, moves and look until P4 writes the real family in its place (with `art: <its id>`,
-// which P6 draws; art-keys.test.mjs fails for a new key until both have landed).
-const stub = (id, name, from, o = {}) => ({ ...from, id, name, stub: true, variants: {}, ...o });
-const stubHolder = (name, hp, o = {}) => ({ name, tier: 'relic-bearer', hp, ...o });
+// ---- M6: the Gloomfen Marsh (spec §3.2, §3.5; owner P4). Stats are for level 1, like everything above; the Waking
+// adds the rest (a player arrives at Waking 6, every earlier Brand held, and meets the Deep half at Waking 7). The fen's
+// two statuses (spec §4.2) are used where the spec asks: the bog-hags Hex (`hexed`) and Rot (`rotting`), the drowned
+// cough up black water that Rots, their choir's hymn and their Cantor's downbeat Hex, and the Lantern Mother's Hush Now
+// Hexes and her Mourning Rots. Holds read on the hero's plate as "Led away" (the Lantern Mother), "Swallowed whole" (the
+// Leviathan) and "In the river" (Hodge). Tuned with tools/sim.mjs (docs/RULES.md §12, M6).
+const GAR_MOVES = {
+  bite: { name: 'Bite', target: 'enemy', text: 'A long jaw like a pike\'s, lined with needles.', effects: [atk('1d8', 'pierce')] },
+  leap: { name: 'Leap', target: 'enemy', charge: true, text: 'It sinks under the black water, charging, and comes out of the channel at you like a thrown spear: you Stagger.', effects: [atk('2d6', 'pierce', { riders: [status('staggered')] })] },
+  dive: { name: 'Dive', target: 'self', text: 'It slides under the surface, where a blow has to go through the water first: Guarding.', effects: [status('guarding')] },
+};
+const HAG_MOVES = {
+  ladle: { name: 'Ladle', target: 'enemy', text: 'Whatever is in her hand, and it is usually the ladle.', effects: [atk('1d6', 'crush', { weapon: true })] },
+  hex: { name: 'Hex', target: 'enemy', text: 'She spits in her palm and says your name backwards. WIS save or Hexed.', effects: [status('hexed', { save: 'WIS' })] },
+  rot: { name: 'Rot', target: 'enemy', text: 'A handful of pot-scum, flung: 2d6 blight, CON save for half, and on a failed save you are Rotting.', effects: [{ type: 'damage', dice: '2d6', kind: 'blight', aspect: 'blight', save: 'CON', riders: [status('rotting')] }] },
+  'stir-the-pot': { name: 'Stir the Pot', target: 'ally', text: 'She stirs the pot and gives whichever of her kin is worst hurt a ladleful: 2d8 healing.', effects: [{ type: 'heal', dice: '2d8', diceEvery: 3 }] },
+};
+const WILLOW_MOVES = {
+  lash: { name: 'Lash', target: 'enemy', text: 'A switch of willow as thick as your arm, and it wraps round your legs: Rooted.', effects: [atk('1d8', 'slash', { riders: [status('rooted')] })] },
+  'bough-fall': { name: 'Bough-Fall', target: 'enemy', charge: true, text: 'It lifts a whole bough over you, charging: when it comes down, you Stagger.', effects: [atk('2d8', 'crush', { riders: [status('staggered')] })] },
+  weep: { name: 'Weep', target: 'self', when: { hpBelow: 0.8 }, fallback: 'lash', text: 'It weeps, long and green, and the cuts in its bark close: Regenerating.', effects: [status('regenerating', { value: { dice: '1d6', diceEvery: 3 } })] },
+};
+const DROWNED_MOVES = {
+  'cold-hands': { name: 'Cold Hands', target: 'enemy', text: 'Hands that have been under the water for a thousand years close on yours.', effects: [atk('1d6', 'crush', { aspect: 'tide' })] },
+  'drag-down': { name: 'Drag Down', target: 'enemy', text: 'It takes you by the ankles and pulls you toward the water: Rooted, and Chilled.', effects: [atk('1d8', 'crush', { aspect: 'tide', riders: [status('rooted'), status('chilled')] })] },
+  toll: { name: 'Toll', target: 'all-enemies', text: 'Somewhere under the water a bell tolls for the drowned. Every hero: WIS save or Frightened.', effects: [status('frightened', { save: 'WIS' })] },
+  'black-water': { name: 'Black Water', target: 'enemy', text: 'It coughs the channel up all over you: 1d6 tide, CON save for half, and on a failed save you are Rotting.', effects: [{ type: 'damage', dice: '1d6', kind: 'tide', aspect: 'tide', save: 'CON', riders: [status('rotting')] }] },
+};
+const HYMN = { name: 'The Hymn', target: 'all-enemies', text: 'They sing the hymn that has kept something asleep under Misthollow for a thousand years, and it drags at you. Every hero: WIS save or Hexed.', effects: [status('hexed', { save: 'WIS' })] };
+
 const GLOOMFEN = {
-  'mire-leech': stub('mire-leech', 'Mire Leech', VERDANT.rotgrub, { aspect: 'blight', text: 'A leech as long as your arm, black and patient. It drinks.' }),
-  'marsh-light': stub('marsh-light', 'Marsh-Light', VERDANT.glowcap, { kind: 'spirit', aspect: 'radiant', text: 'A light over the water that the locals know better than to follow.' }),
-  'lamp-moth': stub('lamp-moth', 'Lamp-Moth', VERDANT.briarling, { kind: 'beast', aspect: 'radiant', text: 'A moth the size of a hand, drawn to the Lantern Mother\'s light.' }),
-  'blackwater-gar': stub('blackwater-gar', 'Blackwater Gar', VERDANT.thornhound, { aspect: 'tide',
-    variants: { 'old-jaws': stubHolder('Old Jaws', 80) },
-    text: 'A gar out of the Blackwater, all teeth and no manners. It leaps.' }),
-  'bog-hag': stub('bog-hag', 'Bog-Hag', VERDANT['feral-druid'], { aspect: 'blight',
-    variants: { grue: stubHolder('Mother Grue', 70) },
-    text: 'A hag of the eastern bogs, stirring something in a pot you should not look into.' }),
-  'willow-wight': stub('willow-wight', 'Willow-Wight', VERDANT.sapwight, { kind: 'plant', aspect: 'verdant',
-    variants: { grandfather: stubHolder('Grandfather Willow', 90) },
-    text: 'A willow that got up and walked when Willowmurk\'s wards failed.' }),
-  drowned: stub('drowned', 'Drowned', IRONSPIRE['rime-wraith'], { kind: 'undead', aspect: 'tide',
-    variants: { 'bell-ringer': { name: 'Drowned Bell-Ringer', hp: 34 }, choir: { name: 'Drowned Chorister', hp: 30 }, cantor: stubHolder('The Drowned Cantor', 72) },
-    text: 'One of Misthollow\'s drowned, still going about its business under the water.' }),
-  hodge: stub('hodge', 'Hodge', VERDANT.tamsin, { unique: true, relics: ['unfair-toll'],
-    text: 'The toll-keeper of Rotbridge: not actually a troll, just an extremely unpleasant old man.' }),
-  'lantern-mother': stub('lantern-mother', 'The Lantern Mother', VERDANT.rotwarden, { kind: 'undead', aspect: 'radiant', unique: true, relics: ['lamplighters-lantern', 'mourning-veil'],
-    text: 'The last lamplighter of Misthollow, leading children out along the boardwalk again.' }),
-  'blackwater-leviathan': stub('blackwater-leviathan', 'The Blackwater Leviathan', VERDANT.rotwarden, { kind: 'beast', aspect: 'tide', unique: true, relics: ['corvus-harpoon', 'deep-pearl'],
-    text: 'The thing that lives in the Blackwater, as long as the channel is wide, chained and maddened.' }),
+  'mire-leech': {
+    id: 'mire-leech', name: 'Mire Leech', art: 'mire-leech', tier: 'rabble', kind: 'beast',
+    hp: 16, guard: 13, atk: 4, dmg: 1, speed: 11, armor: 'none', aspect: 'blight',
+    saves: { STR: 1, DEX: 1, CON: 3, WIS: 0 },
+    moves: {
+      latch: { name: 'Latch On', target: 'enemy', text: 'It comes up out of the ford and fastens on: Bleeding.', effects: [atk('1d6', 'pierce', { riders: [status('bleeding')] })] },
+      drink: { name: 'Drink', target: 'enemy', text: 'It drinks, and swells, and heals by what it drinks.', effects: [{ type: 'damage', dice: '1d6', kind: 'blight', aspect: 'blight' }, { type: 'heal', dice: '1d6', diceEvery: 4, self: true }] },
+      sink: { name: 'Sink', target: 'self', when: { hpBelow: 0.5 }, fallback: 'latch', text: 'It lets go and sinks back into the black water.', effects: [{ type: 'escape' }] },
+    },
+    table: [[1, 3, 'latch'], [4, 5, 'drink'], [6, 6, 'sink']],
+    text: 'A leech as long as your arm, black and patient, lying in the fords of the safe paths. It fastens on, and it drinks.',
+  },
+  'marsh-light': {
+    id: 'marsh-light', name: 'Marsh-Light', art: 'marsh-light', tier: 'rabble', kind: 'spirit',
+    hp: 12, guard: 15, atk: 4, dmg: 1, speed: 13, armor: 'none', aspect: 'radiant',
+    saves: { STR: 0, DEX: 3, CON: 0, WIS: 2 },
+    moves: {
+      'cold-fire': { name: 'Cold Fire', target: 'enemy', text: 'It drifts close and touches you with a fire that gives no heat.', effects: [atk('1d6', 'radiant', { aspect: 'radiant' })] },
+      lure: { name: 'Lure', target: 'enemy', text: 'It bobs away over the water, and you want very much to follow it. WIS save or Charmed.', effects: [status('charmed', { save: 'WIS' })] },
+      flicker: { name: 'Flicker', target: 'self', text: 'It gutters out, and lights again a step away: Guarding.', effects: [status('guarding')] },
+    },
+    table: [[1, 3, 'cold-fire'], [4, 5, 'lure'], [6, 6, 'flicker']],
+    text: 'A light over the black water, the size and colour of a lantern flame. The fen folk know better than to follow one. Children do not.',
+  },
+  'lamp-moth': {
+    id: 'lamp-moth', name: 'Lamp-Moth', art: 'lamp-moth', tier: 'rabble', kind: 'beast',
+    hp: 11, guard: 14, atk: 4, dmg: 1, speed: 15, armor: 'none', aspect: 'radiant',
+    saves: { STR: 0, DEX: 3, CON: 0, WIS: 1 },
+    moves: {
+      batter: { name: 'Batter', target: 'enemy', text: 'It batters at your face the way a moth batters at a lamp.', effects: [atk('1d6', 'crush')] },
+      dust: { name: 'Dust in the Eyes', target: 'enemy', text: 'A burst of glittering wing-dust in your face. DEX save or Frightened.', effects: [status('frightened', { save: 'DEX' })] },
+      circle: { name: 'Circle the Light', target: 'self', text: 'It wheels round the nearest light, faster and faster: Hasted.', effects: [status('hasted')] },
+    },
+    table: [[1, 3, 'batter'], [4, 5, 'dust'], [6, 6, 'circle']],
+    text: 'A moth the size of a hand, pale gold, drawn to the Lantern Mother\'s light. Where she walks they come in clouds; she calls them to her.',
+  },
+  'blackwater-gar': {
+    id: 'blackwater-gar', name: 'Blackwater Gar', art: 'blackwater-gar', tier: 'rabble', kind: 'beast',
+    hp: 17, guard: 14, atk: 4, dmg: 2, speed: 13, armor: 'hide', aspect: 'tide',
+    saves: { STR: 1, DEX: 3, CON: 1, WIS: 0 },
+    moves: GAR_MOVES,
+    table: [[1, 3, 'bite'], [4, 5, 'leap'], [6, 6, 'dive']],
+    variants: {
+      'old-jaws': holder('Old Jaws', 'old-jaws', 120, {
+        ...GAR_MOVES,
+        'death-roll': { name: 'Death Roll', target: 'enemy', charge: true, text: 'He takes you in his jaws and rolls, charging: 2d10 piercing, and you are Rooted in the mud of the channel bed.', effects: [atk('2d10', 'pierce', { riders: [status('rooted')] })] },
+        'the-tooth': { name: 'The Tooth', target: 'enemy', requires: 'gar-tooth', fallback: 'bite', text: 'The great hooked tooth goes in and stays in: 3d8 piercing, and you Bleed (two stacks).', effects: [atk('3d8', 'pierce', { aspect: 'tide', riders: [status('bleeding', { stacks: 2 })] })] },
+      }, [[1, 4, 'bite'], [5, 6, 'leap'], [7, 8, 'death-roll'], [9, 12, 'the-tooth']]),
+    },
+    text: 'A gar out of the Blackwater as long as a man, all jaw and armour. It lies still under the surface, and then it leaps.',
+  },
+  'bog-hag': {
+    id: 'bog-hag', name: 'Bog-Hag', art: 'bog-hag', tier: 'veteran', humanoid: true,
+    hp: 26, guard: 14, atk: 4, dmg: 2, speed: 10, armor: 'none', aspect: 'blight',
+    saves: { STR: 0, DEX: 1, CON: 2, WIS: 3 },
+    names: ['Aunt Sallow', 'Gammer Reed', 'Old Nan Grist', 'Mother Mould'],
+    moves: HAG_MOVES,
+    table: [[1, 3, 'ladle'], [4, 5, 'hex'], [6, 7, 'rot'], [8, 8, 'stir-the-pot']],
+    variants: {
+      grue: holder('Mother Grue', 'mother-grue', 140, {
+        ...HAG_MOVES,
+        'evil-eye': { name: 'The Evil Eye', target: 'all-enemies', requires: 'hag-stone', fallback: 'ladle', text: 'She looks at each of you in turn through the holed stone on her finger, and you feel yourself seen: 2d6 blight to every hero, WIS save for half, and on a failed save you are Hexed.', effects: [{ type: 'damage', dice: '2d6', kind: 'blight', aspect: 'blight', save: 'WIS', riders: [status('hexed')] }] },
+      }, [[1, 3, 'ladle'], [4, 4, 'hex'], [5, 7, 'rot'], [8, 8, 'stir-the-pot'], [9, 12, 'evil-eye']], { atk: 6, dmg: 5 }),
+    },
+    gear: [
+      [{ base: 'quarterstaff' }, { base: 'hood' }, { base: 'robe' }],
+      [{ base: 'quarterstaff' }, { base: 'hood' }, { base: 'robe' }, { base: 'gloves' }],
+      [{ base: 'rowan-staff' }, { base: 'hood' }, { base: 'robe' }, { base: 'gloves' }],
+      [{ base: 'rowan-staff' }, { base: 'hood' }, { base: 'robe' }, { base: 'gloves' }, { base: 'boots' }],
+    ],
+    text: 'A hag of the eastern bogs with a pot on the boil and a curse on the tip of her tongue. She rots what she touches, and she knows your name.',
+  },
+  'willow-wight': {
+    id: 'willow-wight', name: 'Willow-Wight', art: 'willow-wight', tier: 'veteran', kind: 'plant',
+    hp: 34, guard: 13, atk: 4, dmg: 3, speed: 8, armor: 'hide', aspect: 'verdant',
+    saves: { STR: 3, DEX: 0, CON: 3, WIS: 1 },
+    moves: WILLOW_MOVES,
+    table: [[1, 4, 'lash'], [5, 6, 'bough-fall'], [7, 8, 'weep']],
+    variants: {
+      grandfather: holder('Grandfather Willow', 'grandfather-willow', 170, {
+        ...WILLOW_MOVES,
+        'weeping-volley': { name: 'Weeping Volley', target: 'all-enemies', requires: 'weeping-bow', fallback: 'lash', text: 'He draws the bow strung with his own hair, and it weeps arrows over the whole line: 2d6 piercing to every hero, DEX save for half, and on a failed save you are Rooted.', effects: [{ type: 'damage', dice: '2d6', kind: 'pierce', aspect: 'verdant', save: 'DEX', riders: [status('rooted')] }] },
+      }, [[1, 4, 'lash'], [5, 6, 'bough-fall'], [7, 8, 'weep'], [9, 12, 'weeping-volley']], { atk: 6, dmg: 4 }),
+    },
+    text: 'A willow that pulled up its roots and walked when Willowmurk\'s wards went dark. It weeps as it comes, and its switches hold on.',
+  },
+  drowned: {
+    id: 'drowned', name: 'Drowned', art: 'drowned', tier: 'veteran', kind: 'undead',
+    hp: 26, guard: 14, atk: 4, dmg: 2, speed: 9, armor: 'none', aspect: 'tide',
+    saves: { STR: 2, DEX: 0, CON: 3, WIS: 1 },
+    moves: DROWNED_MOVES,
+    table: [[1, 3, 'cold-hands'], [4, 5, 'drag-down'], [6, 6, 'toll'], [7, 8, 'black-water']],
+    variants: {
+      'bell-ringer': {
+        name: 'Drowned Bell-Ringer', hp: 22, art: 'bell-ringer',
+        moves: {
+          ...DROWNED_MOVES,
+          peal: { name: 'Peal', target: 'all-enemies', text: 'It hauls on a bell-rope that runs down into the dark, and the bell answers: 1d4 tide to every hero, CON save for half, and on a failed save you Stagger.', effects: [{ type: 'damage', dice: '1d4', kind: 'tide', aspect: 'tide', save: 'CON', riders: [status('staggered')] }] },
+        },
+        table: [[1, 3, 'cold-hands'], [4, 5, 'drag-down'], [6, 6, 'peal'], [7, 8, 'black-water']],
+      },
+      choir: {
+        name: 'Drowned Chorister', hp: 24, art: 'drowned-choir',
+        moves: { ...DROWNED_MOVES, 'the-hymn': HYMN },
+        table: [[1, 3, 'cold-hands'], [4, 5, 'the-hymn'], [6, 6, 'toll'], [7, 8, 'black-water']],
+      },
+      cantor: holder('The Drowned Cantor', 'drowned-cantor', 180, {
+        ...DROWNED_MOVES,
+        'the-hymn': HYMN,
+        'beat-time': { name: 'Beat Time', target: 'all-allies', text: 'He beats time on the flagstones with his staff, and the choir sings faster: every one of them is Hasted.', effects: [status('hasted')] },
+        downbeat: { name: 'Downbeat', target: 'all-enemies', requires: 'cantors-staff', fallback: 'cold-hands', text: 'He brings the Cantor\'s Staff down on the downbeat, and the whole drowned hall rings with it: 2d8 tide to every hero, WIS save for half, and on a failed save you are Hexed.', effects: [{ type: 'damage', dice: '2d8', kind: 'tide', aspect: 'tide', save: 'WIS', riders: [status('hexed')] }] },
+      }, [[1, 3, 'cold-hands'], [4, 5, 'drag-down'], [6, 6, 'the-hymn'], [7, 8, 'beat-time'], [9, 12, 'downbeat']], { atk: 7, dmg: 6 }),
+    },
+    text: 'One of Misthollow\'s drowned, grey and swollen and still going about its business under the water: ringing its bell, singing its hymn, walking its old street.',
+  },
+  // Hodge (spec A11, §3.5): the terrible fight. Level party + 6 and three chosen Omens (the encounter's). He opens every
+  // fight with Toll Is Due (`opener`: the strongest hero makes a CHA save or loses a turn), he never runs, and at 0 HP he
+  // sits down on his stool (`koText`). His toll comes loose only by grip: `keepsRelics`, a holder that keeps what it
+  // still grips when it is beaten (no shattered drop; docs/RULES.md §6).
+  hodge: {
+    id: 'hodge', name: 'Hodge', art: 'hodge', tier: 'relic-bearer', humanoid: true, unique: true, keepsRelics: true,
+    hp: 72, guard: 19, atk: 6, dmg: 4, speed: 10, armor: 'hide', aspect: null,
+    saves: { STR: 3, DEX: 1, CON: 4, WIS: 3, CHA: 5 },
+    relics: ['unfair-toll'],
+    opener: 'toll-is-due',
+    koText: 'Hodge sits down on his stool, sets the lantern on his knee and looks at you for a long time. "Fine," he says. "Toll\'s paid. This once."',
+    moves: {
+      'toll-is-due': { name: 'Toll Is Due', target: 'strongest', text: 'Hodge opens the toll-book, licks his thumb and finds the biggest name in it. The toll is due: CHA save, or the strongest of you loses a turn paying it.', effects: [{ type: 'delay', save: 'CHA', dc: 20, turns: 1, text: '{target} stops to count out the toll, and loses a turn.' }] },
+      'old-mans-cane': { name: 'Old Man\'s Cane', target: 'enemy', text: 'It is a walking stick. It is also a cudgel with a lead core: 2d10 crushing, and you Stagger.', effects: [atk('2d10', 'crush', { riders: [status('staggered')] })] },
+      'bridge-troll': { name: 'Bridge Troll', target: 'enemy', charge: true, text: 'He gets a shoulder under you, charging: he means to shove you off the bridge and into the Blackwater. You will be in the river for two turns.', effects: [atk('1d8', 'crush', { riders: [status('swallowed', { label: 'In the river' })] })] },
+      'clipped-coin': { name: 'Clipped Coin', target: 'enemy', requires: 'unfair-toll', fallback: 'old-mans-cane', text: 'He flips the clipped coin. Heads, he hits you twice. It is always heads.', effects: [atk('1d10', 'crush'), atk('1d10', 'crush')] },
+    },
+    table: [[1, 6, 'old-mans-cane'], [7, 8, 'bridge-troll'], [9, 12, 'clipped-coin']],
+    gear: [
+      [{ base: 'mace' }, { base: 'hood' }, { base: 'jerkin' }],
+      [{ base: 'mace' }, { base: 'hood' }, { base: 'jerkin' }, { base: 'boots' }],
+      [{ base: 'flanged-mace' }, { base: 'hood' }, { base: 'brigandine' }, { base: 'boots' }],
+      [{ base: 'flanged-mace' }, { base: 'kettle-helm' }, { base: 'brigandine' }, { base: 'ironshod-boots' }],
+    ],
+    text: 'The toll-keeper of Rotbridge, who is not actually a troll: just an extremely unpleasant old man with a cudgel, a lantern and a toll-book. He is much harder than he looks, and he has never once paid a toll himself.',
+  },
+  // Champions (spec §3.5): each piece is a relic with its own grip meter; snapping one off shuts its moves down.
+  'lantern-mother': {
+    id: 'lantern-mother', name: 'The Lantern Mother', art: 'lantern-mother', tier: 'champion', kind: 'undead', unique: true,
+    hp: 215, guard: 19, atk: 9, dmg: 7, speed: 11, armor: 'none', aspect: 'radiant', weak: ['tide'],
+    saves: { STR: 2, DEX: 3, CON: 3, WIS: 5 },
+    relics: ['lamplighters-lantern', 'mourning-veil'],
+    noFlee: true,
+    moves: {
+      'lamp-pole': { name: 'Lamp-Pole', target: 'enemy', text: 'The long hooked pole she lit Misthollow\'s lamps with, swung like a scythe: 2d10 crushing.', effects: [atk('2d10', 'crush')] },
+      lure: { name: 'Lure', target: 'enemy', requires: 'lamplighters-lantern', fallback: 'lamp-pole', text: 'She lifts the lantern and smiles at one of you, the way she smiled at the children. WIS save or Charmed.', effects: [status('charmed', { save: 'WIS' })] },
+      'lantern-flare': { name: 'Lantern Flare', target: 'all-enemies', text: 'Every lamp in the Hollow flares at once: 3d8 radiant to every hero, DEX save for half.', effects: [{ type: 'damage', dice: '3d8', kind: 'radiant', aspect: 'radiant', save: 'DEX' }] },
+      'hush-now': { name: 'Hush Now', target: 'all-enemies', text: '"Hush now," she says, "hush," and it is very hard not to. Every hero: WIS save or Hexed.', effects: [status('hexed', { save: 'WIS' })] },
+      'lead-them-down': { name: 'Lead Them Down', target: 'enemy', charge: true, text: 'She takes one of you by the hand, charging: she means to lead you down under the water, where it is safe. WIS save, or you are led away for two turns.', effects: [status('swallowed', { save: 'WIS', label: 'Led away' })] },
+      moths: { name: 'Moths', target: 'self', fallback: 'lamp-pole', text: 'She holds up the lantern, and a lamp-moth comes to it out of the dark.', effects: [{ type: 'summon', family: 'lamp-moth', count: 1, max: 2, levelDelta: -4 }] },
+      mourning: { name: 'Mourning', target: 'all-enemies', requires: 'mourning-veil', fallback: 'lamp-pole', text: 'She lifts the veil, and you see her grief. Every hero is Frightened, and Rotting.', effects: [status('frightened'), status('rotting')] },
+      snuff: { name: 'Snuff', target: 'all-enemies', text: 'She pinches out the lamps one by one, and the dark comes in close. Every hero is Exposed.', effects: [status('exposed')] },
+      'lantern-nova': { name: 'Lantern Nova', target: 'all-enemies', requires: 'lamplighters-lantern', fallback: 'lamp-pole', text: 'The lantern burns white, and so does everything it shines on: 3d8 radiant to every hero, and you Burn.', effects: [{ type: 'damage', dice: '3d8', kind: 'radiant', aspect: 'radiant', riders: [status('burning')] }] },
+      'drown-the-light': { name: 'Drown the Light', target: 'enemy', charge: true, text: 'She plunges the lantern into the black water, and the water comes up out of it at one of you, charging: 4d10 tide.', effects: [atk('4d10', 'tide', { aspect: 'tide' })] },
+    },
+    phases: [
+      { at: 1, text: 'Lamplight. Every lamp in the sunken house is lit, and she stands among the sleeping children with her lantern held high.', table: [[1, 6, 'lamp-pole'], [7, 11, 'lantern-flare'], [12, 16, 'lure'], [17, 20, 'hush-now']] },
+      { at: 0.66, text: 'The Children\'s Road. She turns toward the black water, and the lamps along the drowned path light one by one.', table: [[1, 5, 'lamp-pole'], [6, 10, 'lead-them-down'], [11, 15, 'moths'], [16, 20, 'mourning']] },
+      { at: 0.33, text: 'Lights Out. The lamps go out, all but hers, and she stops being gentle.', table: [[1, 4, 'lamp-pole'], [5, 9, 'snuff'], [10, 15, 'lantern-nova'], [16, 20, 'drown-the-light']] },
+    ],
+    text: 'The last lamplighter of Misthollow, who led its children out along the boardwalk the night the city sank, and went back for the last of them. The Tallymen\'s dredging woke her, and she is leading children out again, to the drowned city, where she thinks they are safe. Water finds her; the lamps are hers.',
+  },
+  'blackwater-leviathan': {
+    id: 'blackwater-leviathan', name: 'The Blackwater Leviathan', art: 'blackwater-leviathan', tier: 'champion', kind: 'beast', unique: true,
+    hp: 160, guard: 22, atk: 8, dmg: 6, speed: 7, armor: 'hide', aspect: 'tide',
+    saves: { STR: 6, DEX: 1, CON: 5, WIS: 2 },
+    relics: ['corvus-harpoon', 'deep-pearl'],
+    noFlee: true,
+    moves: {
+      coil: { name: 'Coil', target: 'enemy', text: 'A loop of it comes up out of the water and closes on one of you: 2d10 crushing, and you are Rooted.', effects: [atk('2d10', 'crush', { riders: [status('rooted')] })] },
+      'tail-slap': { name: 'Tail Slap', target: 'all-enemies', text: 'Its tail comes down across the flats: 2d6 tide to every hero, DEX save for half.', effects: [{ type: 'damage', dice: '2d6', kind: 'tide', aspect: 'tide', save: 'DEX' }] },
+      sound: { name: 'Sound', target: 'self', then: 'breach', text: 'It sounds: it goes down into the deep, and the great chain runs out after it. Nothing can reach it until it comes up.', effects: [status('burrowed', { self: true })] },
+      breach: { name: 'Breach', target: 'enemy', charge: true, text: 'The water heaves under one of you, charging: it comes up out of the deep underneath you, 4d10 tide, and you Stagger.', effects: [atk('4d10', 'tide', { aspect: 'tide', riders: [status('staggered')] })] },
+      swallow: { name: 'Swallow', target: 'enemy', charge: true, text: 'Its jaws open over one of you, charging: it means to swallow you whole, until it has had enough of you or you hit it hard enough to make it spit.', effects: [atk('2d8', 'crush', { riders: [status('swallowed', { label: 'Swallowed whole' })] })] },
+      undertow: { name: 'Undertow', target: 'all-enemies', text: 'It rolls, and the flats run out from under your feet: 1d6 tide to every hero, and whoever fails a STR save is Rooted and Chilled.', effects: [{ type: 'damage', dice: '1d6', kind: 'tide', aspect: 'tide', save: 'STR', riders: [status('rooted'), status('chilled')] }] },
+      'harpoon-rage': { name: 'Harpoon Rage', target: 'enemy', requires: 'corvus-harpoon', fallback: 'coil', text: 'The harpoon in its side twists, and the pain drives it mad: it coils on one of you twice in one breath.', effects: [atk('2d10', 'crush', { riders: [status('rooted')] }), atk('2d10', 'crush', { riders: [status('rooted')] })] },
+      'pearl-light': { name: 'Pearl-Light', target: 'self', requires: 'deep-pearl', fallback: 'tail-slap', text: 'The pearl in its brow lights the water green, and its wounds close: it heals 2d8, and is Warded.', effects: [{ type: 'heal', dice: '2d8', diceEvery: 3 }, status('warded', { value: { dice: '2d8', diceEvery: 3 } })] },
+      flood: { name: 'Flood', target: 'all-enemies', text: 'The whole channel comes up over the flats: 3d8 tide to every hero, DEX save for half.', effects: [{ type: 'damage', dice: '3d8', kind: 'tide', aspect: 'tide', save: 'DEX' }] },
+    },
+    phases: [
+      { at: 1, text: 'The Wake. The chain goes taut, and something as long as the channel is wide comes up out of the deep.', table: [[1, 9, 'coil'], [10, 15, 'tail-slap'], [16, 20, 'sound']] },
+      { at: 0.66, text: 'The Deep. It drags the chain-post half out of the mud, and the flats start to go under.', table: [[1, 5, 'coil'], [6, 10, 'swallow'], [11, 15, 'undertow'], [16, 20, 'harpoon-rage']] },
+      { at: 0.33, text: 'Blackwater. The pearl in its brow burns green, and the whole channel comes up with it.', table: [[1, 5, 'coil'], [6, 11, 'pearl-light'], [12, 16, 'flood'], [17, 20, 'swallow']] },
+    ],
+    text: 'The thing that lives in the Blackwater, as long as the channel is wide. The Tallymen hooked it with a stolen harpoon and chained it by an iron collar to tow their barges up from the sea, and chained and maddened it sinks every other boat. Lightning finds it; the harpoon is still in its side and the pearl in its brow.',
+  },
 };
 
-// the Tallymen of the Gloomfen: new variants of the M3 families (spec §3.2)
+// The Tallymen of the Gloomfen: new variants of the M3 families (spec §3.2). The Salvage-Master and the Bargemaster
+// are holders; the reed-cutters, divers and bargehands are rabble.
 const TALLY_GLOOM = {
-  tallyman: { ...TALLY_IRON.tallyman, variants: { ...TALLY_IRON.tallyman.variants, 'salvage-master': stubHolder('The Salvage-Master', 70), bargemaster: stubHolder('The Bargemaster', 74) } },
-  smuggler: { ...TALLY_IRON.smuggler, variants: { ...TALLY_IRON.smuggler.variants, reedcutter: { name: 'Reed-Cutter', hp: 22 }, diver: { name: 'Salvage Diver', hp: 22 }, bargehand: { name: 'Bargehand', hp: 24 } } },
+  tallyman: {
+    ...TALLY_IRON.tallyman,
+    variants: {
+      ...TALLY_IRON.tallyman.variants,
+      'salvage-master': holder('The Salvage-Master', 'salvage-master', 70, {
+        ...TALLY_MOVES,
+        'salvage-hook': { name: 'Salvage Hook', target: 'enemy', text: 'A crane-hook on a short chain, swung round his head: 1d8 piercing, and it hauls you off your feet (you Stagger).', effects: [atk('1d8', 'pierce', { riders: [status('staggered')] })] },
+        'diving-bell': { name: 'The Diving Bell', target: 'all-enemies', requires: 'salvagers-helm', fallback: 'salvage-hook', text: 'He dogs the Salvager\'s Helm shut and cuts the crane loose: the diving bell comes down on the jetty, and the channel comes up after it: 2d6 tide to every hero, CON save for half, and you are Chilled.', effects: [{ type: 'damage', dice: '2d6', kind: 'tide', aspect: 'tide', save: 'CON', riders: [status('chilled')] }] },
+      }, [[1, 4, 'salvage-hook'], [5, 6, 'tally-mark'], [7, 8, 'smoke-pot'], [9, 12, 'diving-bell']]),
+      bargemaster: holder('The Bargemaster', 'bargemaster', 76, {
+        ...TALLY_MOVES,
+        'boat-hook': { name: 'Boat-Hook', target: 'enemy', text: 'A barge-pole with an iron hook on the end, long enough to reach you from the deck: 1d8 piercing.', effects: [atk('1d8', 'pierce')] },
+        'make-fast': { name: 'Make Fast!', target: 'all-allies', text: 'He bawls the order, and his bargehands close up behind the chain-post: every one of them Guards.', effects: [status('guarding')] },
+        'haul-away': { name: 'Haul Away', target: 'enemy', requires: 'barge-gauntlets', fallback: 'boat-hook', charge: true, text: 'He takes the great chain in the Barge-Chain Gauntlets and hauls, charging: the chain comes across the flats at one of you, 3d8 crushing, and you Stagger.', effects: [atk('3d8', 'crush', { riders: [status('staggered')] })] },
+      }, [[1, 4, 'boat-hook'], [5, 6, 'tally-mark'], [7, 7, 'make-fast'], [8, 8, 'smoke-pot'], [9, 12, 'haul-away']]),
+    },
+  },
+  smuggler: {
+    ...TALLY_IRON.smuggler,
+    variants: {
+      ...TALLY_IRON.smuggler.variants,
+      reedcutter: {
+        name: 'Reed-Cutter', hp: 19, art: 'reedcutter',
+        moves: { ...SMUGGLER_MOVES, 'reed-hook': { name: 'Reed-Hook', target: 'enemy', text: 'A long sickle on a pole, for cutting reeds and hamstrings: 1d8 slashing.', effects: [atk('1d8', 'slash')] } },
+        table: [[1, 4, 'reed-hook'], [5, 5, 'caltrops'], [6, 6, 'bolt']],
+      },
+      diver: {
+        name: 'Salvage Diver', hp: 20, art: 'salvage-diver',
+        moves: { ...SMUGGLER_MOVES, grapnel: { name: 'Grapnel', target: 'enemy', text: 'A diver\'s grapnel on a wet line, thrown and hauled: 1d6 piercing, and it drags your guard aside (Exposed).', effects: [atk('1d6', 'pierce', { riders: [status('exposed')] })] } },
+        table: [[1, 3, 'cut'], [4, 5, 'grapnel'], [6, 6, 'bolt']],
+      },
+      bargehand: {
+        name: 'Bargehand', hp: 22, art: 'bargehand',
+        moves: { ...SMUGGLER_MOVES, 'punt-pole': { name: 'Punt-Pole', target: 'enemy', text: 'A punt-pole, swung two-handed across the towpath: 1d8 crushing, and you Stagger.', effects: [atk('1d8', 'crush', { riders: [status('staggered')] })] } },
+        table: [[1, 3, 'cut'], [4, 5, 'punt-pole'], [6, 6, 'bolt']],
+      },
+    },
+  },
 };
 
 export const FOES = deepFreeze({ ...VERDANT, ...TALLY_SUN, ...SUNSCORCH, ...TALLY_IRON, ...IRONSPIRE, ...TALLY_GLOOM, ...GLOOMFEN });

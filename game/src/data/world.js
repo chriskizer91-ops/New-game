@@ -40,18 +40,18 @@ export const ZONES = deepFreeze({
   deeps: { id: 'deeps', level: 15, sets: 'deeps', backdrop: 'ironhold-deeps' },
   'frost-road': { id: 'frost-road', level: 16, sets: 'frost-road', backdrop: 'frost-road' },
   frostmere: { id: 'frostmere', level: 16, sets: 'frostmere', backdrop: 'frostmere' },
-  // M6: the Gloomfen Marsh (spec §2.6; levels are P4's to tune). STAND-IN backdrops from the M6 scaffold until P6
-  // paints each map's own.
-  murkway: { id: 'murkway', level: 15, sets: 'murkway', backdrop: 'mossfall' },
-  lanternfen: { id: 'lanternfen', level: 16, sets: 'lanternfen', backdrop: 'mossfall' },
-  boardwalk: { id: 'boardwalk', level: 17, sets: 'boardwalk', backdrop: 'hearth-road' },
-  misthollow: { id: 'misthollow', level: 17, sets: 'misthollow', backdrop: 'frostmere' },
-  blackwater: { id: 'blackwater', level: 18, sets: 'blackwater', backdrop: 'mossfall' },
-  'tidal-flats': { id: 'tidal-flats', level: 18, sets: 'tidal-flats', backdrop: 'glass-flats' },
-  causeway: { id: 'causeway', level: 16, sets: 'causeway', backdrop: 'hearth-road' },
+  // M6: the Gloomfen Marsh (spec §2.6; levels are P4's to tune). Each zone fights on its own map's backdrop (the
+  // boardwalk's patrols on the long boardwalk's, the Blackwater's on the Reach's).
+  murkway: { id: 'murkway', level: 15, sets: 'murkway', backdrop: 'murkway' },
+  lanternfen: { id: 'lanternfen', level: 16, sets: 'lanternfen', backdrop: 'lanternfen' },
+  boardwalk: { id: 'boardwalk', level: 17, sets: 'boardwalk', backdrop: 'long-boardwalk' },
+  misthollow: { id: 'misthollow', level: 17, sets: 'misthollow', backdrop: 'misthollow' },
+  blackwater: { id: 'blackwater', level: 18, sets: 'blackwater', backdrop: 'blackwater-reach' },
+  'tidal-flats': { id: 'tidal-flats', level: 18, sets: 'tidal-flats', backdrop: 'tidal-flats' },
+  causeway: { id: 'causeway', level: 16, sets: 'causeway', backdrop: 'causeway' },
 });
 
-// The Hearthfires (ten in the Wilds, seven in the Sunscorch, eight in the Ironspire). x, y, face is the STAND (where the party wakes, rests and arrives by
+// The Hearthfires (ten in the Wilds, seven in the Sunscorch, eight in the Ironspire, eight in the Gloomfen). x, y, face is the STAND (where the party wakes, rests and arrives by
 // travel), facing the fire. `cold` fires start unlit (the cold-hearth lock).
 const H = (map, x, y, lore, name, o = {}) => ({ map, x, y, face: 'n', lore, name, cold: false, ...o });
 export const HEARTHS = deepFreeze({
@@ -84,16 +84,16 @@ export const HEARTHS = deepFreeze({
   'deeps-forge': H('ironhold-deeps', 6, 14, [875, 175], 'The Deeps Furnace', { cold: true }),
   'stormwatch-fire': H('stormwatch', 13, 14, [1020, 240], 'The Watch Fire'),
   'frost-cairn': H('frost-road', 28, 12, [1000, 180], 'The Frost Cairn', { cold: true }),
-  // M6 (spec §2.5): the stands of the Gloomfen maps (STUB places from the M6 scaffold; M6 P2 lays them out). Their
+  // M6 (spec §2.5): the stands of the laid-out Gloomfen maps (M6 P2); each fire faces north from its stand. Their
   // Atlas points are spread so that all 33 fires keep 43 px apart in the realm view on a phone (test/shell.test.mjs).
-  'reed-shrine': H('murkway', 24, 19, [288, 487], 'The Reed Shrine'),
-  'willow-hearth': H('willowmurk', 15, 12, [457, 610], 'The Willow Hearth'),
-  'toll-lamp': H('rotbridge', 34, 11, [226, 620], 'The Toll-Lamp'),
-  'stilt-hearth': H('bogmire', 17, 14, [295, 480], 'The Stilt Hearth'),
-  'fen-cairn': H('lanternfen', 18, 17, [259, 526], 'The Fen Cairn', { cold: true }),
-  'bell-hearth': H('misthollow', 8, 7, [340, 689], 'The Belltower Fire', { cold: true }),
-  'wreck-fire': H('blackwater-reach', 12, 11, [245, 727], 'The Wreck Fire', { cold: true }),
-  'flats-beacon': H('tidal-flats', 8, 9, [124, 754], 'The Flats Beacon'),
+  'reed-shrine': H('murkway', 25, 14, [288, 487], 'The Reed Shrine'),
+  'willow-hearth': H('willowmurk', 15, 11, [457, 610], 'The Willow Hearth'),
+  'toll-lamp': H('rotbridge', 35, 13, [226, 620], 'The Toll-Lamp'),
+  'stilt-hearth': H('bogmire', 17, 16, [295, 480], 'The Stilt Hearth'),
+  'fen-cairn': H('lanternfen', 20, 17, [259, 526], 'The Fen Cairn', { cold: true }),
+  'bell-hearth': H('misthollow', 3, 11, [340, 689], 'The Belltower Fire', { cold: true }),
+  'wreck-fire': H('blackwater-reach', 34, 5, [245, 727], 'The Wreck Fire', { cold: true }),
+  'flats-beacon': H('tidal-flats', 25, 13, [124, 754], 'The Flats Beacon'),
 });
 export const HEARTH_IDS = Object.freeze(Object.keys(HEARTHS));
 

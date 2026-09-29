@@ -589,6 +589,8 @@ function humanoidM3(def, o) {
   const relic = o.relic === undefined ? def.relic : o.relic, held = o.relicHeld !== false, slot = relic ? relicSlot(relic) : null;
   if (relic && !held && slot === 'weapon') gear.weapon = null; // the relic clattered away
   if (relic && held && slot) gear[slot] = relicArt(relic);
+  // M6: pieces worn besides the one held (`wears`: Tamsin's Bogstriders on Rotbridge); the held relic keeps its slot
+  if (o.wears) for (const w of [].concat(o.wears)) { const a = relicArt(w), s = relicSlot(w); if (a && s && w !== relic && !(relic && held && s === slot)) gear[s] = a; }
   // a kindled kit (Tamsin at Scorchgate, gearTier 4): everything she carries has the Kindled stage's ember rim
   if (T.kindle) for (const s of Object.keys(gear)) if (gear[s] && gear[s].p) gear[s] = stagedArt(gear[s], 'kindled');
   return { H, gear, relic, held, relicSlotName: relic && held && slot ? slot : null };
@@ -640,6 +642,7 @@ function m3Humanoid(def, r, c) {
     if (c.slot === 'offhand') r.anchors.relic = r.anchors.handR;
   }
   if (def.wear && relicArt(def.wear)) flag(relicSlot(def.wear));
+  if (c.wears) for (const w of [].concat(c.wears)) if (relicArt(w) && relicSlot(w) !== c.slot) flag(relicSlot(w));
   if (def.extra) def.extra(ctx);
 }
 
@@ -723,6 +726,8 @@ function tamsinX(c) {
   const pts = [];
   if (c.relic && c.held && c.slot === 'weapon' && c.anchors.weaponMid) pts.push(c.anchors.weaponMid);
   if (relicArt(FOE_ART.tamsin.wear) && c.anchors.handR) pts.push(c.anchors.handR);
+  // M6: a third glint on the pieces she wears besides (the Bogstriders: at her feet)
+  if (c.wears && !c.lie) for (const w of [].concat(c.wears)) if (relicSlot(w) === 'feet') pts.push(c.X.P(c.j.cx - 3, 44));
   if (pts.length) { c.anchors.relics = pts; c.anchors.relic = pts[0]; }
 }
 
@@ -2956,6 +2961,913 @@ Object.assign(FOE_ART, {
   'rime-abbot': { name: 'The Rime-Abbot', kind: 'beast', w: 96, h: 96, foot: [46, 93], defaultTier: 'champion', relic: 'rime-crozier', relics: ['rime-crozier', 'hushweave-cowl'], phases: 3, build: rimeAbbot, motes: abbotMotes },
 });
 
+/* =====================================================================
+   M6 · THE GLOOMFEN MARSH (spec §3.2, §3.5, §6.2): the families of the fen, their named holders and variants, the
+   Tallymen of the channel, Hodge, and the two Champions, the Lantern Mother and the Blackwater Leviathan
+   ===================================================================== */
+
+// a projector onto a polyline: (x, y) -> [arc length from its start, signed offset (+ on the right of the way it runs)]
+function polyProj(pts) {
+  const seg = []; let L = 0;
+  for (let k = 0; k < pts.length - 1; k++) { const a = pts[k], b = pts[k + 1], dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1e-6; seg.push([a, dx, dy, l, L]); L += l; }
+  return (x, y) => { let best = 1e9, bs = 0, bo = 0; for (const [a, dx, dy, l, L0] of seg) { let t = ((x - a[0]) * dx + (y - a[1]) * dy) / (l * l); t = t < 0 ? 0 : t > 1 ? 1 : t; const d = Math.hypot(x - a[0] - dx * t, y - a[1] - dy * t); if (d < best) { best = d; bs = L0 + t * l; bo = ((x - a[0]) * dy - (y - a[1]) * dx) / l; } } return [bs, bo, L]; };
+}
+// black water under a creature of the channel: a flat pool, a pale ring where it breaks the surface, foam
+function waterAt(F, c, rx, ry, o = {}) {
+  F.add({ mat: 'blackwater', prof: 'flat', grp: 'pool', noShadow: true, noOutline: !!o.soft, shapes: [ell(c, rx, ry)], tex: ({ x, y }) => ((x + y * 3) % 7 === 0 ? 1 : Math.abs(Math.hypot((x - c[0]) / rx, (y - c[1]) / ry) - .72) < .07 ? 2 : 0) });
+  if (o.foam) F.add({ mat: 'clothWhite', prof: 'round', bw: .6, grp: 'foam', noShadow: true, shapes: o.foam.map(([dx, dy, r]) => circ([c[0] + dx, c[1] + dy], r)) });
+}
+
+/* ---- MIRE LEECH: a leech as long as your arm rearing out of a black puddle, glossy and ringed, the old orange stripes
+   down its back, the sucker at its head (56x40, ground 37). The Waking fattens it on blood (1), opens its eyespots red
+   (2) and puts the blight in its stripes and its mouth (3) ---- */
+function mireLeech(F, st) {
+  const { pose, f, gT } = st, A = st.anchors, lie = pose === 'ko';
+  let pts = [[9, 36.2], [15, 35.4], [21, 33.4], [25.4, 29.2], [27.2, 24], [30.2, 19.6 + f * .6], [35.2, 18 + f * .8]], rs = [2.6, 3.9, 4.9, 5.2, 4.8, 4.2, 3.8], open = .45, shut = false;
+  if (pose === 'attack') { pts = [[8, 36.2], [15, 34.8], [22, 31.6], [29, 27.2], [36, 23.6], [42.6, 22.2], [47.6, 22.6]]; rs = [2.6, 3.8, 4.8, 5.2, 4.8, 4.2, 3.8]; open = 1; }
+  else if (pose === 'hurt') { pts = [[10, 36.2], [15.6, 35.4], [19.8, 32.4], [21.4, 27.4], [19.6, 23.4], [22.4, 20.2], [26.6, 20.6]]; shut = true; open = 0; }
+  else if (lie) { pts = [[7, 35.8], [14, 35.4], [21, 35], [28, 35], [35, 35.2], [41, 35.6], [45.4, 35.9]]; rs = [2, 2.8, 3.3, 3.5, 3.3, 2.9, 2.5]; shut = true; open = 0; }
+  const proj = polyProj(pts), T3 = gT >= 3;
+  // the puddle it rises from, and a ring where it breaks the surface
+  waterAt(F, [18, 36.6], lie ? 21 : 15, 2.4, { foam: lie ? null : [[-9, -.8, .6], [5, -1, .5], [11, -.4, .45]] });
+  const tex = ({ cx, cy, x, y }) => {
+    const [s, off] = proj(cx, cy), L = s / 2.3, ring = L - Math.floor(L) < .22;
+    const up = lie ? off < -1 : off > 1.1, belly = lie ? off > 1.4 : off < -1.6;
+    if (gT >= 1 && belly && s > 8 && s < 30) return { m: 'flesh', dd: ring ? -1 : hash(x, y, 601) < .2 ? 1 : 0 };
+    if (up && Math.abs(Math.abs(off) - 2.4) < .7 && !ring) return { m: T3 ? 'blight' : 'rust', dd: T3 ? -1 : 0 };
+    if (up && hash(Math.floor(s / 2.3), off > 0 ? 1 : 2, 602) < .3 && Math.abs(off) < 1.4 && !ring) return { m: 'dark', dd: 2 };
+    if (!lie && off > rs[3] * .45 && off < rs[3] * .7 && !ring) return 1.2;
+    return ring ? -1.2 : belly ? { m: 'garScale', dd: 0 } : 0;
+  };
+  F.add({ mat: 'leech', prof: 'round', bw: 4, hs: .8, grp: 'body', shapes: chainC(pts, rs), tex });
+  // eyespots in pairs down the head end
+  if (gT >= 2 && !lie) { const n = pts.length; F.add({ mat: shut ? 'dark' : 'eyeRed', prof: 'round', bw: .6, grp: 'eyespots', noShadow: true, shapes: [.84, .9, .96].map(u => { const i = Math.min(n - 2, Math.floor(u * (n - 1))), fr = u * (n - 1) - i, p = [pts[i][0] + (pts[i + 1][0] - pts[i][0]) * fr, pts[i][1] + (pts[i + 1][1] - pts[i][1]) * fr - rs[i] * .55]; return circ(p, .55); }) }); }
+  // the sucker: a disc at the head end, closed to a slit, or open on a ring of teeth
+  const h = pts[pts.length - 1], p = pts[pts.length - 2], a = Math.atan2(h[1] - p[1], h[0] - p[0]), hf = frame(h[0], h[1], a);
+  F.add({ mat: 'leech', prof: 'round', bw: 2, grp: 'sucker', shapes: [rell(hf, 1.6, 0, 1.8 + open * .6, 3.6 + open * 1.2)], tex: () => 1 });
+  if (open > .3) {
+    const o = open;
+    F.add({ mat: T3 ? 'blight' : 'flesh', prof: 'flat', grp: 'maw', noShadow: true, shapes: [rell(hf, 2.2, 0, .6 + o * .7, 1.4 + o * 2.2)], tex: () => (T3 ? 0 : -1) });
+    F.add({ mat: 'bone', prof: 'ridge', grp: 'teeth', noShadow: true, shapes: [-2.4, -1.2, 0, 1.2, 2.4].map(s => hf.poly([[2.6, s * (.4 + o * .6) - .45], [3.6 + o * .4, s * (.42 + o * .63)], [2.6, s * (.4 + o * .6) + .45]])) });
+  } else F.add({ mat: 'dark', prof: 'flat', grp: 'slit', noShadow: true, shapes: [hf.cap(2.8, -1.8, 2.8, 1.8, .45)] });
+  if (open > .5 && !lie) F.add({ mat: 'water', prof: 'round', bw: .5, grp: 'drips', noShadow: true, noOutline: true, shapes: [circ([h[0] + 1, h[1] + 5.6], .6), circ([h[0] - 3, h[1] + 8.4], .5)] });
+  A.head = hf.P(1.4, -1.2); A.mouth = hf.P(3, 0); A.center = lie ? [26, 35] : pts[3];
+}
+
+/* ---- MARSH-LIGHT: one of the lights over the water that the locals know better than to follow: a ball of cold
+   yellow-green fire hanging over a black pool, a flame rising off it, a face in the light if you look (40x56, ground
+   53). The Waking gives it a companion light (1), a lure of light dangling under it and red pits for eyes (2), and a
+   ring of three lights round a white-hot heart (3) ---- */
+function marshLight(F, st) {
+  const { pose, f, gT } = st, A = st.anchors, lie = pose === 'ko';
+  let C = [20, 25 + f * 1.2], R = 5.4, lean = 0, dim = 0, flare = 0;
+  if (pose === 'attack') { C = [24.6, 24.4]; R = 6.8; lean = -1; flare = 1; }
+  else if (pose === 'hurt') { C = [16.6, 28]; R = 4.2; lean = .6; dim = 1; }
+  const lightM = 'mireLight', T3 = gT >= 3;
+  waterAt(F, [20, 52.8], lie ? 11 : 9, 1.8, { soft: true });
+  if (lie) {
+    F.add({ mat: lightM, prof: 'round', bw: 1, grp: 'ember', noShadow: true, shapes: [circ([20, 50.6], 1.7)], tex: () => -1.4 });
+    F.add({ mat: 'mist', prof: 'flat', grp: 'smoke', noShadow: true, noOutline: true, shapes: chainC([[20, 49], [18.6, 44.6], [20.6, 40.6], [19, 36]], [1.1, 1.4, 1.2, .6]), tex: ({ x, y }) => ((x + y) & 1 ? -1.4 : 0) });
+    A.head = [20, 50]; A.mouth = [20, 50.6]; A.center = [20, 49]; return;
+  }
+  // the reflection in the water, and the thread of light down to it
+  F.add({ mat: lightM, prof: 'flat', grp: 'reflect', noShadow: true, noOutline: true, shapes: [ell([C[0], 52.8], 3.4, .7)], tex: () => -2.2 });
+  F.add({ mat: lightM, prof: 'flat', grp: 'halo', noShadow: true, noOutline: true, shapes: [circ(C, R + 3.4)], cuts: [circ(C, R + 2.4)], tex: ({ x, y }) => ((x + y) & 1 ? -2.6 : -2) - dim });
+  F.add({ mat: lightM, prof: 'round', bw: .5, grp: 'drops', noShadow: true, noOutline: true, shapes: [circ([C[0] - 1.4, C[1] + R + 4 + f * 3], .6), circ([C[0] + 1.2, C[1] + R + 10 - f * 2], .5)], tex: () => -1.6 });
+  // the flame rising off it, streaming back when it lunges
+  const tip = [C[0] - lean * 7 + (f ? .8 : -.8), C[1] - R - 7 - flare * 3];
+  const tongue = (dx, h, w) => poly([[C[0] + dx - w, C[1] - R * .5], [C[0] + dx - lean * h * .4 + (f ? .5 : -.5), C[1] - R - h], [C[0] + dx + w, C[1] - R * .5]]);
+  F.add({ mat: lightM, prof: 'round', bw: 1.6, grp: 'flame', noShadow: true, shapes: [poly([[C[0] - R * .75, C[1] - R * .3], [C[0] - R * .4 - lean * 2, C[1] - R - 2.6], tip, [C[0] + R * .4 - lean * 2, C[1] - R - 3], [C[0] + R * .75, C[1] - R * .3]]), tongue(-3.2, 4.2, 1.4), tongue(3, 5.2, 1.3)], tex: ({ y }) => ((y - tip[1]) / (C[1] - tip[1]) < .4 ? -1.8 : -.8) - dim });
+  if (gT >= 1) { const o = [C[0] + 8 + (f ? 1 : 0), C[1] - 6 + f]; F.add({ mat: lightM, prof: 'round', bw: 1, grp: 'companion', noShadow: true, shapes: [circ(o, 1.8)], tex: () => -dim }); }
+  if (T3) F.add({ mat: 'radiant', prof: 'round', bw: 1, grp: 'ring', noShadow: true, shapes: [[-9, 2], [7.4, 6.4], [-3, -10.4]].map(([dx, dy]) => circ([C[0] + dx, C[1] + dy + (f ? .6 : 0)], 1.3)) });
+  // the orb, its white heart, and the face in it
+  F.add({ mat: lightM, prof: 'round', bw: R * .9, grp: 'orb', noShadow: true, shapes: [circ(C, R)], tex: ({ cx, cy }) => { const d = Math.hypot(cx - C[0] + 1, cy - C[1] + 1) / R; return (d < .35 ? 1 : d > .8 ? -1 : 0) - dim; } });
+  F.add({ mat: T3 ? 'primal' : 'radiant', prof: 'round', bw: 1.4, grp: 'heart', noShadow: true, shapes: [circ([C[0] - 1, C[1] - 1.2], R * .34)], tex: () => -dim });
+  const eyeM = gT >= 2 ? 'eyeRed' : 'dark';
+  F.add({ mat: eyeM, prof: 'flat', grp: 'face', noShadow: true, noOutline: true, shapes: [ell([C[0] - 1.8 + flare, C[1] - .2], .8, 1.1 + flare * .3), ell([C[0] + 1.8 + flare, C[1] - .2], .8, 1.1 + flare * .3), ell([C[0] + flare * .6, C[1] + 2.6], .7, .5 + flare * .8)], tex: () => (gT >= 2 ? 0 : 1) });
+  // the lure: a bead of light on a thread, hanging under it, swinging
+  if (gT >= 2) { const b = [C[0] + 3.4 + (f ? .8 : -.4), C[1] + R + 9]; F.add({ mat: lightM, prof: 'round', bw: .6, grp: 'lure', noShadow: true, noOutline: true, shapes: [cap([C[0] + 2, C[1] + R - .6], b, .35)], tex: () => -1.6 }); F.add({ mat: 'radiant', prof: 'round', bw: .8, grp: 'lurebead', noShadow: true, shapes: [circ(b, 1.1)] }); }
+  A.head = [C[0], C[1] - 1]; A.mouth = [C[0], C[1] + 2.6]; A.center = C;
+}
+// motes of light drifting up off the marsh-lights (fireflies of the fen)
+const lightMotes = n => (t, a, gT) => { const c = a.center || [20, 26], out = []; for (let k = 0; k < n + (gT || 0); k++) { const ph = (t * (.35 + hash(k, 2, 603) * .3) + hash(k, 3, 603)) % 1; out.push({ x: c[0] - 9 + hash(k, 1, 603) * 18 + Math.sin(t * 2 + k) * 2, y: c[1] + 10 - ph * 30, c: k % 3 ? [226, 244, 144] : [255, 255, 232], a: Math.sin(ph * Math.PI) * .85 }); } return out; };
+
+/* ---- LAMP-MOTH: the Lantern Mother's moths, as big as a hand: dusty ivory wings with eyespots that shine like little
+   lamps, a furred body, the tip of its abdomen lit like a lantern (48x40, hovering over ground 37). The Waking lights
+   the eyespots (1), the lantern-tail and red eyes (2), and scorches its wings' edges with fire-light (3) ---- */
+const MOTH_FORE = [[0, 1], [5, 2.4], [11, 3], [16.6, 2.2], [20.4, .4], [21, -2.4], [19.4, -5.8], [15, -8.4], [9, -9], [4, -7.4], [.8, -4]];
+const MOTH_HIND = [[0, .8], [5, 1.8], [10, 1.4], [13.2, -.6], [13.6, -3.6], [11.6, -6.6], [7.4, -7.8], [3.2, -6.2], [.6, -3.2]];
+function lampMoth(F, st) {
+  const { pose, f, gT } = st, A = st.anchors, idle = !pose || pose === 'idle', lie = pose === 'ko';
+  const bob = idle ? f * 1.2 : 0, spotLit = gT >= 1, T3 = gT >= 3;
+  let T = [24, 17.4 + bob], Hd = [28.4, 14 + bob], ab = [[21.4, 21], [19.2, 24.4], [17.2, 27.4]], W = { nf: -2.1 + f * .35, nh: 2.5 - f * .2, ff: -.9 - f * .3, fh: .6 + f * .2 }, sq = 0, dim = false;
+  if (pose === 'attack') { T = [28, 20]; Hd = [33, 18.6]; ab = [[25, 23], [22.4, 25.4], [19.8, 27]]; W = { nf: -2.7, nh: 2.95, ff: -.35, fh: .2 }; }
+  else if (pose === 'hurt') { T = [21, 19]; Hd = [24.4, 14.4]; ab = [[19.6, 23.4], [18.8, 27.2], [18.4, 30.6]]; W = { nf: -1.7, nh: 2.2, ff: -1.4, fh: 1 }; dim = true; }
+  else if (lie) { T = [24, 34.4]; Hd = [29.6, 34.6]; ab = [[19.6, 34.8], [16, 35.2], [12.8, 35.4]]; W = { nf: Math.PI - .15, nh: 2.6, ff: -.12, fh: .5 }; sq = .32; dim = true; }
+  // its shadow on the ground under it
+  if (!lie) F.add({ mat: 'dark', prof: 'flat', grp: 'shadow', noShadow: true, noOutline: true, shapes: [ell([T[0], 37], 9, 1.1)], tex: ({ x, y }) => ((x + y) & 1 ? -1 : 0) });
+  const G = 36.4;
+  const wing = (shape, root, a, sg, k, spot, g, far) => {
+    const X = frame(root[0], root[1], a), toC = (t, s) => { const p = X.P(t * k, s * sg * k); return sq ? [p[0], G + (p[1] - G) * sq] : p; };
+    const fromC = (cx, cy) => { const [u, v] = X.uv(cx, sq ? G + (cy - G) / sq : cy); return [u / k, v * sg / k]; };
+    const tex = ({ cx, cy, d }) => {
+      const [t, s] = fromC(cx, cy);
+      if (spot) { const r = Math.hypot(t - spot[0], s - spot[1]); if (r < spot[2] * .45) return spotLit && !dim ? { m: 'radiant', dd: 0, e: 1 } : { m: 'amber', dd: -1, e: 0 }; if (r < spot[2] * .78) return { m: 'leatherDark', dd: 1 }; if (r < spot[2]) return { m: 'mothWing', dd: 1.4 }; }
+      if (d < 1.1) return T3 ? { m: 'ember', dd: -1 } : -1.2;
+      if (Math.abs(((Math.atan2(s, Math.max(.5, t)) + 3.2) * 2.8) % 1 - .5) < .08 && t > 3) return -1;
+      return t < 3 ? { m: 'wolfPale', dd: 0 } : s > .6 ? -.6 : 0;
+    };
+    F.add({ mat: 'mothWing', prof: 'round', bw: 1.8, hs: .55, grp: g, shapes: [poly(shape.map(([t, s]) => toC(t, s)))], tex: far ? farTex(tex) : tex });
+  };
+  const rN = [T[0] - 1.6, T[1] - 1.4], rF = [T[0] + 1.6, T[1] - 1.6];
+  wing(MOTH_HIND, [rF[0], rF[1] + 2], W.fh, -1, .8, null, 'fh', true);
+  wing(MOTH_FORE, rF, W.ff, -1, .86, [12, -4.4, 3.4], 'ff', true);
+  wing(MOTH_HIND, [rN[0], rN[1] + 2.2], W.nh, 1, .9, null, 'nh', false);
+  wing(MOTH_FORE, rN, W.nf, 1, 1, [12, -4.4, 3.6], 'nf', false);
+  const fur = furTex(61, 5);
+  // the abdomen, its tip a lantern from the second Waking
+  F.add({ mat: 'wolfPale', prof: 'round', bw: 2.4, grp: 'abdomen', shapes: ab.map((c, i) => ell(c, 3.2 - i * .5, 2.8 - i * .45)), tex: ({ x, y }) => (y % 3 === 0 ? -1 : fur({ x, y })) });
+  if (gT >= 2) F.add({ mat: dim ? 'amber' : 'radiant', prof: 'round', bw: 1, grp: 'lantern', noShadow: true, shapes: [circ(ab[2], 1.6)] });
+  F.add({ mat: 'wolfPale', prof: 'round', bw: 3.4, grp: 'thorax', shapes: [ell(T, 4.4, 3.8)], tex: fur });
+  F.add({ mat: 'wolfPale', prof: 'round', bw: 2.2, grp: 'head', shapes: [circ(Hd, 2.8)], tex: fur });
+  F.add({ mat: gT >= 2 && !dim ? 'eyeRed' : 'sap', prof: 'round', bw: 1, grp: 'eye', noShadow: true, shapes: [ell([Hd[0] + 1.2, Hd[1] + .2], 1.4, 1.7)] });
+  // feathered antennae
+  const ant = (s0, d, g) => F.add({ mat: 'bone', prof: 'round', bw: .6, grp: g, shapes: chainC([s0, [s0[0] + d[0] * .5, s0[1] + d[1] * .5 - .6], [s0[0] + d[0], s0[1] + d[1]]], [.5, 1.2, .5]), tex: ({ x, y }) => ((x + y) & 1 ? -1 : 0) });
+  ant([Hd[0] - .4, Hd[1] - 2.4], lie ? [6, -1] : pose === 'attack' ? [5.4, -4.6] : [3, -7], 'antN'); ant([Hd[0] + 1, Hd[1] - 2.2], lie ? [6, 1] : pose === 'attack' ? [6, -2.4] : [5.4, -5.6], 'antF');
+  if (!lie) F.add({ mat: 'claw', prof: 'round', bw: .5, grp: 'legs', shapes: [[-1.6, 2.6, -3, 6.4], [.6, 3, .2, 7], [2, 2.6, 3.6, 6.2]].map(([a, b, c, d]) => cap([T[0] + a, T[1] + b], [T[0] + c, T[1] + d], .55, .35)) });
+  // the dust it throws in your eyes
+  if (pose === 'attack') F.add({ mat: 'mothWing', prof: 'round', bw: .6, grp: 'dust', noShadow: true, shapes: [[38, 16, .9], [41, 20, .8], [39.6, 24, .7], [43.4, 17.4, .6], [44, 22.6, .6]].map(([x, y, r]) => circ([x, y], r)), tex: () => 1 });
+  A.head = [Hd[0] + 1, Hd[1]]; A.mouth = [Hd[0] + 2, Hd[1] + 1.6]; A.center = T;
+}
+// dust off the moths' wings, and the light of their eyespots
+const mothMotes = (t, a, gT) => { const c = a.center || [24, 18], out = []; for (let k = 0; k < 4 + (gT || 0); k++) { const ph = (t * .3 + k / (4 + (gT || 0))) % 1; out.push({ x: c[0] - 12 + hash(k, 1, 604) * 24 + Math.sin(t * 1.6 + k) * 2, y: c[1] - 4 + ph * 22, c: k % 2 && gT >= 1 ? [255, 232, 160] : [232, 224, 200], a: .7 * Math.sin(ph * Math.PI) }); } return out; };
+
+/* ---- BLACKWATER GARS: a gar out of the channel, all teeth and no manners: a long armoured body in diamond scales, a
+   long snout full of needles, leaping out of the black water (72x48, ground 45). Old Jaws is the oldest of them, scarred
+   and hung with the hooks and lines of every fisher who ever tried, and one of his front teeth is the Gar's Tooth
+   (96x64, ground 61). One builder in a 72x48 base space mapped by S = { k, dx, dy }. The Waking: a hook in the lip
+   (1), red eyes and barnacles (2), the water-light along its flank and torn fins (3) ---- */
+function blackwaterGar(F, st, S) {
+  const { pose, f, gT, relic, held } = st, A = st.anchors, k = S.k, T = p => [S.dx + p[0] * k, S.dy + p[1] * k], R = r => r * k;
+  const old = !!S.old, lie = pose === 'ko', T3 = gT >= 3;
+  // body centreline (tail to the back of the head), the snout's tip, and the gape
+  let body = [[12, 42.4], [18.4, 36.4], [26, 30.6], [35, 27.4], [43.4, 26.6], [50.2, 28]], snout = [69.4, 32.6], gape = .15, eyeShut = false;
+  if (!pose || pose === 'idle') body = body.map(([x, y], i) => [x, y + (i > 2 ? f * .6 : 0)]);
+  if (pose === 'attack') { body = [[7, 38], [15, 34.6], [24, 32.2], [33, 30.8], [41.6, 30.6], [48.4, 31.4]]; snout = [69.6, 31]; gape = 1; }
+  else if (pose === 'hurt') { body = [[15, 42.4], [19, 35.4], [24.6, 29.6], [31.4, 25.8], [38.4, 24], [44.6, 22.4]]; snout = [57.4, 11]; gape = .8; eyeShut = true; }
+  else if (lie) { body = [[7, 40.4], [16, 39.8], [25, 39.4], [34, 39.4], [42, 39.8], [48, 40.4]]; snout = [67, 41.8]; gape = .3; eyeShut = true; }
+  const B = body.map(T), rs = [2.6, 3.8, 4.9, 5.4, 5.2, 4.6].map(R), h0 = B[5], sn = T(snout);
+  const ha = Math.atan2(sn[1] - h0[1], sn[0] - h0[0]), HL = Math.hypot(sn[0] - h0[0], sn[1] - h0[1]), hf = frame(h0[0], h0[1], ha);
+  const proj = polyProj(B), flip = lie ? -1 : 1;
+  // the water it leaps from (the belly-up gar floats on it)
+  waterAt(F, T([27, 44.4]), R(lie ? 26 : 16), R(2.4), { foam: lie ? null : [[R(-11), R(-1), R(.7)], [R(-6), R(-1.6), R(.9)], [R(8), R(-1.2), R(.8)], [R(12.4), R(-.6), R(.6)]] });
+  if (!lie && pose !== 'attack') F.add({ mat: 'water', prof: 'round', bw: .6, grp: 'splash', noShadow: true, noOutline: true, shapes: [[10, 36], [7.4, 32.6], [16, 33], [5.6, 38.4]].map(([x, y], i) => circ(T([x, y - f * .6]), R(.7 - i * .08))) });
+  // the tail: an uneven fan, its upper lobe longer (half under the water when it leaps)
+  const t0 = B[0], ta = Math.atan2(B[0][1] - B[1][1], B[0][0] - B[1][0]), tf = frame(t0[0], t0[1], ta);
+  const torn = T3 ? [tf.circ(R(7), R(3.4), R(1.4)), tf.circ(R(5.4), R(-4.6), R(1.2))] : null;
+  F.add({ mat: 'garScale', prof: 'round', bw: R(1.4), grp: 'tail', shapes: [tf.poly([[0, R(-1.6)], [R(4), R(-3.2)], [R(9), R(-6.6)], [R(7.4), R(-1)], [R(6.4), R(2.4)], [R(5.6), R(4.4)], [R(1.6), R(2)]].map(([t, s]) => [t, s * flip]))], cuts: torn, tex: ({ x, y }) => ((x * 2 + y) % 4 === 0 ? -1 : 0) });
+  // the fins: dorsal and anal far back, a pectoral behind the head
+  const fin = (u, side, len, g) => { const i = Math.min(4, Math.floor(u * 5)), fr = u * 5 - i, p = [B[i][0] + (B[i + 1][0] - B[i][0]) * fr, B[i][1] + (B[i + 1][1] - B[i][1]) * fr], a = Math.atan2(B[i + 1][1] - B[i][1], B[i + 1][0] - B[i][0]), fx = frame(p[0], p[1], a), r0 = rs[i] * .85 * side * flip; F.add({ mat: 'garScale', prof: 'round', bw: R(1), grp: g, shapes: [fx.poly([[R(-2), r0], [R(-3.6), r0 + side * flip * R(len)], [R(1.8), r0 + side * flip * R(len * .7)], [R(2.6), r0]])], tex: ({ x, y }) => ((x + y) % 3 === 0 ? -1 : 0) }); };
+  fin(.22, -1, 4.4, 'dorsal'); fin(.26, 1, 3.6, 'anal');
+  // the body: diamond scales, a pale belly, dark spots; the water-light along the lateral line at the last Waking
+  const tex = ({ cx, cy, x, y }) => {
+    const [, off] = proj(cx, cy), belly = off * flip < -R(1.6), lat = Math.abs(off + R(.4) * flip) < R(.5);
+    if (T3 && lat) return { m: 'water', dd: -.6, e: 1 };
+    if ((x + y * .8) % 3.4 < .6 || (x - y * .8 + 99) % 3.4 < .6) return belly ? { m: 'garBelly', dd: -1 } : -1;
+    if (belly) return { m: 'garBelly', dd: 0 };
+    return hash(Math.floor(x / 3), Math.floor(y / 2), 605) < .16 ? { m: 'dark', dd: 2 } : off * flip > R(2.8) ? -.6 : 0;
+  };
+  F.add({ mat: 'garScale', prof: 'round', bw: R(4), hs: .8, grp: 'body', shapes: chainC(B, rs), tex });
+  if (gT >= 2 && !lie) F.add({ mat: 'barnacle', prof: 'round', bw: R(.7), grp: 'barnacles', shapes: [[.34, 1.1], [.5, .8], [.62, 1.4]].map(([u, r]) => { const i = Math.floor(u * 5), fr = u * 5 - i; return circ([B[i][0] + (B[i + 1][0] - B[i][0]) * fr, B[i][1] + (B[i + 1][1] - B[i][1]) * fr - rs[i] * .8], R(r)); }) });
+  fin(.86, 1, 3.4, 'pectoral');
+  // the head: the jaws in a long snout, needle teeth, a small eye, the gill cover
+  const up = -gape * .14, dn = gape * .18, J = u => R(1.8 * (1 - u) + .5);
+  const jaw = (s0, a, g) => { const jf = frame(h0[0], h0[1], ha + a); F.add({ mat: 'garScale', prof: 'round', bw: R(1.2), grp: g, shapes: [jf.poly([[R(-1), s0 * R(3.2)], [HL * .35, s0 * R(2)], [HL * .75, s0 * R(1.2)], [HL, s0 * R(.4)], [HL, 0], [R(-1), 0]].map(([t, s]) => [t, s * flip]))], tex: ({ x, y }) => ((x * 3 + y) % 5 === 0 ? -1 : 0) }); return jf; };
+  const lj = jaw(1, dn, 'lowerjaw');
+  if (gape > .3) F.add({ mat: 'flesh', prof: 'flat', grp: 'mouthin', noShadow: true, shapes: [hf.poly([[R(1), 0], [HL * .9, R(-HL * .02) - HL * Math.sin(-up) * .6], [HL * .9, HL * Math.sin(dn) * .8], [R(1), R(1)]].map(([t, s]) => [t, s * flip]))] });
+  const teeth = [];
+  for (let i = 0; i < 12; i++) { const u = .2 + i * .066, t = HL * u; teeth.push(lj.poly([[t - R(.4), -R(.2) * flip], [t, -(J(u) + R(.5)) * flip], [t + R(.4), -R(.2) * flip]])); }
+  const uj = jaw(-1, up, 'upperjaw');
+  for (let i = 0; i < 12; i++) { const u = .16 + i * .066, t = HL * u; teeth.push(uj.poly([[t - R(.4), R(.2) * flip], [t, (J(u) + R(.5)) * flip], [t + R(.4), R(.2) * flip]])); }
+  F.add({ mat: 'bone', prof: 'ridge', grp: 'teeth', noShadow: true, shapes: teeth });
+  F.add({ mat: 'garScale', prof: 'round', bw: R(2.2), grp: 'head', shapes: [hf.poly([[R(-4), R(-4.4)], [R(4), R(-3.4) * flip], [R(8), R(-1.6) * flip], [R(8), R(1.2) * flip], [R(3), R(3.8) * flip], [R(-4), R(4.4)]])], tex: ({ x, y }) => ((x + y * .8) % 3.4 < .6 ? -1 : 0) });
+  F.add({ mat: 'dark', prof: 'flat', grp: 'gill', noShadow: true, shapes: [hf.cap(R(-1.2), R(-3.2), R(.2), R(3), R(.45))] });
+  const eyeM = old ? 'pearl' : gT >= 2 ? 'eyeRed' : 'amber', ec = hf.P(R(4.6), R(-1.6) * flip);
+  if (eyeShut) F.add({ mat: 'dark', prof: 'flat', grp: 'eye', noShadow: true, shapes: [cap([ec[0] - R(.9), ec[1] - R(.9)], [ec[0] + R(.9), ec[1] + R(.9)], R(.35)), cap([ec[0] - R(.9), ec[1] + R(.9)], [ec[0] + R(.9), ec[1] - R(.9)], R(.35))] });
+  else { F.add({ mat: 'dark', prof: 'round', bw: 1, grp: 'eye', shapes: [circ(ec, R(1.2))] }); F.add({ mat: eyeM, prof: 'flat', grp: 'iris', noShadow: true, noOutline: true, shapes: [circ(ec, R(.7))] }); }
+  if (old) F.add({ mat: 'garBelly', prof: 'flat', grp: 'scar', noShadow: true, shapes: [cap([ec[0] - R(2.6), ec[1] - R(2.4)], [ec[0] + R(2.2), ec[1] + R(2.6)], R(.4))], tex: () => -1 });
+  // hooks in its lip, a trailing line; Old Jaws wears a beard of them
+  const hooks = old ? [[.5, 1], [.62, -1], [.74, 1], [.86, 1], [.4, -1]] : gT >= 1 ? [[.7, 1]] : [];
+  for (const [u, sd] of hooks) {
+    const p = (sd > 0 ? lj : uj).P(HL * u, sd * R(1.4) * flip);
+    F.add({ mat: 'iron', prof: 'round', bw: .6, grp: 'hook' + u, shapes: chainC([p, [p[0] + R(.3), p[1] + R(1.6)], [p[0] - R(.9), p[1] + R(2.2)], [p[0] - R(1.2), p[1] + R(1.2)]], R(.35)) });
+    if (!lie && (u === .7 || u === .62 || u === .86)) F.add({ mat: 'wool', prof: 'flat', grp: 'line' + u, noOutline: true, shapes: [cap(p, [p[0] - R(1.4) + (u * 9 % 2), p[1] + R(3 + u * 3)], R(.28))], tex: () => 1 });
+  }
+  // Old Jaws: the Gar's Tooth, a front tooth as long as a hand in his upper jaw (drawn from its relic, without its hilt)
+  if (old) {
+    const art = relic ? relicArt(relic) : null, root = uj.P(HL * .82, R(1.2) * flip);
+    if (art && held && RECIPE[art.r]) {
+      const m = drawItem(F, art, root, ha + (flip > 0 ? Math.PI * .75 : -Math.PI * .25) + gape * .15, .24 * k, { center: cardPt(art, 16), drop: ['grip', 'pommel', 'guard', 'binding'] });
+      A.relic = m(cardPt(art, 36));
+    } else F.add({ mat: 'flesh', prof: 'round', bw: .6, grp: 'gap', noShadow: true, shapes: [circ(root, R(.9))] });
+  }
+  A.head = ec; A.mouth = hf.P(HL * .6, 0); A.center = B[3];
+}
+const blackwaterGarBase = (F, st) => blackwaterGar(F, st, { k: 1, dx: 0, dy: 0 });
+const oldJaws = (F, st) => blackwaterGar(F, st, { k: 1.3, dx: .4, dy: 2.6, old: true });
+// drops flung off a leaping gar
+const garMotes = (t, a) => { const c = a.center || [36, 30], out = []; for (let k = 0; k < 5; k++) { const ph = (t * .9 + k / 5) % 1; out.push({ x: c[0] - 18 + hash(k, 1, 606) * 30, y: c[1] - 6 + ph * ph * 22, c: [150, 210, 220], a: ph < .85 ? .8 : 0 }); } return out; };
+
+/* ---- WILLOW-WIGHTS: a willow that got up and walked when Willowmurk's wards failed: a furrowed grey trunk on root-legs,
+   a pollard's knuckled crown with its whips arching over and weeping to the ground all round, a face in the bark under
+   the crown where the fronds part, two branch-arms with twig claws (64x72, ground 69). Grandfather Willow is the oldest
+   of them, huge and hollow, mossed over, a beard of moss on him and the Weeping Bow tangled in his fronds (96x96, ground
+   93). One builder in a 64x72 base space mapped by S = { k, dx, dy }. The Waking: moss and a bracket fungus (1), amber
+   eyes and thorns on the twigs (2), fronds gone grey and the heartwood alight in its cracks (3) ---- */
+function willowWight(F, st, S) {
+  const { pose, f, gT, relic, held } = st, A = st.anchors, k = S.k, T = p => [S.dx + p[0] * k, S.dy + p[1] * k], R = r => r * k;
+  const gf = !!S.grand, lie = pose === 'ko', idle = !pose || pose === 'idle', T2 = gT >= 2, T3 = gT >= 3;
+  const barkM = 'willowBark', leafM = T3 ? 'willowWood' : 'willowLeaf', eyeM = T3 ? 'verdant' : T2 ? 'amber' : 'mireLight';
+  const sw = idle ? (f ? .8 : -.6) : 0, G = S.dy + 69 * k;
+  let J = { base: [31, 64], mid: [30.4, 50.4], top: [31.4, 37.6], crown: [32.2 + sw * .3, 25.4], shN: [36.4, 41], elN: [44, 44.4], haN: [50.6, 51.4], shF: [26.6, 41], elF: [20, 44.6], haF: [15.4, 52] }, shut = false, mouth = .35, reach = [.25, 1], reachF = [-.3, 1], lean = 0;
+  if (pose === 'attack') { J = Object.assign(J, { mid: [31.6, 50.4], top: [34.4, 38], crown: [37.4, 26.6], shN: [39.6, 41.6], elN: [48, 38], haN: [57.4, 35.6], shF: [29.6, 41.4], elF: [23, 45], haF: [19.4, 52.6] }); mouth = 1; reach = [1, -.15]; lean = 1; }
+  else if (pose === 'hurt') { J = Object.assign(J, { mid: [29.6, 50.6], top: [28.4, 38.4], crown: [26.4, 26.8], shN: [33.4, 41], elN: [39.4, 35.6], haN: [42.6, 28.6], shF: [23.4, 41.4], elF: [17.4, 36.6], haF: [14.6, 29.8] }); shut = true; mouth = .7; reach = [.3, -1]; reachF = [-.3, -1]; lean = -1; }
+  else if (lie) J = { base: [8.4, 60.6], mid: [19.4, 61.4], top: [30.4, 61.2], crown: [38, 60.4], shN: [27.4, 58.4], elN: [31.8, 53.6], haN: [36.8, 51], shF: [24.4, 64], elF: [30.4, 66.8], haF: [36.4, 67.6] };
+  const P = {}; for (const key of Object.keys(J)) P[key] = T(J[key]);
+  // furrowed bark: long ridges and cracks up the trunk, moss in its hollows from the first Waking (always, on the old one)
+  const bark = seed => ({ x, y }) => {
+    if ((gT >= 1 || gf) && vnoise(x * .22, y * .22, seed + 5) > (gf ? .64 : .74)) return { m: 'moss', dd: hash(x, y, seed) < .3 ? -1 : 0 };
+    const n = vnoise(x * .8 / k, y * .07 / k, seed);
+    return n > .64 ? -1.4 : n > .58 ? -.6 : n < .22 ? .8 : hash(x, y, seed + 1) < .06 ? -1 : 0;
+  };
+  // the whips: up out of the crown, arching over, hanging straight down; or spread along the ground, fallen
+  const whips = (root, list, g, far, fall) => {
+    const S2 = [];
+    for (const [u, spread, dome, len, sway] of list) {
+      let pts;
+      if (lie) { const a = u * .8 - .3, L = R(len); pts = [root, [root[0] + Math.cos(a) * L * .35, root[1] + Math.sin(a) * L * .35 - R(1.4)], [root[0] + Math.cos(a) * L * .7, Math.min(G - R(.6), root[1] + Math.sin(a) * L * .5 + R(1.4))], [root[0] + Math.cos(a) * L * .92 + R(1), Math.min(G - R(.4), root[1] + Math.sin(a) * L * .4 + R(4.6))], [root[0] + Math.cos(a) * L + R(2.2), G - R(.4)]]; }
+      else {
+        const q0 = [root[0] + u * R(1.6), root[1]], q1 = [root[0] + u * R(spread) * .62, root[1] - R(dome) * (1 - .3 * u * u)], q2 = [root[0] + u * R(spread), root[1] - R(dome) * .22];
+        pts = []; for (let j = 0; j <= 4; j++) { const v = j / 4; pts.push([(1 - v) * (1 - v) * q0[0] + 2 * v * (1 - v) * q1[0] + v * v * q2[0], (1 - v) * (1 - v) * q0[1] + 2 * v * (1 - v) * q1[1] + v * v * q2[1]]); }
+        for (let j = 1; j <= 4; j++) { const v = j / 4; pts.push([q2[0] + u * R(1.4) * v + Math.sin(v * 2.4 + sway) * R(.8) * v + (fall || 0) * v * v + sw * v, Math.min(G - R(.8), q2[1] + R(len) * v)]); }
+      }
+      const rs = pts.map((_, j) => R(j < pts.length - 4 ? .75 : 1.05 - (j - pts.length + 4) * .14));
+      S2.push(...chainC(pts, rs));
+    }
+    const tex = ({ x, y }) => { const c = lie ? (x + Math.floor(hash(y, 0, 615) * 6)) % 4 : (y + Math.floor(hash(x, 0, 615) * 6)) % 4; return c === 0 ? -1.2 : hash(x, y, 616) < .1 ? 1 : T3 && hash(x >> 1, y >> 1, 617) < .12 ? { m: 'willowLeaf', dd: -1 } : 0; };
+    F.add({ mat: leafM, prof: 'round', bw: .8, hs: .7, grp: g, shapes: S2, tex: far ? farTex(tex) : tex });
+  };
+  const fan = (n, lo, hi, spread, dome, lenA, lenB, seed) => Array.from({ length: n }, (_, i) => { const u = lo + (hi - lo) * (n > 1 ? i / (n - 1) : .5); return [u, spread * (.8 + hash(i, 1, seed) * .3), dome * (.85 + hash(i, 2, seed) * .3), lenA + (lenB - lenA) * (Math.abs(u) * .7 + hash(i, 3, seed) * .3), hash(i, 4, seed) * 6]; });
+  const knob = P.crown;
+  // the dome of whips behind it
+  if (lie) whips(knob, fan(gf ? 11 : 9, -1, 1, 0, 0, 16, 24, 618), 'frondsFall', false);
+  else whips(knob, fan(gf ? 15 : 12, -1, 1, gf ? 25 : 23, gf ? 17 : 15, 26, 42, 619), 'frondsBack', true, lean * 3);
+  // the far arm: a bough with twig claws, a few whips hanging off it
+  const bough = (sh, el, ha, dir, g, far) => {
+    F.add({ mat: barkM, prof: 'round', bw: R(1.6), grp: g, shapes: chainC([sh, el, ha], [R(2.9), R(2.2), R(1.4)]), tex: far ? farTex(bark(620)) : bark(620) });
+    const tw = []; for (const [a, l] of [[-.65, 5.4], [-.2, 7], [.3, 6.4], [.8, 4.8]]) { const d = rot2(dir, a), m = [ha[0] + d[0] * R(l) * .5, ha[1] + d[1] * R(l) * .5 + R(.4)]; tw.push(...chainC([ha, m, [ha[0] + d[0] * R(l), ha[1] + d[1] * R(l)]], [R(.95), R(.6), R(.25)])); }
+    F.add({ mat: barkM, prof: 'round', bw: .7, grp: g + 'tw', shapes: tw, tex: far ? DARK : null });
+    if (T2 && !lie) F.add({ mat: 'thorn', prof: 'ridge', grp: g + 'th', shapes: spikesC([[el[0], el[1] - R(1.8), .2, -1, R(2.2), R(.6)], [(el[0] + ha[0]) / 2, (el[1] + ha[1]) / 2 - R(1.2), -.3, -1, R(1.8), R(.5)]]), tex: far ? DARK : null });
+    if (!lie) whips(el, [[.08, 1, 0, pose === 'attack' && !far ? 7 : 10, 1], [-.08, 1, 0, pose === 'attack' && !far ? 5 : 8, 3]], g + 'fr', far, pose === 'attack' && !far ? -R(5) : 0);
+  };
+  bough(P.shF, P.elF, P.haF, lie ? [1, .2] : reachF, 'armF', true);
+  // the roots it walks on (torn up and dangling, fallen)
+  const roots = lie ? [[P.base, T([4.4, 55.8]), T([2.2, 52.6])], [P.base, T([4, 59.8]), T([1.2, 60.6])], [P.base, T([7, 55]), T([7.6, 50.4])], [P.base, T([7.4, 64.4]), T([4, 67.6])]]
+    : [[P.base, T([22.4, 66]), T([16.6, 69])], [P.base, T([27.4, 67.6]), T([25.4, 69.2])], [P.base, T([35.4, 67.2]), T([38.4, 69.2])], [P.base, T([40.4, 65.4]), T([46, 69])]];
+  roots.forEach((pts, i) => F.add({ mat: barkM, prof: 'round', bw: R(1.4), grp: 'root' + i, shapes: chainC(pts, [R(3.4), R(2), R(.8)]), tex: i % 2 ? farTex(bark(621)) : bark(621) }));
+  if (lie) F.add({ mat: 'fenMud', prof: 'round', bw: R(.8), grp: 'clods', shapes: [circ(T([3.6, 54]), R(1.4)), circ(T([6.4, 51.8]), R(1.1)), circ(T([2.8, 58.4]), R(1))] });
+  // the trunk, gnarled and furrowed, flaring into its roots, swelling into the crown's knuckle; a hollow in the old one
+  const trunk = chainC([P.base, P.mid, P.top, knob], [R(7.2), R(5.8), R(5.4), R(5)]);
+  if (!lie) trunk.push(ell(T([31, 61]), R(9), R(4.2)), ell(T([27.6, 53]), R(2.4), R(3)));
+  trunk.push(lie ? ell(knob, R(4.8), R(6)) : ell(knob, R(6.6), R(4.6)));
+  F.add({ mat: barkM, prof: 'round', bw: R(4), hs: .8, grp: 'trunk', shapes: trunk, tex: bark(622) });
+  // the stubs of the crown the whips spring from
+  if (!lie) F.add({ mat: barkM, prof: 'round', bw: R(1), grp: 'stubs', shapes: [[-5.4, -1.6, -7.6, -5], [-2, -3.4, -2.8, -7.4], [2, -3.4, 2.4, -7.6], [5.4, -1.6, 7.4, -5.2]].map(([a, b, c, d]) => cap([knob[0] + R(a), knob[1] + R(b)], [knob[0] + R(c), knob[1] + R(d)], R(1.5), R(.8))), tex: bark(623) });
+  if (gf && !lie) F.add({ mat: 'dark', prof: 'round', bw: R(1.2), grp: 'hollow', shapes: [ell(T([30.4 + lean, 54]), R(2.6), R(4.4))], tex: ({ y }) => (y > S.dy + 56 * k ? 0 : -1) });
+  if (gT >= 1 && !lie) F.add({ mat: T3 ? 'rotwood' : 'thorn', prof: 'round', bw: R(.9), hs: .6, grp: 'fungus', shapes: [ell(T([24.8, 47.4]), R(2.8), R(1.1)), ell(T([25.4, 50.2]), R(2.1), R(.9)), ell(T([36.6, 57]), R(1.8), R(.8))], tex: ({ y }) => (y % 2 ? -.6 : 0) });
+  // the heartwood alight in its cracks
+  if (T3) {
+    const cr = lie ? [[[12, 60.2], [15, 59.4], [17.6, 60.4], [20.4, 59.6], [23.4, 60.6], [26.4, 59.8]], [[17.6, 60.4], [19, 62.4]], [[14.4, 63], [17.4, 62.6], [20, 63.4]]]
+      : [[[29.2, 61], [30.4, 58], [29.2, 55.4], [30.4, 52.2], [29.6, 49], [30.8, 45.4]], [[30.4, 52.2], [32.2, 50.4]], [[34.4, 59.4], [33.4, 56.4], [34.4, 53.6], [33.8, 51]]].map(l => l.map(([x, y]) => [x + lean * (61 - y) * .1, y]));
+    F.add({ mat: 'verdant', prof: 'flat', grp: 'cracks', noShadow: true, noOutline: true, shapes: cr.flatMap(l => chainC(l.map(T), R(.34))), tex: ({ x, y }) => ((x + y) % 3 === 0 ? -1.4 : -.6) });
+  }
+  // the face in the bark under the crown, where the fronds part: a scowling brow, hollow eyes with a light in them, a knot
+  // of a nose, a split for a mouth
+  const fc = lie ? T([31.4, 58.6]) : [P.top[0] + (knob[0] - P.top[0]) * .38, P.top[1] + (knob[1] - P.top[1]) * .38];
+  const fa = lie ? 0 : Math.atan2(knob[1] - P.top[1], knob[0] - P.top[0]) + Math.PI / 2, ff = frame(fc[0], fc[1], fa);
+  const eyeY = lie ? -.2 : .4;
+  for (const sd of [-1, 1]) {
+    F.add({ mat: 'dark', prof: 'flat', grp: 'socket' + sd, noShadow: true, shapes: [rell(ff, sd * R(2.6), R(eyeY), R(1.7), R(lie ? .7 : 1.4), 10)] });
+    if (!shut && !lie) F.add({ mat: eyeM, prof: 'flat', grp: 'eye' + sd, noShadow: true, noOutline: true, shapes: [ff.circ(sd * R(2.4), R(eyeY + .1), R(.85))] });
+  }
+  F.add({ mat: barkM, prof: 'round', bw: R(1.2), grp: 'brow', shapes: lie ? [ff.cap(R(-4.4), R(-1.8), R(4.4), R(-1.8), R(1))] : [ff.cap(R(-5), R(-2.4), R(-.6), R(-1.2), R(1.2), R(1)), ff.cap(R(.6), R(-1.2), R(5), R(-2.4), R(1), R(1.2))], tex: bark(624) });
+  if (!lie) F.add({ mat: barkM, prof: 'round', bw: R(1), grp: 'nose', shapes: [ff.poly([[R(-.8), R(.4)], [R(.9), R(.4)], [R(1.3), R(2.6)], [R(-1.2), R(2.8)]])], tex: bark(625) });
+  F.add({ mat: 'dark', prof: 'flat', grp: 'mouth', noShadow: true, shapes: lie ? [ff.cap(R(-2.6), R(2.2), R(2.6), R(2.4), R(.5))] : [ff.poly([[R(-3.2), R(4)], [R(-1.4), R(3.6 - mouth * .3)], [R(.2), R(4.2)], [R(1.8), R(3.6)], [R(3.4), R(4.1)], [R(2.2), R(4.6 + mouth * 2)], [R(-.2), R(4.8 + mouth * 1.6)], [R(-2.4), R(4.6 + mouth * 1.2)]])] });
+  if (mouth > .8 && !lie) F.add({ mat: eyeM, prof: 'flat', grp: 'maw', noShadow: true, noOutline: true, shapes: [ff.circ(R(.2), R(5.4), R(.7))], tex: () => -1 });
+  if (gf && !lie) F.add({ mat: 'moss', prof: 'round', bw: .8, grp: 'beard', shapes: [-3, -1.4, 0, 1.4, 3].map((dx, i) => { const a = ff.P(R(dx), R(5.4)); return cap(a, [a[0] + R(dx * .25), a[1] + R(5 + (i % 2) * 3.4 - Math.abs(dx) * .5)], R(1), R(.45)); }), tex: ({ x, y }) => ((x + y) % 3 === 0 ? -1 : 0) });
+  // the whips in front, hanging either side of its face
+  if (!lie) whips(knob, fan(gf ? 6 : 4, .5, .95, gf ? 20 : 17, gf ? 11 : 10, 20, 32, 626).concat(fan(gf ? 6 : 4, -.95, -.5, gf ? 20 : 17, gf ? 11 : 10, 20, 32, 627)), 'frondsFront', false, lean * 4);
+  // the near bough, reaching
+  bough(P.shN, P.elN, P.haN, lie ? [1, -.3] : reach, 'armN', false);
+  if (pose === 'attack') F.add({ mat: leafM, prof: 'round', bw: .6, grp: 'lash', noShadow: true, shapes: [[-3, 0], [-1, -2.4], [-2, 2.4]].map(([a, b]) => cap([P.haN[0] + R(a), P.haN[1] + R(b)], [P.haN[0] + R(a - 9), P.haN[1] + R(b * 1.6 + 2)], R(.5), R(.25))), tex: () => 1 });
+  // the Weeping Bow, tangled in Grandfather Willow's fronds at his shoulder (from its recipe); a torn frond once it is taken
+  if (gf) {
+    const art = relic ? relicArt(relic) : null;
+    if (art && held && RECIPE[art.r]) {
+      const at = lie ? T([44.4, 62.4]) : T([J.shN[0] + 8.4, J.shN[1] - 7]);
+      const m = drawItem(F, art, at, lie ? -Math.PI / 4 - .15 : pose === 'hurt' ? .9 : pose === 'attack' ? .55 : .72, .5 * k * .8, { center: [32, 32] });
+      A.relic = m([32, 32]);
+    } else if (!lie) F.add({ mat: leafM, prof: 'round', bw: .6, grp: 'torn', shapes: [cap(T([J.shN[0] + 6, J.shN[1] - 10]), T([J.shN[0] + 8, J.shN[1] - 4]), R(.6), R(.3)), cap(T([J.shN[0] + 8.4, J.shN[1] - 10]), T([J.shN[0] + 11, J.shN[1] - 6]), R(.5), R(.25))] });
+  }
+  // it weeps: drops off the fronds
+  if (!lie) F.add({ mat: 'water', prof: 'round', bw: .6, grp: 'tears', noShadow: true, noOutline: true, shapes: [[12, 50 + f * 3], [52, 54 - f * 2], [44, 60 + f * 2]].map(([x, y]) => cap(T([x, y]), T([x, y + 1.6]), R(.4), R(.6))) });
+  A.head = ff.P(0, R(eyeY)); A.mouth = ff.P(0, R(4.4)); A.center = lie ? T([30, 60]) : P.mid;
+}
+const willowWightBase = (F, st) => willowWight(F, st, { k: 1, dx: 0, dy: 0 });
+const grandfatherWillow = (F, st) => willowWight(F, st, { k: 1.3, dx: 6.4, dy: 3.3, grand: true });
+// willow leaves falling round them
+const leafMotes = n => (t, a, gT) => { const c = a.center || [32, 40], out = []; for (let k = 0; k < n; k++) { const ph = (t * (.12 + hash(k, 2, 614) * .1) + hash(k, 3, 614)) % 1; out.push({ x: c[0] - 22 + hash(k, 1, 614) * 44 + Math.sin(t * 1.4 + k) * 3, y: c[1] - 28 + ph * 50, c: gT >= 3 ? [170, 180, 150] : k % 2 ? [120, 160, 60] : [150, 190, 80], a: .85 * Math.sin(ph * Math.PI) }); } return out; };
+
+/* ---- THE DROWNED: Misthollow's drowned, still going about their business under the water: a townsman in a sodden coat
+   up to his ankles in black water, green-grey and bloated, his hair lifting as if the water were still over him, weed
+   off his arms and a green light in his eyes, reaching (64x64, ground 61). The Bell-Ringer lifts a handbell (Toll); the
+   Chorister is a choir child in a torn surplice, singing, a hymnal in both hands; the Drowned Cantor is the choirmaster,
+   tall in a cope, beating time with the Cantor's Staff (80x80, ground 77). One builder in a 64x64 base space mapped by
+   S = { k, dx, dy, variant }. The Waking: weed and shells on him (1), a chain dragged from one wrist and barnacles (2),
+   the deep light in his mouth and an eel round his neck (3) ---- */
+function drownedBuild(F, st, S) {
+  const { pose, f, gT, relic, held } = st, A = st.anchors, k = S.k, v = S.variant, T = p => [S.dx + p[0] * k, S.dy + p[1] * k], R = r => r * k;
+  const ringer = v === 'ringer', choir = v === 'choir', cantor = v === 'cantor', robed = ringer || choir || cantor, lie = pose === 'ko', idle = !pose || pose === 'idle';
+  const skin = 'fenSkin', coat = choir ? 'robeRed' : 'sodden', eyeM = gT >= 3 ? 'deepglow' : 'mireLight', hairM = gT >= 1 ? 'weed' : 'hairHag';
+  const fold = (seed, far) => ({ x, y }) => { if (gT >= 1 && vnoise(x * .3, y * .3, seed) > .76) return { m: 'weed', dd: far ? -1 : 0 }; const n = Math.sin((x + vnoise(x * .06, y * .09, seed) * 7) * 1.1 / k); return (n > .78 ? -1 : 0) + (far ? -1 : 0) + ((y - S.dy) / k > 47 ? -.5 : 0); };
+  const hand = (h, dir, g, far, spread = 1, curl = 0) => {
+    const Sh = [circ(h, R(1.6))]; for (const [a, l] of [[-.5 * spread, 3.4], [-.12 * spread, 4.2], [.26 * spread, 4], [.62 * spread, 2.8]]) { const d = rot2(dir, a), m = [h[0] + d[0] * R(l) * .6, h[1] + d[1] * R(l) * .6], e = rot2(d, curl); Sh.push(cap(h, m, R(.75), R(.55)), cap(m, [m[0] + e[0] * R(l) * .45, m[1] + e[1] * R(l) * .45], R(.55), R(.35))); }
+    F.add({ mat: skin, prof: 'round', bw: R(.9), grp: g, shapes: Sh, tex: far ? DARK : ({ x, y }) => (hash(x, y, 617) < .12 ? -1 : 0) });
+  };
+  if (lie) { // gone back down: a heap of sodden coat sinking in the pool, the hair spread on the water, one hand still up out of it
+    waterAt(F, T([32, 60.2]), R(25), R(2.6));
+    const heap = [[11, 60.6], [14.4, 56.4], [21, 53.6], [30, 52.8], [38, 53.6], [44, 56.2], [47, 60.6]];
+    F.add({ mat: cantor ? 'clothTeal' : coat, prof: 'round', bw: R(4), grp: 'heap', shapes: [poly(heap.map(T))], tex: fold(615) });
+    if (choir) F.add({ mat: 'clothWhite', prof: 'round', bw: R(2), grp: 'surplice', shapes: [poly([[20, 58.6], [23, 54.6], [31, 53.8], [37, 55], [36, 58.6], [31, 57.2], [26, 59.4]].map(T))], tex: ({ x, y }) => ((x + y) % 5 === 0 ? -1 : 0) });
+    if (cantor) F.add({ mat: 'gold', prof: 'round', bw: R(.6), grp: 'orphrey', shapes: [cap(T([17, 57.4]), T([40, 55.4]), R(.8))], tex: ({ x }) => (x % 3 === 0 ? -1.4 : 0) });
+    const hf = frame(...T([47.6, 57.4]), .5);
+    F.add({ mat: hairM, prof: 'round', bw: .6, grp: 'hair', noShadow: true, shapes: [0, 1, 2, 3, 4].map(i => cap(T([49 + i * .6, 56 + i * .8]), T([54 + i * 1.8, 58 + (i % 2) * 1.4 + i * .5]), R(.6), R(.35))) });
+    F.add({ mat: skin, prof: 'round', bw: R(2), grp: 'head', shapes: [rell(hf, 0, 0, R(4), R(4.6))], tex: ({ y }) => ((y - S.dy) / k > 58.6 ? -1 : 0) });
+    // the hand up out of the water, fingers curled, going under
+    F.add({ mat: coat, prof: 'round', bw: R(1.4), grp: 'sleeve', shapes: [cap(T([27, 55]), T([26, 48.4]), R(2.2), R(1.8))], tex: fold(616) });
+    hand(T([26, 46.4]), [.1, -1], 'hand', false, .9, .9);
+    if (cantor && relic && held) { const art = relicArt(relic), m = drawRelic(F, art, T([31, 57.4]), Math.PI / 4 - .12, .4 * k, { center: [32, 32] }); if (m) A.relic = m(cardPt(art, art.p.headT + 10)); }
+    A.head = hf.P(0, 0); A.mouth = hf.P(R(2), R(2)); A.center = T([30, 56]);
+    return;
+  }
+  let J = { head: [36.4, 16.8], shF: [28.6, 25.4], shN: [39.6, 25.4], elF: [26.4, 33.6], haF: [30.6, 40.4], elN: [45.6, 30.8], haN: [52.4, 33.4], hip: [33.4, 40.6], knF: [30.8, 49.6], ftF: [29.6, 59.4], knN: [36.6, 49.6], ftN: [38.6, 59.6] }, ha = .12, eye = 'open', sing = choir || cantor ? .8 : .35, bx = 1.2, by = idle ? f * .6 : 0;
+  if (ringer) Object.assign(J, { elN: [45, 25], haN: [49.4, 17.4] });
+  if (choir) Object.assign(J, { elF: [31.6, 34.4], haF: [38.4, 32.4], elN: [43.4, 33.4], haN: [45.4, 30.2] });
+  if (cantor) Object.assign(J, { elN: [45.6, 27.4], haN: [50.4, 23] });
+  if (idle) J.haN = [J.haN[0], J.haN[1] + f * .5];
+  if (pose === 'attack') {
+    sing = choir || cantor ? 1.4 : 1.1; bx = 3.4;
+    if (ringer) Object.assign(J, { elN: [46.4, 21.6], haN: [52.4, 13.4] });
+    else if (choir) Object.assign(J, { haF: [40.6, 29.6], haN: [47, 27.4], elN: [44.6, 31] });
+    else if (cantor) Object.assign(J, { elN: [47, 24], haN: [54, 26.6] });
+    else Object.assign(J, { shN: [40.4, 26], elN: [47.6, 28.6], haN: [55.4, 29], elF: [32, 30.6], haF: [40.6, 32.6] });
+  } else if (pose === 'hurt') {
+    eye = 'shut'; ha = -.32; sing = .6; bx = -2.6;
+    Object.assign(J, { elN: [42, 25], haN: [45, 18], elF: [22.4, 30.4], haF: [18.4, 25.4] });
+  }
+  // a slouch: the top moves with the pose, the feet stay in the water
+  const B = p => T([p[0] + bx * clamp((50 - p[1]) / 30, 0, 1), p[1] + (p[1] < 44 ? by : 0)]);
+  const P = {}; for (const key of Object.keys(J)) P[key] = B(J[key]);
+  waterAt(F, T([33, 60.6]), R(cantor ? 16 : 14), R(2), { foam: [[R(-10), R(-.6), R(.5)], [R(8), R(-.8), R(.6)]] });
+  const sleeve = (pts, g, far, mat = coat) => F.add({ mat, prof: 'round', bw: R(2), grp: g, shapes: chainC(pts, [R(2.8), R(2.4), R(2)]), tex: fold(616, far) });
+  // the far arm, the hair behind the head (lifting as if the water were still over him), the legs (under the coat)
+  if (!choir) { sleeve([P.shF, P.elF, P.haF], 'armF', true); hand(P.haF, pose === 'attack' ? [1, 0] : [.4, 1], 'handF', true); }
+  const hf = frame(...P.head, ha);
+  const strands = [], nS = choir ? 7 : 9, nJ = choir ? 4 : 6;
+  for (let i = 0; i < nS; i++) {
+    const u = i / (nS - 1), a0 = -2.9 + u * 1.7, root = hf.P(Math.cos(a0) * R(4.1), Math.sin(a0) * R(4.5)), th = -3.25 + u * 1.55 + ha, d = [Math.cos(th), Math.sin(th)], n = [-d[1], d[0]];
+    let prev = root; for (let j = 1; j <= nJ; j++) { const w = Math.sin(j * 1.2 + i * 2.1 + f * .9) * R(.9) * Math.min(1, j / 2), q = [root[0] + d[0] * R(2) * j + n[0] * w, root[1] + d[1] * R(2) * j + n[1] * w]; strands.push(cap(prev, q, R(.8 - j * .06), R(.74 - j * .06))); prev = q; }
+  }
+  F.add({ mat: hairM, prof: 'round', bw: .7, grp: 'hair', shapes: strands, tex: ({ x, y }) => ((x + y) % 3 === 0 ? -1 : hash(x, y, 627) < .15 ? .8 : 0) });
+  const leg = (a, b, c, g, far) => { F.add({ mat: 'leatherDark', prof: 'round', bw: R(1.6), grp: g, shapes: chainC([a, b, c], [R(2.6), R(2.2), R(1.8)]), tex: far ? DARK : null }); F.add({ mat: 'leatherDark', prof: 'round', bw: R(1), grp: g + 'ft', shapes: [ell([c[0] + R(1.4), c[1] + R(.4)], R(2.4), R(1.2))], tex: far ? DARK : null }); };
+  leg(P.hip, P.knF, P.ftF, 'legF', true); leg(P.hip, P.knN, P.ftN, 'legN', false);
+  // the water up round his ankles
+  F.add({ mat: 'blackwater', prof: 'flat', grp: 'lip', noShadow: true, noOutline: true, shapes: [ell(T([33.6, 61]), R(9.6), R(1.3))], tex: ({ x, y }) => ((x + y * 2) % 5 === 0 ? 2 : 0) });
+  // the coat, sodden, bellied, ragged at the hem, open on a waistcoat (the Ringer's gown, the Chorister's cassock under a
+  // torn surplice, the Cantor's cassock under a cope)
+  const hemY = robed ? 57 : 51.4, hw = robed ? 10 : 10.4;
+  const hem = []; for (let i = 0; i <= 8; i++) { const x = 33 - hw + i * hw / 4, y = hemY + (i & 1 ? -1.6 : .4) + hash(i, 1, 618) * 1.2; hem.push([x, y]); }
+  const body = [[33.6, 22.4], [28, 24], [25.6, 31.6], [25.2, 40.6], [33 - hw, hemY]].concat(hem, [[33 + hw, hemY], [42.4, 41], [41.4, 32], [39.4, 24]]);
+  F.add({ mat: coat, prof: 'round', bw: R(4), hs: .8, grp: 'coat', shapes: [poly(body.map(B))], tex: fold(619) });
+  if (!robed) {
+    F.add({ mat: 'drowned', prof: 'round', bw: R(1.4), grp: 'waistcoat', shapes: [poly([[31.8, 23.6], [38, 23.6], [39.4, 40.6], [35.8, 44.6], [31.4, 41]].map(B))], tex: ({ x, y }) => (gT >= 1 && vnoise(x * .3, y * .3, 629) > .74 ? { m: 'weed', dd: 0 } : hash(x, y, 628) < .08 ? -1 : 0) });
+    F.add({ mat: 'bone', prof: 'round', bw: R(.8), grp: 'shirt', shapes: [poly([[32.8, 23.2], [37.2, 23.4], [35.2, 28.6]].map(B))], tex: ({ x, y }) => (hash(x, y, 630) < .2 ? -1 : 0) });
+    F.add({ mat: 'bronze', prof: 'round', bw: R(.5), grp: 'buttons', shapes: [31, 34.4, 37.8].map(y => circ(B([35.6 + (y - 30) * .06, y]), R(.6))) });
+    F.add({ mat: coat, prof: 'round', bw: R(1), grp: 'lapels', shapes: [poly([[31.4, 23.4], [29.4, 24.6], [31, 31]].map(B)), poly([[38.4, 23.4], [40.6, 24.8], [39, 31]].map(B))], tex: () => 1 });
+  }
+  if (choir) F.add({ mat: 'clothWhite', prof: 'round', bw: R(2.4), grp: 'surplice', shapes: [poly([[33.6, 23], [28.4, 25], [25.8, 33], [25.2, 45], [28, 43.4], [31, 46.2], [34, 43.6], [37, 46.4], [40.4, 43.8], [40.2, 33], [38.8, 25]].map(B))], tex: ({ x, y }) => (vnoise(x * .3, y * .3, 620) > .72 ? { m: 'weed', dd: 0 } : (x + y) % 5 === 0 ? -1 : 0) });
+  if (cantor) {
+    for (const sd of [-1, 1]) F.add({ mat: 'clothTeal', prof: 'round', bw: R(3), grp: 'cope' + sd, shapes: [poly([[33.4 + sd * 1, 23], [33.4 + sd * 7, 24.4], [33.4 + sd * 10.6, 36], [33.4 + sd * 11.4, 56.4], [33.4 + sd * 4.6, 55.4], [33.4 + sd * 2.4, 36]].map(B))], tex: fold(621 + sd) });
+    F.add({ mat: 'gold', prof: 'round', bw: R(.6), grp: 'orphrey', shapes: [-1, 1].map(sd => cap(B([33.4 + sd * 2.2, 25]), B([33.4 + sd * 3.6, 54.6]), R(.8))), tex: ({ y }) => (y % 4 === 0 ? -1.6 : y % 4 === 2 ? -.4 : 0) });
+    F.add({ mat: 'clothWhite', prof: 'round', bw: R(1), grp: 'ruff', shapes: [ell(B([33.6, 23.4]), R(5.4), R(2))], tex: ({ x }) => (x % 2 ? -1 : 0) });
+  }
+  if (ringer) F.add({ mat: 'clothWhite', prof: 'round', bw: R(1), grp: 'collar', shapes: [cap(B([29.6, 24.2]), B([37.8, 24.4]), R(1.2))], tex: () => -1 });
+  // weed and shells on him, barnacles; an eel round his neck at the last Waking
+  if (gT >= 1) F.add({ mat: 'weed', prof: 'round', bw: .6, grp: 'weedcoat', shapes: [[26.4, 36, 8], [40.6, 40, 7], [30.6, 46, 6]].flatMap(([x, y, l], i) => chainC([B([x, y]), B([x + (i - 1) * .6, y + l * .5]), B([x + (i - 1) * 1.2 - .6, y + l])], [R(.7), R(.6), R(.3)])) });
+  if (gT >= 2) F.add({ mat: 'barnacle', prof: 'round', bw: R(.7), grp: 'barnacles', shapes: [[29, 26, 1.2], [38.6, 26.4, 1.1], [27, 30, .9]].map(([x, y, r]) => circ(B([x, y]), R(r))) });
+  // the head: bloated, green-grey, sunken rings round eyes with the light in them, the mouth a hole (open in its note)
+  F.add({ mat: skin, prof: 'round', bw: R(2.2), grp: 'head', shapes: [rell(hf, 0, 0, R(4.8), R(5.4)), rell(hf, R(1), R(2.8), R(4), R(3.2))], tex: ({ x, y, nx }) => (hash(x, y, 622) < .1 ? -1 : nx < -.5 ? -.6 : 0) });
+  F.add({ mat: skin, prof: 'round', bw: R(.8), grp: 'ear', shapes: [rell(hf, R(-2.6), R(.8), R(1.1), R(1.5), 10)], tex: () => -1 });
+  F.add({ mat: skin, prof: 'round', bw: R(.8), grp: 'nose', shapes: [hf.poly([[R(3.4), R(-.6)], [R(5.4), R(1.4)], [R(3.6), R(1.8)]])] });
+  F.add({ mat: 'dark', prof: 'flat', grp: 'sockets', noShadow: true, shapes: [rell(hf, R(2.2), R(-.9), R(1.5), R(1.3), 10), rell(hf, R(-1.1), R(-1.1), R(1.3), R(1.2), 10)] });
+  if (eye !== 'shut') F.add({ mat: eyeM, prof: 'flat', grp: 'eyes', noShadow: true, noOutline: true, shapes: [hf.circ(R(2.4), R(-.9), R(.65)), hf.circ(R(-.9), R(-1.1), R(.55))] });
+  const mo = [R(.9) + R(.4) * sing, R(.7) + R(.9) * sing];
+  F.add({ mat: gT >= 3 ? 'deepglow' : 'dark', prof: 'flat', grp: 'mouth', noShadow: true, shapes: [rell(hf, R(1.8), R(3.4), mo[0], mo[1], 12)], tex: () => (gT >= 3 ? -1.4 : 0) });
+  // a few strands fallen forward over the brow
+  F.add({ mat: hairM, prof: 'round', bw: .5, grp: 'fringe', shapes: [[-1.2, -4.8, -2.6, 1.4], [.8, -5, .4, -1.8]].map(([a, b, c, d]) => hf.cap(R(a), R(b), R(c), R(d), R(.55))), tex: () => -.6 });
+  if (gT >= 3) F.add({ mat: 'leech', prof: 'round', bw: R(.8), grp: 'eel', shapes: chainC([B([28.6, 24.6]), B([31, 26]), B([34.6, 25.8]), B([38, 24.2]), B([39.6, 21.8])], [R(1.1), R(1.3), R(1.3), R(1.1), R(.7)]), tex: ({ x }) => (x % 3 === 0 ? -1 : 0) });
+  // the Chorister's hymnal, held up in both hands; the Bell-Ringer's bell; the Cantor's Staff (from its recipe)
+  if (choir) {
+    sleeve([P.shF, P.elF, P.haF], 'armF', false, 'clothWhite');
+    const bc = [(P.haF[0] + P.haN[0]) / 2, (P.haF[1] + P.haN[1]) / 2 - R(2.6)], bf = frame(bc[0], bc[1], -.2 - (pose === 'attack' ? .25 : 0));
+    F.add({ mat: 'leatherDark', prof: 'round', bw: R(1), grp: 'bookcover', shapes: [bf.poly([[R(-6), R(-4.4)], [0, R(-3.4)], [R(6), R(-4.4)], [R(6.2), R(3.4)], [0, R(4.4)], [R(-6.2), R(3.4)]])] });
+    F.add({ mat: 'parchment', prof: 'round', bw: R(1), grp: 'bookpages', shapes: [bf.poly([[R(-5.3), R(-3.7)], [0, R(-2.8)], [R(5.3), R(-3.7)], [R(5.5), R(2.7)], [0, R(3.7)], [R(-5.5), R(2.7)]])], tex: ({ x, y }) => (y % 2 === 0 && hash(x, y, 623) < .6 ? -1.2 : vnoise(x * .4, y * .4, 624) > .74 ? { m: 'weed', dd: 0 } : 0) });
+    hand(P.haF, [.3, -1], 'handF', false, .8); hand(P.haN, [-.2, -1], 'handN', false, .8);
+  } else {
+    sleeve([P.shN, P.elN, P.haN], 'armN', false);
+    if (ringer) {
+      const bf = frame(P.haN[0], P.haN[1] - R(1), (pose === 'attack' ? .5 : f ? .12 : -.1) + Math.PI / 2);
+      F.add({ mat: 'bronze', prof: 'round', bw: R(1.4), grp: 'bellhandle', shapes: [bf.cap(R(-3.6), 0, 0, 0, R(.9))] });
+      F.add({ mat: 'bronze', prof: 'round', bw: R(2), hs: .8, grp: 'bell', shapes: [bf.poly([[0, R(-1.6)], [R(3), R(-2.2)], [R(5.4), R(-3.6)], [R(5.8), 0], [R(5.4), R(3.6)], [R(3), R(2.2)], [0, R(1.6)]])], tex: ({ x, y, nx, ny }) => (vnoise(x * .5, y * .5, 625) > .7 && nx + ny > 0 ? { m: 'verdigris', dd: 0 } : 0) });
+      F.add({ mat: 'iron', prof: 'round', bw: R(.8), grp: 'clapper', shapes: [bf.circ(R(6.2), R(.6), R(1))] });
+      A.bell = bf.P(R(3), 0);
+      if (pose === 'attack') F.add({ mat: 'water', prof: 'flat', grp: 'toll', noShadow: true, noOutline: true, shapes: [0, 1, 2].map(i => { const c = bf.P(R(8 + i * 3.4), 0), r = R(2.4 + i * 1.6); return poly([[c[0] - r * .3, c[1] - r], [c[0] + r * .2, c[1] - r * .6], [c[0] + r * .35, c[1]], [c[0] + r * .2, c[1] + r * .6], [c[0] - r * .3, c[1] + r], [c[0], c[1]]]); }), tex: () => -1 });
+    }
+    if (cantor) {
+      const art = relic && held ? relicArt(relic) : null;
+      if (art) { const a = pose === 'attack' ? .25 : pose === 'hurt' ? -.9 : -.55; const m = drawRelic(F, art, P.haN, a - Math.PI / 4, .5 * k * .9, { center: cardPt(art, 34) }); if (m) { A.relic = m(cardPt(art, art.p.headT + 12)); A.weaponTip = A.relic; } }
+    }
+    hand(P.haN, ringer ? [0, -1] : cantor ? [.2, -1] : pose === 'attack' ? [1, -.1] : [.5, 1], 'handN', false, ringer || cantor ? .7 : 1.1, ringer || cantor ? 1.2 : .3);
+  }
+  // a chain dragged from one wrist
+  if (gT >= 2 && !cantor) F.add({ mat: 'iron', prof: 'round', bw: .6, grp: 'chain', shapes: [0, 1, 2, 3, 4].map(i => { const a = P.haF, c = [a[0] - R(1.2 + i * 1.4), a[1] + R(2 + i * 2.6)]; return i & 1 ? ell(c, R(.7), R(1.2)) : ell(c, R(1.1), R(.7)); }) });
+  // water still running off him
+  F.add({ mat: 'water', prof: 'round', bw: .6, grp: 'drips', noShadow: true, noOutline: true, shapes: [[24.4, hemY + 2 + f * 2], [41.6, hemY + 1 - f]].map(([x, y]) => cap(T([x, y]), T([x, y + 1.6]), R(.4), R(.6))).concat([cap([P.haN[0] + R(.4), P.haN[1] + R(4 + f * 2)], [P.haN[0] + R(.4), P.haN[1] + R(5.6 + f * 2)], R(.4), R(.6))]) });
+  A.head = hf.P(R(1.8), R(-1)); A.mouth = hf.P(R(1.8), R(3.4)); A.center = B([33, 36]);
+}
+const drownedBase = (F, st) => drownedBuild(F, st, { k: 1, dx: 0, dy: 0 });
+const bellRinger = (F, st) => drownedBuild(F, st, { k: 1, dx: 0, dy: 0, variant: 'ringer' });
+const drownedChoir = (F, st) => drownedBuild(F, st, { k: .9, dx: 3.4, dy: 6.1, variant: 'choir' });
+const drownedCantor = (F, st) => drownedBuild(F, st, { k: 1.2, dx: .4, dy: 3.8, variant: 'cantor' });
+// bubbles rising off the drowned (the Choir's note goes up in them)
+const bubbleMotes = n => (t, a, gT) => { const c = a.mouth || a.center || [36, 20], out = []; for (let j = 0; j < n + (gT || 0); j++) { const ph = (t * (.3 + hash(j, 2, 626) * .2) + hash(j, 3, 626)) % 1; out.push({ x: c[0] - 3 + hash(j, 1, 626) * 8 + Math.sin(t * 2 + j) * 1.4, y: c[1] - ph * 22, c: j % 3 ? [150, 214, 220] : [220, 250, 250], a: (1 - ph) * .75 }); } return out; };
+
+/* ---- THE LANTERN MOTHER (Champion): the last lamplighter of Misthollow, in her long dark lamplighter's coat, standing
+   on the black water: the Mourning Veil over her head and shoulders and the Lamplighter's Lantern held up in her near
+   hand (both drawn from their recipes, each gone when snapped off), her long hooked lamp-pole in the other (96x96,
+   ground 93). Lamplight (1): warm, the lantern high. The Children's Road (2): she turns toward the water and holds the
+   lantern out low to lead them, and the lamps light one by one along the drowned path behind her. Lights Out (3): the
+   lamps go out but hers, which burns white; her eyes burn through the veil; her hem is going to water ---- */
+function lanternMother(F, st) {
+  const { pose, f, phase, broken, held } = st, A = st.anchors, P2 = phase >= 2, P3 = phase >= 3, idle = !pose || pose === 'idle', lie = pose === 'ko';
+  const lampArt = relicArt('lamplighters-lantern'), veilArt = relicArt('mourning-veil');
+  const lampOn = held && !broken.includes('lamplighters-lantern') && !!lampArt, veilOn = held && !broken.includes('mourning-veil') && !!veilArt;
+  const skinM = 'drownedSkin', coatM = 'sodden', eyeM = P3 ? 'primal' : 'radiant';
+  let lean = 0, by = idle ? f * .8 - .4 : 0, eye = 'open', hand = P3 ? [66, 17] : P2 ? [69, 49] : [67.4, 21.4], elb = P3 ? [62, 30] : P2 ? [62, 44] : [63, 33], farHand = [31.6, 54], farElb = [35.4, 47], pole = [[30.6, 91], [24.2, 9]];
+  if (pose === 'attack') { lean = .8; hand = [57.4, 33.4]; elb = [60, 42]; farHand = [45, 46]; farElb = [39, 46]; pole = [[33, 56], [88, 30]]; }
+  else if (pose === 'hurt') { lean = -1; eye = 'shut'; hand = [64, 27]; elb = [60, 36]; farHand = [29, 50]; farElb = [33, 45]; pole = [[27.6, 91], [18, 12]]; }
+  // a lean about the hem, which stays on the water
+  const L = p => [p[0] + lean * (90 - p[1]) * .09, p[1] + (p[1] < 86 ? by : 0)];
+  const clothT = (seed, far) => ({ x, y }) => {
+    if (P3 && y > 78 && hash(x, y, seed) < (y - 78) * .012) return { m: 'water', dd: -1 };
+    const n = Math.sin((x + vnoise(x * .05, y * .08, seed) * 8) * .95); return (n > .8 ? -1 : n < -.9 ? .6 : 0) + (far ? -1 : 0);
+  };
+  // the black water she stands on, and her lamp's light lying on it
+  waterAt(F, [48, 91.4], 40, 3.2, { foam: lie ? null : [[-16, -.4, .6], [14, -.6, .7], [22, -.2, .5]] });
+  if (lampOn && !lie) F.add({ mat: P3 ? 'radiant' : 'amber', prof: 'flat', grp: 'lampglow', noShadow: true, noOutline: true, shapes: [ell([L(hand)[0], 91.4], 6.4, .8)], tex: ({ x }) => (x % 2 ? -1.6 : -.8) });
+  // the lamps along the drowned path behind her (the Children's Road); gone to smoke when the lights go out
+  if (P2 && !P3 && !lie) for (const [i, p, h] of [[0, [17, 66], 24], [1, [8.4, 64.6], 20], [2, [24, 70], 16]]) {
+    F.add({ mat: 'bogwood', prof: 'round', bw: .6, grp: 'post' + i, shapes: [cap([p[0], p[1] + 2], [p[0], p[1] + h], .6, .7), cap([p[0] - 1.6, p[1] + 2.4], [p[0] + 1.6, p[1] + 2.4], .5)] });
+    F.add({ mat: 'blackiron', prof: 'round', bw: .6, grp: 'lampbox' + i, shapes: [poly([[p[0] - 1.6, p[1] - 1.4], [p[0] + 1.6, p[1] - 1.4], [p[0] + 1.2, p[1] + 1.8], [p[0] - 1.2, p[1] + 1.8]]), poly([[p[0] - 2, p[1] - 1.4], [p[0], p[1] - 3.2], [p[0] + 2, p[1] - 1.4]])] });
+    F.add({ mat: 'radiant', prof: 'flat', grp: 'lamp' + i, noShadow: true, shapes: [ell([p[0], p[1] + .2], .9, 1.2)] });
+    F.add({ mat: 'radiant', prof: 'flat', grp: 'lamphalo' + i, noShadow: true, noOutline: true, shapes: [circ(p, 4.4)], cuts: [circ(p, 2.6)], tex: ({ x, y }) => ((x + y) & 1 ? -2.6 : -2) });
+  }
+  if (P3 && !lie) F.add({ mat: 'mist', prof: 'flat', grp: 'smoke', noShadow: true, noOutline: true, shapes: [[17, 64], [8.4, 62.6], [24, 68]].flatMap(([x, y]) => chainC([[x, y], [x + 1.4, y - 4], [x - .6, y - 8], [x + .8, y - 12]], [1, 1.3, 1, .5])), tex: ({ x, y }) => ((x + y) & 1 ? -1.8 : -1) });
+  if (lie) return motherFallen(F, st, { lampArt, veilArt, lampOn, veilOn, skinM, coatM });
+  // the lamp-pole in her far hand, behind her (swung out in front of her when she strikes)
+  const lampPole = () => {
+    const a = L(pole[0]), b = pose === 'attack' ? pole[1] : L(pole[1]), d = [b[0] - a[0], b[1] - a[1]], l = Math.hypot(d[0], d[1]), u = [d[0] / l, d[1] / l], n = [-u[1], u[0]];
+    F.add({ mat: 'bogwood', prof: 'round', bw: .9, grp: 'pole', shapes: [cap(a, b, 1.1, .9)], tex: ({ x, y }) => ((x + y) % 5 === 0 ? -1 : 0) });
+    const P = (t, s) => [b[0] + u[0] * t + n[0] * s, b[1] + u[1] * t + n[1] * s];
+    F.add({ mat: 'brass', prof: 'round', bw: .8, grp: 'polehook', shapes: chainC([P(-2, 0), P(1.4, 0), P(3.4, 1.6), P(3, 4.2), P(1, 4.8)], [.9, .9, .8, .7, .5]) });
+    F.add({ mat: 'brass', prof: 'round', bw: .8, grp: 'wickholder', shapes: [cap(P(-6, 0), P(-5, -2.6), .8, .6)] });
+    if (!P3) F.add({ mat: 'radiant', prof: 'round', bw: .6, grp: 'wick', noShadow: true, shapes: [circ(P(-4.6, -3.6), .8)] });
+    A.weaponTip = P(3, 4.2);
+  };
+  lampPole();
+  // the far arm on the pole
+  const sleeve = (a, b, c, g, far) => F.add({ mat: coatM, prof: 'round', bw: 2.4, grp: g, shapes: chainC([L(a), L(b), L(c)], [3.2, 2.8, 2.4]), tex: clothT(641, far) });
+  const hnd = (h, dir, g, spread = 1, far) => { const Sh = [circ(h, 1.9)]; for (const [a, l] of [[-.5 * spread, 3.6], [-.15 * spread, 4.2], [.2 * spread, 4], [.55 * spread, 3]]) { const d = rot2(dir, a); Sh.push(cap(h, [h[0] + d[0] * l, h[1] + d[1] * l], .85, .5)); } F.add({ mat: skinM, prof: 'round', bw: 1, grp: g, shapes: Sh, tex: far ? DARK : ({ x, y }) => (hash(x, y, 642) < .12 ? -1 : 0) }); };
+  sleeve([40.6, 38.6], farElb, farHand, 'sleeveF', true);
+  hnd(L(farHand), pose === 'attack' ? [1, -.3] : [-.2, -1], 'handF', .8, true);
+  // the coat: long, dark, buttoned to the throat, its skirts spreading on the water and going to water at the hem
+  const hem = []; for (let k = 0; k <= 12; k++) { const x = 24 + k * 4, y = 90.6 + (k & 1 ? -2.2 : .2) + hash(k, 1, 643) * 1.4 - (P3 ? hash(k, 2, 643) * 3 : 0); hem.push([x, y]); }
+  const coat = [[44, 37.4], [52.6, 37.4], [55.4, 44], [55, 53], [59, 66], [66, 80], [72, 90.6]].concat(hem.slice().reverse(), [[24, 90.6], [30, 80], [37, 66], [41.2, 53], [41, 44]]);
+  F.add({ mat: coatM, prof: 'round', bw: 6, hs: .8, grp: 'coat', shapes: [poly(coat.map(L))], tex: clothT(644) });
+  F.add({ mat: 'clothGrey', prof: 'round', bw: 2, grp: 'apron', shapes: [poly([[44.4, 54], [52, 54], [55.4, 74], [48.6, 76.4], [41.4, 74]].map(L))], tex: ({ x, y }) => ((x * 2 + y) % 7 === 0 ? -1 : P3 && hash(x, y, 645) < .1 ? -1.4 : 0) });
+  F.add({ mat: 'leatherDark', prof: 'round', bw: 1, grp: 'belt', shapes: [cap(L([41.4, 53.4]), L([55.2, 53.4]), 1.3)] });
+  F.add({ mat: 'brass', prof: 'round', bw: .8, grp: 'buttons', shapes: [40, 44, 48].map(y => circ(L([48.8, y]), .8)).concat([circ(L([48.4, 53.4]), 1.3)]) });
+  F.add({ mat: 'leather', prof: 'round', bw: 1, grp: 'tinderbox', shapes: [poly([[52.4, 54.4], [56.4, 54.4], [56.2, 59], [52.6, 59.2]].map(L))] });
+  if (P2) F.add({ mat: 'water', prof: 'round', bw: .6, grp: 'hemdrips', noShadow: true, noOutline: true, shapes: [[30, 86], [44, 88], [58, 87], [66, 85]].map(([x, y], i) => cap(L([x, y + (f + i) % 2]), L([x, y + 2.4 + (f + i) % 2]), .4, .7)) });
+  // her head: under the veil, or bare once it is torn away: a drowned woman's face, her hair hanging wet to her shoulders
+  const hc = L(pose === 'hurt' ? [46.4, 27.6] : pose === 'attack' ? [50.4, 28.4] : [48.4, 27.4]), tilt = pose === 'hurt' ? -.14 : pose === 'attack' ? .1 : P2 && !P3 ? .12 : 0;
+  if (!veilOn) {
+    const hf = frame(hc[0], hc[1], tilt);
+    F.add({ mat: 'hairBlack', prof: 'round', bw: 3, grp: 'hairback', shapes: [hf.poly([[-7, -5], [7, -5], [9, 4], [9.6, 13], [5, 12], [0, 10.6], [-5, 12], [-9.6, 13], [-9, 4]])], tex: ({ x }) => (x % 3 === 0 ? -1 : 0) });
+    F.add({ mat: coatM, prof: 'round', bw: 3, grp: 'collar', shapes: [poly([[40.4, 38.4], [56.6, 38.4], [54, 42.4], [43, 42.4]].map(L))], tex: clothT(646) });
+    F.add({ mat: skinM, prof: 'round', bw: 2.6, grp: 'face', shapes: [rell(hf, 0, .6, 5.6, 7)], tex: ({ x, y }) => (hash(x, y, 647) < .1 ? -1 : 0) });
+    F.add({ mat: 'hairBlack', prof: 'round', bw: 1.4, grp: 'hairfront', shapes: [hf.poly([[-6, -6.4], [6, -6.4], [6.4, -1.4], [3.6, -4], [0, -3.4], [-3.6, -4], [-6.4, -1.4]]), hf.cap(-5.8, -2, -6.6, 8, 1.2, .8), hf.cap(5.8, -2, 6.8, 8.4, 1.2, .8)], tex: ({ x, y }) => ((x + y) % 3 === 0 ? -1 : 0) });
+    F.add({ mat: 'dark', prof: 'flat', grp: 'sockets', noShadow: true, shapes: [rell(hf, -2.4, .2, 1.5, 1.1, 10), rell(hf, 2.4, .2, 1.5, 1.1, 10)] });
+    if (eye !== 'shut') F.add({ mat: eyeM, prof: 'flat', grp: 'eyes', noShadow: true, noOutline: true, shapes: [hf.circ(-2.3, .2, .75), hf.circ(2.3, .2, .75)] });
+    F.add({ mat: 'dark', prof: 'flat', grp: 'mouth', noShadow: true, shapes: [hf.cap(-1.4, 4.6, 1.4, 4.6, .45)] });
+    F.add({ mat: 'water', prof: 'round', bw: .5, grp: 'wet', noShadow: true, noOutline: true, shapes: [hf.cap(-7, 10, -7, 12, .4, .6), hf.cap(7.4, 10.6, 7.4, 12.4, .4, .6)] });
+  } else {
+    const va = Object.assign({}, veilArt, { p: Object.assign({}, veilArt.p, { eyes: eye === 'shut' ? null : eyeM }) });
+    const m = drawItem(F, va, hc, tilt, .46, { center: [32, 29.4] });
+    A.veil = m([32, 14]);
+  }
+  // the near arm, and the Lantern in her hand (hung from it by its ring); a burnt stub of chain once it is snapped off
+  sleeve([54.4, 38.6], elb, hand, 'sleeveN', false);
+  const hN = L(hand);
+  if (lampOn) {
+    const la = Object.assign({}, lampArt, { p: Object.assign({}, lampArt.p, P3 ? { flame: 'primal', core: 'radiant', glass: 'radiant' } : {}) });
+    const m = drawItem(F, la, [hN[0] + .6, hN[1] + 1.4], pose === 'attack' ? -.3 : pose === 'hurt' ? .3 : f ? .06 : -.04, .44, { center: [32, 5.2] });
+    A.lantern = m([32, 33]);
+  } else F.add({ mat: 'blackiron', prof: 'round', bw: .6, grp: 'stubchain', shapes: chainC([[hN[0] + .4, hN[1] + 1.4], [hN[0] + 1, hN[1] + 4], [hN[0] + .2, hN[1] + 6.4]], .7) });
+  hnd(hN, [.1, 1], 'handN', .7, false);
+  if (pose === 'attack' && lampOn) F.add({ mat: 'radiant', prof: 'flat', grp: 'flare', noShadow: true, noOutline: true, shapes: spikesC([[hN[0] + 7, hN[1] + 10, 1, -.3, 9, 1.4], [hN[0] + 6, hN[1] + 14, 1, .4, 8, 1.2], [hN[0] + 3, hN[1] + 18, .4, 1, 6, 1]]), tex: () => -1 });
+  A.head = [hc[0], hc[1] - 1]; A.mouth = [hc[0], hc[1] + 4]; A.center = L([48, 56]);
+  A.relics = [A.lantern, A.veil].filter(Boolean); A.relic = A.relics[0] || null;
+}
+// fallen: knelt down in the water, bowed; the lantern set down on the water beside her, still lit
+function motherFallen(F, st, { lampArt, veilArt, lampOn, veilOn, skinM, coatM }) {
+  const A = st.anchors;
+  F.add({ mat: 'bogwood', prof: 'round', bw: .9, grp: 'pole', shapes: [cap([8, 90.4], [58, 86.4], 1, .8)] });
+  F.add({ mat: coatM, prof: 'round', bw: 6, hs: .8, grp: 'coat', shapes: [poly([[36, 90.8], [38, 76], [44, 64], [54, 64], [60, 76], [64, 90.8]])], tex: ({ x, y }) => (Math.sin(x * .9 + vnoise(x * .05, y * .08, 648) * 8) > .8 ? -1 : 0) });
+  F.add({ mat: skinM, prof: 'round', bw: 1, grp: 'hands', shapes: [ell([46, 78], 2.2, 1.6), ell([52, 79], 2.2, 1.6)] });
+  const hc = [49, 60];
+  if (veilOn) { const m = drawItem(F, veilArt, hc, .5, .44, { center: [32, 29.4] }); A.veil = m([32, 14]); }
+  else { F.add({ mat: 'hairBlack', prof: 'round', bw: 2.4, grp: 'hair', shapes: [ell([hc[0] + 1, hc[1]], 6.4, 5.4), cap([hc[0] + 4, hc[1] + 2], [hc[0] + 6, hc[1] + 12], 2, 1)], tex: ({ x }) => (x % 3 === 0 ? -1 : 0) }); }
+  if (lampOn) { const m = drawItem(F, lampArt, [72, 90.6], 0, .3, { center: [32, 52] }); A.lantern = m([32, 33]); }
+  A.head = [hc[0], hc[1]]; A.mouth = [hc[0] + 2, hc[1] + 3]; A.center = [50, 78];
+  A.relics = [A.lantern, A.veil].filter(Boolean); A.relic = A.relics[0] || null;
+}
+// moths round her lamp (Lamplight); lights drifting off to the water (the Children's Road); ash coming down (Lights Out)
+const motherMotes = (t, a, gT, phase = 1) => {
+  const out = [], c = a.lantern || a.center || [60, 40];
+  const nm = phase >= 3 ? 2 : 5;
+  for (let j = 0; j < nm; j++) { const ang = t * (1.6 + j * .3) + j * 1.7, r = 6 + (j % 3) * 2.4; out.push({ x: c[0] + Math.cos(ang) * r, y: c[1] + Math.sin(ang) * r * .6, c: [240, 228, 196], a: .8 }); }
+  if (phase === 2) for (let j = 0; j < 4; j++) { const ph = (t * .2 + j / 4) % 1; out.push({ x: 60 - ph * 50 + Math.sin(t + j) * 2, y: 80 + Math.sin(ph * 6 + j) * 3, c: [255, 236, 160], a: Math.sin(ph * Math.PI) * .9 }); }
+  if (phase >= 3) for (let j = 0; j < 6; j++) { const ph = (t * .25 + hash(j, 2, 649)) % 1; out.push({ x: 20 + hash(j, 1, 649) * 56, y: 10 + ph * 80, c: [120, 110, 140], a: .7 * Math.sin(ph * Math.PI) }); }
+  return out;
+};
+
+/* ---- THE BLACKWATER LEVIATHAN (Champion): the thing in the Blackwater, as long as the channel is wide, up out of the
+   water in coils: a great eel-serpent in black-green hide, barnacled and weed-hung, the Deep-Pearl set in its brow and
+   Corvus's harpoon lodged in its side (both drawn from their recipes, each gone when snapped off), an iron collar on
+   its neck and the great chain running from the lock (Harrow's broken ring on it) down into the water (96x96, water
+   line 84). The Wake (1): rising. The Deep (2): more of it up, the chain taut, the chain-post dragged half out of the
+   mud. Blackwater (3): the pearl burns green and the water comes up with it. `dive`: it has sounded: a fluke going
+   under, a whirlpool, the chain running down into it, the pearl's light under the water ---- */
+function blackwaterLeviathan(F, st) {
+  const { pose, f, phase, broken, held } = st, A = st.anchors, P2 = phase >= 2, P3 = phase >= 3, lie = pose === 'ko', dive = pose === 'dive';
+  const harpArt = relicArt('corvus-harpoon'), pearlArt = relicArt('deep-pearl');
+  const harpOn = held && !broken.includes('corvus-harpoon') && !!harpArt, pearlOn = held && !broken.includes('deep-pearl') && !!pearlArt;
+  const WL = P3 ? 81 : 84, hide = 'leviathan', eyeM = P3 ? 'deepglow' : P2 ? 'eyeRed' : 'amber';
+  const hideT = seed => ({ x, y, cx, cy }) => {
+    if (vnoise(x * .3, y * .3, seed + 1) > .84) return { m: 'barnacle', dd: hash(x, y, seed) < .3 ? -1 : 0 };
+    if (vnoise(x * .22, y * .5, seed + 2) > .83) return { m: 'weed', dd: 0 };
+    const sc = ((x + (y >> 1) * 2) % 5 === 0 || (y % 4 === 0 && (x >> 1) % 3 === 0)) ? -1 : 0;
+    return sc + (hash(x, y, seed) < .05 ? .8 : 0);
+  };
+  const above = poly([[-4, -4], [100, -4], [100, WL + .4], [-4, WL + .4]]);
+  const ring = (c, rx, g) => F.add({ mat: 'water', prof: 'flat', grp: g, noShadow: true, noOutline: true, shapes: [ell(c, rx, rx * .22)], cuts: [ell(c, rx - 1.2, rx * .22 - .6)], tex: () => -.8 });
+  // the Blackwater: the whole channel
+  F.add({ mat: 'blackwater', prof: 'flat', grp: 'channel', noShadow: true, noOutline: true, shapes: [poly([[0, WL], [96, WL], [96, 96], [0, 96]])], tex: ({ x, y }) => ((x * 3 + y * 7) % 11 === 0 ? 1.4 : (y - WL) % 4 === 0 && hash(x >> 2, y, 651) < .5 ? .8 : 0) });
+  // a coil: an arch of it out of the water and back in
+  const arch = (x0, x1, h, r, g, far) => { const pts = []; for (let i = 0; i <= 8; i++) { const u = i / 8, a = Math.PI * (1 - u); pts.push([x0 + (x1 - x0) * u, WL + 3 - Math.sin(a) * h]); } F.add({ mat: hide, prof: 'round', bw: r * .8, hs: .85, grp: g, shapes: chainC(pts, r), clip: above, tex: far ? farTex(hideT(652)) : hideT(652) }); F.add({ mat: 'leviBelly', prof: 'round', bw: 1.2, grp: g + 'fin', clip: above, shapes: spikesC(pts.slice(2, 7).map((p, i) => [p[0], p[1] - r * .8, (i - 2) * .12, -1, 3.4 + (i % 2), 1.2])), tex: far ? DARK : null }); ring([x0, WL + .6], r + 1, g + 'r0'); ring([x1, WL + .6], r + 1, g + 'r1'); return pts; };
+  if (dive) {
+    // gone down: a fluke going under, a whirlpool, the chain running into it; the pearl's light under the water
+    for (let i = 0; i < 4; i++) ring([48, WL + 3 + i * .6], 8 + i * 6, 'whirl' + i);
+    F.add({ mat: hide, prof: 'round', bw: 3, grp: 'fluke', clip: above, shapes: [poly([[50, WL + 3], [52, WL - 8], [46, WL - 16], [54, WL - 11], [60, WL - 18], [56, WL - 6], [54, WL + 3]])], tex: hideT(653) });
+    F.add({ mat: 'blackiron', prof: 'round', bw: .8, grp: 'chain', shapes: Array.from({ length: 9 }, (_, i) => { const p = [92 - i * 4.6, WL - 10 + i * 1.6]; return i & 1 ? ell(p, 1.4, 2) : ell(p, 2.2, 1.3); }), clip: above });
+    if (pearlOn) F.add({ mat: 'deepglow', prof: 'flat', grp: 'underglow', noShadow: true, noOutline: true, shapes: [ell([44, WL + 6], 7, 2.4)], tex: ({ x, y }) => ((x + y) & 1 ? -2 : -1.2) });
+    A.head = [48, WL]; A.mouth = [48, WL]; A.center = [48, WL - 4];
+    A.relics = []; A.relic = null; return;
+  }
+  // the coils behind it, and its tail
+  if (!lie) { arch(1, 25, 21 + f, 7, 'coilA', true); if (P2) arch(21, 43, 16, 7.6, 'coilB', true); }
+  else arch(6, 30, 9, 6, 'coilA', true);
+  // the neck up out of the water to the head (its head on the water, beaten)
+  let N = [[48, WL + 4], [50, 70], [53, 57], [57, 46], [62, 37.4], [67, 31.4]], hc = [71.2, 25.6 + f * .8], ha = .12, jaw = .15, eye = 'open';
+  if (pose === 'attack') { N = [[48, WL + 4], [51.4, 70], [56.6, 60], [62.4, 53.4], [67.6, 49], [71.6, 46.4]]; hc = [74.6, 44]; ha = .5; jaw = 1; }
+  else if (pose === 'hurt') { N = [[50, WL + 4], [50.4, 70], [51, 57], [52.4, 45], [55, 35], [58, 27]]; hc = [60, 18.6]; ha = -.5; jaw = .7; eye = 'shut'; }
+  else if (lie) { N = [[34, WL + 4], [40, WL - 4], [48, WL - 6.4], [56, WL - 6], [62, WL - 4.6], [66, WL - 4]]; hc = [71, WL - 4.6]; ha = .05; jaw = .1; eye = 'shut'; }
+  const rs = [12.4, 11.4, 10.4, 9.4, 8.6, 8], nproj = polyProj(N);
+  // the harpoon: lodged in its side, the iron head buried (drawn from its recipe, the shaft and its line out of the wound)
+  const wound = lie ? [47, WL - 5] : [N[1][0] - 2.4, N[1][1] - 3];
+  const neckT = ({ x, y, cx, cy }) => { const [, off] = nproj(cx, cy), belly = off < -rs[2] * .35; if (belly) return { m: 'leviBelly', dd: (y % 3 === 0 ? -1 : 0) }; return hideT(654)({ x, y }); };
+  F.add({ mat: hide, prof: 'round', bw: 7, hs: .85, grp: 'neck', shapes: chainC(N, rs), clip: above, tex: neckT });
+  F.add({ mat: hide, prof: 'round', bw: 1.4, grp: 'crest', clip: above, shapes: spikesC(N.slice(1).map((p, i) => { const q = N[i], d = [p[0] - q[0], p[1] - q[1]], l = Math.hypot(d[0], d[1]) || 1, n = [d[1] / l, -d[0] / l]; return [p[0] - n[0] * rs[i + 1] * .9, p[1] - n[1] * rs[i + 1] * .9, -n[0], -n[1], 4 - i * .3, 1.6]; })), tex: () => -1 });
+  if (harpOn) {
+    const ang = lie ? Math.PI * .62 : Math.PI / 2 - .25, m = drawItem(F, harpArt, wound, ang, .5, { center: cardPt(harpArt, 50), drop: ['head'] });
+    A.harpoon = m(cardPt(harpArt, 34));
+  }
+  F.add({ mat: 'flesh', prof: 'round', bw: 1.2, grp: 'wound', shapes: [ell(wound, 2.4, 1.8)], tex: () => (harpOn ? -1 : 0) });
+  if (!harpOn) F.add({ mat: 'dark', prof: 'flat', grp: 'woundhole', noShadow: true, shapes: [ell(wound, 1.2, .9)] });
+  // the collar: an iron band on its neck, a lock at the front with Harrow's broken ring on it, the great chain from it
+  const ci = lie ? 4 : 3, cc = [(N[ci][0] + N[ci + 1][0]) / 2, (N[ci][1] + N[ci + 1][1]) / 2], ca = Math.atan2(N[ci + 1][1] - N[ci][1], N[ci + 1][0] - N[ci][0]), cf = frame(cc[0], cc[1], ca), cr = (rs[ci] + rs[ci + 1]) / 2 + .8;
+  F.add({ mat: 'blackiron', prof: 'round', bw: 2, grp: 'collar', shapes: [cf.poly([[-3.4, -cr - .4], [3.4, -cr - .4], [3.4, cr + .4], [-3.4, cr + .4]])], tex: ({ x, y }) => (hash(x, y, 655) < .2 ? { m: 'rust', dd: 0 } : 0) });
+  F.add({ mat: 'iron', prof: 'round', bw: .8, grp: 'collarrims', shapes: [cf.cap(-3.2, -cr, -3.2, cr, .7), cf.cap(3.2, -cr, 3.2, cr, .7)] });
+  F.add({ mat: 'iron', prof: 'round', bw: .8, grp: 'collarbolts', shapes: [-.66, -.22, .22, .66].map(u => cf.circ(0, cr * u, .9)) });
+  const lk = cf.P(1.6, cr + 2.6);
+  F.add({ mat: 'blackiron', prof: 'round', bw: 1.4, grp: 'lock', shapes: [poly([[lk[0] - 3, lk[1] - 2.4], [lk[0] + 3, lk[1] - 2.4], [lk[0] + 2.6, lk[1] + 3], [lk[0] - 2.6, lk[1] + 3]])] });
+  F.add({ mat: 'bronze', prof: 'round', bw: .6, grp: 'brokenring', shapes: [circ([lk[0], lk[1] + .4], 1.7)], cuts: [circ([lk[0], lk[1] + .4], .9), poly([[lk[0] + .2, lk[1] - 2], [lk[0] + 1.6, lk[1] - 2], [lk[0] + .6, lk[1] + .4]])] });
+  const post = P2 && !lie ? [91, WL - 12] : null, tail = post || (lie ? [92, WL + 2] : [94, WL + 1]);
+  const links = []; for (let i = 0; i <= 11; i++) { const u = i / 11, sag = P2 && !lie ? 0 : Math.sin(u * Math.PI) * 5, p = [lk[0] + (tail[0] - lk[0]) * u, lk[1] + 3 + (tail[1] - lk[1] - 3) * u + sag]; links.push(i & 1 ? ell(p, 1.2, 1.8) : ell(p, 2, 1.2)); }
+  F.add({ mat: 'blackiron', prof: 'round', bw: .8, grp: 'chain', shapes: links, clip: above, tex: ({ x, y }) => (hash(x, y, 656) < .15 ? { m: 'rust', dd: 0 } : 0) });
+  if (post) F.add({ mat: 'bogwood', prof: 'round', bw: 1.6, grp: 'chainpost', shapes: [cap([88.6, WL + 2], [92.4, WL - 16], 2.2, 1.8)], tex: ({ y }) => (y % 3 === 0 ? -1 : 0) });
+  // the head: a long skull like a gar's gone to a dragon's, a heavy brow, a frill of weedy spines behind the jaw
+  const hf = frame(hc[0], hc[1], ha, 1.3);
+  F.add({ mat: 'weed', prof: 'round', bw: 1, grp: 'frill', shapes: spikesC([[-4, -3, -1, -.8, 7, 1.6], [-5, 1, -1, .2, 7.6, 1.6], [-3.4, 4.6, -.8, 1, 6, 1.4]].map(([t, s, dx, dy, len, w]) => { const p = hf.P(t, s), d = rot2([dx, dy], ha); return [p[0], p[1], d[0], d[1], len, w]; })), tex: ({ x, y }) => ((x + y) % 3 === 0 ? -1 : 0) });
+  const lj = frame(...hf.P(-1, 3), ha + jaw * .5, 1.3);
+  if (jaw > .3) F.add({ mat: 'flesh', prof: 'round', bw: 2, grp: 'maw', shapes: [poly([hf.P(0, 1.6), hf.P(15, 1.4), lj.P(14, 0), lj.P(0, 0)])], tex: () => -1 });
+  F.add({ mat: hide, prof: 'round', bw: 2.4, grp: 'jaw', shapes: [lj.poly([[-1, -1.4], [14.4, -.6], [15, 1], [8, 3.4], [-1, 3]])], tex: hideT(657) });
+  const teeth = []; for (let i = 0; i < 6; i++) { const t = 3 + i * 2.2; teeth.push(lj.poly([[t - .6, -.8], [t, -2.8 - (i % 2)], [t + .6, -.8]])); teeth.push(hf.poly([[t + .4, 1.2], [t + 1, 3.4 + (i % 2)], [t + 1.6, 1.2]])); }
+  if (jaw > .3) F.add({ mat: 'bone', prof: 'ridge', grp: 'teeth', noShadow: true, shapes: teeth });
+  F.add({ mat: hide, prof: 'round', bw: 4, hs: .9, grp: 'head', shapes: [rell(hf, 0, 0, 8, 6.4), hf.poly([[2, -5.4], [12, -3.4], [16.6, -.6], [16.4, 1.8], [8, 2.2], [0, 4]])], tex: hideT(658) });
+  F.add({ mat: hide, prof: 'round', bw: 1.6, grp: 'brow', shapes: [hf.cap(-2, -5.6, 7.4, -4.4, 2, 1.4)], tex: () => -.6 });
+  F.add({ mat: 'dark', prof: 'flat', grp: 'nostril', noShadow: true, shapes: [hf.cap(14.2, -1.6, 15.2, -1.4, .5)] });
+  if (eye === 'shut') F.add({ mat: 'dark', prof: 'flat', grp: 'eye', noShadow: true, shapes: [hf.cap(3.4, -2.4, 6.6, -2.2, .55)] });
+  else { F.add({ mat: 'dark', prof: 'round', bw: 1, grp: 'eye', shapes: [hf.circ(5, -2.4, 1.8)] }); F.add({ mat: eyeM, prof: 'flat', grp: 'iris', noShadow: true, noOutline: true, shapes: [hf.ell(5.2, -2.4, 1.1, .8)] }); }
+  // the Deep-Pearl in its brow (from its recipe, without its chain); a torn socket once it is snapped out
+  const pc = hf.P(-.4, -6.4);
+  if (pearlOn) {
+    if (P3) F.add({ mat: 'deepglow', prof: 'flat', grp: 'pearlhalo', noShadow: true, noOutline: true, shapes: [circ(pc, 7.6)], cuts: [circ(pc, 4.6)], tex: ({ x, y }) => ((x + y) & 1 ? -2.2 : -1.6) });
+    const m = drawItem(F, pearlArt, pc, ha, .38, { center: [32, 46], drop: ['chain', 'bail', 'stem'] });
+    A.pearl = m([32, 44.4]);
+  } else F.add({ mat: 'flesh', prof: 'round', bw: 1, grp: 'socket', shapes: [circ(pc, 2)], tex: () => -1.2 });
+  // the water breaking round its neck, foam, and the spray when it strikes
+  ring([N[0][0], WL + .8], rs[0] + 2.4, 'neckring');
+  F.add({ mat: 'clothWhite', prof: 'round', bw: .6, grp: 'foam', noShadow: true, shapes: [[-11, -.6, .9], [-7, -1.2, .7], [8, -1, .8], [12, -.4, .6]].map(([dx, dy, r]) => circ([N[0][0] + dx, WL + dy], r)) });
+  if (pose === 'attack') F.add({ mat: 'water', prof: 'round', bw: .6, grp: 'spray', noShadow: true, noOutline: true, shapes: [[88, 50, 1], [91, 54, .8], [86, 57, .9], [92, 46, .7], [60, 78, 1], [66, 76, .8]].map(([x, y, r]) => circ([x, y], r)) });
+  if (P3 && !lie) F.add({ mat: 'water', prof: 'round', bw: .6, grp: 'flood', noShadow: true, noOutline: true, shapes: [[12, WL - 3, 1.2], [28, WL - 4, 1], [80, WL - 3, 1.1], [44, WL - 2, .8]].map(([x, y, r]) => circ([x, y - f], r)) });
+  A.head = hf.P(5, -2.4); A.mouth = hf.P(12, 2); A.center = lie ? [60, WL - 6] : N[2];
+  A.relics = [A.harpoon, A.pearl].filter(Boolean); A.relic = A.relics[0] || null;
+}
+// spray and bubbles off the Blackwater; the pearl's green motes at the last
+const leviMotes = (t, a, gT, phase = 1) => {
+  const out = [];
+  for (let j = 0; j < 5; j++) { const ph = (t * .6 + j / 5) % 1; out.push({ x: 10 + hash(j, 1, 659) * 76, y: 82 - ph * ph * 16, c: [150, 210, 220], a: ph < .8 ? .7 : 0 }); }
+  if (phase >= 3 && a.pearl) for (let j = 0; j < 5; j++) { const ph = (t * .4 + j / 5) % 1; out.push({ x: a.pearl[0] - 6 + hash(j, 2, 659) * 12, y: a.pearl[1] - ph * 18, c: [126, 224, 180], a: (1 - ph) * .9 }); }
+  return out;
+};
+
+Object.assign(FOE_ART, {
+  'mire-leech': { name: 'Mire Leech', kind: 'beast', w: 56, h: 40, foot: [28, 37], defaultTier: 'rabble', build: mireLeech },
+  'marsh-light': { name: 'Marsh-Light', kind: 'beast', w: 40, h: 56, foot: [20, 53], defaultTier: 'rabble', build: marshLight, motes: lightMotes(3) },
+  'lamp-moth': { name: 'Lamp-Moth', kind: 'beast', w: 48, h: 40, foot: [24, 37], defaultTier: 'rabble', build: lampMoth, motes: mothMotes },
+  'blackwater-gar': { name: 'Blackwater Gar', kind: 'beast', w: 72, h: 48, foot: [36, 45], defaultTier: 'rabble', build: blackwaterGarBase, motes: garMotes },
+  'old-jaws': { name: 'Old Jaws', kind: 'beast', w: 96, h: 64, foot: [48, 61], defaultTier: 'relic-bearer', relic: 'gar-tooth', build: oldJaws, motes: garMotes },
+  'willow-wight': { name: 'Willow-Wight', kind: 'beast', w: 64, h: 72, foot: [32, 69], defaultTier: 'veteran', build: willowWightBase, motes: leafMotes(4) },
+  'grandfather-willow': { name: 'Grandfather Willow', kind: 'beast', w: 96, h: 96, foot: [48, 93], defaultTier: 'relic-bearer', relic: 'weeping-bow', build: grandfatherWillow, motes: leafMotes(6) },
+  drowned: { name: 'Drowned', kind: 'beast', w: 64, h: 64, foot: [33, 61], defaultTier: 'veteran', build: drownedBase, motes: bubbleMotes(2) },
+  'bell-ringer': { name: 'Drowned Bell-Ringer', kind: 'beast', w: 64, h: 64, foot: [33, 61], defaultTier: 'veteran', build: bellRinger, motes: bubbleMotes(2) },
+  'drowned-choir': { name: 'Drowned Chorister', kind: 'beast', w: 64, h: 64, foot: [33, 61], defaultTier: 'veteran', build: drownedChoir, motes: bubbleMotes(4) },
+  'drowned-cantor': { name: 'The Drowned Cantor', kind: 'beast', w: 80, h: 80, foot: [40, 77], defaultTier: 'relic-bearer', relic: 'cantors-staff', build: drownedCantor, motes: bubbleMotes(4) },
+  'lantern-mother': { name: 'The Lantern Mother', kind: 'beast', w: 96, h: 96, foot: [48, 93], defaultTier: 'champion', relic: 'lamplighters-lantern', relics: ['lamplighters-lantern', 'mourning-veil'], phases: 3, build: lanternMother, motes: motherMotes },
+  // `dive`: it has a 'dive' pose (sounded: burrowed), for the battle screen to show while it is under
+  'blackwater-leviathan': { name: 'The Blackwater Leviathan', kind: 'beast', w: 96, h: 96, foot: [48, 93], defaultTier: 'champion', relic: 'corvus-harpoon', relics: ['corvus-harpoon', 'deep-pearl'], phases: 3, dive: true, build: blackwaterLeviathan, motes: leviMotes },
+});
+
+/* ---- M6 HUMANOIDS (on the rig, like M3's): the bog-hags and Mother Grue, Hodge of Rotbridge, and the Tallymen of the
+   channel (the Salvage-Master and the Bargemaster; the reed-cutters, salvage divers and bargehands they hire) ---- */
+const hagLadle = (scum, o = {}) => A('mace', Object.assign({ style: 'ladle', headT: 50, haft: 'bogwood', haftR: 1.5, bowl: 'iron', scum }, o));
+const oldCane = (o = {}) => A('mace', Object.assign({ style: 'cane', headT: 50, headW: 5.6, haft: 'bogwood', haftR: 1.7, ferrule: 'iron' }, o));
+const craneHook = (o = {}) => A('mace', Object.assign({ style: 'hook', headT: 52, grip: 'wood', chain: 'iron', hookMat: 'iron' }, o));
+const grapnel = (o = {}) => A('mace', Object.assign({ style: 'grapnel', headT: 50, line: 'string', headMat: 'iron' }, o));
+const boatHook = (o = {}) => A('spear', Object.assign({ headT: 54, headL: 10, headW: 2.6, haft: 'bogwood', haftR: 1.8, head: 'iron', socket: 'iron', hook: 'iron', butt: 'iron' }, o));
+const reedHook = (o = {}) => A('spear', Object.assign({ headT: 48, headL: 22, headW: 3, haft: 'reed', haftR: 1.6, sickle: 1, head: 'iron', socket: 'iron', butt: 'leatherDark' }, o));
+const puntPole = (o = {}) => A('spear', Object.assign({ headT: 58, headL: 4, headW: 2.2, haft: 'wood', haftR: 1.9, head: 'iron', socket: 'iron', butt: 'iron' }, o));
+const hodgeLantern = A('focus', { style: 'lantern', metal: 'blackiron', frame: 'blackiron', glass: 'amber', glow: 'ember', core: 'radiant' });
+const fenHood = (mat, o = {}) => A('hood', Object.assign({ look: 'hood', mat, tip: 1 }, o));
+const hatOf = (mat, o = {}) => A('kettle', Object.assign({ look: 'kettle', mat }, o));
+// put a part behind everything drawn so far (a bundle on the back)
+const behind = (F, part) => { const p = F.add(part); if (p) { F.parts.pop(); F.parts.unshift(p); } return p; };
+// a bent back: the shoulders and the head down and forward (the rig faces left, so forward is -x)
+const hunch = (d, more) => (P, c) => {
+  if (c.pose !== 'ko') { const u = P.up || [0, 0], h = P.head || [0, 0]; P.up = [u[0] - 1.1 * d, u[1] + 1.5 * d]; P.head = [h[0] - .9 * d, h[1] + .5 * d]; }
+  if (more) more(P, c);
+};
+// the rig's head centre for a pose (before the root), to put a hand to the face
+const headOf = (P, b) => [b.hc[0] + (P.up ? P.up[0] : 0) + (P.head ? P.head[0] : 0), b.hc[1] + (P.up ? P.up[1] : 0) + (P.head ? P.head[1] : 0)];
+
+// a bog-hag: a hooked nose with a wart on it, a string of charms from the second Waking, and her pot on the boil
+// beside her (the scum in it goes over to the blight with her ladle's)
+function hagX(c) {
+  const { F, X, j, H } = c, [hx0, hy0] = j.hc, ey = hy0 + .1;
+  F.add({ X, mat: H.skin, prof: 'round', bw: .8, grp: 'nose', shapes: [X.poly([[hx0 - 1.4, ey - .8], [hx0 + .4, ey - .8], [hx0 + .9, ey + 1.6], [hx0 - .1, ey + 2.9], [hx0 - 1.7, ey + 1.9]])], tex: ({ nx }) => (nx < -.4 ? -1 : 0) });
+  F.add({ X, mat: H.skin, prof: 'round', bw: .6, grp: 'wart', shapes: [X.circ(hx0 + 1.3, ey + 1.3, .6)], tex: () => -1.2 });
+  if (H.charms) { const at = (u, s) => [hx0 - 4.4 + u * 8.8, hy0 + 7.4 + Math.sin(u * Math.PI) * 2.2 + s]; F.add({ X, mat: 'string', prof: 'round', bw: .5, grp: 'charmcord', noShadow: true, shapes: [0, .25, .5, .75].map(u => X.cap(...at(u, 0), ...at(u + .25, 0), .35)) }); F.add({ X, mat: H.charms, prof: 'round', bw: .7, grp: 'charms', shapes: [.15, .4, .62, .85].map((u, i) => { const p = at(u, 1.2); return i & 1 ? X.poly([[p[0] - .7, p[1] - .6], [p[0] + .7, p[1] - .6], [p[0], p[1] + 1.8]]) : X.circ(p[0], p[1], .9); }) }); }
+  hagPot(c, H.potR || 1);
+}
+function hagPot(c, s) {
+  const { F, gT, lie } = c, scum = gT >= 2 ? 'blight' : 'moss', gy = 56.4, x0 = lie ? 7 : 12 - (s - 1) * 4, R = s;
+  if (gT >= 2) F.add({ mat: 'ember', prof: 'round', bw: .6, grp: 'potfire', noShadow: true, shapes: [circ([x0 - 2.4 * R, gy - .4], .8), circ([x0 + .4, gy - .2], 1), circ([x0 + 2.8 * R, gy - .5], .7)] });
+  F.add({ mat: 'iron', prof: 'round', bw: .6, grp: 'potlegs', shapes: [-3.4, 0, 3.4].map(dx => cap([x0 + dx * R, gy - 3], [x0 + dx * R * 1.1, gy], .8, .6)) });
+  F.add({ mat: 'bogIron', prof: 'round', bw: 3.4 * R, hs: .8, grp: 'pot', shapes: [ell([x0, gy - 4.8 * R], 5.8 * R, 4.4 * R)], tex: ({ x, y }) => (hash(x, y, 631) < .1 ? -1 : 0) });
+  F.add({ mat: 'iron', prof: 'round', bw: 1, grp: 'potrim', shapes: [ell([x0, gy - 8.6 * R], 5.6 * R, 1.5 * R)], cuts: [ell([x0, gy - 8.6 * R], 4.4 * R, .9 * R)] });
+  if (c.H.potLadle) drawItem(F, c.H.potLadle, [x0 + 1.2 * R, gy - 8.4 * R], Math.PI * .75 + .32, .3 * R, { center: [50, 2], plain: true });
+  F.add({ mat: scum, prof: 'flat', grp: 'potscum', noShadow: true, shapes: [ell([x0, gy - 8.6 * R], 4.4 * R, .9 * R)], tex: ({ x, y }) => ({ dd: hash(x, y, 632) < .25 ? 1 : gT >= 2 ? -1 : 0, e: gT >= 2 ? 1 : 0 }) });
+  F.add({ mat: scum, prof: 'round', bw: .6, grp: 'bubbles', noShadow: true, shapes: [circ([x0 - 1.6 * R, gy - 10.2 * R], .8), circ([x0 + 1.4 * R, gy - 11.6 * R], .6), circ([x0 + .2 * R, gy - 13.4 * R], .5)] });
+  F.add({ mat: 'mist', prof: 'flat', grp: 'steam', noShadow: true, noOutline: true, shapes: chainC([[x0 - .4, gy - 10 * R], [x0 + 1.4, gy - 14 * R], [x0 - .6, gy - 18 * R], [x0 + 1, gy - 22 * R]], [1.2, 1.5, 1.2, .6]), tex: ({ x, y }) => ((x + y) & 1 ? -1.6 : -.8) });
+}
+// Mother Grue: a hag and a half. She has left the ladle standing in her pot: her hand is for the Hag-Stone, held out
+// at arm's length (drawn from its own recipe) so she can look at you through the hole in it
+function grueX(c) {
+  hagX(c);
+  const { F, X, j, drawn, lie, pose } = c;
+  if (drawn && !lie) { const h = j.hL, m = drawItem(F, drawn, X.P(h[0] - .2, h[1] - 3.4), Math.atan2(X.ay, X.ax) + (pose === 'hurt' ? .5 : 0), .3, { center: [33.6, 21.4] }); c.anchors.relic = m([33.6, 21.4]); F.add({ X, mat: c.H.skin, prof: 'round', bw: .8, grp: 'grueFingers', shapes: [X.cap(h[0] - 1, h[1] - .4, h[0] - 1.4, h[1] - 2.2, .75, .6), X.cap(h[0] + .6, h[1] - .6, h[0] + .8, h[1] - 2, .7, .55)] }); }
+  else if (drawn) { const m = drawItem(F, drawn, X.P(j.hL[0], j.hL[1] + 1), Math.atan2(X.ay, X.ax), .24, { center: [32, 40] }); c.anchors.relic = m([33.6, 21.4]); }
+}
+const grueEye = hunch(1.3, (P, { pose, b }) => { if (pose === 'ko') return; const hc = headOf(P, b); P.hL = pose === 'attack' ? [hc[0] - 11, hc[1] + 3.6] : pose === 'hurt' ? [hc[0] - 6.4, hc[1] + 8] : [hc[0] - 9.2, hc[1] + 5]; });
+
+// Hodge: bald, a white fringe round the back of his head, eyebrows like hedges, a nose like a turnip; the lantern held
+// up in his off hand, the clipped coin on its chain on his chest (both drawn from their recipes); and at 0 HP he sits
+// down on his stool, the lantern on his knee
+function hodgeX(c) {
+  const { F, X, j, H, pose, drawn } = c, [hx0, hy0] = j.hc, ey = hy0 + .1, cx = j.cx, sit = pose === 'ko';
+  if (!c.L.head) F.add({ X, mat: H.hairMat, prof: 'round', bw: 1.2, grp: 'fringe', shapes: [-1, 1].map(s => X.poly([[hx0 + s * 5.4, hy0 - 2.6], [hx0 + s * 7.2, hy0 - .6], [hx0 + s * 7.4, hy0 + 2.6], [hx0 + s * 6, hy0 + 4], [hx0 + s * 5.2, hy0 + 1.4]])), tex: ({ x, y }) => ((x + y) % 2 === 0 ? -1 : 0) });
+  F.add({ X, mat: H.hairMat, prof: 'round', bw: .7, grp: 'brows', shapes: [X.cap(hx0 - 5.8, ey - 2.2, hx0 - 2.4, ey - 1.2, .9, .8), X.cap(hx0 + 1.6, ey - 1.2, hx0 + 5, ey - 2.2, .8, .9)] });
+  F.add({ X, mat: H.skin, prof: 'round', bw: 1.2, grp: 'nose', shapes: [X.circ(hx0 - .5, ey + 1.7, 1.55), X.circ(hx0 - 1.3, ey + 2.4, .9)], tex: ({ nx, ny }) => ({ m: 'leatherRed', dd: nx + ny < -.5 ? 1 : 0 }) });
+  // the clipped coin on its chain
+  if (drawn) { const at = sit ? X.P(cx + .6, j.sh + 5) : X.P(cx + j.lean * .6, j.sh + 5.2); const m = drawItem(F, drawn, at, Math.atan2(X.ay, X.ax), .16, { center: [32, 43.5] }); c.anchors.relic = m([32, 43.5]); c.anchors.amulet = c.anchors.relic; }
+  if (sit) return hodgeSits(c);
+  // the lantern, held up
+  const m = drawItem(F, hodgeLantern, X.P(j.hR[0] + .3, j.hR[1] + 1.2), Math.atan2(X.ay, X.ax), .26, { center: [32, 9], plain: true });
+  c.anchors.lantern = m([32, 33]);
+}
+function hodgeSits(c) {
+  const { F, X, j, H } = c, cx = j.cx, seat = j.legT + .6, G0 = 46.6;
+  const legGrps = ['leg-1', 'leg1', 'boot-1', 'boot1', 'greave-1', 'greave1', 'bootcuff-1', 'bootcuff1', 'bootgem-1', 'bootgem1'];
+  const old = F.parts.filter(p => legGrps.includes(p.grp)), pants = (old.find(p => p.grp === 'leg1') || {}).mat || H.pants || 'pants', boot = (old.find(p => p.grp === 'boot1') || {}).mat || H.boots || 'leather';
+  const greave = (old.find(p => p.grp === 'greave1') || {}).mat;
+  F.parts = F.parts.filter(p => !legGrps.includes(p.grp));
+  // the stool under him: a three-legged milking stool
+  under(F, { X, mat: 'bogwood', prof: 'round', bw: .8, grp: 'stoollegs', shapes: [X.cap(cx - 3.6, seat + 1.2, cx - 6.4, G0, .9, .7), X.cap(cx + 5.4, seat + 1.2, cx + 7.8, G0, .9, .7), X.cap(cx + 1, seat + 1.4, cx + 1.2, G0 - .4, .8, .6)], tex: TX.grain(633) }, ['torso']);
+  under(F, { X, mat: 'bogwood', prof: 'round', bw: 1, grp: 'stool', shapes: [X.ell(cx + .8, seat + .8, 7, 1.6)], tex: ({ x }) => (x % 3 === 0 ? -1 : 0) }, ['torso']);
+  // his knees up in front of him, shins down to his boots, flat on the planks
+  for (const s of [1, -1]) {
+    const kn = [cx - 1.6 + s * 3.2, seat + .8], ft = [cx - 2.2 + s * 3.4, G0 - 2.6];
+    under(F, { X, mat: pants, prof: 'round', bw: 2.2, grp: 'sitleg' + s, shapes: [X.circ(kn[0], kn[1], 2.6), X.cap(kn[0], kn[1], ft[0], ft[1], 2.3, 2)], tex: s > 0 ? farTex(null) : null }, ['armL', 'armR']);
+    under(F, { X, mat: boot, prof: 'round', bw: 1.4, grp: 'sitboot' + s, shapes: [X.poly([[ft[0] - 2.2, ft[1] - 1.4], [ft[0] + 2.4, ft[1] - 1.4], [ft[0] + 2.6, G0], [ft[0] - 3.8, G0], [ft[0] - 3.6, G0 - 1.2]])], tex: s > 0 ? DARK : null }, ['armL', 'armR']);
+    if (greave) under(F, { X, mat: greave, prof: 'round', bw: 1, grp: 'sitgreave' + s, shapes: [X.cap(ft[0], ft[1] - 3.4, ft[0], ft[1] - .2, 1.8)] }, ['armL', 'armR']);
+  }
+  // the lantern set down on his knee
+  const m = drawItem(F, hodgeLantern, X.P(cx + 1.8, seat - .6), 0, .2, { center: [32, 52], plain: true });
+  c.anchors.lantern = m([32, 33]);
+}
+const hodgePose = (P, { pose, b }) => {
+  if (pose === 'ko') { // not lying down: sitting down, on his stool, and looking at you
+    for (const k of Object.keys(P)) delete P[k];
+    Object.assign(P, { root: [1.6, 3.2], up: [-.4, 1.2], head: [-.4, .6], hL: [b.hL[0] - 1.4, b.hL[1] + 3], hR: [b.hR[0] - 2.4, b.hR[1] + 4.4], wAxis: [-.08, 1], face: 'open' });
+    return;
+  }
+  hunch(.7)(P, { pose });
+  P.hR = [b.hR[0] + 2, b.hR[1] - 6 + (pose === 'hurt' ? 2.5 : 0)];
+};
+
+// the Salvage-Master: the Salvager's Helm on his head (drawn from its own recipe, the hose down his back); the Bargemaster:
+// a length of the great chain over his shoulder; the reed-cutters: a bundle of cut reeds on the back; the divers: goggles
+// and a coil of wet line; the bargehands: a coil of rope at the belt
+function salvageX(c) {
+  const { F, X, j, drawn, lie } = c, [hx0, hy0] = j.hc;
+  if (drawn) { const a = Math.atan2(X.ay, X.ax) + (lie ? 0 : j.lean * .03); const m = drawItem(F, drawn, X.P(hx0 + .2, hy0 + 1.6), a, .36, { center: [32, 32.4] }); c.anchors.relic = m([32, 30]); }
+  else if (!c.L.head) F.add({ X, mat: 'dark', prof: 'round', bw: .8, grp: 'scalp', shapes: [X.ell(hx0, hy0 - 3.6, 5.4, 2.4)], clip: X.poly([[hx0 - 8, hy0 - 8], [hx0 + 8, hy0 - 8], [hx0 + 8, hy0 - 3], [hx0 - 8, hy0 - 3]]), tex: () => 1 });
+}
+function chainOver(c, mat) {
+  const { F, X, j, b } = c, a = [j.cx + b.shW + .6 + j.lean, j.sh - .8], z = [j.cx - b.waW - 1.4, j.wa + 2.6], S = [];
+  for (let i = 0; i <= 7; i++) { const u = i / 7, p = [a[0] + (z[0] - a[0]) * u, a[1] + (z[1] - a[1]) * u + Math.sin(u * Math.PI) * 1.2]; S.push(i & 1 ? X.ell(p[0], p[1], .9, 1.5) : X.ell(p[0], p[1], 1.5, 1)); }
+  under(F, { X, mat, prof: 'round', bw: .8, grp: 'chainover', shapes: S, tex: ({ x, y }) => (hash(x, y, 634) < .2 ? { m: 'rust', dd: 0 } : 0) }, ['armR']);
+}
+function bargeX(c) { chainOver(c, 'blackiron'); }
+function reedX(c) {
+  const { F, X, j, b } = c, x0 = j.cx + b.shW - .6 + j.lean, y0 = j.sh - 1;
+  const S = []; for (let i = 0; i < 7; i++) { const dx = -3 + i; S.push(X.cap(x0 + dx * .5, y0 + 12, x0 + dx * 1.1 + 2.4, y0 - 9 - (i % 3), .55, .35)); }
+  behind(F, { X, mat: 'reed', prof: 'round', bw: .6, grp: 'reeds', shapes: S, tex: ({ x, y }) => ((x + y) % 4 === 0 ? -1 : 0) });
+  behind(F, { X, mat: 'reed', prof: 'round', bw: .6, grp: 'reedheads', shapes: [0, 2, 4, 6].map(i => { const dx = -3 + i; return X.ell(x0 + dx * 1.1 + 2.6, y0 - 10 - (i % 3), .9, 1.8); }), tex: () => -1 });
+  F.add({ X, mat: 'string', prof: 'round', bw: .5, grp: 'reedtie', shapes: [X.cap(x0 - 2, y0 + 3, x0 + 3.4, y0 + 2.2, .5)] });
+}
+function diverX(c) {
+  const { F, X, j, b } = c;
+  goggles(c, 'glass');
+  const a = [j.cx - b.shW + .2 + j.lean, j.sh - .4], z = [j.cx + b.waW + .6, j.wa + 1.4];
+  under(F, { X, mat: 'string', prof: 'round', bw: .8, grp: 'linecoil', shapes: [0, 1, 2].map(i => X.cap(a[0] + i * .6, a[1] + i * .5, z[0] + i * .4, z[1] + i * .6, .7)), tex: ({ x, y }) => ((x + y) % 2 === 0 ? -1 : 0) }, ['armR']);
+}
+function bargehandX(c) {
+  const { F, X, j, b } = c, x0 = j.cx + b.waW + .4, y0 = j.wa + 1.6;
+  under(F, { X, mat: 'string', prof: 'round', bw: .8, grp: 'ropecoil', shapes: [X.ell(x0, y0 + 1.6, 2.4, 3), X.ell(x0 + .5, y0 + 2, 2, 2.6)], cuts: [X.ell(x0, y0 + 1.6, 1.3, 1.9)], tex: ({ x, y }) => ((x + y) % 2 === 0 ? -1 : 0) }, ['armR']);
+}
+const tallyGrey = (trim, sash, o = {}) => A('robe', Object.assign({ mat: 'clothGrey', trim, sash }, o));
+const HAG_H = { build: 'human', skin: 'hagSkin', hairMat: 'hairHag', hair: 'long', eye: '#d8c040', tunic: 'rags', pants: 'rags', boots: 'hagSkin', gloves: 'hagSkin', buckle: 'bone' };
+Object.assign(FOE_ART, {
+  'bog-hag': H3('Bog-Hag', 'veteran', {
+    pose: hunch(1), glow: gT => (gT >= 3 ? 'blight' : 'verdant'),
+    H: HAG_H,
+    gear: [
+      { weapon: hagLadle('moss'), body: A('robe', { mat: 'robeBark', trim: 'rags', sash: 'leather' }) },
+      { weapon: hagLadle('moss', { wrap: 'string' }), head: fenHood('rags', { trim: 'moss' }), body: A('robe', { mat: 'robeBark', trim: 'moss', sash: 'leather' }), H: { mantle: 'moss' } },
+      { weapon: hagLadle('blight', { wrap: 'string', bowl: 'bogIron' }), head: fenHood('robeBark', { trim: 'moss', clasp: 'bone' }), body: A('robe', { mat: 'robeBark', trim: 'moss', sash: 'leatherDark', glyph: 'blight' }), H: { mantle: 'moss', charms: 'bone' } },
+      { weapon: hagLadle('blight', { wrap: 'leatherDark', bowl: 'bogIron' }), head: fenHood('rotwood', { trim: 'rot', clasp: 'bone', gem: 'blight' }), body: A('robe', { mat: 'rotwood', trim: 'rot', sash: 'blackiron', vine: 'rot', glyph: 'blight' }), H: { mantle: 'rotwood', charms: 'bone', marks: 'blight', eye: '#b4d65a' } },
+    ],
+    extra: hagX,
+  }),
+  'mother-grue': H3('Mother Grue', 'relic-bearer', {
+    relic: 'hag-stone', drawSlot: 'ring', pose: grueEye, glow: () => 'blight',
+    H: Object.assign({}, HAG_H, { build: 'brute', hairMat: 'hairSilver', eye: '#e8d020', potR: 1.25, potLadle: hagLadle('blight', { headT: 54, bowl: 'bogIron', wrap: 'leatherDark' }) }),
+    gear: [
+      { head: fenHood('robeBark', { trim: 'moss' }), body: A('robe', { mat: 'robeBark', trim: 'moss', sash: 'leather', glyph: 'blight' }), H: { mantle: 'moss', charms: 'bone' } },
+      { head: fenHood('robeBark', { trim: 'moss', clasp: 'bone' }), body: A('robe', { mat: 'robeBark', trim: 'moss', sash: 'leatherDark', glyph: 'blight' }), H: { mantle: 'moss', charms: 'bone' } },
+      { head: fenHood('hoodGreen', { trim: 'moss', clasp: 'bone', gem: 'amethyst' }), body: A('robe', { mat: 'robeBark', trim: 'moss', sash: 'leatherDark', vine: 'bramble', glyph: 'blight' }), H: { mantle: 'moss', charms: 'bone' } },
+      { head: fenHood('rotwood', { trim: 'rot', clasp: 'bone', gem: 'blight' }), body: A('robe', { mat: 'rotwood', trim: 'rot', sash: 'blackiron', vine: 'rot', glyph: 'blight' }), H: { mantle: 'rotwood', charms: 'bone', marks: 'blight', eye: '#b4d65a' } },
+    ],
+    extra: grueX,
+  }),
+  hodge: H3('Hodge', 'relic-bearer', {
+    relic: 'unfair-toll', drawSlot: 'amulet', pose: hodgePose,
+    H: { build: 'dwarf', skin: 'oldSkin', hairMat: 'hairSilver', hair: 'none', stubble: true, eye: '#2a1a14', tunic: 'wool', pants: 'wool', boots: 'leatherDark', gloves: 'oldSkin', ledger: 'leatherDark', coins: true, buckle: 'iron' },
+    gear: [
+      { weapon: oldCane(), body: A('leather', { mat: 'leather', shirt: 'wool', belt: 'leatherDark' }) },
+      { weapon: oldCane({ wrap: 'leatherDark' }), head: hatOf('leatherDark', { trim: 'leather' }), body: A('leather', { mat: 'leather', shirt: 'wool', belt: 'leatherDark' }), feet: A('boots', { mat: 'leatherDark', fold: true }) },
+      { weapon: oldCane({ wrap: 'leatherDark', cap: 'iron' }), head: hatOf('leatherDark', { trim: 'iron' }), body: A('leather', { mat: 'leatherDark', shirt: 'wool', studs: 'iron', belt: 'leather' }), feet: A('boots', { mat: 'leatherDark', fold: true }), H: { mantle: 'wolfFur' } },
+      { weapon: oldCane({ wrap: 'leatherDark', cap: 'blackiron', studs: 'iron' }), head: hatOf('iron', { trim: 'leatherDark', tex: TX.rust(635) }), body: A('leather', { mat: 'leatherDark', shirt: 'wool', studs: 'iron', pauldrons: 'iron', belt: 'leather' }), feet: A('boots', { mat: 'leatherDark', trim: 'iron', greave: 'iron' }), H: { mantle: 'wolfFur' } },
+    ],
+    extra: hodgeX,
+  }),
+  'salvage-master': H3('The Salvage-Master', 'relic-bearer', {
+    relic: 'salvagers-helm', drawSlot: 'head',
+    H: { build: 'brute', skin: 'skinAsh', hairMat: 'hairBlack', hair: 'none', beard: true, eye: '#1a1a1a', tunic: 'clothGrey', pants: 'clothGrey', boots: 'leatherDark', gloves: 'leatherDark', ledger: 'leatherDark', coins: true, buckle: 'brass', mantle: 'leatherDark' },
+    gear: [
+      { weapon: craneHook(), head: fenHood('clothGrey'), body: tallyGrey('brass', 'leatherDark', { sleeve: 'leatherDark' }), hands: A('gloves', { mat: 'leatherDark' }), feet: waders },
+      { weapon: craneHook({ wrap: 'leather' }), head: fenHood('clothGrey', { trim: 'brass' }), body: tallyGrey('brass', 'leatherDark', { sleeve: 'leatherDark' }), hands: A('gloves', { mat: 'leatherDark' }), feet: waders },
+      { weapon: craneHook({ wrap: 'leather', hookMat: 'blackiron' }), head: fenHood('clothGrey', { trim: 'blackiron', clasp: 'brass' }), body: tallyGrey('blackiron', 'leatherDark', { sleeve: 'iron' }), hands: A('gauntlets', { mat: 'iron', plate: 1 }), feet: waders, H: { mantle: 'blackiron' } },
+      { weapon: craneHook({ wrap: 'leatherDark', hookMat: 'blackiron', chain: 'blackiron' }), head: fenHood('dark', { trim: 'water', clasp: 'brass', gem: 'water' }), body: tallyGrey('water', 'blackiron', { sleeve: 'blackiron', glyph: 'water' }), hands: A('gauntlets', { mat: 'blackiron', plate: 1 }), feet: A('boots', { mat: 'leatherDark', trim: 'brass', greave: 'blackiron' }), H: { mantle: 'blackiron', cloak: 'clothGrey' } },
+    ],
+    extra: salvageX,
+  }),
+  bargemaster: H3('The Bargemaster', 'relic-bearer', {
+    relic: 'barge-gauntlets',
+    H: { build: 'brute', skin: 'skinTan', hairMat: 'hairBrown', hair: 'short', beard: true, eye: '#1c1f2c', tunic: 'clothGrey', pants: 'wool', boots: 'leatherDark', gloves: 'leatherDark', ledger: 'leatherDark', coins: true, buckle: 'iron', mantle: 'sodden' },
+    gear: [
+      { weapon: boatHook(), head: hatOf('leatherDark', { trim: 'clothGrey' }), body: A('leather', { mat: 'leatherDark', shirt: 'clothGrey', belt: 'leather' }), feet: waders },
+      { weapon: boatHook({ wrap: 'leather', wrapA: 22, wrapB: 34 }), head: hatOf('leatherDark', { trim: 'clothGrey' }), body: A('leather', { mat: 'leatherDark', shirt: 'clothGrey', pauldrons: 'leatherDark', belt: 'leather' }), feet: waders },
+      { weapon: boatHook({ wrap: 'leather', wrapA: 22, wrapB: 34, bands: [20, 38], bandMat: 'iron' }), head: hatOf('leatherDark', { trim: 'iron' }), body: A('leather', { mat: 'leatherDark', shirt: 'clothGrey', studs: 'iron', pauldrons: 'iron', belt: 'leather' }), feet: A('boots', { mat: 'leatherDark', trim: 'iron', fold: true }), H: { cloak: 'sodden' } },
+      { weapon: boatHook({ wrap: 'leatherDark', wrapA: 22, wrapB: 34, bands: [20, 38], bandMat: 'blackiron', head: 'blackiron', hook: 'blackiron' }), head: hatOf('blackiron', { trim: 'water', gem: 'water' }), body: A('mail', { mat: 'iron', trim: 'blackiron', belt: 'leatherDark', pauldrons: 'blackiron', glyph: 'water' }), feet: A('boots', { mat: 'leatherDark', trim: 'blackiron', greave: 'blackiron' }), H: { cloak: 'sodden' } },
+    ],
+    extra: bargeX,
+  }),
+  reedcutter: H3('Reed-Cutter', 'rabble', {
+    H: { build: 'human', skin: 'skinTan', hairMat: 'hairBrown', hair: 'crop', stubble: true, eye: '#1c2a24', tunic: 'wool', pants: 'wool', boots: 'leatherDark', gloves: 'leather', scarf: 'clothTeal', buckle: 'iron' },
+    gear: [
+      { weapon: reedHook(), head: hatOf('reed', { trim: 'leather' }), feet: waders },
+      { weapon: reedHook({ wrap: 'string', wrapA: 20, wrapB: 30 }), head: hatOf('reed', { trim: 'clothTeal' }), body: A('leather', { mat: 'leather', shirt: 'wool', belt: 'leatherDark' }), feet: waders },
+      { weapon: reedHook({ wrap: 'string', wrapA: 20, wrapB: 30, head: 'steel' }), head: hatOf('reed', { trim: 'clothTeal' }), body: A('leather', { mat: 'leatherDark', shirt: 'clothTeal', studs: 'iron', belt: 'leather' }), hands: A('gloves', { mat: 'leatherDark' }), feet: waders },
+      { weapon: reedHook({ wrap: 'leatherDark', wrapA: 20, wrapB: 30, head: 'steel', fuller: 'water' }), head: hatOf('reed', { trim: 'blackiron' }), body: A('leather', { mat: 'leatherDark', shirt: 'clothTeal', studs: 'steel', pauldrons: 'leatherDark', belt: 'leatherDark' }), hands: A('gloves', { mat: 'leatherDark' }), feet: A('boots', { mat: 'leatherDark', trim: 'clothTeal', greave: 'iron' }), H: { cloak: 'clothTeal' } },
+    ],
+    extra: reedX,
+  }),
+  'salvage-diver': H3('Salvage Diver', 'rabble', {
+    H: { build: 'human', skin: 'skinPale', hairMat: 'hairBlack', hair: 'crop', eye: '#1c2a24', tunic: 'leatherDark', pants: 'leatherDark', boots: 'skinPale', gloves: 'skinPale', scarf: 'clothTeal', buckle: 'brass' },
+    gear: [
+      { weapon: grapnel() },
+      { weapon: grapnel(), head: A('coif', { look: 'coif', mat: 'leatherDark' }), body: A('leather', { mat: 'leatherDark', shirt: 'clothTeal', belt: 'leather' }) },
+      { weapon: grapnel({ headMat: 'steel' }), head: A('coif', { look: 'coif', mat: 'leatherDark', flaps: 1 }), body: A('leather', { mat: 'leatherDark', shirt: 'clothTeal', studs: 'brass', belt: 'leather' }), hands: A('gloves', { mat: 'leatherDark' }), feet: waders },
+      { weapon: grapnel({ headMat: 'blackiron', headTex: TX.rust(636) }), head: A('coif', { look: 'coif', mat: 'blackiron', flaps: 1 }), body: A('leather', { mat: 'leatherDark', shirt: 'clothTeal', studs: 'brass', pauldrons: 'brass', belt: 'leatherDark' }), hands: A('gloves', { mat: 'leatherDark', trim: 'brass' }), feet: A('boots', { mat: 'leatherDark', trim: 'brass', fold: true }), H: { cloak: 'clothTeal' } },
+    ],
+    extra: diverX,
+  }),
+  bargehand: H3('Bargehand', 'rabble', {
+    H: { build: 'brute', skin: 'skinTan', hairMat: 'hairAuburn', hair: 'short', stubble: true, eye: '#20202c', tunic: 'wool', pants: 'wool', boots: 'leatherDark', gloves: 'skinTan', scarf: 'clothTeal', buckle: 'iron' },
+    gear: [
+      { weapon: puntPole(), head: A('coif', { look: 'coif', mat: 'wool' }), feet: waders },
+      { weapon: puntPole(), head: A('coif', { look: 'coif', mat: 'wool' }), body: A('leather', { mat: 'leather', shirt: 'wool', belt: 'leatherDark' }), feet: waders },
+      { weapon: puntPole({ bands: [22, 40], bandMat: 'iron' }), head: A('coif', { look: 'coif', mat: 'clothTeal' }), body: A('leather', { mat: 'leather', shirt: 'wool', studs: 'iron', pauldrons: 'leather', belt: 'leatherDark' }), hands: A('gloves', { mat: 'leather' }), feet: waders },
+      { weapon: puntPole({ bands: [22, 40], bandMat: 'blackiron', head: 'blackiron', wings: 1.6 }), head: A('kettle', { look: 'kettle', mat: 'iron', trim: 'clothTeal' }), body: A('leather', { mat: 'leatherDark', shirt: 'clothTeal', studs: 'iron', pauldrons: 'iron', belt: 'leather' }), hands: A('gloves', { mat: 'leatherDark' }), feet: A('boots', { mat: 'leatherDark', trim: 'clothTeal', greave: 'iron' }), H: { cloak: 'clothTeal' } },
+    ],
+    extra: bargehandX,
+  }),
+});
+
 // any art key data/foes.js names that has no art of its own yet draws a stand-in of its kind, so a battle or a Ladder
 // poster never meets "unknown foe" (test/art-keys.test.mjs lists every stand-in as a failure)
 for (const f of Object.values(FOES)) for (const v of [f].concat(Object.values(f.variants || {}))) {
@@ -2989,7 +3901,7 @@ function build(key, o) {
   if (relic === undefined && def.variantRelic && o.variant && relicArt(o.variant)) relic = o.variant; // Tamsin: the rival starter
   const held = o.relicHeld !== false, phase = clamp(o.phase || 1, 1, 3);
   const broken = (o.broken || []).slice().sort().join(',');
-  const rk = [key, pose, frameKey(pose, t), gT, tier, relic || '-', held ? 1 : 0, phase, broken, o.flip ? 'L' : 'R'].join('|');
+  const rk = [key, pose, frameKey(pose, t), gT, tier, relic || '-', held ? 1 : 0, phase, broken, o.flip ? 'L' : 'R'].join('|') + (o.wears && def.kind === 'humanoid' ? '|w:' + [].concat(o.wears).join('+') : '');
   return rasterCache.get(rk, () => {
     if (def.kind === 'humanoid') {
       const m3 = !!def.m3, hu = m3 ? humanoidM3(def, Object.assign({}, o, { relic })) : humanoid(def, o), { H, gear } = hu;
@@ -3000,7 +3912,7 @@ function build(key, o) {
       const P = posePreset(pose, pose === 'attack' ? (t < .4 ? .1 : .6) : t, L.weapon ? L.weapon.cls : null, b);
       if (m3 && def.pose) def.pose(P, { pose, b, L, gT, H });
       const r = heroForge(H, { gear: L, pose: P, frame: FRAME_BATTLE, aspectGlow: m3 && def.glow ? def.glow(gT) : H.shadeEyes === 'blight' ? 'blight' : 'arcane' });
-      if (m3) m3Humanoid(def, r, { P, H, L, gear, gT, tier, pose, relic, held, slot: hu.relicSlotName, drawn });
+      if (m3) m3Humanoid(def, r, { P, H, L, gear, gT, tier, pose, relic, held, slot: hu.relicSlotName, drawn, wears: o.wears });
       const R = r.F.raster({ mirror: !o.flip });
       const W = FRAME_BATTLE.w, mx = p => (p && !o.flip ? [W - p[0], p[1]] : p);
       const anchors = {}; for (const k in r.anchors) anchors[k] = k === 'relics' ? r.anchors[k].map(mx) : mx(r.anchors[k]);

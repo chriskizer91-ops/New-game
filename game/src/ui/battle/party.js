@@ -3,15 +3,28 @@
 // M5 (spec §5): a held hero (swallowed) is out of the line: its figure leaves the row (a hole where it
 // stood) and its card shows how it is held ("Held under", "Carried off"), by whom and the turns left
 // (.bt-hero.held, .bt-hero-hold). A charmed hero's card says "Charmed" (.bt-hero.charmed).
+// M6 (spec §4.2, §5): a hexed or rotting hero's card says so ("Hexed", "Rotting": .bt-hero.hexed, .rotting),
+// and the new holds leave their own marks where the hero stood: "Led away" (the Lantern Mother: black water, and
+// a lamp going away over it), "In the river" (Hodge's shove: ripples), "Swallowed whole" (the Leviathan: bubbles).
 import { HeroSprite, heroGear, heroCustom } from './sprites.js';
 import { el, clamp } from './util.js';
 import { statusChip } from './hud.js';
-import { holdInfo, isCharmed } from './model.js';
+import { holdInfo, isCharmed, afflictions, rotStacks } from './model.js';
 
 const STRIP_H = 54; // logical px
 const FEET = 51;
 const OUT_MS = 360; // a held hero's figure fades out of the row (and back in) over this long
 const shortFoe = n => String(n || '').replace(/^The /, '');
+// How a hold's hole looks, by its label: the rim, open air (no pit) and what moves over it
+const HOLE_LOOK = [
+  [/carried/i, { rim: '#e8e0c8', air: true, over: 'feathers' }], // M5: the Thunder-Roc
+  [/under/i, { rim: '#8fd3f4' }], // M5: held under the ice
+  [/led/i, { rim: '#5f8a76', water: true, over: 'lamp' }], // M6: the Lantern Mother leads one away under the water
+  [/river/i, { rim: '#9ab8c8', water: true, over: 'ripples' }], // M6: shoved off Rotbridge
+  [/whole/i, { rim: '#4f8a78', water: true, over: 'bubbles' }], // M6: the Blackwater Leviathan
+];
+const HOLE_PLAIN = { rim: '#c9b8a0' };
+const holeLook = how => (HOLE_LOOK.find(([re]) => re.test(how)) || [null, HOLE_PLAIN])[1];
 
 export class Party {
   constructor(host, heroes, { game, reduced, onTap, nameOf = () => '' }) {
@@ -53,7 +66,7 @@ export class Party {
       this.v.set(h.id, {
         id: h.id, sprite, card, hp, hpCur, hpMax, mp, mpNum, surge, st, tag, name, hold, holdK, holdBy, holdT,
         pose: h.ko ? 'ko' : 'idle', base: h.ko ? 'ko' : 'idle', poseUntil: 0, hopAt: 0, hopDur: 0,
-        shakeUntil: 0, tint: null, flashUntil: 0, attackAt: 0, statusKey: '', out: false, outAt: 0,
+        shakeUntil: 0, tint: null, flashUntil: 0, attackAt: 0, statusKey: '', tagKey: '', out: false, outAt: 0,
       });
     }
     this.s = 2;
@@ -138,8 +151,15 @@ export class Party {
       v.card.dataset.hold = held.label;
     } else delete v.card.dataset.hold;
     if (!!held !== v.out) { v.out = !!held; v.outAt = this.now(); }
-    v.tag.textContent = u.ko ? 'KO' : charmed ? 'Charmed' : '';
-    v.card.setAttribute('aria-label', `${u.name}: ${u.ko ? 'knocked out' : `HP ${u.hp} of ${u.maxHp}, MP ${u.mp} of ${u.maxMp}`}${held ? `, ${held.text}: out of the line` : ''}${charmed ? ', charmed: its next turn is an attack on a friend' : ''}, Legend Surge ${Math.round(u.surge)}%${u.statuses.length ? ', ' + u.statuses.map(s => s.id).join(', ') : ''}`);
+    // the tag over the figure: KO; else Charmed (M5), Hexed and Rotting (M6), one word a line
+    const words = u.ko ? [['ko', 'KO']] : [charmed ? ['charmed', 'Charmed'] : null, ...afflictions(u).map(w => [w.toLowerCase(), w])].filter(Boolean);
+    const tagKey = words.map(w => w[1]).join('|');
+    if (tagKey !== v.tagKey) { v.tagKey = tagKey; v.tag.replaceChildren(...words.map(([k, w]) => el('b.bt-tag-w', { 'data-k': k, text: w }))); }
+    v.card.classList.toggle('hexed', !u.ko && words.some(w => w[0] === 'hexed'));
+    v.card.classList.toggle('rotting', !u.ko && words.some(w => w[0] === 'rotting'));
+    const fen = u.ko ? [] : afflictions(u), rot = rotStacks(u);
+    const fenText = fen.map(w => (w === 'Hexed' ? 'hexed: its rolls at a disadvantage' : `rotting${rot > 1 ? ` x${rot}` : ''}: heals halved`)).map(t => `, ${t}`).join('');
+    v.card.setAttribute('aria-label', `${u.name}: ${u.ko ? 'knocked out' : `HP ${u.hp} of ${u.maxHp}, MP ${u.mp} of ${u.maxMp}`}${held ? `, ${held.text}: out of the line` : ''}${charmed ? ', charmed: its next turn is an attack on a friend' : ''}${fenText}, Legend Surge ${Math.round(u.surge)}%${u.statuses.length ? ', ' + u.statuses.map(s => s.id).join(', ') : ''}`);
     const key = u.statuses.map(s => `${s.id}${s.stacks}`).join(',');
     if (key !== v.statusKey) {
       const before = new Set(v.statusKey.split(',').map(k => k.replace(/\d+$/, '')));
@@ -249,26 +269,50 @@ export class Party {
   }
 
   // where a held hero stood: a dark hole with a pale rim (ice for "Held under"; open air, a scatter of
-  // feathers, for "Carried off"), swelling in as the figure goes
+  // feathers, for "Carried off"; M6: black water for "Led away", with a lamp going away over it, ripples for
+  // "In the river", bubbles for "Swallowed whole"), swelling in as the figure goes
   hole(ctx, cx, k, clockT, how) {
     const rw = Math.max(2, Math.round(11 * k));
-    const up = /carried/i.test(how);
-    const rim = up ? '#e8e0c8' : /under/i.test(how) ? '#8fd3f4' : '#c9b8a0';
+    const L = holeLook(how);
     for (let x = -rw; x <= rw; x++) {
       const yy = Math.round(Math.sqrt(Math.max(0, 1 - (x / (rw + 0.5)) ** 2)) * 2);
-      ctx.fillStyle = up ? 'rgba(0,0,0,0.25)' : '#0b0910';
+      ctx.fillStyle = L.air ? 'rgba(0,0,0,0.25)' : L.water ? '#081410' : '#0b0910';
       ctx.fillRect(cx + x, FEET - yy, 1, yy * 2 + 1);
-      ctx.fillStyle = rim;
+      ctx.fillStyle = L.rim;
       ctx.fillRect(cx + x, FEET + yy, 1, 1);
       if (Math.abs(x) < rw - 2) ctx.fillRect(cx + x, FEET - yy - 1, 1, 1);
     }
-    if (up && k >= 1) {
+    if (k < 1) return;
+    const ph = this.reduced ? 0 : clockT;
+    if (L.over === 'feathers') {
       // a few feathers drifting down where it was taken
-      const ph = this.reduced ? 0 : clockT * 0.9;
-      ctx.fillStyle = rim;
+      ctx.fillStyle = L.rim;
       for (let i = 0; i < 3; i++) {
-        const fy = FEET - 30 + Math.round(((ph + i * 0.37) % 1) * 26), fx = cx - 6 + i * 6 + Math.round(Math.sin(ph * 3 + i) * 2);
+        const fy = FEET - 30 + Math.round((((ph * 0.9) + i * 0.37) % 1) * 26), fx = cx - 6 + i * 6 + Math.round(Math.sin(ph * 2.7 + i) * 2);
         ctx.fillRect(fx, fy, 2, 1);
+      }
+    } else if (L.over === 'lamp') {
+      // a small light over the water, going away and coming round again: the lantern the hero followed
+      const u = this.reduced ? 0.4 : (ph * 0.35) % 1, lx = cx - 4 + Math.round(u * 12), ly = FEET - 8 - Math.round(u * 18);
+      ctx.globalAlpha = 1 - u * 0.8;
+      ctx.fillStyle = '#ffcb66'; ctx.fillRect(lx, ly, 2, 2);
+      ctx.fillStyle = 'rgba(255, 203, 102, 0.35)'; ctx.fillRect(lx - 1, ly - 1, 4, 4);
+      ctx.globalAlpha = 1;
+    } else if (L.over === 'ripples') {
+      // rings going out over the river where the hero went in
+      for (let i = 0; i < 2; i++) {
+        const u = this.reduced ? 0.5 + i * 0.3 : ((ph * 0.8) + i * 0.5) % 1, r = Math.round(3 + u * (rw + 3));
+        ctx.globalAlpha = 1 - u;
+        ctx.fillStyle = L.rim;
+        ctx.fillRect(cx - r, FEET, 2, 1); ctx.fillRect(cx + r - 1, FEET, 2, 1);
+      }
+      ctx.globalAlpha = 1;
+    } else if (L.over === 'bubbles') {
+      // bubbles coming up from whatever took the hero down
+      ctx.fillStyle = '#b8e8d8';
+      for (let i = 0; i < 3; i++) {
+        const u = this.reduced ? 0.3 * i : ((ph * 1.1) + i * 0.33) % 1;
+        ctx.fillRect(cx - 5 + i * 5 + Math.round(Math.sin(ph * 4 + i) * 1), FEET - 2 - Math.round(u * 16), 1, 1);
       }
     }
   }

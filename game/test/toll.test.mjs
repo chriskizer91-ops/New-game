@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { newGame } from '../src/rules/gauntlet.js';
 import { migrate } from '../src/rules/migrate.js';
 import { check, canAfford, condErrors, priceErrors } from '../src/rules/cond.js';
-import { talkTo, dialogueView, choose } from '../src/rules/story.js';
+import { talkTo, dialogueView, choose, enterDialogue, ladder } from '../src/rules/story.js';
 import { DIALOGUE } from '../src/data/dialogue.js';
 import { DOMAINS } from '../src/data/domains.js';
 import { CONSUMABLES } from '../src/data/items.js';
@@ -105,4 +105,18 @@ test('a check names an ability and a label: the toll game reads "Deception DC 14
   const k = contest.checks.indexOf(cha);
   const best = Math.max(...game.party.active.map(h => Math.floor((game.party.roster[h].base.CHA - 10) / 2)));
   assert.equal(r.roll.parts[k].total - r.roll.parts[k].nat, best);
+});
+
+test('meeting Hodge scouts his Ladder poster and sights his toll (his fight never stands on the map)', () => {
+  const game = fresh();
+  const id = talkTo(game, 'hodge');
+  assert.ok(!ladder(game).find(p => p.enc === 'hodge' && p.state !== 'silhouette'), 'a silhouette before');
+  const met = enterDialogue(game, id).game;
+  assert.equal(met.progress.flags.scouted?.hodge, true);
+  assert.equal(met.codex['unfair-toll']?.sighted, true, 'his clipped coin is Sighted');
+  assert.equal(met.codex['unfair-toll']?.claimed, false, 'not claimed');
+  const poster = ladder(met).find(p => p.enc === 'hodge');
+  assert.ok(poster, 'Hodge has a poster');
+  assert.equal(poster.state, 'scouted');
+  assert.equal(enterDialogue(met, id).game.progress.flags.scouted.hodge, true, 'and again is the same');
 });

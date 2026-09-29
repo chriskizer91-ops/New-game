@@ -6,19 +6,21 @@
 //             conditions), the step you are on and where, the reward and whom to tell
 //   Bounties  rules/story.js bounties, one group per board (Dael's in Thornhollow; Zara's in
 //             Sandspire once the Sunscorch is open; M5: Captain Ysolde's in Stormwatch once the
-//             Ironspire is open): hunting / ready to turn in (to its giver) / paid
+//             Ironspire is open; M6: Mayor Gretch's in Bogmire once the Gloomfen is open): hunting /
+//             ready to turn in (to its giver) / paid
 //   Ladder    rules/story.js ladder: a renderFoe poster per villain, a black silhouette until
 //             scouted, stamped when settled; the rumours of the sealed regions after them
 //   Keys      rules/world.js lockStatus for every lock type: a tick or cross per key and whose
 //             Domain counts; the story seals (crownwalls, the roads to the Sunscorch and, M5, the
-//             Ironspire, each with what opens it) listed apart
+//             Ironspire and, M6, the Gloomfen, each with what opens it) listed apart
 //   Grudges   flags.grudges (the unsettled: name, title, where, their Omens, and whether the pack
 //             hunts you) and flags.settled (name and the day), from grudgeView(game)
 // Every saved string (a Grudge's name and title, an Omen id) goes in through textContent.
 // Pure helper for tests (node): grudgeView(game).
 // Test hooks: tabs are .jr-tab[data-tab]; posters are .poster[data-id][data-state]; Grudges are
 // .jr-grudge[data-key][data-state="active"|"settled"] (the empty states .jr-empty).
-// Owner: WP8; M4 P7b (the Grudges tab, the Sandspire board); M5 P7 (the Stormwatch board, the Ironspire road).
+// Owner: WP8; M4 P7b (the Grudges tab, the Sandspire board); M5 P7 (the Stormwatch board, the Ironspire road);
+// M6 P7 (the Bogmire board, the Gloomfen road).
 import { questLog, bounties, ladder } from '../../rules/story.js';
 import { lockStatus, keys } from '../../rules/world.js';
 import { check } from '../../rules/cond.js';
@@ -53,6 +55,11 @@ const inSentence = t => String(t || '').replace(/^The /, 'the ');
 const ROADS = {
   sunscorch: { open: 'The Keep\'s south-east gate stands open. The Sunward Road runs to Sandspire.', shut: 'Sealed until both Brands of the Wilds are yours.' },
   ironspire: { open: 'The Keep\'s east postern stands open. The Rockslide Pass climbs to Peak\'s Veil.', shut: 'Sealed until the Council has sat a second time.' },
+  // M6: the fen stair opens with the third council; the causeway home dries out once the Blackwater falls
+  gloomfen: {
+    open: g => (safeCheck(g, { brand: 'brand-of-the-deep' }) ? 'The fen stair below Mossfall stands open, and the causeway from the Keep\'s south-west gate runs dry.' : 'The fen stair below Mossfall stands open. Willowmurk\'s safe paths lead down into the Gloomfen.'),
+    shut: 'Sealed until the Council has sat a third time.',
+  },
 };
 
 // The Grudges tab's rows (pure; node tests use it). A Grudge is keyed `<encId>#<spawnIndex>`; old
@@ -170,6 +177,8 @@ export function mount(root, ctx, params = {}) {
       // M5: the Stormwatch board (Ironhold's board posts the same bills); read once you have met the
       // captain or walked into Stormwatch
       ysolde: { home: 'ironspire', met: 'met-ysolde', map: 'stormwatch', read: 'Posted on the Stormwatch board, under the watch tower. Captain Ysolde pays for proof, and any board pays for any bounty.', unread: 'Stormwatch keeps a bounty board under its watch tower, and Ironhold posts the same bills. Captain Ysolde pays for proof.', region: 'ironspire' },
+      // M6: the Bogmire board, by the moot-hall (read once you have met the mayor or walked into Bogmire)
+      gretch: { home: 'gloomfen', met: 'met-gretch', map: 'bogmire', read: 'Posted on the Bogmire board, by the moot-hall. Mayor Gretch pays for proof, and any board pays for any bounty.', unread: 'Bogmire keeps a bounty board by its moot-hall. Mayor Gretch pays for proof, in coin and in favours.', region: 'gloomfen' },
     };
     const here = MAPS[g.progress?.pos?.map]?.region || 'verdant';
     const atHome = giver => (KNOWN[giver]?.home === here ? 1 : 0);
@@ -310,7 +319,8 @@ export function mount(root, ctx, params = {}) {
         ks.append(row);
       }
       li.append(ks);
-      if (L.soft) li.append(el('p', { class: 'jl-soft', text: L.soft.vision ? 'Soft: without a key you can still go in, seeing only two tiles.' : L.soft.hpPct ? `Soft: without a key every step costs ${Math.round(L.soft.hpPct * 100)}% of max HP (never below 1).` : 'Soft: it never blocks the way.' }));
+      const tiles = n => ['no', 'one', 'two', 'three', 'four', 'five'][n] || n;
+      if (L.soft) li.append(el('p', { class: 'jl-soft', text: L.soft.vision ? `Soft: without a key you can still go in, seeing only ${tiles(L.soft.vision)} tiles${id === 'fog' ? ' through the fog' : ''}.` : L.soft.hpPct ? `Soft: without a key every step costs ${Math.round(L.soft.hpPct * 100)}% of max HP (never below 1).` : 'Soft: it never blocks the way.' }));
       else if (L.text) li.append(el('p', { class: 'jl-text', text: L.text }));
       ul.append(li);
     }
@@ -323,12 +333,13 @@ export function mount(root, ctx, params = {}) {
     const seal = (name, open, text) => sl.append(el('li', open ? 'have' : 'lack', [el('span', { class: 'mk', text: open ? '✓' : '✗' }), icon(lockIcon('crownwall', { size: 12, dim: open })), el('span', { class: 'kl', text: name }), el('small', { text })]));
     seal(`${CROWNWALL.name}s`, crownOpen, crownOpen ? 'Fallen with Briarmaw. The old roads are yours.' : CROWNWALL.journal);
     // the Sunscorch road (the Keep's south-east gate) opens with Act I, the Ironspire's (the east postern)
-    // with the second council (M5); the rest wait on later chapters
+    // with the second council (M5), the Gloomfen's (the fen stair) with the third (M6); the rest wait on
+    // later chapters
     const act1 = safeCheck(g, { flag: 'act1-complete' });
     for (const r of Object.values(REGIONS).filter(r => r.open && r.entries?.length)) {
       const o = regionOpen(g, r.id);
       const R = ROADS[r.id] || { open: 'Its road stands open.', shut: 'Sealed for now.' };
-      seal(`The road to ${inSentence(r.name)}`, o, o ? R.open : R.shut);
+      seal(`The road to ${inSentence(r.name)}`, o, o ? (typeof R.open === 'function' ? R.open(g) : R.open) : R.shut);
     }
     const closed = Object.values(REGIONS).filter(r => !r.open);
     if (closed.length) seal('The roads beyond', false, `${closed.map(r => r.name.replace(/^The /, '')).join(', ')}: sealed. ${act1 ? 'The way opens in a later chapter.' : 'Not in this chapter.'}`);

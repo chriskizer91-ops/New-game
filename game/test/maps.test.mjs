@@ -1,5 +1,5 @@
-// Map data tests (M3 spec §2, §4.2, §6.1 WP3; M4 spec §2, §8; M5 spec §2, §8) over all 37 maps. Owner: WP3;
-// M4 P2; M5 P2.
+// Map data tests (M3 spec §2, §4.2, §6.1 WP3; M4 spec §2, §8; M5 spec §2, §8; M6 spec §2, §8) over all 56 maps.
+// Owner: WP3; M4 P2; M5 P2; M6 P2.
 // Shape, bounds, exits, anchors, placements and locks, then the flood fills: every CRITICAL_PATH
 // target is reachable with only the guaranteed keys (per starter), every chest with all keys, every
 // hard lock and story gate really is the only way through to what it guards. The flood fills run
@@ -13,6 +13,11 @@
 // once he gives it), no hard lock but the Deeps' rune-seal stands on that path, the re-armed fights never
 // shut the way home, the leads are reachable, the maps hold what spec §2.3 puts on them, and the chests
 // pay as the region should.
+// M6: the same for the Gloomfen: it opens down Mossfall's fen stair once the third council is sat, every GLOOM_PATH
+// target is reachable from an Ironspire-complete party with only its starter relic (Hodge's toll paid at his bar), no
+// hard lock stands on that path, the long boardwalk's east end waits on the Brand of Lanterns and the causeway home
+// on the Brand of the Deep, the re-armed fights never shut the way home, the leads are reachable, every entity is
+// reachable with every key, the maps hold what spec §2.3 puts on them, and the chests pay in bog amber.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { MAPS, MAP_IDS, ENTITY_OF, anchor, v1Anchor } from '../src/data/maps/index.js';
@@ -22,7 +27,7 @@ import { RELICS } from '../src/data/relics.js';
 import { DOMAINS } from '../src/data/domains.js';
 import { STARTERS } from '../src/data/heroes.js';
 import { ENCOUNTERS, GAUNTLET, PATROLS, BRANDS } from '../src/data/encounters.js';
-import { HEARTHS, START_AT, CRITICAL_PATH, LEADS, ZONES, REGIONS, LORE, SUN_PATH, SUN_LEADS, IRON_PATH, IRON_LEADS } from '../src/data/world.js';
+import { HEARTHS, START_AT, CRITICAL_PATH, LEADS, ZONES, REGIONS, LORE, SUN_PATH, SUN_LEADS, IRON_PATH, IRON_LEADS, GLOOM_PATH, GLOOM_LEADS } from '../src/data/world.js';
 import { DIALOGUE } from '../src/data/dialogue.js';
 import { GEMS, MATERIALS } from '../src/data/gems.js';
 import { newGame } from '../src/rules/gauntlet.js';
@@ -291,6 +296,7 @@ function beat(g, id) {
     if (REGIONS.verdant.brands.every(b => g.progress.brands.includes(b))) f.story['act1-complete'] = true;
     if (REGIONS.sunscorch.brands.every(b => g.progress.brands.includes(b))) f.story['sunscorch-complete'] = true;
     if (REGIONS.ironspire.brands.every(b => g.progress.brands.includes(b))) f.story['ironspire-complete'] = true;
+    if (REGIONS.gloomfen.brands.every(b => g.progress.brands.includes(b))) f.story['gloomfen-complete'] = true;
   }
 }
 
@@ -382,7 +388,8 @@ for (const starter of Object.keys(STARTERS)) {
 
 // Everything held: level 20, every relic, every fight won. `brand` adds every Brand so far (the Verdant
 // pair, then, M4.5, the Sunscorch pair, which opens Sandspire's east gate; M5, the Ironspire pair and the
-// flags of the Ironspire's gates) and every duel's yield.
+// flags of the Ironspire's gates; M6, the third council, which opens the fen stair, and the Gloomfen pair, which
+// opens the causeway home) and every duel's yield.
 function allKeys({ brand }) {
   const g = structuredClone(newGame({ name: 'Map', starter: 'hearthbrand', seed: 11 }));
   setLevels(g, 20);
@@ -401,6 +408,10 @@ function allKeys({ brand }) {
     f.story['act1-complete'] = true;
     // M5: the second council opens the Keep's east postern; the monks open the Highfold
     Object.assign(f.story, { 'sunscorch-complete': true, 'council-2-done': true, 'highfold-open': true });
+    // M6: the third council opens the fen stair below Mossfall; the Brand of the Deep, the causeway home
+    g.progress.brands.push('brand-of-lanterns', 'brand-of-the-deep');
+    g.progress.waking = 8;
+    Object.assign(f.story, { 'ironspire-complete': true, 'council-3-done': true });
   }
   return g;
 }
@@ -442,8 +453,11 @@ test('every hard lock is the only way through to something (a chest, an encounte
 });
 
 // the story flags of Act I's end and after (M5: the second council opens the Keep's east postern, and the
-// monks the Highfold path down to Fawnrest)
-const LATER = ['act1-complete', 'sunscorch-complete', 'council-2-done', 'highfold-open'];
+// monks the Highfold path down to Fawnrest; M6: the third council opens the fen stair)
+const LATER = ['act1-complete', 'sunscorch-complete', 'council-2-done', 'highfold-open', 'ironspire-complete', 'council-3-done'];
+// M6: the Brand of the Deep opens the Keep's south-west gate onto the causeway, and the Gloomfen is a back way into
+// the Wilds (the Murkway climbs the fen stair to Mossfall): before the Act's end neither Gloomfen Brand is held
+const beforeGloomfen = g => { g.progress.brands = g.progress.brands.filter(b => BRANDS[b].region !== 'gloomfen'); };
 
 test('story gates: the north gate, the toll chain, the crownwalls and the Eldest Tree door hold', () => {
   const open = allKeys({ brand: true });
@@ -457,6 +471,7 @@ test('story gates: the north gate, the toll chain, the crownwalls and the Eldest
     // before the vault fight there is no Act I to have finished, and so no council after it (M5: the second
     // council opens the Keep's east postern)
     for (const k of LATER) delete g.progress.flags.story[k];
+    beforeGloomfen(g);
     assert.deepEqual([...mapsOf(flood(g))].sort(), ['keep', 'keep-gallery', 'keep-gallery-2', 'keep-gallery-3', 'keep-hall'], 'keep-n-gate holds until keep-vault is done');
   }
   // Until Skarn is beaten, his chain closes the road: Thornhollow and the Smugglers' Hollow are out of reach.
@@ -466,6 +481,7 @@ test('story gates: the north gate, the toll chain, the crownwalls and the Eldest
     const g = structuredClone(open);
     delete g.progress.flags.unlocked['bramble-toll-chain'];
     for (const k of LATER) delete g.progress.flags.story[k];
+    beforeGloomfen(g);
     const r = flood(openHeldLocks(g));
     assert.ok(!mapsOf(r).has('thornhollow'), 'bramble-toll-chain holds');
     assert.ok(!reaches(r, 'hearth-road', MAPS['hearth-road'].entities.find(e => e.id === 'hr-smugglers')), 'the Smugglers\' Hollow is past the toll');
@@ -942,4 +958,310 @@ test('Ironspire chests: a little silver, embers and scrap, gems by real ids, fro
   assert.ok(chests.filter(({ e }) => e.loot.materials?.silver).length * 2 >= chests.length, 'most hold a little silver');
   assert.ok(chests.some(({ e }) => e.loot.materials?.embers) && chests.some(({ e }) => e.loot.materials?.scrap), 'somewhere, an ember and some scrap');
   assert.ok(chests.some(({ e }) => e.loot.gems?.['frost-opal']), 'Frostmere pays in frost opals');
+});
+
+// ---- M6: the Gloomfen Marsh (spec §2, §8) --------------------------------------------------------------------
+
+const GP = GLOOM_PATH;
+const GLOOM = MAP_IDS.filter(id => MAPS[id].region === 'gloomfen');
+const GLOOM_BRANDS = ['brand-of-lanterns', 'brand-of-the-deep'];
+
+// An Ironspire-complete party (spec §2.2, §8): the M3, M4 and M5 critical paths behind it (all six earlier Brands, the
+// Waking at 6, every earlier Act's flags and duels), the third council sat, at level 8 (the worst case the earlier
+// tests allow; nothing says it has levelled since), with only its starter relic. Then the first i GLOOM_PATH targets
+// are beaten (a Gloomfen Brand re-arms the region, as the rules do); once the party has reached the Toll-Lamp it pays
+// Hodge's toll at his bar (the walk pays the day's price). `keys` opens every lock whose key the party holds.
+function gloomStage(starter, i, { keys = true } = {}) {
+  const g = structuredClone(newGame({ name: 'Map', starter, seed: 11 }));
+  setLevels(g, 8);
+  for (const id of [...CP, ...SP, ...IP]) beat(g, id);
+  Object.assign(g.progress.flags.story, { 'council-2-done': true, 'met-wynn': true, 'highfold-open': true, 'council-3-done': true });
+  giveRuneKey(g);
+  for (let j = 0; j < i; j++) beat(g, GP[j]);
+  if (i > GP.indexOf('toll-lamp')) g.progress.flags.story['toll-paid'] = true;
+  return keys ? openHeldLocks(g) : g;
+}
+
+test('the Gloomfen opens down Mossfall\'s fen stair once the third council is sat, and the causeway home with the Brand of the Deep', () => {
+  const stair = MAPS.mossfall.exits.find(x => x.id === 'mf-fen-stair');
+  assert.deepEqual(stair.gate, { flag: 'council-3-done' });
+  assert.equal(stair.to, 'murkway');
+  assert.equal(stair.sealed.region, 'gloomfen');
+  assert.ok(stair.sealed.hint, 'the fen stair says what opens it');
+  const sw = MAPS.keep.exits.find(x => x.id === 'keep-sw');
+  assert.deepEqual(sw.gate, { brand: 'brand-of-the-deep' });
+  assert.equal(sw.to, 'causeway');
+  assert.equal(GLOOM.length, 12);
+  // every key, both Gloomfen Brands: all twelve maps, in through the fen stair and home across the causeway
+  const all = openHeldLocks(allKeys({ brand: true }));
+  const r = flood(all);
+  assert.ok(r.used.has('mf-fen-stair') && r.used.has('keep-sw') && r.used.has('bm-causeway'), 'the fill goes down the fen stair and across the causeway');
+  for (const id of GLOOM) assert.ok(mapsOf(r).has(id), `${id} is reachable once both Gloomfen Brands are held`);
+  // one order (spec A4, A5): before either Brand the Misthollow side of the long boardwalk and the causeway are shut;
+  // the Brand of Lanterns opens the boardwalk's east end, and only the Brand of the Deep the causeway
+  const withBrands = brands => {
+    const g = structuredClone(all);
+    g.progress.brands = g.progress.brands.filter(b => !GLOOM_BRANDS.includes(b)).concat(brands);
+    return mapsOf(flood(g));
+  };
+  const before = withBrands([]);
+  for (const id of ['murkway', 'willowmurk', 'rotbridge', 'bogmire', 'lanternfen', 'mothers-hollow', 'long-boardwalk']) assert.ok(before.has(id), `${id} is open before either Gloomfen Brand`);
+  for (const id of ['misthollow', 'drowned-belfry', 'blackwater-reach', 'tidal-flats', 'causeway']) assert.ok(!before.has(id), `${id} is shut before the Brand of Lanterns, even with every key`);
+  const lanterns = withBrands(['brand-of-lanterns']);
+  for (const id of ['misthollow', 'drowned-belfry', 'blackwater-reach', 'tidal-flats']) assert.ok(lanterns.has(id), `${id} opens with the Brand of Lanterns`);
+  assert.ok(!lanterns.has('causeway'), 'the causeway stays under the Blackwater until the Brand of the Deep');
+  // before the third council nothing in the Gloomfen can be reached, even with every key
+  const shut = structuredClone(all);
+  shut.progress.brands = shut.progress.brands.filter(b => !GLOOM_BRANDS.includes(b));
+  delete shut.progress.flags.story['council-3-done'];
+  const seen = mapsOf(flood(shut));
+  for (const id of GLOOM) assert.ok(!seen.has(id), `${id} stays sealed before the third council, even with every key`);
+  // the fen stair and the causeway are the only ways between the Gloomfen and the rest of the world
+  for (const id of GLOOM) {
+    for (const x of MAPS[id].exits) {
+      assert.ok(x.to && (!x.sealed || x.gate), `${id}/${x.id} is a way through`);
+      if (MAPS[x.to].region !== 'gloomfen') assert.ok((id === 'murkway' && x.to === 'mossfall') || (id === 'causeway' && x.to === 'keep'), `${id}/${x.id} leaves the Gloomfen only for Mossfall or the Keep`);
+    }
+  }
+  const up = anchor('mossfall', 'from-murkway'), home = anchor('keep', 'from-causeway');
+  assert.ok(cellsOf({ area: stair.area }).some(([x, y]) => Math.abs(x - up.x) + Math.abs(y - up.y) === 1), 'the climb back up the fen stair lands beside it');
+  assert.ok(cellsOf({ area: sw.area }).some(([x, y]) => Math.abs(x - home.x) + Math.abs(y - home.y) === 1), 'the road home lands beside keep-sw');
+});
+
+for (const starter of Object.keys(STARTERS)) {
+  test(`reachability (${starter}): every GLOOM_PATH target from an Ironspire-complete party, with only the starter relic at the worst-case level`, () => {
+    for (let i = 0; i < GP.length; i++) {
+      const g = gloomStage(starter, i);
+      const hit = ENTITY_OF[GP[i]];
+      assert.ok(hit, `${GP[i]} is placed`);
+      assert.equal(MAPS[hit.map].region, 'gloomfen', `${GP[i]} is in the Gloomfen`);
+      const live = present(g, hit.map).find(e => e.id === hit.entity.id);
+      assert.ok(live, `${GP[i]} is present when it is next (stage ${i})`);
+      assert.ok(reaches(flood(g), hit.map, hit.entity), `${GP[i]} (${hit.map}) is reachable at stage ${i} (level 8)`);
+    }
+  });
+}
+
+test('no hard lock stands on the Gloomfen path; Hodge\'s bar waits on his toll, and Tamsin\'s gate on her duel (spec §2.2, A11, A12)', () => {
+  for (let i = 0; i < GP.length; i++) {
+    const g = gloomStage('cairnmaul', i, { keys: false });           // every hard lock shut
+    const hit = ENTITY_OF[GP[i]];
+    assert.ok(reaches(flood(g), hit.map, hit.entity), `${GP[i]} needs no key (stage ${i})`);
+  }
+  // until the toll is paid (or Hodge beaten) his bar keeps Tamsin and everything west of the channel out of reach
+  const at = GP.indexOf('tamsin-rotbridge');
+  const unpaid = gloomStage('cairnmaul', at);
+  delete unpaid.progress.flags.story['toll-paid'];
+  const r = flood(unpaid);
+  assert.ok(reaches(r, 'rotbridge', MAPS.rotbridge.entities.find(e => e.id === 'rb-hodge')), 'Hodge sits on his stool on your side of the bar');
+  assert.ok(!reaches(r, 'rotbridge', ENTITY_OF['tamsin-rotbridge'].entity) && !mapsOf(r).has('bogmire'), 'the bar holds the bridge until the toll is paid');
+  const beaten = structuredClone(unpaid);
+  beaten.progress.flags.beaten.hodge = 1;
+  assert.ok(reaches(flood(beaten), 'rotbridge', ENTITY_OF['tamsin-rotbridge'].entity), 'beating Hodge lifts the bar too');
+  // Tamsin's gate: a win or a yield opens it
+  const duel = gloomStage('cairnmaul', at + 1);
+  assert.ok(mapsOf(flood(duel)).has('bogmire'), 'past Tamsin once her duel is settled');
+});
+
+test('after each Gloomfen Brand, the re-armed fights never shut the way home from the Brand\'s lair', () => {
+  for (const id of ['lantern-mother', 'blackwater-leviathan']) {
+    const g = gloomStage('hearthbrand', GP.indexOf(id) + 1);          // the Brand is won: the region re-arms
+    assert.ok(present(g, 'murkway').some(e => e.id === 'mk-leeches'), `after ${id} the leeches are back in their ford`);
+    const hit = ENTITY_OF[id];
+    const from = nextTo(g, hit.map, hit.entity);
+    assert.ok(from, `${id} can be stood beside`);
+    const r = flood(g, { from: [hit.map, ...from] });
+    // every Gloomfen fire kindled on the way, and the Keep's own, stays reachable on foot (the Mother's Hollow has no
+    // Hearthfire travel); after the Brand of the Deep the way home is the causeway
+    const kindled = ['hearthstone-keep', ...Object.keys(HEARTHS).filter(h => MAPS[HEARTHS[h].map].region === 'gloomfen' && g.progress.flags.kindled[h])];
+    assert.ok(kindled.length >= (id === 'lantern-mother' ? 5 : 9), `after ${id}: ${kindled.join(', ')}`);
+    for (const fire of kindled) assert.ok(reaches(r, HEARTHS[fire].map, ENTITY_OF[fire].entity), `after ${id}, ${fire} is still reachable from the lair`);
+    if (id === 'blackwater-leviathan') assert.ok(r.used.has('bm-causeway') || r.used.has('cw-n'), 'the causeway home is open');
+    // and every re-armed road guard of the path behind stands beside its open gate
+    const behind = GP.slice(0, GP.indexOf(id));
+    let checked = 0;
+    for (const m of GLOOM) for (const e of present(g, m)) if (e.kind === 'gate' && e.guard && behind.includes(e.guard)) { assert.equal(e.state, 'open', `after ${id}, ${m}/${e.id} stays open`); checked++; }
+    assert.ok(checked >= (id === 'lantern-mother' ? 5 : 9), `after ${id}: ${checked} road gates checked`);
+  }
+});
+
+test('world tables: GLOOM_PATH is spec §2.2\'s route and GLOOM_LEADS its leads, each placed once in the Gloomfen and reachable', () => {
+  assert.deepEqual([...GP], ['mk-leeches', 'reed-shrine', 'mk-reedcutters', 'willow-hearth', 'wm-wights', 'toll-lamp', 'tamsin-rotbridge',
+    'stilt-hearth', 'lf-moths', 'fen-cairn', 'lf-hags', 'lantern-mother', 'lb-drowned', 'bell-hearth', 'mh-salvage',
+    'mh-ringers', 'wreck-fire', 'br-barge', 'flats-beacon', 'tf-bargemaster', 'blackwater-leviathan']);
+  assert.deepEqual(JSON.parse(JSON.stringify(GLOOM_LEADS)), { willow: ['wm-willow'], grue: ['grue-hollow'], cantor: ['db-choir', 'cantor'], jaws: ['old-jaws'], hodge: ['hodge'] });
+  const leads = Object.values(GLOOM_LEADS).flat();
+  const placedIn = id => MAPS[ENTITY_OF[id]?.map]?.region;
+  for (const id of [...GP, ...leads]) {
+    assert.ok(ENCOUNTERS[id] && ENCOUNTERS[id].region === 'gloomfen', `${id} is a Gloomfen encounter`);
+    assert.equal(placedIn(id), 'gloomfen', `${id} is placed in the Gloomfen`);
+  }
+  for (const id of Object.keys(ENCOUNTERS).filter(k => ENCOUNTERS[k].region === 'gloomfen')) assert.equal(placedIn(id), 'gloomfen', `${id} sits on a Gloomfen map`);
+  const all = flood(openHeldLocks(allKeys({ brand: true })));
+  for (const id of leads) assert.ok(reaches(all, ENTITY_OF[id].map, ENTITY_OF[id].entity), `the lead ${id} is reachable with every key`);
+  // at the path's end the party that walked it (level 8, its starter relic, Domains as they stand) reaches every lead,
+  // each lead's fights in their order (the Drowned Cantor waits behind his choir)
+  for (const list of Object.values(GLOOM_LEADS)) {
+    const g = gloomStage('stillwater-lance', GP.length);
+    for (const id of list) {
+      assert.ok(reaches(flood(openHeldLocks(structuredClone(g))), ENTITY_OF[id].map, ENTITY_OF[id].entity), `the lead ${id} is reachable at the path's end`);
+      beat(g, id);
+    }
+  }
+});
+
+test('every Gloomfen entity is reachable with every key, and every lock in the Gloomfen has two keys (spec §2.7)', () => {
+  const r = flood(openHeldLocks(allKeys({ brand: true })));
+  for (const id of GLOOM) {
+    for (const e of MAPS[id].entities) {
+      if (['trigger', 'light', 'prop'].includes(e.kind) || (e.kind === 'encounter' && e.if)) continue;
+      assert.ok(reaches(r, id, e), `${id}/${e.id} can be reached`);
+    }
+  }
+  for (const type of ['bog', 'fog', 'blackwater', 'witch-ward']) {
+    const L = LOCKS[type];
+    assert.ok(L.powers.length >= 2 && L.domain.level > 0, `${type}: two relic keys and a Domain`);
+  }
+  // the new keys for older locks (spec §2.7)
+  for (const [type, power] of [['darkness', 'mothers-light'], ['darkness', 'pearl-light'], ['mirage', 'hag-sight'], ['stream', 'gar-current'], ['boulder', 'haul'], ['bramble', 'willow-weep']]) {
+    assert.ok(LOCKS[type].powers.includes(power), `${type} opens with ${power}`);
+  }
+  // the soft locks: the bog burns (3% a step, as the drift), the fog closes the sight to 3 tiles on a foggy map
+  assert.deepEqual(LOCKS.bog.soft, { hpPct: 0.03 });
+  assert.deepEqual(LOCKS.fog.soft, { vision: 3 });
+  assert.equal(LOCKS.blackwater.soft, false);
+  assert.equal(LOCKS['witch-ward'].soft, false);
+  // the fog is a map flag, never a lock entity
+  for (const id of GLOOM) assert.ok(!MAPS[id].entities.some(e => e.kind === 'lock' && e.lock === 'fog'), `${id}: no fog lock entity`);
+});
+
+// What spec §2.3 (with §2.5, §2.7, §3.1, §3.3) puts on each map: its biome, its Hearthfires (true = cold), its fights and
+// their modes, at least this many locks of each type, and its people. Road-first (A3): every route and lead fight stands
+// still (a block or a lair); only the zone packs roam.
+const GLOOM_SPEC = {
+  murkway: { biome: 'fen', fires: { 'reed-shrine': false }, fights: { 'mk-leeches': 'block', 'mk-reedcutters': 'block', 'mk-bogfolk': 'pack' }, locks: { bog: 3 }, npcs: [] },
+  willowmurk: { biome: 'willow-village', fires: { 'willow-hearth': false }, fights: { 'wm-wights': 'block', 'wm-willow': 'lair' }, locks: { 'witch-ward': 1 }, npcs: ['moss', 'sedge', 'wm-villager'] },
+  rotbridge: { biome: 'channel', fires: { 'toll-lamp': false }, fights: { hodge: 'block', 'tamsin-rotbridge': 'block', 'rb-gars': 'pack' }, locks: { blackwater: 1 }, npcs: ['hodge'] },
+  bogmire: { biome: 'stilt-town', fires: { 'stilt-hearth': false }, fights: {}, locks: {}, npcs: ['gretch', 'nettie', 'pell', 'bm-watch'] },
+  lanternfen: { biome: 'bog', fires: { 'fen-cairn': true }, fights: { 'lf-moths': 'block', 'lf-hags': 'block', 'lf-lights': 'pack', 'grue-hollow': 'lair' }, locks: { 'witch-ward': 1, bog: 1 }, npcs: [] },
+  'mothers-hollow': { biome: 'drowned-grove', fires: {}, fights: { 'lantern-mother': 'lair' }, locks: {}, npcs: [] },
+  'long-boardwalk': { biome: 'boardwalk', fires: {}, fights: { 'lb-drowned': 'block', 'lb-lights': 'pack' }, locks: { blackwater: 1 }, npcs: [] },
+  misthollow: { biome: 'sunken-city', fires: { 'bell-hearth': true }, fights: { 'mh-salvage': 'block', 'mh-ringers': 'block' }, locks: { blackwater: 1 }, npcs: ['corvus'] },
+  'drowned-belfry': { biome: 'belfry', fires: {}, fights: { 'db-choir': 'block', cantor: 'lair' }, locks: {}, npcs: [] },
+  'blackwater-reach': { biome: 'channel', fires: { 'wreck-fire': true }, fights: { 'br-barge': 'block', 'br-gars': 'pack', 'old-jaws': 'lair' }, locks: { blackwater: 1 }, npcs: [] },
+  'tidal-flats': { biome: 'mudflat', fires: { 'flats-beacon': false }, fights: { 'tf-bargemaster': 'block', 'blackwater-leviathan': 'lair' }, locks: {}, npcs: [] },
+  causeway: { biome: 'causeway', fires: {}, fights: { 'cw-lights': 'pack' }, locks: {}, npcs: [] },
+};
+
+test('the Gloomfen maps hold what spec §2.3 puts on them', () => {
+  assert.deepEqual(Object.keys(GLOOM_SPEC).sort(), [...GLOOM].sort());
+  for (const [id, want] of Object.entries(GLOOM_SPEC)) {
+    const m = MAPS[id], of = k => m.entities.filter(e => e.kind === k);
+    assert.equal(m.biome, want.biome, `${id} biome`);
+    assert.ok(m.lore.length >= 1, `${id} has lore for the Atlas`);
+    assert.ok(m.roads?.length, `${id} declares its roads (spec A3)`);
+    assert.equal(m.backdrop, id, `${id} fights on its own backdrop (spec §6.2)`);
+    assert.deepEqual(Object.fromEntries(of('hearthfire').map(e => [e.id, !!e.cold])), want.fires, `${id} Hearthfires`);
+    assert.deepEqual(Object.fromEntries(of('encounter').map(e => [e.id, e.mode])), want.fights, `${id} fights`);
+    for (const [type, n] of Object.entries(want.locks)) assert.ok(of('lock').filter(e => e.lock === type).length >= n, `${id}: ${n} ${type}`);
+    for (const npc of want.npcs) assert.ok(of('npc').some(e => e.npc === npc), `${id}: ${npc}`);
+  }
+  const on = (map, id) => MAPS[map].entities.find(e => e.id === id);
+  // the music (spec §2.1): the fen track, but for the two towns, the causeway home and the two dungeons
+  assert.deepEqual(GLOOM.filter(id => MAPS[id].music !== 'fen').map(id => [id, MAPS[id].music]).sort(),
+    [['bogmire', 'town'], ['causeway', 'road'], ['drowned-belfry', 'dungeon'], ['mothers-hollow', 'dungeon'], ['willowmurk', 'town']]);
+  // the fog (spec §4.4) and the dark: never both on one map; the two dungeons have no Hearthfire travel
+  assert.deepEqual(GLOOM.filter(id => MAPS[id].fog).sort(), ['lanternfen', 'misthollow']);
+  assert.deepEqual(GLOOM.filter(id => MAPS[id].dark).sort(), ['drowned-belfry', 'mothers-hollow']);
+  for (const m of Object.values(MAPS)) assert.ok(!(m.fog && m.dark), `${m.id} is never both foggy and dark`);
+  assert.deepEqual(GLOOM.filter(id => !MAPS[id].travel).sort(), ['drowned-belfry', 'mothers-hollow']);
+  // the zones (spec §2.6), each fighting on its own map's backdrop
+  assert.deepEqual(GLOOM.filter(id => MAPS[id].zone).map(id => [id, MAPS[id].zone]).sort(),
+    [['blackwater-reach', 'blackwater'], ['causeway', 'causeway'], ['lanternfen', 'lanternfen'], ['long-boardwalk', 'boardwalk'], ['misthollow', 'misthollow'], ['murkway', 'murkway'], ['tidal-flats', 'tidal-flats']]);
+  for (const [zone, map] of [['murkway', 'murkway'], ['lanternfen', 'lanternfen'], ['boardwalk', 'long-boardwalk'], ['misthollow', 'misthollow'], ['blackwater', 'blackwater-reach'], ['tidal-flats', 'tidal-flats'], ['causeway', 'causeway']]) {
+    assert.equal(ZONES[zone].backdrop, map, `the ${zone} zone fights on ${map}'s backdrop`);
+  }
+  // Hodge's bar (spec A11, §2.2): no guard; Hodge the NPC sits beside it on your side; his fight starts only from his
+  // toll dialogue, so its encounter never stands on the map by itself
+  const bar = on('rotbridge', 'rb-toll-bar');
+  assert.equal(bar.kind, 'gate');
+  assert.deepEqual(bar.open, { any: [{ flag: 'toll-paid' }, { beaten: 'hodge' }] });
+  assert.equal(bar.guard, undefined);
+  const hodge = MAPS.rotbridge.entities.find(e => e.kind === 'npc' && e.npc === 'hodge');
+  assert.ok(hodge && cellsOf(bar).some(([x, y]) => Math.max(Math.abs(x - hodge.at[0]), Math.abs(y - hodge.at[1])) === 1), 'Hodge sits beside his bar');
+  const g = gloomStage('hearthbrand', GP.indexOf('toll-lamp') + 1);
+  assert.ok(!present(g, 'rotbridge').some(e => e.kind === 'encounter' && e.enc === 'hodge'), 'Hodge\'s fight never stands on the map by itself');
+  assert.deepEqual(on('rotbridge', 'hodge').at, hodge.at, 'his fight is placed where he sits');
+  const tollChoices = (DIALOGUE[ENCOUNTERS.hodge.talk]?.choices || []).flatMap(c => c.do || []);
+  assert.ok(tollChoices.some(e => e.fight === 'hodge'), 'his toll dialogue can start his fight');
+  // Tamsin at Rotbridge holds the far half of the bridge: a win or a yield opens her gate, and she talks first
+  const far = on('rotbridge', 'rb-far-gate');
+  assert.deepEqual(far.open, { any: [{ beaten: 'tamsin-rotbridge' }, { flag: 'tamsin-yielded-4' }] });
+  assert.equal(far.guard, 'tamsin-rotbridge');
+  assert.equal(on('rotbridge', 'tamsin-rotbridge').talk, 'tamsin-rotbridge');
+  assert.ok(bar.area[0] > far.area[2], 'Hodge\'s bar comes first from Willowmurk, Tamsin\'s gate on the bridge\'s far half');
+  // the gated exits (spec §2.2): the long boardwalk's east end and Bogmire's causeway, each with its sealed words and hint
+  const lbE = MAPS['long-boardwalk'].exits.find(x => x.id === 'lb-e');
+  assert.deepEqual(lbE.gate, { brand: 'brand-of-lanterns' });
+  assert.equal(lbE.to, 'misthollow');
+  assert.equal(lbE.sealed.text, 'The lights on the boardwalk won\'t let anyone past.');
+  assert.equal(lbE.sealed.hint, 'The lights will go out when the Lantern Mother rests.');
+  const bmC = MAPS.bogmire.exits.find(x => x.id === 'bm-causeway');
+  assert.deepEqual(bmC.gate, { brand: 'brand-of-the-deep' });
+  assert.equal(bmC.to, 'causeway');
+  assert.ok(bmC.sealed.text && bmC.sealed.hint, 'Bogmire\'s causeway says why it is shut and what opens it');
+  // Bogmire: the board, the four ways out
+  assert.equal(on('bogmire', 'bm-board')?.opens, 'bounties', 'the Bogmire board');
+  assert.deepEqual(MAPS.bogmire.exits.map(x => x.to).sort(), ['causeway', 'lanternfen', 'long-boardwalk', 'rotbridge']);
+  // the leads' locks (spec §2.3): Grandfather Willow and Mother Grue behind witch-wards, Old Jaws behind a dock; the
+  // Lanternfen's chest behind a bog stretch
+  for (const [map, lock, fight] of [['willowmurk', 'wm-witch-ward', 'wm-willow'], ['lanternfen', 'lf-witch-ward', 'grue-hollow'], ['blackwater-reach', 'br-pond-dock', 'old-jaws']]) {
+    const g2 = openHeldLocks(allKeys({ brand: true }));
+    const shut = structuredClone(g2);
+    delete shut.progress.flags.unlocked[lock];
+    assert.ok(reaches(flood(g2), map, on(map, fight)) && !reaches(flood(shut), map, on(map, fight)), `${fight} lies behind ${lock}`);
+  }
+  assert.equal(on('lanternfen', 'lf-bog')?.lock, 'bog');
+  assert.equal(on('lanternfen', 'lf-boots')?.text, 'Small bootprints, all going one way.');
+  assert.equal(on('murkway', 'mk-sign')?.text, 'Willowmurk. Keep to the path. The path keeps to you.');
+  // Willowmurk's ring of ward-stones: three dark until the wards are mended
+  const stones = MAPS.willowmurk.entities.filter(e => e.kind === 'sign' && String(e.look).startsWith('ward-stone'));
+  assert.equal(stones.filter(e => e.look === 'ward-stone-dark').length, 3, 'three dark ward-stones');
+  for (const e of stones.filter(x => x.look === 'ward-stone-dark')) assert.deepEqual(e.if, { not: { flag: 'wards-mended' } });
+  // the props the scenes use: the black barge (until Tamsin's fall), the children asleep (until the Brand of
+  // Lanterns), the Sleeper under the Belfry's floor, the sealed chest (until the salvage crew is beaten)
+  assert.deepEqual(on('rotbridge', 'rb-black-barge')?.if, { not: { flag: 'tamsin-fallen' } });
+  assert.ok(MAPS['mothers-hollow'].entities.filter(e => e.prop === 'sleeping-child' && e.if?.not?.brand === 'brand-of-lanterns').length >= 3, 'the children asleep in the lamplight');
+  assert.ok(on('drowned-belfry', 'sleeper')?.kind === 'prop' && !on('drowned-belfry', 'sleeper').solid, 'the Sleeper, under the floor');
+  assert.deepEqual(on('misthollow', 'mh-sealed-chest')?.if, { not: { beaten: 'mh-salvage' } });
+  // the Champions' lairs are 3 by 2, and every big lair carries its sprite foot inside its footprint
+  for (const [map, id] of [['mothers-hollow', 'lantern-mother'], ['tidal-flats', 'blackwater-leviathan']]) {
+    const [x0, y0, x1, y1] = on(map, id).area;
+    assert.deepEqual([x1 - x0 + 1, y1 - y0 + 1], [3, 2], `${id}'s footprint`);
+  }
+  for (const id of GLOOM) for (const e of MAPS[id].entities) if (e.kind === 'encounter' && e.area) assert.ok(covers(e, e.at[0], e.at[1]), `${id}/${e.id} stands in its footprint`);
+  // the stair down to the Drowned Belfry lies past the salvage camp's chain, in the old city
+  assert.equal(MAPS.misthollow.exits.find(x => x.id === 'mh-belfry')?.to, 'drowned-belfry');
+});
+
+test('Gloomfen chests: a little silver, gems and materials by real ids, bog amber only in the Gloomfen, embers behind a key, no relic', () => {
+  const chests = GLOOM.flatMap(id => MAPS[id].entities.filter(e => e.kind === 'chest').map(e => ({ map: id, e })));
+  assert.ok(chests.length >= 10, `${chests.length} chests`);
+  const open = openHeldLocks(allKeys({ brand: true }));
+  const behindKey = (map, e) => {
+    const g = structuredClone(open);
+    for (const x of MAPS[map].entities) if (x.kind === 'lock' && !LOCKS[x.lock].soft) delete g.progress.flags.unlocked[x.id];
+    return !reaches(flood(g), map, e);
+  };
+  for (const { map, e } of chests) {
+    for (const [k, n] of Object.entries(e.loot.materials || {})) assert.ok(MATERIALS[k] && n >= 1 && n <= 2, `${map}/${e.id}: ${k} x${n}`);
+    for (const [k, n] of Object.entries(e.loot.gems || {})) assert.ok(GEMS[k] && n >= 1 && n <= 2, `${map}/${e.id}: ${k} x${n}`);
+    assert.ok(!e.loot.gems?.['ash-garnet'] && !e.loot.gems?.['frost-opal'], `${e.id}: no Sunscorch or Ironspire gem in the fen`);
+    if (e.loot.materials?.embers) assert.ok(e.hidden || e.lock || behindKey(map, e), `${e.id}: embers are well hidden (hidden, or behind a key)`);
+    assert.ok(!e.loot.relic && (e.loot.items || []).every(it => !it.base || !RELICS[it.base]), `${e.id}: no chest duplicates a relic`);
+  }
+  // bog amber drops only in the Gloomfen (spec §3.7)
+  for (const m of Object.values(MAPS)) for (const e of m.entities) if (e.kind === 'chest' && e.loot.gems?.['bog-amber']) assert.equal(m.region, 'gloomfen', `${m.id}/${e.id}: bog amber only in the Gloomfen`);
+  assert.ok(chests.filter(({ e }) => e.loot.materials?.silver).length * 2 >= chests.length, 'most hold a little silver');
+  assert.ok(chests.filter(({ e }) => e.loot.gems?.['bog-amber']).length >= 3, 'the fen pays in bog amber');
 });

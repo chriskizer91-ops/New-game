@@ -6,6 +6,9 @@
 //                             static objects baked in, overhead chunks (canopies, roofs, grass tops)
 //   refresh(game)             re-bake only the chunks whose objects changed state
 //   setDark(on, leaderX, leaderY, radius, lights)   the darkness canvas, redrawn only when this changes
+//   setFog(on, leaderX, leaderY, radius, lights)    M6: the mist over a foggy map, in the darkness's place: thick
+//                             outside the sight radius, or (radius 0: the fog lock is open) a thin haze that
+//                             parts a little way around the party; redrawn only when this changes
 //   draw(list, n, emotes, ne, now) -> drawImage count     one frame (allocates nothing)
 //   setPlates([{ key, name, sub, title, x, y }])    DOM nameplates over the canvas (art px anchors)
 //   tileAt(clientX, clientY) -> [tx, ty] | null
@@ -21,7 +24,7 @@
 // Sprite records (filled by ui/world/actors.js): { img, sx, sy, sw, sh, dx, dy, ys, alpha, fx, fxA, fxB, fxC, col, show }
 //   fx: 0 none, 1 relic glint (fxA, fxB = offset, fxC = phase ms), 3 count pips (fxA = n), 4 chest twinkle.
 //   `show` false skips the record.
-// Owner: WP7.
+// Owner: WP7; M6 P7 (the fog).
 
 import { tileAtlas, objectSprite, emote as emoteArt, OBJECT_KINDS } from '../../art/index.js';
 import { lockStatus } from '../../rules/world.js';
@@ -55,7 +58,10 @@ function atlasFor(biome) {
 }
 
 const KNOWN = new Set(OBJECT_KINDS || []);
-const FALLBACK_KIND = { 'tally-seal': 'sign', 'rot-knot': 'bramble', door: 'gate', table: 'board', 'barred-gate': 'gate', stream: 'ford-ice' };
+const FALLBACK_KIND = { 'tally-seal': 'sign', 'rot-knot': 'bramble', door: 'gate', table: 'board', 'barred-gate': 'gate', stream: 'ford-ice',
+  // M6: until the Gloomfen's own looks are drawn, each borrows the nearest one there is
+  'toll-bar': 'gate', 'leech-ford': 'gate', 'ward-gate': 'gate', 'hung-lanterns': 'bramble', 'hag-fence': 'thornwall', 'barge-planks': 'gate',
+  'water-gate': 'barred-gate', 'choir-screen': 'barred-gate', blackwater: 'chasm', 'witch-ward': 'rune-seal' };
 const OBJ = new Map();
 // An object sprite as canvases, one per animation frame, with its foot anchor (art/map-sprites.js
 // objectSprite: the foot goes on the bottom-centre of the entity's tile; tall objects rise upward).
@@ -146,11 +152,17 @@ const LOCK_KIND = {
   'dune-glass': 'dune-glass', mirage: 'mirage', quicksand: 'quicksand', 'vault-seal': 'vault-seal',
   // M5: the Ironspire's hard locks (the snowdrift is soft: its `m` tiles carry the look)
   chasm: 'chasm', ice: 'ice', 'rune-seal': 'rune-seal',
+  // M6: the Gloomfen's (a dock on the black water, a ring of hung stones; the bog and the fog are soft)
+  blackwater: 'blackwater', 'witch-ward': 'witch-ward',
 };
 // M4.5: road gates also look like the obstacle their guard keeps (docs/M45-SPEC.md §3)
 const GATE_KIND = { gate: 'gate', chain: 'chain', crownwall: 'crownwall', door: 'door', 'vault-door': 'vault-door',
   bramble: 'bramble', 'rot-knot': 'rot-knot', thornwall: 'thornwall', boulder: 'boulder', 'barred-gate': 'barred-gate', 'dune-glass': 'dune-glass',
-  'ice-blocks': 'ice-blocks', 'frozen-door': 'frozen-door' }; // M5: the Frost Road's sledge barricade, the drowned chapel's door
+  'ice-blocks': 'ice-blocks', 'frozen-door': 'frozen-door', // M5: the Frost Road's sledge barricade, the drowned chapel's door
+  // M6: Hodge's toll-bar across Rotbridge, the Murkway's leech ford, Willowmurk's ward-gate, the Lanternfen's hung
+  // lanterns and hag-fence, the long boardwalk's missing planks, Misthollow's water-gate, the Belfry's choir-screen
+  'toll-bar': 'toll-bar', 'leech-ford': 'leech-ford', 'ward-gate': 'ward-gate', 'hung-lanterns': 'hung-lanterns', 'hag-fence': 'hag-fence',
+  'barge-planks': 'barge-planks', 'water-gate': 'water-gate', 'choir-screen': 'choir-screen' };
 const FORD_BY = { 'stillwater-lance': 'ice', rootsong: 'roots' };
 const areaOf = e => e.area || [e.at[0], e.at[1], e.at[0], e.at[1]];
 
@@ -215,6 +227,7 @@ function makeBaked(map, { painted = true } = {}) {
   const cols = Math.max(1, Math.ceil((w * TILE) / CHUNK)), rows = Math.max(1, Math.ceil((h * TILE) / CHUNK));
   const paint = painted ? paintOf(map.id) : null;
   return { id: map.id, map, A, w, h, ids, cols, rows, pw: w * TILE, ph: h * TILE, ground: new Array(cols * rows), over: new Array(cols * rows), ents: [], sigs: new Map(), dark: null, darkKey: '',
+    fog: null, fogKey: '', fogThick: false, fogBase: '', fogAt: null, fogPattern: null,
     paint, painted: false, k: paint ? PAINT_DENSITY : 1 };
 }
 
@@ -411,6 +424,50 @@ function holeCanvas(r) {
   return c;
 }
 
+// ---- the fog (M6 spec §4.4, §5) ------------------------------------------------------------------------------
+// The mist: a tileable 128 px texture of soft value noise in four pale tones, ordered-dithered, its alpha a
+// little thicker in the banks; laid over the whole map (it lies on the marsh, so it moves with the ground).
+const BAYER4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+let MIST = null;
+function mistCanvas() {
+  if (MIST) return MIST;
+  const n = 128, img = new ImageData(n, n), d = img.data;
+  const hash = (x, y, s) => { let h = Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(s, 1442695041) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+  const noise = (x, y, cell, s) => {
+    const m = n / cell, gx = x / cell, gy = y / cell, x0 = Math.floor(gx), y0 = Math.floor(gy), fx = gx - x0, fy = gy - y0;
+    const v = (i, j) => hash((x0 + i) % m, (y0 + j) % m, s);
+    const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+    return (v(0, 0) * (1 - sx) + v(1, 0) * sx) * (1 - sy) + (v(0, 1) * (1 - sx) + v(1, 1) * sx) * sy;
+  };
+  const TONES = [[118, 138, 134], [148, 166, 160], [180, 194, 186], [208, 218, 210]];
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+    const v = noise(x, y, 64, 1) * .45 + noise(x, y, 32, 2) * .3 + noise(x, y, 16, 3) * .15 + noise(x, y, 8, 4) * .1;
+    const t = Math.max(0, Math.min(TONES.length - 1, Math.round(v * (TONES.length - 1) + (BAYER4[(y & 3) * 4 + (x & 3)] / 16 - .5) * .9)));
+    const k = (y * n + x) * 4, c = TONES[t];
+    d[k] = c[0]; d[k + 1] = c[1]; d[k + 2] = c[2]; d[k + 3] = 214 + Math.round(v * 41);
+  }
+  MIST = canvasOf(img);
+  return MIST;
+}
+// A hole in the mist of radius r (art px): clear inside, then an ordered-dither ramp over its last 16 px, softer
+// than the darkness's edge (fog thins; it does not end).
+const MIST_HOLES = new Map();
+function mistHole(r) {
+  let c = MIST_HOLES.get(r);
+  if (c) return c;
+  const n = r * 2 + 1, img = new ImageData(n, n), d = img.data, ramp = Math.min(16, r);
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+    const dist = Math.hypot(x - r, y - r), k = (y * n + x) * 4;
+    const u = dist <= r - ramp ? 1 : dist >= r ? 0 : (r - dist) / ramp;
+    d[k] = d[k + 1] = d[k + 2] = 255;
+    d[k + 3] = u >= 1 ? 255 : u <= 0 ? 0 : u * 16 > BAYER4[(y & 3) * 4 + (x & 3)] ? 255 : Math.round(u * 110);
+  }
+  c = canvasOf(img);
+  MIST_HOLES.set(r, c);
+  return c;
+}
+const FOG_THICK = 0.94, FOG_THIN = 0.36, FOG_PARTS = 5.5; // thin: the haze parts this many tiles around the party
+
 // ---- the view ------------------------------------------------------------------------------------------
 
 export function createView(canvas, { reduced = false, plateHost = null } = {}) {
@@ -504,6 +561,47 @@ export function createView(canvas, { reduced = false, plateHost = null } = {}) {
     d.globalCompositeOperation = 'source-over';
   }
 
+  // M6: the mist over a foggy map (radius: the sight in tiles, or 0 once the fog lock is open: then thin). The whole
+  // mist is laid once (for its thickness and lights); a step only mends it where the party's hole was and opens it
+  // where the party is now, so walking in the fog costs two small patches a step, not the whole map.
+  function setFog(on, lx, ly, radius, lights = []) {
+    if (!B) return;
+    if (!on) { B.fogKey = ''; return; }
+    const thick = radius > 0;
+    const lightKey = lights.map(l => l.x + ',' + l.y + ',' + l.r).join(';');
+    const key = `${lx},${ly},${radius}|${lightKey}`;
+    if (key === B.fogKey && B.fog) return;
+    const r = Math.round((thick ? radius : FOG_PARTS) * TILE + TILE / 2);
+    const base = `${thick ? 1 : 0}|${lightKey}`;
+    if (!B.fog) { B.fog = canvasOf(null, B.pw, B.ph); B.fogBase = ''; }
+    const d = B.fog.getContext('2d');
+    if (!B.fogPattern) B.fogPattern = d.createPattern(mistCanvas(), 'repeat');
+    const stamp = (tx, ty, rr) => { const c = mistHole(rr); d.drawImage(c, tx * TILE + TILE / 2 - rr, ty * TILE + TILE / 2 - rr); };
+    // lay the mist over a rect, then open the lights' holes in it
+    const lay = (x, y, w, h) => {
+      d.globalCompositeOperation = 'source-over';
+      d.clearRect(x, y, w, h);
+      d.globalAlpha = thick ? FOG_THICK : FOG_THIN;
+      d.fillStyle = B.fogPattern;
+      d.fillRect(x, y, w, h);
+      d.globalAlpha = 1;
+      d.globalCompositeOperation = 'destination-out';
+      for (const l of lights) stamp(l.x, l.y, Math.round(l.r * TILE + TILE / 2));
+    };
+    if (B.fogBase !== base || !B.fogAt) lay(0, 0, B.pw, B.ph);
+    else {
+      const [ox, oy, or] = B.fogAt, x0 = ox * TILE + TILE / 2 - or, y0 = oy * TILE + TILE / 2 - or, n = or * 2 + 1;
+      d.save();
+      d.beginPath(); d.rect(x0, y0, n, n); d.clip();
+      lay(x0, y0, n, n);
+      d.restore();
+    }
+    d.globalCompositeOperation = 'destination-out';
+    stamp(lx, ly, r);
+    d.globalCompositeOperation = 'source-over';
+    B.fogBase = base; B.fogAt = [lx, ly, r]; B.fogKey = key; B.fogThick = thick;
+  }
+
   // Tiny pixel effects drawn with fillRect (never drawImage): glints, pips, twinkles.
   function drawFx(s, sx, sy, now) {
     const f = s.fx;
@@ -579,8 +677,9 @@ export function createView(canvas, { reduced = false, plateHost = null } = {}) {
         if (o) { g.drawImage(o, c * CHUNK - cx, r * CHUNK - cy, o.width / B.k, o.height / B.k); draws++; }
       }
     }
-    // 4. darkness
+    // 4. darkness (M6: or the fog; a map is never both)
     if (B.darkKey && B.dark) { g.drawImage(B.dark, -cx, -cy); draws++; }
+    else if (B.fogKey && B.fog) { g.drawImage(B.fog, -cx, -cy); draws++; }
     // 5. emotes
     for (let i = 0; i < ne; i++) {
       const e = emotes[i];
@@ -637,7 +736,7 @@ export function createView(canvas, { reduced = false, plateHost = null } = {}) {
   }
 
   const view = {
-    resize, setMap, refresh, setDark, draw, setPlates, tileAt, camera, size, fade: 0,
+    resize, setMap, refresh, setDark, setFog, draw, setPlates, tileAt, camera, size, fade: 0,
     get map() { return B; },
     get draws() { return draws; },
     destroy() { for (const p of plates) p.el.remove(); plates.length = 0; B = null; },

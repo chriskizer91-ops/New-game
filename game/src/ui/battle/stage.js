@@ -3,6 +3,9 @@
 // dice, grip meters, numbers) are positioned from geom(), in CSS px relative to the stage box.
 // M5: sink(id, down) takes a burrowed foe under the floor (all but the top of it, over a mound of
 // rubble) and brings it back up; no target marker is ever drawn on it (it is never a valid target).
+// M6: sink(id, down, { water: true }) is a dive into black water (the Blackwater Leviathan): rings and a
+// churn of foam where it went down, in place of the rubble. A fight on a foggy map ({ fog: true }: the
+// Lanternfen, the Misthollow Ruins) has mist lying low over the ground, drifting behind the foes.
 import { renderBackdrop, BACKDROPS } from '../../art/scenes.js';
 import { itemIcon, RELIC_ART, ASPECT_LOOK } from '../../art/item-looks.js';
 import { FoeSprite } from './sprites.js';
@@ -17,11 +20,13 @@ const SINK = 0.78; // how much of a burrowed foe's figure goes under the floor
 const HIT_TINT = [255, 255, 255, 0.75];
 
 export class Stage {
-  constructor(host, { backdrop, reduced, dark = false }) {
+  constructor(host, { backdrop, reduced, dark = false, fog = false }) {
     this.host = host;
     this.backdropKey = BACKDROPS[backdrop] ? backdrop : 'hearth-road';
     this.reduced = reduced;
     this.dark = !!dark; // a fight in a dark map (battle.ctx.dark): renderBackdrop's dark treatment; the foes stay lit
+    this.fog = !!fog; // M6: a fight on a foggy map: the mist layer (bakeMist)
+    this.mist = null;
     this.speed = 1;
     this.canvas = document.createElement('canvas');
     this.canvas.className = 'bt-stage-cv px';
@@ -101,8 +106,39 @@ export class Stage {
     const need = Math.max(0, ...this.visible().map(v => v.sprite.def.foot[1] - v.sprite.box.y0)) + 3;
     if (this.floorY < need) this.floorY = Math.min(this.lh - 3, need);
     this.bdT = -1;
+    this.mist = this.fog ? this.bakeMist() : null;
     this.formation(true);
     this.dirty = true;
+  }
+
+  // M6: the mist a foggy map's fight lies in: soft banks of pale dither, thickest just above the floor and thinning
+  // upward, two stage-widths wide and repeating every one, so it can drift across without a seam
+  bakeMist() {
+    const W = Math.max(8, this.lw), w = W * 2, h = Math.max(8, Math.round(this.lh * 0.5));
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const g = c.getContext('2d');
+    const img = g.createImageData(w, h), d = img.data;
+    const cell = 22, m = Math.max(1, Math.round(W / cell));
+    const hash = (x, y) => { let q = Math.imul(x, 374761393) + Math.imul(y, 668265263) | 0; q = Math.imul(q ^ (q >>> 13), 1274126177); return ((q ^ (q >>> 16)) >>> 0) / 4294967296; };
+    const noise = (x, y) => {
+      const gx = (x % W) / W * m, gy = y / cell, x0 = Math.floor(gx), y0 = Math.floor(gy), fx = gx - x0, fy = gy - y0;
+      const v = (i, j) => hash((x0 + i) % m, y0 + j);
+      const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+      return (v(0, 0) * (1 - sx) + v(1, 0) * sx) * (1 - sy) + (v(0, 1) * (1 - sx) + v(1, 1) * sx) * sy;
+    };
+    const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+    for (let y = 0; y < h; y++) {
+      const u = y / (h - 1), band = Math.min(1, u * 1.6) * (u > 0.85 ? (1 - u) / 0.15 : 1);
+      for (let x = 0; x < w; x++) {
+        const a = band * (0.35 + 0.65 * noise(x, y)) * 0.5;
+        const k = (y * w + x) * 4, lvl = a * 3 + (BAYER[(y & 3) * 4 + (x & 3)] / 16 - 0.5);
+        const q = Math.max(0, Math.min(3, Math.round(lvl)));
+        d[k] = 188; d[k + 1] = 202; d[k + 2] = 194; d[k + 3] = [0, 60, 110, 150][q];
+      }
+    }
+    g.putImageData(img, 0, 0);
+    return c;
   }
 
   // slot centres, proportional to each figure's width; reflows smoothly after a KO or spawn
@@ -201,10 +237,12 @@ export class Stage {
     v.removed = false; v.fade = null; v.alpha = 1; v.base = 'idle'; v.pose = 'idle';
     this.formation();
   }
-  // M5: a burrowed foe goes down into the floor (down) or comes back up; animated over ~0.4 s
-  sink(id, down = true) {
+  // M5: a burrowed foe goes down into the floor (down) or comes back up; animated over ~0.4 s. M6: `water`, a
+  // dive under the water's face
+  sink(id, down = true, { water = false } = {}) {
     const v = this.foes.get(id);
     if (!v) return;
+    if (down) v.water = !!water;
     const want = down ? 1 : 0;
     if ((v.sinkTo || 0) === want) return;
     const t = this.now();
@@ -376,6 +414,8 @@ export class Stage {
     }
     ctx.clearRect(0, 0, lw, lh);
     ctx.drawImage(this.bd, 0, 0);
+    // M6: the mist of a foggy map, drifting slowly (still when motion is reduced), its thickest just above the floor
+    if (this.mist) ctx.drawImage(this.mist, -(this.reduced ? 0 : Math.floor(clockT * 3) % this.lw), this.floorY - this.mist.height + Math.round(this.mist.height * 0.2));
     // floor vignette so plates read
     const g = ctx.createLinearGradient(0, this.floorY - 2, 0, lh);
     g.addColorStop(0, 'rgba(11,9,16,0)');
@@ -448,7 +488,7 @@ export class Stage {
       const fh = b.y1 - b.y0, visH = Math.max(1, Math.round(fh * (1 - sunk * SINK)));
       ctx.drawImage(frame, 0, b.y0, frame.width, visH, drawX, drawY + b.y1 - visH, frame.width, visH);
       ctx.globalAlpha = 1;
-      this.mound(ctx, v, sunk, clockT);
+      if (v.water) this.wake(ctx, v, sunk, clockT); else this.mound(ctx, v, sunk, clockT);
       return;
     }
     if (clipBottom > 0) {
@@ -483,6 +523,28 @@ export class Stage {
         const gx = cx + ((ph * 5 + i * 11) % (hw * 2)) - hw, gy = fy - 3 + ((ph + i * 2) % 4);
         ctx.fillRect(gx, gy, 1, 1);
       }
+    }
+  }
+
+  // M6: where a foe dived into the water: dark water closing over it, a pale rim of foam, and rings going out
+  wake(ctx, v, k, clockT) {
+    const b = v.sprite.box, fy = this.floorY + v.depth;
+    const hw = Math.max(6, Math.round((b.x1 - b.x0) * 0.5 * Math.min(1, k * 1.4)));
+    const cx = Math.round(v.x);
+    for (let x = -hw; x <= hw; x++) {
+      const e = Math.sqrt(Math.max(0, 1 - (x / (hw + 0.5)) ** 2)), h = Math.max(1, Math.round(e * 3 * k));
+      ctx.fillStyle = (x * 5 + 3) % 7 ? '#0a1a1c' : '#12282a';
+      ctx.fillRect(cx + x, fy - h + 1, 1, h + 1);
+      ctx.fillStyle = (x + Math.floor(clockT * 4)) % 4 ? '#6fa8a0' : '#d8f0e8';
+      ctx.fillRect(cx + x, fy - h, 1, 1);
+    }
+    // rings going out over the water, fading (still when motion is reduced)
+    for (let i = 0; i < 2; i++) {
+      const u = this.reduced ? 0.5 + i * 0.25 : ((clockT * 0.6) + i * 0.5) % 1, r = Math.round(hw + 2 + u * 14);
+      ctx.globalAlpha = (1 - u) * 0.8;
+      ctx.fillStyle = '#a8d8d0';
+      ctx.fillRect(cx - r, fy, 3, 1); ctx.fillRect(cx + r - 2, fy, 3, 1);
+      ctx.globalAlpha = 1;
     }
   }
 

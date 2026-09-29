@@ -121,7 +121,17 @@ export function holdInfo(u, nameOf = () => '') {
   const by = (st.source && nameOf(st.source)) || '';
   const turns = Number.isFinite(st.turns) && st.turns > 0 ? st.turns : null;
   const left = turns ? `${turns} ${turns === 1 ? 'turn' : 'turns'} left` : '';
-  return { id: st.id, label, by, turns, text: [by ? `${label} by ${by}` : label, left].filter(Boolean).join(', ') };
+  return { id: st.id, label, by, turns, text: [holdPhrase(label, by, false), left].filter(Boolean).join(', ') };
+}
+
+// A hold in a sentence (M6): a label that is a doing takes "by" ("held under by the Rime-Abbot", "led away by the
+// Lantern Mother"); a label that is a place says who put the hero there ("in the river, put there by Hodge").
+// lower: the label as it reads mid-sentence.
+const PLACE_LABEL = /^(in|into|under|on|at) /i;
+export function holdPhrase(label, by = '', lower = true) {
+  const l = lower ? String(label || '').toLowerCase() : String(label || '');
+  if (!by) return l;
+  return PLACE_LABEL.test(l) ? `${l}, put there by ${by}` : `${l} by ${by}`;
 }
 
 // What a status event lacks for the plate (the engine's `add` event names neither the source nor the
@@ -146,4 +156,23 @@ export function relicLabel(relic, u) {
 // what a foe's move is aimed at, for the intent bubble
 export function moveTargetKind(u, moveId) {
   try { return familyData(u).moves[moveId]?.target || 'enemy'; } catch { return 'enemy'; }
+}
+
+// ---- M6 (spec §4.2, §5): the fen's two statuses, and a dive under water --------------------------------------
+// Pure, for the hero cards, the plates and the stage (node tests use them).
+
+// Hexed: the unit rolls its d20s with disadvantage (advantage cancels it).
+export const isHexed = u => (u?.statuses || []).some(s => STATUSES[s.id]?.hex);
+// Rotting: its stacks (0 when it is not rotting); every heal it gets is halved while it rots.
+export const rotStacks = u => (u?.statuses || []).filter(s => (STATUSES[s.id]?.healMult ?? 1) < 1).reduce((n, s) => Math.max(n, s.stacks || 1), 0);
+// The words a hero's card carries for them, in order: "Hexed", "Rotting" (its stacks are on the status chip).
+export function afflictions(u) {
+  const out = [];
+  if (isHexed(u)) out.push('Hexed');
+  if (rotStacks(u)) out.push('Rotting');
+  return out;
+}
+// A foe that goes down into water rather than under a floor (the Blackwater Leviathan's Sound): a tide foe.
+export function divesUnderWater(u) {
+  try { return familyData(u).aspect === 'tide'; } catch { return false; }
 }

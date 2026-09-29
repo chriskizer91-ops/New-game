@@ -1,15 +1,15 @@
-// Quests and bounties (M3 spec §3.6, §4.4; M4 spec §3.6; M5 spec §3.6). Quest state is derived from
+// Quests and bounties (M3 spec §3.6, §4.4; M4 spec §3.6; M5 spec §3.6; M6 spec §3.6). Quest state is derived from
 // conditions; only flags.quests[id] = 'claimed' is stored.
 //
 // QUESTS[id] = { id, name, kind: 'main'|'side', giver, start: cond,
 //                steps: [{ text, done: cond, target: { map, entity } }],
 //                reward: { gold?, relic?, item?, set?, gems?: { gemId: n }, materials?: { scrap?, silver?, embers? } } }
 // BOUNTIES[id] = { id, enc, name, gold, giver }   posted on a board (Thornhollow: Dael; Sandspire: Zara;
-//                                                  Stormwatch: Ysolde), complete once { beaten: enc }; any
+//                                                  Stormwatch: Ysolde; Bogmire: Gretch), complete once { beaten: enc }; any
 //                                                  bounty-giver pays any of them
 // The thank-you rule (M3 review): a line that claims a quest also sets its start flag, and a claim
 // needs every step done, so a deed done before meeting its giver is never lost.
-// Owner: WP3S (M3), P3 story (M4, M5).
+// Owner: WP3S (M3), P3 story (M4, M5, M6).
 
 import { deepFreeze } from '../core/freeze.js';
 
@@ -166,54 +166,62 @@ export const QUESTS = deepFreeze({
     ],
     reward: { gold: 200, materials: { silver: 2 } },
   },
-  // ---- M6: the Gloomfen Marsh (spec §3.6). STUBS from the M6 scaffold: the spec's steps; P3 words them. ----
+  // ---- M6: the Gloomfen Marsh (spec §3.6) ----
+  // The main quest shows the moment the Ironspire is won (ironspire-complete, a rule flag), so its first step is the
+  // third council. As in M3 to M5, a talk step also counts once the Brand it leads to is earned, so a Warden who walks
+  // past Willowmurk, Bogmire or Corvus still closes it at the fourth council. Hodge's bar and Tamsin's duel are steps
+  // of their own, so the Journal points at the bar, then at her.
   'gloomfen-waking': {
     id: 'gloomfen-waking', name: 'The Gloomfen Waking', kind: 'main', giver: 'isolde', start: { flag: 'ironspire-complete' },
     steps: [
       step('Come home to the Keep and sit the third council.', { flag: 'council-3-done' }, 'keep-hall', 'isolde'),
-      step('Go down the fen stair below Mossfall and find Elder Moss in Willowmurk.', { any: [{ flag: 'met-moss' }, { brand: 'brand-of-lanterns' }] }, 'willowmurk', 'moss'),
-      step('Get past Hodge\'s bar at Rotbridge.', { any: [{ flag: 'toll-paid' }, { beaten: 'hodge' }, { brand: 'brand-of-lanterns' }] }, 'rotbridge', 'hodge'),
+      step('Go down Mossfall\'s fen stair, and find Elder Moss in Willowmurk.', { any: [{ flag: 'met-moss' }, { brand: 'brand-of-lanterns' }] }, 'willowmurk', 'moss'),
+      step('Get past Hodge\'s toll-bar at Rotbridge.', { any: [{ flag: 'toll-paid' }, { beaten: 'hodge' }, { brand: 'brand-of-lanterns' }] }, 'rotbridge', 'rb-hodge'),
       step('Face Tamsin on Rotbridge.', { any: [{ beaten: 'tamsin-rotbridge' }, { flag: 'tamsin-yielded-4' }, { brand: 'brand-of-lanterns' }] }, 'rotbridge', 'tamsin-rotbridge'),
       step('Reach Bogmire and speak with Mayor Gretch.', { any: [{ flag: 'met-gretch' }, { brand: 'brand-of-lanterns' }] }, 'bogmire', 'gretch'),
-      step('Follow the lanterns into the eastern bogs, and take the Brand of Lanterns.', { brand: 'brand-of-lanterns' }, 'mothers-hollow', 'lantern-mother'),
-      step('Follow the long boardwalk to Misthollow and find Corvus.', { any: [{ flag: 'met-corvus' }, { brand: 'brand-of-the-deep' }] }, 'misthollow', 'corvus'),
-      step('Go down the Blackwater to the Tidal Flats, and take the Brand of the Deep.', { brand: 'brand-of-the-deep' }, 'tidal-flats', 'blackwater-leviathan'),
+      step('Follow the lights into the Lanternfen, and take the Brand of Lanterns.', { brand: 'brand-of-lanterns' }, 'mothers-hollow', 'lantern-mother'),
+      step('Follow the long boardwalk to Misthollow, and find Corvus the diver.', { any: [{ flag: 'met-corvus' }, { brand: 'brand-of-the-deep' }] }, 'misthollow', 'corvus'),
+      step('Go down the Blackwater Reach, and take the Brand of the Deep.', { brand: 'brand-of-the-deep' }, 'tidal-flats', 'blackwater-leviathan'),
       step('Come home to the Keep. The Council is waiting.', { flag: 'council-4-done' }, 'keep-hall', 'isolde'),
     ],
     reward: {}, // the fourth council claims it (data/dialogue.js council-4)
   },
+  // Elder Moss's thanks (moss-wards) claims it: the last of Willowmurk's three Willow-Wards
   'failing-wards': {
     id: 'failing-wards', name: 'The Failing Wards', kind: 'side', giver: 'moss', start: { flag: 'met-moss' },
     steps: [
-      step('Quiet Grandfather Willow, outside the wards.', { beaten: 'wm-willow' }, 'willowmurk', 'wm-willow'),
-      step('Tell Elder Moss.', { flag: 'wards-mended' }, 'willowmurk', 'moss'),
+      step('Quiet Grandfather Willow, out past Willowmurk\'s wards.', { beaten: 'wm-willow' }, 'willowmurk', 'wm-willow'),
+      step('Tell Elder Moss the ring is singing again.', { flag: 'wards-mended' }, 'willowmurk', 'moss'),
     ],
     reward: { relic: 'willow-ward' },
   },
   'nettie-remedy': {
     id: 'nettie-remedy', name: 'Nettie\'s Remedy', kind: 'side', giver: 'nettie', start: { flag: 'met-nettie' },
     steps: [
-      step('Take Mother Grue\'s Hag-Stone, in the Lanternfen.', { beaten: 'grue-hollow' }, 'lanternfen', 'grue-hollow'),
-      step('Bring Nettie word.', { flag: 'grue-told' }, 'bogmire', 'nettie'),
+      step('Take Mother Grue\'s Hag-Stone, in her hollow in the Lanternfen.', { beaten: 'grue-hollow' }, 'lanternfen', 'grue-hollow'),
+      step('Bring Nettie word in Bogmire.', { flag: 'grue-told' }, 'bogmire', 'nettie'),
     ],
     reward: { relic: 'hexbane-shawl', gems: { 'bog-amber': 1 } },
   },
+  // a shattered harpoon is not his harpoon: Hilda can reforge it
   'corvus-harpoon': {
     id: 'corvus-harpoon', name: 'Corvus\'s Harpoon', kind: 'side', giver: 'corvus', start: { flag: 'met-corvus' },
     steps: [
-      step('Get Corvus\'s harpoon out of the Leviathan.', { owns: 'corvus-harpoon' }, 'tidal-flats', 'blackwater-leviathan'),
-      step('Show it to Corvus.', { flag: 'harpoon-shown' }, 'misthollow', 'corvus'),
+      step('Get Corvus\'s harpoon out of the Leviathan\'s side, whole.', { owns: 'corvus-harpoon' }, 'tidal-flats', 'blackwater-leviathan'),
+      step('Show it to Corvus in Misthollow.', { flag: 'harpoon-shown' }, 'misthollow', 'corvus'),
     ],
     reward: { gold: 300, materials: { silver: 2 } },
   },
+  // the chest's secret, a page of the Worldforge plans in a First-Age hand, is yours (worldforge-page: the fourth
+  // council can see it)
   'dead-tongue': {
     id: 'dead-tongue', name: 'The Dead Tongue', kind: 'side', giver: 'corvus', start: { flag: 'met-corvus' },
     steps: [
-      step('Take the salvage crew\'s sealed chest.', { beaten: 'mh-salvage' }, 'misthollow', 'mh-salvage'),
-      step('Have Elder Moss read its warnings.', { flag: 'chest-read' }, 'willowmurk', 'moss'),
+      step('Take the sealed chest from the Tallymen\'s salvage camp.', { beaten: 'mh-salvage' }, 'misthollow', 'mh-salvage'),
+      step('Have Elder Moss read its warnings, in Willowmurk.', { flag: 'chest-read' }, 'willowmurk', 'moss'),
       step('Tell Corvus what the chest says.', { flag: 'chest-told' }, 'misthollow', 'corvus'),
     ],
-    reward: { gold: 250, gems: { 'bog-amber': 1 } },
+    reward: { gold: 250, gems: { 'bog-amber': 1 }, set: 'worldforge-page' },
   },
 });
 

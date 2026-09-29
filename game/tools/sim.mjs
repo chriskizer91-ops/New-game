@@ -1,13 +1,14 @@
-// Headless balance sim for M3 (spec §7 "Balance sim"), M4 (M4 spec §8 "Balance") and M5 (M5 spec §8): plays
+// Headless balance sim for M3 (spec §7 "Balance sim"), M4 (M4 spec §8 "Balance"), M5 (M5 spec §8) and M6 (M6 spec §8): plays
 // routes of encounters with the scripted policy in src/rules/autoplay.js across many seeds, teleporting
 // between fights (no walking, no roaming packs), and prints balance tables.
 //
 //   node tools/sim.mjs [--seeds 200] [--starter hearthbrand|stillwater-lance|cairnmaul|mix] [--md] [--jobs N]
 //                      [--modes m2,direct,leads2,leads-all,looper-w2,first-lead,sunscorch,sunscorch-forged,sun-first-lead,
-//                               ironspire,ironspire-forged,iron-first-lead]
+//                               ironspire,ironspire-forged,iron-first-lead,gloomfen,gloomfen-forged,gloom-first-lead]
 //                      [--leads caravan,wyrm,gnash,well,aqueduct]   (sun-first-lead: only these leads)
 //                      [--iron-leads roc,horn,smith,shrine]         (iron-first-lead: only these leads)
-//                      [--seed N | --from A --to B] [--trace] [--sun-cache <file>]
+//                      [--gloom-leads willow,hodge,grue,cantor,jaws] (gloom-first-lead: only these leads)
+//                      [--seed N | --from A --to B] [--trace] [--sun-cache <file>] [--iron-cache <file>]
 //
 // Modes (targets from the spec):
 //   m2          Waking 0, the M2 road in order, equips drops; a wipe grinds a level and retries.
@@ -45,13 +46,29 @@
 //                    it: the Thunder-Roc and Old Horn from Peak's Veil (Waking 4), Harrow's Journeyman once
 //                    the Deeps open (Waking 4), the Drowned Abbess once the Brand of Iron opens the Frost Road
 //                    (Waking 5): 15-25% first-try wipe.
-// Every mode: zero stuck runs. A duel lost is a yield (not retried); the door opens anyway.
+// M6 (the Gloomfen), each from the end state of an `ironspire` run (the party that just beat the Rime-Abbot, at
+// Waking 6, every earlier Brand held):
+//   gloomfen         home to the Keep (the third council), down Mossfall's fen stair, then GLOOM_PATH (data/world.js)
+//                    with one zone patrol per zone map crossed and a rest at each Hearthfire passed; Hodge's bar is
+//                    paid (nothing is fought); the party rests before each Champion (the Fen Cairn before the Lantern
+//                    Mother; the Flats Beacon before the Leviathan). The Lantern Mother and the Blackwater Leviathan
+//                    first-try wipe 30-40%; Tamsin at Rotbridge first-try party win 55-70%.
+//   gloomfen-forged  the same, with every hero's weapon tempered to +8 and one gem each (a Bog Amber in the weapon, or
+//                    in the first socketed piece they wear): both Champions <= 20%. At the end of the region the forged
+//                    party walks back to Rotbridge and fights Hodge (spec §8: never 100%).
+//   gloom-first-lead each Gloomfen lead's lair (GLOOM_LEADS) as the first thing done once the road reaches it:
+//                    Grandfather Willow from Willowmurk, Hodge on arrival at Rotbridge, Mother Grue from the Fen
+//                    Cairn (Waking 6); the Drowned Cantor from the Belltower Fire and Old Jaws from the Wreck Fire, once
+//                    the Brand of Lanterns opens the long boardwalk (Waking 7): 15-25% first-try wipe; Hodge 60-80%.
+// Every mode: zero stuck runs. A duel lost is a yield (not retried); the door opens anyway. Hodge is fought once
+// (ONE_TRY): a player who loses to him pays the day's price instead, and the bar opens either way (spec A11).
 // Crossing a zone map costs a fight with one of its roaming patrols ('patrol:<zone>' in a route);
 // a weak one runs from you and costs nothing (Milestone 4.5: no Routs; the player walks on). The m2
 // mode has none, to compare with M2.
 // --jobs N splits the seeds over N worker processes (the tables are the same, just sooner). --sun-cache
 // <file> keeps each seed's Sunscorch end state in a file for the Ironspire modes (a tuning aid: only valid
-// while nothing before the Ironspire changes; delete the file when it does).
+// while nothing before the Ironspire changes; delete the file when it does). --iron-cache <file> does the same with
+// each seed's Ironspire end state for the Gloomfen modes.
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -59,7 +76,7 @@ import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { newGame, startBattle, resolveBattle, rest, spawnsFor, partyLevel } from '../src/rules/gauntlet.js';
 import { isWeak } from '../src/rules/world.js';
-import { ZONES, SUN_PATH, IRON_PATH, IRON_LEADS } from '../src/data/world.js';
+import { ZONES, SUN_PATH, IRON_PATH, IRON_LEADS, GLOOM_PATH, GLOOM_LEADS } from '../src/data/world.js';
 import { migrate } from '../src/rules/migrate.js';
 import { escalateSpawn, familyOf } from '../src/rules/foe.js';
 import { current, act, foeTurn, outcome } from '../src/rules/battle.js';
@@ -83,7 +100,8 @@ const MD = args.includes('--md');
 const M3_MODES = ['m2', 'direct', 'leads2', 'leads-all', 'looper-w2', 'first-lead'];
 const SUN_MODES = ['sunscorch', 'sunscorch-forged', 'sun-first-lead'];
 const IRON_MODES = ['ironspire', 'ironspire-forged', 'iron-first-lead'];
-const ALL_MODES = [...M3_MODES, ...SUN_MODES, ...IRON_MODES];
+const GLOOM_MODES = ['gloomfen', 'gloomfen-forged', 'gloom-first-lead'];
+const ALL_MODES = [...M3_MODES, ...SUN_MODES, ...IRON_MODES, ...GLOOM_MODES];
 const ONLY = arg('modes', ALL_MODES.join(',')).split(',');
 const ONE_SEED = arg('seed', null) ? +arg('seed') : null; // --seed N: replay one seed
 const FROM = +arg('from', ONE_SEED ?? 1);                 // --from A --to B: a range of seeds (the workers)
@@ -93,7 +111,9 @@ const JSON_OUT = args.includes('--json');                  // a worker: print th
 const TRACE = args.includes('--trace');                    // print every fight
 const SUN_ONLY_LEADS = arg('leads', null);                 // --leads wyrm,aqueduct: sun-first-lead runs only these
 const IRON_ONLY_LEADS = arg('iron-leads', null);           // --iron-leads roc,shrine: iron-first-lead runs only these
+const GLOOM_ONLY_LEADS = arg('gloom-leads', null);         // --gloom-leads hodge,jaws: gloom-first-lead runs only these
 const SUN_CACHE = arg('sun-cache', null);
+const IRON_CACHE = arg('iron-cache', null);
 const STARTERS = ['hearthbrand', 'stillwater-lance', 'cairnmaul'];
 const MAX_TRIES = 8; // a player who keeps wiping grinds a level each time; eight tries is 'stuck'
 
@@ -186,6 +206,46 @@ const IRON_GRIND = {
   'fr-cutters': 'frost-road', 'fr-wolves': 'frost-road', 'fm-wraiths': 'frostmere', 'fm-shrine': 'frostmere', 'fb-choir': 'frostmere', 'rime-abbot': 'frostmere',
 };
 
+// M6: the Gloomfen (spec §2.2). Home to the Eternal Hearth (the third council), through Mossfall (its cairn) and down
+// the fen stair onto the Murkway, Willowmurk, Rotbridge (the Toll-Lamp; Hodge's bar is paid, nothing is fought) and
+// Tamsin on the bridge, Bogmire, the Lanternfen (the party rests at the Fen Cairn before the Mother's Hollow); then
+// (the Brand of Lanterns: Waking 7) back through the Lanternfen to Bogmire, along the long boardwalk to Misthollow, down
+// the Blackwater Reach to the Tidal Flats, and a rest at the Flats Beacon before the Leviathan. Willowmurk, Rotbridge and
+// Bogmire have no roaming zone.
+const GLOOM_START = ['hearthstone-keep', 'mossfall-cairn', 'patrol:murkway', 'mk-leeches', 'reed-shrine', 'mk-reedcutters', 'willow-hearth', 'wm-wights', 'toll-lamp'];
+const GLOOM_WEST = [...GLOOM_START, 'tamsin-rotbridge', 'stilt-hearth'];
+const GLOOM_ROUTE = [...GLOOM_WEST, 'patrol:lanternfen', 'lf-moths', 'fen-cairn', 'lf-hags', 'fen-cairn', 'lantern-mother',
+  'patrol:lanternfen@back', 'stilt-hearth', 'patrol:boardwalk', 'lb-drowned', 'patrol:misthollow', 'bell-hearth', 'mh-salvage', 'mh-ringers',
+  'patrol:blackwater', 'wreck-fire', 'br-barge', 'patrol:tidal-flats', 'flats-beacon', 'tf-bargemaster', 'flats-beacon', 'blackwater-leviathan'];
+checkRoute(GLOOM_ROUTE, GLOOM_PATH, 'GLOOM_ROUTE');
+// Each lead's lair as the first thing done once the road reaches it: Grandfather Willow past Willowmurk's wards, Hodge on
+// arrival at Rotbridge (his toll refused), Mother Grue from the Fen Cairn; the Drowned Cantor (his choir first) from the
+// Belltower Fire and Old Jaws from the Wreck Fire, once the Brand of Lanterns has opened the long boardwalk.
+const GLOOM_MISTHOLLOW = GLOOM_ROUTE.slice(0, GLOOM_ROUTE.indexOf('bell-hearth') + 1);
+const GLOOM_REACH = GLOOM_ROUTE.slice(0, GLOOM_ROUTE.indexOf('wreck-fire') + 1);
+const GLOOM_LEAD_ROUTES = {
+  willow: { from: GLOOM_START.slice(0, GLOOM_START.indexOf('willow-hearth') + 1), route: ['wm-willow'] },
+  hodge: { from: GLOOM_START, route: ['hodge'] },
+  grue: { from: GLOOM_WEST, route: ['patrol:lanternfen', 'lf-moths', 'fen-cairn', 'grue-hollow'] },
+  cantor: { from: GLOOM_MISTHOLLOW, route: ['db-choir', 'cantor'] },
+  jaws: { from: GLOOM_REACH, route: ['old-jaws'] },
+};
+const GLOOM_LAIRS = { willow: 'wm-willow', grue: 'grue-hollow', cantor: 'cantor', jaws: 'old-jaws' };
+for (const [k, fights] of Object.entries(GLOOM_LEADS)) {
+  const r = GLOOM_LEAD_ROUTES[k]?.route || [];
+  if (!fights.every(id => r.includes(id))) throw new Error(`GLOOM_LEAD_ROUTES.${k} must fight ${fights.join(', ')}`);
+}
+// The zone a Gloomfen fight grinds in after a wipe (the zone of its map, or the nearest one).
+const GLOOM_GRIND = {
+  'mk-leeches': 'murkway', 'mk-reedcutters': 'murkway', 'mk-bogfolk': 'murkway', 'wm-wights': 'murkway', 'wm-willow': 'murkway',
+  hodge: 'murkway', 'tamsin-rotbridge': 'murkway', 'rb-gars': 'murkway',
+  'lf-moths': 'lanternfen', 'lf-hags': 'lanternfen', 'lf-lights': 'lanternfen', 'grue-hollow': 'lanternfen', 'lantern-mother': 'lanternfen',
+  'lb-drowned': 'boardwalk', 'lb-lights': 'boardwalk', 'mh-salvage': 'misthollow', 'mh-ringers': 'misthollow', 'db-choir': 'misthollow', cantor: 'misthollow',
+  'br-barge': 'blackwater', 'br-gars': 'blackwater', 'old-jaws': 'blackwater', 'tf-bargemaster': 'tidal-flats', 'blackwater-leviathan': 'tidal-flats', 'cw-lights': 'causeway',
+};
+// Fought once and not retried: a player who loses to Hodge pays his price instead (spec A11: the bar opens either way).
+const ONE_TRY = new Set(['hodge']);
+
 function fight(battle, stats) {
   let b = battle;
   for (let n = 0; current(b) && n < 3000; n++) {
@@ -230,9 +290,10 @@ function recordDrops(stats, items) {
   }
 }
 
-// The zone a wipe grinds in: M4's by the Sunscorch fight's backdrop, M5's by the Ironspire fight (ctx.zone).
+// The zone a wipe grinds in: M4's by the Sunscorch fight's backdrop, M5's and M6's by the fight (ctx.zone).
 function grindZone(ctx) {
   if (ctx.iron) return ZONES[ctx.zone || 'rockslide-pass'];
+  if (ctx.gloom) return ZONES[ctx.zone || 'murkway'];
   if (ctx.sun) return ZONES[SUN_GRIND[ctx.backdrop] || 'sun-road'];
   return null;
 }
@@ -276,7 +337,7 @@ function patrolFight(g, key, stats, ctx) {
   const b = fight(started.battle, stats);
   const res = resolveBattle(started.game, b);
   if (ctx.sun) ctx.backdrop = zone.backdrop; // a Sunscorch wipe grinds on this zone's patrols
-  if (ctx.iron) ctx.zone = zoneId;           // an Ironspire one too
+  if (ctx.iron || ctx.gloom) ctx.zone = zoneId; // an Ironspire or Gloomfen one too
   ns.tries++;
   ns.rounds.push(res.report.rounds);
   if (res.report.result === 'victory') { ns.wins++; ns.firstWins++; ns.hpLeft.push(hpLeft(b)); recordDrops(stats, res.report.drops); return equipDrops(res.game, res.report.drops); }
@@ -284,7 +345,7 @@ function patrolFight(g, key, stats, ctx) {
   return res.game;
 }
 
-// M5: after a wipe in the Ironspire the party re-arms against the foe that beat it, as a player does who has
+// M5: after a wipe in the Ironspire (M6: and the Gloomfen) the party re-arms against the foe that beat it, as a player does who has
 // read its card (Mother Anvil: crush-resistant plate, weak to frost): each hero takes the bag weapon that
 // hits that foe hardest (hit chance x average damage x the damage multiplier), if it beats the one in hand
 // by a fifth. `armed` keeps what each hero held before the first re-arm, so the weapons go back when the
@@ -313,6 +374,7 @@ function rearm(g, b, armed = {}) {
     if (!best) continue;
     if (!next[id]) next[id] = { weapon: hero.gear.weapon, offhand: hero.gear.offhand };
     next[id] = { ...next[id], rearmed: best };
+    if (TRACE) console.log(`    re-arm: ${id} takes ${g.inventory.find(i => i.uid === best).name} against ${foe.name}`);
     g = equip(g, id, best).game;
     worn.add(best);
   }
@@ -340,6 +402,7 @@ function playRoute(g, route, stats, ctx) {
     if (f.done[id] || (f.cleared[id] && !node.brand)) continue;
     const ns = nodeStats(stats, id);
     if (ctx.iron) ctx.zone = IRON_GRIND[id] || ctx.zone;
+    if (ctx.gloom) ctx.zone = GLOOM_GRIND[id] || ctx.zone;
     let armed = null;
     for (let tries = 1; ; tries++) {
       if (tries > MAX_TRIES) { ns.stuck++; return { g: unarm(g, armed), done: false, at: `${id} (seed ${ctx.seed}, party L${partyLevel(g)})` }; }
@@ -370,8 +433,9 @@ function playRoute(g, route, stats, ctx) {
       if (rep.yield) { ns.yields++; g = unarm(g, armed); break; }
       if (rep.result === 'defeat') {
         ns.wipes++;
+        if (ONE_TRY.has(id)) { g = unarm(g, armed); break; } // Hodge: the party pays the toll instead
         g = grind(rest(g, g.progress.lastHearthfire), 1, stats, ctx);
-        if (ctx.iron) ({ g, armed } = rearm(g, b, armed || {}));
+        if (ctx.iron || ctx.gloom) ({ g, armed } = rearm(g, b, armed || {}));
       }
     }
   }
@@ -388,9 +452,9 @@ const f1 = x => (Number.isFinite(x) ? x.toFixed(1) : '-');
 
 const LOOPER = JSON.parse(readFileSync(path.join(root, 'test/fixtures/v1/v1-waking2-dupe.json'), 'utf8'));
 
-// The forged party: every hero's weapon tempered (sunscorch-forged: +4, ironspire-forged: +6), and one gem each
-// (a Dusthaven Sunstone; a Frost Opal in the Ironspire) in the weapon if it has a socket, else in the first
-// socketed piece they wear.
+// The forged party: every hero's weapon tempered (sunscorch-forged: +4, ironspire-forged: +6, gloomfen-forged: +8), and
+// one gem each (a Dusthaven Sunstone; a Frost Opal in the Ironspire; a Bog Amber in the Gloomfen) in the weapon if it has
+// a socket, else in the first socketed piece they wear.
 function forgeParty(game, stats, { temper = 4, gem = 'sunstone' } = {}) {
   const g = structuredClone(game);
   for (const id of g.party.active) {
@@ -410,6 +474,10 @@ function forgeParty(game, stats, { temper = 4, gem = 'sunstone' } = {}) {
 const sunCache = SUN_CACHE && existsSync(SUN_CACHE) ? JSON.parse(readFileSync(SUN_CACHE, 'utf8')) : {};
 let sunCacheDirty = false;
 const sunCacheNew = {}; // a worker hands its new entries back to the parent, which writes the file
+// --iron-cache: each seed's Ironspire end state, kept between runs for the Gloomfen modes (M6), the same way.
+const ironCache = IRON_CACHE && existsSync(IRON_CACHE) ? JSON.parse(readFileSync(IRON_CACHE, 'utf8')) : {};
+let ironCacheDirty = false;
+const ironCacheNew = {};
 
 function simSeed(seed, all) {
   const run = (k, g, route, ctx) => {
@@ -422,12 +490,16 @@ function simSeed(seed, all) {
   };
   const starter = STARTER === 'mix' ? STARTERS[seed % 3] : STARTER;
   const ctx0 = () => ({ rng: createRng(`sim:${seed}`), rabble: 1, backdrop: 'hearth-road', seed });
-  const wantIron = ONLY.some(m => IRON_MODES.includes(m));
-  const cachedSun = wantIron && sunCache[seed] && !ONLY.some(m => [...M3_MODES, ...SUN_MODES].includes(m)) ? sunCache[seed] : null;
+  const wantGloom = ONLY.some(m => GLOOM_MODES.includes(m));
+  const wantIron = ONLY.some(m => IRON_MODES.includes(m)) || wantGloom;
+  // M6: a seed whose Ironspire end state is cached skips everything before the Gloomfen (when only Gloomfen modes run)
+  const cachedIron = wantGloom && ironCache[seed] && !ONLY.some(m => [...M3_MODES, ...SUN_MODES, ...IRON_MODES].includes(m)) ? ironCache[seed] : null;
+  let gloomBase = cachedIron ? { g: cachedIron.g, ctx: { rng: null, rabble: cachedIron.rabble, backdrop: cachedIron.backdrop, seed, iron: true } } : null;
+  const cachedSun = wantIron && !cachedIron && sunCache[seed] && !ONLY.some(m => [...M3_MODES, ...SUN_MODES].includes(m)) ? sunCache[seed] : null;
   let ironBase = cachedSun ? { g: cachedSun.g, ctx: { rng: null, rabble: cachedSun.rabble, backdrop: cachedSun.backdrop, seed, sun: true } } : null;
   const need = ONLY.filter(m => m !== 'looper-w2');
   let base = null;
-  if (need.length && !cachedSun) {
+  if (need.length && !cachedSun && !cachedIron) {
     const ctx = ctx0();
     const r = run('m2', newGame({ name: 'Sim', starter, seed }), GAUNTLET, ctx);
     if (r.done) base = { g: r.g, ctx };
@@ -471,13 +543,40 @@ function simSeed(seed, all) {
   if (ironBase) {
     const ironFork = salt => ({ g: ironBase.g, ctx: { ...ironBase.ctx, sun: false, iron: true, zone: 'rockslide-pass', rng: createRng(`sim:${seed}:iron:${salt}`) } });
     const entry = st => st.entryLevel.push(partyLevel(ironBase.g));
-    if (ONLY.includes('ironspire')) { const f = ironFork('path'); entry(all.ironspire); run('ironspire', f.g, IRON_ROUTE, f.ctx); }
+    if (ONLY.includes('ironspire') || wantGloom) {
+      const f = ironFork('path');
+      entry(all.ironspire);
+      const r = run('ironspire', f.g, IRON_ROUTE, f.ctx);
+      if (r.done) { // M6: the Gloomfen starts from here
+        gloomBase = { g: r.g, ctx: f.ctx };
+        if (IRON_CACHE) { ironCache[seed] = ironCacheNew[seed] = { g: r.g, rabble: f.ctx.rabble, backdrop: f.ctx.backdrop }; ironCacheDirty = true; }
+      }
+    }
     if (ONLY.includes('ironspire-forged')) { const f = ironFork('path'); entry(all['ironspire-forged']); run('ironspire-forged', forgeParty(f.g, all['ironspire-forged'], { temper: 6, gem: 'frost-opal' }), IRON_ROUTE, f.ctx); }
     if (ONLY.includes('iron-first-lead')) {
       for (const lead of Object.keys(IRON_LEAD_ROUTES).filter(l => !IRON_ONLY_LEADS || IRON_ONLY_LEADS.split(',').includes(l))) {
         const f = ironFork(lead);
         entry(all['iron-first-lead']);
         run('iron-first-lead', f.g, [...IRON_LEAD_ROUTES[lead].from, ...IRON_LEAD_ROUTES[lead].route], f.ctx);
+      }
+    }
+  }
+  // M6: the Gloomfen, from the end of the ironspire run (Waking 6)
+  if (gloomBase) {
+    const gloomFork = salt => ({ g: gloomBase.g, ctx: { ...gloomBase.ctx, sun: false, iron: false, gloom: true, zone: 'murkway', rng: createRng(`sim:${seed}:gloom:${salt}`) } });
+    const entry = st => st.entryLevel.push(partyLevel(gloomBase.g));
+    if (ONLY.includes('gloomfen')) { const f = gloomFork('path'); entry(all.gloomfen); run('gloomfen', f.g, GLOOM_ROUTE, f.ctx); }
+    if (ONLY.includes('gloomfen-forged')) {
+      const f = gloomFork('path');
+      entry(all['gloomfen-forged']);
+      // at the end of the region the forged party travels back to the Toll-Lamp and refuses Hodge's toll
+      run('gloomfen-forged', forgeParty(f.g, all['gloomfen-forged'], { temper: 8, gem: 'bog-amber' }), [...GLOOM_ROUTE, 'toll-lamp', 'hodge'], f.ctx);
+    }
+    if (ONLY.includes('gloom-first-lead')) {
+      for (const lead of Object.keys(GLOOM_LEAD_ROUTES).filter(l => !GLOOM_ONLY_LEADS || GLOOM_ONLY_LEADS.split(',').includes(l))) {
+        const f = gloomFork(lead);
+        entry(all['gloom-first-lead']);
+        run('gloom-first-lead', f.g, [...GLOOM_LEAD_ROUTES[lead].from, ...GLOOM_LEAD_ROUTES[lead].route], f.ctx);
       }
     }
   }
@@ -491,6 +590,7 @@ function simulate() {
   const all = Object.fromEntries(ALL_MODES.map(k => [k, newStats()]));
   for (let seed = FROM; seed <= TO; seed++) simSeed(seed, all);
   if (sunCacheDirty && !JSON_OUT) writeFileSync(SUN_CACHE, JSON.stringify(sunCache));
+  if (ironCacheDirty && !JSON_OUT) writeFileSync(IRON_CACHE, JSON.stringify(ironCache));
   return all;
 }
 
@@ -521,6 +621,8 @@ async function simulateJobs() {
   for (const o of outs) for (const k of ALL_MODES) mergeStats(all[k], o.stats[k]);
   const fresh = Object.assign({}, ...outs.map(o => o.cache || {}));
   if (SUN_CACHE && Object.keys(fresh).length) writeFileSync(SUN_CACHE, JSON.stringify({ ...sunCache, ...fresh }));
+  const freshIron = Object.assign({}, ...outs.map(o => o.ironCache || {}));
+  if (IRON_CACHE && Object.keys(freshIron).length) writeFileSync(IRON_CACHE, JSON.stringify({ ...ironCache, ...freshIron }));
   return all;
 }
 
@@ -544,6 +646,9 @@ const LABELS = {
   ironspire: 'ironspire: from the sunscorch run\'s end (Waking 4), home to the Keep, then IRON_PATH',
   'ironspire-forged': 'ironspire-forged: the same party with weapons tempered to +6 and one gem each',
   'iron-first-lead': 'iron-first-lead: each Ironspire lead\'s lair taken first: the Roc\'s and Old Horn\'s from Peak\'s Veil and the Journeyman\'s from the Deeps (Waking 4), the Drowned Abbess\'s once the Brand of Iron opens the Frost Road (Waking 5)',
+  gloomfen: 'gloomfen: from the ironspire run\'s end (Waking 6), home to the Keep, then GLOOM_PATH',
+  'gloomfen-forged': 'gloomfen-forged: the same party with weapons tempered to +8 and one gem each; Hodge at the end of the region',
+  'gloom-first-lead': 'gloom-first-lead: each Gloomfen lead\'s lair taken first: Grandfather Willow\'s, Hodge\'s (on arrival) and Mother Grue\'s (Waking 6), the Drowned Cantor\'s and Old Jaws\'s once the Brand of Lanterns opens the boardwalk (Waking 7)',
 };
 
 // Gate 4 (M4 spec §8) and Gate 5 (M5 spec §8): the targets the Sunscorch and Ironspire modes are tuned to.
@@ -556,6 +661,13 @@ const IRON_TARGETS = [
   ['ironspire', 'mother-anvil', 'wipe', 30, 40], ['ironspire', 'rime-abbot', 'wipe', 30, 40], ['ironspire', 'tamsin-ironhold', 'win', 55, 70],
   ['ironspire-forged', 'mother-anvil', 'wipe', 0, 20], ['ironspire-forged', 'rime-abbot', 'wipe', 0, 20],
   ...Object.values(IRON_LAIRS).map(id => ['iron-first-lead', id, 'wipe', 15, 25]),
+];
+// M6 (spec §8): Hodge on arrival is a terrible idea (60-80% first-try wipes), and never 100%: a forged party at the end
+// of the region beats him more often than not.
+const GLOOM_TARGETS = [
+  ['gloomfen', 'lantern-mother', 'wipe', 30, 40], ['gloomfen', 'blackwater-leviathan', 'wipe', 30, 40], ['gloomfen', 'tamsin-rotbridge', 'win', 55, 70],
+  ['gloomfen-forged', 'lantern-mother', 'wipe', 0, 20], ['gloomfen-forged', 'blackwater-leviathan', 'wipe', 0, 20], ['gloomfen-forged', 'hodge', 'win', 50, 100],
+  ...Object.values(GLOOM_LAIRS).map(id => ['gloom-first-lead', id, 'wipe', 15, 25]), ['gloom-first-lead', 'hodge', 'wipe', 60, 80],
 ];
 
 function targetChecks(all, targets, modes) {
@@ -572,7 +684,7 @@ function targetChecks(all, targets, modes) {
 
 function report(all) {
   const out = [];
-  out.push(`Aethermoor balance sim (M3, M4 and M5): ${TO - FROM + 1} seeds, starter ${STARTER}`);
+  out.push(`Aethermoor balance sim (M3, M4, M5 and M6): ${TO - FROM + 1} seeds, starter ${STARTER}`);
   for (const k of ALL_MODES) {
     if (!ONLY.includes(k)) continue;
     const st = all[k];
@@ -587,21 +699,23 @@ function report(all) {
     out.push('', `runs cleared ${st.cleared}/${st.runs} (stuck ${st.stuck}${st.stuckSeeds ? `: ${st.stuckSeeds.join(', ')}` : ''}); end party level ${f1(avg(st.endLevel))}; grind fights/run ${f1(st.grindFights / Math.max(1, st.runs))}`);
     out.push(`hero attack rolls: hit ${pct((r.hit || 0), r.n)}, graze ${pct(r.graze || 0, r.n)}, crit ${pct(r.crit || 0, r.n)}, miss ${pct(r.miss || 0, r.n)}, fumble ${pct(r.fumble || 0, r.n)}`);
     out.push(`random/worn-gear drops by rarity: ${drops}; named relics dropped: ${st.relics}`);
-    if (st.entryLevel.length) out.push(`party level entering the ${IRON_MODES.includes(k) ? 'Ironspire' : 'Sunscorch'}: ${f1(avg(st.entryLevel))}`);
+    if (st.entryLevel.length) out.push(`party level entering the ${GLOOM_MODES.includes(k) ? 'Gloomfen' : IRON_MODES.includes(k) ? 'Ironspire' : 'Sunscorch'}: ${f1(avg(st.entryLevel))}`);
     if (st.forgedHeroes) out.push(`forged: ${st.forgedHeroes} heroes' weapons at +${st.forgedTemper || 4}; ${st.gemmed || 0} gems set (${st.gemInWeapon || 0} in the weapon)`);
   }
   const sun = targetChecks(all, SUN_TARGETS, SUN_MODES);
   if (sun.length) out.push('', '### Gate 4 targets (M4 spec §8)', '', table(sun, ['mode', 'node', 'target', 'result', '']));
   const iron = targetChecks(all, IRON_TARGETS, IRON_MODES);
   if (iron.length) out.push('', '### Gate 5 targets (M5 spec §8)', '', table(iron, ['mode', 'node', 'target', 'result', '']));
+  const gloom = targetChecks(all, GLOOM_TARGETS, GLOOM_MODES);
+  if (gloom.length) out.push('', '### Gate 6 targets (M6 spec §8)', '', table(gloom, ['mode', 'node', 'target', 'result', '']));
   return out.join('\n');
 }
 
 // Run as a script; imported (a tuning harness), it only exposes the routes and the players.
-export { playRoute, fight, newStats, forgeParty, AFTER_BRAND, SUN_START, SUN_ROUTE, SUN_LEAD_ROUTES, IRON_START, IRON_ROUTE, IRON_LEAD_ROUTES, STARTERS, GAUNTLET };
+export { playRoute, fight, newStats, forgeParty, AFTER_BRAND, SUN_START, SUN_ROUTE, SUN_LEAD_ROUTES, IRON_START, IRON_ROUTE, IRON_LEAD_ROUTES, GLOOM_START, GLOOM_ROUTE, GLOOM_LEAD_ROUTES, STARTERS, GAUNTLET };
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   const t0 = performance.now();
-  if (JSON_OUT) { const stats = simulate(); process.stdout.write(JSON.stringify({ stats, cache: sunCacheNew })); }
+  if (JSON_OUT) { const stats = simulate(); process.stdout.write(JSON.stringify({ stats, cache: sunCacheNew, ironCache: ironCacheNew })); }
   else {
     const all = JOBS > 1 ? await simulateJobs() : simulate();
     console.log(report(all));

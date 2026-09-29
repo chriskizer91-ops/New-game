@@ -4,16 +4,19 @@
 // M5 (spec §4.2, §5): a hold (swallowed) takes the hero out of the line with its label ("Held under"),
 // a release or the turns running out brings it back; a burrowed foe sinks into the floor and comes up
 // at its turn; a charmed hero's turn (a `move` with `charm`) flashes pink and turns on a friend.
+// M6 (spec §4.2, §5): a heal halved by rot says so; a hexed unit's roll says why it has disadvantage; the
+// Blackwater Leviathan dives into the water (not under the floor); a `ko` that carries its own words (Hodge
+// sitting down on his stool) shows them.
 import { SKILLS } from '../../data/skills.js';
 import { RELICS } from '../../data/relics.js';
 import { STATUSES } from '../../data/statuses.js';
-import { applyStatus, addUnitFrom, pieceIndex, relicLabel, statusName, harmful, moveTargetKind, withStatusSource } from './model.js';
+import { applyStatus, addUnitFrom, pieceIndex, relicLabel, statusName, harmful, moveTargetKind, withStatusSource, isHexed, divesUnderWater, holdPhrase } from './model.js';
 import { logLine } from './log.js';
 import { legendSlam } from './slam.js';
 import { aspectColor } from './stage.js';
 
 const EFF_LABEL = { weak: { label: 'Weak!', cls: 'weak' }, resist: { label: 'Resisted', cls: 'resist' }, immune: { label: 'Immune', cls: 'immune' } };
-const STATUS_COLOR = { burning: '#ff9a3c', poisoned: '#8ad872', bleeding: '#ee6c54', regenerating: '#8ad872', chilled: '#8fd3f4', frozen: '#8fd3f4' };
+const STATUS_COLOR = { burning: '#ff9a3c', poisoned: '#8ad872', bleeding: '#ee6c54', regenerating: '#8ad872', chilled: '#8fd3f4', frozen: '#8fd3f4', rotting: '#a8c860', hexed: '#c89aff' };
 
 export class Player {
   constructor(S) {
@@ -158,7 +161,7 @@ export class Player {
   async on_roll(ev) {
     const S = this.S;
     const actor = this.U(ev.actor);
-    await S.tray.roll(ev, { clock: S.clock, reduced: S.reduced, sfx: S.sfx, names: id => this.name(id) });
+    await S.tray.roll(ev, { clock: S.clock, reduced: S.reduced, sfx: S.sfx, names: id => this.name(id), hexed: isHexed(actor) });
     if (ev.purpose !== 'attack') return;
     this.lastAttack = ev;
     if (actor?.side === 'hero') {
@@ -212,7 +215,7 @@ export class Player {
     t.hp = ev.hp ?? Math.min(t.maxHp, t.hp + ev.amount);
     if (this.revived === ev.target) { this.revived = null; this.refresh(t.id); return; }
     if (!ev.amount) return;
-    this.float(t.id, `+${ev.amount}`, 'heal');
+    this.float(t.id, `+${ev.amount}`, ev.rot ? 'heal rot' : 'heal', ev.rot ? 'halved by rot' : '');
     if (t.side === 'hero') S.party.flashColor(t.id, [140, 255, 150, 0.35], 260);
     S.sfx('heal');
     this.refresh(t.id);
@@ -230,7 +233,7 @@ export class Player {
       const label = ev.label || statusName(ev.status);
       this.float(t.id, label, 'status bad held', ev.source ? `by ${this.name(ev.source)}` : '', 1300);
       S.sfx('status');
-      S.caption(`${t.label} is ${label.toLowerCase()}${ev.source ? ` by ${this.name(ev.source)}` : ''}!`, 'held');
+      S.caption(`${t.label} is ${holdPhrase(label, ev.source ? this.name(ev.source) : '')}!`, 'held');
       await this.wait(620);
       return;
     }
@@ -242,11 +245,11 @@ export class Player {
       return;
     }
     if (def.untargetable && t.side === 'foe' && (ev.op === 'add' || ev.op === 'remove')) {
-      const down = ev.op === 'add';
-      S.stage.sink(t.id, down);
+      const down = ev.op === 'add', water = divesUnderWater(t);
+      S.stage.sink(t.id, down, { water });
       const [x, y] = S.stage.point(t.id, 'feet');
-      S.stage.sparks(x, y, '#c9a878', down ? 14 : 18, { spread: 1.4, up: 0.6 });
-      if (down) this.float(t.id, statusName(ev.status), 'status good', 'cannot be targeted', 1200);
+      S.stage.sparks(x, y, water ? '#b8e8e0' : '#c9a878', down ? 14 : 18, { spread: 1.4, up: water ? 1.1 : 0.6 });
+      if (down) this.float(t.id, water ? 'Dived' : statusName(ev.status), 'status good', 'cannot be targeted', 1200);
       S.sfx(down ? 'miss' : 'hit');
       if (!down) S.shake(1);
       await this.wait(down ? 520 : 380);
@@ -366,7 +369,9 @@ export class Player {
     this.refresh(t.id);
     this.float(t.id, t.side === 'foe' ? 'Defeated' : 'Down!', 'ko', '', 1100);
     S.sfx('ko');
-    await this.wait(650);
+    // M6: a foe's own last words on its fall (Hodge sits down on his stool)
+    if (ev.text) S.caption(ev.text, 'text');
+    await this.wait(ev.text ? Math.min(1400, 650 + ev.text.length * 8) : 650);
   }
 
   async on_revive(ev) {

@@ -2,10 +2,11 @@
 // mount(root, ctx, { from = 'world', page? }): Back returns to `from`. The binder opens on `page`, else
 // on the page of the region the party stands in (Page I in the Wilds).
 //
-//   - page tabs: I, II and III (M5) show their region and a claimed count (a tick once the page is
-//     finished); a sealed page (IV Gloomfen) shows a padlock and the region's name, and opens a sealed
-//     panel with the region's closed roads instead of pockets. An open page whose road is still shut
-//     (the Ironspire before the second council) says what opens it (ROAD_NOTE)
+//   - page tabs: I, II, III (M5) and IV (M6) show their region and a claimed count (a tick once the page is
+//     finished); a page with no relics yet (none since M6) would show a padlock and the region's name, and
+//     open a sealed panel with the region's closed roads instead of pockets. An open page whose road is still
+//     shut (the Ironspire before the second council, the Gloomfen before the third) says what opens it
+//     (ROAD_NOTE)
 //   - each open page: its progress ("9 of 14 claimed, 12 sighted", rules/codex.js pageProgress), a
 //     bar, and its reward line (data/codex.js PAGES: greyed until earned, then gold with the day)
 //   - its pockets, in Codex order: the portrait, the name (a riddle while unsighted), who holds it,
@@ -17,7 +18,7 @@
 // RIDDLES, HOLDER, ROAD_NOTE.
 // Test hooks: .cx-tab[data-page][aria-selected]; .cx-head[data-page]; .cx-prog; .cx-reward[data-earned];
 //   .cx-sealed; .pocket[data-relic][data-state] (+ .is-awakened, .is-spare).
-// Owner: WP8; M4 P7b (the binder); M5 P7 (Page III: its riddles and holders, the road notes).
+// Owner: WP8; M4 P7b (the binder); M5 P7 (Page III: its riddles and holders, the road notes); M6 P7 (Page IV).
 import { RELICS } from '../../data/relics.js';
 import { PAGES } from '../../data/codex.js';
 import { STARTERS } from '../../data/heroes.js';
@@ -86,21 +87,21 @@ export const RIDDLES = Object.freeze({
   'cutters-pick': 'A notch in the haft for every block of lake it took. The Tallymen’s Cutter-Chief keeps it at the saw camp on the Frost Road.',
   'rime-crozier': 'Frozen to its bearer’s hand for thirty years. He went down under Frostmere to listen, and never came back up.',
   'hushweave-cowl': 'Woven from something that was not wool, by someone who was listening. The Abbot under the ice wears it pulled low.',
-  // M6: Page IV (STUBS from the M6 scaffold; P7 writes the real riddles)
-  'unfair-toll': 'A clipped coin on a chain. The man who keeps the bridge charges what he likes.',
-  bogstriders: 'Boots for a country where the ground is only a rumour. Someone you know came through the fen in them.',
-  'weeping-bow': 'Strung with a hair of a willow that has wept for three hundred years, and walks.',
-  'willow-ward': 'The last of three shields Willowmurk made. The elder keeps it for whoever mends the wards.',
-  'hag-stone': 'A holed stone on a ring of bog-iron. Look through it and see what is really there.',
-  'lamplighters-lantern': 'The lamp that led a city’s children out, the night the city sank. It is leading them again.',
-  'mourning-veil': 'Black lace, still wet. She has worn it since she went back for the last child.',
-  'salvagers-helm': 'A copper helm with a Tallyman stamp. The salvage crew in the sunken city dives in it.',
-  'cantors-staff': 'It has beaten time under the water for a thousand years, for a song that must not stop.',
-  'gar-tooth': 'A tooth as long as a hand. The oldest gar in the Blackwater has more.',
-  'barge-gauntlets': 'A link of a great chain in each palm. The Bargemaster keeps the chain.',
-  'corvus-harpoon': 'A diver lost it in something on his last dive. It has been in that something ever since.',
-  'deep-pearl': 'Grown in a brow over a thousand years in the dark. It glows.',
-  'hexbane-shawl': 'Knotted from bog-cotton and a hag’s hair. The witch of Bogmire makes one for whoever earns it.',
+  // Page IV: the Gloomfen Marsh (M6)
+  'unfair-toll': 'A clipped coin that always comes down the same way up. The old man who keeps Rotbridge will part with it only over a game he thinks he cannot lose.',
+  bogstriders: 'Boots for a country where the ground is only a rumour. Tamsin came down into the fen in them, following the letters.',
+  'weeping-bow': 'Strung with a hair from a willow that has wept for three hundred years. Out past Willowmurk’s failing wards, the oldest willow has started to walk.',
+  'willow-ward': 'The last of the three shields Willowmurk made for its wards. Elder Moss keeps it for whoever quiets what walks outside them.',
+  'hag-stone': 'A holed stone on a ring of bog-iron: look through it, and see what is really there. Mother Grue wears it in her sunken hut in the Lanternfen.',
+  'lamplighters-lantern': 'The lamp that led a drowned city’s children out along the boardwalk. Bogmire’s children are following it into the eastern bogs at night.',
+  'mourning-veil': 'Black lace, still wet. The Lantern Mother has worn it since the night she went back for the last child.',
+  'salvagers-helm': 'A copper diving helm with a Tallyman stamp on the brow. The salvage crew’s master wears it at their camp in the Misthollow Ruins.',
+  'cantors-staff': 'It has beaten time under the water for a thousand years, for a song that must not stop. The choir’s master keeps it in the belfry below Misthollow.',
+  'gar-tooth': 'A tooth as long as your hand, and the gar it came from has a mouthful more. Old Jaws keeps his pool down the Blackwater Reach.',
+  'barge-gauntlets': 'A link of a great chain set in each palm. The Bargemaster keeps the chain-post at the Tallymen’s camp on the Tidal Flats.',
+  'corvus-harpoon': 'A diver lost it in something on his last dive. Whatever it struck still carries it in its side, in the deep off the Tidal Flats.',
+  'deep-pearl': 'Grown in a brow over a thousand years in the dark, and it glows. The thing the Tallymen have chained in the Blackwater wears it.',
+  'hexbane-shawl': 'Knotted from bog-cotton and a hag’s hair. Nettie of Bogmire makes one for whoever puts Mother Grue to rest.',
 });
 
 // Who holds each relic, short enough for a pocket ("Held by ...") and the grey card's stamp.
@@ -130,7 +131,7 @@ const PAGE_IDS = PAGES.map(p => p.id);
 export const ROAD_NOTE = Object.freeze({
   sunscorch: 'The road to the Sunscorch opens once both Brands of the Wilds are yours.',
   ironspire: 'The road to the Ironspire opens once the Council has sat a second time: the Keep’s east postern.',
-  // M6 (a first draft from the M6 scaffold; P7 may reword it)
+  // M6: the fen stair below Mossfall opens with the third council
   gloomfen: 'The road to the Gloomfen opens once the Council has sat a third time: the fen stair below Mossfall.',
 });
 const isSealed = P => !P || P.from == null;

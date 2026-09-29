@@ -32,7 +32,8 @@ import { TILES, TILE_IDS, TILE_FRAMES, tileOf } from '../data/tiles.js';
 export const TILE_PX = 16;
 export const BIOMES = Object.freeze(['keep', 'wilds', 'town', 'grove', 'fen', 'tower', 'roots', 'den',
   'desert', 'desert-town', 'canyon', 'mine-camp', 'mine', 'crystal', 'dunes', 'oasis', 'ash', 'vault',
-  'mountain', 'monastery', 'scree', 'dwarf-hall', 'forge', 'outpost', 'tundra', 'frozen-lake', 'ice-cave']);
+  'mountain', 'monastery', 'scree', 'dwarf-hall', 'forge', 'outpost', 'tundra', 'frozen-lake', 'ice-cave',
+  'willow-village', 'channel', 'stilt-town', 'bog', 'drowned-grove', 'boardwalk', 'sunken-city', 'belfry', 'mudflat', 'causeway']);
 export const EDGE_BITS = Object.freeze({ n: 1, e: 2, s: 4, w: 8 });
 
 const T = TILE_PX;
@@ -65,7 +66,8 @@ const PAL = {
   den: { puddle: 'sap', fungusGround: 'rot', grass: 'rotwood', grassDark: 'rot', clover: 'bramble', soil: 'rotwood', soilDark: 'rot', mud: 'rot', stone: 'rotwood', wall: 'rotwood', cap: 'rot', floor: 'rotwood', darkFloor: 'rot', root: 'rotwood', rootDark: 'rot', leaf: 'bramble', leafDark: 'rot', bush: 'bramble', cliff: 'rotwood', cliffDark: 'rot', fungus: 'blight', canopy: 'dead', doorFrame: 'rotwood' },
 };
 const palOf = biome => Object.assign({}, BASE_PAL, SUN_PAL[biome] ? Object.assign({}, SUN_BASE, SUN_PAL[biome])
-  : IRON_PAL[biome] ? Object.assign({}, SUN_BASE, IRON_BASE, IRON_PAL[biome]) : PAL[biome] || PAL.wilds);
+  : IRON_PAL[biome] ? Object.assign({}, SUN_BASE, IRON_BASE, IRON_PAL[biome])
+    : GLOOM_PAL[biome] ? Object.assign({}, SUN_BASE, IRON_BASE, GLOOM_BASE, GLOOM_PAL[biome]) : PAL[biome] || PAL.wilds);
 
 /* ---------- noise helpers (periodic over one tile so every variant tiles seamlessly) ---------- */
 function pnoise(x, y, period, seed, periodY = period) {
@@ -457,7 +459,7 @@ function paintEdge(F, fam, mask, Pl, f) {
     const verge = on.map(s => band(s, t => th(s, t, 1.5))), rim = on.map(s => band(s, t => th(s, t, 2.5)));
     for (const c of outerCorners(mask)) { verge.push(O(CORNER_AT[c], 5.4)); rim.push(O(CORNER_AT[c], 6.4)); }
     const V = vergeOf(Pl, fam);
-    F.add({ mat: fam === 'drift' ? Pl.snow : Pl.patchMat, prof: 'flat', grp: 'rim', noOutline: true, noShadow: true, lo: 1, hi: 4, shapes: rim, tex: q => (fam === 'drift' && (q.y < 6 || q.x < 6) ? .8 : -1.3) });
+    F.add({ mat: fam === 'drift' ? Pl.snow : Pl.patchMat, prof: 'flat', grp: 'rim', noOutline: true, noShadow: true, lo: 1, hi: 4, shapes: rim, tex: q => (fam === 'drift' && (q.y < 6 || q.x < 6) ? .8 : Pl.patchRim ?? -1.3) });
     F.add({ mat: V.m, prof: 'flat', grp: 'verge', noOutline: true, noShadow: true, lo: 1, hi: 3, shapes: verge, tex: q => V.at(q.x, q.y) });
     return;
   }
@@ -477,6 +479,14 @@ function paintEdge(F, fam, mask, Pl, f) {
     if (mask & 8) F.add({ mat: m, prof: 'flat', grp: 'fw', noOutline: true, noShadow: true, lo: 1, hi: 3, shapes: [band('w', t => 1.6 + wob(t, 4, .4))], tex: q => -1 - q.y * .04 });
     if (mask & 2) F.add({ mat: m, prof: 'flat', grp: 'fe', noOutline: true, noShadow: true, lo: 1, hi: 3, shapes: [band('e', t => 1.8 + wob(t, 5, .4))], tex: q => .2 - q.y * .06 });
     if (mask & 4) F.add({ mat: Pl.grass, prof: 'flat', grp: 'lip', noOutline: true, noShadow: true, lo: 1, hi: 3, shapes: [band('s', t => 1.2 + wob(t, 6, .3))], tex: q => groundAt(Pl, q.x, q.y) - 1 });
+  }
+  if (fam === 'deck') { // M6: a plank way over the water (the stilts, the boardwalk): a dark joint where it stops, its side-beam to the south
+    const S = [];
+    if (mask & 1) S.push(RECT(-1, -1, 17, .95));
+    if (mask & 8) S.push(RECT(-1, -1, .95, 17));
+    if (mask & 2) S.push(RECT(15.05, -1, 17, 17));
+    if (S.length) F.add({ mat: 'dark', prof: 'flat', grp: 'joint', noShadow: true, noOutline: true, lo: 1, hi: 1, shapes: S });
+    if (mask & 4) F.add({ mat: Pl.lip, prof: 'flat', grp: 'beam', noShadow: true, noOutline: true, lo: 1, hi: 3, shapes: [RECT(-1, 12.9, 17, 17)], tex: q => (q.y === 13 ? -.3 : q.y === 14 ? -1.1 : -2) + ((q.x + 3) % 8 === 0 && q.y > 13 ? -1 : 0) });
   }
 }
 // the ground that laps over an Ironspire patch's edge: the '.' ground, or the soot floor round the forge's slag
@@ -611,6 +621,48 @@ const WMAT = {
   troll: ['#0d110e #1f2820 #344237 #4a5c4a #647862 #869a80', { ks: .3, shin: 8 }],
   stormfeather: ['#0c0e18 #1e2436 #343e58 #4e5c7c #7282a2 #a0b0c8', { ks: .3, shin: 8 }],
   hide: '#1a140e #3e3224 #5e4c36 #7e684c #a08a68 #c2ae8c',
+  // M6: the Gloomfen Marsh
+  sedge: '#0f110a #282c16 #404622 #5a602e #7a803e #a0a454',
+  fenmoss: '#070d09 #10201a #1b3124 #284530 #3a5c3c #557a4e',
+  sphagnum: '#140c0a #2e1a13 #47291b #623a23 #82502d #a66a3a',
+  bogmoss: '#0c0e08 #1f2616 #303a1f #434f29 #5a6834 #788644',
+  mudtrack: '#100e0b #2a251d #3f382c #564c3b #70634d #8e7f64',
+  peat: '#050404 #0f0b09 #1b1510 #281f17 #382c21 #4c3c2c',
+  loam: '#17120c #3b2f21 #584733 #745f45 #937b5b #b59c77',
+  silt: '#131210 #35322a #524c3f #6e6753 #8e856b #b2a88a',
+  reed: '#101208 #272d13 #3f4b1d #5a6b27 #798b34 #9cad48',
+  cattail: '#120906 #2c160c #472412 #64341a #844a24 #a66632',
+  willow: ['#08110a #142818 #213e22 #30562c #447238 #5e8e48', { ks: .2, shin: 6 }],
+  thatch: '#16120c #352c1e #52452e #6e5e3e #8e7a52 #b09a6a',
+  daub: '#18140f #3a3127 #574b3b #756650 #958468 #b8a684',
+  boards: '#120f0c #2b241d #43392d #5d4f3e #7a6a54 #9c8a6e',
+  tarred: '#050505 #0f0e0d #1a1817 #272422 #37332f #4b4640',
+  tarboards: '#0a0908 #1b1814 #2b2620 #3d352c #52483b #6c604e',
+  fenstone: ['#101210 #282c28 #40463e #5a6056 #7a7f72 #a0a494', { ks: .2, shin: 6 }],
+  ruin: ['#141614 #30342f #4c524a #6c7266 #8e9486 #b6baa8', { ks: .2, shin: 6 }],
+  causeway: ['#121418 #2c3036 #454b52 #60676e #818990 #a8b0b6', { ks: .2, shin: 6 }],
+  wreck: '#0f0d0b #25211c #3b352d #544c40 #706656 #928672',
+  blackwater: ['#040909 #0c1b19 #152b27 #203c36 #30544b #4c7468', { emit: 1, eBase: 2.6 }],
+  openwater: ['#08141a #102830 #1c4048 #2e5c64 #4e8088 #86b0b4', { emit: 1, eBase: 2.6 }],
+  canal: ['#050b0b #0e1d1d #182c2b #243d3b #365450 #54746e', { emit: 1, eBase: 2.6 }],
+  seawater: ['#081418 #12282c #1e3e40 #30585a #4c7a78 #7ea8a2', { emit: 1, eBase: 2.6 }],
+  greenwater: ['#020c0a #06201a #0c3a2c #16563e #2c7a58 #58a882', { emit: 1, eBase: 2.6 }],
+  marshlight: ['#06161a #0e3a42 #1e6a72 #48a8aa #9edcd4 #eafff8', { emit: 1, eBase: 2.8 }],
+  waterlight: ['#021410 #063a2c #0c6448 #1a9468 #52c89a #b4f4d4', { emit: 1, eBase: 2.4 }],
+  // M6: the Gloomfen's people, foes and things (art/map-sprites.js)
+  fenskin: ['#0c1412 #1c2c28 #324842 #4e665c #768e84 #a8bcb2', { ks: .25, shin: 8 }],
+  hagskin: ['#141a10 #2a3420 #465436 #64744c #889868 #b0bc8c', { ks: .15, shin: 6 }],
+  oldskin: ['#2c1410 #5a2a20 #8e4c3a #ba765a #d89c7e #f0c4a4', { ks: .15, shin: 6 }],
+  weed: '#070c08 #122016 #1c3222 #28462e #3a5e3c #527a4c',
+  sodden: '#0c0d0e #1c1f20 #2e3334 #43494a #5c6462 #7a8480',
+  choir: '#171b1a #333c38 #505c56 #717e76 #97a49a #c0cabe',
+  mourning: '#050506 #0e0e12 #19191f #25252d #34343e #4a4a56',
+  lamplight: ['#1a0e02 #4a2a06 #8a560e #c88a1c #f2c050 #fff2c0', { emit: 1, eBase: 2.8 }],
+  pearl: ['#1a1c22 #3c404a #666c78 #9aa0ac #cdd2da #f6f8fa', { ks: .6, shin: 14 }],
+  leech: ['#060605 #14130f #24221a #363224 #4c4632 #686044', { ks: .5, shin: 12 }],
+  gar: ['#0a0e0c #1a2420 #2c3c34 #40564a #5c7462 #82988a', { ks: .5, shin: 12 }],
+  moth: '#1a1610 #3a3226 #5e5240 #867a60 #b0a484 #d8d0b0',
+  levi: ['#040708 #0c1416 #162428 #22363a #344e50 #4e6c6c', { ks: .5, shin: 12 }],
 };
 // worldMats(): registers the 'w.' materials in MAT once (idempotent; tiles.js and map-sprites.js call it)
 export function worldMats() {
@@ -640,7 +692,7 @@ const SUN_PAL = {
   vault: { paver: null, ballast: 'w.basalt', ties: 'bogwood', grass: 'w.basalt', seed: 8, gLo: -1.4, gHi: -.9, gDith: .26, stone: 'w.basalt', wall: 'w.basalt', cap: 'w.basalt', cliff: 'w.basalt', cliffDark: 'dark', stair: 'w.basalt', doorFrame: 'w.basalt', wallK: 'vault', caveK: 'masonry', tree: 'column', bushK: 'urn', rockK: 'block', glowK: 'ember', ridgeK: 'ashy', decK: 'vault', mudK: 'ash', mud: 'w.ash', lampK: 'brazier', torch: 'ember', roofK: 'slab', roof: 'w.basalt', roofEdge: 'bronze', floor: 'w.basalt', darkFloor: 'w.basalt', rockTop: 'dark', doorK: 'vault', water: 'w.cistern', bank: 'w.basalt', soil: 'w.basalt', soilDark: 'dark', blade: 'w.ash', bridge: 'w.basalt', rail: 'bronze', palisade: 'blackiron', palisadeBand: 'bronze' },
 };
 const SUN_BIOMES = new Set(Object.keys(SUN_PAL));
-const specOf = (biome, id) => (SUN_BIOMES.has(biome) && SUN_SPEC[id]) || (IRON_BIOMES.has(biome) && IRON_SPEC[id]) || SPEC[id];
+const specOf = (biome, id) => (SUN_BIOMES.has(biome) && SUN_SPEC[id]) || (IRON_BIOMES.has(biome) && IRON_SPEC[id]) || (GLOOM_BIOMES.has(biome) && GLOOM_SPEC[id]) || SPEC[id];
 
 // the biome's '.' ground: the same periodic field the road verges and cliff lips copy
 function sunGround(F, Pl, D, fn) { ground(F, Pl.grass, SEEDS.grass + (Pl.seed || 0), D, { lo: Pl.gLo, hi: Pl.gHi, dith: Pl.gDith, fn }); }
@@ -1340,12 +1392,12 @@ function ironRoad(F, Pl, v) {
     if (dir > 1) { // a bend: the ruts (or the trodden line) are arcs round the inside corner
       const [cx, cy] = BEND_AT[dir - 2], d = Math.hypot(x + .5 - cx, y + .5 - cy);
       if (path) return Math.abs(d - 8) < 2 ? -1.3 + (Math.abs(d - 8) < 1 ? -.35 : 0) + bayer(x, y) * .2 : undefined;
-      if (Math.abs(d - 4.5) < .62 || Math.abs(d - 11.5) < .62) return -1.95 + bayer(x, y) * .2;
+      if (Math.abs(d - 4.5) < .62 || Math.abs(d - 11.5) < .62) return (Pl.rutDD ?? -1.95) + bayer(x, y) * .2;
       return Math.abs(d - 5.6) < .5 || Math.abs(d - 10.4) < .5 ? -.25 : undefined;
     }
     const a = dir === 0 ? x : y, b = dir === 0 ? y : x, j = hash(b >> 2, a > 7 ? 1 : 0, 150 + w) < .2 ? 1 : 0;
     if (path) return a >= 6 && a <= 9 ? -1.3 + (a === 7 || a === 8 ? -.35 : 0) + ((b + a) % 3 === 0 ? -.3 : 0) + bayer(x, y) * .2 : undefined;
-    if (a === 4 + j || a === 11 - j) return -1.95 + bayer(x, y) * .2;
+    if (a === 4 + j || a === 11 - j) return (Pl.rutDD ?? -1.95) + bayer(x, y) * .2;
     return a === 5 + j || a === 10 - j ? -.25 : undefined;
   };
   ground(F, Pl.soil, SEEDS.road, D, { lo: -1.25, hi: -.55, dith: .22, fn: rut });
@@ -1716,6 +1768,814 @@ const IRON_EDGED = Object.assign({}, EDGED, {
 const ironEdgeFams = Pl => Object.assign({ ichor: 'drift', void: 'drop' }, Pl.patchK === 'drift' ? { mud: 'drift' } : { mud: 'patch' },
   Pl.flagK === 'blackice' ? { flagstone: 'patch' } : {}, Pl.floorK === 'runner' ? { floor: 'carpet' } : {}, Pl.scatK === 'scree' ? { flowers: 'scree' } : {});
 
+/* =====================================================================
+   The Gloomfen Marsh (M6 spec §6.1): ten more biomes on the same tile characters, drawn to the map package's
+   table (notes/M6-P2-maps.md; each map's header comment says the same). The Murkway keeps M3's `fen`.
+   - A GLOOM_PAL row sits over GLOOM_BASE, with IRON_BASE and SUN_BASE under that, so a reused Ironspire or
+     Sunscorch painter always finds its style keys. The materials are more 'w.' names in WMAT.
+   - GLOOM_SPEC is IRON_SPEC with the Gloomfen painters over it. A style key per character picks the look:
+     groundK, scatK, tallK, patchK, roadK, flagK, floorK, waterK, fordK, tree, bushK, rockK, wallK, roofK, fenceK,
+     lampK, doorK, massK, glowK, cliffK, darkK, voidK, rootK, bridgeK.
+   - Black water, reeds, willows, lanterns, rot and fog, and still the road reads as road: '=' knows its way
+     (pickV, as in M5): a trodden line or ruts in the earth, a worn line along the causeway's crown.
+   - The things that stand on something ('t', 'o', '*' as a lantern post or a brazier, '|', 'T', 'Y') pick what they
+     stand on from their open neighbours (standOn): the ground, planks, the water (a ring where it laps them), stone
+     or the road. So a crate on a plank street stands on planks, a snag in the channel stands in the water, and a
+     stump on the bank on the bank.
+   - Plank ways over the water (each palette's `decks`, and the duckboards) stop at the water with a dark joint and,
+     to the south, their side-beam ('deck' edges); the water draws no bank toward them, nor toward anything solid
+     standing in it or at its edge (a pile, a snag, a wall, a tree). The bog ('m') is lapped by the ground round it
+     ('patch'); in the bog it is black peat with tussocks, elsewhere wet mud, silt or soft grey mud.
+   ===================================================================== */
+const GLOOM_BASE = {
+  gloom: 1, iron: 0, treeSnow: 0, wallSnow: 0, roofSnow: 0, cliffSnow: 0, cliffIce: 0, floes: 0, snow: 'clothWhite',
+  grass: 'w.sedge', seed: 30, gLo: -1.6, gHi: -.45, gDith: .34, blade: 'w.reed', clover: 'w.fenmoss', moss: 'w.fenmoss',
+  soil: 'w.loam', soilDark: 'w.mudtrack', mud: 'w.peat', bed: 'w.loam', puddle: 'w.blackwater', water: 'w.blackwater', bank: 'w.peat', bankK: null,
+  stone: 'w.fenstone', wall: 'w.daub', cap: 'w.daub', cliff: 'w.peat', cliffDark: 'dark', stair: 'w.fenstone', doorFrame: 'bogwood', door: 'bogwood',
+  leaf: 'w.willow', leafDark: 'seaweed', trunk: 'bark', bush: 'w.fenmoss', flowers: ['gold', 'clothWhite', 'w.cattail'],
+  torch: 'amber', sconce: 'iron', palisade: 'bogwood', palisadeBand: 'string', floor: 'w.boards', flagMat: 'w.tarboards', bridge: 'bogwood',
+  rail: 'bogwood', darkFloor: 'w.peat', glass: 'w.openwater', glow: 'w.marshlight', roof: 'w.thatch', roofEdge: 'w.thatch', curtain: 'leather',
+  paver: 'w.fenstone', stoneMoss: 'w.fenmoss', stoneDim: 0, ichor: 'w.peat', ichorGlow: 'w.marshlight', patchMat: 'w.mudtrack',
+  ballast: 'w.peat', ties: 'bogwood', rockTop: 'dark', lip: 'bogwood', decks: ['floor'], stilts: 0, roadPaved: 0, // stilts: Bogmire's and the boardwalk's
+  groundK: 'fen', scatK: 'sedge', tallK: 'reed', patchK: 'mud', roadK: 'path', flagK: 'flags', floorK: 'planks', waterK: 'black',
+  fordK: 'shallows', tree: 'willow', bushK: 'scrub', rockK: 'mossy', wallK: 'daub', roofK: 'thatch', fenceK: 'wattle',
+  lampK: 'post', doorK: 'plank', massK: 'column', glowK: 'fireflies', cliffK: 'bank', darkK: 'earth', voidK: 'deep', rootK: 'roots', bridgeK: 'rails',
+};
+const GLOOM_PAL = {
+  // Willowmurk: moss and clover under the great willows, trodden paths, wattle-and-daub huts under reed thatch, plank walks
+  'willow-village': { grass: 'w.fenmoss', seed: 32, gLo: -1.45, gHi: -.35, groundK: 'turf', clover: 'w.willow', scatK: 'marigold', bushK: 'racks', doorK: 'wicker',
+    rootK: 'willow', lilies: 1 },
+  // Rotbridge and the Blackwater Reach: sedge banks, bank gravel, the black channel, a rutted road, the old bridge's stone and timber
+  channel: { seed: 34, scatK: 'shingle', roadK: 'ruts', flagK: 'quay', tree: 'alder', bushK: 'scrubnets', rockK: 'snag', wallK: 'rough', wall: 'w.fenstone',
+    cap: 'w.fenstone', roofK: 'slate', roof: 'w.slate', roofEdge: 'w.slate', fenceK: 'parapet', glowK: 'marshlight' },
+  // Bogmire: plank streets on piles over black water, tarred decks, board huts under patched roofs, lanterns on poles, rope bridges
+  'stilt-town': { seed: 36, decks: ['floor', 'flagstone'], stilts: 1, groundK: 'trodden', scatK: 'pots', roadK: 'ruts', flagK: 'tar', tree: 'dead',
+    bushK: 'crates', rockK: 'pile', wallK: 'boards', wall: 'w.boards', cap: 'w.tarred', roofK: 'patched', roof: 'bogwood', roofEdge: 'w.tarred',
+    fenceK: 'rail', voidK: 'gap', gapMat: 'w.boards', rail: 'leather' },
+  // the Lanternfen: sphagnum and bog cotton, black pools with lights over them, dead trees, gorse, a path of trodden peat
+  bog: { grass: 'w.bogmoss', seed: 38, gLo: -1.6, gHi: -.45, groundK: 'bog', scatK: 'cotton', tallK: 'rush', patchK: 'bog', patchMat: 'w.peat', tree: 'dead', bushK: 'gorse',
+    rockK: 'stump', wallK: 'boards', wall: 'w.boards', cap: 'w.tarred', rootK: 'bogoak', bridgeK: 'duck', bridge: 'w.wreck', lilies: 1, waterLights: 1, decks: [] },
+  // the Mother's Hollow: leaf-litter under black willows weeping into black water, a sunken stone house with every lamp lit
+  'drowned-grove': { grass: 'w.peat', seed: 40, gLo: -1.25, gHi: -.2, groundK: 'litter', scatK: 'leaves', tallK: 'rush', tree: 'blackwillow', bushK: 'brush',
+    rockK: 'stump', wallK: 'ruin', wall: 'w.ruin', cap: 'w.ruin', roofK: 'broken', roof: 'w.slate', roofEdge: 'w.slate', lampK: 'window', fordK: 'dark',
+    bridgeK: 'duck', bridge: 'bogwood', rootK: 'willow', patchMat: 'w.peat', lilies: 1 },
+  // the Long Boardwalk: the boardwalk on its stilts with rails over open water, reed islets, piles, barge-planks, the stone quay
+  boardwalk: { seed: 42, stilts: 1, water: 'w.openwater', puddle: 'w.openwater', waterK: 'open', tree: 'dead', bushK: 'netscrates', rockK: 'pile',
+    wallK: 'boards', wall: 'w.boards', cap: 'w.tarred', roofK: 'shingle', roof: 'bogwood', roofEdge: 'bogwood', flagK: 'quay', floorK: 'barge', voidK: 'gap', gapMat: 'bogwood' },
+  // the Misthollow Ruins: old paving, flooded streets, canals, pale ruined masonry and columns, the salvage camp's decks and scaffolding
+  'sunken-city': { grass: 'w.silt', seed: 44, gLo: -1.5, gHi: -.5, groundK: 'city', scatK: 'rubble', patchK: 'silt', patchMat: 'w.silt', patchRim: -.6, flagK: 'cobbles', paver: 'w.ruin',
+    stone: 'w.ruin', wall: 'w.ruin', cap: 'w.ruin', wallK: 'ruin', roofK: 'broken', roof: 'w.slate', roofEdge: 'w.slate', doorK: 'arch', doorFrame: 'w.ruin',
+    stair: 'w.ruin', fordK: 'flooded', water: 'w.canal', puddle: 'w.canal', waterK: 'open', bankK: 'stone', bank: 'w.ruin', tree: 'drowned', bushK: 'crates',
+    rockK: 'rubble', fenceK: 'scaffold', lampK: 'brazier', roadPaved: 1 },
+  // the Drowned Belfry: dark flagstones, green water, pillars, the choir-stalls, green lamps, the dark under the floor
+  belfry: { grass: 'w.ruin', seed: 46, gLo: -1.9, gHi: -1.05, gDith: .3, groundK: 'wet', darkK: 'wetstone', darkFloor: 'w.ruin', paver: 'w.ruin', stone: 'w.ruin',
+    wall: 'w.ruin', cap: 'w.ruin', wallK: 'belfry', water: 'w.greenwater', puddle: 'w.greenwater', waterK: 'green', fordK: 'flooded', bank: 'w.ruin', bankK: 'stone',
+    glowK: 'waterlight', glow: 'w.waterlight', lampK: 'green', torch: 'w.waterlight', bushK: 'stalls', rockK: 'rubble', massK: 'pillar', floor: 'bogwood',
+    stair: 'w.ruin', doorK: 'arch', doorFrame: 'w.ruin', voidK: 'dark', decks: [], roadPaved: 1 },
+  // the Tidal Flats: wet silt, shells and wrack, tide-pools, the grey sea, soft mud, wreck timbers, the great chain, the barge-camp
+  mudflat: { grass: 'w.silt', seed: 48, gLo: -1.5, gHi: -.4, groundK: 'silt', scatK: 'shells', tallK: 'saltgrass', blade: 'w.sedge', roadK: 'ruts', rutDD: -1.5, soil: 'w.mudtrack',
+    water: 'w.seawater', puddle: 'w.seawater', waterK: 'sea', bank: 'w.silt', patchK: 'softmud', patchMat: 'w.silt', patchRim: -1.6, soilDark: 'w.silt', fordK: 'pools', bushK: 'cratechain',
+    rockK: 'wreck', wall: 'w.tarred', cap: 'w.tarred', wallK: 'hull', roofK: 'canvas', roof: 'w.canvas', roofEdge: 'w.tarred', fenceK: 'stockade',
+    rootK: 'chain', bridge: 'w.wreck', floor: 'w.wreck' },
+  // the Blackwater Causeway: its stone crown and edge stones, wrack the flood left on them, reedy banks, Mirrordeep's water
+  causeway: { seed: 50, scatK: 'wrack', roadK: 'slabs', flagK: 'slabs', paver: 'w.causeway', stone: 'w.causeway', water: 'w.openwater', puddle: 'w.openwater',
+    waterK: 'mirror', cliffK: 'masonry', cliff: 'w.causeway', rockK: 'block', decks: [], roadPaved: 1 },
+};
+const GLOOM_BIOMES = new Set(Object.keys(GLOOM_PAL));
+const wetOff = mat => flatV(mat) - 3.92; // a decal of an emissive water lands on the same steps as M3's water
+// still water's own value (before wetOff): the darkest step but for a sparkle here and there
+const waterAt = (x, y, v, f) => -2.62 + (hash(x, y, 8795 + v * 3 + f) < .035 ? .85 : 0) + bayer(x, y) * .1;
+
+/* ---- what a thing stands on, from its four neighbours: 0 the ground, 1 planks, 2 the water, 3 stone, 4 the road (the
+   class most of its open neighbours are; ties go planks, stone, road, ground, water; among solid things, the ground) ---- */
+const ON_CLASS = { grass: 0, flowers: 0, 'tall-grass': 0, mud: 0, roots: 0, fungus: 0, ichor: 0, ledge: 0, floor: 1, bridge: 1, water: 2, ford: 2, void: 2,
+  flagstone: 3, 'dark-floor': 3, stair: 3, door: 3, road: 4 };
+function standOn(nb) {
+  const c = [0, 0, 0, 0, 0];
+  for (const n of nb) if (ON_CLASS[n] !== undefined) c[ON_CLASS[n]]++;
+  let b = -1;
+  for (const k of [1, 3, 4, 0, 2]) if (c[k] && (b < 0 || c[k] > c[b])) b = k;
+  return b < 0 ? 0 : b;
+}
+const onPick = n => (v, nb) => standOn(nb) * n + v;
+const ON_SHAPES = 5;
+// the ground (or planks, stone, the road) under a thing, with its contact shadow sh = [x, y, rx, ry]; in the water, the ring
+// where the water laps it (rings: [[x, y, rx, ry]...])
+function gloomOn(F, Pl, cls, v, sh, rings) {
+  if (cls === 2) return waterUnder(F, Pl, rings || (sh ? [sh] : []), v);
+  const tar = cls === 3 && Pl.decks.includes('flagstone'), plank = cls === 1 || tar, stone = !plank && (cls === 3 || (cls === 4 && Pl.roadPaved));
+  const mat = tar ? Pl.flagMat : plank ? Pl.floor : Pl.grass, D = decals();
+  if (sh) for (let y = Math.floor(sh[1] - sh[3]); y <= sh[1] + sh[3]; y++) for (let x = Math.floor(sh[0] - sh[2]); x <= sh[0] + sh[2]; x++) if (((x + .5 - sh[0]) / sh[2]) ** 2 + ((y + .5 - sh[1]) / sh[3]) ** 2 < 1) D.set(x, y, stone ? Pl.paver : mat, stone ? -1.9 : -2);
+  if (plank) return gloomPlanks(F, Pl, v, mat, false, D);
+  if (stone) return gloomFlags(F, Pl, v, D);
+  if (cls === 4) return ironRoad(F, Pl, 3 * 6 + (v % 3)); // a junction of the road: no ruts running off under the thing
+  gloomGround(F, Pl, 0, E2 => { for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { const d = D.get(x, y); if (d) E2.set(x, y, d.m, d.dd); } });
+}
+// the water under a thing standing in it (still: the tile does not animate), a paler ring where it laps each footing
+function waterUnder(F, Pl, rings, v) {
+  const w = Pl.water, off = wetOff(w);
+  F.add({ mat: w, prof: 'flat', grp: 'water', noShadow: true, lo: 1, hi: 3, shapes: [FULL], tex: q => {
+    let lap = false;
+    for (const [x, y, rx, ry] of rings) { const r = Math.hypot((q.x + .5 - x) / (rx + 1.5), (q.y + .5 - y) / (ry + 1.1)); if (r > .76 && r < 1.1) lap = true; }
+    return waterAt(q.x, q.y, v, 0) - off + (lap ? .85 : 0);
+  } });
+}
+
+/* ---- '.' moss and clover (Willowmurk), sedge on the banks, trodden grass and mud (Bogmire's islet), sphagnum (the bog-top),
+   leaf-litter, wet silt with ripple marks (the flats), moss over Misthollow's raised ground, wet stone ---- */
+function gloomGround(F, Pl, v, extra) {
+  const D = decals(), g = Pl.grass, k = Pl.groundK, [x, y] = spots(1, 8300 + v, 4)[0];
+  let fn = null;
+  if (k === 'fen' || k === 'turf' || k === 'bog' || k === 'trodden') {
+    const other = k === 'bog' ? 'w.sphagnum' : k === 'turf' ? 'clover' : Pl.moss;
+    for (const [a, b] of spots(3 + (v & 1), 8100 + v * 7)) tuft(D, a - 1, b - 1, k === 'turf' ? g : Pl.blade);
+    for (const [a, b] of spots(3, 8150 + v * 11)) D.set(a, b, g, -2);
+    if (k === 'trodden' && v !== 1) { // bare mud where the feet go
+      const [cx, cy] = spots(1, 8170 + v, 5)[0];
+      for (let b = -2; b <= 2; b++) for (let a = -4; a <= 4; a++) { const d = Math.hypot(a / 4.2, b / 2.4) + hash(a, b, 8180 + v) * .3; if (d < 1) D.set(cx + a, cy + b, Pl.soil, -1.1 - d * .5); }
+      if (v & 1) for (let i = 0; i < 2; i++) { D.set(cx - 2 + i * 3, cy - 1 + i * 2, 'w.peat', -.5); D.set(cx - 2 + i * 3, cy + i * 2, 'w.peat', -.8); }
+    } else if (k !== 'trodden' && (v === 1 || v === 3)) { // a soft-edged patch of the other moss (clover in Willowmurk)
+      const [cx, cy] = spots(1, 8200 + v, 5)[0];
+      for (let b = -3; b <= 3; b++) for (let a = -4; a <= 4; a++) {
+        const d = Math.hypot(a / 4, b / 2.8) + hash(a, b, 8210 + v) * .35;
+        if (d >= 1) continue;
+        if (other === 'clover') { if ((a * 3 + b * 5 + 64) % 4 === 0) { D.set(cx + a, cy + b, Pl.clover, -.2); D.set(cx + a + 1, cy + b, Pl.clover, -.9); } }
+        else D.set(cx + a, cy + b, other, -.8 - d * .7 + ((a + b) & 1 ? 0 : -.3));
+      }
+    }
+    if (v === 2) { // a hoof-print of black water
+      for (const [a, b, d] of [[0, 0, -2], [1, 0, -2.3], [2, 0, -2.1], [0, 1, -2.3], [1, 1, -1.5], [2, 1, -2.3]]) D.set(x + a, y + b, Pl.puddle, d - wetOff(Pl.puddle));
+      D.set(x + 1, y - 1, g, -2);
+    }
+    if (k === 'bog' && v === 0) for (const [a, b] of spots(2, 8220)) { D.set(a, b, 'w.sphagnum', -.4); D.set(a + 1, b, 'w.sphagnum', -1); D.set(a, b + 1, 'w.sphagnum', -1.4); }
+    if (k === 'turf' && v === 4) spots(4, 8230, 2).forEach(([a, b], i) => { const m = i & 1 ? 'w.reed' : 'w.sedge'; D.set(a, b, m, -.2); D.set(a + 1, b + (i & 1), m, -.9); }); // fallen willow leaves
+  } else if (k === 'silt') { // wet silt: ripple marks, a shell, worm casts, the sky caught in the wet
+    if (v === 1 || v === 3) fn = siltRipples(v);
+    if (v === 2) for (const [a, b] of spots(2, 8240, 3)) { D.set(a, b, 'bone', -.4); D.set(a + 1, b, 'bone', -1.1); D.set(a, b + 1, g, -2); }
+    if (v === 4) for (const [a, b] of spots(2, 8250, 3)) for (const [c, d, e] of [[0, 0, -.2], [1, 0, -1], [1, 1, -.6], [0, 1, -1.6]]) D.set(a + c, b + d, g, e);
+    if (v === 0 || v === 3) { const [a, b] = spots(1, 8260 + v, 4)[0]; for (let i = -2; i <= 2; i++) D.set(a + i, b, Pl.puddle, (Math.abs(i) === 2 ? -2.3 : -1.8) - wetOff(Pl.puddle)); }
+    for (const [a, b] of spots(3, 8270 + v)) D.set(a, b, g, -2);
+  } else if (k === 'litter') { // black leaf-litter: fallen leaves, a twig
+    spots(4 + (v & 1), 8280 + v * 3, 1).forEach(([a, b], i) => { const m = ['w.cattail', 'w.reed', 'w.willow', 'w.cattail'][i & 3]; D.set(a, b, m, -.3); D.set(a + 1, b, m, -1); if (i & 1) D.set(a, b + 1, m, -1.3); });
+    if (v === 2) for (let i = 0; i < 5; i++) D.set(x - 2 + i, y + (i >> 1), 'bogwood', i === 2 ? -.2 : -.8);
+    for (const [a, b] of spots(3, 8290 + v)) D.set(a, b, g, -2);
+  } else if (k === 'city') { // moss and grass on the raised ground, the edge of a buried slab
+    for (const [a, b] of spots(4, 8310 + v * 5)) tuft(D, a - 1, b - 1, (a + b) & 1 ? 'w.fenmoss' : 'w.sedge');
+    if (v >= 3) { const b = 3 + ((v * 5) % 9); for (let a = 0; a < 16; a++) if (hash(a, b, 8320) < .8) { D.set(a, b, 'dark', -1.2); D.set(a, b + 1, Pl.paver, -.4); } }
+    for (const [a, b] of spots(3, 8330 + v)) D.set(a, b, g, -2);
+  } else if (k === 'wet') { // wet stone: puddles with the green light in them
+    for (const [a, b] of spots(2, 8340 + v, 3)) { D.set(a, b, Pl.puddle, -1.6 - wetOff(Pl.puddle)); D.set(a + 1, b, Pl.puddle, -2.2 - wetOff(Pl.puddle)); }
+    if (v === 1) for (let i = 0; i < 6; i++) D.set(x - 2 + i, y + (i >> 1), 'dark', -1.1);
+  }
+  if (extra) extra(D);
+  sunGround(F, Pl, D, fn);
+}
+// ripple marks on wet silt: two short crests, each a lit line over its shadow, kept inside the tile
+const siltRipples = v => (x, y) => {
+  for (const [cx, cy, w] of [[5 + v, 5, 3.6], [10 - v * .5, 11, 3.2]]) {
+    const t = (x + .5 - cx) / w; if (t < -1 || t > 1) continue;
+    const d = y + .5 - (cy + Math.sin(t * 2.4) * .9);
+    if (d >= -.5 && d < .5) return -.2;
+    if (d >= .5 && d < 1.5) return -1.9;
+  }
+  return undefined;
+};
+// planks laid east-west (or north-south), long boards with a grain line, a joint between each; decals D over them
+function gloomPlanks(F, Pl, v, mat, vertical, D) {
+  F.add({ mat, prof: 'flat', grp: 'planks', noShadow: true, lo: 1, hi: 3, shapes: [FULL], tex: q => {
+    const d = D && D.get(q.x, q.y); if (d) return d;
+    const a = vertical ? q.x : q.y, b = vertical ? q.y : q.x, r = a >> 2, la = a & 3;
+    if (la === 0) return { m: 'dark', dd: -1.2 };
+    const cut = 3 + Math.floor(rnd(r, v, 191) * 10), ends = (r + v) % 4 === 0;
+    if (ends && b === cut) return { m: 'dark', dd: -1.2 };
+    return -.55 + (la === 1 ? .5 : la === 3 ? -.75 : 0) + (la === 2 && (b + r * 5) % 7 < 3 ? -.45 : 0) + (hash(b >> 3, r, 192 + v) - .5) * .4 + bayer(q.x, q.y) * .2;
+  } });
+}
+/* ---- ',' marsh marigolds and herb beds, bank gravel and shingle, herb pots and moss on Bogmire's planks, bog cotton, fallen
+   willow leaves, rubble and weeds, shells and wrack, wrack the flood left on the causeway's stones ---- */
+function gloomScatter(F, Pl, v) {
+  const k = Pl.scatK, g = Pl.grass, S = spots(6, 8400 + v * 13, 2);
+  if (k === 'pots') { // on the planks: pots of herbs in a row, moss in the joints
+    const D = decals();
+    for (let x = 0; x < 16; x++) if (hash(x, v, 8410) < .5) D.set(x, 4 + (v & 1) * 8, 'w.fenmoss', -.8);
+    gloomPlanks(F, Pl, v, Pl.floor, false, D);
+    const P3 = [[4, 9.4], [10.4, 7.6], [7.6, 13]].slice(0, 2 + (v & 1));
+    part(F, 'w.terra', P3.map(([x, y]) => P([[x - 2, y - 1], [x + 2, y - 1], [x + 1.4, y + 2], [x - 1.4, y + 2]])), { prof: 'bevel', bw: .7, grp: 'pots', hi: 4 });
+    part(F, 'w.willow', P3.map(([x, y], i) => (i & 1 ? E([x, y - 2], 2, 1.6) : P([[x - 1.8, y - 1], [x - .6, y - 4.4], [x, y - 1.6], [x + .8, y - 4.8], [x + 1.8, y - 1]]))), { prof: 'round', bw: .8, grp: 'herbs', hi: 4 });
+    return;
+  }
+  if (k === 'wrack') { // on the causeway's stones: dark wrack in strands, a shell
+    const D = decals();
+    S.slice(0, 3).forEach(([x, y], i) => { for (let j = 0; j < 5; j++) D.set(x - 2 + j, y + ((j + i) % 3 === 0 ? 1 : 0), 'seaweed', j & 1 ? -.5 : -1.1); });
+    const [a, b] = S[4]; D.set(a, b, 'bone', -.3); D.set(a + 1, b, 'bone', -1);
+    return gloomFlags(F, Pl, v, D);
+  }
+  gloomGround(F, Pl, v & 1 ? 1 : 0, D => {
+    if (k === 'cotton') S.slice(0, 3 + (v & 1)).forEach(([x, y]) => { // bog cotton: a white tuft nodding on a dark stalk
+      D.set(x, y + 1, Pl.blade, -.8); D.set(x, y + 2, Pl.blade, -1.3); D.set(x - 1, y + 3, Pl.blade, -1.7);
+      D.set(x, y, 'clothWhite', 0); D.set(x + 1, y, 'clothWhite', -.6); D.set(x, y - 1, 'clothWhite', -.2); D.set(x - 1, y, 'clothWhite', -1.1);
+    });
+    else if (k === 'shingle') S.forEach(([x, y], i) => { pebble(D, x, y, i % 3 ? Pl.stone : 'w.loam'); if (i & 1) D.set(x + 2, y + 1, Pl.stone, -.6); });
+    else if (k === 'marigold') S.forEach(([x, y], i) => { // marsh marigolds among round leaves; one tile in three a herb bed's rows
+      if (v === 2) { for (let a = -3; a <= 3; a++) D.set(x + a, y, (a + i) & 1 ? 'w.sedge' : 'w.willow', (a + i) & 1 ? -.4 : -.1); return; }
+      if (i % 3 === 2) { D.set(x, y, 'w.sedge', -.4); D.set(x + 1, y, 'w.sedge', -1); D.set(x, y + 1, 'w.sedge', -1.4); return; }
+      D.set(x, y, 'gold', 0); D.set(x - 1, y, 'gold', -1); D.set(x + 1, y, 'gold', -1); D.set(x, y - 1, 'gold', -.8); D.set(x, y + 1, g, -2);
+    });
+    else if (k === 'shells') S.forEach(([x, y], i) => { // cockle shells and wrack
+      if (i & 1) { D.set(x, y, 'bone', -.2); D.set(x + 1, y, 'bone', -.8); D.set(x, y + 1, 'bone', -1.2); return; }
+      for (let j = 0; j < 4; j++) D.set(x - 1 + j, y + ((j + i) & 1), 'seaweed', j & 1 ? -.6 : -1.2);
+    });
+    else if (k === 'rubble') S.forEach(([x, y], i) => (i % 3 === 2 ? tuft(D, x - 1, y - 1, 'w.fenmoss') : pebble(D, x, y, Pl.stone)));
+    else if (k === 'leaves') S.forEach(([x, y], i) => { const m = i % 3 === 2 ? 'w.willow' : i & 1 ? 'w.reed' : 'w.sedge'; D.set(x, y, m, -.2); D.set(x + 1, y + (i & 1), m, -.8); D.set(x - 1, y + 1, m, -1.3); });
+    else S.forEach(([x, y], i) => { // sedge tussocks, a white bog-bean flower
+      if (i === 4) { D.set(x, y, 'clothWhite', -.3); D.set(x + 1, y, 'clothWhite', -1); D.set(x, y + 1, Pl.moss, -1); return; }
+      tuft(D, x - 1, y - 1, Pl.blade); D.set(x, y - 2, Pl.blade, -.2); D.set(x, y + 2, g, -2.2);
+    });
+  });
+}
+/* ---- '"' reeds with cattails, dark rushes, low salt-marsh grass: their stems drawn overhead ---- */
+function gloomTall(F, Pl, v) {
+  gloomGround(F, Pl, 0, D => {
+    for (let k = 0; k < 14; k++) blade(D, Math.floor(rnd(k, 3, 8520 + v) * 16), Math.floor(rnd(k, 4, 8520 + v) * 14) + 1, Pl.blade);
+    for (const [x, y] of spots(5, 8530 + v)) D.set(x, y, Pl.grass, -2.2);
+  });
+}
+function gloomTallTops(F, Pl, v) {
+  const k = Pl.tallK, salt = k === 'saltgrass', n = salt ? 9 : 7, sh = [], heads = [];
+  for (let j = 0; j < n; j++) {
+    const x = 1.2 + j * (13.6 / (n - 1)) + (rnd(j, v, 8540) - .5) * 1.2, top = (salt ? 9.4 : k === 'rush' ? 4.8 : 5.4) + rnd(j, 1 + v, 8541) * (salt ? 2.6 : 3.6), lean = (j % 3 - 1) * (salt ? 1 : .7);
+    sh.push(P([[x - (k === 'rush' ? .55 : .7), 16.5], [x + lean, top], [x + (k === 'rush' ? .55 : .7), 16.5]]));
+    if (k === 'reed' && (j + v) % 3 === 0) heads.push(E([x + lean * .8, top + 2.2], .85, 1.8));
+    if (k !== 'reed' && (j + v) % 4 === 1) heads.push(O([x + lean, top + .6], .6));
+  }
+  F.add({ mat: Pl.blade, prof: 'ridge', grp: 'stems', noOutline: true, lo: 1, hi: 3, shapes: sh, tex: q => (q.y < (salt ? 12 : 9) ? .2 : q.y > 13 ? -1.3 : -.5) });
+  if (heads.length) F.add({ mat: k === 'reed' ? 'w.cattail' : salt ? 'bone' : 'w.loam', prof: 'round', bw: .6, grp: 'heads', noOutline: true, lo: 1, hi: k === 'reed' ? 4 : 3, shapes: heads });
+  if (v && k === 'reed') F.add({ mat: Pl.blade, prof: 'ridge', grp: 'leaf', noOutline: true, lo: 1, hi: 3, shapes: [P([[6, 16.5], [3.4, 9], [.4, 7.4], [4.2, 10.2], [7.2, 16.5]])], tex: () => -.2 });
+}
+/* ---- 'm' wet mud at the water's edge; black bog mud with sedge tussocks standing out of it (the bog lock lies on these);
+   Misthollow's grey silt; soft grey mud on the flats, worm casts in it ---- */
+function gloomBog(F, Pl, v) {
+  const k = Pl.patchK, off = wetOff(Pl.puddle);
+  if (k === 'softmud') { // the flats' soft mud: smooth, wet and darker than the sand, the sky lying on it in long streaks, worm casts
+    F.add({ mat: Pl.patchMat, prof: 'flat', grp: 'bog', noShadow: true, lo: 1, hi: 3, shapes: [FULL], tex: q => -1.8 + (pnoise(q.x / 4, q.y / 4, 4, 8600 + v) - .5) * .4 + bayer(q.x, q.y) * .1 });
+    const S = [[1 + v * 4, 3 + v, 6], [7 - v * 3, 9 + v * 2, 5], [11 - v * 8, 13 - v * 7, 3]];
+    part(F, Pl.puddle, S.map(([x, y, l]) => RECT(x, y, x + l, y + 1)), { prof: 'flat', grp: 'sheen', noShadow: true, noOutline: true, hi: 3, tex: q => -.8 - off + ((q.x + q.y) % 4 === 0 ? -.6 : 0) });
+    part(F, Pl.patchMat, spots(3, 8620 + v, 3).map(([x, y]) => O([x + .5, y + .5], .75)), { prof: 'round', bw: .5, grp: 'casts', noOutline: true, hi: 3, tex: () => .2 });
+    return;
+  }
+  const m = k === 'bog' || k === 'mud' ? Pl.patchMat : Pl.grass, base = k === 'bog' ? -1.1 : k === 'mud' ? -1.25 : -1.45;
+  F.add({ mat: m, prof: 'flat', grp: 'bog', noShadow: true, lo: 1, hi: 3, shapes: [FULL], tex: q => {
+    const n = pnoise(q.x / 4, q.y / 4, 4, 8600 + v), s = pnoise(q.x / 2, q.y / 4, 8, 8610 + v, 4);
+    if (s > .72 && n > .45) return { m: Pl.puddle, dd: -1.9 - off + (s > .82 ? .4 : 0) }; // standing water catching the light
+    return base + n * .7 + bayer(q.x, q.y) * .16;
+  } });
+  if (k === 'mud') { part(F, Pl.patchMat, [[4, 5], [9, 11]].map(([x, y]) => E([x + v, y], 1, 1.4)), { prof: 'flat', grp: 'prints', noShadow: true, noOutline: true, hi: 3, tex: () => -1.9 }); return; }
+  if (k !== 'bog') return;
+  const T = [[[4.4, 5], [11.6, 10.6], [3.2, 12.6]], [[5, 11], [11, 4.4], [12.6, 12.6]]][v % 2];
+  T.forEach(([x, y], i) => {
+    const s2 = i === 2 ? .7 : 1;
+    part(F, 'w.sedge', [E([x, y + .8], 2.4 * s2, 1.3 * s2)], { prof: 'round', bw: 1, grp: 'mound' + i, hi: 3 });
+    part(F, Pl.blade, [0, 1, 2, 3, 4].map(j => { const a = -Math.PI / 2 + (j - 2) * .42 + (i - 1) * .12; return P([[x - .6 + j * .3, y + .8], [x + Math.cos(a) * 3.2 * s2, y + Math.sin(a) * 3.4 * s2], [x + .6 + j * .3, y + .8]]); }), { prof: 'ridge', grp: 'blades' + i, noOutline: true, hi: 3, tex: q => (q.y < y - 1 ? .2 : -.6) });
+  });
+}
+/* ---- 'i' the bog breathing: bubbles swell and burst in the black mud (2 frames) ---- */
+function gloomBubbles(F, Pl, v, f) {
+  gloomBog(F, Object.assign({}, Pl, { patchK: 'bog' }), v);
+  const B = f ? [[5, 6, 1.4], [11, 11, .9]] : [[5, 6, .8], [10.4, 11.4, 1.3]];
+  part(F, Pl.patchMat, B.map(([x, y, r]) => O([x, y], r)), { prof: 'round', bw: .8, grp: 'bubbles', hi: 3, tex: () => .4 });
+  part(F, Pl.puddle, B.map(([x, y, r]) => O([x - r * .35, y - r * .35], .5)), { prof: 'flat', grp: 'shine', noShadow: true, noOutline: true, hi: 3, tex: () => -1.2 });
+}
+/* ---- '=' the road: a trodden line or ruts in the earth (the Ironspire's painter in the place's soil); on the causeway, its crown
+   of slabs with a paler line worn along the way (an arc round a bend, none at a junction) ---- */
+function gloomRoad(F, Pl, v, D) {
+  if (Pl.roadK !== 'slabs') return ironRoad(F, Pl, v);
+  const dir = Math.floor(v / 3), w = v % 3;
+  const worn = (x, y) => {
+    if (dir === 6) return 0;
+    if (dir > 1) { const [cx, cy] = BEND_AT[dir - 2], d = Math.abs(Math.hypot(x + .5 - cx, y + .5 - cy) - 8); return d < 2.6 ? 1 - d / 2.6 : 0; }
+    const d = Math.abs((dir === 0 ? x : y) + .5 - 8); return d < 2.6 ? 1 - d / 2.6 : 0;
+  };
+  const kerb = v >= 21; // the edge stones (flagstone): long blocks laid along, no worn line
+  F.add({ mat: Pl.paver, prof: 'flat', grp: 'slabs', noShadow: true, lo: 1, hi: 3, shapes: [FULL], tex: q => {
+    const d = D && D.get(q.x, q.y); if (d) return d;
+    const b = kerb ? bond(q.x, q.y, 16, 8, 8) : bond(q.x, q.y, 5, 4, 2, 0), ww = kerb ? 0 : worn(q.x, q.y);
+    if (b.lx === 0 || b.ly === 0) return rnd(q.x, q.y, 8700 + w) < (kerb ? .5 : .25) ? { m: 'w.fenmoss', dd: -.6 } : { m: 'dark', dd: ww > .5 ? -.9 : -1.3 };
+    return (kerb ? -1.25 : -.95) + (b.ly === 1 ? .4 : 0) + (b.lx === 1 && !kerb ? .25 : 0) + (hash(b.c, b.r, 8710 + w) - .5) * .5 + ww * .8 + (hash(q.x, q.y, 8720) < .06 ? -.7 : 0) + bayer(q.x, q.y) * .2;
+  } });
+}
+/* ---- ':' flat old stones with moss, the old bridge's paving (big blocks), Bogmire's tarred decks, cobbled streets, the
+   causeway's slabs; decals D over them ---- */
+function gloomFlags(F, Pl, v, D) {
+  const k = Pl.flagK;
+  if (k === 'slabs') return gloomRoad(F, Pl, 21 + v % 3, D); // (past the road's 21 shapes: the edge stones)
+  if (k === 'tar') return gloomPlanks(F, Pl, v, Pl.flagMat, true, D);
+  if (k === 'cobbles') {
+    F.add({ mat: Pl.paver, prof: 'flat', grp: 'cobbles', noShadow: true, lo: 1, hi: 3, shapes: [FULL], tex: q => {
+      const d = D && D.get(q.x, q.y); if (d) return d;
+      const b = bond(q.x, q.y, 4, 4, 2), c = hash(b.c, b.r, 8730 + v);
+      if (b.lx === 0 || b.ly === 0) return c < .3 ? { m: 'w.fenmoss', dd: -.9 } : { m: 'dark', dd: -1.2 };
+      return -1.05 + (b.ly === 1 && b.lx < 3 ? .6 : 0) + (b.lx === 3 || b.ly === 3 ? -.4 : 0) + (c - .5) * .6;
+    } });
+    return;
+  }
+  if (k === 'quay') {
+    F.add({ mat: Pl.paver, prof: 'flat', grp: 'quay', noShadow: true, lo: 1, hi: 3, shapes: [FULL], tex: q => {
+      const d = D && D.get(q.x, q.y); if (d) return d;
+      const b = bond(q.x, q.y, 16, 8, 8);
+      if (b.lx === 0 || b.ly === 0) return { m: 'dark', dd: -1.4 };
+      return -1 + (b.ly === 1 ? .25 : 0) + (hash(b.c, b.r, 8771 + v) - .5) * .4 + (pnoise(q.x / 4, q.y / 4, 4, 8770 + v) > .66 ? { m: Pl.moss, dd: -1.1 } : 0) + bayer(q.x, q.y) * .25;
+    } });
+    return;
+  }
+  paintFlagstone(F, Object.assign({}, Pl, { stone: Pl.paver }), v);
+  if (D) { const p = F.parts[F.parts.length - 1], t = p.tex; p.tex = q => D.get(q.x, q.y) || t(q); } // a thing's shadow over them
+}
+/* ---- '_' planks: platforms, porches, floors, Bogmire's plank streets; on the boardwalk, dark barge-planks patched with pale ---- */
+function gloomFloor(F, Pl, v) {
+  if (Pl.floorK !== 'barge') return gloomPlanks(F, Pl, v, Pl.floor, false, null);
+  const D = decals(), [x, y] = spots(1, 8760 + v, 4)[0];
+  for (let b = -2; b <= 2; b++) for (let a = -3; a <= 3; a++) D.set(x + a, y + b, 'w.wreck', b === -2 ? -.3 : a === 3 ? -1.2 : -.7);
+  D.set(x - 2, y - 1, 'iron', -1); D.set(x + 2, y + 1, 'iron', -1);
+  gloomPlanks(F, Pl, v, 'w.tarboards', false, D);
+}
+/* ---- '~' black water (lily-pads; in the bog a light hanging over it), open water, the canals, the grey sea with foam, Mirrordeep's
+   sky, green-lit water ---- */
+function gloomWater(F, Pl, v, f) {
+  const k = Pl.waterK, w = Pl.water, off = wetOff(w), D = decals();
+  // long slow sheen lines, drifting a pixel east on the second frame, a brighter pixel in each; a sparkle now and then
+  for (const [x, y] of spots(k === 'sea' ? 3 : 2, 8780 + v * 31, 2)) { const L = 5 + (x % 4); for (let i = 0; i < L; i++) D.set(x + i + (f ? 1 : 0) - 2, y, w, (i === 2 ? -1 : -1.7) - off); }
+  if (k === 'mirror' && v < 3) { const y = 3 + v * 4; for (let x = 1 + v; x < 13 + v; x++) D.set(x, y, w, ((x + f) & 1 ? -.9 : -1.4) - off); } // the sky lying on Mirrordeep
+  F.add({ mat: w, prof: 'flat', grp: 'water', noShadow: true, lo: 1, hi: 3, shapes: [FULL], tex: q => { const d = D.get(q.x, q.y); if (d) return d; return waterAt(q.x, q.y, v, f) - off; } });
+  if (Pl.lilies && v === 3) { // lily-pads, one in flower
+    const L = [[5.4, 5.6, 3.6], [11.4, 11, 2.8]];
+    part(F, 'w.willow', L.map(([x, y, r]) => E([x, y], r, r * .7)), { prof: 'flat', grp: 'pads', noShadow: true, hi: 4, cuts: L.map(([x, y, r]) => P([[x + .4, y], [x + r * 1.2, y - .8], [x + r * 1.2, y + .9]])), tex: q => (q.d < .45 ? -.3 : (q.x * 2 + q.y) % 5 === 0 ? .2 : .8) });
+    part(F, 'clothWhite', [E([4.4, 5], 1.4, 1)], { prof: 'flat', grp: 'bloom', noShadow: true, hi: 4, tex: q => (q.y > 5 ? { m: 'skinPale', dd: .3 } : .6) });
+  }
+  if (Pl.waterLights && v === 2) { // a small light hanging over the black water, bobbing, a dim ring of its light round it and its reflection under it
+    const x = 9, y = 5 - f * .8;
+    part(F, Pl.glow, [C([x - 1.6, 12.6], [x + 1.6, 12.6], .5)], { prof: 'flat', grp: 'shine', noShadow: true, noOutline: true, hi: 3, tex: q => ((q.x + f) & 1 ? -1 : -1.6) });
+    part(F, Pl.glow, [O([x, y], 3)], { prof: 'flat', grp: 'halo', noShadow: true, noOutline: true, hi: 3, cuts: [O([x, y], 1.6)], tex: q => ((q.x + q.y + f) & 1 ? -1.9 : -9) });
+    part(F, Pl.glow, [O([x, y], 1.4 + f * .3)], { prof: 'round', bw: 1, grp: 'light', noShadow: true, noOutline: true, hi: 5, tex: () => (f ? .7 : .3) });
+  }
+  if (k === 'sea' && v < 2) { const [x, y] = spots(1, 8800 + v, 3)[0]; part(F, 'clothWhite', [C([x - 2 + f, y], [x + 2 + f, y + .4], .45)], { prof: 'flat', grp: 'foam', noShadow: true, noOutline: true, hi: 3, tex: () => -1.4 }); }
+  if (k === 'green') part(F, Pl.glow, [0, 1, 2].map(i => C([1 + i * 5 + f, 3 + i * 4], [4 + i * 5 + f, 4.4 + i * 4], .42)), { prof: 'flat', grp: 'caustic', noShadow: true, noOutline: true, hi: 3, tex: () => -1.4 });
+}
+/* ---- 'w' shallows over a mud bed (stones in them), black flooded ground, paving under a film of water (Misthollow's streets, the
+   belfry's floor), tide-pools and runnels ---- */
+function gloomFord(F, Pl, v, f) {
+  const k = Pl.fordK, w = Pl.water, off = wetOff(w);
+  if (k === 'flooded') { // the slabs show through the water, a glint sliding over them (2 frames)
+    const L = [[[1, 1, 9, 16], [10, 1, 16, 9], [10, 10, 16, 16]], [[1, 1, 16, 7], [1, 8, 7, 16], [8, 8, 16, 16]]][v % 2];
+    F.add({ mat: w, prof: 'flat', grp: 'flooded', noShadow: true, lo: 1, hi: 3, shapes: [FULL], tex: q => {
+      const s = L.findIndex(([x0, y0, x1, y1]) => q.x >= x0 && q.y >= y0 && q.x < x1 && q.y < y1);
+      if (s < 0) return -2.9 - off;
+      const gl = ((q.x - q.y + (f ? 6 : 0) + 32) % 16) < 2;
+      return (gl ? -1 : -1.9) - off + (q.x === L[s][0] || q.y === L[s][1] ? .35 : 0) + bayer(q.x, q.y) * .2;
+    } });
+    return;
+  }
+  if (k === 'pools') { // a tide-pool in the silt, weed and a pebble on its bed; in the other variant a runnel draining across
+    gloomGround(F, Pl, 0, null);
+    const pool = v ? P([[-1, 6], [5, 5.4], [11, 7], [17, 6.4], [17, 10], [11, 10.6], [5, 9.2], [-1, 10.2]]) : E([8, 8], 6.4, 4.8);
+    F.add({ mat: w, prof: 'flat', grp: 'pool', noShadow: true, lo: 1, hi: 3, shapes: [pool], tex: q => (q.d < 1 ? -2 : -2.5) - off + (((q.x + q.y + (f ? 3 : 0)) % 7) === 0 ? .6 : 0) });
+    if (!v) part(F, 'seaweed', [C([5, 9], [7, 10.4], .5), C([10, 6.4], [11.6, 7.6], .45)], { prof: 'flat', grp: 'weed', noShadow: true, noOutline: true, hi: 2 });
+    return;
+  }
+  paintWater(F, Object.assign({}, Pl, k === 'dark' ? { soil: 'w.peat', stone: 'bogwood' } : { soil: Pl.bed }), v, f, true);
+}
+/* ---- 'T' great weeping willows, alders and willows on the banks, black willows weeping into the water, dead trees black and
+   bare, drowned trees growing out of the ruins; each stands on what is round it (standOn) ---- */
+function gloomTreeBase(F, Pl, v) {
+  const t = Pl.tree, cls = Math.floor(v / 2), w = v & 1, water = cls === 2;
+  gloomOn(F, Pl, cls === 1 ? 0 : cls, w, water ? null : [8.6 + (w ? .6 : 0), 14.2, 6.6, 2.4], [[8.4, 14.4, 2.4, 1]]);
+  const lean = t === 'alder' ? 1.4 : 0, m = t === 'dead' || t === 'drowned' ? 'w.wreck' : t === 'blackwillow' ? 'rotwood' : Pl.trunk;
+  part(F, m, [C([8, 15.2], [8.6 + lean, -2], 2, 1.4)].concat(water ? [] : [C([7.6, 14.6], [3.8, 15.8], 1.1, .5), C([8.6, 14.6], [12.6, 15.6], 1.1, .5)]), { bw: 1.4, grp: 'trunk',
+    tex: q => (q.x % 3 === 0 ? -1 : 0) + ((q.x * 2 + q.y) % 9 === 0 ? { m: 'w.fenmoss', dd: -.4 } : 0) + (water && q.y > 13 ? -.8 : 0) });
+}
+// the overhead part, 24 x 26 drawn at (-4, -16): the tree tile's column is x = 12 here, its top row y = 16
+function gloomTreeTop(F, Pl, v) {
+  const t = Pl.tree === 'alder' && v === 2 ? 'willow' : Pl.tree; // on the banks the alders stand among willows
+  if (t === 'dead' || t === 'drowned') { // bare and grey, moss hanging in rags from the branches (the drowned trees darker, weed-hung)
+    const br = [[[12, 28], [12.4, 12]], [[12.2, 18], [4.6, 10.4]], [[12.2, 15], [20, 7.6]], [[12.4, 12.4], [10.6, 3]], [[7, 12.6], [3, 14.4]], [[17, 10.4], [21.4, 12.6]]];
+    br.forEach(([a, b], k) => part(F, t === 'drowned' ? 'rotwood' : 'w.wreck', [C(a, [b[0] + (v === 1 ? 1 : v === 2 ? -1 : 0) * (k ? 1 : 0), b[1]], k ? .85 : 1.7, k ? .45 : 1.3)], { bw: .8, grp: 'br' + k }));
+    part(F, t === 'drowned' ? 'seaweed' : 'w.fenmoss', [[5.6, 10.8, 5], [9.6, 14, 4], [18, 9, 5.6], [11, 5, 3.4], [15.6, 12, 3]].map(([x, y, l]) => C([x, y], [x + .4, y + l], .6, .35)), { prof: 'round', bw: .5, grp: 'moss', tex: q => (q.y % 2 ? -.6 : 0) });
+    return;
+  }
+  // willows: a crown of lumps, and long drapes hanging from it down over the trunk (black willows darker, trailing lower)
+  const black = t === 'blackwillow', alder = t === 'alder', leaf = black ? 'w.fenmoss' : Pl.leaf, dark = black ? 'dark' : Pl.leafDark;
+  const lumps = (alder ? [[13.4, 8.4, 7], [7.6, 12.6, 5.2], [18, 12.4, 5]] : [[12, 7.4, 6.8], [6.4, 11.4, 5], [17.6, 11.2, 5]]).map(([x, y, r], k) => [x + (v === 1 && k ? (k % 2 ? -.8 : .8) : 0), y + (v === 2 ? .8 : 0), r]);
+  part(F, dark, lumps.map(([x, y, r]) => O([x + .8, y + 1.4], r)), { bw: 3, grp: 'under', hi: 3 });
+  lumps.forEach(([x, y, r], k) => part(F, leaf, [O([x, y], r)], { bw: 4, grp: 'l' + k, tex: q => (((q.x * 5 + q.y * 3 + k) % 7) === 0 ? -1 : 0) + (rnd(q.x >> 1, q.y >> 1, 8900 + v) < .12 ? .6 : 0) }));
+  const drapes = alder ? [4, 9, 16, 20] : [2.6, 5.4, 8.2, 11, 14, 16.8, 19.6, 22];
+  part(F, leaf, drapes.map((x, k) => C([x, 10 + (k % 3)], [x + (k % 2 ? .5 : -.5), (alder ? 19 : black ? 25.4 : 24) - (k % 3) * 1.6 - (v === k % 3 ? 1.4 : 0)], .75, .5)), { bw: .7, grp: 'drapes', hi: 3, tex: q => (q.y % 3 === 0 ? -.8 : 0) });
+}
+/* ---- 't' drying racks, eel-traps and woodpiles; scrub and nets on poles; crates, barrels and bottle racks; gorse and dead brush;
+   the choir-stalls; crates, barrels and coils of chain on the flats ---- */
+function gloomBush(F, Pl, v) {
+  const k = Pl.bushK, cls = Math.floor(v / 2), w = v & 1;
+  gloomOn(F, Pl, cls, w, [8.5, 13.8, 6.4, 2.2], [[8, 13, 5.6, 1.6]]);
+  const kind = k === 'racks' ? (w ? 'traps' : 'rack') : k === 'scrubnets' ? (w ? 'nets' : 'scrub') : k === 'crates' ? (w && Pl.stilts ? 'bottles' : 'crates')
+    : k === 'gorse' ? (w ? 'brush' : 'gorse') : k === 'netscrates' ? (w ? 'crates' : 'nets') : k === 'cratechain' ? (w ? 'chain' : 'crates') : k;
+  if (kind === 'scrub' || kind === 'gorse') { // a low dark bush (gorse spiny, with yellow flowers)
+    const B = [[[5.5, 10, 4.2], [10.6, 9.6, 4.4], [8, 6.4, 4.2]], [[5, 9.4, 4], [11, 10.2, 4], [8.4, 6, 4]]][w];
+    part(F, kind === 'gorse' ? 'seaweed' : 'w.fenmoss', B.map(([x, y, r]) => O([x, y], r)), { bw: 3.2, grp: 'bush', tex: q => ((q.x * 3 + q.y * 5) % 7 === 0 ? -1 : 0) + (rnd(q.x, q.y, 8950 + w) < .12 ? .8 : 0) });
+    if (kind === 'gorse') { part(F, 'seaweed', [[3, 7, -2.4], [8, 2.6, -1.6], [13, 7, -.6], [2, 12, 2.8], [14, 12, .2]].map(([x, y, a]) => P([[x - .5, y + .4], [x + Math.cos(a) * 2, y + Math.sin(a) * 2], [x + .5, y - .4]])), { prof: 'ridge', grp: 'spines' }); part(F, 'gold', [[6, 6], [10, 8], [7.4, 10.4], [11.6, 5]].map(([x, y]) => O([x + .5, y + .5], .55)), { prof: 'flat', grp: 'bloom', noShadow: true, hi: 4, tex: () => -.2 }); }
+    return;
+  }
+  if (kind === 'brush') { // dead brush: grey twigs in a tangle
+    part(F, 'w.wreck', [[8, 14, 3, 4], [8, 14, 7, 3.4], [8, 14, 12.4, 5], [8, 14, 14, 9.6], [8, 14, 2, 9], [5.6, 8.6, 3.6, 5.6], [10.4, 8, 11.4, 4.6], [9, 11, 6, 6.4]].map(([a, b, c, d]) => C([a, b], [c + w * .6, d], .7, .4)), { bw: .6, grp: 'twigs' });
+    return;
+  }
+  if (kind === 'crates') {
+    part(F, 'wood', [RECT(1.4, 6.4, 9.6, 14.8)], { prof: 'bevel', bw: 1, grp: 'crate', tex: q => (q.y === 10 || q.x === 5 ? -1 : 0) });
+    part(F, 'bogwood', [RECT(9.4, w ? 3.4 : 7.2, 14.8, 15)], { bw: 2, grp: 'barrel', tex: q => (q.y % 4 === 0 ? { m: 'iron', dd: 0 } : q.x === 11 ? -.8 : 0) });
+    if (w) part(F, 'wood', [RECT(3, 1.6, 8.6, 6.8)], { prof: 'bevel', bw: .8, grp: 'crate2', tex: q => (q.x === 5 ? -1 : 0) });
+    return;
+  }
+  if (kind === 'bottles') { // Nettie's bottle rack: two shelves of bottles, each its own colour, one glinting
+    part(F, 'bogwood', [RECT(1, 2, 2.6, 15.4), RECT(13.4, 2, 15, 15.4), RECT(1, 7.4, 15, 8.6), RECT(1, 13, 15, 14.2)], { prof: 'bevel', bw: .5, grp: 'rack' });
+    [[3.6, 7.4, 'seaglass'], [6.2, 7.4, 'ruby'], [8.8, 7.4, 'emerald'], [11.4, 7.4, 'amethyst'], [4.4, 13, 'topaz'], [7.4, 13, 'seaglass'], [10.6, 13, 'ruby']].forEach(([x, y, m], i) => part(F, m, [RECT(x - .9, y - 3.4, x + .9, y), RECT(x - .4, y - 4.6, x + .4, y - 3.2)], { prof: 'flat', grp: 'b' + i, hi: 4, tex: q => (q.x === Math.floor(x - .9) ? .4 : -.3) }));
+    return;
+  }
+  if (kind === 'nets') { // two poles, a net hung between them, cork floats
+    part(F, 'w.wreck', [RECT(1.4, 2, 3, 15.4), RECT(13, 2, 14.6, 15.4)], { prof: 'bevel', bw: .6, grp: 'poles' });
+    part(F, 'string', [C([2.2, 3.4], [13.8, 3.8], .4)], { bw: .4, grp: 'line' });
+    F.add({ mat: 'seaweed', prof: 'flat', grp: 'net', noShadow: true, lo: 1, hi: 3, shapes: [P([[3, 3.8], [13, 4.2], [12.2, 13 - w], [8, 14.4], [3.8, 12.6]])], tex: q => ((q.x + q.y) % 3 === 0 || (q.x - q.y + 30) % 3 === 0 ? -.2 : -9) });
+    part(F, 'cloakRed', [[4.6, 4.4], [8, 4.6], [11.4, 4.8]].map(([x, y]) => O([x, y], .8)), { bw: .5, grp: 'floats' });
+    return;
+  }
+  if (kind === 'rack') { // a drying rack: two posts and a pole, eels and bunches of herbs hung from it
+    part(F, 'bogwood', [RECT(1.6, 3, 3.2, 15.4), RECT(12.8, 3, 14.4, 15.4)], { prof: 'bevel', bw: .6, grp: 'posts' });
+    part(F, 'bogwood', [C([1, 3.8], [15, 3.8], .7)], { bw: .6, grp: 'pole' });
+    part(F, 'w.peat', [5, 8.6].map(x => C([x, 4.4], [x + .3, 11.4], .8, .5)), { bw: .6, grp: 'eels', tex: q => (q.y % 3 === 0 ? .6 : 0) });
+    part(F, 'w.reed', [E([11.4, 7], 1.6, 2.6)], { bw: 1, grp: 'herbs', tex: q => (q.x % 2 ? -.5 : 0) });
+    return;
+  }
+  if (kind === 'traps') { // eel-traps of woven willow, and a woodpile, the log ends toward you
+    part(F, 'w.thatch', [P([[1, 9], [7, 7.4], [7.4, 12.4], [1, 11.6]]), P([[2, 14.6], [8.6, 12.6], [8.8, 15.4], [2.4, 15.8]])], { prof: 'round', bw: 1, grp: 'traps', tex: q => ((q.x + q.y) % 2 ? -.8 : 0) });
+    part(F, 'bark', [[10.4, 12.6], [13.4, 12.6], [11.9, 10.2], [10.4, 7.8], [13.4, 7.8]].map(([x, y]) => O([x, y], 1.5)), { bw: .8, grp: 'logs', tex: q => ((q.x + q.y) % 3 === 0 ? { m: 'wood', dd: .2 } : 0) });
+    return;
+  }
+  if (kind === 'chain') { // a coil of heavy chain
+    const L = []; for (let i = 0; i < 16; i++) { const a = i * .8, r = 6.2 - i * .25; L.push(i % 2 ? E([8 + Math.cos(a) * r, 9.6 + Math.sin(a) * r * .62], 1.8, 1.1) : E([8 + Math.cos(a) * r, 9.6 + Math.sin(a) * r * .62], 1.1, 1.5)); }
+    part(F, 'iron', L, { prof: 'round', bw: .6, grp: 'links', cuts: L.map(l => E(l.c, l.rx * .42, l.ry * .42)), tex: q => (hash(q.x, q.y, 9470) < .25 ? { m: 'rust', dd: -.8 } : 0) });
+    return;
+  }
+  if (kind === 'stalls') { // a choir-stall: carved bench ends, the seat, the book-rest
+    part(F, 'bogwood', [RECT(1, 5, 15, 13.6)], { prof: 'bevel', bw: 1, grp: 'seat', tex: q => (q.y === 9 ? -1 : q.x % 4 === 0 ? -.6 : 0) });
+    part(F, 'bogwood', [RECT(1, 2.4, 3.4, 15), RECT(12.6, 2.4, 15, 15), O([2.2, 2.4], 1.4), O([13.8, 2.4], 1.4)], { prof: 'bevel', bw: .8, grp: 'ends' });
+    part(F, Pl.puddle, [C([4, 7], [11, 7], .4)], { prof: 'flat', grp: 'wet', noShadow: true, noOutline: true, hi: 3, tex: () => -1.6 - wetOff(Pl.puddle) });
+  }
+}
+/* ---- 'o' mossy boulders, snags and stumps and sunk boats' timbers, piles, stones and stumps, fallen masonry, wreck timbers and rocks,
+   fallen blocks and marker stones ---- */
+function gloomRock(F, Pl, v) {
+  const k = Pl.rockK, cls = Math.floor(v / 2), w = v & 1, water = k === 'pile' || cls === 2;
+  if (k === 'pile') { // piles standing out of the water: a sawn top, the wet side down to the water (two lashed together)
+    const P2 = w ? [[5.2, 3.4, 2.4], [11, 2.2, 2.4]] : [[8, 2.4, 3.2]];
+    waterUnder(F, Pl, P2.map(([x, , r]) => [x, 12.6, r, .9]), w);
+    P2.forEach(([x, y, r], i) => {
+      part(F, 'bogwood', [RECT(x - r, y, x + r, 12.6), E([x, 12.6], r, .9)], { bw: r * .8, grp: 'side' + i, tex: q => (q.y > 10.6 ? { m: 'w.fenmoss', dd: -.4 } : (q.y + i * 2) % 5 === 0 ? -.7 : 0) });
+      part(F, 'w.wreck', [E([x, y], r, r * .55)], { prof: 'flat', grp: 'top' + i, hi: 4, tex: q => (Math.abs(Math.hypot((q.x + .5 - x) / r, (q.y + .5 - y) / (r * .55)) - .5) < .2 ? -.9 : -.2) });
+    });
+    if (w) part(F, 'leather', [C([5.2, 6.4], [11, 5.6], .55), C([5.2, 7.6], [11, 6.8], .55)], { bw: .4, grp: 'rope' });
+    return;
+  }
+  const kind = k === 'snag' ? (water ? (w ? 'ribs' : 'snag') : (w ? 'ribs' : 'stump')) : k === 'stump' ? (w ? 'stump' : 'mossy') : k === 'wreck' ? (w ? 'barnacle' : 'ribs') : k === 'block' ? (w ? 'marker' : 'block') : k;
+  gloomOn(F, Pl, cls, w, water ? null : [8.6, 13.6, 6.6, 2.3], [[8, 13, 5.4, 1.6]]);
+  if (kind === 'snag') { part(F, 'w.wreck', [C([6.4, 13.6], [9.4, 3], 1.4, .6), C([8.2, 8], [12.4, 5], .6, .35), C([7.4, 10.6], [3.6, 7.4], .55, .3)], { bw: .8, grp: 'snag', tex: q => (q.y > 12 ? { m: 'w.fenmoss', dd: -.6 } : q.x % 3 === 0 ? -.8 : 0) }); return; }
+  if (kind === 'ribs') { // a sunk boat's ribs and keel standing out of the water (or lying in the mud)
+    part(F, 'w.wreck', [C([2, 14.6], [3.4, 5], .9, .6), C([6, 14.8], [6.6, 3.4], .9, .6), C([10, 14.8], [9.4, 3.6], .9, .6), C([14, 14.6], [12.6, 5.4], .9, .6)], { bw: .8, grp: 'ribs', tex: q => (q.y > 12 ? { m: water ? 'w.fenmoss' : 'w.peat', dd: -.5 } : q.y % 3 === 0 ? -.8 : 0) });
+    part(F, 'w.wreck', [C([1, 14], [15, 14.4], .9)], { bw: .7, grp: 'keel', tex: () => -.6 });
+    return;
+  }
+  if (kind === 'stump') { part(F, 'w.wreck', [P([[3.6, 14.6], [4.2, 6.6], [6, 4.8], [10.4, 5.2], [12, 7], [12.4, 14.6]]), C([4.4, 14], [1.4, 15.4], 1, .5), C([11.6, 14], [14.8, 15.2], 1, .5)], { bw: 2, grp: 'stump', tex: q => (q.x % 3 === 0 ? -1 : 0) }); part(F, 'w.fenmoss', [E([8, 5.6], 3.4, 1.2)], { prof: 'flat', grp: 'top', noShadow: true, hi: 3, tex: q => (Math.abs(q.x - 8) < 1.2 ? -1 : -.4) }); return; }
+  if (kind === 'rubble') {
+    [[1.6, 9, 8.4, 14.8], [7.6, 8.6, 14.6, 14.6], [4.6, 4.2, 11.4, 9.6]].forEach(([a, b, c, d], i) => part(F, Pl.stone, [RECT(a, b + (w && i === 2 ? .8 : 0), c, d)], { prof: 'bevel', bw: 1.2, grp: 'blk' + i, tex: q => (rnd(q.x >> 1, q.y >> 1, 20 + i) < .12 ? -1 : q.y <= b + 1 && hash(q.x, i, 9000) < .5 ? { m: 'w.fenmoss', dd: -.2 } : 0) }));
+    return;
+  }
+  if (kind === 'block') { part(F, Pl.stone, [P([[1.6, 13.4], [2.8, 5.6], [12.6, 4], [14.4, 11.6], [11, 14.6], [3, 14.8]])], { prof: 'bevel', bw: 1.4, grp: 'block', tex: q => ((q.x + q.y) % 11 === 0 ? -.8 : 0) + (q.y > 11 ? { m: 'w.fenmoss', dd: -.6 } : 0) }); return; }
+  if (kind === 'marker') { // a marker stone, the water-mark still on it
+    part(F, Pl.stone, [P([[4.6, 15], [5, 3.6], [7.4, 1.4], [9.8, 2.4], [11.4, 5], [11.6, 15]])], { prof: 'round', bw: 2, grp: 'stone', tex: q => (q.y === 9 ? { m: 'w.fenmoss', dd: -.3 } : q.y > 9 ? -.7 : 0) });
+    part(F, 'dark', [C([8, 4.4], [8, 7], .45), C([6.8, 5.4], [9.2, 5.4], .4)], { prof: 'flat', grp: 'mark', noShadow: true, noOutline: true });
+    return;
+  }
+  const pts = [[[2.4, 13.6], [3.2, 7], [6.6, 3.6], [11.4, 3.8], [14, 7.4], [14, 13.6], [8.4, 15]], [[2, 13.8], [2.6, 8.6], [5.4, 4.4], [10.6, 3.2], [13.8, 6], [14.6, 13.2], [9, 15]]][w];
+  part(F, Pl.stone, [P(pts)], { bw: 3.2, grp: 'rock', tex: q => (((q.y + (q.x >> 3) + w) % 3) === 0 ? -.9 : 0) + bayer(q.x, q.y) * .25 + (kind === 'barnacle' && hash(q.x, q.y, 9010) < .14 ? { m: 'bone', dd: -.3 } : 0) });
+  if (kind === 'barnacle') part(F, 'seaweed', [C([3, 13.4], [7, 14.6], .8), C([9, 14.6], [13.6, 13.2], .7)], { prof: 'round', bw: .5, grp: 'wrack' });
+  else part(F, 'w.fenmoss', [P(w ? [[3.4, 7.6], [5.6, 4.4], [10.6, 3.4], [13.6, 6.2], [11, 7.2], [7.4, 6.6], [5, 8.4]] : [[3.6, 6.8], [6.6, 3.6], [11.4, 3.8], [13.6, 6.8], [10.6, 6.2], [7, 7.4]])], { prof: 'round', bw: .9, grp: 'moss', tex: q => (q.y % 3 === 0 ? -.3 : .2) });
+}
+/* ---- '#' wattle and daub on bog-oak, fieldstone, weathered boards, pale ruined ashlar with the water's line on it, the belfry's dark
+   stone in green light, tarred hull planks ---- */
+function gloomWall(F, Pl, v, face) {
+  const k = Pl.wallK, w = Pl.wall, cap = Pl.cap;
+  if (k === 'rough') return sunWall(F, Object.assign({}, Pl, { wallK: 'rough' }), v, face);
+  if (!face && k === 'belfry') { F.add({ mat: 'dark', prof: 'flat', grp: 'top', noShadow: true, lo: 1, hi: 3, shapes: [FULL], tex: q => (((q.y + ((q.x >> 3) & 1) * 3) % 6 === 0 || (q.x & 7) === 0) ? -1.4 : -.9 + pnoise(q.x / 8, q.y / 8, 2, 9105 + v) * .6) }); return; }
+  if (!face) { // the top of a wall seen from above
+    F.add({ mat: cap, prof: 'flat', grp: 'top', noShadow: true, lo: 1, hi: 3, shapes: [FULL], tex: q => {
+      if (k === 'boards' || k === 'hull') return ((q.y & 3) === 0 ? { m: 'dark', dd: -1.4 } : (q.y & 3) === 1 ? .2 : -.6) + bayer(q.x, q.y) * .3;
+      const r = q.y >> 3, lx = ((q.x + ((r + v) & 1 ? 4 : 0)) % 8 + 8) % 8, ly = q.y & 7;
+      if (k !== 'daub' && (lx === 0 || ly === 0)) return { m: 'dark', dd: -1.6 };
+      return -1 + (lx === 1 || ly === 1 ? .5 : 0) + (pnoise(q.x / 4, q.y / 4, 4, 9100 + v) > .64 ? { m: 'w.fenmoss', dd: -1 } : 0) + bayer(q.x, q.y) * .3;
+    } });
+    return;
+  }
+  if (k === 'daub') { // clay daub over wattle (the weave showing where it has cracked), a bog-oak post at the west edge, a sill beam
+    F.add({ mat: w, prof: 'flat', grp: 'face', noShadow: true, lo: 1, hi: 4, shapes: [FULL], tex: q => {
+      const x = q.x, y = q.y;
+      if (y < 2) return { m: 'w.thatch', dd: y === 0 ? .4 : -1.4 };                  // the thatch's shadow under the eave
+      if (x < 2) return { m: 'rotwood', dd: x === 0 ? .3 : -.7 };                   // a bog-oak post
+      if (y >= 13) return { m: 'rotwood', dd: y === 13 ? .2 : y === 15 ? -1.4 : -.6 }; // the sill beam
+      if (pnoise(x / 4, y / 4, 4, 9110 + v) > .66) return { m: 'w.thatch', dd: ((x + (y >> 1)) & 1) ? -1.4 : -.4 }; // the wattle through the daub
+      return -.3 + (y === 2 ? -.9 : 0) + pnoise(x / 2, y / 2, 8, 9120 + v) * .5 - (y > 10 ? .4 : 0) + bayer(x, y) * .2;
+    } });
+    return;
+  }
+  if (k === 'boards' || k === 'hull') { // vertical boards (a hull's tarred planks run across, lapped), a batten, a patch nailed over a rotten one
+    const hull = k === 'hull';
+    F.add({ mat: w, prof: 'flat', grp: 'face', noShadow: true, lo: 1, hi: 4, shapes: [FULL], tex: q => {
+      const x = q.x, y = q.y, a = hull ? y : x, la = hull ? (a - 1) & 3 : a & 3;
+      if (y < 2) return { m: cap, dd: y === 0 ? .4 : -1.2 };
+      if (!hull && (y === 8 || y === 9)) return { m: 'bogwood', dd: y === 8 ? .2 : -1 };
+      if (la === 0) return { m: 'dark', dd: -1.5 };
+      if (!hull && v && x >= 9 && x <= 14 && y >= 10 && y <= 14) return { m: 'w.wreck', dd: y === 10 ? .2 : x === 14 ? -1 : -.3 };
+      return -.35 + (la === 1 ? .4 : la === 3 ? -.6 : 0) + (hash(hull ? y >> 2 : x >> 2, v, 9130) - .5) * .7 + (y >= 14 ? -.8 : 0) + (hull && (x + y * 3) % 17 === 0 ? .8 : 0) + bayer(x, y) * .2;
+    } });
+    return;
+  }
+  // ruin (and belfry): pale dressed stone in two courses, dark with wet below the water's old line, moss along the joints; the
+  // belfry's stone is darker, the green light running down it
+  const belfry = k === 'belfry';
+  F.add({ mat: w, prof: 'flat', grp: 'face', noShadow: true, lo: 1, hi: 4, shapes: [FULL], tex: q => {
+    const x = q.x, y = q.y;
+    if (y < 3) return { m: cap, dd: y === 0 ? .6 : y === 2 ? -1.5 : -.1 };
+    const r = y < 9 ? 0 : 1, ly = y - (r ? 9 : 3), lx = ((x + ((r + v) & 1 ? 5 : 0)) % 10 + 10) % 10;
+    if (ly === 0 || lx === 0) return (belfry ? hash(x, y, 9140) < .3 : hash(x, y, 9141) < .4) ? { m: belfry ? 'w.waterlight' : 'w.fenmoss', dd: belfry ? -1.6 : -.8 } : { m: 'dark', dd: -1.6 };
+    const tide = y > 9 + Math.sin((x + v * 5) * .7) * .8;
+    return -.4 + (ly === 1 ? .5 : 0) + (lx === 1 ? .3 : 0) + (tide ? -.9 : 0) + (belfry ? -.7 : 0) + (hash(Math.floor((x + ((r + v) & 1 ? 5 : 0)) / 10), r, 9150 + v) - .5) * .6 + (y === 15 ? -.6 : 0) + bayer(x, y) * .2;
+  } });
+  if (belfry && v) part(F, 'w.waterlight', [C([5.5, 3], [5.5, 12], .45), C([11.5, 5], [11.5, 9], .4)], { prof: 'flat', grp: 'drip', noShadow: true, noOutline: true, hi: 4, tex: q => -1.6 + (q.y % 4 === 0 ? .8 : 0) });
+}
+/* ---- 'H' reed thatch (sagging in the bog), slate with moss on it, tarred shingles patched, broken slate (towers, the drowned house),
+   a shelter's shingles, tents and barge-cabin canvas ---- */
+function gloomRoof(F, Pl, v, mask) {
+  const k = Pl.roofK, e = Pl.roofEdge;
+  F.add({ mat: Pl.roof, prof: 'flat', grp: 'roof', noShadow: true, lo: 1, hi: 4, shapes: [FULL], tex: q => {
+    const x = q.x, y = q.y;
+    if (k === 'thatch') { // thick reed thatch: a bound ridge, shaggy ends hanging at the eaves
+      if (mask & 4 && y >= 12) { const hang = 13 + ((x * 7 + v) % 3); return y > hang ? { m: 'dark', dd: -2 } : y === hang ? -1.4 : -.6 + ((x & 1) ? -.3 : 0); }
+      if (mask & 1 && y <= 2) return { m: 'bogwood', dd: y === 1 ? .2 : -.8 };
+      if (mask & 8 && x <= 1 || mask & 2 && x >= 14) return x === 0 || x === 15 ? -1.5 : -.8;
+      return .1 + ((x * 2 + y * 3 + (y >> 2) * 5) % 7 < 2 ? -1 : 0) + ((y & 3) === 3 ? -.7 : 0) + ((x + (y >> 2)) % 5 === 0 ? .4 : 0) + (pnoise(x / 4, y / 4, 4, 9200 + v) > .7 ? { m: 'w.fenmoss', dd: -.6 } : 0);
+    }
+    if (mask & 4 && y >= 13) return { m: e, dd: y === 13 ? .3 : y === 15 ? -1.6 : -.5 };
+    if (mask & 1 && y <= 2) return { m: e, dd: y === 0 ? .5 : y === 2 ? -1.3 : 0 };
+    if (mask & 8 && x <= 1) return { m: e, dd: x === 0 ? .3 : -.7 };
+    if (mask & 2 && x >= 14) return { m: e, dd: x === 15 ? -1.5 : -.7 };
+    if (k === 'canvas') return ((x & 7) === 0 ? -1.4 : 0) + (y % 5 === 0 && (x & 7) === 4 ? { m: 'string', dd: -.6 } : 0) - y * .04 + bayer(x, y) * .2;
+    const r = Math.floor(y / 3), ly = y % 3, lx = (x + (r & 1) * 2) & 3;
+    if (k === 'broken' && hash(x >> 2, r, 9210 + v) < .14) return { m: 'dark', dd: -2 };  // slates gone: the dark under the roof
+    if (k === 'patched' && hash(x >> 3, y >> 3, 9220 + v) < .34) return hash(x >> 3, y >> 3, 9221 + v) < .5 ? { m: 'w.thatch', dd: ((x * 2 + y * 3) % 7 < 2 ? -1 : 0) + (y & 1 ? -.4 : .1) } : { m: 'w.wreck', dd: ((x & 3) === 0 ? -1.2 : -.3) };
+    if (lx === 0) return -1.8;
+    return (ly === 0 ? .6 : ly === 1 ? -.1 : -.9) + (rnd(x >> 2, r, 9230 + v) < .12 ? -.5 : 0) + (pnoise(x / 4, y / 4, 4, 9240 + v) > (k === 'slate' ? .6 : .7) ? { m: 'w.fenmoss', dd: -.4 } : 0);
+  } });
+}
+/* ---- '|' woven wattle, the old bridge's carved stone parapet, rails on the platforms, the salvage camp's timber scaffolding, the
+   barge-camp's stockade of stakes: 0 an east-west run (or a lone post), 1 inside a north-south run, 2 its north end ---- */
+function gloomFence(F, Pl, v) {
+  const k = Pl.fenceK, cls = Math.floor(v / 6), fv = v % 6, dir = fv >> 1, w = fv & 1, ns = dir > 0;
+  if (k === 'wattle' && cls === 0) return ironFence(F, Object.assign({}, Pl, { fenceK: 'wattle' }), fv);
+  gloomOn(F, Pl, cls, w, null, ns ? [[8, 14, 2, 1]] : [[8, 13, 7, 1.2]]);
+  if (k === 'wattle') { // on planks or in the water: stakes, withies woven between
+    part(F, Pl.palisade, [2, 8, 14].map(x => RECT(x - .8, 3.6, x + .8, 15.4)), { prof: 'round', bw: .6, grp: 'stakes' });
+    part(F, 'thorn', [6, 8.4, 10.8, 13.2].map(y => C([-1, y], [17, y + (w ? .3 : -.3)], 1.1)), { prof: 'round', bw: .8, grp: 'weave', tex: q => (((q.x >> 1) + Math.floor(q.y / 2.4)) & 1 ? -.9 : 0) });
+    return;
+  }
+  if (k === 'parapet') { // low stone, capped, a carving on each block that is not quite the same as you look at it
+    const S = ns ? [RECT(2.6, dir === 2 ? 3 : -1, 13.4, 17)] : [RECT(-1, 5.4, 17, 14.6)];
+    part(F, Pl.stone, S, { prof: 'bevel', bw: 1, grp: 'wall', tex: q => ((ns ? q.y : q.x) % 8 === 0 ? { m: 'dark', dd: -1.2 } : q.y < 7 && !ns ? .3 : 0) + (hash(q.x >> 1, q.y >> 1, 9250) < .1 ? { m: 'w.fenmoss', dd: -.4 } : 0) });
+    const c = ns ? [8, 8] : [8 + (w ? -2 : 2), 10.4];
+    part(F, 'dark', ns ? [C([c[0] - 1.4, c[1] - 1.6], [c[0] + 1.4, c[1] + 1.6], .4), O(c, 1.4)] : [O(c, 1.6), C([c[0] - 2.6, c[1]], [c[0] - 1, c[1]], .4)], { prof: 'flat', grp: 'carving', noShadow: true, noOutline: true, cuts: [O(c, .7)], tex: () => -1.2 });
+    return;
+  }
+  if (k === 'rail') { // posts and a hand-rail
+    if (ns) { part(F, Pl.palisade, [RECT(7.2, -1, 8.8, 17)], { prof: 'bevel', bw: .5, grp: 'bar' }); part(F, Pl.palisade, [RECT(6.4, 5, 9.6, 14.6)], { prof: 'bevel', bw: .7, grp: 'post' }); return; }
+    part(F, Pl.palisade, [RECT(2.2, 5, 4.4, 15), RECT(10.2, 5, 12.4, 15)], { prof: 'bevel', bw: .6, grp: 'posts' });
+    part(F, Pl.palisade, [RECT(-1, 5.4, 17, 7.2)], { prof: 'bevel', bw: .5, grp: 'bar' });
+    return;
+  }
+  if (k === 'scaffold') { // poles lashed together, a cross-brace, a plank on top
+    part(F, 'w.wreck', ns ? [RECT(6.8, -1, 9.2, 17)] : [RECT(1.2, 1, 3.2, 15.6), RECT(12.8, 1, 14.8, 15.6)], { prof: 'bevel', bw: .6, grp: 'poles' });
+    part(F, 'w.wreck', ns ? [C([4, 3], [12, 13], .6), C([12, 3], [4, 13], .6)] : [C([2, 3], [14, 14], .6), C([14, 3], [2, 14], .6)], { bw: .5, grp: 'brace' });
+    if (!ns) part(F, 'bogwood', [RECT(-1, 2, 17, 4.4)], { prof: 'bevel', bw: .6, grp: 'plank' });
+    part(F, 'string', ns ? [C([6.4, 7.6], [9.6, 8.4], .5)] : [C([1, 3.4], [3.4, 4.4], .5), C([12.6, 3.4], [15, 4.4], .5)], { bw: .4, grp: 'lashing' });
+    return;
+  }
+  // stockade: stakes set close, sharpened, a rope binding them
+  const S = ns ? [[8, dir === 2 ? 3 : -3]] : [2, 6, 10, 14].map((x, i) => [x, 1.4 + ((i + w) % 2) * 1.2]);
+  part(F, 'w.wreck', S.map(([x, y]) => P([[x - 1.9, 15.6], [x - 1.9, y + 2.2], [x, y], [x + 1.9, y + 2.2], [x + 1.9, 15.6]])), { prof: 'round', bw: 1.4, grp: 'stakes', tex: q => (q.y > 13 ? { m: 'w.peat', dd: -.4 } : q.y % 4 === 0 ? -.8 : 0) });
+  part(F, 'leather', ns ? [C([8.4, -1], [8.4, 17], .4)] : [C([-1, 9], [17, 9.4], .5)], { prof: 'round', bw: .4, grp: 'rope' });
+}
+/* ---- '*' a lantern on a post (or a pole), a brazier standing on the paving, the drowned house's lit windows, the belfry's green
+   lamps on the wall (2 frames) ---- */
+function gloomTorch(F, Pl, v, f) {
+  const k = Pl.lampK, cls = v;
+  if (k === 'window' || k === 'green') {
+    gloomWall(F, Pl, 0, true);
+    F.add({ mat: Pl.torch, prof: 'flat', grp: 'warm', noShadow: true, noOutline: true, lo: 1, hi: 2, shapes: [E([8, 8], 5.6, 5.2)], tex: q => (bayer(q.x, q.y) + (Math.hypot(q.x - 7.5, q.y - 8) / 5.6) * .9 > .55 ? -9 : -2.4 + (f ? .3 : 0)) });
+    if (k === 'window') { // a small window, every pane lit
+      part(F, 'w.ruin', [RECT(4, 4, 12, 13)], { prof: 'bevel', bw: .8, grp: 'frame' });
+      part(F, Pl.torch, [RECT(5.2, 5.2, 10.8, 11.8)], { prof: 'flat', grp: 'glass', noShadow: true, hi: 5, tex: q => (q.y > 8 ? .6 : .1) + (f ? .3 : 0) });
+      part(F, 'bogwood', [C([8, 5.2], [8, 11.8], .45), C([5.2, 8.4], [10.8, 8.4], .45)], { prof: 'flat', grp: 'mullion', noShadow: true, hi: 3, tex: () => -1 });
+      return;
+    }
+    part(F, 'iron', [C([8, 2.6], [8, 4.8], .5), C([5.2, 3], [10.8, 3], .45)], { bw: .6, grp: 'bracket' });
+    part(F, 'verdigris', [RECT(5.8, 4.6, 10.2, 11.4), P([[5.2, 5], [8, 3.4], [10.8, 5]]), RECT(6.6, 11.2, 9.4, 12.4)], { prof: 'bevel', bw: .8, grp: 'lantern' });
+    part(F, Pl.torch, [RECT(6.8, 6, 9.2, 10.4)], { prof: 'flat', grp: 'glass', noShadow: true, hi: 5, tex: q => (q.y > 8 ? .8 : .2) + (f ? .3 : -.1) });
+    return;
+  }
+  if (k === 'brazier') { // an iron fire-basket on three legs, standing on the paving
+    gloomOn(F, Pl, cls, 0, [8, 14.6, 4, 1.2], [[8, 14.6, 4, 1]]);
+    part(F, 'blackiron', [C([5, 8], [3.6, 15.4], .7), C([11, 8], [12.4, 15.4], .7), C([8, 8.6], [8, 15.4], .7)], { bw: .6, grp: 'legs' });
+    part(F, 'blackiron', [P([[2.4, 4.6], [13.6, 4.6], [11.6, 8.8], [4.4, 8.8]])], { prof: 'bevel', bw: .8, grp: 'bowl' });
+    part(F, Pl.torch, [P(f ? [[8.4, -1], [11.4, 2.6], [10.8, 5.4], [5.2, 5.4], [5, 2.4]] : [[7.4, -1.2], [10.8, 2.8], [10.8, 5.4], [5.2, 5.4], [5.6, 2]])], { bw: 1.6, grp: 'flame', noShadow: true, hi: 5, tex: q => (q.y > 2.6 ? .9 : .1) + (f ? .3 : 0) });
+    return;
+  }
+  // a post (standing on the ground, the planks or in the water), an arm, a lantern hanging from it
+  gloomOn(F, Pl, cls, 0, [9.4, 14.8, 3, 1.1], [[8, 14.6, 2, .9]]);
+  part(F, 'bogwood', [RECT(6.9, 1.4, 9.1, 15.4)].concat(cls === 2 ? [] : [RECT(5.8, 14, 10.2, 15.8)]), { prof: 'bevel', bw: .7, grp: 'post', tex: q => (q.y % 5 === 0 ? -.8 : cls === 2 && q.y > 13 ? { m: 'w.fenmoss', dd: -.4 } : 0) });
+  part(F, 'bogwood', [C([8, 2.4], [12.4, 2.4], .7)], { bw: .6, grp: 'arm' });
+  part(F, Pl.torch, [E([12.4, 7], 3.6, 3.4)], { prof: 'flat', grp: 'warm', noShadow: true, noOutline: true, lo: 1, hi: 2, tex: q => (bayer(q.x, q.y) + Math.hypot(q.x - 12, q.y - 7) / 3.6 * .9 > .6 ? -9 : -2.2 + (f ? .3 : 0)) });
+  part(F, 'iron', [C([12.4, 2.8], [12.4, 4], .35), RECT(10.6, 4.2, 14.2, 9.4), P([[10, 4.6], [12.4, 3], [14.8, 4.6]]), RECT(11.4, 9.2, 13.4, 10.4)], { prof: 'bevel', bw: .6, grp: 'lantern' });
+  part(F, Pl.torch, [RECT(11.4, 5.2, 13.4, 8.8)], { prof: 'flat', grp: 'flame', noShadow: true, hi: 5, tex: q => (q.y > 6.8 ? .8 : .3) + (f ? .3 : -.1) });
+}
+/* ---- '+' a woven wicker door (Willowmurk), a plank door, a stone arch standing open ---- */
+function gloomDoor(F, Pl, v) {
+  const k = Pl.doorK;
+  gloomWall(F, Pl, v, true);
+  if (k === 'arch') {
+    part(F, Pl.doorFrame, [P([[2.5, 16.6], [2.5, 7], [4.2, 3.6], [8, 2.2], [11.8, 3.6], [13.5, 7], [13.5, 16.6]])], { prof: 'bevel', bw: 1, grp: 'arch' });
+    part(F, 'dark', [P([[4.4, 16.6], [4.4, 7.4], [5.6, 5.2], [8, 4.4], [10.4, 5.2], [11.6, 7.4], [11.6, 16.6]])], { prof: 'flat', grp: 'opening', lo: 0, hi: 1, tex: q => (q.y > 12 ? -1 : 0) });
+    return;
+  }
+  part(F, k === 'wicker' ? 'rotwood' : 'bogwood', [RECT(3, 2.6, 13, 16.6)], { prof: 'bevel', bw: .8, grp: 'frame' });
+  if (k === 'wicker') { part(F, 'w.thatch', [RECT(4.4, 4, 11.6, 16.6)], { prof: 'round', bw: .8, grp: 'leaf', tex: q => ((((q.x >> 1) + (q.y >> 1)) & 1) ? -.9 : .1) }); part(F, 'leather', [C([10.2, 9], [10.2, 11.4], .5)], { bw: .4, grp: 'thong' }); return; }
+  part(F, Pl.door, [RECT(4.4, 4, 11.6, 16.6)], { prof: 'bevel', bw: .7, grp: 'leaf', tex: q => ((q.x - 4) % 3 === 0 ? -1.1 : 0) });
+  part(F, 'iron', [C([4.4, 7], [10, 7], .45), C([4.4, 13.4], [10, 13.4], .45), O([10.2, 10.4], .7)], { bw: .4, grp: 'fittings', noShadow: true });
+}
+/* ---- 'Y' Misthollow's columns (pale, the water's line on them) and the belfry's pillars (dark): a round shaft on a square base, the
+   upper shaft and capital drawn overhead; each stands on what is round it ---- */
+const ruinCol = q => (q.x === 7 ? .4 : q.x === 10 ? -.6 : 0) + ((q.x * 3 + q.y * 5) % 13 === 0 ? { m: 'w.fenmoss', dd: -.5 } : 0);
+function gloomMass(F, Pl, v) {
+  const cls = Math.floor(v / 2), w = v & 1, dark = Pl.massK === 'pillar', m = Pl.stone;
+  gloomOn(F, Pl, cls, w, [8.6, 14.4, 5.6, 1.6], [[8, 14.2, 5, 1.2]]);
+  if (cls !== 2) part(F, m, [RECT(3.2, 12.4, 12.8, 15.8)], { prof: 'bevel', bw: .9, grp: 'base', tex: () => (dark ? -.7 : 0) });
+  part(F, m, [RECT(4.8, -6, 11.2, cls === 2 ? 14.6 : 13)], { bw: 2.4, grp: 'shaft', tex: q => (typeof ruinCol(q) === 'object' ? ruinCol(q) : ruinCol(q) + (dark ? -.7 : 0) + (q.y > 10 ? -.6 : 0)) });
+  if (dark && w) part(F, 'w.waterlight', [C([6, -2], [6, 11], .4)], { prof: 'flat', grp: 'light', noShadow: true, noOutline: true, hi: 4, tex: () => -1.6 });
+}
+// the overhead part of a column, 16 x 26 drawn at (0, -16): its capital a tile up, the shaft down into its own tile
+function gloomMassTop(F, Pl, v) {
+  const dark = Pl.massK === 'pillar', m = Pl.stone, broken = !dark && (v & 1);
+  part(F, m, [RECT(4.8, broken ? 8 : 5, 11.2, 30)], { bw: 2.4, grp: 'shaft', tex: q => (typeof ruinCol(q) === 'object' ? ruinCol(q) : ruinCol(q) + (dark ? -.7 : 0)) });
+  if (broken) { part(F, m, [P([[4.8, 8.4], [6.4, 5.6], [8.2, 7.4], [10, 5], [11.2, 8.4]])], { prof: 'bevel', bw: .8, grp: 'broken' }); return; }
+  part(F, m, [RECT(3.4, 2.6, 12.6, 5.8)], { prof: 'bevel', bw: 1, grp: 'capital', tex: () => (dark ? -.6 : 0) });
+  part(F, m, [RECT(2.4, .6, 13.6, 3)], { prof: 'bevel', bw: .8, grp: 'abacus', tex: () => (dark ? -.6 : 0) });
+}
+/* ---- 'f' (2 frames) fireflies over the grass, marsh-lights over a black puddle, candles, the belfry's glowing air pockets ---- */
+function gloomGlow(F, Pl, v, f) {
+  const k = Pl.glowK;
+  if (k === 'candles') return ironGlow(F, Object.assign({}, Pl, { glowK: 'candle' }), v, f);
+  gloomGround(F, Pl, v & 1, null);
+  if (k === 'waterlight') { // air caught under the water, the green light in it breathing
+    const B = [[5, 6, 2.2], [10.6, 10.4, 1.6], [4.4, 12, 1.1]].slice(0, 2 + (v & 1));
+    part(F, Pl.water, B.map(([x, y, r]) => O([x, y], r + .9)), { prof: 'flat', grp: 'rim', noShadow: true, noOutline: true, hi: 3, tex: () => -.9 - wetOff(Pl.water) });
+    part(F, Pl.glow, B.map(([x, y, r], i) => O([x, y], r * ((i + f) % 2 ? 1 : .8))), { prof: 'flat', grp: 'light', noShadow: true, noOutline: true, hi: 5, tex: () => (f ? 0 : -.5) });
+    return;
+  }
+  if (k === 'marshlight') { // a pale light hanging low over a black puddle, its reflection in it
+    const x = 7 + v * 2, y = 5.4 + (f ? -.8 : 0), off = wetOff(Pl.puddle);
+    F.add({ mat: Pl.puddle, prof: 'flat', grp: 'pool', noShadow: true, lo: 1, hi: 3, shapes: [E([x, 12.4], 4.4, 2.2)], tex: q => (q.d < .8 ? -2.4 : -2) - off });
+    part(F, Pl.glow, [C([x - 1, 12.4], [x + 1, 12.4], .45)], { prof: 'flat', grp: 'shine', noShadow: true, noOutline: true, hi: 3, tex: () => (f ? -.6 : -1.1) });
+    part(F, Pl.glow, [O([x, y], f ? 1.5 : 1.2)], { prof: 'round', bw: 1, grp: 'light', noShadow: true, noOutline: true, hi: 5, tex: () => (f ? .6 : .1) });
+    return;
+  }
+  const L = (f ? [[4, 5], [11, 9], [7, 12.6]] : [[5, 3.6], [10, 10.6], [6, 11.4]]).slice(0, 2 + (v & 1));
+  part(F, 'verdant', L.map(([x, y]) => O([x + .5, y + .5], .55)), { prof: 'flat', grp: 'flies', noShadow: true, noOutline: true, hi: 5, tex: () => 1 });
+}
+/* ---- 'k' dark earth; the belfry's dark flagstones, wet ---- */
+function gloomDarkFloor(F, Pl, v) {
+  const D = decals();
+  for (const [x, y] of spots(2, 9400 + v * 5)) pebble(D, x, y, Pl.stone);
+  if (Pl.darkK === 'wetstone') for (const [x, y] of spots(2, 9410 + v, 3)) { D.set(x, y, Pl.puddle, -2 - wetOff(Pl.puddle)); D.set(x + 1, y, Pl.puddle, -2.4 - wetOff(Pl.puddle)); }
+  const wet = Pl.darkK === 'wetstone';
+  ground(F, Pl.darkFloor, SEEDS['dark-floor'] + (Pl.seed || 0), D, { lo: wet ? -2 : -1.6, hi: wet ? -1.2 : -.8, dith: .3, fn: wet ? (x, y) => ((x & 7) === 0 || ((y + ((x >> 3) & 1) * 4) & 7) === 0 ? -2.4 : undefined) : null });
+}
+/* ---- 'r' roots over the ground (willow, the banks' trees, black bog-oak); on the flats, the great chain lying across the mud:
+   0 north-south, 1 east-west, 2-5 the bends (N-E, E-S, S-W, W-N) ---- */
+function gloomRoots(F, Pl, v) {
+  if (Pl.rootK === 'chain') return gloomChain(F, Pl, v);
+  gloomGround(F, Pl, 0, null);
+  const m = Pl.rootK === 'bogoak' ? 'rotwood' : Pl.trunk, s = v & 1 ? -1 : 1, o = v % 3; // roots coming in from the north-west (or north-east), tapering, forking
+  const R = [[[8 - s * 10, -2], [8 - s * 2, 5 + o], [8 + s * 5, 9], [8 + s * 10, 11 + o]], [[8 - s * 10, 4], [8 - s * 3, 10], [8 + s * 1, 17]], [[8 - s * 2, 5 + o], [8 + s * 1, 1], [8 + s * 4, -2]]];
+  R.forEach((pts, k) => part(F, m, pts.slice(0, -1).map((a, i) => C(a, pts[i + 1], (k === 2 ? .8 : 1.5) - i * .35, (k === 2 ? .45 : 1.15) - i * .35)), { bw: 1, grp: 'r' + k, hi: 3, tex: q => ((q.x + q.y) % 3 === 0 ? -.8 : 0) }));
+}
+const chainLink = n => n === 'roots' || n === 'bridge' || n === 'stair' || n === 'water' || n === 'ford';
+function chainPick(v, nb) {
+  const [n, e, s, w] = nb.map(chainLink), ns = n || s, ew = e || w;
+  if (ns && !ew) return 0;
+  if (ew && !ns) return 1;
+  if (n && e) return 2;
+  if (e && s) return 3;
+  if (s && w) return 4;
+  if (w && n) return 5;
+  return ns ? 0 : 1;
+}
+function gloomChain(F, Pl, shape) {
+  const at = t => { // a point along the chain, t 0..1 across the tile (round a bend, an arc about the inside corner)
+    if (shape < 2) return shape === 0 ? [8, -1 + t * 18] : [-1 + t * 18, 8];
+    const c = BEND_AT[shape - 2], a = Math.atan2(8 - c[1], 8 - c[0]) - Math.PI / 4 + t * Math.PI / 2;
+    return [c[0] + Math.cos(a) * 8, c[1] + Math.sin(a) * 8];
+  };
+  gloomGround(F, Pl, 0, D => { for (let i = 0; i <= 32; i++) { const [x, y] = at(i / 32); D.set(x + .6, y + 1.4, 'w.mudtrack', -1.7); } }); // the trough it has pressed in the mud
+  const flat = [], edge = [];
+  for (let i = 0; i < 6; i++) { // the links alternate: one lying flat (a ring), the next on its edge (a bar)
+    const t = (i + .5) / 6, [x, y] = at(t), [x2, y2] = at(Math.min(1, t + .04)), a = Math.atan2(y2 - y, x2 - x), u = [Math.cos(a), Math.sin(a)];
+    if (i % 2) edge.push(C([x - u[0] * 2, y - u[1] * 2], [x + u[0] * 2, y + u[1] * 2], .85));
+    else flat.push(P([0, 1, 2, 3, 4, 5, 6, 7].map(j => { const b = j * Math.PI / 4, px = Math.cos(b) * 2.7, py = Math.sin(b) * 1.9; return [x + u[0] * px - u[1] * py, y + u[1] * px + u[0] * py]; })));
+  }
+  const rust = q => (hash(q.x, q.y, 9460) < .25 ? { m: 'rust', dd: -.8 } : 0);
+  part(F, 'iron', flat, { prof: 'round', bw: .8, grp: 'flat', hi: 3, cuts: flat.map(p => { const cx = p.pts.reduce((s2, q) => s2 + q[0], 0) / 8, cy = p.pts.reduce((s2, q) => s2 + q[1], 0) / 8; return E([cx, cy], 1.1, .8); }), tex: rust });
+  part(F, 'iron', edge, { prof: 'round', bw: .7, grp: 'edge', hi: 3, tex: rust });
+}
+/* ---- 'x' deep black water; a hole through the rotten planks (Bogmire) or the boardwalk's broken gap, the black water under it; the
+   dark under the belfry's floor ---- */
+function gloomVoid(F, Pl, v) {
+  const k = Pl.voidK;
+  if (k === 'dark') return paintVoid(F, Pl);
+  const w = Pl.water, off = wetOff(w);
+  F.add({ mat: w, prof: 'flat', grp: 'deep', noShadow: true, lo: 1, hi: 2, shapes: [FULL], tex: q => -3 - off + (hash(q.x, q.y, 9600 + v) < .03 ? .8 : 0) });
+  if (k === 'gap') part(F, Pl.gapMat || Pl.floor, [P([[-1, -1], [5, -1], [3.4, 2.6], [1.4, 1.2], [-1, 3]]), P([[11, 17], [17, 17], [17, 13], [14.4, 14.6], [12.6, 13.4]])], { prof: 'flat', grp: 'ends', hi: 3, tex: q => (q.y < 8 ? -.4 : -1.2) });
+}
+/* ---- '^' a cut earth bank or a peat bank, roots in it; the causeway's retaining wall ---- */
+function gloomCliff(F, Pl, v) {
+  if (Pl.cliffK === 'masonry') return sunWall(F, Object.assign({}, Pl, { wallK: 'ashlar', wall: Pl.cliff, cap: Pl.cliff }), v, true);
+  F.add({ mat: 'w.loam', prof: 'flat', grp: 'face', noShadow: true, lo: 1, hi: 3, shapes: [FULL], tex: q => { const n = pnoise(q.x / 4, q.y / 8, 4, 9700 + v, 2), band = ((q.y + Math.round(Math.sin((q.x + v * 5) / 3))) >> 2) & 1; return band ? { m: Pl.cliff, dd: -.6 + n * .8 } : -1.2 + n * 1 + bayer(q.x, q.y) * .3; } });
+  part(F, 'bark', [[3, -1, 2.4, 9], [9, -1, 10, 6], [13, -1, 13.6, 11]].map(([a, b, c, d]) => C([a, b], [c, d], .6, .35)), { bw: .5, grp: 'roots', hi: 3 });
+  part(F, Pl.stone, [E([6 + v * 3, 11], 1.8, 1.3)], { bw: 1, grp: 'stone', hi: 3 });
+}
+
+const GLOOM_SPEC = Object.assign({}, IRON_SPEC, {
+  grass: { n: 5, paint: gloomGround },
+  flowers: { n: 3, paint: gloomScatter },
+  'tall-grass': { n: 2, paint: gloomTall, over: { n: 2, w: 16, h: 16, dx: 0, dy: 0, paint: gloomTallTops } },
+  road: { n: 3, shapes: 7, pickV: ironRoadPick, paint: (F, Pl, v) => gloomRoad(F, Pl, v, null) },
+  flagstone: { n: 3, paint: (F, Pl, v) => gloomFlags(F, Pl, v, null) },
+  floor: { n: 3, paint: gloomFloor },
+  mud: { n: 2, paint: gloomBog },
+  ichor: { n: 2, anim: true, paint: gloomBubbles },
+  water: { n: 4, anim: true, paint: gloomWater },
+  ford: { n: 2, anim: true, paint: gloomFord },
+  tree: { n: 2, shapes: ON_SHAPES, pickV: onPick(2), paint: gloomTreeBase, over: { n: 3, w: 24, h: 26, dx: -4, dy: -16, paint: gloomTreeTop } },
+  bush: { n: 2, shapes: ON_SHAPES, pickV: onPick(2), paint: gloomBush },
+  rock: { n: 2, shapes: ON_SHAPES, pickV: onPick(2), paint: gloomRock },
+  wall: { n: 2, faces: true, paint: (F, Pl, v) => gloomWall(F, Pl, v >> 1, !(v & 1)) },
+  roof: { n: 1, paint: paintRoofBase, roof: true, roofPaint: gloomRoof },
+  palisade: { n: 2, shapes: 3 * ON_SHAPES, pickV: (v, nb) => standOn(nb) * 6 + fencePick(v, nb), paint: gloomFence },
+  'torch-wall': { n: 1, anim: true, shapes: ON_SHAPES, pickV: onPick(1), paint: gloomTorch },
+  door: { n: 1, paint: gloomDoor },
+  'first-root': { n: 2, shapes: ON_SHAPES, pickV: onPick(2), paint: gloomMass, over: { n: 2, w: 16, h: 26, dx: 0, dy: -16, paint: gloomMassTop } },
+  fungus: { n: 2, anim: true, paint: gloomGlow },
+  'dark-floor': { n: 3, paint: gloomDarkFloor },
+  roots: { n: 2, shapes: 3, pickV: chainPick, paint: gloomRoots },
+  void: { n: 1, paint: gloomVoid },
+  cliff: { n: 2, paint: gloomCliff },
+  ledge: { n: 2, paint: sunLedge },
+  bridge: SPEC.bridge,
+  stair: SPEC.stair,
+});
+// which tiles meet which in a Gloomfen place (cell() reads these instead of EDGED there): the water draws no bank toward a
+// plank way (a palette's `decks`, bridges, doors and stairs) or anything solid (a pile, a snag, a wall rising out of it, a
+// tree at its edge); the plank ways and duckboards draw their own edge ('deck') toward the water and the open ground
+function gloomEdged(Pl) {
+  const wet = id => famOf(id) === 'water' || (Pl.rockK === 'pile' && id === 'rock');
+  const deck = id => Pl.decks.includes(id) || id === 'bridge' || id === 'door' || id === 'stair' || (id === 'flowers' && Pl.scatK === 'pots');
+  const thing = id => !!(TILES[id] && TILES[id].solid) && !wet(id);
+  const onDeck = id => deck(id) || thing(id);
+  return Object.assign({}, IRON_EDGED, {
+    water: { same: id => wet(id) || deck(id) || thing(id) },
+    ford: { same: id => wet(id) || deck(id) || thing(id) },
+    mud: { same: id => id === 'mud' || id === 'ichor' || wet(id) || onDeck(id) },
+    ichor: { same: id => id === 'mud' || id === 'ichor' || wet(id) || onDeck(id) },
+    bridge: Pl.bridgeK === 'duck' ? { same: onDeck } : { same: id => id === 'bridge' || !(wet(id) || id === 'cliff') },
+    road: Pl.decks.includes('road') ? { same: onDeck } : EDGED.road,
+    floor: { same: onDeck },
+    flagstone: Pl.decks.includes('flagstone') ? { same: onDeck } : IRON_EDGED.flagstone,
+  });
+}
+// the edge families a Gloomfen palette bakes, over the usual ones (a lantern post or a brazier is not a wall: no rim)
+const gloomEdgeFams = Pl => Object.assign({ mud: 'patch', ichor: 'patch' }, Object.fromEntries(Pl.decks.map(id => [id, 'deck'])),
+  Pl.bridgeK === 'duck' ? { bridge: 'deck' } : {}, Pl.lampK === 'post' || Pl.lampK === 'brazier' ? { 'torch-wall': null } : {});
+
 /* ---------- rendering a cell ---------- */
 // Most tile parts are flat: their normal is straight up, so the Forge's per-pixel gradient (four extra
 // height samples) always comes out zero. rasterFlat() computes the same lit value for a flat normal
@@ -1791,7 +2651,9 @@ function* buildSteps(biome) {
   }
   const EDGE_FAMS = { water: 'water', ford: 'water', road: 'road', cliff: 'cliff', wall: 'wall', 'torch-wall': 'wall', 'root-wall': 'wall', bridge: 'bridge', ichor: 'ichor' };
   if (Pl.iron) Object.assign(EDGE_FAMS, ironEdgeFams(Pl));
-  const famFrames = { water: 1, road: 1, cliff: 1, wall: 1, bridge: 1, ichor: 1, drift: 1, patch: 1, carpet: 1, drop: 1, scree: 1 };
+  if (Pl.gloom) Object.assign(EDGE_FAMS, gloomEdgeFams(Pl));
+  for (const id in EDGE_FAMS) if (!EDGE_FAMS[id]) delete EDGE_FAMS[id];
+  const famFrames = { water: 1, road: 1, cliff: 1, wall: 1, bridge: 1, ichor: 1, drift: 1, patch: 1, carpet: 1, drop: 1, scree: 1, deck: 1 };
   for (const fam of new Set(Object.values(EDGE_FAMS))) {
     edges[fam] = []; corners[fam] = [];
     for (let m = 1; m < 16; m++) { edges[fam][m] = []; for (let f = 0; f < famFrames[fam]; f++) edges[fam][m][f] = add(`e|${fam}|${m}|${f}`, T, T, F => paintEdge(F, fam, m, Pl, f)); }
@@ -1860,7 +2722,7 @@ export function tileAtlas(biome = 'wilds') {
   for (;;) { const r = gen.next(); if (r.done) return r.value; }
 }
 function makeAtlas(key, B) {
-  const idOfCh = ch => tileOf(ch).id, edged = IRON_BIOMES.has(key) ? IRON_EDGED : EDGED;
+  const idOfCh = ch => tileOf(ch).id, edged = GLOOM_BIOMES.has(key) ? gloomEdged(palOf(key)) : IRON_BIOMES.has(key) ? IRON_EDGED : EDGED;
   const pick = (id, x, y) => { const s = specOf(key, id); const n = s ? s.n : 1; return Math.floor(hash(x, y, 97 + TILE_IDS.indexOf(id)) * n) % n; };
   const rect = key => B.at[key];
   const atlas = {
@@ -1905,7 +2767,7 @@ function makeAtlas(key, B) {
           v = v * 2 + ((walk(nb[1]) || walk(nb[3])) && !(walk(nb[0]) || walk(nb[2])) ? 1 : 0);
         }
       }
-      if (id === 'first-root' && s.shapes) { // grain follows the mass: a trunk runs north-south, a root east-west, a knot where it turns
+      if (id === 'first-root' && s.shapes && !s.pickV) { // grain follows the mass: a trunk runs north-south, a root east-west, a knot where it turns
         const Y = n => n === 'first-root', c = nb.filter(Y).length, ns = Y(nb[0]) || Y(nb[2]), ew = Y(nb[1]) || Y(nb[3]);
         v = v + 2 * (c >= 3 ? 2 : ns && !ew ? 2 : ew && !ns ? 1 : c === 2 ? 2 : 0);
       }

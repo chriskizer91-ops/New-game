@@ -568,3 +568,222 @@ test('Iron Stance (Ironwall, M5): its bearer starts every fight Guarding until i
   assert.equal(current(t), bearer);
   assert.ok(!guarding(t.units[bearer]), 'gone once its turn comes');
 });
+
+// ---- M6: the Gloomfen's Champions, Hodge and the holders (spec §3.2, §3.5, §4.2, §4.4; P4) ----------------------
+
+test('the Lantern Mother: the Lantern powers Lure and Lantern Nova, the Veil powers Mourning; her phases at 66% and 33%', async () => {
+  const { resolveMoveId, foeTable } = await import('../src/rules/ai.js');
+  const { dealDamage } = await import('../src/rules/combat.js');
+  const { FOES } = await import('../src/data/foes.js');
+  const { B } = await import('./helpers.mjs');
+  const s = structuredClone(battleWith([{ family: 'lantern-mother', level: 30 }], { seed: 14 }));
+  const m = s.units.f1;
+  assert.equal(m.die, 20);
+  assert.deepEqual(m.held.map(p => p.relic), ['lamplighters-lantern', 'mourning-veil']);
+  for (const id of ['lure', 'lantern-nova', 'mourning']) assert.equal(resolveMoveId(s, m, id), id);
+  let ev = await pry(s, 'f1', 'lamplighters-lantern');
+  assert.match(ev.find(e => e.t === 'text' && /clatters loose/.test(e.text)).text, /The Lamplighter's Lantern clatters loose!.*Lure.*Lantern Nova/);
+  assert.equal(resolveMoveId(s, m, 'lure'), 'lamp-pole');
+  assert.equal(resolveMoveId(s, m, 'lantern-nova'), 'lamp-pole');
+  assert.equal(resolveMoveId(s, m, 'mourning'), 'mourning', 'the Veil still mourns');
+  ev = await pry(s, 'f1', 'mourning-veil');
+  assert.match(ev.find(e => e.t === 'text' && /clatters loose/.test(e.text)).text, /The Mourning Veil clatters loose!.*Mourning/);
+  assert.equal(resolveMoveId(s, m, 'mourning'), 'lamp-pole');
+  for (const id of ['lamp-pole', 'lantern-flare', 'hush-now', 'lead-them-down', 'moths', 'snuff', 'drown-the-light']) assert.equal(resolveMoveId(s, m, id), id, `${id} needs no piece`);
+  assert.equal(m.die, 20, 'a Champion keeps its d20');
+  // Lamplight, the Children's Road, Lights Out
+  const s2 = structuredClone(battleWith([{ family: 'lantern-mother', level: 30 }], { seed: 14 }));
+  const x = s2.units.f1;
+  const b = B(s2, createRng(3));
+  const hitTo = (frac, round = Math.floor) => dealDamage(b, s2.units.warden, x, x.hp - round(x.maxHp * frac), { kind: 'slash' });
+  hitTo(0.67, Math.ceil);
+  assert.equal(x.phase, 1);
+  hitTo(0.66);
+  assert.deepEqual([x.phase, foeTable(x)], [2, FOES['lantern-mother'].phases[1].table]);
+  hitTo(0.33);
+  assert.deepEqual([x.phase, foeTable(x)], [3, FOES['lantern-mother'].phases[2].table]);
+  assert.deepEqual(b.ev.filter(e => e.t === 'phase').map(e => e.text), [FOES['lantern-mother'].phases[1].text, FOES['lantern-mother'].phases[2].text]);
+});
+
+test('the Lantern Mother leads a hero away (WIS save, "Led away") who comes back when she takes a hard hit; Hush Now hexes, Mourning frightens and rots, Moths calls two at most', async () => {
+  const { FOES } = await import('../src/data/foes.js');
+  const { statusOf, dealDamage, applyEffect } = await import('../src/rules/combat.js');
+  const { resolveMoveId } = await import('../src/rules/ai.js');
+  const { B } = await import('./helpers.mjs');
+  const moves = FOES['lantern-mother'].moves;
+  const s = sturdy(structuredClone(battleWith([{ family: 'lantern-mother', level: 30 }], { seed: 5 })));
+  for (const eff of moves['lead-them-down'].effects) await strike(s, 'f1', 'bryn', eff, 1, 1); // a natural 1 always fails
+  const held = statusOf(s.units.bryn, 'swallowed');
+  assert.ok(held, 'Bryn is led away');
+  assert.deepEqual([held.label, held.source, held.turns], ['Led away', 'f1', 2]);
+  const b = B(s, createRng(8));
+  dealDamage(b, s.units.warden, s.units.f1, Math.ceil(s.units.f1.maxHp * 0.15), { kind: 'slash' });
+  assert.ok(!statusOf(s.units.bryn, 'swallowed'), 'a hard hit makes her let go');
+  assert.ok(b.ev.some(e => e.t === 'status' && e.target === 'bryn' && e.status === 'swallowed' && e.op === 'release'));
+  const saved = sturdy(structuredClone(battleWith([{ family: 'lantern-mother', level: 30 }], { seed: 5 })));
+  for (const eff of moves['lead-them-down'].effects) await strike(saved, 'f1', 'bryn', eff, 20, 20);
+  assert.ok(!statusOf(saved.units.bryn, 'swallowed'), 'a made WIS save keeps you in the line');
+  // Hush Now: WIS or Hexed; Mourning: Frightened and Rotting, no save
+  for (const eff of moves['hush-now'].effects) await strike(s, 'f1', 'pip', eff, 1, 1);
+  assert.ok(statusOf(s.units.pip, 'hexed'), 'hushed: Hexed');
+  for (const eff of moves.mourning.effects) await strike(s, 'f1', 'warden', eff, 10, 3);
+  assert.ok(statusOf(s.units.warden, 'frightened') && statusOf(s.units.warden, 'rotting'), 'mourning: Frightened and Rotting');
+  // Moths: a lamp-moth out of the dark, two at most, four levels down and worth nothing
+  const c = B(s, createRng(4));
+  for (let i = 0; i < 3; i++) applyEffect(c, s.units.f1, s.units.f1, moves.moths.effects[0]);
+  const moths = Object.values(s.units).filter(u => u.summonedBy === 'f1');
+  assert.equal(moths.length, 2);
+  assert.ok(moths.every(u => u.family === 'lamp-moth' && u.level === s.units.f1.level - 4 && u.xp === 0 && u.noLoot));
+  assert.equal(resolveMoveId(s, s.units.f1, 'moths'), 'lamp-pole', 'no third');
+});
+
+test('the Blackwater Leviathan: the Harpoon powers Harpoon Rage (two Coils), the Pearl powers Pearl-Light; it sounds, then breaches; it swallows a hero whole', async () => {
+  const { resolveMoveId, foeTable } = await import('../src/rules/ai.js');
+  const { statusOf, dealDamage } = await import('../src/rules/combat.js');
+  const { FOES } = await import('../src/data/foes.js');
+  const { B } = await import('./helpers.mjs');
+  const s = structuredClone(battleWith([{ family: 'blackwater-leviathan', level: 30 }], { seed: 12 }));
+  const v = s.units.f1;
+  assert.deepEqual(v.held.map(p => p.relic), ['corvus-harpoon', 'deep-pearl']);
+  for (const id of ['harpoon-rage', 'pearl-light']) assert.equal(resolveMoveId(s, v, id), id);
+  let ev = await pry(s, 'f1', 'corvus-harpoon');
+  assert.match(ev.find(e => e.t === 'text' && /clatters loose/.test(e.text)).text, /Corvus's Harpoon clatters loose!.*Harpoon Rage/);
+  assert.equal(resolveMoveId(s, v, 'harpoon-rage'), 'coil');
+  assert.equal(resolveMoveId(s, v, 'pearl-light'), 'pearl-light', 'the Pearl still glows');
+  ev = await pry(s, 'f1', 'deep-pearl');
+  assert.match(ev.find(e => e.t === 'text' && /clatters loose/.test(e.text)).text, /The Deep-Pearl clatters loose!.*Pearl-Light/);
+  assert.equal(resolveMoveId(s, v, 'pearl-light'), FOES['blackwater-leviathan'].moves['pearl-light'].fallback);
+  for (const id of ['coil', 'tail-slap', 'sound', 'breach', 'swallow', 'undertow', 'flood']) assert.equal(resolveMoveId(s, v, id), id, `${id} needs no piece`);
+  // Sound: under the water where nothing can reach it, and its next intent is the Breach
+  let t = sturdy(structuredClone(battleWith([{ family: 'blackwater-leviathan', level: 30 }], { seed: 12 })));
+  t.units.f1.intent = { ...t.units.f1.intent, move: 'sound', name: 'Sound', target: 'f1', charging: false };
+  for (let i = 0; i < 40 && current(t) !== 'f1'; i++) t = act(t, autoCommand(t, current(t))).state;
+  t = foeTurn(t).state;
+  assert.ok(statusOf(t.units.f1, 'burrowed'), 'it sounds');
+  assert.deepEqual([t.units.f1.intent.move, t.units.f1.intent.charging], ['breach', true], 'then it breaches under someone');
+  assert.deepEqual(targets(t, { actor: current(t), targeting: 'enemy' }), [], 'nothing can reach it');
+  // Swallow: swallowed whole
+  const w = sturdy(structuredClone(battleWith([{ family: 'blackwater-leviathan', level: 30 }], { seed: 7 })));
+  const eff = FOES['blackwater-leviathan'].moves.swallow.effects.find(e => e.riders?.some(x => x.status === 'swallowed'));
+  await strike(w, 'f1', 'pip', eff, 19, 1);
+  assert.equal(statusOf(w.units.pip, 'swallowed')?.label, 'Swallowed whole');
+  // Harpoon Rage coils twice in one turn, on the same hero
+  const h = sturdy(structuredClone(battleWith([{ family: 'blackwater-leviathan', level: 30 }], { seed: 7 })));
+  const hb = B(h, createRng(5));
+  const { runEffects } = await import('../src/rules/combat.js');
+  runEffects(hb, h.units.f1, FOES['blackwater-leviathan'].moves['harpoon-rage'].effects, ['warden']);
+  assert.equal(hb.ev.filter(e => e.t === 'roll' && e.purpose === 'attack' && e.target === 'warden').length, 2);
+  // the Wake, the Deep, Blackwater
+  const p = structuredClone(battleWith([{ family: 'blackwater-leviathan', level: 30 }], { seed: 12 }));
+  const x = p.units.f1;
+  const pb = B(p, createRng(3));
+  dealDamage(pb, p.units.warden, x, x.hp - Math.floor(x.maxHp * 0.66), { kind: 'slash' });
+  assert.deepEqual([x.phase, foeTable(x)], [2, FOES['blackwater-leviathan'].phases[1].table]);
+  dealDamage(pb, p.units.warden, x, x.hp - Math.floor(x.maxHp * 0.33), { kind: 'slash' });
+  assert.deepEqual([x.phase, foeTable(x)], [3, FOES['blackwater-leviathan'].phases[2].table]);
+});
+
+test('Hodge opens with Toll Is Due at the strongest hero: a failed CHA save costs a whole turn, a made one nothing', async () => {
+  const { FOES } = await import('../src/data/foes.js');
+  const { applyEffect } = await import('../src/rules/combat.js');
+  const { strongest, unitsOf } = await import('../src/rules/ai.js');
+  const { scriptedRng, B } = await import('./helpers.mjs');
+  const toll = FOES.hodge.moves['toll-is-due'].effects[0];
+  for (const seed of [1, 2, 3, 4]) {
+    const s = battleWith([{ family: 'hodge', level: 12, relic: 'unfair-toll', gearTier: 3 }], { seed });
+    const top = strongest(unitsOf(s, 'hero'));
+    assert.equal(s.units.f1.intent.move, 'toll-is-due', `seed ${seed}: his first move`);
+    assert.equal(s.units.f1.intent.target, top.id, `seed ${seed}: at the strongest hero`);
+  }
+  // played out: the strongest hero rolls the CHA save against the toll's DC when his first turn comes
+  let s = sturdy(structuredClone(battleWith([{ family: 'hodge', level: 12, relic: 'unfair-toll', gearTier: 3 }], { seed: 9 })));
+  const top = s.units.f1.intent.target;
+  for (let i = 0; i < 40 && current(s) !== 'f1'; i++) s = act(s, autoCommand(s, current(s))).state;
+  const r = foeTurn(s);
+  const save = r.events.find(e => e.t === 'roll' && e.purpose === 'save' && e.ability === 'CHA');
+  assert.ok(save && save.actor === top && save.vs === toll.dc, 'a CHA save by the strongest hero');
+  assert.ok(r.events.some(e => e.t === 'move' && e.actor === 'f1' && e.name === 'Toll Is Due'));
+  assert.notEqual(r.state.units.f1.intent.move, 'toll-is-due', 'only once: then his table');
+  // a failed save puts the hero a whole turn back, with Hodge's words; a made one does nothing
+  const f = structuredClone(battleWith([{ family: 'hodge', level: 12, relic: 'unfair-toll' }], { seed: 3 }));
+  const hero = f.units.warden;
+  const before = hero.next;
+  const x = B(f, scriptedRng([2], 10));
+  applyEffect(x, f.units.f1, hero, toll);
+  assert.equal(hero.next, before + hero.delay);
+  assert.ok(x.ev.some(e => e.t === 'text' && e.text === toll.text.replace('{target}', hero.name)));
+  const y = B(f, scriptedRng([20], 10));
+  applyEffect(y, f.units.f1, hero, toll);
+  assert.equal(hero.next, before + hero.delay, 'a natural 20 pays nothing');
+});
+
+test('Hodge shoves a hero off the bridge ("In the river"), his Cane Staggers, his Clipped Coin hits twice while he holds the toll, and at 0 HP he sits down on his stool', async () => {
+  const { FOES } = await import('../src/data/foes.js');
+  const { statusOf, dealDamage, runEffects } = await import('../src/rules/combat.js');
+  const { resolveMoveId } = await import('../src/rules/ai.js');
+  const { B } = await import('./helpers.mjs');
+  const moves = FOES.hodge.moves;
+  const s = sturdy(structuredClone(battleWith([{ family: 'hodge', level: 12, relic: 'unfair-toll', gearTier: 3 }], { seed: 6 })));
+  const shove = moves['bridge-troll'].effects.find(e => e.riders?.some(x => x.status === 'swallowed'));
+  await strike(s, 'f1', 'pip', shove, 19, 1);
+  const river = statusOf(s.units.pip, 'swallowed');
+  assert.deepEqual([river?.label, river?.source], ['In the river', 'f1'], 'Pip is in the river');
+  const cane = await strike(s, 'f1', 'bryn', moves['old-mans-cane'].effects[0], 19, 1); // a hit
+  assert.ok(cane.some(e => e.t === 'damage' && e.target === 'bryn' && e.kind === 'crush'), 'the Cane: crushing');
+  assert.ok(statusOf(s.units.bryn, 'staggered'), 'the Cane Staggers');
+  // the Clipped Coin: two blows while he holds the toll; pried loose, it is only the Cane, and his d12 drops to a d8
+  const coin = B(s, createRng(4));
+  runEffects(coin, s.units.f1, moves['clipped-coin'].effects, ['warden']);
+  assert.equal(coin.ev.filter(e => e.t === 'roll' && e.purpose === 'attack').length, 2, 'heads: he hits twice');
+  assert.equal(resolveMoveId(s, s.units.f1, 'clipped-coin'), 'clipped-coin');
+  assert.equal(s.units.f1.die, 12);
+  await pry(s, 'f1', 'unfair-toll');
+  assert.equal(resolveMoveId(s, s.units.f1, 'clipped-coin'), 'old-mans-cane');
+  assert.equal(s.units.f1.die, 8);
+  // at 0 HP he says so: the ko event carries his words
+  const k = B(s, createRng(5));
+  dealDamage(k, s.units.warden, s.units.f1, s.units.f1.hp, { kind: 'slash' });
+  const ko = k.ev.find(e => e.t === 'ko' && e.target === 'f1');
+  assert.equal(ko?.text, FOES.hodge.koText);
+  // nobody else speaks on falling
+  const g = structuredClone(battleWith([{ family: 'mire-leech', level: 3 }], { seed: 2 }));
+  const rr = B(g, createRng(6));
+  dealDamage(rr, g.units.warden, g.units.f1, g.units.f1.hp, { kind: 'slash' });
+  assert.equal(rr.ev.find(e => e.t === 'ko' && e.target === 'f1').text, undefined);
+});
+
+test('Gloomfen holders: each Art needs its relic; pried loose, the Art falls back and the d12 drops to a d8', async () => {
+  const { resolveMoveId } = await import('../src/rules/ai.js');
+  const { FOES } = await import('../src/data/foes.js');
+  const HOLDERS = [
+    ['blackwater-gar', 'old-jaws', 'gar-tooth'], ['bog-hag', 'grue', 'hag-stone'], ['willow-wight', 'grandfather', 'weeping-bow'],
+    ['drowned', 'cantor', 'cantors-staff'], ['tallyman', 'salvage-master', 'salvagers-helm'], ['tallyman', 'bargemaster', 'barge-gauntlets'],
+  ];
+  for (const [family, variant, relic] of HOLDERS) {
+    const s = structuredClone(battleWith([{ family, variant, relic, level: 30, gearTier: 3 }], { seed: 6 }));
+    const f = s.units.f1;
+    const moves = FOES[family].variants[variant].moves;
+    const arts = Object.entries(moves).filter(([, m]) => m.requires === relic).map(([id]) => id);
+    assert.ok(arts.length, `${variant} has an Art`);
+    assert.equal(f.die, 12, `${variant} rolls a d12`);
+    for (const id of arts) assert.equal(resolveMoveId(s, f, id), id);
+    await pry(s, 'f1', relic);
+    assert.equal(f.die, 8, `${variant}: the disarmed die`);
+    for (const id of arts) assert.equal(resolveMoveId(s, f, id), moves[id].fallback, `${variant}: ${id} falls back`);
+  }
+});
+
+test('the fen\'s statuses in the foes\' hands: a bog-hag\'s Hex (WIS) and Rot (CON), and the drowned\'s black water, which Rots', async () => {
+  const { FOES } = await import('../src/data/foes.js');
+  const { statusOf } = await import('../src/rules/combat.js');
+  const CASES = [['bog-hag', 'hex', 'hexed'], ['bog-hag', 'rot', 'rotting'], ['drowned', 'black-water', 'rotting'], ['drowned', 'drag-down', 'rooted']];
+  for (const [family, move, st] of CASES) {
+    const fail = sturdy(structuredClone(battleWith([{ family, level: 30, gearTier: 3 }], { seed: 4 })));
+    for (const eff of FOES[family].moves[move].effects) await strike(fail, 'f1', 'pip', eff, eff.type === 'attack' ? 19 : 1, 1);
+    assert.ok(statusOf(fail.units.pip, st), `${family}/${move}: ${st}`);
+    if (!FOES[family].moves[move].effects.some(e => e.save)) continue;
+    const save = sturdy(structuredClone(battleWith([{ family, level: 30, gearTier: 3 }], { seed: 4 }))); // a natural 20 always saves
+    for (const eff of FOES[family].moves[move].effects) await strike(save, 'f1', 'pip', eff, 20, 20);
+    assert.ok(!statusOf(save.units.pip, st), `${family}/${move}: saved`);
+  }
+});

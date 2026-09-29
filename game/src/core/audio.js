@@ -9,7 +9,7 @@
 //   opts: { tier } for rarity-scaled sounds (reveal, equip, beam: 0 worn .. 7 primal)
 //         { voice } 0-7 (or { pitch } in Hz) for blip, the dialogue typewriter: one voice per speaker
 // music tracks: title road battle boss victory hearth, and for the world's maps (MAPS[id].music):
-//               wilds town dungeon, (M4) desert and (M5) peaks (null stops music; victory does not loop).
+//               wilds town dungeon, (M4) desert, (M5) peaks and (M6) fen (null stops music; victory does not loop).
 //               A change of track crossfades (the old one fades out over 0.9 s while the new one fades in).
 //
 // API: unlock() setEnabled(on) setMusicEnabled(on) enabled musicEnabled sfx(name, opts)
@@ -27,7 +27,8 @@ const freqOf = name => {
 // Each part is a string of step tokens: a note ("D5"), a chord ("D4+F#4"), "-" to hold the
 // previous note one more step, "." for a rest. Drum parts use k (kick) s (snare) h (hat)
 // c (ember crackle), for the hand drum (M4) d (doum, the low stroke) t (tek) a (ka, the soft
-// tek), and (M5) w, a gust of wind over the peaks. Parts loop independently over their own length.
+// tek), (M5) w, a gust of wind over the peaks, and (M6) the fen's frogs: f (a croak) and p (a peeper's
+// whistle). Parts loop independently over their own length.
 // Long parts are spelled with hold(note, steps) and rest(steps).
 const hold = (tok, n) => [tok, ...Array(Math.max(0, n - 1)).fill('-')].join(' ');
 const rest = n => Array(n).fill('.').join(' ');
@@ -55,7 +56,6 @@ const TRACKS = {
       { v: 'drum', g: .5, s: ['w', rest(10), 'w', rest(14), 'w', rest(8), 'w', rest(2)].join(' ') },
     ],
   },
-  // the Sunscorch (M4): a slow reed melody in the Hijaz mode on D (D Eb F# G A Bb C) over a held
   // the Sunscorch (M4): a slow reed melody in the Hijaz mode on D (D Eb F# G A Bb C) over a held
   // drone, a walking low string, an oud-like pluck and a maqsum on the hand drum
   desert: {
@@ -127,13 +127,22 @@ const TRACKS = {
       { v: 'drum', g: .4, s: 'k . h . . . h . k . h . . . h h' },
     ],
   },
-  // the Gloomfen (M6). STUB from the M6 scaffold: the Wilds' tune, slowed, until P7 writes the fen's own
-  // (a slow, low reed drone with a lullaby turn in it, and frogs; M6 spec §5)
+  // the Gloomfen (M6): a slow lullaby in A minor on a low reed, over a reed drone that breathes every two bars
+  // and leans to F and G under the tune's second half; a drowned bell rings once, far off under the water;
+  // and the frogs, a croak and the peepers on odd lengths of their own, so no two passes of the fen agree.
+  // 16 bars of 3/4 (six steps a bar): four bars of the fen alone, the tune with its two turns, four again.
   fen: {
-    bpm: 80, sub: 2, loop: true, gain: .8,
+    bpm: 58, sub: 2, loop: true, gain: .85,
     parts: [
-      { v: 'flute', g: .06, s: 'B4 - E5 - G5 - F#5 E5 G5 - - - E5 - C5 - D5 - G5 - B5 - A5 G5 F#5 - - - D5 - . . E5 - G5 - B5 - C6 B5 A5 - G5 - E5 - G5 - A5 - C6 - B5 - A5 G5 F#5 - - - D#5 - . .' },
-      { v: 'tri', g: .15, s: 'E2 . B2 . E2 . B2 . C2 . G2 . C2 . G2 . G2 . D3 . G2 . D3 . D2 . A2 . D2 . A2 . E2 . B2 . E2 . B2 . C2 . G2 . C2 . G2 . A2 . E3 . A2 . E3 . B1 . F#2 . B1 . D#2 .' },
+      { v: 'reed', g: .05, s: [rest(24),
+        'E4 - - D4 C4 -', 'D4 - - C4 B3 -', 'C4 - B3 A3 G#3 A3', 'B3 - - - - -',
+        'E4 - - D4 C4 -', 'D4 - - E4 F4 -', 'E4 D4 C4 B3 C4 -', 'A3 - - - - -',
+        rest(24)].join(' ') },
+      { v: 'reed', g: .022, s: [hold('A2+E3', 12), hold('A2+E3', 12), hold('A2+E3', 12), hold('A2+E3', 12), hold('F2+C3', 12), hold('G2+D3', 6), hold('A2+E3', 12), hold('A2+E3', 18)].join(' ') },
+      { v: 'tri', g: .09, s: [hold('A1', 24), hold('A1', 24), hold('F1', 12), hold('G1', 6), hold('A1', 30)].join(' ') },
+      { v: 'bell', g: .018, s: [rest(84), 'A4 . . . E4 . . . . . . .'].join(' ') },
+      { v: 'drum', g: .5, s: ['f', rest(6), 'f', rest(12), 'f', rest(8)].join(' ') },
+      { v: 'drum', g: .4, s: [rest(5), 'p . p', rest(9), 'p', rest(5)].join(' ') },
     ],
   },
   // a town: music-box bells over a bouncing bass (C major)
@@ -355,11 +364,49 @@ export function createAudio() {
     src.connect(f); f.connect(a); a.connect(out);
     src.start(t, Math.random() * 1.2); src.stop(t + dur + .05);
   }
+  // a reed (M6 fen): a hollow square through a low, soft band (a clarinet's odd harmonics; down low, a drone
+  // pipe's buzz), a slow breath in with a little air on the reed as the note speaks, and a gentle vibrato
+  // that comes in late on the long notes
+  function reed(f, t, dur, g, out) {
+    const o = AC.createOscillator(), lp = AC.createBiquadFilter(), a = AC.createGain();
+    o.type = 'square';
+    o.frequency.setValueAtTime(f, t);
+    lp.type = 'lowpass'; lp.Q.value = 1.2;
+    lp.frequency.setValueAtTime(Math.min(2200, f * 2.2), t); lp.frequency.linearRampToValueAtTime(Math.min(2600, f * 3.4), t + .25);
+    if (dur > 1.2) {
+      const l = AC.createOscillator(), lg = AC.createGain();
+      l.frequency.value = 4.2; lg.gain.setValueAtTime(0, t); lg.gain.linearRampToValueAtTime(f * .006, t + 1);
+      l.connect(lg); lg.connect(o.frequency); l.start(t); l.stop(t + dur + .05);
+    }
+    env(a, t, g, .14, dur, .8);
+    o.connect(lp); lp.connect(a); a.connect(out);
+    o.start(t); o.stop(t + dur + .05);
+    noise(t, .12, { type: 'bandpass', f: Math.min(4000, f * 5), q: 3, g: g * .5, a: .03 }, out);
+  }
+  // a frog (M6 fen): a low croak, a buzz chopped into quick pulses, twice ("rib-bit"), lower the second time
+  function frog(t, g, out) {
+    const f0 = rnd(140, 210), rate = rnd(28, 40);
+    for (const [dt, len, k] of [[0, .1, 1], [.16, .13, .88]]) {
+      const s = t + dt;
+      const o = AC.createOscillator(), lp = AC.createBiquadFilter(), chop = AC.createGain(), lfo = AC.createOscillator(), depth = AC.createGain(), a = AC.createGain();
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(f0 * k * 1.08, s); o.frequency.linearRampToValueAtTime(f0 * k, s + len);
+      lp.type = 'lowpass'; lp.frequency.value = f0 * 5; lp.Q.value = 3;
+      chop.gain.value = .5; lfo.type = 'square'; lfo.frequency.value = rate; depth.gain.value = .5;
+      lfo.connect(depth); depth.connect(chop.gain);
+      env(a, s, g, .008, len, .9);
+      o.connect(lp); lp.connect(chop); chop.connect(a); a.connect(out);
+      o.start(s); lfo.start(s); o.stop(s + len + .05); lfo.stop(s + len + .05);
+    }
+  }
+  // a peeper (M6 fen): a small frog's high whistle, rising
+  function peep(t, g, out) { const f = rnd(2500, 3100); tone(f, t, .06, { to: f * 1.18, g: g * .05, type: 'sine', a: .004 }, out); }
   function musicVoice(p, freqs, t, dur, out) {
     const g = p.g;
     for (const f of freqs) {
       switch (p.v) {
         case 'horn': horn(f, t, dur * .97, g, out); break;
+        case 'reed': reed(f, t, dur * .96, g, out); break;
         case 'bell': bell(f, t, Math.max(.6, dur * 1.4), g, 3200, out); break;
         case 'tri': tone(f, t, dur * .95, { type: 'triangle', g, a: .01, sus: .8 }, out); break;
         case 'pulse': tone(f, t, dur * .92, { type: 'pulse', g, a: .006, sus: .7, lp: p.lp || 2400 }, out); break;
@@ -381,6 +428,9 @@ export function createAudio() {
     else if (kind === 'a') noise(t, .05, { type: 'bandpass', f: 3400, q: 2.2, g: g * .13, a: .001 }, out);
     // the wind over the peaks (M5): a gust that swells and falls away over three seconds
     else if (kind === 'w') wind(t, 3.2, g * .16, out);
+    // the fen (M6): a frog's croak, and a peeper's whistle
+    else if (kind === 'f') frog(t, g * .3, out);
+    else if (kind === 'p') peep(t, g, out);
   }
 
   function startTrack(name) {

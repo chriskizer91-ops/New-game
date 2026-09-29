@@ -553,3 +553,28 @@
   .bt-hold-t { font-size: 10px; }
   .bt-foe-state { font-size: 10px; }
 }
+
+/* ---------- M6 (spec §4.2, §5): hexed, rotting, the fen's holds, a dive into water ---------- */
+/* the tag over a hero's figure: one word a line (KO; Charmed; Hexed; Rotting) */
+.bt-hero-tag { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; pointer-events: none; }
+.bt-tag-w { font-weight: 400; line-height: 1.05; text-shadow: 0 1px 0 var(--ink), 1px 0 0 var(--ink); }
+.bt-tag-w[data-k="charmed"] { color: #ff9ad2; }
+.bt-tag-w[data-k="hexed"] { color: #d4b0ff; }
+.bt-tag-w[data-k="rotting"] { color: #bcd46a; }
+.bt-hero.hexed .bt-hero-info { box-shadow: 0 0 0 1px var(--ink), inset 0 0 0 1px #8a5ad0; }
+.bt-hero.rotting .bt-hero-info { box-shadow: 0 0 0 1px var(--ink), inset 0 0 0 1px #7a8a2e; }
+.bt-hero.hexed.rotting .bt-hero-info { box-shadow: 0 0 0 1px var(--ink), inset 0 0 0 1px #8a5ad0, inset 0 0 0 2px #7a8a2e; }
+.bt-float.heal.rot b { color: #c8d870; }
+.bt-float.heal.rot small { color: #bcd46a; }
+/* "Led away" (a lamp over black water), "In the river" (the Blackwater), "Swallowed whole" (deep teal) */
+.bt-hero[data-hold^="Led"] .bt-hero-hold { background: rgba(10, 22, 18, .88); box-shadow: 0 0 0 1px var(--ink), inset 0 0 0 1px #c8a050; }
+.bt-hero[data-hold^="Led"] .bt-hold-k { color: #ffd98a; }
+.bt-hero[data-hold^="Led"] .bt-hold-t { color: #e8c070; }
+.bt-hero[data-hold^="In the river"] .bt-hero-hold { background: rgba(8, 18, 26, .88); box-shadow: 0 0 0 1px var(--ink), inset 0 0 0 1px #6a8ea4; }
+.bt-hero[data-hold^="In the river"] .bt-hold-k { color: #c8e4f4; }
+.bt-hero[data-hold^="Swallowed whole"] .bt-hero-hold { background: rgba(6, 22, 20, .9); box-shadow: 0 0 0 1px var(--ink), inset 0 0 0 1px #4f8a78; }
+.bt-hero[data-hold^="Swallowed whole"] .bt-hold-k { color: #b8f0dc; }
+.bt-hero[data-hold^="Swallowed whole"] .bt-hold-t { color: #8ad8c0; }
+/* a foe gone down into the water (the Blackwater Leviathan) */
+.bt-foe.sunk.water .bt-plate { background: rgba(6, 18, 20, .9); box-shadow: 0 0 0 1px var(--ink), inset 0 0 0 1px #3e7a70; }
+.bt-foe.sunk.water .bt-foe-state { color: #a8e0d4; }

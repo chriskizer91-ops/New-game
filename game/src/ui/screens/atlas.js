@@ -3,7 +3,8 @@
 //
 //   - views: "Wilds" (the Verdant quarter fills the frame), "Sunscorch" (the Sunscorch Wastes, once
 //     the region is open: the Keep's south-east gate after Act I), "Ironspire" (M5: the Ironspire
-//     Peaks, once the Keep's east postern opens with the second council) and "Realm" (the whole map).
+//     Peaks, once the Keep's east postern opens with the second council), "Gloomfen" (M6: the Gloomfen
+//     Marsh, once the fen stair below Mossfall opens with the third council) and "Realm" (the whole map).
 //     Travel and phones open on the view of the region you stand in; a view picked this session sticks
 //   - 44 px markers at viewBox coordinates (1200x800, the image's own aspect), pushed apart where
 //     they would overlap, with a leader line back to the true spot:
@@ -14,8 +15,8 @@
 //       Thornhollow), else the fire itself
 //       "you are here", projected onto the current map's lore line (it slides as you walk)
 //       padlocks on the sealed regions (Sandspire until Act I is done, Ironhold until the second
-//       council, Bogmire); a sealed region's note says what opens its road (SEALED_NOTE, else the hint
-//       of its entry gate)
+//       council, Bogmire until the third); a sealed region's note says what opens its road (SEALED_NOTE,
+//       else the hint of its entry gate)
 //   - map annotations: routes you have walked (only the open regions' routes), sighted holders (an
 //     eye), claimed relics (a star), Longwatch marks (a spyglass: the chests, locks and holders on the
 //     maps of every lookout in data/dialogue.js LOOKOUTS whose flag is set), and dimmed place names in
@@ -28,7 +29,7 @@
 // Test hooks: markers are .atlas-mk[data-key] (hearths also [data-hearth]); list rows are
 // .atlas-hf[data-hearth] (grouped in .atlas-grp[data-region]); view buttons are
 // .atlas-view[data-view]; the frame carries data-view and data-art ('image' | 'parchment').
-// Owner: WP8; M4 P7b (the Sunscorch); M5 P7 (the Ironspire).
+// Owner: WP8; M4 P7b (the Sunscorch); M5 P7 (the Ironspire); M6 P7 (the Gloomfen).
 import ATLAS_IMAGE, { ATLAS_PLACEHOLDER } from '../assets/atlas-image.js';
 import { HEARTHS, HEARTH_IDS, REGIONS, LORE, BRAND_TOTAL } from '../../data/world.js';
 import { MAPS, MAP_IDS } from '../../data/maps/index.js';
@@ -56,12 +57,15 @@ const ICON = {
   sunscorch: '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="6.2" r="3"/><path d="M8 .6v1.6M3 2.6l1.1 1.1M13 2.6l-1.1 1.1M1.4 7h1.6M13 7h1.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M0.5 15c2-3.4 4.6-4.6 7.5-4.6s5.5 1.2 7.5 4.6z"/></svg>',
   // two peaks, snow on the taller one (M5)
   ironspire: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M0.5 14.5L6 4.2l2.6 4.6 1.9-3 5 8.7z"/><path d="M6 4.2l1.9 3.4-1.1-.6-.8 1.2-.9-1.1-1 .5z" fill="#f5ecd0"/></svg>',
+  // three bulrushes over black water (M6)
+  gloomfen: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.3 12.6V6.8h1.1v5.8zM7.6 12.6V4.6h1.1v8zM10.9 12.6V6h1.1v6.6z"/><rect x="3.9" y="3" width="1.9" height="4.4" rx=".95"/><rect x="7.2" y="1" width="1.9" height="4.4" rx=".95"/><rect x="10.5" y="2.6" width="1.9" height="4" rx=".95"/><path d="M.8 14.6c1.2-.9 2.4-.9 3.6 0s2.4.9 3.6 0 2.4-.9 3.6 0 2.4.9 3.6 0" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>',
 };
-const REGION_ICON = { verdant: ICON.wilds, sunscorch: ICON.sunscorch, ironspire: ICON.ironspire };
+const REGION_ICON = { verdant: ICON.wilds, sunscorch: ICON.sunscorch, ironspire: ICON.ironspire, gloomfen: ICON.gloomfen };
 // What opens a sealed region's road, for its padlock's note (else its entry gate's own hint)
 const SEALED_NOTE = {
   sunscorch: 'The Keep\'s south-east gate opens once both Brands of the Wilds are yours.',
   ironspire: 'The Keep\'s east postern opens once the Council has sat a second time.',
+  gloomfen: 'The fen stair below Mossfall opens once the Council has sat a third time.',
 };
 const TREE = 'M0 -6 L4 0 H1.5 L4.5 4 H0.9 V7 H-0.9 V4 H-4.5 L-1.5 0 H-4 Z';
 const EYE = 'M-6 0 C-3 -4.5 3 -4.5 6 0 C3 4.5 -3 4.5 -6 0 Z';
@@ -73,8 +77,8 @@ const holderName = s => {
   const base = s.name || F?.variants?.[s.variant]?.name || F?.name || s.family;
   return s.title ? `${base} ${s.title}` : base;
 };
-const VIEW_NAME = { wilds: 'The Verdant Wilds', sunscorch: 'The Sunscorch Wastes', ironspire: 'The Ironspire Peaks', realm: 'The Realm of Aethermoor' };
-const VIEW_BUTTON = { wilds: 'Wilds', sunscorch: 'Sunscorch', ironspire: 'Ironspire', realm: 'Realm' };
+const VIEW_NAME = { wilds: 'The Verdant Wilds', sunscorch: 'The Sunscorch Wastes', ironspire: 'The Ironspire Peaks', gloomfen: 'The Gloomfen Marsh', realm: 'The Realm of Aethermoor' };
+const VIEW_BUTTON = { wilds: 'Wilds', sunscorch: 'Sunscorch', ironspire: 'Ironspire', gloomfen: 'Gloomfen', realm: 'Realm' };
 const VIEW_REGION = Object.fromEntries(Object.entries(REGION_VIEW).map(([r, v]) => [v, r]));
 const shortRegion = r => String(REGIONS[r]?.name || r).replace(/^The /, '');
 // The keys that light a cold Hearthfire, from the lock itself ("Kindle, Lamplight or Attunement 3").
@@ -441,7 +445,7 @@ export function mount(root, ctx, params = {}) {
       const r = sealed.find(y => `sealed:${y.id}` === n.key);
       head('Sealed', r.name, r.place);
       for (const t of r.texts.slice(0, 2)) info.append(el('p', { class: 'ai-text', text: `“${t}”` }));
-      // the Sunscorch waits on Act I, the Ironspire on the second council (M5); Gloomfen on a later chapter
+      // the Sunscorch waits on Act I, the Ironspire on the second council (M5), the Gloomfen on the third (M6)
       const note = !r.later ? r.hint || 'Its road opens further on in the story.'
         : story['act1-complete'] ? 'The way opens in a later chapter.' : 'No road goes there yet.';
       info.append(el('p', { class: 'ai-note', text: note }));

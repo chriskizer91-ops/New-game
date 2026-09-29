@@ -43,8 +43,8 @@
 //   16 the Deep Shaft is dark without a light key (a Stillwater party), and lit by the Sunstone Lantern
 //   17 performance on the Glass Flats (the biggest map), measured like 11
 //   18 the Codex binder: Page I (24 pockets, 1 of 22 claimed, the reward greyed), the Page II tab (14),
-//      the sealed Page III; after a forced full claim of Page I's relics its reward shows, in gold, and
-//      an Awakened pocket glows
+//      Page III (M5) and Page IV (M6: open, its 14 pockets and reward, its road note; no page sealed); after a
+//      forced full claim of Page I's relics its reward shows, in gold, and an Awakened pocket glows
 //   19 the Journal's Grudges tab (one active, one settled; a saved name stays text), its empty state;
 //      a real Grudge pack seeded as a hunter shows a red "!" (emote '!hunt'); loot and Codex-page
 //      toasts; the second council's title card, then the end-of-Act-II card naming Ironspire and Gloomfen
@@ -54,7 +54,8 @@
 // M5 (docs/M5-SPEC.md §8, P7; counts come from the data):
 //   21 the Keep's east postern: sealed until the second council (its text and what opens it; the Atlas
 //      keeps a padlock on the Ironspire), then open onto the Rockslide Pass (its own track); the Atlas's
-//      Ironspire view with every Ironspire Hearthfire and the Gloomfen's padlock alone
+//      Ironspire view with every Ironspire Hearthfire, and the Gloomfen's padlock kept (M6: its road, the fen
+//      stair, opens only with the third council, though its maps exist)
 //   22 Peak's Veil: rest at the Cloister Fire (kindled); Mother Wynn opens the Highfold; with the Abbess at
 //      rest the bell rings and the Veilbell is yours (its card)
 //   23 a chasm (A reads Cross): ✗ without a key, crossed with the Windstep Boots; an ice wall (A reads Melt)
@@ -65,10 +66,33 @@
 //   26 performance on the Frost Road, measured like 11 (the M5 gate: p95 frame JS 16 ms, 40 drawImage), and the same
 //      gate on a painted map (the Old Bridge, drawn at twice the canvas density)
 //   27 the Stormwatch board in the Journal (Captain Ysolde's bounties); the third council's title card and end
-//      card, "The Ironspire is yours", the Blackwater line, naming the Gloomfen Marsh (360 and 1280 wide)
+//      card, "The Ironspire is yours", the Blackwater line, then (M6) the Gloomfen Marsh's road open: the fen stair
+//      below Mossfall (360 and 1280 wide)
+// M6 (docs/M6-SPEC.md §8, P7; counts come from the data):
+//   28 Mossfall's fen stair: sealed until the third council (its text and what opens it; the Atlas keeps the Gloomfen's
+//      padlock), then open onto the Murkway with the Gloomfen card (the player's painting under "Act II · The Gloomfen
+//      Marsh", once a save) and the fen track; the Atlas's Gloomfen view with every Gloomfen Hearthfire
+//   29 a bog step costs every hero HP without a key (the prompt says what), and nothing with the Bogstriders
+//   30 Willowmurk: rest at the Willow Hearth (kindled); Elder Moss (met-moss); the Journal's Gloomfen quests, and Mayor
+//      Gretch's Bogmire board (its bounties from the data, first in the Gloomfen)
+//   31 Hodge's bar: shut across the road; today's price on his choice, paid (a toast of what it cost), and the bar
+//      lifts; a party that cannot pay sees the price shut; his game: its three checks, once a day
+//   32 Tamsin's duel on Rotbridge: her card ("Losing is a yield", the Bogstriders worn); a forced win, then her fall
+//   33 the Lanternfen's fog: the sight closes in to the fog radius without a key, the mist thins with the Lamplighter's
+//      Lantern; the Keys tab's fog
+//   34 the Lantern Mother's pre-fight card: the Champion, the lantern held and the veil worn, the Brand of Lanterns
+//   35 the long boardwalk's east end: sealed until the Brand of Lanterns, then open onto the Misthollow Ruins
+//   36 the Drowned Belfry is dark without a light key, and lit by the Deep-Pearl
+//   37 the causeway: under water until the Brand of the Deep, then walked from Bogmire home through the Keep's
+//      south-west gate, and out again
+//   38 the fourth council: its title card, its scene and the end-of-Act-II card (all eight Brands, the Hollow Council
+//      named, Act III named, nothing opened; 360 and 1280 wide)
+//   39 performance on the Lanternfen (in its thick fog) and the long boardwalk, measured like 26 (p95 frame JS 16 ms,
+//      40 drawImage)
 // Screenshots use the real fonts when tools/e2e-flow.mjs has cached them (<tmp>/aethermoor-font-cache).
 // Playwright is not a project dependency: it comes from the global npm root.
-// Owner: WP7; M4 P7b (12-19); M5 P7 (21-27, and 18/19's Page III and Act II checks for M5).
+// Owner: WP7; M4 P7b (12-19); M5 P7 (21-27, and 18/19's Page III and Act II checks for M5); M6 P7 (28-39, and
+// 18/21/27 moved to M6's truth: Page IV open, the Gloomfen's padlock kept until the third council, the fen stair open).
 import { execSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -83,6 +107,8 @@ import { LOCKS } from '../src/data/locks.js';
 import { RELICS } from '../src/data/relics.js';
 import { PAGES } from '../src/data/codex.js';
 import { BOUNTIES } from '../src/data/quests.js';
+import { TUNING } from '../src/data/tuning.js';
+import { regionOpen } from '../src/ui/lib/atlas-geo.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = Object.fromEntries(process.argv.slice(2).map(a => { const [k, v] = a.replace(/^--/, '').split('='); return [k, v ?? true]; }));
@@ -94,8 +120,9 @@ const only = args.scenario ? new Set(String(args.scenario).split(',').map(Number
 const want = n => !only || only.has(n);
 
 // M4.5: where the road meets a gate: a tile next to it that the road's start reaches while it is shut
-// (with its guard standing), and the way to face it. Terrain and fixed things are walls.
-function approachOf(mapId, gateId) {
+// (with its guard standing), and the way to face it. Terrain and fixed things are walls. M6: `pastGates`, the
+// road's other gates stand open (Tamsin's gate is past Hodge's bar).
+function approachOf(mapId, gateId, { pastGates = false } = {}) {
   const map = MAPS[mapId];
   const road = (map.roads || []).find(r => r.gates.includes(gateId));
   const areaOf = e => e.area || [e.at[0], e.at[1], e.at[0], e.at[1]];
@@ -104,7 +131,7 @@ function approachOf(mapId, gateId) {
   const wall = new Uint8Array(map.w * map.h);
   const put = a => { for (let y = a[1]; y <= a[3]; y++) for (let x = a[0]; x <= a[2]; x++) wall[y * map.w + x] = 1; };
   for (let y = 0; y < map.h; y++) for (let x = 0; x < map.w; x++) if (tileOf(map.rows[y][x]).solid) wall[y * map.w + x] = 1;
-  for (const e of map.entities) if (!['trigger', 'light', 'encounter'].includes(e.kind) && !(e.kind === 'prop' && !e.solid)) put(areaOf(e));
+  for (const e of map.entities) if (!['trigger', 'light', 'encounter'].includes(e.kind) && !(e.kind === 'prop' && !e.solid) && !(pastGates && e.kind === 'gate' && e.id !== gateId)) put(areaOf(e));
   if (guard) put(areaOf(guard));
   const [fx, fy] = map.anchors[road.from];
   const seen = new Uint8Array(map.w * map.h), q = [[fx, fy]];
@@ -1138,11 +1165,23 @@ async function run(V) {
       check(true, `${P} 18: an unsighted Page III pocket opens its silhouette card`);
       await page.keyboard.press('Escape');
       await page.waitForSelector('.ov', { state: 'detached', timeout: 3000 });
+      // M6: Page IV is open too (its pockets from the data, its progress and reward), and until the third council
+      // says what opens its road: the fen stair. No page is sealed any more.
+      const IV = PAGES.find(p => p.id === 'gloomfen'), nIV = Object.values(RELICS).filter(r => r.codex >= IV.from && r.codex <= IV.to).length;
       await page.click('.cx-tab[data-page="gloomfen"]');
       await page.waitForTimeout(200);
       c = await cx();
-      check(c.sealed && c.pockets === 0 && /Sealed/i.test(c.sealedText), `${P} 18: Page IV is sealed, with a padlock and its region's road ("${c.sealedText.replace(/\s+/g, ' ').slice(0, 60)}…")`);
+      const road4 = await W(() => document.querySelector('.cx-road')?.textContent || '');
+      check(!c.sealed && nIV === IV.to - IV.from + 1 && c.pockets === nIV && new RegExp(`0 of ${nIV} claimed`).test(c.prog) && c.earned === '0' && c.reward.includes(IV.reward.name) && /Gloomfen Marsh/.test(c.name), `${P} 18: Page IV is open: ${nIV} pockets, "${c.prog}", ${c.reward.replace(/\s+/g, ' ').slice(0, 48)}…`);
+      check(/fen stair/.test(road4) && /third/.test(road4), `${P} 18: before the third council Page IV says what opens its road ("${road4}")`);
+      const sealedTabs = await W(() => document.querySelectorAll('.cx-tab.is-sealed').length);
+      check(sealedTabs === 0, `${P} 18: no page tab is sealed (${sealedTabs})`);
       await shot('codex-IV');
+      await page.click('.pocket[data-relic="lamplighters-lantern"]');
+      await page.waitForSelector('.ov .card', { timeout: 5000 });
+      check(true, `${P} 18: an unsighted Page IV pocket opens its silhouette card`);
+      await page.keyboard.press('Escape');
+      await page.waitForSelector('.ov', { state: 'detached', timeout: 3000 });
       // a forced full claim of every relic Page I needs: its reward shows, in gold; an Awakened pocket glows
       await page.click('.cx-tab[data-page="verdant"]');
       const need = await page.$$eval('.pocket[data-relic]:not(.is-spare)', ps => ps.map(p => p.dataset.relic));
@@ -1408,7 +1447,11 @@ async function run(V) {
       check(views.includes('ironspire'), `${P} 21: the Atlas has an Ironspire view once the postern is open (${views.join(', ')})`);
       await page.click('.atlas-view[data-view="ironspire"]');
       await page.waitForTimeout(400);
-      const stillSealed = Object.values(REGIONS).filter(r => !r.open).map(r => `sealed:${r.id}`);
+      // M6: every region's maps exist now, so the padlocks still to come are those of the regions whose roads are
+      // still shut in this game (the Gloomfen's: the fen stair opens with the third council)
+      const gNow = await W(() => window.__app.game);
+      const stillSealed = Object.keys(REGIONS).filter(r => !regionOpen(gNow, r)).map(r => `sealed:${r}`);
+      check(stillSealed.includes('sealed:gloomfen') && !gNow.progress.flags.story['council-3-done'], `${P} 21: after the second council the Gloomfen's road is still shut (${stillSealed.join(', ')})`);
       const mk = await W(() => ({
         fires: document.querySelectorAll('.atlas-mk.mk-hearth').length, sealed: [...document.querySelectorAll('.atlas-mk.mk-sealed')].map(e => e.dataset.key),
         small: [...document.querySelectorAll('.atlas-mk')].filter(e => e.getBoundingClientRect().width < 44).length, view: document.querySelector('.atlas-frame').dataset.view,
@@ -1778,10 +1821,16 @@ async function run(V) {
       await page.waitForTimeout(300);
       const card = (await page.innerText('.ov-story')).replace(/\s+/g, ' ');
       const next = Object.values(REGIONS).filter(r => r.act >= 2 && !['sunscorch', 'ironspire'].includes(r.id)).map(r => r.name);
-      check(/The Ironspire is yours/i.test(card) && /To be continued/i.test(card) && next.every(n => card.includes(n)) && /opens in the next chapter/.test(card), `${P} 27: the third council ends on "The Ironspire is yours", naming ${next.join(', ')} ("${card.slice(0, 160)}…")`);
+      // M6: the council itself opens the fen stair below Mossfall, so the card says the Gloomfen's road stands open
+      // (its chip lit) instead of naming it for the next chapter
+      const stair = MAPS.mossfall.exits.find(x => x.id === 'mf-fen-stair');
+      check(/The Ironspire is yours/i.test(card) && /To be continued/i.test(card) && next.every(n => card.includes(n)) && /fen stair below Mossfall stands open/.test(card) && !/opens in the next chapter/.test(card), `${P} 27: the third council ends on "The Ironspire is yours", with ${next.join(', ')}'s road open ("${card.slice(0, 200)}…")`);
+      check(stair?.gate?.flag === 'council-3-done', `${P} 27: the fen stair's gate is the council's flag (${JSON.stringify(stair?.gate)})`);
+      const chips = await W(() => [...document.querySelectorAll('.ov-story .tbc-rg')].map(e => `${e.textContent}:${e.classList.contains('is-open')}`));
+      check(chips.some(c => c.startsWith(REGIONS.gloomfen.name) && c.endsWith(':true')), `${P} 27: the Gloomfen's chip is lit, open (${chips.join(', ')})`);
       check(card.includes(`6/${BRAND_TOTAL}`), `${P} 27: the card counts six Brands of ${BRAND_TOTAL}`);
       const bw = card.indexOf('The Blackwater still holds the causeway.');
-      check(bw >= 0 && bw < card.lastIndexOf('opens in the next chapter'), `${P} 27: "The Blackwater still holds the causeway." comes just before the next chapter's line`);
+      check(bw >= 0 && bw < card.indexOf('The fen stair below Mossfall stands open'), `${P} 27: "The Blackwater still holds the causeway." comes just before the fen stair's line`);
       const fit = await W(() => { const c = document.querySelector('.ov-story .story-card'); const r = c.getBoundingClientRect(); const go = document.querySelector('.ov-story .story-go').getBoundingClientRect(); return { left: Math.round(r.left), right: Math.round(r.right), w: innerWidth, goH: Math.round(go.height), goW: Math.round(go.width) }; });
       check(fit.left >= 0 && fit.right <= fit.w && fit.goH >= 44, `${P} 27: the card fits the screen, its button 44 px (${JSON.stringify(fit)})`);
       await noScroll('27 ironspire card');
@@ -1790,6 +1839,691 @@ async function run(V) {
       await page.waitForTimeout(300);
       check(await W(() => !!window.__world.game().progress.flags.story['council-3-done']), `${P} 27: the third council is done (council-3-done)`);
     } catch (e) { check(false, `${P} 27: ${e.message.split('\n')[0]}`); }
+  }
+
+  // ================= M6 (P7): the Gloomfen Marsh ======================================================
+  // the third council sat (the fen stair open), with every earlier chapter's flags and the six Brands before it (their
+  // letters read), at the Waking the Gloomfen is met at
+  const BRANDS6 = ['brand-of-briars', 'brand-of-the-heartroot', 'brand-of-glass', 'brand-of-ash', 'brand-of-iron', 'brand-of-frost'];
+  const council3 = `(g) => { Object.assign(g.progress.flags.story, { 'act1-complete': true, 'council-done': true, 'sunscorch-complete': true, 'council-2-done': true, 'ironspire-complete': true, 'council-3-done': true }); g.progress.brands = ${JSON.stringify(BRANDS6)}; for (const b of g.progress.brands) g.progress.flags.story['letter:' + b] = true; g.progress.waking = 6; return g; }`;
+  // a Brand held (its letter read), and a relic owned (claimed in the Codex)
+  const brand = id => `(g) => { if (!g.progress.brands.includes('${id}')) g.progress.brands.push('${id}'); g.progress.flags.story['letter:${id}'] = true; return g; }`;
+  const give = (relic, from = 'the e2e') => `(g, T) => { g.inventory.push(T.relicItem('${relic}', '${from}')); g.codex['${relic}'] = { sighted: true, claimed: true, awakened: false }; return g; }`;
+  const gloomFires = Object.keys(HEARTHS).filter(id => MAPS[HEARTHS[id].map]?.region === 'gloomfen');
+  // the first entity on a Gloomfen map that pred picks: { map, e }
+  const gloomEntity = pred => {
+    for (const m of Object.values(MAPS)) { if (m.region !== 'gloomfen') continue; const e = m.entities.find(pred); if (e) return { map: m.id, e }; }
+    return null;
+  };
+  // a free tile beside an area (an exit, a soft lock), outside it, next to a walkable tile of it, and the way to face
+  // into it: { x, y, face, into: [x, y] }. Terrain and fixed things are walls; gates stand open, fights are where
+  // they stand, soft locks are ground.
+  const besideArea = (mapId, [x0, y0, x1, y1]) => {
+    const map = MAPS[mapId];
+    const fixed = new Set();
+    for (const q of map.entities) {
+      if (['trigger', 'light', 'encounter', 'gate'].includes(q.kind) || (q.kind === 'prop' && !q.solid) || (q.kind === 'lock' && LOCKS[q.lock]?.soft)) continue;
+      const [a, b, c, d] = q.area || [q.at[0], q.at[1], q.at[0], q.at[1]];
+      for (let y = b; y <= d; y++) for (let x = a; x <= c; x++) fixed.add(`${x},${y}`);
+    }
+    const free = (x, y) => x >= 0 && y >= 0 && x < map.w && y < map.h && !tileOf(map.rows[y][x]).solid && !fixed.has(`${x},${y}`);
+    const inside = (x, y) => x >= x0 && x <= x1 && y >= y0 && y <= y1;
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) {
+        if (!free(x, y)) continue;
+        for (const [dx, dy, face] of [[0, -1, 's'], [0, 1, 'n'], [-1, 0, 'e'], [1, 0, 'w']]) {
+          const nx = x + dx, ny = y + dy;
+          if (!inside(nx, ny) && free(nx, ny)) return { x: nx, y: ny, face, into: [x, y] };
+        }
+      }
+    }
+    return null;
+  };
+  const areaOfE = e => e.area || [e.at[0], e.at[1], e.at[0], e.at[1]];
+  const BACK = { n: 's', s: 'n', e: 'w', w: 'e' };
+  // walk through an exit from beside it; resolves once the next map has faded in (or after a sealed message)
+  const throughExit = async (mapId, exitId) => {
+    const X = MAPS[mapId].exits.find(x => x.id === exitId);
+    const at = X && besideArea(mapId, X.area);
+    if (!at) throw new Error(`no tile beside ${exitId} on ${mapId}`);
+    await teleport(mapId, at.x, at.y, at.face);
+    await closeOverlays();
+    await W(() => window.__world.roam([]));
+    await W(d => window.__world.press(d), at.face);
+    return { X, at };
+  };
+  const arrived = to => page.waitForFunction(m => window.__world && window.__world.state().map === m && !window.__world.state().transition, to, { timeout: 8000 });
+  // play a dialogue's lines until its choices show (or it ends)
+  const toChoices = async () => { for (let i = 0; i < 30 && (await page.$('.ov-dialogue')) && !(await page.$('.dlg-choice')); i++) { await page.click('.dlg-next').catch(() => {}); await page.waitForTimeout(140); } };
+
+  // ================= 28. Mossfall's fen stair, the Gloomfen card, the fen track; the Gloomfen on the Atlas =========
+  if (want(28)) {
+    console.log(' -- 28 the fen stair');
+    try {
+      const X = MAPS.mossfall.exits.find(x => x.id === 'mf-fen-stair');
+      await setup({ patch: combine(noIntro, council2) });
+      const { at } = await throughExit('mossfall', 'mf-fen-stair');
+      await page.waitForSelector('.ov-dialogue .dlg-text', { timeout: 3000 });
+      await page.waitForTimeout(700);
+      const msg = (await page.innerText('.ov-dialogue')).replace(/\s+/g, ' ');
+      check(msg.includes(X.sealed.text.slice(0, 24)) && msg.includes(X.sealed.hint.slice(0, 24)), `${P} 28: before the third council the fen stair is sealed and says what opens it ("${msg.slice(0, 130)}…")`);
+      await shot('fen-stair-sealed');
+      await playDialogue();
+      check((await state()).map === 'mossfall', `${P} 28: the party stays in Mossfall`);
+      // the Atlas keeps the Gloomfen's padlock (its maps exist; its road does not open yet), and says what opens it
+      await W(() => window.__app.go('atlas', { mode: 'view', from: 'world', view: 'realm' }));
+      await page.waitForSelector('.atlas-mk');
+      await page.waitForTimeout(300);
+      const a0 = await W(() => ({ views: [...document.querySelectorAll('.atlas-view')].map(b => b.dataset.view), lock: !!document.querySelector('.atlas-mk[data-key="sealed:gloomfen"]') }));
+      check(!a0.views.includes('gloomfen') && a0.lock, `${P} 28: the Atlas keeps the Gloomfen sealed (views ${a0.views.join(', ')}; padlock ${a0.lock})`);
+      if (a0.lock) {
+        await page.click('.atlas-mk[data-key="sealed:gloomfen"]');
+        await page.waitForTimeout(150);
+        const note = (await page.innerText('.atlas-info')).replace(/\s+/g, ' ');
+        check(/fen stair/i.test(note) && /third/.test(note), `${P} 28: the Gloomfen's padlock says what opens its road ("${note.slice(0, 160)}")`);
+      }
+      await toWorld();
+      // the third council sat: the stair opens onto the Murkway, and the Gloomfen card shows the player's painting
+      await regame(council3);
+      await teleport('mossfall', at.x, at.y, at.face);
+      await W(() => window.__world.roam([]));
+      await W(d => window.__world.press(d), at.face);
+      await page.waitForSelector('.ov-story.region', { timeout: 8000 });
+      await page.waitForFunction(() => { const i = document.querySelector('.ov-story.region .region-still'); return !i || (i.complete && i.naturalWidth > 0); }, null, { timeout: 5000 }).catch(() => {});
+      await page.waitForTimeout(300);
+      const rc = await W(() => {
+        const o = document.querySelector('.ov-story.region'), img = o.querySelector('.region-still');
+        const c = o.querySelector('.story-card').getBoundingClientRect(), go = o.querySelector('.story-go').getBoundingClientRect(), v = o.querySelector('.region-view').getBoundingClientRect();
+        return { text: o.textContent.replace(/\s+/g, ' '), img: img ? img.naturalWidth : 0, drawn: !!o.querySelector('.region-drawn'), goH: Math.round(go.height), left: Math.round(c.left), right: Math.round(c.right), vw: Math.round(v.width), vh: Math.round(v.height), w: innerWidth, map: window.__world.state().map };
+      });
+      check(/Act II/.test(rc.text) && rc.text.includes(REGIONS.gloomfen.name) && rc.text.indexOf('Act II') < rc.text.indexOf(REGIONS.gloomfen.name), `${P} 28: the Gloomfen card reads "Act II · ${REGIONS.gloomfen.name}" over the painting ("${rc.text.slice(0, 90)}…")`);
+      check(rc.img > 0 && !rc.drawn && Math.abs(rc.vw / rc.vh - 1.5) < 0.03, `${P} 28: the card shows the player's regional painting (${rc.img} px wide, framed ${rc.vw}x${rc.vh})`);
+      check(rc.left >= 0 && rc.right <= rc.w && rc.goH >= 44, `${P} 28: the card fits the screen, its button 44 px (${JSON.stringify({ left: rc.left, right: rc.right, goH: rc.goH })})`);
+      check(rc.map === X.to, `${P} 28: the card plays on the way into ${MAPS[X.to].name} (${rc.map})`);
+      await noScroll('28 gloomfen card');
+      await shot('gloomfen-card');
+      await page.click('.ov-story .story-go');
+      await page.waitForTimeout(300);
+      await closeOverlays();
+      const s1 = await state();
+      const an = MAPS[X.to].anchors[X.anchor];
+      check(s1.map === X.to && Math.abs(s1.x - an[0]) + Math.abs(s1.y - an[1]) <= 1, `${P} 28: after the third council the fen stair opens onto ${MAPS[X.to].name} (${s1.map} ${s1.x},${s1.y})`);
+      const track = await W(() => window.__app.audio.track);
+      check(track === 'fen' && MAPS[X.to].music === 'fen', `${P} 28: ${MAPS[X.to].name} plays the fen track (${track})`);
+      check(await W(() => !!window.__world.game().progress.flags.seen?.['card:gloomfen']), `${P} 28: the card is kept once a save (seen card:gloomfen)`);
+      await shot('murkway');
+      // once a save: back up the stair and down again, and no card
+      const up = MAPS[X.to].exits.find(x => x.to === 'mossfall');
+      if (up) {
+        await throughExit(X.to, up.id);
+        await arrived('mossfall');
+        await closeOverlays();
+        await throughExit('mossfall', 'mf-fen-stair');
+        await arrived(X.to);
+        await page.waitForTimeout(700);
+        check(!(await page.$('.ov-story.region')), `${P} 28: going down the stair again shows no card`);
+        await closeOverlays();
+      } else block(`${P} 28: no way back up to Mossfall from ${MAPS[X.to].name} yet (P2)`);
+      // the Atlas: the Gloomfen's padlock is off, and its view has every Gloomfen Hearthfire
+      await W(() => window.__app.go('atlas', { mode: 'view', from: 'world' }));
+      await page.waitForSelector('.atlas-mk');
+      const views = await page.$$eval('.atlas-view', bs => bs.map(b => b.dataset.view));
+      check(views.includes('gloomfen'), `${P} 28: the Atlas has a Gloomfen view once the fen stair is open (${views.join(', ')})`);
+      if (views.includes('gloomfen')) {
+        await page.click('.atlas-view[data-view="gloomfen"]');
+        await page.waitForTimeout(400);
+        const mk = await W(() => ({
+          fires: document.querySelectorAll('.atlas-mk.mk-hearth').length, sealed: [...document.querySelectorAll('.atlas-mk.mk-sealed')].map(e => e.dataset.key),
+          small: [...document.querySelectorAll('.atlas-mk')].filter(e => e.getBoundingClientRect().width < 44).length, view: document.querySelector('.atlas-frame').dataset.view,
+          labels: [...document.querySelectorAll('.atlas-frame.labels .mk-lbl:not(.crowded)')].map(e => e.textContent), title: document.querySelector('.topbar h1')?.textContent || '',
+          here: !!document.querySelector('.atlas-mk.mk-here'),
+        }));
+        check(mk.view === 'gloomfen' && mk.title === REGIONS.gloomfen.name && mk.fires === gloomFires.length && mk.small === 0 && mk.here, `${P} 28: the Gloomfen view shows its ${gloomFires.length} Hearthfires and where you are, all 44 px (${JSON.stringify({ view: mk.view, title: mk.title, fires: mk.fires, small: mk.small, here: mk.here })})`);
+        check(!mk.sealed.length, `${P} 28: no padlock is left (${mk.sealed.join(', ') || 'none'})`);
+        if (!phone) {
+          const places = Object.values(LORE).filter(p => p.region === 'gloomfen' && p.map).map(p => p.name);
+          check(mk.labels.some(l => places.some(n => l.startsWith(n))), `${P} 28: the laptop's markers name the Gloomfen's places (${mk.labels.join(' · ')})`);
+        }
+        const bar = await W(() => { const b = document.querySelector('.atlas-views'); const r = b.getBoundingClientRect(); return { right: Math.round(r.right), w: innerWidth, min: Math.round(Math.min(...[...b.children].map(c => c.getBoundingClientRect().height))), clipped: [...b.children].filter(c => c.scrollWidth > c.clientWidth + 1).length }; });
+        check(bar.right <= bar.w && bar.min >= 44 && !bar.clipped, `${P} 28: the ${views.length} view buttons fit the screen, 44 px tall (${JSON.stringify(bar)})`);
+        await shot('atlas-gloomfen');
+        await noScroll('28 atlas');
+      }
+      await toWorld();
+    } catch (e) { check(false, `${P} 28: ${e.message.split('\n')[0]}`); }
+  }
+
+  // ================= 29. a bog step burns without a key; the Bogstriders cross it =========================
+  if (want(29)) {
+    console.log(' -- 29 a bog step');
+    try {
+      const B = gloomEntity(e => e.kind === 'lock' && e.lock === 'bog');
+      if (!B) block(`${P} 29: no bog on a Gloomfen map yet (P2)`);
+      else {
+        const spot = besideArea(B.map, areaOfE(B.e));
+        if (!spot) throw new Error(`no way into the bog ${B.e.id} on ${B.map}`);
+        await setup({ patch: combine(noIntro, council3, roadsWon(B.map)) });
+        await teleport(B.map, spot.x, spot.y, spot.face);
+        await closeOverlays();
+        await W(() => window.__world.roam([]));
+        const hp = () => W(() => { const g = window.__world.game(); return g.party.active.map(id => g.party.roster[id].hp); });
+        const h0 = await hp();
+        await W(d => window.__world.press(d), spot.face);
+        await page.waitForTimeout(500);
+        const s1 = await state(), h1 = await hp();
+        check(s1.x === spot.into[0] && s1.y === spot.into[1], `${P} 29: the party steps into the bog on ${MAPS[B.map].name} (${s1.x},${s1.y})`);
+        check(h1.every((v, i) => v < h0[i] || h0[i] <= 1), `${P} 29: without a key the bog costs everyone HP (${h0.join('/')} -> ${h1.join('/')})`);
+        check(/bog/i.test(s1.prompt) && new RegExp(`${Math.round(LOCKS.bog.soft.hpPct * 100)}%`).test(s1.prompt), `${P} 29: the prompt says what it cost ("${s1.prompt}")`);
+        await shot('bog-burn');
+        // with the Bogstriders (the bog's key: Bogstride) a step in it costs nothing
+        await regame(give('bogstriders', 'Tamsin'));
+        await W(() => window.__world.roam([]));
+        await W(d => window.__world.press(d), BACK[spot.face]);
+        await page.waitForTimeout(400);
+        const h2 = await hp();
+        await W(d => window.__world.press(d), spot.face);
+        await page.waitForTimeout(400);
+        const s3 = await state(), h3 = await hp();
+        check(s3.x === spot.into[0] && s3.y === spot.into[1] && h3.every((v, i) => v === h2[i]), `${P} 29: with the Bogstriders the bog costs nothing (${h2.join('/')} -> ${h3.join('/')})`);
+      }
+    } catch (e) { check(false, `${P} 29: ${e.message.split('\n')[0]}`); }
+  }
+
+  // ================= 30. Willowmurk: the Willow Hearth, Elder Moss =========================================
+  if (want(30)) {
+    console.log(' -- 30 Willowmurk');
+    try {
+      await setup({ patch: combine(noIntro, council3) });
+      const hf = await W(() => window.__worldTools.hearth('willow-hearth'));
+      await teleport(hf.map, hf.x, hf.y, hf.face);
+      await closeOverlays();
+      await W(() => window.__world.roam([]));
+      await pressA();
+      await page.waitForSelector('.ov-hearth', { timeout: 3000 });
+      check((await page.innerText('.ov-hearth')).includes(HEARTHS['willow-hearth'].name), `${P} 30: ${HEARTHS['willow-hearth'].name}'s menu opens`);
+      await shot('willow-hearth');
+      await page.click('.ov-hearth [data-primary]');
+      await page.waitForTimeout(500);
+      await closeOverlays();
+      const k = await W(() => { const g = window.__world.game(); return { kindled: !!g.progress.flags.kindled['willow-hearth'], last: g.progress.lastHearthfire }; });
+      check(k.kindled && k.last === 'willow-hearth', `${P} 30: resting kindles the Willow Hearth (${JSON.stringify(k)})`);
+      const moss = MAPS.willowmurk.entities.find(e => e.kind === 'npc' && e.npc === 'moss');
+      if (!moss) block(`${P} 30: Elder Moss is not in Willowmurk yet (P2)`);
+      else {
+        let who = '';
+        for (let i = 0; i < 3 && !/Moss/i.test(who); i++) {
+          await page.waitForTimeout(300);
+          await closeOverlays();
+          await standBy('willowmurk', moss.id, ['s', 'w', 'e', 'n']);
+          await W(() => window.__world.roam([]));
+          await pressA();
+          await page.waitForSelector('.ov-dialogue .dlg-name', { timeout: 3000 });
+          await page.waitForTimeout(150);
+          who = await page.innerText('.ov-dialogue .dlg-name');
+          if (!/Moss/i.test(who)) await playDialogue();
+        }
+        check(/Moss/i.test(who), `${P} 30: A talks to Elder Moss (${who})`);
+        await shot('elder-moss');
+        await playDialogue();
+        check(await W(() => !!window.__world.game().progress.flags.story['met-moss']), `${P} 30: meeting Elder Moss is marked (met-moss)`);
+      }
+      // the Journal: the Gloomfen's main quest and the leads it has given; Mayor Gretch's Bogmire board (not read yet)
+      await W(() => window.__app.go('journal', { tab: 'quests', from: 'world' }));
+      await page.waitForSelector('.jr-quest', { timeout: 3000 });
+      const quests = await W(() => [...document.querySelectorAll('.jr-quest')].map(q => q.dataset.id));
+      const leads = ['gloomfen-waking', ...(moss ? ['failing-wards'] : [])];
+      check(leads.every(id => quests.includes(id)), `${P} 30: the Journal has ${leads.join(' and ')} (${quests.join(', ')})`);
+      await shot('journal-gloomfen');
+      await W(() => window.__app.go('journal', { tab: 'bounties', from: 'world' }));
+      await page.waitForSelector('.jr-board', { timeout: 3000 });
+      const mine = Object.values(BOUNTIES).filter(b => b.giver === 'gretch');
+      const board = await W(() => { const b = document.querySelector('.jr-board[data-giver="gretch"]'); return b ? { lede: b.querySelector('.jr-lede').textContent, rows: [...b.querySelectorAll('.jr-bounty')].map(r => r.dataset.id), text: b.innerText, first: document.querySelector('.jr-board').dataset.giver } : null; });
+      check(board && mine.length === 4 && board.rows.length === mine.length && mine.every(b => board.rows.includes(b.id) && board.text.includes(b.name)) && /Bogmire/.test(board.lede), `${P} 30: the Bogmire board lists Mayor Gretch's ${mine.length} bounties by name (${board ? board.rows.join(', ') : 'none'})`);
+      check(board?.first === 'gretch', `${P} 30: in the Gloomfen, the Bogmire board comes first (${board?.first})`);
+      await shot('bogmire-board');
+      await noScroll('30 bounties');
+      await toWorld();
+    } catch (e) { check(false, `${P} 30: ${e.message.split('\n')[0]}`); }
+  }
+
+  // ================= 31. Hodge's bar: the price of the day, paid; a party that cannot pay; the game ==============
+  if (want(31)) {
+    console.log(' -- 31 Hodge\'s toll-bar');
+    try {
+      const RB = MAPS.rotbridge;
+      const bar = RB.entities.find(e => e.id === 'rb-toll-bar');
+      const hodge = RB.entities.find(e => e.kind === 'npc' && e.npc === 'hodge');
+      if (!bar || !hodge || !(RB.roads || []).some(r => r.gates.includes('rb-toll-bar'))) block(`${P} 31: Rotbridge's toll-bar and Hodge are not placed yet (P2)`);
+      else {
+        const rich = `(g) => { g.gold = 2000; g.materials = { ...g.materials, silver: 9 }; g.bag = { ...g.bag, 'hearth-tonic': 9 }; return g; }`;
+        const talkHodge = async () => {
+          await standBy('rotbridge', hodge.id, ['s', 'w', 'e', 'n']);
+          await W(() => window.__world.roam([]));
+          await pressA();
+          await page.waitForSelector('.ov-dialogue', { timeout: 3000 });
+          await toChoices();
+        };
+        const choice = sel => W(s => { const b = [...document.querySelectorAll('.dlg-choice')].find(x => x.querySelector(s)); return b ? { text: b.innerText.replace(/\s+/g, ' '), chip: b.querySelector(s).textContent, disabled: b.disabled, aria: b.getAttribute('aria-label') || '', pick: b.dataset.pick } : null; }, sel);
+        await setup({ patch: combine(noIntro, council3, rich) });
+        const ap = approachOf('rotbridge', 'rb-toll-bar');
+        if (!ap) throw new Error('no way up to the toll-bar from the road');
+        await teleport('rotbridge', ap.x, ap.y, ap.face);
+        await closeOverlays();
+        await W(() => window.__world.roam([]));
+        const e0 = await W(() => window.__world.entity('rotbridge', 'rb-toll-bar'));
+        check(e0 && e0.state === 'closed' && e0.solid, `${P} 31: Hodge's bar is down across the road (${JSON.stringify(e0)})`);
+        await shot('toll-bar-shut');
+        // today's price is on its choice, and a party with the means can pay it
+        await talkHodge();
+        const pay = await choice('.dlg-price');
+        check(pay && pay.chip && !pay.disabled, `${P} 31: Hodge's toll shows today's price on its choice ("${pay?.text}")`);
+        await shot('hodge-price');
+        const purse = () => W(() => { const g = window.__world.game(); return { gold: g.gold, silver: g.materials.silver || 0, tonic: g.bag['hearth-tonic'] || 0, paid: !!g.progress.flags.story['toll-paid'] }; });
+        const g0 = await purse();
+        if (pay) await page.click(`.dlg-choice[data-pick="${pay.pick}"]`);
+        await page.waitForTimeout(150);
+        await playDialogue();
+        await page.waitForTimeout(150);
+        const t = await toastNow();
+        const g1 = await purse();
+        check(g1.paid && (g1.gold < g0.gold || g1.silver < g0.silver || g1.tonic < g0.tonic), `${P} 31: the price is paid (${JSON.stringify(g0)} -> ${JSON.stringify(g1)})`);
+        check(/^Paid /.test(t) && t.includes(pay?.chip || '?'), `${P} 31: paying toasts what it cost ("${t}")`);
+        const e1 = await W(() => window.__world.entity('rotbridge', 'rb-toll-bar'));
+        check(e1 && e1.state === 'open' && !e1.solid, `${P} 31: the bar lifts (${JSON.stringify(e1)})`);
+        await teleport('rotbridge', ap.x, ap.y, ap.face);
+        await W(() => window.__world.roam([]));
+        const s0 = await state();
+        await W(d => window.__world.step(d, 2), ap.face);
+        const s1 = await state();
+        check(Math.abs(s1.x - s0.x) + Math.abs(s1.y - s0.y) === 2, `${P} 31: the party walks under the lifted bar (${s0.x},${s0.y} -> ${s1.x},${s1.y})`);
+        await shot('toll-bar-open');
+        // a party with nothing: the price's choice is there, shut, and says why
+        await setup({ patch: combine(noIntro, council3, `(g) => { g.gold = 0; g.materials = { ...g.materials, silver: 0 }; g.bag = {}; return g; }`) });
+        await talkHodge();
+        const poor = await choice('.dlg-price');
+        check(poor && poor.disabled && /cannot afford/.test(poor.aria), `${P} 31: a party that cannot pay sees the price, shut ("${poor?.aria}")`);
+        await shot('hodge-poor');
+        await playDialogue();
+        // the game: best of three, once a day; its roll shows, and a lost game waits for tomorrow
+        await setup({ patch: combine(noIntro, council3) });
+        await talkHodge();
+        const game = await choice('.dlg-odds:not(.dlg-price)');
+        check(!!game, `${P} 31: Hodge offers his game, with its odds ("${game?.text}")`);
+        if (game) {
+          await page.click(`.dlg-choice[data-pick="${game.pick}"]`);
+          await page.waitForSelector('.dlg-roll:not([hidden])', { timeout: 4000 });
+          const roll = await page.innerText('.dlg-roll');
+          check(/Won|Lost/.test(roll) && /✓|✗/.test(roll), `${P} 31: the game's three checks show ("${roll}")`);
+          await shot('hodge-game');
+          await playDialogue();
+          await page.waitForTimeout(300);
+          await closeOverlays();
+          const g3 = await W(() => { const g = window.__world.game(); return { tried: !!g.progress.flags.story['hodge-tried'], toll: g.inventory.some(i => i.base === 'unfair-toll'), paid: !!g.progress.flags.story['toll-paid'] }; });
+          check(g3.tried, `${P} 31: the game is marked played today (hodge-tried)`);
+          if (g3.toll) check(g3.paid && (await W(() => window.__world.entity('rotbridge', 'rb-toll-bar')))?.state === 'open', `${P} 31: won: the Unfair Toll is yours and the bar lifts`);
+          else {
+            await talkHodge();
+            check(!(await choice('.dlg-odds:not(.dlg-price)')), `${P} 31: lost: no second game today`);
+            await playDialogue();
+          }
+        }
+      }
+    } catch (e) { check(false, `${P} 31: ${e.message.split('\n')[0]}`); }
+  }
+
+  // ================= 32. Tamsin's duel on Rotbridge, and her fall ===========================================
+  if (want(32)) {
+    console.log(' -- 32 Tamsin at Rotbridge');
+    try {
+      const E = ENCOUNTERS['tamsin-rotbridge'];
+      const gate = MAPS.rotbridge.entities.find(e => e.kind === 'gate' && e.guard === 'tamsin-rotbridge');
+      if (!gate || !MAPS.rotbridge.entities.some(e => e.kind === 'encounter' && e.enc === 'tamsin-rotbridge')) block(`${P} 32: Tamsin's gate on Rotbridge is not placed yet (P2)`);
+      else {
+        await setup({ patch: combine(noIntro, council3, `(g) => { g.progress.flags.story['toll-paid'] = true; return g; }`) });
+        const ap = approachOf('rotbridge', gate.id, { pastGates: true });
+        if (!ap) throw new Error('no way up to Tamsin from the road');
+        await teleport('rotbridge', ap.x, ap.y, ap.face);
+        await closeOverlays();
+        await W(() => window.__world.roam([]));
+        await W(d => window.__world.face(d), ap.face);
+        await pressA();
+        // her words first (the encounter's talk), then the duel's card
+        for (let i = 0; i < 12 && !(await page.$('.ov-prefight')); i++) {
+          if (await page.$('.dlg-choice')) {
+            const pick = await W(() => { const b = [...document.querySelectorAll('.dlg-choice')].find(x => !/not yet|leave|walk away/i.test(x.innerText)); return b ? b.dataset.pick : null; });
+            if (pick) await page.click(`.dlg-choice[data-pick="${pick}"]`); else break;
+          } else await page.click('.dlg-next').catch(() => {});
+          await page.waitForTimeout(200);
+        }
+        await page.waitForSelector('.ov-prefight', { timeout: 3000 });
+        await page.waitForTimeout(250);
+        const pf = (await page.innerText('.ov-prefight')).replace(/\s+/g, ' ');
+        const boots = RELICS[E.spawns[0]?.wears || 'bogstriders']?.name || 'Bogstriders';
+        check(pf.includes(E.name) && /Losing is a yield/.test(pf), `${P} 32: Tamsin's duel card says losing is a yield ("${pf.slice(0, 120)}…")`);
+        check(pf.includes(boots.replace(/^The /, '')) && /Worn/.test(pf), `${P} 32: the card shows the ${boots} she wears`);
+        await shot('tamsin-duel-card');
+        await noScroll('32 duel card');
+        await W(() => { window.__forceResult = { result: 'victory', xp: 60, gold: 40, claimed: [window.__worldTools.relicItem('bogstriders', 'Tamsin')] }; });
+        await page.click('.pf-fight');
+        await page.waitForFunction(() => document.getElementById('app').dataset.screen === 'aftermath', null, { timeout: 8000 });
+        for (let i = 0; i < 10 && (await screen()) === 'aftermath'; i++) {
+          // a chest's reveal plays first; its Continue arrives with the card (an opened chest is left shut)
+          if (await page.$('.ov-reveal')) { await page.waitForSelector('.ov-reveal .cont', { timeout: 8000 }); await page.click('.ov-reveal .cont'); }
+          else if (await page.$('.af-loot .chest:not(.opened)')) await page.click('.af-loot .chest:not(.opened)');
+          else if (await page.$('.af-foot .btn.primary')) await page.click('.af-foot .btn.primary');
+          await page.waitForTimeout(400);
+        }
+        const after = await screen();
+        if (after !== 'world') throw new Error(`the duel's aftermath did not lead back to the world (on ${after}: ${(await page.innerText('#app')).replace(/\s+/g, ' ').slice(0, 160)})`);
+        // the lines after the duel lead into her fall: the barge, the Unsmith, the trade
+        const said = [];
+        for (let i = 0; i < 60; i++) {
+          if (await page.$('.ov-dialogue')) {
+            const t = (await page.innerText('.ov-dialogue')).replace(/\s+/g, ' ');
+            if (!said.includes(t)) said.push(t);
+            if (said.length === 1) await shot('tamsin-fall');
+            if (await page.$('.dlg-choice')) await page.click('.dlg-choice').catch(() => {}); else await page.click('.dlg-next').catch(() => {});
+          } else if (await page.$('.ov')) await closeOverlays();
+          else if (i > 8) break;
+          await page.waitForTimeout(200);
+        }
+        const st = await W(() => window.__world.game().progress.flags.story);
+        check(said.length > 0 && !!st['tamsin-fallen'], `${P} 32: after the duel her fall plays (${said.length} lines; tamsin-fallen ${!!st['tamsin-fallen']})`);
+        // she goes with the barge: her place on the bridge is empty, won or yielded (the encounter's `leaves`)
+        const tEnt = MAPS.rotbridge.entities.find(e => e.kind === 'encounter' && e.enc === 'tamsin-rotbridge');
+        const left = await W(id => window.__world.entity('rotbridge', id), tEnt.id);
+        check(!left, `${P} 32: after her fall Tamsin is gone from the bridge (${left ? left.state : 'gone'})`);
+        if (!ENCOUNTERS['tamsin-rotbridge'].leaves) block(`${P} 32: Tamsin's encounter has no \`leaves\` yet (P4): after a yield she would stay on the bridge`);
+        else {
+          await setup({ patch: combine(noIntro, council3, `(g) => { Object.assign(g.progress.flags.story, { 'toll-paid': true, 'tamsin-yielded-4': true, 'tamsin-fallen': true }); return g; }`) });
+          await teleport('rotbridge', ap.x, ap.y, ap.face);
+          await closeOverlays();
+          const yielded = await W(id => window.__world.entity('rotbridge', id), tEnt.id);
+          check(!yielded, `${P} 32: after a yield and her fall she is gone from the bridge too (${yielded ? yielded.state : 'gone'})`);
+        }
+      }
+    } catch (e) { check(false, `${P} 32: ${e.message.split('\n')[0]}`); }
+  }
+
+  // ================= 33. the Lanternfen's fog: the sight closes in; a key thins it ==========================
+  if (want(33)) {
+    console.log(' -- 33 the Lanternfen\'s fog');
+    try {
+      const LF = MAPS.lanternfen;
+      // a Stillwater party carries none of the fog's keys, and nobody has Attunement 7
+      await setup({ starter: 'stillwater-lance', patch: combine(noIntro, council3, roadsWon('lanternfen')) });
+      const at = LF.anchors['from-bogmire'] || Object.values(LF.anchors)[0];
+      await teleport(LF.id, at[0], at[1], at[2] || 's');
+      await closeOverlays();
+      await W(() => window.__world.roam([]));
+      await page.waitForTimeout(300);
+      const f0 = await state();
+      check(LF.fog === true && f0.fog === 'thick' && f0.sight === TUNING.world.fogRadius && !f0.dark, `${P} 33: the Lanternfen's fog closes the sight in to ${TUNING.world.fogRadius} tiles without a key (fog ${f0.fog}, sight ${f0.sight}, dark ${f0.dark})`);
+      await shot('lanternfen-fog');
+      // the Lamplighter's Lantern (Mother's Light) is one of the fog's keys: the mist thins to a haze
+      const key = RELICS['lamplighters-lantern']?.mapPower?.id;
+      if (!LOCKS.fog.powers.includes(key)) block(`${P} 33: the Lamplighter's Lantern does not carry a fog key yet (P4: ${key})`);
+      else {
+        await regame(give('lamplighters-lantern', 'the Lantern Mother'));
+        await W(() => window.__world.roam([]));
+        await page.waitForTimeout(300);
+        const f1 = await state();
+        check(f1.fog === 'thin' && f1.sight === null, `${P} 33: with the Lamplighter's Lantern the fog thins, and the sight is whole (fog ${f1.fog}, sight ${f1.sight})`);
+        await shot('lanternfen-thin');
+      }
+      // the Keys tab says what the fog costs, and lists its keys
+      await W(() => window.__app.go('journal', { tab: 'keys', from: 'world' }));
+      await page.waitForSelector('.jr-lock[data-lock="fog"]', { timeout: 3000 });
+      const row = (await page.innerText('.jr-lock[data-lock="fog"]')).replace(/\s+/g, ' ');
+      check(/three tiles through the fog/.test(row) && LOCKS.fog.powers.length >= 2, `${P} 33: the Keys tab has the fog: its keys and its cost ("${row.slice(0, 140)}…")`);
+      await noScroll('33 keys');
+      await toWorld();
+    } catch (e) { check(false, `${P} 33: ${e.message.split('\n')[0]}`); }
+  }
+
+  // ================= 34. the Lantern Mother's pre-fight card ================================================
+  if (want(34)) {
+    console.log(' -- 34 the Lantern Mother');
+    try {
+      const E = ENCOUNTERS['lantern-mother'];
+      const where = Object.values(MAPS).find(m => m.entities.some(e => e.kind === 'encounter' && e.enc === 'lantern-mother'));
+      const ent = where?.entities.find(e => e.kind === 'encounter' && e.enc === 'lantern-mother');
+      if (!ent) block(`${P} 34: the Lantern Mother is not placed yet (P2)`);
+      else {
+        await setup({ patch: combine(noIntro, council3) });
+        await standBy(where.id, ent.id, ['s', 'n', 'w', 'e']);
+        await closeOverlays();
+        await W(() => window.__world.roam([]));
+        await pressA();
+        await page.waitForSelector('.ov-prefight', { timeout: 3000 });
+        await page.waitForTimeout(300);
+        const pf = (await page.innerText('.ov-prefight')).replace(/\s+/g, ' ');
+        check(pf.includes(E.name) && /Champion/.test(pf), `${P} 34: the Lantern Mother's pre-fight card: the Champion ("${pf.slice(0, 90)}…")`);
+        const pieces = ['lamplighters-lantern', 'mourning-veil'].map(id => RELICS[id].name.replace(/^The /, ''));
+        check(pieces.every(n => pf.includes(n)) && /Glinting/i.test(pf), `${P} 34: its pieces glint on the card: ${pieces.join(' and ')}`);
+        check(pf.includes(BRANDS[E.brand].name.replace(/^The /, '')), `${P} 34: the card names ${BRANDS[E.brand].name}`);
+        const worn = await W(() => [...document.querySelectorAll('.pf-relic')].map(b => b.innerText.replace(/\s+/g, ' ')));
+        check(worn.some(t => /Mourning Veil/.test(t) && /Worn/.test(t)) && worn.some(t => /Lantern/.test(t) && /Held by/.test(t)), `${P} 34: the lantern is held and the veil worn (${worn.join(' | ')})`);
+        await shot('lantern-mother-prefight');
+        await noScroll('34 prefight');
+        await page.click('.ov-prefight .pf-not-yet');
+        await page.waitForTimeout(200);
+      }
+    } catch (e) { check(false, `${P} 34: ${e.message.split('\n')[0]}`); }
+  }
+
+  // ================= 35. the long boardwalk's east end: sealed until the Brand of Lanterns ====================
+  if (want(35)) {
+    console.log(' -- 35 the long boardwalk');
+    try {
+      const X = MAPS['long-boardwalk'].exits.find(x => x.id === 'lb-e');
+      if (!X?.gate) block(`${P} 35: the long boardwalk's east end has no gate yet (P2)`);
+      else {
+        await setup({ patch: combine(noIntro, council3, roadsWon('long-boardwalk')) });
+        await throughExit('long-boardwalk', 'lb-e');
+        await page.waitForSelector('.ov-dialogue .dlg-text', { timeout: 3000 });
+        await page.waitForTimeout(700);
+        const msg = (await page.innerText('.ov-dialogue')).replace(/\s+/g, ' ');
+        check(msg.includes(X.sealed.text.slice(0, 24)) && (!X.sealed.hint || msg.includes(X.sealed.hint.slice(0, 24))), `${P} 35: before the Brand of Lanterns the east end is sealed and says what opens it ("${msg.slice(0, 130)}…")`);
+        await shot('boardwalk-sealed');
+        await playDialogue();
+        check((await state()).map === 'long-boardwalk', `${P} 35: the party stays on the boardwalk`);
+        await regame(brand('brand-of-lanterns'));
+        await throughExit('long-boardwalk', 'lb-e');
+        await arrived(X.to);
+        await closeOverlays();
+        const s1 = await state(), an = MAPS[X.to].anchors[X.anchor];
+        check(s1.map === X.to && Math.abs(s1.x - an[0]) + Math.abs(s1.y - an[1]) <= 1, `${P} 35: after the Brand the east end opens onto ${MAPS[X.to].name} (${s1.map} ${s1.x},${s1.y})`);
+        await shot('misthollow');
+      }
+    } catch (e) { check(false, `${P} 35: ${e.message.split('\n')[0]}`); }
+  }
+
+  // ================= 36. the Drowned Belfry is dark without a light; the Deep-Pearl lights it ==================
+  if (want(36)) {
+    console.log(' -- 36 the Drowned Belfry');
+    try {
+      const D = MAPS['drowned-belfry'];
+      await setup({ starter: 'stillwater-lance', patch: combine(noIntro, council3) });
+      const at = Object.values(D.anchors)[0];
+      await teleport(D.id, at[0], at[1], at[2] || 's');
+      await closeOverlays();
+      await W(() => window.__world.roam([]));
+      await page.waitForTimeout(300);
+      const d0 = await state();
+      check(D.dark === true && d0.map === D.id && d0.dark && !d0.fog, `${P} 36: the Belfry is dark without a light key (dark ${d0.dark})`);
+      await shot('belfry-dark');
+      const key = RELICS['deep-pearl']?.mapPower?.id;
+      if (!LOCKS.darkness.powers.includes(key)) block(`${P} 36: the Deep-Pearl does not carry a light key yet (P4: ${key})`);
+      else {
+        await regame(give('deep-pearl', 'the Blackwater Leviathan'));
+        await W(() => window.__world.roam([]));
+        await page.waitForTimeout(300);
+        const d1 = await state();
+        check(!d1.dark, `${P} 36: the Deep-Pearl's light lifts the dark (${d1.dark})`);
+        await shot('belfry-lit');
+      }
+    } catch (e) { check(false, `${P} 36: ${e.message.split('\n')[0]}`); }
+  }
+
+  // ================= 37. the causeway: dry once the Blackwater falls, and walked home through the Keep ==========
+  if (want(37)) {
+    console.log(' -- 37 the causeway');
+    try {
+      const BX = MAPS.bogmire.exits.find(x => x.id === 'bm-causeway');
+      const KX = MAPS.keep.exits.find(x => x.id === 'keep-sw');
+      const CW = MAPS.causeway;
+      const home = CW.exits.find(x => x.to === 'keep');
+      if (!BX?.gate || !home) block(`${P} 37: the causeway's ways in are not laid yet (P2)`);
+      else {
+        await setup({ patch: combine(noIntro, council3, brand('brand-of-lanterns')) });
+        await throughExit('bogmire', 'bm-causeway');
+        await page.waitForSelector('.ov-dialogue .dlg-text', { timeout: 3000 });
+        await page.waitForTimeout(700);
+        const msg = (await page.innerText('.ov-dialogue')).replace(/\s+/g, ' ');
+        check(msg.includes(BX.sealed.text.slice(0, 24)) && (!BX.sealed.hint || msg.includes(BX.sealed.hint.slice(0, 24))), `${P} 37: before the Brand of the Deep Bogmire's causeway is under water, and says what opens it ("${msg.slice(0, 130)}…")`);
+        await shot('causeway-sealed');
+        await playDialogue();
+        // the Blackwater falls: the causeway is dry from Bogmire, and walks home to the Keep's south-west gate
+        await regame(brand('brand-of-the-deep'));
+        await throughExit('bogmire', 'bm-causeway');
+        await arrived(CW.id);
+        await closeOverlays();
+        check((await state()).map === CW.id, `${P} 37: after the Brand of the Deep the causeway opens from Bogmire`);
+        const track = await W(() => window.__app.audio.track);
+        check(track === CW.music, `${P} 37: the causeway plays its own track (${track})`);
+        await shot('causeway');
+        await throughExit(CW.id, home.id);
+        await arrived('keep');
+        await closeOverlays();
+        const s2 = await state(), an = MAPS.keep.anchors[home.anchor];
+        check(s2.map === 'keep' && an && Math.abs(s2.x - an[0]) + Math.abs(s2.y - an[1]) <= 1 && home.anchor === 'from-causeway', `${P} 37: the causeway walks home through the Keep's south-west gate (${s2.map} ${s2.x},${s2.y})`);
+        await shot('keep-from-causeway');
+        // and out again from the Keep's side
+        await throughExit('keep', 'keep-sw');
+        await arrived(KX.to);
+        await closeOverlays();
+        check((await state()).map === CW.id, `${P} 37: the Keep's south-west gate opens onto the causeway`);
+      }
+    } catch (e) { check(false, `${P} 37: ${e.message.split('\n')[0]}`); }
+  }
+
+  // ================= 38. the fourth council: its title card, its scene, the end of Act II =====================
+  if (want(38)) {
+    console.log(' -- 38 the fourth council');
+    try {
+      if (!MAPS['keep-hall'].entities.some(e => e.kind === 'trigger' && e.dialogue === 'council-4')) block(`${P} 38: the fourth council's trigger is not in the Great Hall yet (P3)`);
+      else {
+        // (a new game starts in the Great Hall: the Gloomfen is won out in the Keep's yard, so the council waits for
+        // the party to walk in)
+        await setup({ patch: combine(noIntro, council3, brand('brand-of-lanterns'), brand('brand-of-the-deep')) });
+        await teleport('keep', 15, 5, 'n');
+        await regame(`(g) => { g.progress.flags.story['gloomfen-complete'] = true; return g; }`);
+        await W(() => window.__world.roam([]));
+        await W(() => window.__world.press('n'));
+        await page.waitForSelector('.ov-story.council-4', { timeout: 6000 });
+        const t0 = (await page.innerText('.ov-story')).replace(/\s+/g, ' ');
+        check(/Council sits a fourth time/.test(t0) && /Eight coals/.test(t0) && /every chair/.test(t0), `${P} 38: the fourth council's title card: eight coals, every chair filled ("${t0.slice(0, 140)}…")`);
+        await shot('council-4');
+        await page.click('.ov-story .story-go');
+        await page.waitForSelector('.ov-dialogue', { timeout: 3000 });
+        await playDialogue(/Let the Council talk|Leave/);
+        await page.waitForSelector('.ov-story.tbc-gloomfen', { timeout: 5000 });
+        await page.waitForTimeout(300);
+        const card = (await page.innerText('.ov-story')).replace(/\s+/g, ' ');
+        check(/End of Act II/i.test(card) && card.includes('All eight coals are lit. The Hollow Council waits.') && /Act III/.test(card), `${P} 38: the fourth council ends Act II and names Act III ("${card.slice(0, 200)}…")`);
+        check(card.includes(`${BRAND_TOTAL}/${BRAND_TOTAL}`), `${P} 38: the card counts all ${BRAND_TOTAL} Brands`);
+        const opens = await W(() => document.querySelectorAll('.ov-story .tbc-rg.is-open').length);
+        check(opens === 0 && !/stands open|opens in the next chapter/.test(card), `${P} 38: it opens nothing (${opens} open)`);
+        const fit = await W(() => { const c = document.querySelector('.ov-story .story-card'); const r = c.getBoundingClientRect(); const go = document.querySelector('.ov-story .story-go').getBoundingClientRect(); return { left: Math.round(r.left), right: Math.round(r.right), w: innerWidth, goH: Math.round(go.height) }; });
+        check(fit.left >= 0 && fit.right <= fit.w && fit.goH >= 44, `${P} 38: the card fits the screen, its button 44 px (${JSON.stringify(fit)})`);
+        await noScroll('38 act II card');
+        await shot('end-of-act-2');
+        await page.click('.ov-story .story-go');
+        await page.waitForTimeout(300);
+        check(await W(() => !!window.__world.game().progress.flags.story['council-4-done']), `${P} 38: the fourth council is done (council-4-done)`);
+      }
+    } catch (e) { check(false, `${P} 38: ${e.message.split('\n')[0]}`); }
+  }
+
+  // ================= 39. performance on the Lanternfen (fog) and the long boardwalk ============================
+  if (want(39)) {
+    console.log(' -- 39 the Gloomfen performance');
+    // the M5 gate (spec §8): p95 frame JS 16 ms and 40 drawImage a frame at 4x throttle, walking the map's longest open
+    // east-west stretch back and forth for 10 s (its gates open, its fights won; a pack walked into is a fight that ends
+    // at once, fled)
+    for (const [mapId, patch, what] of [['lanternfen', combine(noIntro, council3, roadsWon('lanternfen')), 'the Lanternfen, in its fog'], ['long-boardwalk', combine(noIntro, council3, levelUp.replace(/LVL/g, '18'), roadsWon('long-boardwalk')), 'the long boardwalk']]) {
+      try {
+        const M = MAPS[mapId];
+        const fixed = new Set();
+        for (const e of M.entities) {
+          if (['trigger', 'light', 'encounter', 'gate'].includes(e.kind) || (e.kind === 'prop' && !e.solid) || (e.kind === 'lock' && LOCKS[e.lock]?.soft)) continue;
+          const [x0, y0, x1, y1] = areaOfE(e);
+          for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) fixed.add(`${x},${y}`);
+        }
+        // the walk stays on the map: an exit, and the tile before it, end a stretch
+        for (const x of M.exits) {
+          const [x0, y0, x1, y1] = x.area;
+          for (let y = y0 - 1; y <= y1 + 1; y++) for (let xx = x0 - 1; xx <= x1 + 1; xx++) fixed.add(`${xx},${y}`);
+        }
+        let best = { y: 0, x0: 0, len: 0 };
+        for (let y = 0; y < M.h; y++) {
+          let run = 0;
+          for (let x = 0; x <= M.w; x++) {
+            const open = x < M.w && !tileOf(M.rows[y][x]).solid && !fixed.has(`${x},${y}`);
+            if (open) { run++; continue; }
+            if (run > best.len) best = { y, x0: x - run, len: run };
+            run = 0;
+          }
+        }
+        const start = [best.x0 + 1, best.y];
+        await setup({ patch });
+        await teleport(M.id, start[0], start[1], 'e');
+        await closeOverlays();
+        await W(() => window.__world.grace(100000));
+        const fog = (await state()).fog;
+        const cdp = await context.newCDPSession(page);
+        await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+        await page.waitForTimeout(400);
+        await W(() => { window.__world.resetPerf(); window.__drawSamples = []; window.__sampling = true; });
+        await W(() => { window.__forceResult = { result: 'fled', sticky: true }; });
+        const work = [], draws = [];
+        let frames = 0, battles = 0, maxRoamers = 0, farthest = 0, strayed = '';
+        const t0 = Date.now();
+        let legs = 0;
+        while (Date.now() - t0 < 10000) {
+          await hold(legs % 6 < 3 ? 'e' : 'w', 1150);
+          legs++;
+          if ((await screen()) !== 'world') {
+            battles++;
+            for (let i = 0; i < 6 && (await screen()) !== 'world'; i++) { await page.click('.af-foot .btn.primary').catch(() => {}); await page.waitForTimeout(300); }
+            await page.waitForSelector('.screen-world .world-canvas', { timeout: 4000 }).catch(() => {});
+            await W(() => window.__world && window.__world.grace(100000));
+            continue;
+          }
+          if (await page.$('.ov')) await closeOverlays();
+          const p = await W(() => (window.__world ? window.__world.perf() : null));
+          if (p) { work.push(...p.work.filter(v => v > 0)); draws.push(...p.draws); frames += p.frames; await W(() => window.__world.resetPerf()); }
+          const s = await state();
+          if (s) { maxRoamers = Math.max(maxRoamers, s.roamers.length); farthest = Math.max(farthest, s.x); if (s.map !== M.id) strayed = s.map; }
+          if (strayed) break;
+        }
+        await W(() => { window.__sampling = false; window.__forceResult = null; });
+        await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+        const samples = await W(() => window.__drawSamples);
+        const pct = (arr, q) => { if (!arr.length) return 0; const a = [...arr].sort((x, y) => x - y); return a[Math.min(a.length - 1, Math.floor(a.length * q))]; };
+        const p95 = pct(work, 0.95), p50 = pct(work, 0.5);
+        const dMax = Math.max(0, ...draws, ...samples), dP95 = pct(draws, 0.95);
+        const line = `${P} 39: ${what}${fog ? ` (fog ${fog})` : ''}, 4x throttle, ${frames} frames in 10 s, ${maxRoamers} roamers, walked out to x=${farthest}: frame JS p50 ${p50.toFixed(2)} ms, p95 ${p95.toFixed(2)} ms; drawImage per frame p95 ${dP95}, max ${dMax}${battles ? `; ${battles} fights interrupted the walk` : ''}`;
+        check(frames >= 100 && farthest >= start[0] + 8 && !strayed, `${P} 39: the walk crossed ${what} and stayed on it (${frames} frames measured, out to x=${farthest}${strayed ? `; strayed into ${strayed}` : ''})`);
+        if (mapId === 'lanternfen') check(fog === 'thick', `${P} 39: the Lanternfen was measured in its thick fog (${fog})`);
+        perfLines.push(line);
+        console.log('  PERF', line);
+        check(p95 <= 16, `${P} 39: ${what}: p95 frame time ${p95.toFixed(2)} ms <= 16 ms`);
+        check(dMax <= 40, `${P} 39: ${what}: drawImage per frame ${dMax} <= 40`);
+        await shot(`perf-${mapId}`);
+      } catch (e) { check(false, `${P} 39 (${mapId}): ${e.message.split('\n')[0]}`); }
+    }
   }
 
   const fontOnly = failed.length && failed.every(u => /fonts\.(googleapis|gstatic)\.com/.test(u));

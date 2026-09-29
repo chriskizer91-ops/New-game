@@ -14,10 +14,14 @@
 // gems, materials and a chest's forge loot get a toast by their data names; a finished Codex page gets
 // its reward line; the second council plays its title card, and { t: 'end', act: 'act2' } the
 // end-of-Act-II card (story-fx.js showToBeContinued, which names the next chapter).
+// M6 (spec §4.4, §5, A10): the first time the party comes down into the Gloomfen (Mossfall's fen stair), the
+// region's card with the player's painting (once a save: flags.seen['card:gloomfen']); a foggy map draws its
+// mist (view.setFog: thick to the sight radius, thin once the fog lock is open) in place of the darkness; the
+// fourth council plays its title card, and a price paid in a dialogue toasts what it cost.
 // Test seam: with globalThis.__aethTest set, installs window.__world = { state(), teleport(map, x, y, face),
 //   press(key), step(dir, n), interact(), story(events), emotes(), ... } (see installSeam below) and
 //   window.__worldTools.
-// Owner: WP7; M4 P7b.
+// Owner: WP7; M4 P7b; M6 P7.
 import '../world.css';
 import { MAPS, v1Anchor } from '../../data/maps/index.js';
 import { START_AT, HEARTHS, ZONES, REGIONS } from '../../data/world.js';
@@ -46,9 +50,9 @@ import { createView } from '../world/view.js';
 import { createActors, gearSig, newGearName } from '../world/actors.js';
 import { createControls } from '../world/controls.js';
 import { createHud, createSidePanel } from '../world/hud.js';
-import { openDialogue, openMessage } from '../world/dialogue.js';
+import { openDialogue, openMessage, priceText } from '../world/dialogue.js';
 import { openPrefight, openLockPrompt, openHearthMenu, openPauseMenu, openShop, openForge, previewRelic } from '../world/sheets.js';
-import { playBrandBanner, playCrownwalls, showLetter, playCouncil, showToBeContinued } from '../world/story-fx.js';
+import { playBrandBanner, playCrownwalls, showLetter, playCouncil, showToBeContinued, showRegionCard, hasRegionCard } from '../world/story-fx.js';
 import { createLoop } from '../world/loop.js';
 import {
   TILE, STEP_MS, RUN_MS, IDLE_TICK_MS, HOLD_MS, FADE_MS, SAVE_EVERY_STEPS, NEAR_TILES, MAP_ZOOM, TAP_TURN_MS, IDLE_FPS, MAX_SPRITES, SHOWOFF_MS, MAX_PATH,
@@ -59,7 +63,10 @@ const LOCK_VERB = {
   thornwall: 'Cut', bramble: 'Part', stream: 'Cross', boulder: 'Break', 'cold-hearth': 'Light', 'tally-seal': 'Break', 'barred-gate': 'Open', 'rot-knot': 'Untie', 'rope-ledge': 'Climb', darkness: 'Look', ichor: 'Look',
   'dune-glass': 'Break', mirage: 'Look', quicksand: 'Cross', 'vault-seal': 'Open', // M4
   chasm: 'Cross', ice: 'Melt', 'rune-seal': 'Read', drift: 'Cross', // M5
+  bog: 'Cross', fog: 'Look', blackwater: 'Cross', 'witch-ward': 'Pass', // M6
 };
+// What a soft lock's step costs, said as it bites (M5: the snowdrift; M6: the bog)
+const HAZARD_LINE = { drift: 'The cold bites through the snow', bog: 'The bog sucks at your boots', ichor: 'The ichor burns' };
 // Loot words for a toast (M4: materials and gems by their data names): "+40 gold · 1 scrap · Glass Pearl ×2".
 function lootWords({ gold = 0, bag = {}, materials = {}, gems = {} } = {}) {
   const bits = [];
@@ -301,6 +308,7 @@ export function mount(root, ctx, params = {}) {
   }
   async function transition(target, { door = false } = {}) {
     M.transition = true; M.path = null; M.then = null;
+    const fromRegion = mapNow()?.region || null;
     if (door) ctx.audio.sfx('door');
     // bake the next biome's tiles in slices while the screen fades out (art/tiles.js tileAtlasAsync)
     const nextMap = W.mapOf(target.map);
@@ -317,9 +325,23 @@ export function mount(root, ctx, params = {}) {
     await fadeTo(0, FADE_MS);
     M.transition = false; M.chain = false;
     M.idleAt = performance.now();
+    await regionCard(fromRegion);
+    if (dead) return 'stop';
     const more = r.events.filter(e => e.t !== 'enter');
     if (more.length && !dead) await runEvents(more);
     return 'stop';
+  }
+
+  // M6 (spec A10): the first time the party walks into a region with a painting of its own (the Gloomfen, down
+  // Mossfall's fen stair), its card; once a save (flags.seen['card:<region>']), and never from inside the region
+  async function regionCard(fromRegion) {
+    const region = mapNow()?.region;
+    if (!region || region === fromRegion || !hasRegionCard(region)) return;
+    const key = `card:${region}`;
+    if (game.progress.flags.seen?.[key]) return;
+    game = withFlags(game, { seen: { ...(game.progress.flags.seen || {}), [key]: true } });
+    save();
+    await showRegionCard(ctx, region);
   }
 
   // ---- UI refresh after game changes ------------------------------------------------------------------
@@ -345,6 +367,8 @@ export function mount(root, ctx, params = {}) {
     try { r = W.light(game, walk); } catch { r = Infinity; }
     const lights = (map?.entities || []).filter(e => e.kind === 'light' && check(game, e.if)).map(e => ({ x: e.at?.[0] ?? e.area[0], y: e.at?.[1] ?? e.area[1], r: e.radius || 3 }));
     view.setDark(!!map?.dark && r !== Infinity, walk.x, walk.y, r === Infinity ? 0 : r, lights);
+    // M6: a foggy map's mist closes in to the sight radius; once the fog lock is open it thins to a haze
+    view.setFog(!!map?.fog && !map?.dark, walk.x, walk.y, r === Infinity ? 0 : r, lights);
   }
 
   // What the leader faces: an entity, or a roamer.
@@ -414,11 +438,14 @@ export function mount(root, ctx, params = {}) {
     const e = faced();
     const d = e ? describe(e) : null;
     controls.setA(d?.a || '');
+    // a soft lock's bite stays said a moment (the step's end would put the lock's keys over it at once)
+    if (hazardLine && performance.now() < hazardUntil) { setPrompt(hazardLine); return; }
     const p = d?.p || '';
     if (p) setPrompt(p); else setPrompt(onboarding(), true);
     if (p && p !== lastPrompt) { lastPrompt = p; announce(p); }
   }
   let lastPrompt = '';
+  let hazardLine = '', hazardUntil = 0;
 
   function nearList() {
     const out = [];
@@ -614,8 +641,10 @@ export function mount(root, ctx, params = {}) {
   }
   function hazard(e) {
     stage.classList.remove('hurt'); void stage.offsetWidth; stage.classList.add('hurt');
-    const pct = `${Math.round((e.pct || 0.04) * 100)}% of everyone's HP`;
-    setPrompt(e.lock === 'drift' ? `The cold bites through the snow: ${pct}` : `The ichor burns: ${pct}`);
+    const pct = `${Math.round((e.pct || 0.04) * 100)}% HP each`; // short enough for a 360 px prompt line
+    hazardLine = `${HAZARD_LINE[e.lock] || HAZARD_LINE.ichor}: ${pct}`;
+    hazardUntil = performance.now() + 1400;
+    setPrompt(hazardLine);
     refreshUi();
   }
 
@@ -651,10 +680,10 @@ export function mount(root, ctx, params = {}) {
   // ---- flows ------------------------------------------------------------------------------------------
   async function dialogueFlow(id, { enc = null } = {}) {
     if (!id || !DIALOGUE[id]) return null;
-    // the Council's title card: the first council (Act I), the second (the Sunscorch won, M4) and the
-    // third (the Ironspire won, M5)
-    if (id === 'council' || id === 'council-2' || id === 'council-3') {
-      await playCouncil(ctx, { second: id === 'council-2', third: id === 'council-3' });
+    // the Council's title card: the first council (Act I), the second (the Sunscorch won, M4), the third (the
+    // Ironspire won, M5) and the fourth (the Gloomfen won, M6: the end of Act II)
+    if (id === 'council' || id === 'council-2' || id === 'council-3' || id === 'council-4') {
+      await playCouncil(ctx, { second: id === 'council-2', third: id === 'council-3', fourth: id === 'council-4' });
       if (dead) return 'stop';
     }
     talking = true; loop.dirty();
@@ -670,6 +699,9 @@ export function mount(root, ctx, params = {}) {
     const gold = events.filter(e => e.t === 'gold').reduce((a, e) => a + (e.n || 0), 0);
     const words = lootWords({ gold, materials: sum('materials'), gems: sum('gems') });
     if (words) { ctx.audio.sfx('coin'); ctx.toast(words, 2800); announce(words); }
+    // M6: a price paid (Hodge's toll): what it cost
+    const paid = events.filter(e => e.t === 'paid' && e.price).map(e => priceText(e.price)).filter(Boolean).join(', ');
+    if (paid) { ctx.audio.sfx('coin'); ctx.toast(`Paid ${paid}`, 2800); announce(`Paid ${paid}`); }
     for (const e of events) {
       if (dead) return 'stop';
       if (e.t === 'fight') return encounterFlow(e.enc, { skipTalk: true });
@@ -1066,6 +1098,7 @@ export function mount(root, ctx, params = {}) {
         map: walk.map, x: walk.x, y: walk.y, face: walk.face, tick: walk.tick, grace: walk.grace, visit: walk.visit,
         moving: M.moving, lock, transition: M.transition, steps: M.steps, stepMs: M.dur, roamers: (walk.roamers || []).map(r => ({ id: r.id, x: r.x, y: r.y, mood: r.mood, enc: r.enc || null })),
         scale: view.size.s, view: [view.size.w, view.size.h], camera: [view.camera.x, view.camera.y], dark: !!view.map?.darkKey, painted: !!view.map?.painted,
+        fog: view.map?.fogKey ? (view.map.fogThick ? 'thick' : 'thin') : '', sight: (() => { try { const r = W.light(game, walk); return r === Infinity ? null : r; } catch { return null; } })(),
         a: controls.btnA.getAttribute('aria-label'), prompt: controls.prompt.textContent, deck: root.classList.contains('deck-on'),
       }),
       teleport(map, x, y, face = 's') {

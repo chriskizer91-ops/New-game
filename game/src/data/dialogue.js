@@ -1,30 +1,33 @@
-// Dialogue nodes (M3 spec §3.1, §4.4; M4 spec §3.1, §3.6; M5 spec §3.1, §3.5, §3.6). `{warden}` in a
-// line is replaced with the player's name; every line is rendered with textContent. Lines are at most
-// 140 characters.
+// Dialogue nodes (M3 spec §3.1, §4.4; M4 spec §3.1, §3.6; M5 spec §3.1, §3.5, §3.6; M6 spec §2.4, §3.1,
+// §3.5, §3.6). `{warden}` in a line is replaced with the player's name; every line is rendered with
+// textContent. Lines are at most 140 characters.
 //
 // DIALOGUE[id] = {
 //   lines: [[speaker, text]],   speaker: an NPCS id | 'warden' | 'pip' | 'bryn' | 'alondra' | 'narrator'
 //   do?: [effect],              applied once when the node is shown
 //   choices?: [{ text, if?, next?, do?: [effect],
-//                check?: { domain | ability, dc, adv?: cond, pass: dialogueId, fail: dialogueId },
-//                contest?: { checks: [{ domain, dc }], need, pass, fail } }],
+//                check?: { domain | ability, dc, name?, adv?: cond, pass: dialogueId, fail: dialogueId },
+//                contest?: { checks: [{ domain?, ability?, dc, name? }], need, pass, fail } }],
 // }
 // Effects: {set: flag, value?} ({value: 'day'} stores today's day, for {since}) {unset: flag}
 //   {give: relicId} {item: {rarity, slot?, kind?, ilvl?}} {gold: n} {bag: {id: n}} {unlock: entityId}
 //   {gems: {gemId: n}} {materials: {scrap?, silver?, embers?}} (M4)
 //   {heal: true} {fight: encId} {claim: questId | 'bounties'}
 //   {open: 'shop:<id>'|'forge'|'atlas'|'journal'|'ladder'|'bounties'} {letter: brandId}
-//   {end: 'act1'|'act2'|'ironspire'}   the to-be-continued card ('ironspire': after the third council, M5)
+//   {end: 'act1'|'act2'|'ironspire'|'gloomfen'}   the to-be-continued card ('ironspire': after the third
+//                                  council, M5; 'gloomfen': after the fourth, the end of Act II, M6)
+//   {pay: {gold?, bag?, materials?}} (M6: a choice that pays shows its price, disabled while unaffordable)
 //
 // Also here (read by rules/story.js and rules/world.js):
 //   ARRIVALS[mapId] = dialogueId   played once on the first entry to a map (the party's homecoming lines);
 //                                  marked seen before it plays, so an arrival never changes the game
-//   AFTER[encId] = [{ on: 'victory'|'yield', if?, d }]   played when you come back from that fight
+//   AFTER[encId] = [{ on: 'victory'|'yield'|'defeat', if?, d }]   played when you come back from that fight
+//                                  ('defeat': M6, Hodge's lines when you wake after losing to him)
 //   RESTS = [{ at: hearthfireId, if?, d }]                played after resting at that Hearthfire
 //   LOOKOUTS[entityId] = { flag, maps }                   Longwatch from a lookout marks these maps
 // A `use` entity (bellframe, lookout) whose id is a DIALOGUE id opens that dialogue (M5: Peak's Veil's
 // bell rope `pv-bell-rope` and lookout `pv-lookout`).
-// Owner: WP3S (M3), P3 story (M4, M5).
+// Owner: WP3S (M3), P3 story (M4, M5, M6).
 
 import { deepFreeze } from '../core/freeze.js';
 
@@ -66,6 +69,45 @@ const YSOLDE = [
 ];
 // the bell of Peak's Veil rings once the Drowned Abbess is at rest (from its rope, or with Mother Wynn)
 const RING = { all: [{ beaten: 'fm-shrine' }, { not: { flag: 'bell-rung-veil' } }] };
+// M6: Hodge's toll-bar (spec A11, §4.4), the choices every line of his carries. The price of the day, one of three
+// (flags.day % 3, as his talk table's openers), shown only while the bar is down; paying lifts it for good. His toll
+// game, best of three, once a day, for a coin you do not own yet: winning lifts the bar and gives you the coin (the
+// DCs give a party at the Ironspire's end, the sim's, about 58%: Deception is raw CHA, and he lies for a living). And
+// the fight, "a terrible idea", while he is unbeaten: refused at the bar, or picked with him once it is up.
+const BAR_DOWN = [{ not: { flag: 'toll-paid' } }, { not: { beaten: 'hodge' } }];
+const PAY = (at, price) => ({ text: 'Pay today\'s toll.', if: { all: [{ day: { every: 3, at } }, ...BAR_DOWN] }, do: [{ pay: price }, { set: 'toll-paid' }], next: 'hodge-paid-up' });
+const TOLL = [
+  PAY(1, { gold: 120 }),
+  PAY(2, { materials: { silver: 1 } }),
+  PAY(0, { bag: { 'hearth-tonic': 2 } }),
+  {
+    text: 'Play his toll game: best of three.', if: { all: [{ since: { flag: 'hodge-tried', days: 1 } }, { not: { owns: 'unfair-toll' } }] }, do: [{ set: 'hodge-tried', value: 'day' }],
+    contest: {
+      checks: [{ domain: 'influence', dc: 17, name: 'Persuasion' }, { ability: 'CHA', dc: 16, name: 'Deception' }, { domain: 'influence', ability: 'STR', dc: 18, name: 'Intimidation' }],
+      need: 2, pass: 'hodge-won', fail: 'hodge-lost',
+    },
+  },
+  { text: 'Refuse, and make him move.', if: { all: BAR_DOWN }, do: [{ fight: 'hodge' }] },
+  { text: 'Shift him off his stool.', if: { all: [{ flag: 'toll-paid' }, { not: { beaten: 'hodge' } }] }, do: [{ fight: 'hodge' }] },
+  LEAVE,
+];
+// Elder Moss's riddles (every one of them true), Sedge's herbs, Nettie's hut, and the Bogmire board (Mayor Gretch)
+const MOSS = [
+  { text: 'Ask about the lights in the fen.', next: 'moss-lights' },
+  { text: 'Ask about Rotbridge.', next: 'moss-bridge' },
+  { text: 'Ask about the bells under the water.', next: 'moss-bells' },
+  LEAVE,
+];
+const SEDGE = [{ text: 'Buy.', do: [{ open: 'shop:sedge' }] }, LEAVE];
+const NETTIE = [{ text: 'Buy.', do: [{ open: 'shop:nettie' }] }, LEAVE];
+const GRETCH = [
+  { text: 'Turn in bounties.', if: { bounty: 'any', state: 'ready' }, do: [{ claim: 'bounties' }], next: 'gretch-paid' },
+  { text: 'Read the bounty board.', do: [{ open: 'bounties' }] },
+  LEAVE,
+];
+const GRETCH_ASK = [{ text: 'Ask about soot-sealed letters.', next: 'gretch-box' }, ...GRETCH];
+// Tamsin has fallen: her Rotbridge duel is over, won or yielded, whether or not the scene after it played through
+const FALLEN = { any: [{ flag: 'tamsin-fallen' }, { beaten: 'tamsin-rotbridge' }, { flag: 'tamsin-yielded-4' }] };
 
 export const DIALOGUE = deepFreeze({
   // ---- story beats --------------------------------------------------------------------------
@@ -121,6 +163,9 @@ export const DIALOGUE = deepFreeze({
   'guard-e': { lines: [['gate-guard-e', 'Rockslide on the pass. Stormwatch hasn\'t sent a writ since spring.']] },
   'guard-se': { lines: [['gate-guard-se', 'The Sandspire caravans stopped a month ago, and the dune-glass walls are still too hot to cross.']] },
   'guard-sw': { lines: [['gate-guard-sw', 'Blackwater\'s up over the causeway. Nobody\'s ferrying.']] },
+  // M6: the south-west gate, after the third council and once the Blackwater has fallen
+  'guard-sw-fen': { lines: [['gate-guard-sw', 'Still no ferry, Warden. For the Gloomfen you go round by Mossfall\'s fen stair. The Willowmurk folk sent word.']] },
+  'guard-sw-open': { lines: [['gate-guard-sw', 'The causeway\'s up out of the water! First dry stone since spring. Smells like a fish\'s attic, but it\'s a road.']] },
   hilda: {
     lines: [['hilda', 'Hold still. Not you. The blade.'], ['hilda', 'Heat, hammer, patience. Mostly gold.']],
     choices: FORGE,
@@ -643,10 +688,13 @@ export const DIALOGUE = deepFreeze({
   // ---- the Keep, after the second council ------------------------------------------------------------
   'guard-e-open': { lines: [['gate-guard-e', 'Postern\'s open, Warden. The monks dug the slide out; the road climbs to Peak\'s Veil. Wrap up warm. Then warmer.']] },
   'guard-e-writ': { lines: [['gate-guard-e', 'A writ from Stormwatch, first since spring! It says "Thank you. Y." Short, for a writ. I\'m having it framed.']] },
+  // M6 (spec §2.4): after the third council Isolde sends you down Mossfall's fen stair, the causeway being drowned
   'isolde-gloomfen': {
     lines: [
-      ['isolde', 'Six coals. The Gloomfen is the last dark country on the map, and the Blackwater still has the causeway.'],
-      ['isolde', 'When it falls, {warden}, that road is yours. Until then, eat something and sleep. That\'s an order.'],
+      ['isolde', 'Six coals. And Willowmurk\'s elders have sent a reed-token: green rushes, knotted the old way. It\'s for you.'],
+      ['isolde', 'They\'ve summoned an outsider for the first time in decades. Something in that fen is very wrong.'],
+      ['isolde', 'The fen stair below Mossfall is open to you now. Keep to their safe paths, {warden}, and find Elder Moss.'],
+      ['isolde', 'The Blackwater still has the causeway, so you go the long way round. Eat something first. That\'s an order.'],
     ],
     do: [{ set: 'heard-gloomfen' }],
   },
@@ -1084,90 +1132,556 @@ export const DIALOGUE = deepFreeze({
       ['alondra', 'And under Frostmere a Sleeper\'s heart beats slower since the sixth coal caught. I counted, all the way home.'],
       ['narrator', 'Fenwick says nothing. He is looking into the hearth, and for a moment the hearth seems to look back.'],
       ['isolde', 'Then we find Harrow before that forge is lit. Bogmire\'s children still walk into the Gloomfen after a lantern.'],
-      ['isolde', 'When the Blackwater falls, {warden}, that road is yours. Tonight, eat something. That\'s an order.'],
+      // M6 (spec §2.4): retold to match the fen stair's opening
+      ['isolde', 'And Willowmurk has sent for you, {warden}: the fen stair below Mossfall. Tonight, eat something. That\'s an order.'],
     ],
     do: [{ end: 'ironspire' }],
   },
 
-  // ==== M6: the Gloomfen Marsh (spec §3.1, §3.5, §3.6). STUBS from the M6 scaffold: one line each, and the flags
-  // the quests read. P3 writes the real scenes (Hodge's daily price needs P1's `pay`; spec §4.4). ==============
+  // ==== M6: the Gloomfen Marsh (spec §2.4, §3.1, §3.5, §3.6) ==================================================
+
+  // ---- the Keep, after the third council ----------------------------------------------------------------
+  // Isolde hears of Rotbridge at the Council table, not before; after the fourth council, the boxes
+  'isolde-rotbridge': {
+    lines: [
+      ['isolde', 'Pip has told me about Rotbridge, in more words than it needed. Not now, {warden}.'],
+      ['isolde', 'When the Gloomfen is won, you\'ll tell it to the Council, properly. Until then I don\'t trust my face.'],
+    ],
+  },
+  'isolde-boxes': { lines: [['isolde', 'The boxes are in the vault, under the Seal. Some nights I sit with them. They\'re warm. Boxes shouldn\'t be warm.']] },
+  'notice-isolde-boots': { lines: [['isolde', 'Tamsin\'s boots. She hated boots as a girl; she said they made her slow. She\'d have hated these most of all.']] },
+  'fenwick-seven': { lines: [['fenwick', 'Seven coals, and the flame\'s gone soft and gold, like a lamp left in a window for somebody. I don\'t trust it.']] },
+  'fenwick-eight': {
+    lines: [
+      ['fenwick', 'Eight. Every coal lit. Nine hundred years, Warden, and I never once heard this hearth go quiet.'],
+      ['fenwick', 'It isn\'t humming. It isn\'t singing. It\'s listening. Go to bed. I\'ll sit up with it.'],
+    ],
+  },
+  'notice-fenwick-lantern': { lines: [['fenwick', 'Keep that lantern away from my hearth, Warden. The hearth likes it. I don\'t like what the hearth likes.']] },
+  // Hilda hears about the clasp on the barge (once)
+  'hilda-barge': {
+    lines: [
+      ['bryn', 'Hilda. On Rotbridge, the man on the barge had a mark on his cloak-clasp. A hammer in a broken ring.'],
+      ['narrator', 'Hilda doesn\'t stop working. She strikes the same blow three times, and doesn\'t notice.'],
+      ['hilda', 'If that was my brother on that barge, he\'s buying Wardens now. With our mark on him.'],
+      ['hilda', 'Give me something to hit, Warden. Something that won\'t mind.'],
+    ],
+    do: [{ set: 'heard-barge' }],
+    choices: FORGE,
+  },
+  'notice-hilda-chain': { lines: [['hilda', 'A chain-link riveted cold into each palm. Crude. Strong. I\'d have done it hot, and made it pretty.']], choices: FORGE },
+  'notice-hilda-harpoon': { lines: [['hilda', 'A year in something alive, that harpoon. The iron remembers. Let me temper it before it bites you.']], choices: FORGE },
+  'miravel-box': { lines: [['miravel', 'I should have told the Council about the box long ago. I was ashamed of how much I wanted to open it.']] },
+
+  // ---- Willowmurk -------------------------------------------------------------------------------------
+  // Elder Moss speaks in riddles, and every one of them is true (the player's own lore): the wards, the lights, the
+  // bridge, the bells. He sent the reed-token; the fen talks through reeds, and so does he (the Sleeper's scene).
   moss: {
-    lines: [['moss', 'The one who comes when the fen calls. Sit. A riddle first, then the truth: the lanterns are walking.']],
+    lines: [
+      ['moss', 'What comes when the fen calls, on dry feet, with Keep mud on its boots? A Warden. Sit. I\'m Moss.'],
+      ['moss', 'A riddle that is only the truth: three of my ward-stones went dark in one night. Stones don\'t die. They\'re drunk.'],
+      ['moss', 'The oldest willow outside the ring has long roots and a long thirst. Grandfather Willow is drinking my wards.'],
+      ['moss', 'Quiet him, and the ring will sing again. And listen to the reeds out there. The fen talks through reeds.'],
+    ],
     do: [{ set: 'met-moss' }],
-    choices: [
-      { text: 'Tell him Grandfather Willow is at rest.', if: { all: [{ beaten: 'wm-willow' }, { not: { flag: 'wards-mended' } }] }, next: 'moss-wards' },
-      { text: 'Show him the sealed chest.', if: { all: [{ beaten: 'mh-salvage' }, { not: { flag: 'chest-read' } }] }, next: 'moss-chest' },
-      LEAVE,
-    ],
+    choices: MOSS,
   },
-  'moss-wards': { lines: [['moss', 'The wards sing again. Take the last Willow-Ward. It knows you now.']], do: [{ set: 'met-moss' }, { set: 'wards-mended' }, { claim: 'failing-wards' }] },
-  'moss-chest': { lines: [['moss', 'A dead tongue. It says: do not open. Then, smaller: the Worldforge, in a First-Age hand.']], do: [{ set: 'chest-read' }] },
-  sedge: { lines: [['sedge', 'Reed-salve, bog-myrtle, a tonic that tastes of the fen. It works. Nothing else does, here.']], choices: [{ text: 'Buy something.', do: [{ open: 'shop:sedge' }] }, LEAVE] },
-  'wm-villager': { lines: [['wm-villager', 'Three of the ward-stones went dark in one night. The willows walk right up to the fires now.']] },
+  'moss-again': { lines: [['moss', 'A riddle costs nothing, and is worth what it costs. Ask me one. The willows are listening; they always are.']], choices: MOSS },
+  'moss-lights': {
+    lines: [
+      ['moss', 'What walks the fen with a lantern and wet feet? Not a marsh-light. A mother, going back for the last child.'],
+      ['moss', 'Bogmire\'s little ones follow her lamp into the bog. She means to take them somewhere safe. She\'s kind, and wrong.'],
+    ],
+    choices: MOSS,
+  },
+  'moss-bridge': {
+    lines: [
+      ['moss', 'What sits on a bridge and isn\'t a troll? An old man who wishes he were. Pay him, play him, or be very sorry.'],
+      ['moss', 'And on the far half waits one who has read too many letters. Be kind to her. Nobody else has been.'],
+    ],
+    choices: MOSS,
+  },
+  'moss-bells': {
+    lines: [
+      ['moss', 'What do the drowned sing under Misthollow, a thousand years, one word? A lullaby.'],
+      ['moss', 'And a lullaby is always for someone. When the singing stops, you\'ll hear who.'],
+    ],
+    choices: MOSS,
+  },
+  // the thank-you of the Failing Wards (also a first meeting): the last Willow-Ward
+  'moss-wards': {
+    lines: [
+      ['moss', 'Hear that? The ring is singing. Grandfather Willow is only a willow again, and I\'m only an old man again.'],
+      ['moss', 'I\'m Moss. I sent for you, and you came, which is rarer than you\'d think.'],
+      ['moss', 'Willowmurk made three Willow-Wards. Two went into the fen with men who never came back. The last is yours.'],
+    ],
+    do: [{ set: 'met-moss' }, { set: 'wards-mended' }, { claim: 'failing-wards' }],
+    choices: MOSS,
+  },
+  // the Dead Tongue: he reads the sealed chest's warnings (also a first meeting); Corvus opens it
+  'moss-chest': {
+    lines: [
+      ['narrator', 'Elder Moss runs a finger along the lettering on the Tallymen\'s chest, and the finger slows, and stops.'],
+      ['moss', 'A dead tongue, First-Age. It says: here sleeps a leaf of the Worldforge. Do not forge it. Let no one forge it.'],
+      ['moss', 'And smaller, underneath: it cannot be burned; we tried. Somebody sank this on purpose, Warden.'],
+      ['moss', 'Take it back to the diver on Misthollow\'s broken pier. He brought it up. He should know what he brought.'],
+    ],
+    do: [{ set: 'met-moss' }, { set: 'chest-read' }],
+    choices: MOSS,
+  },
+  'moss-after': { lines: [['moss', 'The ring sings, the willows sleep, and the fen minds its manners. Mostly. Ask me a riddle, or go and be brave.']], choices: MOSS },
+  'moss-lanterns': { lines: [['moss', 'The lights are out over the bogs, and nine children sleep in Bogmire. A riddle with a happy ending. Rare.']], choices: MOSS },
+  'moss-deep': { lines: [['moss', 'The choir has stopped. I listened to it every night of my life, and now I listen to nothing. Nothing is very loud.']], choices: MOSS },
+  'notice-moss-ward': { lines: [['moss', 'The last Willow-Ward, on your arm. It knows you now. Stones are loyal; it\'s the willows you watch.']], choices: MOSS },
+  'notice-moss-bow': { lines: [['moss', 'Grandfather\'s bow. He wept three hundred years into that string. Draw it gently; he\'s earned the rest.']], choices: MOSS },
+  'notice-moss-staff': { lines: [['moss', 'The Cantor\'s staff. It kept time under the water a thousand years. Don\'t beat time with it. Something might wake.']], choices: MOSS },
+  sedge: { lines: [['sedge', 'Sedge, herb-seller. Reed-salve, bog-myrtle, a tonic that tastes of the fen. It works. Nothing else here does.']], choices: SEDGE },
+  'sedge-wards': { lines: [['sedge', 'The stones are singing again, so my herbs will keep. Wards are good for business. Willows are bad for it.']], choices: SEDGE },
+  'notice-sedge-shawl': { lines: [['sedge', 'Nettie\'s knots! Twenty years she\'s refused me that recipe. Let me look. ...No? Fine. Buy something.']], choices: SEDGE },
+  'wm-villager': { lines: [['wm-villager', 'Three ward-stones went dark in one night, and the willows walk right up to the fires now. We sleep in turns.']] },
+  'wm-villager-wards': { lines: [['wm-villager', 'The stones lit up all at once, like a lamp you\'d forgotten you left on. The willows went home.']] },
+  'wm-villager-deep': { lines: [['wm-villager', 'They say the Blackwater\'s fallen, and you can walk to the Keep on dry stone. I might. I\'ve never seen a Keep.']] },
+  'notice-villager-bow': { lines: [['wm-villager', 'Grandfather\'s bow! He used to drop leaves on my washing. On purpose, I always thought.']] },
+
+  // ---- Rotbridge: Hodge's toll (spec A11, §4.4) ---------------------------------------------------------
+  // Hodge is not actually a troll, just an extremely unpleasant old man (the player's own lore). Every line of his
+  // carries TOLL. His talk table (data/npcs.js) names the day's price; `hodge-toll` is also his encounter's talk.
+  hodge: {
+    lines: [
+      ['narrator', 'By a striped toll-bar sits an old man on a stool: a cudgel across his knees, a lantern, and a toll-book.'],
+      ['hodge', 'Toll. Don\'t look at me like that. It\'s a bridge. Bridges have tolls. This one has a bigger one.'],
+      ['pip', 'They told us a troll kept Rotbridge.'],
+      ['hodge', 'I\'m not a troll. I\'m Hodge. Trolls are reasonable.'],
+      ['hodge', 'Toll changes daily, and it isn\'t always coin. Pay today\'s, play me for it, or try and move me. Nobody tries twice.'],
+    ],
+    do: [{ set: 'met-hodge' }, { scout: 'hodge' }], // his fight never stands on the map: meeting him scouts his poster
+    choices: TOLL,
+  },
   'hodge-toll': {
-    lines: [['hodge', 'Toll. Don\'t look at me like that. It\'s a bridge. Bridges have tolls. Mine has a bigger one.']],
-    choices: [
-      // the price of the day rotates over three days (spec §4.4; the lead's stand-in prices, P3 sets them)
-      { text: 'Pay today\'s toll.', if: { day: { every: 3, at: 1 } }, do: [{ pay: { gold: 120 } }, { set: 'toll-paid' }] },
-      { text: 'Pay today\'s toll.', if: { day: { every: 3, at: 2 } }, do: [{ pay: { materials: { silver: 1 } } }, { set: 'toll-paid' }] },
-      { text: 'Pay today\'s toll.', if: { day: { every: 3, at: 0 } }, do: [{ pay: { bag: { 'hearth-tonic': 2 } } }, { set: 'toll-paid' }] },
-      {
-        text: 'Play him for it: best of three.', if: { all: [{ since: { flag: 'hodge-tried', days: 1 } }, { not: { owns: 'unfair-toll' } }] }, do: [{ set: 'hodge-tried', value: 'day' }],
-        contest: { checks: [{ domain: 'influence', dc: 14, name: 'Persuasion' }, { ability: 'CHA', dc: 14, name: 'Deception' }, { domain: 'influence', dc: 15, name: 'Intimidation' }], need: 2, pass: 'hodge-won', fail: 'hodge-lost' },
-      },
-      { text: 'Refuse, and make him move.', do: [{ fight: 'hodge' }] },
-      LEAVE,
+    lines: [['hodge', 'Toll. It\'s a bridge, and bridges have tolls. Pay today\'s, play me for it, or try and move me.']],
+    do: [{ set: 'met-hodge' }, { scout: 'hodge' }],
+    choices: TOLL,
+  },
+  // the day's price, in his words (the same rotation as TOLL's pay choices)
+  'hodge-gold': { lines: [['hodge', 'Today\'s toll is gold. A hundred and twenty. Yesterday\'s was cheaper. Tomorrow\'s? I know. You don\'t.']], choices: TOLL },
+  'hodge-silver': { lines: [['hodge', 'Today it\'s forge silver. One piece. Not coin, the real stuff. I\'m having a tooth made. Don\'t ask which.']], choices: TOLL },
+  'hodge-tonics': { lines: [['hodge', 'Two Hearth Tonics today. For my chest. It rattles. Don\'t listen to it; I don\'t.']], choices: TOLL },
+  'hodge-paid-up': {
+    lines: [
+      ['narrator', 'Hodge writes you into his toll-book in a hand like a spider falling downstairs. The bar swings up.'],
+      ['hodge', 'Paid. Mind the carvings on the bridge; they move. I don\'t.'],
     ],
   },
-  'hodge-won': { lines: [['hodge', 'Two of three. Fine. FINE. Take the coin. It never liked me either.']], do: [{ give: 'unfair-toll' }, { set: 'toll-paid' }] },
-  'hodge-lost': { lines: [['hodge', 'Come back tomorrow. The toll will be different. It always is.']] },
+  // the toll game: winning lifts the bar for good and gives you his clipped coin
+  'hodge-won': {
+    lines: [
+      ['hodge', 'Fine. FINE. Don\'t smile. It makes my teeth hurt.'],
+      ['narrator', 'He unhooks a clipped coin from his chain and slaps it into your hand, as if it had bitten him.'],
+      ['hodge', 'It never liked me either. Bar\'s up, for good. Don\'t make me say it twice.'],
+    ],
+    do: [{ give: 'unfair-toll' }, { set: 'toll-paid' }],
+  },
+  'hodge-lost': { lines: [['hodge', 'Mine, I think. Come back tomorrow. Toll\'ll be different. So will my mood. Worse, probably.']] },
+  'hodge-paid': {
+    lines: [
+      ['hodge', 'Paid is paid. Bar\'s up. Don\'t lean on it.'],
+      ['hodge', 'And nobody\'s ever shifted me off this stool, so don\'t get ideas. Or do. I could use the exercise.'],
+    ],
+    choices: TOLL,
+  },
+  'hodge-stool': { lines: [['hodge', 'I\'m sitting. I\'m allowed; it\'s my stool. You\'re on my bridge for nothing, and I hate every step you take.']], choices: TOLL },
+  // after Tamsin (once): what he saw from his stool (it sets tamsin-fallen too, should her scene have been cut short)
+  'hodge-heavier': {
+    lines: [
+      ['hodge', 'Your friend went downriver on that barge. Black as my boots, no lamp, no oars. Paid no toll. Water never does.'],
+      ['hodge', 'I wrote her down anyway. Paid in full. She paid more than you, Warden. Remember that when you complain.'],
+    ],
+    do: [{ set: 'tamsin-fallen' }, { set: 'hodge-heavier' }],
+    choices: TOLL,
+  },
+  'notice-hodge-coin': { lines: [['hodge', 'That\'s my coin round your neck. It always comes up Hodge. See how you like it coming up you.']], choices: TOLL },
+  'notice-hodge-boots': { lines: [['hodge', 'Her boots. She paid me in exact change, every day, and said thank you. I\'ve never been so insulted.']], choices: TOLL },
+  // after the terrible fight (AFTER hodge): he never dies; at the end he sits down on his stool and says so
+  'hodge-sits': {
+    lines: [
+      ['narrator', 'Hodge sits down on his stool, hard, as if he had meant to all along, and folds his arms.'],
+      ['hodge', 'I\'m sitting down. That\'s not losing. That\'s sitting down. Bar\'s up. Go on, before I stand up.'],
+    ],
+  },
+  'hodge-sits-coin': {
+    lines: [
+      ['narrator', 'Hodge sits down on his stool, hard, as if he had meant to all along, and folds his arms.'],
+      ['hodge', 'That\'s my coin on your chain. It\'ll come home. Coins always come home to me.'],
+      ['hodge', 'I\'m sitting down. That\'s not losing. Bar\'s up. Go on, before I stand up.'],
+    ],
+  },
+  // after losing to him (AFTER on 'defeat': you wake at your last Hearthfire)
+  'hodge-knocked': {
+    lines: [
+      ['narrator', 'You wake by a fire with your ears ringing like a toll-bell. A page of Hodge\'s toll-book is tucked in your collar.'],
+      ['narrator', 'Under today\'s date, in a hand like a spider falling downstairs: "Refused toll. Did not move me." Underlined twice.'],
+      ['pip', 'An old man. With a cane. Nobody tells Isolde. Nobody.'],
+    ],
+    do: [{ set: 'knocked-by-hodge' }],
+  },
+  'hodge-knocked-again': { lines: [['pip', 'Again. He hit me with the toll-book this time. It\'s a very big book.']] },
+
+  // ---- Rotbridge: Tamsin's fourth duel (the duel's `talk`), and her fall (spec §3.5, A12) -----------------
   'tamsin-rotbridge': {
-    lines: [['tamsin', 'You again. On a bridge, this time. Somebody wrote to say you\'d come this way.']],
+    lines: [
+      ['tamsin', 'You again. A month I\'ve followed his letters through this fen, and you walk in behind me like a stray dog.'],
+      ['tamsin', 'He wrote back, Warden. He\'s coming here, to Rotbridge. He says he\'ll show me what a Warden is for.'],
+      ['tamsin', 'So I\'m not moving. Not for the old man, not for the fog, and not for you.'],
+      ['pip', 'She walked the whole bog to get here, on foot. Those boots, {warden}. I want those boots.'],
+    ],
     choices: [{ text: 'Try again.', do: [{ fight: 'tamsin-rotbridge' }] }, { text: 'Not yet.' }],
   },
-  'tamsin-rb-win': { lines: [['tamsin', 'Four times. Four. Keep the boots. I won\'t need them where I\'m going.']] },
-  'tamsin-rb-yield': { lines: [['tamsin', 'Stay down. The bridge is old, but it\'s honest.']], do: [{ set: 'tamsin-yielded-4' }] },
+  // won or yielded, the boots stay on the bridge: she is going where she won't need to walk (a win drops them from
+  // the fight; a yield leaves them here, so Page IV never hangs on a duel that cannot be fought again)
+  'tamsin-rb-win': {
+    lines: [
+      ['narrator', 'Tamsin goes down on one knee. When she stands, she steps out of the Bogstriders, and leaves them.'],
+      ['tamsin', 'Four times. Keep the boots. Where I\'m going, I won\'t need to walk.'],
+      ['narrator', 'Downstream, something moves in the fog: long and black, with no lamp on it.'],
+    ],
+    choices: [{ text: 'Look downstream.', next: 'tamsin-fall' }],
+  },
+  'tamsin-rb-yield': {
+    lines: [
+      ['tamsin', 'Stay down. The bridge is old, but it holds. It\'s held me three days.'],
+      ['narrator', 'She steps out of the Bogstriders and kicks them across the stones to you.'],
+      ['tamsin', 'Keep the boots. Where I\'m going, I won\'t need to walk. The far gate\'s yours; I\'ve someone to meet.'],
+      ['narrator', 'Downstream, something moves in the fog: long and black, with no lamp on it.'],
+    ],
+    do: [{ set: 'tamsin-yielded-4' }, { give: 'bogstriders' }],
+    choices: [{ text: 'Look downstream.', next: 'tamsin-fall' }],
+  },
+  // her fall (A12): the black barge, the tall man with a hammer in a broken ring on his clasp, the trade, her word
   'tamsin-fall': {
-    lines: [['narrator', 'A black barge comes out of the fog. Tamsin walks down to it, and does not look back until she is aboard.']],
+    lines: [
+      ['narrator', 'A black barge slides out of the fog and noses against the bridge pier, quiet as a held breath.'],
+      ['narrator', 'In the stern stands a tall man in a boatman\'s cloak. Under it, a smith\'s leather apron.'],
+      ['narrator', 'On his cloak-clasp, a hammer in a broken ring.'],
+      ['narrator', 'He holds up a sackcloth bundle. Where the cloth has slipped, the thing inside bleeds violet-black, like ink in water.'],
+      ['bryn', '{warden}. That mark.'],
+    ],
     do: [{ set: 'tamsin-fallen' }],
+    choices: [{ text: 'Tamsin. Don\'t.', next: 'tamsin-traded' }],
   },
+  'tamsin-traded': {
+    lines: [
+      ['narrator', 'Tamsin doesn\'t look round. She hands down the relic she took from the Keep the night the hearth burned blue.'],
+      ['narrator', 'He gives her the bundle. She holds it as if it burns, and doesn\'t let go.'],
+      ['tamsin', 'Tell Isolde I was the better Warden. Tell her I had to prove it somewhere.'],
+      ['narrator', 'She steps down into the barge, and the fog closes behind it. There is no sound of oars at all.'],
+      ['hodge', 'She paid her toll. Heavier than yours.'],
+    ],
+  },
+
+  // ---- Bogmire ------------------------------------------------------------------------------------------
+  // Mayor Gretch keeps order through fear and favours (the player's own lore): the main quest, the Bogmire board,
+  // and a soot-sealed box for the Gloomfen's chair
   gretch: {
-    lines: [['gretch', 'A Warden. In Bogmire. Wipe your boots. The children are missing, and the Keep sends one Warden.']],
+    lines: [
+      ['gretch', 'A Keep Warden, in Bogmire. Wipe your boots. No, the other way. We keep the mud outside.'],
+      ['gretch', 'I\'m Gretch. I keep this town standing with two things, fear and favours, and I\'m running low on both.'],
+      ['gretch', 'Our children walk into the fen at night, after a light. Nine so far. Widow Pell\'s boy was the last.'],
+      ['gretch', 'Bring them home, and Bogmire owes you a favour. My board pays for anything else that makes the fen quieter.'],
+    ],
     do: [{ set: 'met-gretch' }],
-    choices: [{ text: 'Turn in bounties.', if: { bounty: 'any', state: 'ready' }, do: [{ claim: 'bounties' }] }, LEAVE],
+    choices: GRETCH_ASK,
   },
+  'gretch-again': { lines: [['gretch', 'The lights go east into the Lanternfen, and our children go after them. The board\'s by the moot-hall.']], choices: GRETCH_ASK },
+  'gretch-box': {
+    lines: [
+      ['gretch', 'You\'ve seen those too? A box came, sealed in soot, the week the children started walking. "For Bogmire\'s chair."'],
+      ['gretch', 'Bogmire hasn\'t had a chair at your Keep in thirty years. I haven\'t opened it. I\'m not a fool.'],
+      ['gretch', 'I haven\'t thrown it in the fen, either. I\'m not that kind of fool.'],
+    ],
+    choices: GRETCH,
+  },
+  'gretch-paid': { lines: [['gretch', 'Paid, and counted twice. Everyone in Bogmire counts twice. The ones who didn\'t are in the fen.']] },
+  // the children home (children-home): the town's thanks, once (also a first meeting)
+  'gretch-children': {
+    lines: [
+      ['gretch', 'Nine children, home in their own beds. The whole town cried into its porridge. I didn\'t. I had a cold.'],
+      ['gretch', 'Bogmire owes you a favour. Here: the collection plate. The town filled it. Some of it\'s buttons.'],
+    ],
+    do: [{ set: 'met-gretch' }, { set: 'gretch-thanked' }, { gold: 150 }],
+    choices: GRETCH,
+  },
+  'gretch-home': { lines: [['gretch', 'Nine mothers kissed me in the street today. I didn\'t care for it. Much. The board\'s by the moot-hall.']], choices: GRETCH },
+  'gretch-summons': { lines: [['gretch', 'A rider from your Isolde: the Council sits, and the Gloomfen has a chair. I\'ll bring my box. And my own chair.']], choices: GRETCH },
+  'gretch-council': { lines: [['gretch', 'Your Keep\'s soup is thin and your Council talks too much. I liked it. Tell anyone I said so and I\'ll deny it.']], choices: GRETCH },
+  'notice-gretch-lantern': { lines: [['gretch', 'Put that lantern out while you\'re in my town, Warden. Please. We all know whose it was.']], choices: GRETCH },
+  'notice-gretch-shawl': { lines: [['gretch', 'Nettie\'s shawl. So she likes you. She\'s never liked me, and I\'ve never needed her to.']], choices: GRETCH },
+  // Nettie the Swamp Witch: healer, herbalist, and not someone you cross (the player's own lore). Her remedy: a hex
+  // holds while its maker holds her stone, and Mother Grue taught her everything, including when to leave.
   nettie: {
-    lines: [['nettie', 'Healer, herbalist, and not someone you cross. You\'ll want amber. Everyone wants amber.']],
+    lines: [
+      ['nettie', 'Healer, herbalist, witch. Two of those you can buy. The third you don\'t cross. Mind the jars; some bite.'],
+      ['nettie', 'Half the eastern quarter is hexed: rot in the bones, bad luck in the blood. My remedies won\'t take.'],
+      ['nettie', 'Mother Grue did it, out in the Lanternfen. She taught me everything I know, including when to leave.'],
+      ['nettie', 'A hex holds while its maker holds her stone. Get the Hag-Stone off Grue\'s finger, then come and tell me.'],
+      ['alondra', 'She\'s frightened of Grue. She\'d sooner eat her own jars than say so.'],
+    ],
     do: [{ set: 'met-nettie' }],
-    choices: [
-      { text: 'Tell her Mother Grue is quiet.', if: { all: [{ beaten: 'grue-hollow' }, { not: { flag: 'grue-told' } }] }, next: 'nettie-grue' },
-      { text: 'Buy something.', do: [{ open: 'shop:nettie' }] },
-      LEAVE,
-    ],
+    choices: NETTIE,
   },
-  'nettie-grue': { lines: [['nettie', 'Grue\'s quiet? Then I owe you. Wear this. Nobody hexes a woman wearing my shawl twice.']], do: [{ set: 'met-nettie' }, { set: 'grue-told' }, { claim: 'nettie-remedy' }] },
-  pell: { lines: [['pell', 'My boy followed a light into the fen. They all say lights. I say a lantern. A lantern has a hand.']] },
-  'bm-watch': { lines: [['bm-watch', 'Mind the eastern quarter. The stilts are going, and so are the people.']] },
+  'nettie-again': { lines: [['nettie', 'Buy something or sit down. Standing in a witch\'s doorway is how folk end up as draught excluders.']], choices: NETTIE },
+  // the thank-you of Nettie's Remedy (also a first meeting): her shawl, and a piece of bog amber
+  'nettie-grue': {
+    lines: [
+      ['nettie', 'Grue\'s pot has gone cold. I felt it from here, like a draught under the door. The hexes are coming loose.'],
+      ['nettie', 'I\'m Nettie, and I don\'t thank people. Here: my shawl, knotted against hexes, and a lump of amber. Call it a remedy.'],
+    ],
+    do: [{ set: 'met-nettie' }, { set: 'grue-told' }, { claim: 'nettie-remedy' }],
+    choices: NETTIE,
+  },
+  'nettie-after': { lines: [['nettie', 'The east quarter\'s up and grumbling. That\'s healthy. Hexed folk don\'t grumble; they just go grey.']], choices: NETTIE },
+  // a companion hint, and only a hint (spec §1: no recruitment in M6)
+  'nettie-someday': {
+    lines: [
+      ['nettie', 'Nine children home and not a sniffle among them. I\'m almost disappointed.'],
+      ['nettie', 'If your Keep ever needs a witch, ask me. I\'m not saying yes. I\'m saying ask.'],
+    ],
+    choices: NETTIE,
+  },
+  'notice-nettie-stone': { lines: [['nettie', 'Grue\'s stone. Don\'t look at me through it. I know what you\'d see, and so does she.']], choices: NETTIE },
+  'notice-nettie-shawl': { lines: [['nettie', 'My knots. Mind the third one; there\'s a hex tied in it I didn\'t want to throw away.']], choices: NETTIE },
+  'notice-nettie-veil': { lines: [['nettie', 'The Mother\'s veil. Still wet? It\'ll be wet forever. Grief\'s like that. Don\'t wring it out.']], choices: NETTIE },
+  pell: { lines: [['pell', 'My Lark followed a light into the fen nine nights ago. They all say a light. I say a lantern. A lantern has a hand.']] },
+  'pell-home': {
+    lines: [['pell', 'Lark\'s home. He sleeps with his boots on, and wakes asking for the lamp-lady. I tell him she\'s resting. Is that true?']],
+    choices: [{ text: 'Tell her it is true.', next: 'pell-true' }, LEAVE],
+  },
+  'pell-true': { lines: [['pell', 'Then I\'ll leave a lamp in the window for her. Somebody should. She only wanted them safe. So did I.']] },
+  'notice-pell-lantern': { lines: [['pell', 'That\'s her lantern. The lamp-lady\'s. Lark says she sang to them all the way. He says it was a nice song.']] },
+  'bm-watch': { lines: [['bm-watch', 'Mind the eastern quarter; the stilts are going. And keep your lamp dark after sundown. Lights bring the walking.']] },
+  'bm-watch-home': { lines: [['bm-watch', 'A lamp in every window, and nobody walking into the bog. Nothing to watch. I\'m watching anyway. Habit.']] },
+  'bm-watch-deep': { lines: [['bm-watch', 'The causeway\'s up out of the water! You can walk to the Keep on dry stone. Nobody here wants to. Nice thought.']] },
+  'notice-watch-chain': { lines: [['bm-watch', 'Tallyman chain in your gauntlets? That chain dragged past my stilts all spring. I\'d know its clank asleep.']] },
+
+  // ---- Misthollow: Corvus the diver (spec §3.6: his harpoon, the sealed chest) ----------------------------
+  // He has gone down more times than anyone, and lost something valuable on his last dive (the player's own lore)
   corvus: {
-    lines: [['corvus', 'Down more times than anyone. Lost my harpoon on the last one. It went into something. Something big.']],
+    lines: [
+      ['corvus', 'Corvus. I\'ve been down more times than anyone in the fen. Deeper, too. I\'m not boasting; I\'m counting.'],
+      ['corvus', 'Last dive, I went down for the Tallymen, for a chest. Came up with it, and with company: something big.'],
+      ['corvus', 'I put my harpoon in it. It went off down the channel with my harpoon in its side. Best harpoon I ever had.'],
+      ['corvus', 'Then the Tallymen kept the chest and cut my line. Get me my harpoon back. And find out what was in that chest.'],
+    ],
     do: [{ set: 'met-corvus' }],
-    choices: [
-      { text: 'Show him his harpoon.', if: { all: [{ owns: 'corvus-harpoon' }, { not: { flag: 'harpoon-shown' } }] }, next: 'corvus-harpoon' },
-      { text: 'Tell him what the chest says.', if: { all: [{ flag: 'chest-read' }, { not: { flag: 'chest-told' } }] }, next: 'corvus-chest' },
-      LEAVE,
+  },
+  'corvus-again': { lines: [['corvus', 'The thing with my harpoon went down the Reach to the Tidal Flats. The Tallymen chained it there. Chained it!']] },
+  'corvus-chest-taken': { lines: [['corvus', 'You\'ve got the chest! Don\'t open it. I can\'t read what\'s on it; nobody can. Nobody but Elder Moss, in Willowmurk.']] },
+  // the thank-you of Corvus's Harpoon (also a first meeting): he knows it on sight
+  'corvus-harpoon': {
+    lines: [
+      ['corvus', 'That\'s her. My harpoon. I\'d know her in the dark; I\'ve held her in the dark. Where did you... No. I know where.'],
+      ['corvus', 'I\'m Corvus, and she\'s yours. You\'ve earned her more than I have. Take the silver I saved for a new one, too.'],
+    ],
+    do: [{ set: 'met-corvus' }, { set: 'harpoon-shown' }, { claim: 'corvus-harpoon' }],
+  },
+  // the thank-you of the Dead Tongue (also a first meeting): he opens the chest he brought up; its page is yours
+  'corvus-chest': {
+    lines: [
+      ['corvus', 'That\'s the chest I brought up for the Tallymen. Elder Moss read it? ...The Worldforge. For money, I did that.'],
+      ['narrator', 'Corvus breaks the seal himself. Inside there is one page, in a First-Age hand as fine as frost on glass.'],
+      ['corvus', 'Take it, Warden. It can\'t be burned, and I won\'t be the one who hands it back.'],
+      ['corvus', 'And take my dive-money. I\'m done diving for thieves.'],
+    ],
+    do: [{ set: 'met-corvus' }, { set: 'chest-told' }, { claim: 'dead-tongue' }],
+  },
+  'corvus-after': { lines: [['corvus', 'I dive for myself now. Mostly for pennies. Once for a fish that looked at me funny. Best year of my life.']] },
+  'corvus-deep': { lines: [['corvus', 'The Blackwater\'s fallen. First time in my life I can see the bottom of the channel. It\'s worse than I imagined.']] },
+  'notice-corvus-harpoon': { lines: [['corvus', 'Hold her lower. She likes to be thrown from the hip. ...Sorry. Habit. She\'s yours.']] },
+  'notice-corvus-helm': { lines: [['corvus', 'The Salvage-Master\'s helm. It was him cut my line, to save his own air. Wear it better than he did.']] },
+  'notice-corvus-tooth': { lines: [['corvus', 'One of Old Jaws\'s teeth! He took my brother\'s boat, and my brother\'s good humour with it.']] },
+  'notice-corvus-pearl': { lines: [['corvus', 'The pearl from its brow. I saw it glow, down in the dark, the day I lost my harpoon. It looked at me.']] },
+
+  // ---- after fights (AFTER) --------------------------------------------------------------------------
+  // each lead's lines point at its quest's giver, and play only until that quest's step is done
+  'willow-rest': {
+    lines: [
+      ['narrator', 'Grandfather Willow settles, roots and all, like an old man lowering himself into a chair.'],
+      ['bryn', 'Listen. Back in the village, the ward-stones are humming. Elder Moss will want to hear it from us.'],
     ],
   },
-  'corvus-harpoon': { lines: [['corvus', 'That\'s her. That\'s my girl. Keep her. You\'ve earned her more than I have.']], do: [{ set: 'met-corvus' }, { set: 'harpoon-shown' }, { claim: 'corvus-harpoon' }] },
-  'corvus-chest': { lines: [['corvus', 'The Worldforge. I pulled that up with my own hands. I\'ll never dive for the Tallymen again.']], do: [{ set: 'met-corvus' }, { set: 'chest-told' }, { claim: 'dead-tongue' }] },
+  'grue-rest': {
+    lines: [
+      ['narrator', 'Mother Grue\'s pot boils over and goes out. The fog in the hollow thins, as if it had been holding its breath.'],
+      ['alondra', 'Nettie felt that, I think, all the way from Bogmire. We should tell her anyway. She\'ll want to hear it said.'],
+    ],
+  },
+  'salvage-chest': {
+    lines: [
+      ['narrator', 'On the jetty sits the Tallymen\'s prize: an iron-bound chest, sealed, lettered all over in a tongue nobody speaks.'],
+      ['pip', 'It\'s heavy, it\'s warm, and it hums. I hate it. I\'m carrying it anyway.'],
+      ['bryn', 'First-Age letters. Warnings, I think. Elder Moss reads the old tongue, if anyone living does.'],
+    ],
+  },
+  'cantor-rest': {
+    lines: [
+      ['narrator', 'The Drowned Cantor lowers his staff mid-beat. Far above, in the drowned streets, the singing falters, and goes on.'],
+      ['narrator', 'Under the floor, the slow light dims, and brightens, and dims.'],
+      ['alondra', 'He kept time for something under the floor. The city sings on without him. It sounds so tired.'],
+    ],
+    do: [{ set: 'cantor-fell' }],
+  },
+  // the Lantern Mother at rest (Brand of Lanterns): the children wake in the lamplight and follow you home
+  // (children-home). Her lantern pried loose is yours; held to the end, it breaks as she falls.
+  'mother-after-lantern': {
+    lines: [
+      ['narrator', 'The Lantern Mother lets her veil fall. Under it is a young woman\'s face, tired, and streaked with lamp-black.'],
+      ['lantern-mother', 'Are they safe? I was taking them home. The water came up the stair, and I went back for the last one...'],
+      ['alondra', 'They\'re safe. Their mothers are waiting up for them. You can put the lamp down now.'],
+      ['narrator', 'She smiles, and is lamplight, and then is nothing. Her lantern is still warm in your hand.'],
+      ['narrator', 'Around the drowned house the children stir in the lamplight, yawning, and come to you one by one.'],
+      ['pip', 'Everyone hold hands. We follow this light and no other. This one says he\'s Lark, and his mam\'s the Widow Pell.'],
+      ['alondra', 'Far off, over the long boardwalk, the lights are going out. All of them.'],
+    ],
+    do: [{ set: 'mother-fell' }, { set: 'children-home' }],
+  },
+  'mother-after': {
+    lines: [
+      ['narrator', 'The Lantern Mother lets her veil fall. Under it is a young woman\'s face, tired, and streaked with lamp-black.'],
+      ['lantern-mother', 'Are they safe? I was taking them home. The water came up the stair, and I went back for the last one...'],
+      ['alondra', 'They\'re safe. Their mothers are waiting up for them. You can put the lamp down now.'],
+      ['narrator', 'Her lantern breaks as it drops, and she goes out with it. The drowned house keeps its lamps lit.'],
+      ['narrator', 'By their light the children stir, yawning, and come to you one by one.'],
+      ['pip', 'Everyone hold hands. Nobody follows any light but ours. This one says he\'s Lark, and his mam\'s the Widow Pell.'],
+      ['alondra', 'Far off, over the long boardwalk, the lights are going out. All of them.'],
+    ],
+    do: [{ set: 'mother-fell' }, { set: 'children-home' }],
+  },
+  'mother-again': { lines: [['pip', 'She lit her lantern again. Somebody should tell her the children are home. Gently. From a distance.']] },
+  // the Blackwater Leviathan at rest (Brand of the Deep): the collar breaks, the Blackwater falls, and in the quiet
+  // the Sleeper's scene. Corvus's harpoon pried loose is yours; held to the end, it snaps in its side.
+  'leviathan-after-harpoon': {
+    lines: [
+      ['narrator', 'The collar splits at its lock: an iron lock, stamped with a hammer in a broken ring.'],
+      ['narrator', 'Free of its chain, the Leviathan sinks back into the deep, slow as a sunset, and the Blackwater sinks with it.'],
+      ['pip', 'And Corvus\'s harpoon came out of its side like a cork. He\'s going to cry. I\'m going to watch.'],
+      ['bryn', 'Look up the channel: the water\'s falling. By morning the causeway will be dry stone, all the way to the Keep.'],
+      ['narrator', 'In the quiet, far up the channel under Misthollow, a song you never knew you were hearing stops.'],
+    ],
+    do: [{ set: 'leviathan-fell' }],
+    choices: [{ text: 'Listen.', if: { flag: 'met-moss' }, next: 'lull-moss' }, { text: 'Listen.', if: { not: { flag: 'met-moss' } }, next: 'lull' }],
+  },
+  'leviathan-after': {
+    lines: [
+      ['narrator', 'The collar splits at its lock: an iron lock, stamped with a hammer in a broken ring.'],
+      ['narrator', 'Free of its chain, the Leviathan sinks back into the deep, slow as a sunset, and the Blackwater sinks with it.'],
+      ['pip', 'Corvus\'s harpoon snapped off in its side as it went. Hilda could mend it. Corvus could cry. Probably both.'],
+      ['bryn', 'Look up the channel: the water\'s falling. By morning the causeway will be dry stone, all the way to the Keep.'],
+      ['narrator', 'In the quiet, far up the channel under Misthollow, a song you never knew you were hearing stops.'],
+    ],
+    do: [{ set: 'leviathan-fell' }],
+    choices: [{ text: 'Listen.', if: { flag: 'met-moss' }, next: 'lull-moss' }, { text: 'Listen.', if: { not: { flag: 'met-moss' } }, next: 'lull' }],
+  },
+  // the Sleeper's scene (spec §3.5): Elder Moss names it through the reeds if you have met him, else the narrator
+  'lull-moss': {
+    lines: [
+      ['narrator', 'The reeds along the bank rustle, though there is no wind, and in the rustle is Elder Moss\'s voice, dry as a husk.'],
+      ['moss', 'Hear that? Nothing. A thousand years the drowned sang under Misthollow, and tonight they\'ve stopped.'],
+      ['moss', 'A riddle with no trick in it: what does a choir sing to sleep? A child too big to carry. Its name is Lull.'],
+      ['alondra', 'Lull. I can hear it, now the singing\'s stopped: breathing, under the drowned city. So slow.'],
+      ['alondra', 'Three, then. Hush under the ice, the one under the ash, and Lull. I dreamed of four.'],
+      ['bryn', 'Eight coals. Let\'s go home, {warden}, and tell the Council. I don\'t know how we tell them this, either.'],
+    ],
+  },
+  lull: {
+    lines: [
+      ['narrator', 'Under Misthollow the drowned sang one word for a thousand years, to something too big to wake.'],
+      ['narrator', 'The word was its name, and its name was Lull. Tonight, for the first time, nobody is singing it.'],
+      ['alondra', 'Lull. I can hear it, now the singing\'s stopped: breathing, under the drowned city. So slow.'],
+      ['alondra', 'Three, then. Hush under the ice, the one under the ash, and Lull. I dreamed of four.'],
+      ['bryn', 'Eight coals. Let\'s go home, {warden}, and tell the Council. I don\'t know how we tell them this, either.'],
+    ],
+  },
+  'leviathan-again': { lines: [['pip', 'It came back up. Of course it did. I\'m never getting in a boat again. Or a bath.']] },
+
+  // ---- arrivals (ARRIVALS): first impressions of the fen --------------------------------------------------
+  'arrive-willowmurk': {
+    lines: [['bryn', 'Willowmurk. My grandmother said it was a story for children. The children here would disagree.'], ['pip', 'Three of those ward-stones are dark. Even I know that\'s bad, and I don\'t know what a ward-stone is.']],
+  },
+  'arrive-rotbridge': {
+    lines: [['alondra', 'Something on the bridge is breathing. No. The carvings are. They shift when you stop looking at them.'], ['pip', 'And there\'s a toll-bar. Of course there\'s a toll-bar. There\'s always a toll-bar.']],
+  },
+  'arrive-bogmire': {
+    lines: [['pip', 'A whole town on stilts, and half the stilts are rotten. Walk on the nails, not the planks.'], ['alondra', 'A lamp in every window, and every one of them dark. They\'re afraid of lights here.']],
+  },
+  'arrive-misthollow': {
+    lines: [['alondra', 'Bells, under the water. And under the bells, a song: one word, over and over. I can\'t make out the word.'], ['bryn', 'A whole city the fen swallowed. Mind your feet. Half these streets are roofs.']],
+  },
+
+  // ---- rests (RESTS) ---------------------------------------------------------------------------------
+  'wards-night': {
+    lines: [
+      ['narrator', 'In the night the ward-stones hum, all of them together, a low sound like bees in a wall.'],
+      ['moss', 'Hear that? Nothing is drinking them now. The willows are only willows tonight. Sleep.'],
+    ],
+    do: [{ set: 'wards-night' }],
+  },
+  'toll-lamp-night': {
+    lines: [
+      ['narrator', 'In the night Hodge sits down at your fire without asking, warms his hands, and says nothing for a long while.'],
+      ['hodge', 'Fire\'s free. Always was. I only say it costs so nobody gets used to kindness.'],
+      ['hodge', 'She sat at this fire three nights reading one letter, and never slept. Go to sleep, Warden. I\'ll watch the bridge.'],
+    ],
+    do: [{ set: 'hodge-fireside' }],
+  },
+  'bogmire-lamps': {
+    lines: [
+      ['narrator', 'That night every window in Bogmire has a lamp lit in it, for the first time since spring. Nobody walks into the fen.'],
+      ['pell', 'Lark\'s asleep with his boots on. I haven\'t the heart to take them off. Thank you, {warden}. Go to sleep.'],
+    ],
+    do: [{ set: 'bogmire-lamps' }],
+  },
 
   // ---- the fourth council (keep-hall trigger `council-4`, guarded by the flag it sets): the end of Act II ----
+  // Mayor Gretch takes the Gloomfen's chair, and four soot-sealed boxes sit on the table unopened: Qasim's, Brundar's,
+  // Gretch's and Miravel's. Every way out ends on the end-of-Act-II card ({ end: 'gloomfen' }), which opens nothing.
   'council-4': {
     lines: [
-      ['narrator', 'Eight coals burn in the Eternal Hearth, and every chair at the long table is filled.'],
-      ['isolde', 'Eight, {warden}. Sit. The Gloomfen sits with us tonight: Mayor Gretch, who has brought a box.'],
-      ['gretch', 'Sealed in soot. Came the week the children went. I didn\'t open it. I\'m not a fool.'],
+      ['narrator', 'Eight coals burn in the hearth, and for the first time in thirty years every chair at the long table is filled.'],
+      ['isolde', 'Eight coals, {warden}. Sit. The Gloomfen sits with us tonight: Mayor Gretch of Bogmire.'],
+      ['gretch', 'Bogmire\'s children are home in their beds. I owe this Keep a favour, and I always pay my favours. Eventually.'],
+      ['gretch', 'And I brought this. It came the week the children started walking. Sealed in soot. I didn\'t open it. I\'m not a fool.'],
+      ['narrator', 'She sets a small box on the table. Qasim sets his beside it, then Brundar. Then, after a long moment, Miravel.'],
+      ['miravel', 'Eldergrove\'s came the night the eldest trees began to bleed. I told no one. I\'m telling you now.'],
+      ['isolde', 'Four chairs, four boxes, one sender. Nobody opens anything. Not tonight.'],
     ],
-    do: [{ set: 'council-4-done' }, { claim: 'gloomfen-waking' }, { end: 'gloomfen' }],
+    do: [{ set: 'council-4-done' }, { claim: 'gloomfen-waking' }],
+    choices: [
+      { text: 'Tell Isolde what Tamsin said.', next: 'council-4-tamsin' },
+      { text: 'Let the Council talk.', do: [{ end: 'gloomfen' }] },
+    ],
+  },
+  'council-4-tamsin': {
+    lines: [
+      ['narrator', 'You tell them about Rotbridge: the black barge, the tall man, the clasp, the bundle that bled violet-black.'],
+      ['narrator', 'Then you tell Isolde what Tamsin said, word for word. The hall is very quiet.'],
+      ['isolde', 'She was the better Warden. Faster, braver, and never once patient. I raised her; I would know.'],
+      ['isolde', 'She wanted someone to tell her so. I never did. I thought there would be time.'],
+      ['fenwick', 'Violet-black. I\'ve seen a relic bleed like that once. Long ago. Don\'t ask me how long.'],
+      ['isolde', 'Then we bring her home, and whatever she\'s carrying. That\'s tomorrow\'s work. Tonight the Council rests.'],
+    ],
+    choices: [
+      { text: 'Show them the Worldforge page.', if: { flag: 'worldforge-page' }, next: 'council-4-page' },
+      { text: 'Let the Council talk.', do: [{ end: 'gloomfen' }] },
+    ],
+  },
+  // the Dead Tongue's reward: the page from Corvus's chest
+  'council-4-page': {
+    lines: [
+      ['narrator', 'You lay the page from the sealed chest on the table, among the four boxes. The ink is a First-Age hand.'],
+      ['fenwick', 'The same hand. I knew him. I told you I knew him.'],
+      ['hilda', 'Harrow took Ironhold\'s plans. He never had this page. He\'s been dredging a whole fen to find it.'],
+      ['isolde', 'Then he still hasn\'t got it. Into the vault with it, {warden}, with the boxes. Sneck won\'t be getting this one.'],
+    ],
+    do: [{ end: 'gloomfen' }],
   },
 });
 
@@ -1185,6 +1699,11 @@ export const ARRIVALS = deepFreeze({
   ironhold: 'arrive-ironhold',
   stormwatch: 'arrive-stormwatch',
   frostmere: 'arrive-frostmere',
+  // M6 (spec §3.6): the Gloomfen's four places
+  willowmurk: 'arrive-willowmurk',
+  rotbridge: 'arrive-rotbridge',
+  bogmire: 'arrive-bogmire',
+  misthollow: 'arrive-misthollow',
 });
 
 // A first win plays its lines and sets a flag; a rematch (the region re-arms after its next Brand)
@@ -1224,6 +1743,32 @@ export const AFTER = deepFreeze({
   'fm-shrine': [{ on: 'victory', if: { not: { flag: 'bell-rung-veil' } }, d: 'abbess-rest' }],
   'fr-cutters': [{ on: 'victory', if: { not: { flag: 'ledger-given' } }, d: 'cutters-ledger' }],
   'id-smith': [{ on: 'victory', if: { not: { flag: 'smith-told' } }, d: 'journeyman-rest' }],
+  // M6 (spec §3.5, §3.6): the Champions (the Leviathan's lines lead into the Sleeper's scene), Hodge, and the duel,
+  // whose lines lead into Tamsin's fall (once: she is gone after it)
+  'lantern-mother': [
+    { on: 'victory', if: { flag: 'mother-fell' }, d: 'mother-again' },
+    { on: 'victory', if: { owns: 'lamplighters-lantern' }, d: 'mother-after-lantern' },
+    { on: 'victory', d: 'mother-after' },
+  ],
+  'blackwater-leviathan': [
+    { on: 'victory', if: { flag: 'leviathan-fell' }, d: 'leviathan-again' },
+    { on: 'victory', if: { owns: 'corvus-harpoon' }, d: 'leviathan-after-harpoon' },
+    { on: 'victory', d: 'leviathan-after' },
+  ],
+  hodge: [
+    { on: 'victory', if: { owns: 'unfair-toll' }, d: 'hodge-sits-coin' },
+    { on: 'victory', d: 'hodge-sits' },
+    { on: 'defeat', if: { flag: 'knocked-by-hodge' }, d: 'hodge-knocked-again' },
+    { on: 'defeat', d: 'hodge-knocked' },
+  ],
+  'tamsin-rotbridge': [
+    { on: 'victory', if: { not: { flag: 'tamsin-fallen' } }, d: 'tamsin-rb-win' },
+    { on: 'yield', if: { not: { flag: 'tamsin-fallen' } }, d: 'tamsin-rb-yield' },
+  ],
+  'wm-willow': [{ on: 'victory', if: { not: { flag: 'wards-mended' } }, d: 'willow-rest' }],
+  'grue-hollow': [{ on: 'victory', if: { not: { flag: 'grue-told' } }, d: 'grue-rest' }],
+  'mh-salvage': [{ on: 'victory', if: { not: { flag: 'chest-read' } }, d: 'salvage-chest' }],
+  cantor: [{ on: 'victory', if: { not: { flag: 'cantor-fell' } }, d: 'cantor-rest' }],
 });
 
 export const RESTS = deepFreeze([
@@ -1234,6 +1779,10 @@ export const RESTS = deepFreeze([
   { at: 'last-watchfire', if: { all: [{ brand: 'brand-of-ash' }, { not: { flag: 'watch-ended' } }] }, d: 'last-watch' },
   // M5: the bell says goodnight at the Cloister Fire, once it has rung for the drowned
   { at: 'veil-hearth', if: { all: [{ flag: 'bell-rung-veil' }, { not: { flag: 'veil-night' } }] }, d: 'veil-night' },
+  // M6: the ward-stones hum at the Willow Hearth; Hodge sits at your fire after Tamsin's fall; Bogmire lights its lamps
+  { at: 'willow-hearth', if: { all: [{ flag: 'wards-mended' }, { not: { flag: 'wards-night' } }] }, d: 'wards-night' },
+  { at: 'toll-lamp', if: { all: [FALLEN, { not: { flag: 'hodge-fireside' } }] }, d: 'toll-lamp-night' },
+  { at: 'stilt-hearth', if: { all: [{ flag: 'children-home' }, { not: { flag: 'bogmire-lamps' } }] }, d: 'bogmire-lamps' },
 ]);
 
 export const LOOKOUTS = deepFreeze({

@@ -1,8 +1,9 @@
 // Story data tests (M3 spec §3.1, §3.6, §4.4, §6.1 WP3S; M4 spec §3.1, §3.6, §8; M5 spec §3.1, §3.5,
-// §3.6, §8): ids, conditions, line lengths, quest targets, the beats around fights and rests, "no flag
-// is read that is never set", the thank-you rule, the Sunscorch's and the Ironspire's people, the second
-// and third councils, Hush's scene, the letters, and the Act II Ladder.
-// Owner: WP3S (M3), P3 story (M4, M5).
+// §3.6, §8; M6 spec §2.4, §3.1, §3.5, §3.6, §8): ids, conditions, line lengths, quest targets, the beats around
+// fights and rests, "no flag is read that is never set", the thank-you rule, the Sunscorch's, the Ironspire's and
+// the Gloomfen's people, the second, third and fourth councils, Hush's and Lull's scenes, Hodge's toll, Tamsin's
+// fall, the letters, and the Act II Ladder.
+// Owner: WP3S (M3), P3 story (M4, M5, M6).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { NPCS } from '../src/data/npcs.js';
@@ -94,7 +95,8 @@ test('quests, bounties, shops, the Ladder and letters name real things', () => {
   // Harrow (M5 finds his forge, not him)
   assert.deepEqual(LADDER.filter(p => p.act === 2 && !p.silhouette).map(p => [p.id, p.enc]), ACT2_POSTERS);
   // M6: the Lantern Mother has her poster; Harrow is still a rumour
-  assert.deepEqual(LADDER.filter(p => p.silhouette).map(p => p.id), ['missing-smith']);
+  assert.deepEqual(LADDER.filter(p => p.silhouette).map(p => p.id), ['missing-smith', 'man-on-the-barge']);
+  for (const p of LADDER) cond(p.if, `ladder ${p.id}`); // M6: an entry that shows only once its condition holds
   assert.equal(new Set(LADDER.map(p => p.id)).size, LADDER.length, 'poster ids are unique');
   for (const p of LADDER) if (p.enc) assert.ok(ENCOUNTERS[p.enc]?.spawns?.[p.spawn], p.id);
   for (const b of Object.keys(BRANDS)) assert.ok(LETTERS[b]?.text, `letter for ${b}`);
@@ -109,7 +111,14 @@ test('arrivals, after-fight lines, rests and lookouts point at real things', () 
   for (const [map, d] of Object.entries(ARRIVALS)) { assert.ok(MAPS[map], map); assert.ok(DIALOGUE[d], d); }
   for (const [enc, list] of Object.entries(AFTER)) {
     assert.ok(ENCOUNTERS[enc], enc);
-    for (const a of list) { assert.ok(['victory', 'yield'].includes(a.on)); assert.ok(DIALOGUE[a.d], a.d); cond(a.if, `after ${enc}`); }
+    for (const a of list) {
+      // M6: 'defeat' too (the UI passes a loss as 'defeat': Hodge's lines when you wake), never on a duel, whose loss
+      // is a yield
+      assert.ok(['victory', 'yield', 'defeat'].includes(a.on), `${enc}: on ${a.on}`);
+      if (a.on === 'defeat') assert.ok(!ENCOUNTERS[enc].duel, `${enc}: a duel is never lost, only yielded`);
+      if (a.on === 'yield') assert.ok(ENCOUNTERS[enc].duel, `${enc}: only a duel yields`);
+      assert.ok(DIALOGUE[a.d], a.d); cond(a.if, `after ${enc}`);
+    }
   }
   for (const r of RESTS) { assert.ok(HEARTHS[r.at], r.at); assert.ok(DIALOGUE[r.d], r.d); cond(r.if, `rest ${r.at}`); }
   for (const [id, l] of Object.entries(LOOKOUTS)) {
@@ -219,7 +228,7 @@ function assertPrice(price, at) {
 }
 
 test('effects use the known vocabulary and name real things', () => {
-  const KEYS = ['set', 'unset', 'give', 'item', 'gold', 'bag', 'gems', 'materials', 'unlock', 'heal', 'fight', 'claim', 'open', 'letter', 'end', 'pay'];
+  const KEYS = ['set', 'unset', 'give', 'item', 'gold', 'bag', 'gems', 'materials', 'unlock', 'heal', 'fight', 'claim', 'open', 'letter', 'end', 'pay', 'scout'];
   const OPEN = ['forge', 'atlas', 'journal', 'ladder', 'bounties'];
   for (const [id, d] of Object.entries(DIALOGUE)) for (const e of [...(d.do || []), ...(d.choices || []).flatMap(c => c.do || [])]) {
     const k = Object.keys(e).find(x => KEYS.includes(x));
@@ -234,6 +243,7 @@ test('effects use the known vocabulary and name real things', () => {
     if (k === 'end') assert.ok(['act1', 'act2', 'ironspire', 'gloomfen'].includes(e.end), `${id}: end ${e.end}`);
     if (k === 'gold') assert.ok(Number.isInteger(e.gold) && e.gold > 0, `${id}: gold`);
     if (k === 'pay') assertPrice(e.pay, `${id}: pay`); // M6: Hodge's price of the day
+    if (k === 'scout') assert.ok(ENCOUNTERS[e.scout], `${id}: scout ${e.scout}`); // M6: Hodge's poster, from talk
   }
 });
 
@@ -456,4 +466,212 @@ test('the Unsmith\'s Ironspire letters count coals (the region is taken in one o
   assert.match(LETTERS['brand-of-iron'].text, /\bFive\b/);
   assert.match(LETTERS['brand-of-frost'].text, /\bSix\b/);
   for (const b of ['brand-of-iron', 'brand-of-frost']) assert.ok(LETTERS[b].text.endsWith('— U.'), b);
+});
+
+// ---- M6 (P3 story) ----------------------------------------------------------------------------------
+
+const GLOOMFEN_NPCS = ['moss', 'sedge', 'wm-villager', 'hodge', 'gretch', 'nettie', 'pell', 'bm-watch', 'corvus'];
+const PAGE_IV = new Set(Object.values(RELICS).filter(r => r.codex >= 53 && r.codex <= 66).map(r => r.id));
+const lineText = id => DIALOGUE[id].lines.map(l => l[1]).join(' ');
+
+test('the Gloomfen\'s people (spec §3.1): never silent, met before they notice, they notice Page IV, shops and the Bogmire board in the right hands', () => {
+  for (const id of GLOOMFEN_NPCS) {
+    const n = NPCS[id];
+    assert.ok(n, id);
+    assert.ok(n.talk.length && !n.talk[n.talk.length - 1].if, `${id}: the last talk line has no condition, so they always answer`);
+    const first = n.talk.findIndex(t => t.if?.not?.flag?.startsWith('met-'));
+    if (first >= 0) for (const [i, t] of n.talk.entries()) if (JSON.stringify(t.if || {}).includes('"wears"')) assert.ok(i > first, `${id}: notice ${t.d} before the first meeting`);
+    assert.ok(n.talk.some(t => PAGE_IV.has(t.if?.wears)), `${id} notices a relic of Codex Page IV`);
+  }
+  assert.equal(PAGE_IV.size, 14);
+  // every relic of Page IV is noticed by somebody (the Keep's people join in)
+  const noticed = new Set(Object.values(NPCS).flatMap(n => n.talk.map(t => t.if?.wears)).filter(Boolean));
+  for (const r of PAGE_IV) assert.ok(noticed.has(r), `somebody notices ${r}`);
+  // each giver's first meeting sets the met flag its talk table reads
+  for (const [npc, f] of [['moss', 'met-moss'], ['hodge', 'met-hodge'], ['gretch', 'met-gretch'], ['nettie', 'met-nettie'], ['corvus', 'met-corvus']]) {
+    const first = NPCS[npc].talk.find(t => JSON.stringify(t.if) === JSON.stringify({ not: { flag: f } }));
+    assert.ok(first && DIALOGUE[first.d].do.some(e => e.set === f), `${npc}: the first meeting sets ${f}`);
+  }
+  assert.ok(offers('nettie', 'shop:nettie'), 'Nettie keeps her hut');
+  assert.ok(offers('sedge', 'shop:sedge'), 'Sedge sells his herbs');
+  assert.deepEqual([...SHOPS.nettie.gems].sort(), ['bog-amber', 'glass-pearl', 'moss-agate'], 'Nettie sells three gems, the bog amber among them');
+  assert.ok(SHOPS.nettie.items.length && SHOPS.sedge.items.length && !(SHOPS.sedge.gems || []).length, 'both sell the consumables; Sedge no gems');
+  assert.deepEqual(Object.values(BOUNTIES).filter(b => b.giver === 'gretch').map(b => [b.id, b.enc, b.gold]),
+    [['b-bogfolk', 'mk-bogfolk', 100], ['b-lights', 'lf-lights', 110], ['b-gars', 'br-gars', 130], ['b-jaws', 'old-jaws', 170]]);
+  assert.ok(offers('gretch', 'bounties'), 'Mayor Gretch takes the Bogmire board\'s bounties in');
+  // Nettie is a companion hint only (spec §1: no recruitment): nothing in the story changes the party
+  for (const d of Object.values(DIALOGUE)) for (const e of [...(d.do || []), ...(d.choices || []).flatMap(c => c.do || [])]) assert.ok(!('join' in e) && !('recruit' in e));
+  assert.match(lineText('nettie-someday'), /ask/i);
+});
+
+test('the Gloomfen\'s quests (spec §3.6): ids, givers, starts, steps and rewards; the talk steps close with Brands; the flags the maps and rules read are set', () => {
+  const Q = (id, giver, start) => {
+    assert.equal(QUESTS[id]?.giver, giver, `${id} giver`);
+    assert.deepEqual(QUESTS[id].start, start, `${id} start`);
+    return QUESTS[id];
+  };
+  const main = Q('gloomfen-waking', 'isolde', { flag: 'ironspire-complete' });
+  assert.equal(main.kind, 'main');
+  assert.deepEqual(main.reward, {}, 'the fourth council claims it');
+  assert.deepEqual(main.steps[0].done, { flag: 'council-3-done' }, 'its first step is the third council');
+  assert.deepEqual(main.steps.at(-1).done, { flag: 'council-4-done' }, 'it closes at the fourth council');
+  // every step between the councils also closes with a Brand, so a Warden who talks to nobody never sticks
+  for (const s of main.steps.slice(1, -1)) assert.ok(JSON.stringify(s.done).includes('"brand"'), s.text);
+  // the spec's steps in its order: Moss, Hodge's bar, Tamsin, Gretch, the Brand of Lanterns, Corvus, the Brand of the Deep
+  assert.deepEqual(main.steps.map(s => s.target.entity), ['isolde', 'moss', 'rb-hodge', 'tamsin-rotbridge', 'gretch', 'lantern-mother', 'corvus', 'blackwater-leviathan', 'isolde']);
+  assert.deepEqual(main.steps[2].done.any.slice(0, 2), [{ flag: 'toll-paid' }, { beaten: 'hodge' }], 'past the bar: the bar\'s own condition');
+  assert.deepEqual(main.steps[3].done.any.slice(0, 2), [{ beaten: 'tamsin-rotbridge' }, { flag: 'tamsin-yielded-4' }], 'Tamsin: won or yielded');
+  const steps = id => QUESTS[id].steps.map(s => s.done);
+  assert.deepEqual(Q('failing-wards', 'moss', { flag: 'met-moss' }).reward, { relic: 'willow-ward' });
+  assert.deepEqual(steps('failing-wards'), [{ beaten: 'wm-willow' }, { flag: 'wards-mended' }]);
+  assert.deepEqual(Q('nettie-remedy', 'nettie', { flag: 'met-nettie' }).reward, { relic: 'hexbane-shawl', gems: { 'bog-amber': 1 } });
+  assert.deepEqual(steps('nettie-remedy'), [{ beaten: 'grue-hollow' }, { flag: 'grue-told' }]);
+  assert.deepEqual(Q('corvus-harpoon', 'corvus', { flag: 'met-corvus' }).reward, { gold: 300, materials: { silver: 2 } });
+  assert.deepEqual(steps('corvus-harpoon'), [{ owns: 'corvus-harpoon' }, { flag: 'harpoon-shown' }]);
+  // the chest's secret, a page of the Worldforge plans, is the Warden's (the fourth council can see it)
+  assert.deepEqual(Q('dead-tongue', 'corvus', { flag: 'met-corvus' }).reward, { gold: 250, gems: { 'bog-amber': 1 }, set: 'worldforge-page' });
+  assert.deepEqual(steps('dead-tongue'), [{ beaten: 'mh-salvage' }, { flag: 'chest-read' }, { flag: 'chest-told' }]);
+  // the flags the spec fixes (the maps, the rules and the Journal read some of them) are set by the story
+  const set = new Set();
+  for (const d of Object.values(DIALOGUE)) for (const e of [...(d.do || []), ...(d.choices || []).flatMap(c => c.do || [])]) if (e.set) set.add(e.set);
+  for (const f of ['met-moss', 'wards-mended', 'met-nettie', 'grue-told', 'met-corvus', 'harpoon-shown', 'chest-read', 'chest-told', 'met-gretch',
+    'toll-paid', 'tamsin-yielded-4', 'tamsin-fallen', 'children-home', 'council-4-done']) assert.ok(set.has(f), `${f} is set`);
+});
+
+test('Hodge\'s toll (spec A11, §4.4): every line carries it; three prices over three days while the bar is down; the game; the terrible fight; his lines after', () => {
+  const nodes = [...new Set(NPCS.hodge.talk.map(t => t.d))];
+  // the encounter's talk is one of his lines, so however the map places him he offers the same
+  assert.ok(nodes.includes(ENCOUNTERS.hodge.talk), `${ENCOUNTERS.hodge.talk} is his line and his encounter's talk`);
+  const toll = DIALOGUE[nodes[0]].choices;
+  for (const id of nodes) assert.equal(JSON.stringify(DIALOGUE[id].choices), JSON.stringify(toll), `${id} carries the toll's choices`);
+  // the price of the day: one pay choice for each day of three, only while the bar is down; paying lifts it for good
+  const pays = toll.filter(c => (c.do || []).some(e => e.pay));
+  assert.deepEqual(pays.map(c => c.if.all[0].day.at).sort(), [0, 1, 2]);
+  for (const c of pays) {
+    assert.ok(c.if.all.every(x => x.day?.every === 3 || JSON.stringify(x) === '{"not":{"flag":"toll-paid"}}' || JSON.stringify(x) === '{"not":{"beaten":"hodge"}}'), 'a day and the bar down, nothing else');
+    assert.equal(c.if.all.length, 3);
+    assert.ok(c.do.some(e => e.set === 'toll-paid'), 'paying lifts the bar');
+  }
+  assert.equal(new Set(pays.map(c => JSON.stringify(c.do.find(e => e.pay).pay))).size, 3, 'three different prices');
+  // his opener names the same day's price
+  for (const at of [0, 1, 2]) assert.ok(NPCS.hodge.talk.some(t => JSON.stringify(t.if) === JSON.stringify({ day: { every: 3, at } })), `an opener for day % 3 = ${at}`);
+  // the toll game: Persuasion, Deception (raw CHA: spec §4.4) and Intimidation, two of three, once a day, for a coin you lack
+  const game = toll.find(c => c.contest);
+  assert.deepEqual(game.contest.checks.map(k => k.name), ['Persuasion', 'Deception', 'Intimidation']);
+  assert.equal(game.contest.need, 2);
+  assert.deepEqual(Object.keys(game.contest.checks[1]).sort(), ['ability', 'dc', 'name']);
+  assert.equal(game.contest.checks[1].ability, 'CHA');
+  assert.ok(JSON.stringify(game.if).includes('"since":{"flag":"hodge-tried","days":1}') && JSON.stringify(game.if).includes('"not":{"owns":"unfair-toll"}'));
+  assert.deepEqual(game.do, [{ set: 'hodge-tried', value: 'day' }]);
+  const won = DIALOGUE[game.contest.pass];
+  assert.ok(won.do.some(e => e.give === 'unfair-toll') && won.do.some(e => e.set === 'toll-paid'), 'winning: his coin, and passage for good');
+  assert.ok(!(DIALOGUE[game.contest.fail].do || []).length, 'losing costs only the day');
+  // the fight, in the spec's words while the bar is down, and never once he is beaten (the encounter is `once`)
+  const fights = toll.filter(c => (c.do || []).some(e => e.fight === 'hodge'));
+  assert.ok(fights.some(c => c.text === 'Refuse, and make him move.' && JSON.stringify(c.if) === JSON.stringify({ all: [{ not: { flag: 'toll-paid' } }, { not: { beaten: 'hodge' } }] })));
+  for (const c of fights) assert.ok(JSON.stringify(c.if).includes('"not":{"beaten":"hodge"}'), c.text);
+  assert.ok(ENCOUNTERS.hodge.once);
+  // his lines after the fight (a win: he sits down on his stool and says so; a loss) and after Tamsin
+  const after = on => (AFTER.hodge || []).filter(a => a.on === on);
+  assert.ok(after('victory').length && !after('victory').at(-1).if, 'a win always gets its lines');
+  assert.ok(after('defeat').length && !after('defeat').at(-1).if, 'so does a loss');
+  for (const a of after('victory')) assert.ok(DIALOGUE[a.d].lines.some(([who, t]) => who === 'hodge' && /sitting down/.test(t)), `${a.d}: he sits down and says so`);
+  const heavy = Object.entries(DIALOGUE).filter(([, d]) => d.lines.some(([who, t]) => who === 'hodge' && t === 'She paid her toll. Heavier than yours.'));
+  assert.deepEqual(heavy.map(([id]) => id), ['tamsin-traded']);
+});
+
+test('the Gloomfen beats: arrivals, Tamsin\'s duel and her fall, the Champions, the children home, the Sleeper\'s scene, the rests', () => {
+  for (const m of ['willowmurk', 'rotbridge', 'bogmire', 'misthollow']) assert.ok(ARRIVALS[m], `arrival lines for ${m}`);
+  const after = (enc, on) => (AFTER[enc] || []).filter(a => a.on === on);
+  // Tamsin: her talk starts the duel; a win or a yield leads, once, into her fall
+  const talk = DIALOGUE[ENCOUNTERS['tamsin-rotbridge'].talk];
+  assert.ok(talk.choices.some(c => c.text === 'Try again.' && c.do.some(e => e.fight === 'tamsin-rotbridge')));
+  assert.ok(talk.choices.some(c => c.text === 'Not yet.' && !c.do));
+  for (const on of ['victory', 'yield']) {
+    const list = after('tamsin-rotbridge', on);
+    assert.equal(list.length, 1, on);
+    assert.deepEqual(list[0].if, { not: { flag: 'tamsin-fallen' } }, `${on}: once; she is gone after it`);
+    assert.ok(DIALOGUE[list[0].d].choices.length === 1 && reachable(list[0].d).has('tamsin-fall'), `${on} leads into her fall`);
+  }
+  const yieldNode = DIALOGUE[after('tamsin-rotbridge', 'yield')[0].d];
+  assert.ok(yieldNode.do.some(e => e.set === ENCOUNTERS['tamsin-rotbridge'].yields));
+  // the Bogstriders are never lost: a win drops them from the fight (she wears them), a yield leaves them on the bridge
+  assert.equal(ENCOUNTERS['tamsin-rotbridge'].spawns[0].wears, 'bogstriders');
+  assert.ok(yieldNode.do.some(e => e.give === 'bogstriders'));
+  // her fall (A12): tamsin-fallen; the black barge, the tall man in a boatman's cloak over a smith's apron, the hammer in a
+  // broken ring on the clasp, the relic that bleeds violet-black, the trade, her words, and Hodge's after
+  assert.ok(DIALOGUE['tamsin-fall'].do.some(e => e.set === 'tamsin-fallen'));
+  const fall = [...reachable('tamsin-fall')];
+  const said = fall.flatMap(id => DIALOGUE[id].lines);
+  const text = said.map(l => l[1]).join(' ');
+  for (const re of [/black barge/, /tall man/, /boatman's cloak/, /smith's leather apron/, /hammer in a broken ring/, /clasp/, /violet-black/, /relic she took from the Keep/]) assert.match(text, re);
+  assert.ok(said.some(([who, t]) => who === 'tamsin' && t === 'Tell Isolde I was the better Warden. Tell her I had to prove it somewhere.'));
+  assert.ok(said.some(([who, t]) => who === 'hodge' && t === 'She paid her toll. Heavier than yours.'));
+  assert.ok(!fall.some(id => DIALOGUE[id].lines.some(([who]) => !['narrator', 'tamsin', 'hodge', ...HERO_IDS].includes(who))), 'the man on the barge never speaks');
+  // the Champions: a first win always gets its lines; the Lantern Mother sends the children home on every first win
+  for (const enc of ['lantern-mother', 'blackwater-leviathan']) assert.ok(!after(enc, 'victory').at(-1).if, `${enc}: a first win always gets its lines`);
+  const firsts = enc => after(enc, 'victory').filter(a => !JSON.stringify(a.if || {}).includes('-fell'));
+  assert.equal(firsts('lantern-mother').length, 2);
+  for (const a of firsts('lantern-mother')) {
+    assert.ok(DIALOGUE[a.d].do.some(e => e.set === 'children-home'), `${a.d}: the children come home`);
+    assert.match(lineText(a.d), /Widow Pell/, `${a.d}: Widow Pell's boy is among them`);
+    assert.match(lineText(a.d), /lamplight|lamps/, `${a.d}: they wake in the lamplight`);
+  }
+  // the Sleeper's scene follows the Leviathan's lines: Elder Moss names Lull if you have met him, else the narrator
+  assert.equal(firsts('blackwater-leviathan').length, 2);
+  for (const a of firsts('blackwater-leviathan')) {
+    assert.match(lineText(a.d), /collar/, `${a.d}: the collar breaks`);
+    assert.match(lineText(a.d), /causeway/, `${a.d}: the Blackwater falls off the causeway`);
+    const down = DIALOGUE[a.d].choices;
+    assert.ok(down.length === 2 && down.every(c => c.next && !c.do), `${a.d}: every way on goes to the Sleeper`);
+    const by = c => DIALOGUE[down.find(x => JSON.stringify(x.if) === JSON.stringify(c))?.next];
+    const withMoss = by({ flag: 'met-moss' }), without = by({ not: { flag: 'met-moss' } });
+    assert.ok(withMoss && without, 'one way with Moss, one without');
+    assert.ok(withMoss.lines.some(([who, t]) => who === 'moss' && /\bLull\b/.test(t)), 'Moss names it');
+    assert.ok(without.lines.some(([who, t]) => who === 'narrator' && /\bLull\b/.test(t)), 'else the narrator names it');
+    for (const n of [withMoss, without]) {
+      assert.ok(n.lines.some(([who, t]) => who === 'alondra' && /\bThree\b/.test(t)), 'Alondra counts three Sleepers now');
+      assert.match(n.lines.map(l => l[1]).join(' '), /stopped/, 'the song under Misthollow has stopped');
+    }
+  }
+  // the leads' lines point at their quests' givers and play only until that step is done
+  for (const [enc, f] of [['wm-willow', 'wards-mended'], ['grue-hollow', 'grue-told'], ['mh-salvage', 'chest-read']]) assert.deepEqual(after(enc, 'victory').map(a => a.if), [{ not: { flag: f } }], enc);
+  for (const at of ['willow-hearth', 'toll-lamp', 'stilt-hearth']) assert.ok(RESTS.some(r => r.at === at), `a Gloomfen rest at ${at}`);
+  assert.match(lineText(RESTS.find(r => r.at === 'stilt-hearth').d), /lamp/, 'Bogmire lights its lamps once the children are home');
+});
+
+test('the fourth council (spec §3.6, A13): flag-guarded, closes the main quest, Gretch takes the Gloomfen\'s chair, four boxes unopened, the end of Act II on every path', () => {
+  const t = MAPS['keep-hall'].entities.find(e => e.id === 'council-4');
+  assert.ok(t && t.kind === 'trigger' && !t.once, 'a keep-hall trigger, never once');
+  assert.deepEqual(t.if, { all: [{ flag: 'gloomfen-complete' }, { not: { flag: 'council-4-done' } }] });
+  const d = DIALOGUE[t.dialogue];
+  assert.ok(d.do.some(e => e.set === 'council-4-done'));
+  assert.ok(d.do.some(e => e.claim === 'gloomfen-waking'));
+  assert.ok(d.lines.some(([who]) => who === 'gretch'), 'Mayor Gretch sits at the table');
+  assert.ok(endsOn(t.dialogue, 'gloomfen'), 'every path ends with { end: gloomfen }');
+  // the four soot-sealed boxes, Qasim's, Brundar's, Gretch's and Miravel's, are on the table, and nobody opens them
+  const main = lineText(t.dialogue);
+  for (const re of [/Qasim/, /Brundar/, /Miravel/, /Sealed in soot/, /four boxes/i, /Nobody opens/]) assert.match(main, re);
+  assert.ok(d.lines.some(([who]) => who === 'miravel'), 'Miravel lays hers down herself');
+  const nodes = [...reachable(t.dialogue)];
+  assert.match(nodes.map(lineText).join(' '), /Tamsin/, 'Tamsin\'s words reach Isolde');
+  // it opens nothing: no road, no screen, no gift (Act III is the next chapter)
+  for (const id of nodes) for (const e of [...(DIALOGUE[id].do || []), ...(DIALOGUE[id].choices || []).flatMap(c => c.do || [])]) assert.ok(!('unlock' in e) && !('open' in e) && !('give' in e), `${id}: opens nothing`);
+});
+
+test('the Keep after the third council (spec §2.4): Isolde sends you to the fen stair, the south-west gate guard, the third council retold', () => {
+  assert.match(lineText('isolde-gloomfen'), /Willowmurk's elders have sent a reed-token/);
+  assert.match(lineText('isolde-gloomfen'), /fen stair/);
+  assert.match(lineText('council-3-forge'), /fen stair/, 'the third council\'s last word names the fen stair');
+  assert.doesNotMatch(lineText('council-3-forge'), /When the Blackwater falls/);
+  // the south-west gate: shut, then the fen stair after the third council, then open once the Blackwater falls
+  assert.deepEqual(NPCS['gate-guard-sw'].talk.map(t => t.if), [{ brand: 'brand-of-the-deep' }, { flag: 'council-3-done' }, undefined]);
+  assert.match(lineText(NPCS['gate-guard-sw'].talk[0].d), /causeway/);
+  assert.match(lineText(NPCS['gate-guard-sw'].talk[1].d), /fen stair/);
+});
+
+test('the Unsmith\'s Gloomfen letters count coals: seven, then eight (the region is taken in one order, spec A4)', () => {
+  assert.match(LETTERS['brand-of-lanterns'].text, /^Seven\./);
+  assert.match(LETTERS['brand-of-the-deep'].text, /^Eight\./);
+  for (const b of ['brand-of-lanterns', 'brand-of-the-deep']) assert.ok(LETTERS[b].text.endsWith('— U.'), b);
 });

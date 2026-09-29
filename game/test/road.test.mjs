@@ -4,11 +4,12 @@
 // its guard hold the road together; other encounters are left out (a beaten one is gone).
 // M5 (docs/M5-SPEC.md A3, §2.2): every Ironspire map declares its roads too, built road-first; IRON_PATH and
 // IRON_LEADS join the route and the leads.
+// M6 (docs/M6-SPEC.md A3, §2.2): so does every Gloomfen map; GLOOM_PATH and GLOOM_LEADS join the route and the leads.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { MAPS } from '../src/data/maps/index.js';
 import { tileOf } from '../src/data/tiles.js';
-import { CRITICAL_PATH, SUN_PATH, LEADS, SUN_LEADS, IRON_PATH, IRON_LEADS } from '../src/data/world.js';
+import { CRITICAL_PATH, SUN_PATH, LEADS, SUN_LEADS, IRON_PATH, IRON_LEADS, GLOOM_PATH, GLOOM_LEADS } from '../src/data/world.js';
 import { ENCOUNTERS, GAUNTLET } from '../src/data/encounters.js';
 
 const areaOf = e => e.area || [e.at[0], e.at[1], e.at[0], e.at[1]];
@@ -75,7 +76,10 @@ test('the road maps of the spec each have a road', () => {
   for (const id of ['hearth-road', 'thornway', 'heartroot-1', 'dust-trail', 'deep-shaft-1', 'glass-flats', 'scorchgate', 'mossfall', 'hindwood',
     // M5: every Ironspire map (spec A3), the painted East Road first
     'old-bridge', 'drystone-lea', 'plankford', 'shrinewood', 'silverfall', 'last-camp',
-    'rockslide-pass', 'peaks-veil', 'highfold', 'iron-stair', 'ironhold', 'ironhold-deeps', 'harrows-forge', 'stormwatch', 'frost-road', 'frostmere', 'frostmere-below']) {
+    'rockslide-pass', 'peaks-veil', 'highfold', 'iron-stair', 'ironhold', 'ironhold-deeps', 'harrows-forge', 'stormwatch', 'frost-road', 'frostmere', 'frostmere-below',
+    // M6: every Gloomfen map (spec A3)
+    'murkway', 'willowmurk', 'rotbridge', 'bogmire', 'lanternfen', 'mothers-hollow', 'long-boardwalk', 'misthollow', 'drowned-belfry',
+    'blackwater-reach', 'tidal-flats', 'causeway']) {
     assert.ok(MAPS[id].roads?.length, `${id} has no roads`);
   }
 });
@@ -148,8 +152,8 @@ test('no fight on the route or a lead roams, and every route fight holds a gate 
       if (e.guard) held.add(e.guard);
     }
   }
-  const route = [...CRITICAL_PATH, ...SUN_PATH, ...IRON_PATH].filter(id => ENCOUNTERS[id]?.type === 'fight');
-  const leads = [...Object.values(LEADS), ...Object.values(SUN_LEADS), ...Object.values(IRON_LEADS)].flat();
+  const route = [...CRITICAL_PATH, ...SUN_PATH, ...IRON_PATH, ...GLOOM_PATH].filter(id => ENCOUNTERS[id]?.type === 'fight');
+  const leads = [...Object.values(LEADS), ...Object.values(SUN_LEADS), ...Object.values(IRON_LEADS), ...Object.values(GLOOM_LEADS)].flat();
   for (const id of [...route, ...leads]) {
     assert.ok(where[id], `${id} stands on a map`);
     assert.notEqual(where[id].mode, 'pack', `${id} (${where[id].map}) is not a roaming pack`);

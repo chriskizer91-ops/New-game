@@ -72,3 +72,48 @@ test('the earlier duels keep $rival as it was (no kit at the Eldest Tree or at S
     assert.equal(sp.kit, 'ironhold', starter);
   }
 });
+
+// M6 (spec §4.3; P4): Tamsin's Rotbridge kit, the same for each starter: something fen-footed from the Bogstriders and
+// something desperate; her starter's Art keeps faces 8-11.
+test('every rival starter has a Rotbridge kit: the same moves for each, every d12 face covered, her Art on 8-11', () => {
+  const rivals = [...new Set(Object.values(STARTERS).map(s => s.rival))];
+  const moveSets = new Set();
+  for (const r of rivals) {
+    const kit = RIVAL_KITS[r]?.rotbridge;
+    assert.ok(kit, `${r}: a Rotbridge kit`);
+    moveSets.add(JSON.stringify(kit.moves));
+    const fam = familyOf({ family: 'tamsin', variant: r, kit: 'rotbridge' });
+    const faces = new Map();
+    for (const [lo, hi, move] of kit.table) {
+      assert.ok(fam.moves[move], `${r}: ${move} is one of her moves`);
+      for (let f = lo; f <= hi; f++) { assert.ok(!faces.has(f), `${r}: face ${f} once`); faces.set(f, move); }
+    }
+    assert.equal(faces.size, 12, `${r}: the kit covers every face of her d12`);
+    const own = Object.keys(FOES.tamsin.variants[r].moves).find(m => !FOES.tamsin.moves[m]);
+    for (let f = 8; f <= 11; f++) assert.equal(faces.get(f), own, `${r}: her Art (${own}) on face ${f}`);
+    assert.equal(faces.get(12), 'not-like-this', 'and her last stand on the 12');
+  }
+  assert.equal(moveSets.size, 1, 'the same kit for each starter');
+  const moves = RIVAL_KITS.cairnmaul.rotbridge.moves;
+  // fen-footed: she moves where you cannot (Hasted, or you are Rooted in the mud)
+  assert.ok(Object.values(moves).some(m => m.effects.some(e => e.status === 'hasted' && e.self)), 'fen-footed: she is Hasted');
+  assert.ok(Object.values(moves).some(m => m.effects.some(e => e.status === 'rooted')), 'and you are Rooted');
+  // desperate: a charging all-or-nothing blow that leaves her open
+  assert.ok(Object.values(moves).some(m => m.charge && m.effects.some(e => e.status === 'exposed' && e.self)), 'desperate: everything in one blow');
+  for (const m of Object.values(moves)) assert.ok(m.name && m.text && m.effects.length, m.name);
+});
+
+test('Rotbridge brings her Rotbridge kit (\'$rival:rotbridge\'), for each starter, and she wears the Bogstriders', () => {
+  assert.equal(ENCOUNTERS['tamsin-rotbridge'].spawns[0].variant, '$rival:rotbridge');
+  for (const starter of Object.keys(STARTERS)) {
+    const g = newGame({ starter, seed: 5 });
+    g.progress.flags.story.starter = starter;
+    const [sp] = spawnsFor(g, 'tamsin-rotbridge');
+    assert.equal(sp.variant, STARTERS[starter].rival, starter);
+    assert.equal(sp.kit, 'rotbridge', starter);
+    assert.equal(sp.wears, 'bogstriders', `${starter}: she wears the Bogstriders`);
+    const u = buildFoe(sp, { id: 'f1' });
+    assert.ok(familyData(u).moves['fen-step'] && familyData(u).moves['all-in'], `${starter}: the kit's moves are hers`);
+    assert.ok(u.gear.some(x => x.relic === 'bogstriders'), `${starter}: the boots are on her sprite`);
+  }
+});

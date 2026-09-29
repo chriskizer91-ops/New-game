@@ -312,6 +312,17 @@ const SCENES = {
   tundra: ['.......,,,,..=.....T...', '..T..,,,,,,..==....""..', '......,,,....==.o..""..', '..mmmmm.......==.......', '.mmmmmmm..t....==..,,,.', '..mmmmm........==.,,,,.', '.....o....~~~...==.....', '..""..T..~~~~~..==..t..', '..""......~~~.....==...', '....:::::.....#####==..', '.t..:::::.....#...#.==.', '^^^^^^^^^^vv^^^^^^^^^^^'],
   'frozen-lake': ['TT....""""......TT.....', '.T...".,,,......T......', '......,,,.............o', '::::::::::::::::::::...', ':::::::::=========::::.', '::::~~~:::::::::::=::::', ':::~~~~~::::www::::=:::', '::::~~~::::wwww::::=:::', '::::::::::::ww:::::bbb:', '::o:::::::mmm::::::::::', '.....::::mmmmm::::#####', '^^^^^......mm.....##+##'],
   'ice-cave': ['RRRRRRRRRRRRRRRRRRRRRRR', 'RRkkkkkkkkkkkkkkkkkkkRR', 'RkkkYkkkkkkkfkkkkkYkkkR', 'Rkkkkkkkkkkkkkkkkkkkkkk', 'Rkkkkk~~~~kkkkkokkkkkkR', 'Rkkkk~~~~~~kkkkkkkkfkkR', 'Rkfkkk~~~~kkkk#####kkkR', 'Rkkkkkkkkkkkkk#:::#kkkR', 'RkkokkkxxxxkkkY:::YkkkR', 'Rkkkkkkxxxxkkk::::+kkkR', 'RRkkkkkkkkkkkkkkkkkkkRR', 'RRRRRRRRRRRRRRRRRRRRRRR'],
+  // M6: the Gloomfen biomes (the characters P2's maps use, biome by biome: notes/M6-P2-maps.md)
+  'willow-village': ['~~~~~~~~bb~~~~~~~~~~~~~', '~~..T..*bb*..T.T..~~~~~', '~.TT..,.==.,..HHHH..~~~', '~..HHHH.==....HHHH...~~', '~..HHHH.==....#+##...~~', '~..#+##.==..,,.___...~~', '~.......=====:::=====bb', '~.,,.T.r...::o::.....bb', '~..t...""..:::::.t.T.~~', '~.||||||...m......""~~~', '~~~..,..~~~mm...ww~~~~~', '~~~~~~~~~~~~~~~~~~~~~~~'],
+  channel: ['..T....,,..==....""..T.', '.HHHHH.....==...,,.....', '.HHHHH..o..==.....r..""', '.##+##*....==..........', '.......::::::::....t...', '"".mm...|:::::|..""....', '~~~~~~~~|bbbbb|~~~~~~~~', '~~o~~~~~|bbbbb|~~~~~o~~', '~~~~~~~~|bbbbb|~~~~wwww', '"".~~~~.|:::::|.."wwww.', '^^^^.,,..::::::...t....', '.T....t...==..T....,,..'],
+  'stilt-town': ['~~~~~~~~~~~~~~~~~~~~~~~', '~HHHHH~~__~~HHHHH~~~~~~', '~HHHHH~~__~~HHHHH~~o~~~', '~##+##~~__~~##+##~~~~~~', '~______________________', '~_t__*_:::::::::_,,_x_~', '~______:::::::::______~', '~||||__________||||___~', '~~~o~~~~bb~~~~o~~~~o~~=', '~~~~~~~~bb~~..""..~~==.', '~~~o~~~~__~~.T.,m.====.', '~~~~~~~~__~~..mm..==...'],
+  bog: ['""~~~~..,,...T....mmm..', '"~~~~~.,,,......mmmmmm.', '.~~~~~..====....mmmm...', '..~~~..==..==.......T..', '.....==...,,.==.,,.....', '..T.==..m......==...~~~', '...=..mmm..r....==.~~~~', '..==.mmmmm.t.....=.bb~~', '.==...mmm.....o..==~~~~', '==..,,......HHH...==...', '^^^^.""..o..#+#....==..', '....."""..........,,==='],
+  'drowned-grove': ['~~~~~~~~~~~~~~~~~~~~~~~', '~T~~~~..T....T....~~~T~', '~~~~~..,.HHHHHHH..~~~~~', '~~~w..t..HHHHHHH...w~~~', '~~ww..,..#*#+#*#....w~~', '~~..T....___.___..T..~~', '~w....r..........o...~~', '~~..mm...,,..T.......w~', '~~~..........""..ww.~~~', '~~~~~bbbbbb~~~~~~~~~~~~', '~T~~~~~~~~bb~~~~~~~T~~~', '~~~~~~~~~~~~~~~~~~~~~~~'],
+  boardwalk: ['~~~~~~""~~~~~~~~~~~~~~~', '~~""~~~~~~o~~~~~~""~~~~', '~~~~~~~~~~~~~~~~~~~~~~~', '~~~o~~*~~~~~~o~~~*~~~~~', 'bbbbbbbbbbbbbbbbbbbbbbb', 'bbbbbbbbbbbxx___bbbbbbb', '~~~o~~*~~~~~~~~~~*~o~~~', '~~~~~~~~~~~bbbb~~~~~~~~', '~~""~~~.."~b__b~~~""~~~', '~~~~~.T..~~b_tb~~~~~~~~', '~~~~..""..~bbbb~~:::::~', '~~~~~~~~~~~~~~~~~::::::'],
+  'sunken-city': ['~~~~~~#####~~~~~~~~~~~~', '~~Y~~~#+++#~~~~YY~~~~~~', '~~~~~ww:::ww~~~~~~~~Y~~', '~~~wwww:::wwww~~~~~~~~~', '..:::::::::::::....o...', '..:Y::*,,:::Y:.___t....', '..:::::::::::::_||_bb~~', '~~~~ww:::::::ww~~~~~~~~', '~~~~~~w:::::w~~~~~T~~~~', '..HHHH.:::::...,,......', '..#+##.:::::..s..t..o..', '.......:::::.....m.....'],
+  belfry: ['#######################', '##*####*#####*####*####', '##kkkkkkkkkkkkkkkkkkk##', '##kYkkkt_tkkt_tkkYkkk##', '##kkkkkk_____kkkkkkkk##', '##kk~~~kkkkfkkkk~~~kk##', '##kk~~~k:::::::k~~~kk##', '##kkwwwk:::::::kwwwkk##', '##kYkkkkkkkokkkkkkYkk##', '##kkkkkxxxxxxkkkkkkkk##', '#######s#####+#########', '#######################'],
+  mudflat: ['~~~~~~~~~~~~~~~~~~~~~~~', '~~~~~~~~~~~~~~~~~~~~~~~', '~~.....~~~~bb~.~~~~~~~~', '....,,....wbb.w....o...', '..mmm....rrrr..........', '.mmmmm..=r..,,....HHHH.', '..mmm..==r......=.HHHH.', '......==.rrrrr..=.####.', '.o..===..t...r==..#__#.', '....=..""....r=...||||.', '..,,=.."""...ww=.......', '....=........www=...o..'],
+  causeway: ['~~~~~~~~~~~~~~~~~~~~~~~', '~~~""~~~~~~~~~~~~~""~~~', '~~~~~~~~~~~~~~~~~~~~~~~', '~~~~~.T.~~~~~~~~~~~~~~~', ':::::::::,::::::::o::::', '=======================', '=======================', '::::,:::::::::::::::::t', '^^^^^^^^^^^^^^^^^^^^^^^', '~~~~~~~~~~~~~~~~~~~~~~~', '~~""~~~~~ww~~~mm~""~~~~', '~~~~~~~~~~~~~~~~~~~~~~~'],
 };
 function sceneCanvas(biome, rows, sprites = [], frame = 0) {
   const A = tileAtlas(biome), src = document.createElement('canvas');
@@ -361,7 +372,9 @@ if (want('world-npcs')) {
 const MAP_FOE_KEYS = ['cutpurse', 'bandit', 'tallyman', 'smuggler', 'feral-druid', 'hollowed-ranger', 'tamsin', 'mags', 'haskett', 'hollis', 'dun', 'vesper', 'oda', 'corra',
   'scavenger', 'dune-raider', 'ash-wight', 'rasa', 'ash-captain', 'brask', 'quartermaster', 'vell',
   // M5: the Ironspire's walker-rig foes (the brigands and ice-cutters through foeLooks, the rest kitted in art/map-sprites.js)
-  'brigand', 'rhune', 'cutter-chief', 'sawyer', 'iron-sentinel', 'sentinel-captain', 'forgeborn', 'bellows', 'journeyman', 'rime-wraith', 'drowned-abbess', 'choir-wraith'];
+  'brigand', 'rhune', 'cutter-chief', 'sawyer', 'iron-sentinel', 'sentinel-captain', 'forgeborn', 'bellows', 'journeyman', 'rime-wraith', 'drowned-abbess', 'choir-wraith',
+  // M6: the Gloomfen's walker-rig foes (the drowned in art/map-sprites.js kits; the hags, Hodge and the Tallymen's hands until P6's rig lands)
+  'drowned', 'bell-ringer', 'drowned-choir', 'drowned-cantor', 'bog-hag', 'mother-grue', 'hodge', 'reedcutter', 'salvage-diver', 'bargehand', 'salvage-master', 'bargemaster'];
 if (want('world-foes')) {
   const s = section('world-foes', 'World: map foes', 'mapFoeSheet(artKey, { gearTier, variant, relic }): 2 gait frames x rows s, n, e, w. Humanoids reuse the walker rig via foeLooks (gearTier 0-3 shown); named holders carry their relic; beasts are dedicated 16-32 px sprites.');
   const r = row(s, 'humanoids at gearTier 0 and 3 (3x)');
@@ -378,14 +391,16 @@ if (want('world-foes')) {
 }
 if (want('world-objects')) {
   const s = section('world-objects', 'World: objects and emotes', 'objectSprite(kind, state, { frame, relic, id }) for every kind and state at 4x (animated ones show both frames); hearthfire looks by id; emote(kind, { frame }) at 6x.');
-  for (const kind of OBJECT_KINDS) {
+  // review filters: #ok=kind,kind (only these kinds) and #hid=id,id (only these Hearthfires)
+  const OK = ((window.location.hash.match(/ok=([^&]+)/) || [])[1] || '').split(',').filter(Boolean), HID = ((window.location.hash.match(/hid=([^&]+)/) || [])[1] || '').split(',').filter(Boolean);
+  for (const kind of OBJECT_KINDS.filter(k => !OK.length || OK.includes(k))) {
     const r = row(s, kind);
     for (const st of OBJECT_STATES[kind]) {
       const a = time('objectSprite (cold)', () => objectSprite(kind, st, { relic: kind === 'pedestal' ? 'hearthbrand' : null }));
       fig(r, a, 4, st, GROUND_BG);
       if (a.frames > 1) fig(r, objectSprite(kind, st, { frame: 1, relic: kind === 'pedestal' ? 'hearthbrand' : null }), 4, st + ' f1', GROUND_BG);
     }
-    if (kind === 'hearth') for (const id of Object.keys(HEARTH_LOOKS)) { fig(r, objectSprite('hearth', 'lit', { id }), 4, id, GROUND_BG); fig(r, objectSprite('hearth', 'cold', { id }), 4, 'cold', GROUND_BG); }
+    if (kind === 'hearth') for (const id of Object.keys(HEARTH_LOOKS).filter(i => !HID.length || HID.includes(i))) { fig(r, objectSprite('hearth', 'lit', { id }), 4, id, GROUND_BG); fig(r, objectSprite('hearth', 'cold', { id }), 4, 'cold', GROUND_BG); }
   }
   const r = row(s, 'emotes');
   for (const k of EMOTES) { const e = emote(k); fig(r, e, 6, k, GROUND_BG); if (e.frames > 1) fig(r, emote(k, { frame: 1 }), 6, k + ' f1', GROUND_BG); }
@@ -487,4 +502,5 @@ if (want('raw') && only) {
   const r = row(s);
   for (const k of Object.keys(RECIPE)) { try { fig(r, compose(renderItem(itemArt({ kind: k, rarity: 'runed', aspect: 'ember', seed: 1 }) || { r: k, p: {} }, 64)), 2, k); } catch (e) { console.error(k, e.message); } }
 }
+window.__art = { npcSheet, mapFoeSheet, objectSprite, walkerSheet }; // for review scripts (the overworld looks, by key)
 window.__done = true;
