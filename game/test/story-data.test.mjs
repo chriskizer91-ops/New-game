@@ -1,7 +1,8 @@
-// Story data tests (M3 spec §3.1, §3.6, §4.4, §6.1 WP3S; M4 spec §3.1, §3.6, §8): ids, conditions,
-// line lengths, quest targets, the beats around fights and rests, "no flag is read that is never
-// set", the thank-you rule, the Sunscorch's people, the second council, and the Act II Ladder.
-// Owner: WP3S (M3), P3 story (M4).
+// Story data tests (M3 spec §3.1, §3.6, §4.4, §6.1 WP3S; M4 spec §3.1, §3.6, §8; M5 spec §3.1, §3.5,
+// §3.6, §8): ids, conditions, line lengths, quest targets, the beats around fights and rests, "no flag
+// is read that is never set", the thank-you rule, the Sunscorch's and the Ironspire's people, the second
+// and third councils, Hush's scene, the letters, and the Act II Ladder.
+// Owner: WP3S (M3), P3 story (M4, M5).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { NPCS } from '../src/data/npcs.js';
@@ -216,7 +217,8 @@ test('effects use the known vocabulary and name real things', () => {
     if (k === 'gems') for (const [g, n] of Object.entries(e.gems)) assert.ok(GEMS[g] && n > 0, `${id}: gem ${g}`);
     if (k === 'materials') for (const [m, n] of Object.entries(e.materials)) assert.ok(['scrap', 'silver', 'embers'].includes(m) && n > 0, `${id}: ${m}`);
     if (k === 'letter') assert.ok(LETTERS[e.letter], `${id}: letter ${e.letter}`);
-    if (k === 'end') assert.ok(['act1', 'act2'].includes(e.end), `${id}: end ${e.end}`);
+    // M5: 'ironspire' is the card after the third council (the UI draws it; the Gloomfen comes next)
+    if (k === 'end') assert.ok(['act1', 'act2', 'ironspire'].includes(e.end), `${id}: end ${e.end}`);
     if (k === 'gold') assert.ok(Number.isInteger(e.gold) && e.gold > 0, `${id}: gold`);
   }
 });
@@ -320,4 +322,124 @@ test('the Unsmith\'s Sunscorch letters never count coals (the region is taken in
     assert.ok(LETTERS[b].text.endsWith('— U.'), b);
     assert.doesNotMatch(LETTERS[b].text, /\b(Three|Four|third|fourth)\b/i, b);
   }
+});
+
+// ---- M5 (P3 story) ----------------------------------------------------------------------------------
+
+const IRONSPIRE_NPCS = ['wynn', 'kesh', 'novice', 'brundar', 'durra', 'ih-guard', 'rook', 'ysolde', 'quill'];
+const PAGE_III = new Set(Object.values(RELICS).filter(r => r.codex >= 39 && r.codex <= 52).map(r => r.id));
+// Some line reachable from an NPC's talk has a choice doing `what` (opens a screen or claims).
+const offers = (npc, what) => NPCS[npc].talk.some(t => [...reachable(t.d)].some(id => (DIALOGUE[id].choices || []).some(c => (c.do || []).some(e => e.open === what || e.claim === what))));
+
+test('the Ironspire\'s people (spec §3.1): never silent, met before they notice, they notice Page III, shops and the Stormwatch board in the right hands', () => {
+  for (const id of IRONSPIRE_NPCS) {
+    const n = NPCS[id];
+    assert.ok(n, id);
+    assert.ok(n.talk.length && !n.talk[n.talk.length - 1].if, `${id}: the last talk line has no condition, so they always answer`);
+    // a giver's first meeting comes before any "the world notices" line
+    const first = n.talk.findIndex(t => t.if?.not?.flag?.startsWith('met-'));
+    if (first >= 0) for (const [i, t] of n.talk.entries()) if (JSON.stringify(t.if || {}).includes('"wears"')) assert.ok(i > first, `${id}: notice ${t.d} before the first meeting`);
+    assert.ok(n.talk.some(t => PAGE_III.has(t.if?.wears)), `${id} notices a relic of Codex Page III`);
+  }
+  assert.equal(PAGE_III.size, 14);
+  assert.ok(offers('durra', 'shop:durra'), 'Durra keeps the armoury');
+  assert.ok(offers('quill', 'shop:quill'), 'Quill keeps the stores');
+  assert.deepEqual([...SHOPS.durra.gems].sort(), ['frost-opal', 'glass-pearl', 'moss-agate'], 'Durra sells three gems, the Frost Opal among them');
+  assert.ok(SHOPS.durra.items.length && SHOPS.quill.items.length && !(SHOPS.quill.gems || []).length, 'both sell the consumables; Quill no gems');
+  assert.deepEqual(Object.values(BOUNTIES).filter(b => b.giver === 'ysolde').map(b => [b.id, b.enc, b.gold]),
+    [['b-wolves', 'rp-wolves', 90], ['b-trolls', 'is-trolls', 120], ['b-frostwolves', 'fr-wolves', 120], ['b-roc', 'roc-eyrie', 160]]);
+});
+
+test('the Ironspire\'s quests (spec §3.6): ids, givers, starts and rewards; the flags the maps and rules read are set; the Rune-Key', () => {
+  const Q = (id, giver, start) => {
+    assert.equal(QUESTS[id]?.giver, giver, `${id} giver`);
+    assert.deepEqual(QUESTS[id].start, start, `${id} start`);
+    return QUESTS[id];
+  };
+  const main = Q('ironspire-waking', 'isolde', { flag: 'sunscorch-complete' });
+  assert.equal(main.kind, 'main');
+  assert.deepEqual(main.steps[0].done, { flag: 'council-2-done' }, 'its first step is the second council');
+  assert.deepEqual(main.steps[main.steps.length - 1].done, { flag: 'council-3-done' }, 'it closes at the third council');
+  // every step between the councils also closes with a Brand, so a Warden who talks to nobody never sticks
+  for (const s of main.steps.slice(1, -1)) assert.ok(JSON.stringify(s.done).includes('"brand"'), s.text);
+  assert.deepEqual(Q('bell-of-veil', 'wynn', { flag: 'met-wynn' }).reward, { relic: 'veilbell' });
+  assert.deepEqual(Q('harrows-hammer', 'hilda', { owns: 'worldforge-hammer' }).reward, { gold: 300, materials: { embers: 2 } });
+  assert.deepEqual(Q('rooks-ledger', 'rook', { flag: 'met-rook' }).reward, { gold: 250, gems: { 'frost-opal': 1 } });
+  assert.deepEqual(Q('sentinel-oath', 'brundar', { flag: 'met-brundar' }).reward, { gold: 200, materials: { silver: 2 } });
+  // the flags the spec fixes (the maps and the rules read some of them) are set by the story
+  const set = new Set();
+  for (const d of Object.values(DIALOGUE)) for (const e of [...(d.do || []), ...(d.choices || []).flatMap(c => c.do || [])]) if (e.set) set.add(e.set);
+  for (const f of ['met-wynn', 'highfold-open', 'bell-rung-veil', 'met-brundar', 'rune-given', 'smith-told', 'met-rook', 'ledger-given', 'hammer-shown', 'tamsin-yielded-3', 'council-3-done']) assert.ok(set.has(f), `${f} is set`);
+  // meeting Wynn opens the Highfold gate, whichever of her lines is the first meeting
+  for (const [id, d] of Object.entries(DIALOGUE)) if ((d.do || []).some(e => e.set === 'met-wynn')) assert.ok(d.do.some(e => e.set === 'highfold-open'), `${id} opens the Highfold`);
+  // the Rune-Key comes only from the Thane, once Tamsin's duel is won or yielded
+  const rune = Object.entries(DIALOGUE).filter(([, d]) => (d.do || []).some(e => e.give === 'thanes-rune'));
+  assert.deepEqual(rune.map(([id]) => id), ['brundar-rune']);
+  assert.ok(rune[0][1].do.some(e => e.set === 'rune-given'));
+  assert.deepEqual(NPCS.brundar.talk.find(t => t.d === 'brundar-rune').if,
+    { all: [{ any: [{ beaten: 'tamsin-ironhold' }, { flag: 'tamsin-yielded-3' }] }, { not: { flag: 'rune-given' } }] });
+});
+
+test('the Ironspire beats: arrivals, the Champions and the duel, Hush\'s scene, the hammer, the bell', () => {
+  for (const m of ['peaks-veil', 'ironhold', 'stormwatch', 'frostmere']) assert.ok(ARRIVALS[m], `arrival lines for ${m}`);
+  const after = (enc, on) => (AFTER[enc] || []).filter(a => a.on === on);
+  for (const enc of ['mother-anvil', 'rime-abbot', 'tamsin-ironhold']) assert.ok(after(enc, 'victory').length, `${enc} victory`);
+  for (const enc of ['mother-anvil', 'rime-abbot']) assert.ok(!after(enc, 'victory').at(-1).if, `${enc}: a first win always gets its lines`);
+  // Tamsin: a win leaves the bracers and the spec's line; a yield sets the duel's flag
+  const win = DIALOGUE[after('tamsin-ironhold', 'victory')[0].d];
+  assert.ok(win.lines.some(([who, t]) => who === 'tamsin' && t === 'He was here. He left the fire burning so we\'d think he\'d be back.'));
+  assert.ok(DIALOGUE[after('tamsin-ironhold', 'yield')[0].d].do.some(e => e.set === ENCOUNTERS['tamsin-ironhold'].yields));
+  // Hush's scene follows the Rime-Abbot's last words: Brother Kesh names it if you have met him, else the narrator
+  const down = DIALOGUE[after('rime-abbot', 'victory').at(-1).d].choices;
+  assert.ok(down.length === 2 && down.every(c => c.next && !c.do), 'every way out of his last words goes on down');
+  const by = cond => DIALOGUE[down.find(c => JSON.stringify(c.if) === JSON.stringify(cond))?.next];
+  const withKesh = by({ flag: 'met-kesh' }), without = by({ not: { flag: 'met-kesh' } });
+  assert.ok(withKesh && without, 'one way with Kesh, one without');
+  assert.ok(withKesh.lines.some(([who, t]) => who === 'kesh' && /\bHush\b/.test(t)), 'Kesh names it');
+  assert.ok(without.lines.some(([who, t]) => who === 'narrator' && /\bHush\b/.test(t)), 'else the narrator names it');
+  for (const n of [withKesh, without]) assert.match(n.lines.map(l => l[1]).join(' '), /slowing/, 'its heartbeat slows');
+  // Hilda knows her brother's hammer (the spec's line), and her thank-you comes before any notice
+  const ham = DIALOGUE['hilda-hammer'];
+  assert.ok(ham.lines.some(([who, t]) => who === 'hilda' && t === 'That\'s my brother\'s hammer. He never put it down in his life. Where is he?'));
+  assert.ok(ham.do.some(e => e.claim === 'harrows-hammer') && ham.do.some(e => e.set === 'hammer-shown'));
+  assert.equal(NPCS.hilda.talk[0].d, 'hilda-hammer');
+  // the bell rings only once the Drowned Abbess is at rest: from its rope in the tower, or with Wynn
+  for (const id of ['pv-bell-rope', 'wynn-ring']) {
+    const c = (DIALOGUE[id].choices || []).find(x => (x.do || []).some(e => e.set === 'bell-rung-veil'));
+    assert.ok(c, `${id} rings the bell`);
+    assert.ok(JSON.stringify(c.if || {}).includes('"beaten":"fm-shrine"'), `${id}: not before the Abbess rests`);
+  }
+  assert.ok(LOOKOUTS['pv-lookout'], 'the lookout on Peak\'s Veil\'s wall');
+});
+
+// Every way out of scene `id` carries `{ end: act }` (a node's `do`, or the choice taken).
+function endsOn(id, act, got = false, seen = new Set()) {
+  const n = DIALOGUE[id];
+  const here = got || (n.do || []).some(e => e.end === act);
+  if (!n.choices?.length) return here;
+  return n.choices.every(c => {
+    const now = here || (c.do || []).some(e => e.end === act);
+    return c.next && !seen.has(c.next) ? endsOn(c.next, act, now, new Set([...seen, id])) : now;
+  });
+}
+
+test('the third council (spec §3.6): flag-guarded, closes the main quest, the Thane takes Ironspire\'s chair, the Ironspire card on every path', () => {
+  const t = MAPS['keep-hall'].entities.find(e => e.id === 'council-3');
+  assert.ok(t && t.kind === 'trigger' && !t.once, 'a keep-hall trigger, never once');
+  assert.deepEqual(t.if, { all: [{ flag: 'ironspire-complete' }, { not: { flag: 'council-3-done' } }] });
+  const d = DIALOGUE[t.dialogue];
+  assert.ok(d.do.some(e => e.set === 'council-3-done'));
+  assert.ok(d.do.some(e => e.claim === 'ironspire-waking'));
+  assert.ok(d.lines.some(([who]) => who === 'brundar'), 'Thane Brundar sits at the table');
+  assert.ok(endsOn(t.dialogue, 'ironspire'), 'every path ends with { end: ironspire }');
+  const text = [...reachable(t.dialogue)].flatMap(id => DIALOGUE[id].lines.map(l => l[1])).join(' ');
+  assert.match(text, /Gloomfen/);
+  assert.match(text, /Harrow/);
+  assert.match(text, /Worldforge/);
+});
+
+test('the Unsmith\'s Ironspire letters count coals (the region is taken in one order, spec A4)', () => {
+  assert.match(LETTERS['brand-of-iron'].text, /\bFive\b/);
+  assert.match(LETTERS['brand-of-frost'].text, /\bSix\b/);
+  for (const b of ['brand-of-iron', 'brand-of-frost']) assert.ok(LETTERS[b].text.endsWith('— U.'), b);
 });

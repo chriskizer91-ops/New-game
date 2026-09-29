@@ -1,10 +1,11 @@
-// The Ladder (M3 spec §3.6, M4 spec §3.6): one poster per villain, in order: Act I, then the
-// Sunscorch's Act II posters, then the rumours of the regions still sealed (Gloomfen, Ironspire).
+// The Ladder (M3 spec §3.6, M4 spec §3.6, M5 spec §3.6): one poster per villain, in order: Act I, then
+// the Act II posters of the Sunscorch and the Ironspire, then the rumours: the Gloomfen, still sealed,
+// and Harrow himself, still missing (the Ironspire finds his forge, his hammer and his journeyman, not him).
 // LADDER = [{ id, enc?, spawn?, name, silhouette?, act }]
 //   enc/spawn  the encounter and spawn index whose foe the poster shows (renderFoe silhouette)
 //   silhouette a rumour: no encounter yet, only a name
 //   state      silhouette -> scouted (flags.scouted[id], sighted or fought) -> settled ({ beaten: enc })
-// Owner: WP3S (M3), P3 story (M4).
+// Owner: WP3S (M3), P3 story (M4, M5).
 
 import { deepFreeze } from '../core/freeze.js';
 

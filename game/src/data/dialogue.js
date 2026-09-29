@@ -1,5 +1,6 @@
-// Dialogue nodes (M3 spec §3.1, §4.4; M4 spec §3.1, §3.6). `{warden}` in a line is replaced with the
-// player's name; every line is rendered with textContent. Lines are at most 140 characters.
+// Dialogue nodes (M3 spec §3.1, §4.4; M4 spec §3.1, §3.6; M5 spec §3.1, §3.5, §3.6). `{warden}` in a
+// line is replaced with the player's name; every line is rendered with textContent. Lines are at most
+// 140 characters.
 //
 // DIALOGUE[id] = {
 //   lines: [[speaker, text]],   speaker: an NPCS id | 'warden' | 'pip' | 'bryn' | 'alondra' | 'narrator'
@@ -12,7 +13,8 @@
 //   {give: relicId} {item: {rarity, slot?, kind?, ilvl?}} {gold: n} {bag: {id: n}} {unlock: entityId}
 //   {gems: {gemId: n}} {materials: {scrap?, silver?, embers?}} (M4)
 //   {heal: true} {fight: encId} {claim: questId | 'bounties'}
-//   {open: 'shop:<id>'|'forge'|'atlas'|'journal'|'ladder'|'bounties'} {letter: brandId} {end: 'act1'|'act2'}
+//   {open: 'shop:<id>'|'forge'|'atlas'|'journal'|'ladder'|'bounties'} {letter: brandId}
+//   {end: 'act1'|'act2'|'ironspire'}   the to-be-continued card ('ironspire': after the third council, M5)
 //
 // Also here (read by rules/story.js and rules/world.js):
 //   ARRIVALS[mapId] = dialogueId   played once on the first entry to a map (the party's homecoming lines);
@@ -20,8 +22,9 @@
 //   AFTER[encId] = [{ on: 'victory'|'yield', if?, d }]   played when you come back from that fight
 //   RESTS = [{ at: hearthfireId, if?, d }]                played after resting at that Hearthfire
 //   LOOKOUTS[entityId] = { flag, maps }                   Longwatch from a lookout marks these maps
-// A `use` entity (bellframe, lookout) whose id is a DIALOGUE id opens that dialogue.
-// Owner: WP3S (M3), P3 story (M4).
+// A `use` entity (bellframe, lookout) whose id is a DIALOGUE id opens that dialogue (M5: Peak's Veil's
+// bell rope `pv-bell-rope` and lookout `pv-lookout`).
+// Owner: WP3S (M3), P3 story (M4, M5).
 
 import { deepFreeze } from '../core/freeze.js';
 
@@ -45,6 +48,24 @@ const ODE = [{ text: 'Buy.', do: [{ open: 'shop:pithead' }] }, LEAVE];
 const CINDER = [{ text: 'Ask how Scorchgate burned.', next: 'cinder-history' }, LEAVE];
 // after a Sunscorch Brand: once both are held, the party turns for home (the second council)
 const HOME = [{ text: 'Home to the Keep, then.', if: { flag: 'sunscorch-complete' }, next: 'sunscorch-home' }];
+// M5: the Ironspire's standing choices. Kesh's advice changes with the Brands: Mother Anvil, then the Abbot.
+const KESH = [
+  { text: 'Ask about Frostmere.', next: 'kesh-lake' },
+  { text: 'Ask for advice.', if: { not: { brand: 'brand-of-iron' } }, next: 'kesh-anvil' },
+  { text: 'Ask for advice.', if: { all: [{ brand: 'brand-of-iron' }, { not: { brand: 'brand-of-frost' } }] }, next: 'kesh-abbot' },
+  LEAVE,
+];
+const BRUNDAR = [{ text: 'Ask about Harrow.', next: 'brundar-harrow' }, LEAVE];
+const DURRA = [{ text: 'Buy.', do: [{ open: 'shop:durra' }] }, LEAVE];
+const QUILL = [{ text: 'Buy.', do: [{ open: 'shop:quill' }] }, LEAVE];
+// Captain Ysolde keeps the Stormwatch board (spec §3.6)
+const YSOLDE = [
+  { text: 'Turn in bounties.', if: { bounty: 'any', state: 'ready' }, do: [{ claim: 'bounties' }], next: 'ysolde-paid' },
+  { text: 'Read the bounty board.', do: [{ open: 'bounties' }] },
+  LEAVE,
+];
+// the bell of Peak's Veil rings once the Drowned Abbess is at rest (from its rope, or with Mother Wynn)
+const RING = { all: [{ beaten: 'fm-shrine' }, { not: { flag: 'bell-rung-veil' } }] };
 
 export const DIALOGUE = deepFreeze({
   // ---- story beats --------------------------------------------------------------------------
@@ -256,10 +277,11 @@ export const DIALOGUE = deepFreeze({
     ],
     do: [{ set: 'heard-south' }],
   },
+  // M5: after the second council the east postern is open, and Isolde points the way through it
   'isolde-next': {
     lines: [
-      ['isolde', 'Ironspire or Gloomfen: Harrow\'s smoke, or Bogmire\'s lost children. I won\'t choose for you.'],
-      ['isolde', 'Both roads are still shut, {warden}. When they open, I want you first through them.'],
+      ['isolde', 'The east postern is open. The monks of Peak\'s Veil dug the pass out, and they know the road to Ironhold.'],
+      ['isolde', 'Harrow\'s smoke is on those peaks, {warden}. Bring me the Ironspire. And bring me Harrow, if he\'ll come.'],
     ],
     do: [{ set: 'heard-next' }],
   },
@@ -270,7 +292,7 @@ export const DIALOGUE = deepFreeze({
   'notice-hilda-cinderfang': { lines: [['hilda', 'Cinderfang. Folded in a fire that ate a city, and the edge is still sulking about it. Hand it here.']], choices: FORGE },
   'notice-hilda-dunebreaker': { lines: [['hilda', 'Gnash\'s maul. Whoever forged that had big hands and no patience. My kind of smith.']], choices: FORGE },
   'hilda-ironspire': {
-    lines: [['hilda', 'Harrow\'s up in the Ironspire. I can feel his forge in my teeth.'], ['hilda', 'When that road opens, bring me something of his. His hammer. Or his ear. I\'m not fussy.']],
+    lines: [['hilda', 'Harrow\'s up in the Ironspire. I can feel his forge in my teeth, and the east postern\'s open at last.'], ['hilda', 'Bring me something of his. His hammer. Or his ear. I\'m not fussy.']],
     choices: FORGE,
   },
 
@@ -610,82 +632,455 @@ export const DIALOGUE = deepFreeze({
       ['isolde', 'And Gloomfen. The Blackwater\'s over the causeway, and Bogmire\'s children walk into the fen at night.'],
       ['alondra', 'Following a lantern. I\'ve dreamed it three nights running.'],
       ['fenwick', 'The hearth is humming a tune, Isolde. I know that tune. I\'d hoped never to hear it again.'],
-      ['isolde', 'Then you\'ll tell me tonight, old man. {warden}: Ironspire or Gloomfen. Choose in the morning.'],
+      ['isolde', 'Then you\'ll tell me tonight, old man. {warden}: the east postern opens at dawn. Ironspire first.'],
     ],
     do: [{ set: 'harrow-named' }, { end: 'act2' }],
   },
 
-  // ---- M5: the Ironspire Peaks (spec §3.1, §3.6). STUBS from the M5 scaffold; P3 writes the real scenes ----
-  wynn: {
-    lines: [['wynn', 'Welcome to Peak\'s Veil, Warden. The bell has been quiet since Brother Aurel went down to the lake.'], ['wynn', 'The Highfold gate is open to you. The path goes down to Fawnrest.']],
-    do: [{ set: 'met-wynn' }, { set: 'highfold-open' }],
-    choices: [LEAVE],
+  // ==== M5: the Ironspire Peaks (spec §3.1, §3.5, §3.6) ==============================================
+
+  // ---- the Keep, after the second council ------------------------------------------------------------
+  'guard-e-open': { lines: [['gate-guard-e', 'Postern\'s open, Warden. The monks dug the slide out; the road climbs to Peak\'s Veil. Wrap up warm. Then warmer.']] },
+  'guard-e-writ': { lines: [['gate-guard-e', 'A writ from Stormwatch, first since spring! It says "Thank you. Y." Short, for a writ. I\'m having it framed.']] },
+  'isolde-gloomfen': {
+    lines: [
+      ['isolde', 'Six coals. The Gloomfen is the last dark country on the map, and the Blackwater still has the causeway.'],
+      ['isolde', 'When it falls, {warden}, that road is yours. Until then, eat something and sleep. That\'s an order.'],
+    ],
+    do: [{ set: 'heard-gloomfen' }],
   },
-  'wynn-again': { lines: [['wynn', 'The bell will ring again. I have to believe that.']], choices: [LEAVE] },
-  'wynn-bell': {
-    lines: [['wynn', 'The Abbess is at rest? Then ring it, Warden. Ring it for all of them.'], ['narrator', 'The bell of Peak\'s Veil rings out over the ice.']],
-    do: [{ set: 'met-wynn' }, { set: 'highfold-open' }, { set: 'bell-rung-veil' }, { claim: 'bell-of-veil' }],
-    choices: [LEAVE],
-  },
-  kesh: { lines: [['kesh', 'Frostmere was a holy lake once. Now nobody walks on it.']], choices: [LEAVE] },
-  novice: { lines: [['novice', 'Mother Wynn says nobody may ring the bell. Not even me.']], choices: [LEAVE] },
-  brundar: {
-    lines: [['brundar', 'A Warden of the Keep, in my hall. Say what you want, and say it quickly.']],
-    do: [{ set: 'met-brundar' }],
-    choices: [LEAVE],
-  },
-  'brundar-again': { lines: [['brundar', 'The Deeps stay sealed until I say otherwise.']], choices: [LEAVE] },
-  'brundar-rune': {
-    lines: [['brundar', 'You dealt with the girl on my stair. Take the Rune-Key. The Deeps are yours to walk.']],
-    do: [{ set: 'met-brundar' }, { set: 'rune-given' }, { give: 'thanes-rune' }],
-    choices: [LEAVE],
-  },
-  'brundar-smith': {
-    lines: [['brundar', 'Harrow\'s journeyman, quiet at last. Take this for your trouble.']],
-    do: [{ set: 'met-brundar' }, { set: 'smith-told' }, { claim: 'sentinel-oath' }],
-    choices: [LEAVE],
-  },
-  durra: { lines: [['durra', 'Harrow\'s sister sent you? Then you get my honest prices. Look.']], choices: [{ text: 'Buy.', do: [{ open: 'shop:durra' }] }, LEAVE] },
-  'ih-guard': { lines: [['ih-guard', 'Mind the Thane. He has not slept since the Deeps went dark.']], choices: [LEAVE] },
-  rook: {
-    lines: [['rook', 'I kept the Tallymen\'s books once. I can tell you what they cut out of that lake.']],
-    do: [{ set: 'met-rook' }],
-    choices: [LEAVE],
-  },
-  'rook-again': { lines: [['rook', 'Bring me the Cutter-Chief\'s ledger and I will read it to you.']], choices: [LEAVE] },
-  'rook-ledger': {
-    lines: [['rook', 'The Cutter-Chief\'s ledger. Give it here. Ice, by the ton, for a buyer with no name.']],
-    do: [{ set: 'met-rook' }, { set: 'ledger-given' }, { claim: 'rooks-ledger' }],
-    choices: [LEAVE],
-  },
-  ysolde: {
-    lines: [['ysolde', 'Stormwatch holds the north road. What is left of it.']],
-    choices: [
-      { text: 'Turn in bounties.', if: { bounty: 'any', state: 'ready' }, do: [{ claim: 'bounties' }], next: 'ysolde-paid' },
-      { text: 'Read the bounty board.', do: [{ open: 'bounties' }] },
-      LEAVE,
+  'notice-isolde-rune': { lines: [['isolde', 'Brundar\'s own rune-key? He wouldn\'t give my father the time of day. What did you do to him?']] },
+  'fenwick-five': { lines: [['fenwick', 'Five coals, and a red in the flame like iron in a forge. I haven\'t seen that since... well. Since before.']] },
+  'fenwick-six': {
+    lines: [
+      ['fenwick', 'Don\'t look at me like that, Warden. I\'m old. Old men stare into fires. It\'s allowed.'],
+      ['fenwick', 'Six coals, and the hearth sings all night, and something under it keeps time. I\'ve stopped sleeping in the hall.'],
     ],
   },
-  'ysolde-paid': { lines: [['ysolde', 'Paid in Stormwatch silver. Try not to spend it all at Quill\'s.']], choices: [LEAVE] },
-  quill: { lines: [['quill', 'Everything you need for the ice, at army prices.']], choices: [{ text: 'Buy.', do: [{ open: 'shop:quill' }] }, LEAVE] },
+  'notice-fenwick-cowl': { lines: [['fenwick', 'Take that hood off by my hearth, Warden. It\'s listening. So is the hearth, and I\'d rather they didn\'t talk.']] },
+  // Hilda and her brother: the hammer he left (harrows-hammer), then his letter after the third council
   'hilda-hammer': {
-    lines: [['hilda', 'That\'s my brother\'s hammer. He never put it down in his life. Where is he?']],
+    lines: [
+      ['narrator', 'Hilda sees the hammer from across the yard. She sets her own down on the anvil, which she never does.'],
+      ['hilda', 'That\'s my brother\'s hammer. He never put it down in his life. Where is he?'],
+      ['bryn', 'It was in a forge-golem\'s arm, under Ironhold. His forge was cold. He\'d been gone a long while.'],
+      ['hilda', 'He left it with a golem and walked off. Harrow did. Then what\'s he forging with now?'],
+      ['hilda', '...Keep it. Hit things with it; he\'d hate that. Here, for the finding. And embers: that hammer eats heat.'],
+    ],
     do: [{ set: 'hammer-shown' }, { claim: 'harrows-hammer' }],
-    choices: [LEAVE],
+    choices: FORGE,
   },
+  'hilda-harrow': { lines: [['hilda', 'Twins know things. He\'s alive, and he\'s somewhere wet: my knuckles ache like they do in the fen. Don\'t ask.']], choices: FORGE },
+  'hilda-letter': {
+    lines: [
+      ['hilda', 'A letter came for me. Soot on the seal, his broken ring in the wax. My brother\'s hand, and four words.'],
+      ['hilda', '"Don\'t wait up, Hild." Twenty years of nothing, and then that. I\'ve read it forty times.'],
+      ['hilda', 'Give me something to hit, Warden, before I read it again.'],
+    ],
+    do: [{ set: 'heard-hild' }],
+    choices: FORGE,
+  },
+  'hilda-waits': { lines: [['hilda', 'I haven\'t waited up. I\'ve just been up. There\'s a difference. Hand me that blade.']], choices: FORGE },
+  'notice-hilda-hammer': { lines: [['hilda', 'You hold it lower than he did. He held it like a show-off, up by his ear. Yours is better. Don\'t tell him.']], choices: FORGE },
+  'notice-hilda-heart': { lines: [['hilda', 'Mother Anvil\'s heart. He built her the winter our father died. He talked to her more than he talked to me.']], choices: FORGE },
+  'notice-hilda-runestaff': { lines: [['hilda', 'Harrow\'s runes. He cut those the winter we were fifteen, to annoy me. They still annoy me.']], choices: FORGE },
+  'notice-hilda-bracers': { lines: [['hilda', 'Our mark on the clasp: Harrow made these, small at the wrist. Why is my brother making Tamsin gifts?']], choices: FORGE },
+  // Fawnrest: the Highfold path from Peak's Veil
+  'ivo-highfold': { lines: [['ivo', 'The Highfold path is open again! The monks came down it every spring to bless the deer. The deer put up with it.']] },
+
+  // ---- Peak's Veil ----------------------------------------------------------------------------------
+  // Mother Wynn: the bell (bell-of-veil), and the Highfold gate unbarred (highfold-open) at the first meeting.
+  // The bell has not rung since Aurel went down (the map's bell-rope sign says so too): the old Abbess would
+  // not toll for a man who might come up, and now she walks the ice herself.
+  wynn: {
+    lines: [
+      ['wynn', 'A Keep Warden, up our pass! Sit. I\'m Wynn. I\'ve kept this house since spring, and it keeps the lake.'],
+      ['wynn', 'Our bell hasn\'t rung since Brother Aurel went down to the lake. My Abbess wouldn\'t toll: he might come up.'],
+      ['wynn', 'This spring the ice broke under the island shrine. She drowned with her choir, and they didn\'t stay drowned.'],
+      ['wynn', 'They walk the ice at night, singing. You can\'t toll for someone still walking. Give her rest, {warden}. Gently.'],
+      ['wynn', 'Then we\'ll ring for them all. And I\'ll have the west gate unbarred for you: the Highfold path goes to Fawnrest.'],
+    ],
+    do: [{ set: 'met-wynn' }, { set: 'highfold-open' }],
+    choices: [{ text: 'Ask why the ice broke.', next: 'wynn-ice' }, LEAVE],
+  },
+  'wynn-ice': {
+    lines: [
+      ['wynn', 'Tallymen. They came up the Frost Road in spring with ice-saws, and cut Frostmere into blocks like cheese.'],
+      ['wynn', 'The island ice was the thickest, so they cut all round it. Ask Brother Kesh the rest. He was there.'],
+    ],
+  },
+  'wynn-again': { lines: [['wynn', 'She walks the island shrine at night with her censer. Go gently, {warden}. She was kind, when she was alive.']] },
+  // the Abbess at rest: also a first meeting, for a Warden who went out to the island before stopping here
+  'wynn-ring': {
+    lines: [
+      ['wynn', 'You\'ve been out to the island; I can smell the lake on you. Is she... is my Abbess at rest?'],
+      ['alondra', 'She is. At the end she said, "Ring for us."'],
+      ['wynn', 'Then we ring. I\'m Wynn; I\'ve kept this house since spring. Come up the tower with me, {warden}. Take the rope.'],
+    ],
+    do: [{ set: 'met-wynn' }, { set: 'highfold-open' }],
+    choices: [{ text: 'Ring the bell.', if: RING, do: [{ set: 'bell-rung-veil' }], next: 'wynn-bell' }, { text: 'Not yet.' }],
+  },
+  'wynn-bell': {
+    lines: [
+      ['narrator', 'Wynn unknots the rope. You pull, and pull, and after thirty years the great bell swings out and speaks.'],
+      ['narrator', 'Far below, the drowned stop walking. One by one they lie down on the ice, and the ice takes them in.'],
+      ['wynn', 'Thank you. She gave me this when I was a novice who couldn\'t keep quiet. It rang for them. Now it\'s yours.'],
+    ],
+    do: [{ set: 'met-wynn' }, { set: 'highfold-open' }, { set: 'veil-thanked' }, { claim: 'bell-of-veil' }],
+  },
+  // the bell rope in the tower, if the map makes it a `bellframe` entity (whose id opens this node); its line
+  // is the map's own sign text, so the rope reads the same either way
+  'pv-bell-rope': {
+    lines: [['narrator', 'The bell rope of Peak\'s Veil, knotted up out of reach. The bell has not rung since Brother Aurel went down to the lake.']],
+    choices: [{ text: 'Ring the bell.', if: RING, do: [{ set: 'bell-rung-veil' }], next: 'veil-bell-rung' }, LEAVE],
+  },
+  'veil-bell-rung': {
+    lines: [
+      ['narrator', 'You climb and unknot the rope. You pull, and pull, and after thirty years the great bell swings out and speaks.'],
+      ['narrator', 'Far below, the drowned stop walking. One by one they lie down on the ice, and the ice takes them in.'],
+    ],
+  },
+  // the thank-you, after the bell was rung from its rope: also a first meeting
+  'wynn-thanks': {
+    lines: [
+      ['wynn', 'You rang it. I was in the herb garden. I sat down in the thyme and cried, and the thyme didn\'t mind.'],
+      ['wynn', 'I\'m Wynn. My Abbess gave me this when I was a novice who couldn\'t keep quiet. It\'s yours now.'],
+    ],
+    do: [{ set: 'met-wynn' }, { set: 'highfold-open' }, { set: 'veil-thanked' }, { claim: 'bell-of-veil' }],
+  },
+  'wynn-after': { lines: [['wynn', 'The lake\'s quiet at night now. I sleep with the shutters open, and listen, and hear nothing at all. Lovely.']] },
+  'wynn-frost': { lines: [['wynn', 'I rang for Aurel the night you came up. Thirty years late. He always said I\'d be late to my own funeral.']] },
+  'notice-wynn-bell': { lines: [['wynn', 'It suits you. Ring it when you\'re frightened. It won\'t help, but you\'ll feel better. That\'s most of prayer.']] },
+  'notice-wynn-censer': { lines: [['wynn', 'My Abbess\'s censer. Still wet? It will be. The lake keeps a little of everything it gives back.']] },
+  'notice-wynn-crozier': { lines: [['wynn', 'Aurel\'s crozier. I watched its light under the ice every night, the winter he went down. I was nine.']] },
+  // Brother Kesh: Frostmere's history (three nodes, like Brother Cinder's) and advice before each Champion
+  kesh: {
+    lines: [
+      ['kesh', 'Brother Kesh. When wolves come to the gate, they send me. Mother Wynn says I pray with my elbows.'],
+      ['kesh', 'Going up to the lake? Everyone does, in the end. Ask me about Frostmere. I\'ve fallen through it twice.'],
+    ],
+    do: [{ set: 'met-kesh' }],
+    choices: KESH,
+  },
+  'kesh-again': { lines: [['kesh', 'Still here? Good. The soup\'s better when there are guests. Mother Wynn salts it for company.']], choices: KESH },
+  'kesh-lake': {
+    lines: [
+      ['kesh', 'Frostmere was holy before this house was built. The first sisters came up here to listen to it.'],
+      ['kesh', 'Lie on the ice on a still night and you\'ll hear it: a heartbeat, slower than breathing. Slower than thinking.'],
+      ['kesh', 'They named it Hush: it\'s what you say to a sleeper. Then they kept their voices down for a thousand years.'],
+    ],
+    choices: [{ text: 'Ask about Brother Aurel.', next: 'kesh-aurel' }, { text: 'Ask about the spring.', next: 'kesh-spring' }, LEAVE],
+  },
+  'kesh-aurel': {
+    lines: [
+      ['kesh', 'Aurel was our abbot. He wouldn\'t let anyone call him Father; it made him feel old, he said. He was seventy.'],
+      ['kesh', 'Thirty winters ago the heartbeat changed. Aurel took the choir down the listening-well to sing it to sleep.'],
+      ['kesh', 'His crozier-light moved under the ice all that winter. Then it stopped moving. Some nights it\'s still there.'],
+    ],
+    choices: [{ text: 'Ask about the spring.', next: 'kesh-spring' }, LEAVE],
+  },
+  'kesh-spring': {
+    lines: [
+      ['kesh', 'This spring the Tallymen came with ice-saws. They cut all round the island, block by block, and hauled it off.'],
+      ['kesh', 'The old Mother went out to sing the lake quiet. I went after her. The ice went. I came up. Nobody else did.'],
+      ['kesh', 'Now there\'s a hole where the Tallymen cut down, and the drowned stand round it at night. Waiting.'],
+    ],
+    choices: [{ text: 'Ask about Brother Aurel.', next: 'kesh-aurel' }, LEAVE],
+  },
+  'kesh-anvil': {
+    lines: [
+      ['kesh', 'Mother Anvil? Durra says her plate turns a hammer, but cold finds the flaws in it. Take something cold.'],
+      ['kesh', 'And get the hammer off her before her last strike. I saw her swing it once, through a door. It was a big door.'],
+    ],
+    choices: KESH,
+  },
+  'kesh-abbot': {
+    lines: [
+      ['kesh', 'If you go down to Aurel, take fire. He hated the cold his whole life: soup, fires and gossip, in that order.'],
+      ['kesh', 'When the choir sings, don\'t listen to the hymn. Listen to the gaps in it. That\'s where you\'ll hear yourself.'],
+    ],
+    choices: KESH,
+  },
+  'kesh-frost': {
+    lines: [
+      ['kesh', 'The lake\'s asleep, Mother says. I lie on the ice and listen, and it\'s slower every night. Asleep. Probably.'],
+      ['kesh', 'If it stays asleep, this house won\'t need a brother who fights. Your Keep might. Ask me when the roads open.'],
+    ],
+  },
+  'notice-kesh-boots': { lines: [['kesh', 'Brother Oswin\'s boots. He crossed the slide in them without touching a stone. We never saw him again.']] },
+  'notice-kesh-cowl': { lines: [['kesh', 'Take that hood off near the lake, {warden}. It was woven by someone listening, and it still is.']] },
+  novice: { lines: [['novice', 'Mother Wynn says nobody may ring the bell. Not even me. I asked. I asked a lot.']] },
+  'novice-bell': { lines: [['novice', 'The bell rang! It wasn\'t me. I want everyone to know it wasn\'t me. It was beautiful, though.']] },
+  'novice-frost': { lines: [['novice', 'Brother Kesh says the lake\'s asleep. He says it the way you\'d say the bear\'s asleep.']] },
+  'notice-novice-bell': { lines: [['novice', 'The little bell! Mother Wynn let me polish it once. I polished a dent into it. Don\'t look for the dent.']] },
+  // the lookout on the monastery wall (a `lookout` entity whose id is this node)
+  'pv-lookout': {
+    lines: [['narrator', 'The monastery wall. South, the Rockslide Pass; west, the Highfold, falling to Fawnrest; north, the Iron Stair.']],
+    choices: [{ text: 'Mark it all with the Kettle.', if: { all: [{ power: 'longwatch' }, { not: { flag: 'longwatch:peaks-veil' } }] }, do: [{ set: 'longwatch:peaks-veil' }], next: 'longwatch-marked' }, LEAVE],
+  },
+
+  // ---- Ironhold -------------------------------------------------------------------------------------
+  // Thane Brundar: the Rune-Key once Tamsin's duel is fought (the main quest), and the Sentinel's Oath
+  brundar: {
+    lines: [
+      ['brundar', 'A Keep Warden in my hall. The last one came for iron and left owing. I\'m Brundar, Thane here. Speak.'],
+      ['bryn', 'Harrow Ironvein. And whatever you\'ve sealed up in the Deeps.'],
+      ['brundar', 'The Deeps are Ironhold\'s shame, and Ironhold\'s business. There\'s a girl on my stair who agrees with neither.'],
+      ['brundar', 'Shift her, or have a go at it, and we\'ll talk keys. Down there my sister\'s boy still works Harrow\'s anvils.'],
+      ['brundar', 'He swore the Sentinel\'s oath at sixteen. Put him to rest, Warden, and Ironhold will owe you. I hate owing.'],
+    ],
+    do: [{ set: 'met-brundar' }],
+    choices: BRUNDAR,
+  },
+  'brundar-harrow': {
+    lines: [
+      ['brundar', 'Harrow was my master smith, the best under the mountain. He made the Sentinels walk and Mother Anvil sing.'],
+      ['brundar', 'One morning his forge was cold and he was gone, with things that weren\'t his. That\'s all you get. For now.'],
+    ],
+  },
+  'brundar-stair': { lines: [['brundar', 'The girl\'s still on my stair. Six of my guards asked her to move. Six of my guards are in the infirmary.']], choices: BRUNDAR },
+  // the Thane's leave: Tamsin's duel won or yielded (also a first meeting)
+  'brundar-rune': {
+    lines: [
+      ['brundar', 'Brundar, Thane of Ironhold. I watched that from my gallery. Win or lose, you went at her. My guards drew straws.'],
+      ['brundar', 'Here: my rune-key. The Deeps\' doors were cut to know it. What\'s down there is Harrow\'s work, and my shame.'],
+      ['brundar', 'My sister\'s boy is down there, Harrow\'s journeyman now. He swore the Sentinel\'s oath once. Give him his rest.'],
+    ],
+    do: [{ set: 'met-brundar' }, { set: 'rune-given' }, { give: 'thanes-rune' }],
+  },
+  'brundar-again': { lines: [['brundar', 'Harrow\'s forge is under the Deeps, and Mother Anvil keeps it. He built her to keep everything. She does.']], choices: BRUNDAR },
+  // the thank-you of the Sentinel's Oath
+  'brundar-smith': {
+    lines: [
+      ['brundar', 'My sister\'s boy is at rest, then. Harrow took him at twenty and gave me back a furnace with his face.'],
+      ['brundar', 'Thank you. Ironhold pays its debts, even the ones it would sooner not have.'],
+      ['brundar', 'And when your Council sits, I\'ll tell it what else Harrow took from under this hall. It\'s time someone did.'],
+    ],
+    do: [{ set: 'met-brundar' }, { set: 'smith-told' }, { claim: 'sentinel-oath' }],
+  },
+  'brundar-iron': { lines: [['brundar', 'Mother Anvil\'s down and the mountain\'s quiet. Ysolde will open her north gate now. Stubborn woman. Good captain.']] },
+  'brundar-summons': { lines: [['brundar', 'A rider from your Isolde: the Council sits, and Ironspire\'s chair is mine. Go home, Warden. I ride behind you.']] },
+  'brundar-council': { lines: [['brundar', 'Your Keep\'s chairs are built for tall folk. I sat on the table. Nobody said a word. Good Council.']] },
+  'notice-brundar-rune': { lines: [['brundar', 'My key on a Warden\'s hand. Wear it on the left; a Thane\'s ring goes on the left. You\'d make a poor dwarf.']] },
+  'notice-brundar-hammer': { lines: [['brundar', 'Harrow\'s hammer. Don\'t swing it in my hall. The last time it was swung in here, a table died.']] },
+  'notice-brundar-wall': { lines: [['brundar', 'Ironwall. My grandfather held the Black Gate behind it. The Sentinels were built to carry it after him.']] },
+  durra: {
+    lines: [
+      ['durra', 'Durra Ironhand, armourer to the Thane. Frost opal, agate, pearl, and steel that does what it\'s told.'],
+      ['durra', 'Harrow Ironvein and I learned at the same anvil. He was better. I was nicer. Look where it got us both.'],
+    ],
+    choices: DURRA,
+  },
+  'durra-iron': { lines: [['durra', 'Harrow\'s forge gone cold. Good. ...No. It was the best forge under the mountain. Cold doesn\'t suit it.']], choices: DURRA },
+  'notice-durra-hammer': { lines: [['durra', 'Harrow\'s hammer, in someone else\'s fist. He\'d spit. Swing it past me, slowly. ...Hm. Buy something.']], choices: DURRA },
+  'notice-durra-bracers': { lines: [['durra', 'Those bracers. The girl called them a gift. I know whose hand made them, and he never gave anything away.']], choices: DURRA },
+  'notice-durra-staff': { lines: [['durra', 'Harrow\'s runes, cut crooked on purpose. He said straight runes were for cowards. I cut mine straight.']], choices: DURRA },
+  'ih-guard': { lines: [['ih-guard', 'Mind the Thane. He hasn\'t slept since the Deeps went dark. Neither have we. He paces.']] },
+  'ih-guard-rune': { lines: [['ih-guard', 'The Thane gave you his key? He\'s never given anyone anything. He gave me a cold, once.']] },
+  'ih-guard-iron': { lines: [['ih-guard', 'The Deeps have gone quiet. First time in a year the floor\'s not warm. I miss it. Don\'t tell the Thane.']] },
+  'notice-ih-guard-wall': { lines: [['ih-guard', 'Is that Ironwall? The Sentinel-Captain\'s shield? Nobody\'s shifted that off the stair in two hundred years.']] },
+  // Tamsin at Ironhold (the duel's `talk`; the third of seven)
   'tamsin-ironhold': {
-    lines: [['tamsin', 'You again. Harrow is mine to find, Warden. Out of my way, or through me.']],
-    choices: [{ text: 'Through you, then.', do: [{ fight: 'tamsin-ironhold' }] }, LEAVE],
+    lines: [
+      ['tamsin', 'Took you long enough. I\'ve sat on this stair a week. The Thane\'s guards have stopped asking me to move.'],
+      ['tamsin', 'The soot letters have a mark in the wax: a hammer in a broken ring. Harrow\'s mark.'],
+      ['tamsin', 'I mean to find him first, and ask him why he writes to me. You can have whatever\'s left.'],
+      ['pip', 'New bracers. Ironhold work. They\'re glowing, and she\'s smiling, and I don\'t like either.'],
+    ],
+    choices: [{ text: 'Try again.', do: [{ fight: 'tamsin-ironhold' }] }, { text: 'Not yet.' }],
   },
-  'tamsin-ironhold-yield': {
-    lines: [['tamsin', 'Fine. Go down, then. He is not there anyway.']],
+
+  // ---- Stormwatch -----------------------------------------------------------------------------------
+  ysolde: {
+    lines: [
+      ['ysolde', 'Captain Ysolde. Stormwatch holds the north road for the Keep. Well, its gate. The Tallymen hold the road.'],
+      ['ysolde', 'Half my watch deserted to rob the pass with Rhune. My board pays for whatever makes my roads duller.'],
+      ['ysolde', 'The north gate opens for whoever takes Harrow\'s forge under Ironhold. The ice road eats anyone less.'],
+    ],
+    do: [{ set: 'met-ysolde' }],
+    choices: YSOLDE,
+  },
+  'ysolde-again': { lines: [['ysolde', 'North gate stays shut till you carry the Brand of Iron. My rule. I wrote it, so I\'m allowed to hate it.']], choices: YSOLDE },
+  'ysolde-gate': { lines: [['ysolde', 'You took Harrow\'s forge? Then the north gate\'s yours. The Frost Road runs to the lake. Come back down it.']], choices: YSOLDE },
+  'ysolde-home': { lines: [['ysolde', 'The ice road\'s quiet. My sentries have started singing on watch. I\'m not sure it\'s an improvement.']], choices: YSOLDE },
+  'ysolde-paid': { lines: [['ysolde', 'Paid in Stormwatch silver. Well. Stormwatch copper. Try not to spend it all at Quill\'s.']] },
+  'notice-ysolde-boots': { lines: [['ysolde', 'Rhune\'s boots. He was the best sergeant I ever had, right up until he was the worst.']], choices: YSOLDE },
+  'notice-ysolde-cloak': { lines: [['ysolde', 'The Roc\'s own feathers! It took three of our goats and a sentry. The sentry came back. The goats didn\'t.']], choices: YSOLDE },
+  quill: { lines: [['quill', 'Quartermaster Quill. All you need for the ice road, at army prices: twice the cost, signed in triplicate.']], choices: QUILL },
+  'quill-frost': { lines: [['quill', 'The ice road\'s open, and I\'ve sold more tonics this week than all winter. The ink alone!']], choices: QUILL },
+  'notice-quill-mantle': { lines: [['quill', 'Old Horn\'s mantle. Does it smell? It smells. Stand downwind of my stores, please.']], choices: QUILL },
+  // Rook, in the stockade: the Tallymen's plan (the main quest's "hear Rook out"), then the ledger
+  rook: {
+    lines: [
+      ['rook', 'Rook. Late of the Tallymen, now a guest of Ysolde\'s stockade. The food\'s bad, but the company\'s improving.'],
+      ['rook', 'I kept the Tallymen\'s books. Every relic they stole went through my ledger, counted twice, bound for one buyer.'],
+      ['rook', 'He pays in iron and never haggles. We called him the Smith. His orders come signed with a U.'],
+      ['rook', 'This spring the orders changed: stop stealing, start cutting. The Cutter-Chief took his saws onto Frostmere.'],
+      ['rook', 'Nobody cuts ice downward for money. Bring me the Chief\'s ledger and I\'ll tell you what they\'re digging for.'],
+    ],
+    do: [{ set: 'met-rook' }],
+    choices: [{ text: 'Ask why he left the Tallymen.', next: 'rook-why' }, LEAVE],
+  },
+  'rook-why': { lines: [['rook', 'I asked what the Smith wanted it for. Bookkeepers aren\'t meant to ask. I left before they closed my account.']] },
+  'rook-again': { lines: [['rook', 'The Chief\'s camp is on the Frost Road, past the north gate. The ledger\'s in his coat. He never takes it off.']] },
+  // the thank-you: also a first meeting, for a Warden who took the ledger before meeting Rook
+  'rook-ledger': {
+    lines: [
+      ['rook', 'The Cutter-Chief\'s ledger! Sealskin, and his dreadful hand. I\'m Rook; I taught him his letters. Badly.'],
+      ['rook', 'Ice by the ton, ice by the ton... here, underlined twice: "One heart, cut out whole. Deliver on the thaw."'],
+      ['rook', 'They\'re not cutting ice. They\'re cutting down to whatever beats under that lake. The Smith wants its heart.'],
+      ['rook', 'Take the Chief\'s purse, and his opal. I kept books for thieves. I never said I kept them honest.'],
+    ],
+    do: [{ set: 'met-rook' }, { set: 'ledger-given' }, { claim: 'rooks-ledger' }],
+  },
+  'rook-after': { lines: [['rook', 'I\'ve read that ledger nine times. It doesn\'t improve. Somewhere there\'s a list with four hearts on it.']] },
+  'rook-frost': {
+    lines: [
+      ['rook', 'The Tallymen left the ice the night you came up. Not beaten: recalled. The Smith is patient, Warden. Are you?'],
+      ['rook', 'If Ysolde ever lets me out, I\'ll need honest work. Or work. Ask me again when the roads open.'],
+    ],
+  },
+  'notice-rook-pick': { lines: [['rook', 'The Chief\'s pick. There\'s a notch on the haft for every block of lake it cut. Add one for him.']] },
+  'notice-rook-knife': { lines: [['rook', 'A tallyknife. I used to hand those out, one per recruit. Mind the notches. They count you back.']] },
+
+  // ---- after fights (AFTER) --------------------------------------------------------------------------
+  'tamsin-ih-win': {
+    lines: [
+      ['narrator', 'Tamsin\'s bracers clatter onto the stair. She looks at them a long moment, and leaves them where they lie.'],
+      ['tamsin', 'His rooms are off the Thane\'s hall. Bed made. Tools gone. The hearth still lit.'],
+      ['tamsin', 'He was here. He left the fire burning so we\'d think he\'d be back.'],
+      ['tamsin', 'He won\'t be. Go and get your key from the Thane, Warden. I\'ve a letter to answer.'],
+    ],
+  },
+  'tamsin-ih-yield': {
+    lines: [
+      ['tamsin', 'Stay down a moment. The stair\'s cold, but it\'s honest. I\'ve slept on it all week.'],
+      ['tamsin', 'Go on, get your key from the Thane. He only wanted to see who\'d try. Harrow\'s long gone anyway.'],
+      ['tamsin', 'And {warden}? If a letter comes for you with soot on the seal, don\'t answer it. I did.'],
+    ],
     do: [{ set: 'tamsin-yielded-3' }],
   },
-  // the third council (keep-hall trigger `council-3`, guarded by the flag it sets)
+  'journeyman-rest': {
+    lines: [
+      ['narrator', 'The journeyman\'s forge-light gutters out. Under the slag is a young dwarf\'s face, and it looks relieved.'],
+      ['bryn', 'He wore a Sentinel\'s badge under all that iron. The Thane will want to know he\'s at rest.'],
+    ],
+  },
+  'anvil-after-hammer': {
+    lines: [
+      ['narrator', 'Mother Anvil sinks onto her four iron legs. The fire in her ribs dims slowly, like a forge banked for the night.'],
+      ['pip', 'The hammer\'s still warm. Someone held this every day for years, then gave it to a golem and walked off.'],
+      ['bryn', 'Hilda will know it. She\'ll know it from across the Keep yard.'],
+      ['alondra', 'And Stormwatch\'s north gate opens for this Brand. North, then, to the lake.'],
+    ],
+    do: [{ set: 'anvil-fell' }],
+  },
+  'anvil-after': {
+    lines: [
+      ['narrator', 'Mother Anvil sinks onto her four iron legs. The fire in her ribs dims slowly, like a forge banked for the night.'],
+      ['pip', 'The hammer broke when she fell. Harrow\'s own hammer, in two pieces, and we did that. Hilda\'s going to shout.'],
+      ['bryn', 'Then she\'ll mend it. Take the pieces home, {warden}. Some things should be mended by family.'],
+      ['alondra', 'And Stormwatch\'s north gate opens for this Brand. North, then, to the lake.'],
+    ],
+    do: [{ set: 'anvil-fell' }],
+  },
+  'anvil-again': { lines: [['pip', 'She got up again. Harrow builds things to last. Just once I wish he\'d built something badly.']] },
+  'cutters-ledger': {
+    lines: [
+      ['narrator', 'In the Cutter-Chief\'s coat: a ledger bound in sealskin. Columns of numbers, and one line underlined twice.'],
+      ['pip', 'Tally-cipher. I can read "heart" and nothing else. There\'s a Tallyman in Ysolde\'s stockade who writes this.'],
+    ],
+  },
+  'abbess-rest': {
+    lines: [
+      ['narrator', 'The Drowned Abbess lowers her censer. For a moment she\'s an old woman, soaked and tired. Then she\'s only frost.'],
+      ['alondra', 'She spoke, at the end. "Ring for us." The bell at Peak\'s Veil, I think. Nobody has rung it in thirty years.'],
+    ],
+  },
+  // the Rime-Abbot's last words, then Hush's scene (spec §3.5): Brother Kesh names it if you have met him
+  'abbot-after': {
+    lines: [
+      ['narrator', 'The Rime-Abbot kneels, and the frost slides off him like a cloak. Under it is an old man, tired and very cold.'],
+      ['rime-abbot', 'Is it still beating? ...Good. Thirty winters I sang it to sleep, and it never woke. Tell little Wynn I kept it.'],
+      ['rime-abbot', 'Don\'t let them cut its heart out. It\'s only sleeping. We\'re all only sleeping.'],
+      ['narrator', 'Then he is frost, and then he is nothing. Under your feet, the ice floor begins to glow.'],
+    ],
+    do: [{ set: 'abbot-fell' }],
+    choices: [{ text: 'Look down.', if: { flag: 'met-kesh' }, next: 'hush-kesh' }, { text: 'Look down.', if: { not: { flag: 'met-kesh' } }, next: 'hush' }],
+  },
+  'hush-kesh': {
+    lines: [
+      ['narrator', 'Under the ice, lit from within: something as big as the lake, curled up like a sleeping child. It is breathing.'],
+      ['narrator', 'Boots on the ice behind you: Brother Kesh, who followed you down. Too late for the fight, and in time for this.'],
+      ['kesh', 'Hush. It\'s what you say to a sleeper. A thousand years of listening, and I\'m the one who gets to see it.'],
+      ['alondra', 'Its heart. I\'ve heard it since Fawnrest, and thought it was mine. Listen. It\'s slowing.'],
+      ['kesh', 'Going back to sleep.'],
+      ['alondra', '...Or tired.'],
+      ['bryn', 'Six coals. Let\'s go home and tell the Council. I don\'t know how we tell them this.'],
+    ],
+  },
+  hush: {
+    lines: [
+      ['narrator', 'Under the ice, lit from within: something as big as the lake, curled up like a sleeping child. It is breathing.'],
+      ['narrator', 'The monks of Peak\'s Veil call it Hush: what you say to a sleeper. Its heart beats once, slow as a season.'],
+      ['alondra', 'I\'ve heard that heart since Fawnrest, and thought it was mine. Listen, {warden}. It\'s slowing.'],
+      ['pip', 'Going back to sleep, then. Good. Let\'s all go, quietly.'],
+      ['alondra', '...Or it\'s tired.'],
+      ['bryn', 'Six coals. Let\'s go home and tell the Council. I don\'t know how we tell them this.'],
+    ],
+  },
+  'abbot-again': { lines: [['pip', 'He got up again. The lake gives everything back in the end. I\'m starting to really dislike this lake.']] },
+
+  // ---- arrivals (ARRIVALS): first impressions of the mountains --------------------------------------------
+  'arrive-peaks-veil': {
+    lines: [['alondra', 'A great bell up there, and it isn\'t ringing. You can hear a bell that isn\'t ringing, if it\'s big enough.'], ['pip', 'Monks. Everyone whispers, and I can never tell if it\'s holy or rude.']],
+  },
+  'arrive-ironhold': {
+    lines: [['bryn', 'A hall cut out of one mountain, by people who never once asked the mountain. It\'s still sulking. Listen.'], ['pip', 'Everything here is iron, stone or cross. Mostly cross.']],
+  },
+  'arrive-stormwatch': {
+    lines: [['pip', 'An army post with its gate shut and its soldiers bored. My favourite kind of army.'], ['bryn', 'The north gate\'s barred from this side. Whatever\'s on the ice road, they\'d rather it stayed there.']],
+  },
+  'arrive-frostmere': {
+    lines: [['alondra', 'There. Under the ice. A heartbeat, slow as a season. I\'ve heard it since Fawnrest, and I thought it was mine.'], ['bryn', 'The whole lake, holding its breath. Walk softly, all of you. Especially you, Pip.']],
+  },
+
+  // ---- rests (RESTS) ---------------------------------------------------------------------------------
+  'veil-night': {
+    lines: [
+      ['narrator', 'In the night the bell of Peak\'s Veil rings once more, softly, with nobody on the rope.'],
+      ['wynn', 'It does that now. It\'s only saying goodnight to them. Go back to sleep, {warden}.'],
+    ],
+    do: [{ set: 'veil-night' }],
+  },
+
+  // ---- the third council (keep-hall trigger `council-3`, guarded by the flag it sets) -------------------
   'council-3': {
-    lines: [['isolde', 'Six coals, {warden}. The Council sits again, and this time the Thane of Ironhold sits with us.']],
+    lines: [
+      ['narrator', 'Six coals burn in the Eternal Hearth. Ironspire\'s chair holds a Thane at last, and he has brought his own cup.'],
+      ['isolde', 'Six coals, {warden}. Sit. Ironhold sits with us tonight, for the first time since my father\'s day.'],
+      ['brundar', 'Then I owe this table an apology, so here it is: Harrow robbed Ironhold, and I sealed the Deeps to hide it.'],
+      ['brundar', 'Under my hall we kept the plans for the Worldforge. A thousand years we kept them. Harrow took them.'],
+      ['qasim', 'And a box sealed in soot came to Ironhold, Thane. With a letter. I\'d wager my cisterns on it.'],
+      ['brundar', 'It sits on my table, unopened. I don\'t open gifts from men who rob me.'],
+      ['isolde', 'Keep it shut. Three chairs filled at last. One still empty: the Gloomfen\'s.'],
+    ],
     do: [{ set: 'council-3-done' }, { claim: 'ironspire-waking' }],
-    choices: [LEAVE],
+    choices: [
+      { text: 'Ask about the Worldforge.', next: 'council-3-forge' },
+      { text: 'Let the Council talk.', do: [{ end: 'ironspire' }] },
+    ],
+  },
+  'council-3-forge': {
+    lines: [
+      ['fenwick', 'The Worldforge. I knew the smith who drew those plans. Long ago. Don\'t ask me how long.'],
+      ['hilda', 'A forge to melt relics down, every last one. And my brother\'s the only smith alive who could build it.'],
+      ['alondra', 'And under Frostmere a Sleeper\'s heart beats slower since the sixth coal caught. I counted, all the way home.'],
+      ['narrator', 'Fenwick says nothing. He is looking into the hearth, and for a moment the hearth seems to look back.'],
+      ['isolde', 'Then we find Harrow before that forge is lit. Bogmire\'s children still walk into the Gloomfen after a lantern.'],
+      ['isolde', 'When the Blackwater falls, {warden}, that road is yours. Tonight, eat something. That\'s an order.'],
+    ],
+    do: [{ end: 'ironspire' }],
   },
 });
 
@@ -698,14 +1093,17 @@ export const ARRIVALS = deepFreeze({
   dusthaven: 'arrive-dusthaven',
   miragewell: 'arrive-miragewell',
   scorchgate: 'arrive-scorchgate',
+  // M5 (spec §3.6): the Ironspire's four places
+  'peaks-veil': 'arrive-peaks-veil',
+  ironhold: 'arrive-ironhold',
+  stormwatch: 'arrive-stormwatch',
+  frostmere: 'arrive-frostmere',
 });
 
 // A first win plays its lines and sets a flag; a rematch (the region re-arms after its next Brand)
 // gets a shorter line, so nothing is found or relieved twice.
 export const AFTER = deepFreeze({
   'tamsin-duel': [{ on: 'victory', d: 'tamsin-after-win' }, { on: 'yield', d: 'tamsin-yield' }],
-  // M5 (a stub until P3 writes the scenes)
-  'tamsin-ironhold': [{ on: 'yield', d: 'tamsin-ironhold-yield' }],
   'hollowed-patrol': [{ on: 'victory', d: 'corra-freed' }],
   'rotwarden-heart': [{ on: 'victory', if: { owns: 'ichor-mask' }, d: 'rotwarden-after' }],
   // M4
@@ -724,6 +1122,21 @@ export const AFTER = deepFreeze({
   'dt-aqueduct': [{ on: 'victory', if: { not: { flag: 'cistern-told' } }, d: 'aqueduct-flows' }],
   'ds-crew': [{ on: 'victory', if: { all: [{ owns: 'sunstone-lantern' }, { not: { flag: 'luma-trusted' } }] }, d: 'brask-lantern' }],
   'wisp-queen': [{ on: 'victory', if: { not: { flag: 'well-told' } }, d: 'queen-quiet' }],
+  // M5 (spec §3.5, §3.6): the Champions (the Rime-Abbot's lines lead into Hush's scene) and the duel
+  'mother-anvil': [
+    { on: 'victory', if: { flag: 'anvil-fell' }, d: 'anvil-again' },
+    { on: 'victory', if: { owns: 'worldforge-hammer' }, d: 'anvil-after-hammer' },
+    { on: 'victory', d: 'anvil-after' },
+  ],
+  'rime-abbot': [
+    { on: 'victory', if: { flag: 'abbot-fell' }, d: 'abbot-again' },
+    { on: 'victory', d: 'abbot-after' },
+  ],
+  'tamsin-ironhold': [{ on: 'victory', d: 'tamsin-ih-win' }, { on: 'yield', d: 'tamsin-ih-yield' }],
+  // each points at its quest's giver, and plays only until that quest's last step is done
+  'fm-shrine': [{ on: 'victory', if: { not: { flag: 'bell-rung-veil' } }, d: 'abbess-rest' }],
+  'fr-cutters': [{ on: 'victory', if: { not: { flag: 'ledger-given' } }, d: 'cutters-ledger' }],
+  'id-smith': [{ on: 'victory', if: { not: { flag: 'smith-told' } }, d: 'journeyman-rest' }],
 });
 
 export const RESTS = deepFreeze([
@@ -732,6 +1145,8 @@ export const RESTS = deepFreeze([
   { at: 'spire-hearth', if: { all: [{ owns: 'zaras-orrery' }, { not: { flag: 'orrery-night' } }] }, d: 'orrery-night' },
   { at: 'pithead', if: { all: [{ flag: 'luma-trusted' }, { not: { flag: 'luma-fireside' } }] }, d: 'luma-fireside' },
   { at: 'last-watchfire', if: { all: [{ brand: 'brand-of-ash' }, { not: { flag: 'watch-ended' } }] }, d: 'last-watch' },
+  // M5: the bell says goodnight at the Cloister Fire, once it has rung for the drowned
+  { at: 'veil-hearth', if: { all: [{ flag: 'bell-rung-veil' }, { not: { flag: 'veil-night' } }] }, d: 'veil-night' },
 ]);
 
 export const LOOKOUTS = deepFreeze({
@@ -739,6 +1154,8 @@ export const LOOKOUTS = deepFreeze({
   'mw-lookout': { flag: 'longwatch:mossfall', maps: ['mossfall', 'mosswatch-1', 'mosswatch-2'] },
   // M4: the mesa edge at Sandspire (spec §2.3)
   'ss-lookout': { flag: 'longwatch:sandspire', maps: ['sandspire', 'sun-road', 'dust-trail', 'glass-flats'] },
+  // M5: the lookout on Peak's Veil's wall (spec §2.3 "A lookout"; the entity id P2 places)
+  'pv-lookout': { flag: 'longwatch:peaks-veil', maps: ['peaks-veil', 'rockslide-pass', 'highfold', 'iron-stair'] },
 });
 
 export const DIALOGUE_IDS = Object.freeze(Object.keys(DIALOGUE));

@@ -1,14 +1,15 @@
-// Quests and bounties (M3 spec §3.6, §4.4; M4 spec §3.6). Quest state is derived from conditions;
-// only flags.quests[id] = 'claimed' is stored.
+// Quests and bounties (M3 spec §3.6, §4.4; M4 spec §3.6; M5 spec §3.6). Quest state is derived from
+// conditions; only flags.quests[id] = 'claimed' is stored.
 //
 // QUESTS[id] = { id, name, kind: 'main'|'side', giver, start: cond,
 //                steps: [{ text, done: cond, target: { map, entity } }],
 //                reward: { gold?, relic?, item?, set?, gems?: { gemId: n }, materials?: { scrap?, silver?, embers? } } }
-// BOUNTIES[id] = { id, enc, name, gold, giver }   posted on a board (Thornhollow: Dael; Sandspire: Zara),
-//                                                  complete once { beaten: enc }; either giver pays any of them
+// BOUNTIES[id] = { id, enc, name, gold, giver }   posted on a board (Thornhollow: Dael; Sandspire: Zara;
+//                                                  Stormwatch: Ysolde), complete once { beaten: enc }; any
+//                                                  bounty-giver pays any of them
 // The thank-you rule (M3 review): a line that claims a quest also sets its start flag, and a claim
 // needs every step done, so a deed done before meeting its giver is never lost.
-// Owner: WP3S (M3), P3 story (M4).
+// Owner: WP3S (M3), P3 story (M4, M5).
 
 import { deepFreeze } from '../core/freeze.js';
 
@@ -111,49 +112,57 @@ export const QUESTS = deepFreeze({
     ],
     reward: { gold: 150, gems: { 'glass-pearl': 2 } },
   },
-  // ---- M5: the Ironspire Peaks (spec §3.6). STUBS from the M5 scaffold until P3 finishes them ----
+  // ---- M5: the Ironspire Peaks (spec §3.6) ----
+  // The main quest shows the moment the Sunscorch is won (sunscorch-complete, a rule flag), so its first
+  // step is the second council. As in M3 and M4, a talk step also counts once the Brand it leads to is
+  // earned, so a Warden who walks past Peak's Veil or the stockade still closes it at the third council.
+  // Facing Tamsin is its own step (the spec's "win the Thane's leave" in two), so the Journal points at
+  // her first and then at the Thane.
   'ironspire-waking': {
     id: 'ironspire-waking', name: 'The Ironspire Waking', kind: 'main', giver: 'isolde', start: { flag: 'sunscorch-complete' },
     steps: [
-      step('Sit the second council, then take the Keep\'s east postern.', { flag: 'council-2-done' }, 'keep-hall', 'isolde'),
-      step('Climb the Rockslide Pass to Peak\'s Veil.', { any: [{ flag: 'met-wynn' }, { brand: 'brand-of-iron' }] }, 'peaks-veil', 'wynn'),
-      step('Climb to Ironhold and speak with the Thane.', { any: [{ flag: 'met-brundar' }, { brand: 'brand-of-iron' }] }, 'ironhold', 'brundar'),
-      step('Win the Thane\'s leave to go down into the Deeps.', { any: [{ flag: 'rune-given' }, { brand: 'brand-of-iron' }] }, 'ironhold', 'brundar'),
-      step('Take the Brand of Iron in Harrow\'s Forge.', { brand: 'brand-of-iron' }, 'harrows-forge', 'mother-anvil'),
-      step('Reach Stormwatch and hear Rook out.', { any: [{ flag: 'met-rook' }, { brand: 'brand-of-frost' }] }, 'stormwatch', 'rook'),
-      step('Take the Brand of Frost beneath Frostmere.', { brand: 'brand-of-frost' }, 'frostmere-below', 'rime-abbot'),
-      step('Come home to the Keep.', { flag: 'council-3-done' }, 'keep-hall', 'isolde'),
+      step('Come home to the Keep and sit the second council.', { flag: 'council-2-done' }, 'keep-hall', 'isolde'),
+      step('Take the east postern up to Peak\'s Veil, and find Mother Wynn.', { any: [{ flag: 'met-wynn' }, { brand: 'brand-of-iron' }] }, 'peaks-veil', 'wynn'),
+      step('Climb the Iron Stair to Ironhold and speak with Thane Brundar.', { any: [{ flag: 'met-brundar' }, { brand: 'brand-of-iron' }] }, 'ironhold', 'brundar'),
+      step('Face Tamsin on the Deeps stair.', { any: [{ beaten: 'tamsin-ironhold' }, { flag: 'tamsin-yielded-3' }, { flag: 'rune-given' }, { brand: 'brand-of-iron' }] }, 'ironhold', 'tamsin-ironhold'),
+      step('Win the Thane\'s leave to go down into the Deeps: his rune-key.', { any: [{ flag: 'rune-given' }, { brand: 'brand-of-iron' }] }, 'ironhold', 'brundar'),
+      step('Go down through the Deeps and take the Brand of Iron in Harrow\'s Forge.', { brand: 'brand-of-iron' }, 'harrows-forge', 'mother-anvil'),
+      step('Reach Stormwatch and hear Rook out, in the stockade.', { any: [{ flag: 'met-rook' }, { brand: 'brand-of-frost' }] }, 'stormwatch', 'rook'),
+      step('Take the Frost Road to Frostmere, and the Brand of Frost beneath it.', { brand: 'brand-of-frost' }, 'frostmere-below', 'rime-abbot'),
+      step('Come home to the Keep. The Council is waiting.', { flag: 'council-3-done' }, 'keep-hall', 'isolde'),
     ],
-    reward: {},
+    reward: {}, // the Rune-Key is given by the Thane's scene (data/dialogue.js brundar-rune); the third council claims it
   },
+  // The bell rings from its rope in the tower (pv-bell-rope) or with Mother Wynn (wynn-ring); she thanks you.
   'bell-of-veil': {
     id: 'bell-of-veil', name: 'The Bell of Peak\'s Veil', kind: 'side', giver: 'wynn', start: { flag: 'met-wynn' },
     steps: [
-      step('Quiet the Drowned Abbess on Frostmere.', { beaten: 'fm-shrine' }, 'frostmere', 'fm-shrine'),
-      step('Ring the bell of Peak\'s Veil.', { flag: 'bell-rung-veil' }, 'peaks-veil', 'wynn'),
+      step('Give the Drowned Abbess her rest, on the island shrine of Frostmere.', { beaten: 'fm-shrine' }, 'frostmere', 'fm-shrine'),
+      step('Ring the bell of Peak\'s Veil for the drowned.', { flag: 'bell-rung-veil' }, 'peaks-veil', 'wynn'),
     ],
     reward: { relic: 'veilbell' },
   },
+  // Hilda's thanks (data/dialogue.js hilda-hammer) claims it; the reward is hers, the scene is the rest
   'harrows-hammer': {
     id: 'harrows-hammer', name: 'Harrow\'s Hammer', kind: 'side', giver: 'hilda', start: { owns: 'worldforge-hammer' },
     steps: [
-      step('Show Hilda the Worldforge Hammer.', { flag: 'hammer-shown' }, 'keep', 'hilda'),
+      step('Show Hilda the Worldforge Hammer, at her forge in the Keep.', { flag: 'hammer-shown' }, 'keep', 'hilda'),
     ],
     reward: { gold: 300, materials: { embers: 2 } },
   },
   'rooks-ledger': {
     id: 'rooks-ledger', name: 'Rook\'s Ledger', kind: 'side', giver: 'rook', start: { flag: 'met-rook' },
     steps: [
-      step('Take the Cutter-Chief\'s ledger on the Frost Road.', { beaten: 'fr-cutters' }, 'frost-road', 'fr-cutters'),
-      step('Bring the ledger to Rook.', { flag: 'ledger-given' }, 'stormwatch', 'rook'),
+      step('Take the Cutter-Chief\'s ledger at the ice-saw camp on the Frost Road.', { beaten: 'fr-cutters' }, 'frost-road', 'fr-cutters'),
+      step('Bring the ledger to Rook in the Stormwatch stockade.', { flag: 'ledger-given' }, 'stormwatch', 'rook'),
     ],
     reward: { gold: 250, gems: { 'frost-opal': 1 } },
   },
   'sentinel-oath': {
     id: 'sentinel-oath', name: 'The Sentinel\'s Oath', kind: 'side', giver: 'brundar', start: { flag: 'met-brundar' },
     steps: [
-      step('Quiet Harrow\'s journeyman in the Deeps.', { beaten: 'id-smith' }, 'ironhold-deeps', 'id-smith'),
-      step('Tell the Thane.', { flag: 'smith-told' }, 'ironhold', 'brundar'),
+      step('Give Harrow\'s journeyman his rest, in the Ironhold Deeps.', { beaten: 'id-smith' }, 'ironhold-deeps', 'id-smith'),
+      step('Tell Thane Brundar his sister\'s boy is at rest.', { flag: 'smith-told' }, 'ironhold', 'brundar'),
     ],
     reward: { gold: 200, materials: { silver: 2 } },
   },
@@ -172,10 +181,10 @@ export const BOUNTIES = deepFreeze({
   'b-scorpions': { id: 'b-scorpions', enc: 'ds-scorpions', name: 'Scorpions in the Shaft', gold: 90, giver: 'zara' },
   'b-wights': { id: 'b-wights', enc: 'sg-wights', name: 'The Wall-Walkers of Scorchgate', gold: 120, giver: 'zara' },
   // M5 (spec §3.6): the Stormwatch board, turned in to Captain Ysolde
-  'b-wolves': { id: 'b-wolves', enc: 'rp-wolves', name: 'Wolves on the Pass', gold: 90, giver: 'ysolde' },
-  'b-trolls': { id: 'b-trolls', enc: 'is-trolls', name: 'Trolls on the Stair', gold: 120, giver: 'ysolde' },
-  'b-frostwolves': { id: 'b-frostwolves', enc: 'fr-wolves', name: 'The Frost Pack', gold: 120, giver: 'ysolde' },
-  'b-roc': { id: 'b-roc', enc: 'roc-eyrie', name: 'The Thunder-Roc', gold: 160, giver: 'ysolde' },
+  'b-wolves': { id: 'b-wolves', enc: 'rp-wolves', name: 'The Rime Wolves of the Pass', gold: 90, giver: 'ysolde' },
+  'b-trolls': { id: 'b-trolls', enc: 'is-trolls', name: 'The Switchback Trolls', gold: 120, giver: 'ysolde' },
+  'b-frostwolves': { id: 'b-frostwolves', enc: 'fr-wolves', name: 'The Frost Road Pack', gold: 120, giver: 'ysolde' },
+  'b-roc': { id: 'b-roc', enc: 'roc-eyrie', name: 'The Thunder-Roc of the Highfold', gold: 160, giver: 'ysolde' },
 });
 
 export const QUEST_IDS = Object.freeze(Object.keys(QUESTS));

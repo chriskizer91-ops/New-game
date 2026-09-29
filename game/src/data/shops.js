@@ -1,8 +1,8 @@
-// Shops (M3 spec §3.9, M4 spec §3.7). Consumable prices come from CONSUMABLES[id].price in
-// data/items.js; gem prices from GEMS[id].price in data/gems.js.
+// Shops (M3 spec §3.9, M4 spec §3.7, M5 spec §3.7). Consumable prices come from CONSUMABLES[id].price
+// in data/items.js; gem prices from GEMS[id].price in data/gems.js.
 // SHOPS[id] = { id, name, items: [consumableId], gems?: [gemId] }. Opened by the dialogue effect
 // { open: 'shop:<id>' }.
-// Owner: WP3S (M3), P3 story (M4).
+// Owner: WP3S (M3), P3 story (M4, M5).
 
 import { deepFreeze } from '../core/freeze.js';
 
@@ -15,7 +15,9 @@ export const SHOPS = deepFreeze({
   idris: { id: 'idris', name: 'Idris the Gemwright', items: [], gems: ['sunstone', 'moss-agate', 'glass-pearl'] },
   // Old Ode's store at the pithead: the same stock, with the Frost Draught first (the Sunscorch burns)
   pithead: { id: 'pithead', name: 'The Pithead Store', items: ['frost-draught', 'hearth-tonic', 'bitterroot', 'ember-salts'] },
-  // M5 (spec §3.7): Durra Ironhand's armoury at Ironhold (consumables and three gems), Quill's stores at Stormwatch
-  durra: { id: 'durra', name: 'Durra Ironhand\'s Armoury', items: ['ember-salts', 'hearth-tonic', 'bitterroot', 'frost-draught'], gems: ['moss-agate', 'glass-pearl', 'frost-opal'] },
-  quill: { id: 'quill', name: 'Quartermaster Quill\'s Stores', items: ['ember-salts', 'hearth-tonic', 'bitterroot', 'frost-draught'] },
+  // M5 (spec §3.7): Durra Ironhand's armoury at Ironhold: the consumables, with the Frost Draught first
+  // (the Deeps' forgeborn burn), and three gems, the new Frost Opal first. Never the Sunstone or the Ash Garnet.
+  durra: { id: 'durra', name: 'Durra Ironhand\'s Armoury', items: ['frost-draught', 'hearth-tonic', 'bitterroot', 'ember-salts'], gems: ['frost-opal', 'moss-agate', 'glass-pearl'] },
+  // Quartermaster Quill's stores at Stormwatch: the consumables, tonics first for the ice road
+  quill: { id: 'quill', name: 'Quartermaster Quill\'s Stores', items: ['hearth-tonic', 'ember-salts', 'bitterroot', 'frost-draught'] },
 });
