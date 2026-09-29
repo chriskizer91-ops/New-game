@@ -20,6 +20,9 @@
 //   crushMult      crush damage multiplier against the bearer; `shatter` removes it on a crush hit
 //   push           ribbon delay added on application (staggered); `breaksCharge` cancels a charge
 //   forceTarget    bearer must target the status source with single-target moves (provoked)
+//   untargetable   (M5) nothing can target the bearer, and area moves pass over it (burrowed, swallowed)
+//   held           (M5) the bearer is out of the line, held by the unit that applied it (swallowed)
+//   charm          (M5) the bearer's next turn is a plain weapon attack on a random ally (charmed)
 
 import { deepFreeze } from '../core/freeze.js';
 
@@ -88,5 +91,18 @@ export const STATUSES = deepFreeze({
   guarding: {
     id: 'guarding', name: 'Guarding', harmful: false, until: 'turn-start', damageMult: 0.5, guard: 2,
     text: 'Defending: +2 Guard and half damage until its next turn.',
+  },
+  // M5 (spec §4.2). The data lands with the scaffold; rules/battle.js gives them their effect (P1).
+  burrowed: {
+    id: 'burrowed', name: 'Burrowed', harmful: false, until: 'turn-start', untargetable: true,
+    text: 'Under the floor: it cannot be targeted until its next turn starts, and area moves pass over it.',
+  },
+  swallowed: {
+    id: 'swallowed', name: 'Swallowed', harmful: true, turns: 2, untargetable: true, skipTurn: true, held: true,
+    text: 'Taken out of the line: it cannot act or be targeted, and takes the swallower\'s tick each turn until spat out.',
+  },
+  charmed: {
+    id: 'charmed', name: 'Charmed', harmful: true, turns: 1, charm: true,
+    text: 'Its next turn is a plain attack on one of its own side. An ally\'s hit wakes it.',
   },
 });
