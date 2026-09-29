@@ -14,12 +14,16 @@
 // sun-named, sun-tamsin, sun-beasts, sun-bearers, sun-kharzul, sun-warden, sun-scenes, sun-relics, sun-forge,
 // sun-icons, sun-perf, sun-check:
 //   node tools/gallery.mjs --entry=tools/gallery-foes.js --out=/tmp/aeth-p6-gallery/m4 --only=sun
+// M5 (P6), the same way: --only=iron (every M5 section) or any of iron-lineup, iron-humanoids, iron-named,
+// iron-beasts, iron-bearers, iron-anvil, iron-abbot, iron-scenes, iron-relics, iron-icons, iron-perf, iron-check:
+//   node tools/gallery.mjs --entry=tools/gallery-foes.js --out=/tmp/aeth-p6-gallery/m5 --only=iron
 import { renderFoe, foeAnchors, foeLooks, relicSlot, FOE_ART, FOE_KEYS, FOE_POSES } from '../src/art/foes.js';
 import { RELIC_ART } from '../src/art/item-looks.js';
 import { itemArt, itemPortrait, itemIcon, TEMPER_MAX } from '../src/art/item-looks.js';
 import { renderBackdrop, backdropLayers, BACKDROPS } from '../src/art/scenes.js';
 import { renderHero } from '../src/art/hero-looks.js';
-import { lockIcon, keyIcon, gemIcon, materialIcon, GEM_ICON_KEYS, MATERIAL_ICON_KEYS } from '../src/art/icons.js';
+import { lockIcon, keyIcon, gemIcon, materialIcon, statusIcon, GEM_ICON_KEYS, MATERIAL_ICON_KEYS } from '../src/art/icons.js';
+import { RELICS } from '../src/data/relics.js';
 
 const app = document.getElementById('app');
 const hash = window.location.hash;
@@ -467,4 +471,144 @@ if (wantSun('sun-forge')) sunForge();
 if (wantSun('sun-icons')) sunIcons();
 if (wantSun('sun-perf')) sunPerf();
 if (wantSun('sun-check')) sunCheck();
+/* =====================================================================
+   M5 (P6): the Ironspire foes, backdrops, relics, the Frost Opal and the new locks. Each section is its own function.
+   ===================================================================== */
+const IRON = only && only.split(',').some(k => k === 'iron' || k.startsWith('iron-'));
+const wantIron = id => IRON && (only.split(',').includes('iron') || only.split(',').includes(id));
+const IRON_HUM = ['brigand', 'sawyer'];
+const IRON_NAMED = ['rhune', 'cutter-chief'];
+const IRON_BEASTS = ['rime-wolf', 'rockling', 'forge-spark', 'iron-sentinel', 'forgeborn', 'bellows', 'peak-troll', 'rime-wraith', 'choir-wraith'];
+const IRON_BEARERS = ['sentinel-captain', 'journeyman', 'old-horn', 'drowned-abbess', 'thunder-roc'];
+const IRON_CHAMPS = ['mother-anvil', 'rime-abbot'];
+const IRON_SCENES = ['rockslide-pass', 'peaks-veil', 'highfold', 'iron-stair', 'ironhold', 'ironhold-deeps', 'harrows-forge', 'stormwatch', 'frost-road', 'frostmere', 'frostmere-below'];
+const IRON_DARK = ['ironhold-deeps', 'frostmere-below'];
+const IRON_RELICS = ['windstep-boots', 'veilbell', 'ironwall', 'drowned-censer', 'ironvein-bracers', 'roc-feather-cloak', 'thanes-rune', 'trollhide-mantle', 'runestaff', 'anvil-heart', 'worldforge-hammer', 'cutters-pick', 'rime-crozier', 'hushweave-cowl'];
+const ironItem = (id, o = {}) => Object.assign({ uid: id, base: id, kind: RELICS[id].kind, rarity: 'heirloom', aspect: RELIC_ART[id].aspect, seed: 1, temper: 0, gems: [] }, o);
+
+function ironLineup() {
+  const s = section('iron-lineup', 'M5 lineup: every Ironspire foe, feet on one floor', 'renderFoe(key, { pose: "idle", gearTier: 3 }) (players reach the Ironspire at Waking 4, so the gear tier is capped at 3), 2x; then the bearers, and the Champions beside the Sunscorch ones.');
+  const at = (k, o = {}) => ({ img: renderFoe(k, Object.assign({ t: .3, gearTier: 3 }, o)), label: k });
+  stage(row(s, 'humanoids and named holders, gearTier 3, 2x'), IRON_HUM.concat(IRON_NAMED).map(k => at(k)), { h: 72 });
+  stage(row(s, 'beasts, 2x'), IRON_BEASTS.map(k => at(k)), { h: 84 });
+  stage(row(s, 'relic-bearers, 2x'), IRON_BEARERS.map(k => at(k)), { h: 104 });
+  stage(row(s, 'the Champions, 2x, with Kharzul and the Ashen Warden'), [at('kharzul'), at('ashen-warden'), at('mother-anvil'), at('rime-abbot')], { h: 104 });
+  stage(row(s, 'gearTier 0 (a first visit at a low Waking), 2x'), IRON_HUM.concat(IRON_NAMED, IRON_BEASTS).map(k => at(k, { gearTier: 0 })), { h: 84 });
+}
+function ironNamed() {
+  const s = section('iron-named', 'Named holders: Rhune the Pass-Warden (the Windstep Boots) and the Cutter-Chief (the Cutter\'s Pick)', 'Every pose at gearTier 3, the four gear tiers, the glint and disarmed. 3x.');
+  for (const key of IRON_NAMED) {
+    const r = row(s, `${name(key)} (${FOE_ART[key].relic} -> ${relicSlot(FOE_ART[key].relic) || '-'})`);
+    for (const [pose, t] of POSES) fig(r, time(`foe ${key} render`, () => renderFoe(key, { gearTier: 3, pose, t })), 3, `${pose} ${t}`, BG);
+    const r2 = row(s);
+    for (let gT = 0; gT < 4; gT++) fig(r2, renderFoe(key, { gearTier: gT, t: .2 }), 3, `gearTier ${gT}`, BG);
+    fig(r2, renderFoe(key, { gearTier: 3, t: 0 }), 3, 'glint t=0', BG);
+    fig(r2, renderFoe(key, { gearTier: 3, relicHeld: false }), 3, 'disarmed', BG); fig(r2, renderFoe(key, { gearTier: 3, relicHeld: false, pose: 'attack', t: .6 }), 3, 'disarmed attack', BG);
+  }
+}
+function ironBearers() {
+  const s = section('iron-bearers', 'Relic-bearers: the Sentinel-Captain, Harrow\'s Journeyman, Old Horn, the Drowned Abbess, the Thunder-Roc', 'Every pose at gearTier 0 and 3, the relic glint over time, and relicHeld:false. The relic is drawn from its own recipe. 3x (the Roc 2x).');
+  for (const key of IRON_BEARERS) {
+    const sc = FOE_ART[key].w > 80 ? 2 : 3;
+    for (const gT of [0, 3]) { const r = row(s, `${name(key)} gearTier ${gT}`); for (const [pose, t] of POSES) fig(r, time(`foe ${key} render`, () => renderFoe(key, { gearTier: gT, pose, t })), sc, `${pose} ${t}`, BG); }
+    const r = row(s, `${name(key)}: glint, disarmed (relic ${FOE_ART[key].relic})`);
+    for (const t of [0, .1, 1.5]) fig(r, renderFoe(key, { t, gearTier: 3 }), sc, `t=${t}`, BG);
+    fig(r, renderFoe(key, { relicHeld: false, gearTier: 3 }), sc, 'relicHeld:false', BG);
+    fig(r, renderFoe(key, { relicHeld: false, gearTier: 3, pose: 'attack', t: .6 }), sc, 'disarmed attack', BG);
+  }
+}
+function ironScenes() {
+  const HEROES = ['warden', 'pip', 'bryn', 'alondra'];
+  const foeFor = { 'rockslide-pass': ['rhune', { gearTier: 3 }], 'peaks-veil': ['brigand', { gearTier: 3 }], highfold: ['thunder-roc', {}], 'iron-stair': ['iron-sentinel', { gearTier: 3 }], ironhold: ['sentinel-captain', { gearTier: 3 }], 'ironhold-deeps': ['bellows', { gearTier: 3 }], 'harrows-forge': ['mother-anvil', {}], stormwatch: ['brigand', { gearTier: 3 }], 'frost-road': ['cutter-chief', { gearTier: 3 }], frostmere: ['drowned-abbess', { gearTier: 3 }], 'frostmere-below': ['rime-abbot', {}] };
+  for (const key of IRON_SCENES) {
+    const B = BACKDROPS[key] || {}, dk = IRON_DARK.includes(key);
+    const s = section('iron-scene-' + key, `${B.name || '?'} (${key})`, `renderBackdrop(key, { w: 160, h: 96, t }) at 3x at two times, then dark${dk ? ' (the dark: true its fights get, listed as ' + key + ':dark)' : ''}, a mock-up with a foe and the party on the floor band, a phone 120x104 frame, a wide 240x90 frame and the four parallax layers.`);
+    const r = row(s);
+    fig(r, time('backdrop render', () => renderBackdrop(key, { t: 1.3 })), 3, 't=1.3');
+    fig(r, renderBackdrop(key, { t: 2.9 }), 3, 't=2.9');
+    const r2 = row(s);
+    fig(r2, renderBackdrop(key, { t: 1.3, dark: true }), 2, 'dark');
+    const bd = renderBackdrop(key, { t: 1, dark: dk }), c = document.createElement('canvas'); c.width = 160; c.height = 96; const g = c.getContext('2d'); g.putImageData(bd, 0, 0);
+    const put = (img, x, y) => { const t2 = document.createElement('canvas'); t2.width = img.width; t2.height = img.height; t2.getContext('2d').putImageData(img, 0, 0); g.drawImage(t2, Math.round(x), Math.round(y)); };
+    const [fk, fo] = foeFor[key], foe = renderFoe(fk, Object.assign({ t: .3 }, fo)), fa = foe.anchors.foot; put(foe, (foe.width > 64 ? 46 : 42) - fa[0], 86 - fa[1]);
+    HEROES.forEach((k, i) => { const im = renderHero(k, undefined, { pose: 'idle', t: .2 + i }), a = im.anchors.foot; put(im, 106 + (i % 2) * 22 - a[0] + (i >> 1) * 10, 78 + (i >> 1) * 12 - a[1]); });
+    const f = document.createElement('figure'); c.style.width = 160 * 2 * ZOOM + 'px'; c.style.height = 96 * 2 * ZOOM + 'px'; f.appendChild(c); const fc = document.createElement('figcaption'); fc.textContent = 'mock-up'; f.appendChild(fc); r2.appendChild(f);
+    fig(r2, renderBackdrop(key, { w: 120, h: 104, t: .7 }), 2, '120x104 (phone)');
+    const r3 = row(s);
+    fig(r3, renderBackdrop(key, { w: 240, h: 90, t: .7 }), 2, '240x90 (wide)');
+    for (const L of backdropLayers(key).layers) fig(r3, L.img, 1, L.id + ' x' + L.parallax, '#302830');
+  }
+}
+function ironRelics() {
+  const s = section('iron-relics', 'Codex Page III: the fourteen Ironspire relics (Nos. 39-52)', 'Card portrait at 64px (heirloom frame) at 3x, the 16px bag icon at 1x and 3x; then the 96px card, the unsighted silhouette, each relic worn or held by a hero, and the forge\'s looks.');
+  const r = row(s);
+  for (const id of IRON_RELICS) {
+    const f = document.createElement('figure'), wrap = document.createElement('div'); wrap.className = 'row';
+    fig(wrap, time('relic portrait 64', () => itemPortrait(ironItem(id), { t: 1.3 })), 3);
+    const col = document.createElement('div'); col.style.display = 'flex'; col.style.flexDirection = 'column'; col.style.gap = '6px';
+    const ic = time('relic icon 16', () => itemIcon(ironItem(id))); fig(col, ic, 1, '', '#211a16'); fig(col, ic, 3, '', '#211a16');
+    wrap.appendChild(col); f.appendChild(wrap); const fc = document.createElement('figcaption'); fc.textContent = `${id} · ${RELIC_ART[id].r} · ${RELIC_ART[id].aspect}`; f.appendChild(fc); r.appendChild(f);
+  }
+  const r2 = row(s, 'card size 96px (2x), and unsighted (develop 0)');
+  for (const id of IRON_RELICS) fig(r2, itemPortrait(ironItem(id), { t: 2.1, size: 96 }), 2, id);
+  const r3 = row(s); for (const id of IRON_RELICS) fig(r3, itemPortrait(ironItem(id), { develop: 0, reduced: true }), 1.5, id);
+  const kits = [['warden', { weapon: 'worldforge-hammer', offhand: 'ironwall', head: 'hushweave-cowl', body: 'trollhide-mantle', feet: 'windstep-boots', hands: 'ironvein-bracers', ring: 'thanes-rune' }], ['pip', { weapon: 'cutters-pick', body: 'roc-feather-cloak', amulet: 'veilbell' }], ['bryn', { weapon: 'runestaff', offhand: 'drowned-censer', amulet: 'anvil-heart' }], ['alondra', { weapon: 'rime-crozier', head: 'hushweave-cowl', body: 'roc-feather-cloak' }]];
+  for (const [hero, gear] of kits) { const rr = row(s, hero + ': ' + Object.values(gear).join(', ')); for (const [pose, t] of [['idle', 0], ['attack', .1], ['attack', .62], ['cast', .3], ['guard', 0], ['hurt', 0]]) fig(rr, renderHero(hero, gear, { pose, t }), 2, pose, '#1e1812'); }
+  const states = [['plain', {}], ['+4', { temper: 4 }], ['+7', { temper: 7 }], ['+10', { temper: 10 }], ['frost opal + sunstone', { gems: ['frost-opal', 'sunstone'] }], ['kindled', { deeds: { x: 1 } }], ['awakened a', { deeds: { x: 1 }, awakened: 'a' }], ['awakened b', { deeds: { x: 1 }, awakened: 'b' }]];
+  for (const id of IRON_RELICS) { const rr = row(s, id + ': the forge'); for (const [cap, o] of states) fig(rr, time('forge portrait 64', () => itemPortrait(ironItem(id, o), { t: 1.7 })), 2, cap); }
+}
+function ironIcons() {
+  const s = section('iron-icons', 'M5 icons: the Ironspire locks, the Frost Opal, the new statuses', 'lockIcon (chasm, ice, rune-seal, drift), gemIcon(\'frost-opal\') and statusIcon (burrowed, swallowed, charmed). 12px at 4x and 1x, 24px at 2x; dim locks.');
+  const block = (r, a, cap) => { const f = document.createElement('figure'), w = document.createElement('div'); w.className = 'row'; fig(w, a(12), 4); fig(w, a(12), 1); fig(w, a(24), 2); f.appendChild(w); const fc = document.createElement('figcaption'); fc.textContent = cap; f.appendChild(fc); r.appendChild(f); };
+  const r = row(s, 'locks'); for (const k of ['chasm', 'ice', 'rune-seal', 'drift']) { block(r, n => lockIcon(k, { size: n }), k); block(r, n => lockIcon(k, { size: n, dim: true }), k + ' dim'); }
+  const r2 = row(s, 'gems'); for (const k of GEM_ICON_KEYS) block(r2, n => gemIcon(k, { size: n }), k);
+  const r3 = row(s, 'the Ironspire statuses (the neutral token last, for comparison)'); for (const k of ['burrowed', 'swallowed', 'charmed', 'no-such-status']) block(r3, n => statusIcon(k, { size: n }), k);
+}
+function ironPerf() {
+  const s = section('iron-perf', 'Render cost of the M5 foes, backdrops and relics', 'cold = a new pose raster plus compose (median of 3); warm = a cached raster re-composed for a new t (median of 24). Backdrop cold = first paint of a new size. Shared machine: noisy.');
+  const pre = document.createElement('pre'); s.appendChild(pre);
+  const med = a => a.slice().sort((x, y) => x - y)[a.length >> 1], lines = [];
+  for (const key of ['kharzul', 'ashen-warden'].concat(IRON_HUM, IRON_NAMED, IRON_BEASTS, IRON_BEARERS, IRON_CHAMPS)) {
+    const c = [], w = [];
+    ['hurt', 'ko', 'attack'].forEach((pose, k) => { const t0 = performance.now(); renderFoe(key, { pose, t: .6, flip: true, gearTier: k, phase: k + 1 }); c.push(performance.now() - t0); });
+    for (let k = 0; k < 24; k++) { const t0 = performance.now(); renderFoe(key, { t: k / 12 * .1 + (k % 2) * .05, gearTier: 1 }); w.push(performance.now() - t0); }
+    T['cold ' + key] = med(c); T['warm ' + key] = med(w);
+    lines.push(`${key.padEnd(18)} ${FOE_ART[key].kind === 'humanoid' ? '64x64' : FOE_ART[key].w + 'x' + FOE_ART[key].h}  cold ${med(c).toFixed(1).padStart(6)} ms   warm ${med(w).toFixed(2).padStart(6)} ms`);
+  }
+  for (const key of IRON_SCENES.concat(IRON_DARK.map(k => k + ':dark'))) { const t0 = performance.now(); renderBackdrop(key, { w: 161, h: 97, t: 1 }); const c = performance.now() - t0; const t1 = performance.now(); for (let k = 0; k < 10; k++) renderBackdrop(key, { w: 161, h: 97, t: k * .3 }); T['backdrop ' + key] = c; lines.push(`${('backdrop ' + key).padEnd(30)} cold ${c.toFixed(1).padStart(6)} ms   warm ${((performance.now() - t1) / 10).toFixed(2).padStart(6)} ms`); }
+  for (const id of IRON_RELICS) { const it = ironItem(id, { seed: 3 }); const t0 = performance.now(); itemPortrait(Object.assign({}, it, { temper: 7, gems: ['frost-opal'] }), { t: 1 }); const c = performance.now() - t0; const t1 = performance.now(); for (let k = 0; k < 10; k++) itemPortrait(Object.assign({}, it, { temper: 7, gems: ['frost-opal'] }), { t: k * .3 }); lines.push(`${('relic ' + id).padEnd(30)} cold ${c.toFixed(1).padStart(6)} ms   warm ${((performance.now() - t1) / 10).toFixed(2).padStart(6)} ms`); }
+  pre.textContent = lines.join('\n');
+}
+function ironCheck() {
+  const s = section('iron-check', 'Render check: the Ironspire foes, every pose, phase, gear tier and piece', 'Every M5 key renders every pose at every gear tier and phase, flipped, reduced and tinted, with its relic held, disarmed and absent; relic glints sit on the canvas; the Champions show one glint per piece they still hold; attack frames stay inside the canvas.');
+  let n = 0; const fails = [], t0 = performance.now();
+  const fin = p => Array.isArray(p) && p.length === 2 && Number.isFinite(p[0]) && Number.isFinite(p[1]);
+  const onCanvas = (img, p) => p[0] >= 0 && p[1] >= 0 && p[0] < img.width && p[1] < img.height;
+  const check = (key, o, test) => { let img; try { img = renderFoe(key, o); n++; } catch (e) { fails.push(`${key} ${JSON.stringify(o)}: threw ${e.message}`); return; } const a = img.anchors; for (const k of ['foot', 'head', 'center']) if (!fin(a[k])) fails.push(`${key} ${JSON.stringify(o)}: anchor ${k}`); for (const p of (a.relics || []).concat(a.relic ? [a.relic] : [])) if (!fin(p) || !onCanvas(img, p)) fails.push(`${key} ${JSON.stringify(o)}: a relic glint off the canvas`); if (test) { const m = test(img, a); if (m) fails.push(`${key} ${JSON.stringify(o)}: ${m}`); } };
+  const poses = [['idle', 0], ['idle', .7], ['attack', .1], ['attack', .6], ['hurt', 0], ['ko', 0]];
+  const edges = img => { const { width: w, height: h, data: d } = img; let e = 0; for (let y = 0; y < h; y++) { if (d[(y * w) * 4 + 3] > 40) e++; if (d[(y * w + w - 1) * 4 + 3] > 40) e++; } for (let x = 0; x < w; x++) if (d[x * 4 + 3] > 40) e++; return e; };
+  for (const key of IRON_HUM.concat(IRON_NAMED, IRON_BEASTS, IRON_BEARERS, IRON_CHAMPS)) {
+    const beast = FOE_ART[key].kind !== 'humanoid';
+    for (const [pose, t] of poses) for (let gT = 0; gT < 4; gT++) check(key, { pose, t, gearTier: gT }, img => (beast && edges(img) > 0 ? 'touches the canvas edge' : null));
+    for (const [pose, t] of poses) for (const phase of [2, 3]) check(key, { pose, t, phase });
+    for (const [pose, t] of [['idle', 0], ['attack', .6]]) { check(key, { pose, t, flip: true }); check(key, { pose, t, reduced: true }); check(key, { pose, t, tint: [255, 255, 255, .8] }); check(key, { pose, t, relic: null }); check(key, { pose, t, relicHeld: false }); }
+    if (FOE_ART[key].relic && !FOE_ART[key].relics) for (const [pose, t] of poses) check(key, { pose, t }, (img, a) => (pose !== 'ko' && !a.relic ? 'no relic glint anchor' : null));
+  }
+  for (const key of IRON_CHAMPS) { const P = FOE_ART[key].relics; for (const broken of [[], [P[0]], [P[1]], P.slice()]) for (const phase of [1, 2, 3]) for (const [pose, t] of poses) check(key, { phase, pose, t, broken }, (img, a) => ((a.relics || []).length !== 2 - broken.length ? `expected ${2 - broken.length} glints, got ${(a.relics || []).length}` : null)); }
+  T['iron check renders'] = n; T['iron check failures'] = fails.length;
+  for (const f of fails.slice(0, 20)) console.error('iron check: ' + f);
+  const pre = document.createElement('pre'); pre.textContent = `${n} renders, ${fails.length} failures, ${(performance.now() - t0).toFixed(0)} ms` + (fails.length ? '\n' + fails.slice(0, 40).join('\n') : ''); s.appendChild(pre);
+}
+if (wantIron('iron-lineup')) ironLineup();
+if (wantIron('iron-humanoids')) { const s = section('iron-humanoids', 'Ironspire humanoid families: gearTier 0-3, every pose', 'Pass Brigands (Stormwatch deserters) and the Sawyer (one end of the ice saw). 64x64 at 3x.'); for (const key of IRON_HUM) sunPoses(s, key); }
+if (wantIron('iron-named')) ironNamed();
+if (wantIron('iron-beasts')) { const s = section('iron-beasts', 'Ironspire beasts and constructs: gearTier 0-3, every pose', 'Rime Wolf 64x48, Rockling 48x48, Forge-Spark 40x40, Iron Sentinel 64x64, Forgeborn 64x64, the Bellows 72x72, Peak-Troll 72x72, Rime-Wraith and Choir-Wraith 64x64. 3x.'); for (const key of IRON_BEASTS) sunPoses(s, key); }
+if (wantIron('iron-bearers')) ironBearers();
+if (wantIron('iron-anvil')) sunChampion('iron-anvil', 'mother-anvil', 'Mother Anvil: phases 1-3, the pieces, poses', 'renderFoe(\'mother-anvil\', { phase, broken, pose, t }) at 96x96, 2x. The Worldforge Hammer in her arm and the Anvil Heart in the cage at her waist, both from their relics\' recipes, each gone once snapped off. Quench (2): steam and blue temper; the Last Strike (3): the Heart white through the ribs, her cracks alight.');
+if (wantIron('iron-abbot')) sunChampion('iron-abbot', 'rime-abbot', 'The Rime-Abbot: phases 1-3, the pieces, poses', 'renderFoe(\'rime-abbot\', { phase, broken, pose, t }) at 96x96, 2x. The Rime Crozier in his hand and the Hushweave Cowl on his head, both from their relics\' recipes, each gone once snapped off (his bare tonsured head; a jag of ice in his fist). Compline (2): he sings; Hush (3): violet light up through the ice.');
+if (wantIron('iron-scenes')) ironScenes();
+if (wantIron('iron-relics')) ironRelics();
+if (wantIron('iron-icons')) ironIcons();
+if (wantIron('iron-perf')) ironPerf();
+if (wantIron('iron-check')) ironCheck();
 window.__done = true;

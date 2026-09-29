@@ -17,9 +17,15 @@
 // M3 adds the ten new families (spec §3.2), the seven named holders, and Tamsin. Relics 13-24 are drawn
 // from RELIC_ART like the rest; until WP6B lands a look, a procedural heirloom of the same kind and aspect
 // stands in (see relicArt), so a missing RELIC_ART key never throws.
+// M5 adds the Ironspire: the pass brigands and the Tallymen's ice-cutters on the rig; rime wolves, rocklings,
+// forge-sparks, iron sentinels, the forgeborn, peak-trolls and the drowned monks of Frostmere as beasts; the
+// relic-bearers each carrying their relic drawn from its recipe (the Sentinel-Captain, Harrow's Journeyman, Old Horn,
+// the Drowned Abbess, the Thunder-Roc); and two Champions whose pieces are their relics' own art, each gone once
+// snapped off (Mother Anvil: the Worldforge Hammer and the Anvil Heart; the Rime-Abbot: the Rime Crozier and the
+// Hushweave Cowl). Their gear tiers 0-3 are the Waking.
 import { Forge, Xf, compose, vnoise, hash } from './forge.js';
 import { RECIPE, TX, TX2 } from './recipes.js';
-import { ART } from './item-art.js';
+import { ART, rimeTex } from './item-art.js';
 import { heroForge, posePreset, paintFace, BUILD, FRAME_BATTLE } from './heroes.js';
 import { RELIC_ART, gearLooks, itemArt, stagedArt, awakenMotes } from './item-looks.js';
 import { FOES } from '../data/foes.js';
@@ -1891,6 +1897,1064 @@ Object.assign(FOE_ART, {
 FOE_ART.tamsin.gear.push(Object.assign({}, FOE_ART.tamsin.gear[3], { kindle: true, head: A('circlet', { look: 'circlet', mat: 'gold', gem: 'ember' }), body: A('mail', { mat: 'steel', trim: 'gold', belt: 'leatherDark', pauldrons: 'steel', glyph: 'ember' }), H: { mantle: 'cloakRed' } }));
 FOE_ART.tamsin.motes = (t, a, gT) => (gT >= 4 ? awakenMotes(t, { x: (a.center || [32, 36])[0] - 12, y: (a.center || [32, 36])[1] - 24, w: 24, h: 36 }, { n: 7 }) : null);
 FOE_ART.tamsin.aura = (gT, t) => (gT >= 4 ? [[255, 146, 58], 2, .34 + .08 * Math.sin(t * 3)] : null); // a faint ember halo
+
+/* =====================================================================
+   M5 · THE IRONSPIRE PEAKS (spec §3.2, §3.5, §6.2): the families of the mountains, their named holders and variants,
+   the Tallymen's ice-cutters, and the two Champions, Mother Anvil and the Rime-Abbot
+   ===================================================================== */
+
+/* ---------- the Ironspire humanoids: the same rig, their own kits ---------- */
+const pileTex = ({ x, y }) => ((x * 2 + y) % 4 === 0 ? -1 : hash(x, y, 201) < .12 ? 1 : 0);
+const armySword = (blade, guardMat, o = {}) => A('sword', Object.assign({ gripEnd: 13, guardT: 3.2, bladeW: 3.4, bladeL: 44, tipL: 8, taper: .9, blade, guard: 'bar', guardMat, guardW: 8, guardR: 1.7, grip: 'leatherDark', gripR: 2, pommel: guardMat, pommelR: 3 }, o));
+const deserterSwords = [
+  armySword('iron', 'iron', { bladeTex: TX.rust(211) }),
+  armySword('steel', 'iron', { grip: 'clothSlate' }),
+  armySword('steel', 'brass', { bladeL: 50, gripEnd: 15, fuller: 'storm', fullerR: .9, grip: 'clothSlate', pommelGem: 'stormglass' }),
+];
+const beardAxe = (blade, socket, o = {}) => A('axe', Object.assign({ headT: 47, bladeLo: 15, bladeHi: 6.5, bladeW: 16, bulge: 3, back: 'spike', spikeL: 6, haft: 'wood', haftR: 2.2, wrap: 'leatherDark', wrapEnd: 16, blade, socket }, o));
+const iceSaw = (blade, o = {}) => A('sword', Object.assign({ gripEnd: 11, guardT: 2.4, bladeW: 5, bladeL: 56, tipL: 2, taper: 1, blade, teeth: 1, guard: 'bar', guardMat: 'wood', guardW: 7.5, guardR: 1.7, grip: 'wood', gripR: 1.9, pommel: 'wood', pommelR: 2.2 }, o));
+const slateHood = (o = {}) => A('hood', Object.assign({ look: 'hood', mat: 'clothSlate', tip: 0, trim: 'grizzle' }, o));
+const furHood = (o = {}) => A('hood', Object.assign({ look: 'hood', mat: 'wolfFur', tip: 0, trim: 'wolfPale' }, o));
+const cleatBoots = (o = {}) => A('boots', Object.assign({ mat: 'leatherDark', trim: 'wolfPale', fold: true }, o));
+// a crossbow slung across the back (the deserters, from the second Waking): its stock over one shoulder, the prod
+// across the back
+function crossbowBack(c) {
+  const { F, X, j, b } = c, cx = j.cx + j.lean, y0 = j.sh - 2.6, w = b.shW + 3.4;
+  under(F, { X, mat: 'wood', prof: 'round', bw: .8, grp: 'xbstock', shapes: [X.cap(cx + 1.5, y0 - 1, cx + b.waW + 3.4, j.wa + 4.6, 1, .9)] }, ['torso']);
+  under(F, { X, mat: c.gT >= 3 ? 'steel' : 'iron', prof: 'round', bw: .8, grp: 'xbprod', shapes: capsX(X, [[cx - w, y0 + 1.6], [cx - w * .45, y0 - .4], [cx + w * .45, y0 - .8], [cx + w, y0 + 1]], [.55, .8, .8, .55]) }, ['torso']);
+  under(F, { X, mat: 'string', prof: 'flat', grp: 'xbstring', noOutline: true, shapes: [X.cap(cx - w + .4, y0 + 1.8, cx + w - .4, y0 + 1.2, .35)] }, ['torso']);
+}
+// the Stormwatch deserters: the surcoat's badge picked off (the rig's emblem, in the unfaded cloth), a crossbow later
+function brigandX(c) { if (c.gT >= 2) crossbowBack(c); }
+// Rhune: the toll-chain over one shoulder (links, and the padlock that hung across the pass), little wings of feather
+// at the ankles while he wears the Windstep Boots
+function tollChain(c) {
+  const { F, X, j, b } = c, a = [j.cx - b.shW + 1 + j.lean, j.sh - .6], z = [j.cx + b.waW + .8, j.wa + 1.6], S = [], n = 9;
+  for (let k = 0; k <= n; k++) { const u = k / n, x = a[0] + (z[0] - a[0]) * u, y = a[1] + (z[1] - a[1]) * u + Math.sin(u * Math.PI) * 1.2; S.push(k & 1 ? X.ell(x, y, .75, 1.1) : X.ell(x, y, 1.1, .7)); }
+  under(F, { X, mat: 'iron', prof: 'round', bw: .7, grp: 'tollchain', shapes: S }, ['armR']);
+  F.add({ X, mat: 'bronze', prof: 'round', bw: 1, grp: 'padlock', shapes: [X.poly([[z[0] - 1.4, z[1] + 1.2], [z[0] + 1.6, z[1] + 1.2], [z[0] + 1.6, z[1] + 4], [z[0] - 1.4, z[1] + 4]])] });
+  F.add({ X, mat: 'iron', prof: 'round', bw: .5, grp: 'shackle', shapes: [X.circ(z[0] + .1, z[1] + .8, 1.1)], cuts: [X.circ(z[0] + .1, z[1] + .8, .5)] });
+}
+function ankleWings(c) {
+  const { F, X, j, b } = c, bt = b.bootT, S = [];
+  if (j.kneel || c.lie) return;
+  for (const s of [-1, 1]) {
+    const d = s < 0 ? -j.stride : j.stride * .5, r = [j.cx + s * 6.6 + d, bt + 1.2];
+    for (const [a, L] of [[1, 6.2], [.62, 5.6], [.26, 4.6]]) { const e = [r[0] + s * Math.cos(a) * L, r[1] - Math.sin(a) * L], m = [r[0] + s * Math.cos(a) * L * .5, r[1] - Math.sin(a) * L * .5]; S.push(X.poly([[r[0], r[1] - .9], [m[0] - s * .5, m[1] - 1], [e[0], e[1]], [m[0] + s * .6, m[1] + .9], [r[0] + s * .6, r[1] + .9]])); }
+  }
+  F.add({ X, mat: 'clothWhite', prof: 'round', bw: .6, grp: 'anklewings', relic: true, shapes: S });
+}
+function rhuneX(c) { tollChain(c); if (c.relic && c.held && c.slot === 'feet') ankleWings(c); if (c.gT >= 2) crossbowBack(c); }
+// the Cutter-Chief: snow goggles over the shadow of the hood, lenses of lake-ice
+function goggles(c, mat = 'ice') {
+  const { F, X, j } = c, [hx0, hy0] = j.hc;
+  if (c.lie) return;
+  F.add({ X, mat: 'leatherDark', prof: 'round', bw: .6, grp: 'gogglestrap', shapes: [X.cap(hx0 - 6.8, hy0 + .2, hx0 + 6.8, hy0 + .2, .7)] });
+  F.add({ X, mat: 'blackiron', prof: 'round', bw: .8, grp: 'gogglerims', shapes: [X.circ(hx0 - 2.6, hy0 + .4, 2), X.circ(hx0 + 2.6, hy0 + .4, 2)] });
+  F.add({ X, mat, prof: 'round', bw: 1, grp: 'goggles', shapes: [X.circ(hx0 - 2.6, hy0 + .4, 1.3), X.circ(hx0 + 2.6, hy0 + .4, 1.3)] });
+}
+// ice-cleats: iron spikes under the boots
+function cleats(c) {
+  const { F, X, j } = c, S = [];
+  if (j.kneel || c.lie) return;
+  for (const s of [-1, 1]) { const d = s < 0 ? -j.stride : j.stride * .5; for (const dx of [-5.8, -3.4, -1.2]) { const x = j.cx + s * (-dx) + d; S.push(X.poly([[x - .6, 46.4], [x, 47.8], [x + .6, 46.4]])); } }
+  F.add({ X, mat: 'iron', prof: 'ridge', grp: 'cleats', shapes: S });
+}
+function furRuff(c, mat = 'wolfPale') {
+  const { F, X, j } = c, [hx0, hy0] = j.hc;
+  if (c.lie) return;
+  const T = []; for (let k = 0; k < 9; k++) { const u = k / 8, x = hx0 - 8.6 + u * 17.2, y = hy0 + 9.8 + Math.sin(u * Math.PI) * .8; T.push(X.poly([[x - 1.3, y - 1], [x + (hash(k, 3, 203) - .5) * 1.4, y + 1.8 + hash(k, 4, 203) * 1.4], [x + 1.3, y - 1]])); }
+  F.add({ X, mat, prof: 'round', bw: 1.6, grp: 'ruff', shapes: [X.ell(hx0, hy0 + 9, 9.4, 2.7)].concat(T), tex: pileTex });
+}
+function cutterX(c) { furRuff(c); goggles(c); if (c.gT >= 2) cleats(c); }
+function sawyerX(c) { smugglerX(c); cleats(c); if (c.gT >= 3) goggles(c); }
+const cutterRobe = (trim, o = {}) => A('robe', Object.assign({ mat: 'clothGrey', trim, sash: 'leatherDark' }, o));
+Object.assign(FOE_ART, {
+  brigand: H3('Pass Brigand', 'rabble', {
+    H: { build: 'human', skin: 'skinTan', hairMat: 'hairBrown', hair: 'short', stubble: true, eye: '#20202c', tunic: 'clothSlate', pants: 'wool', boots: 'leatherDark', gloves: 'leather', buckle: 'iron', mantle: 'grizzle', mantleTex: pileTex, emblem: 'clothBlue' },
+    gear: [
+      { weapon: handAxe, head: slateHood(), body: A('leather', { mat: 'leather', shirt: 'clothSlate', belt: 'leatherDark' }) },
+      { weapon: deserterSwords[0], head: A('kettle', { look: 'kettle', mat: 'iron', trim: 'clothSlate', tex: TX.rust(213) }), body: A('leather', { mat: 'leather', shirt: 'clothSlate', belt: 'leatherDark' }), feet: A('boots', { mat: 'leatherDark', trim: 'grizzle', fold: true }), H: { tabard: 'clothSlate' } },
+      { weapon: deserterSwords[1], offhand: A('shield', { r: 21, face: 'clothSlate', rim: 'iron', boss: 'iron', bossR: 6.4 }), head: A('kettle', { look: 'kettle', mat: 'iron', trim: 'clothSlate' }), body: A('mail', { mat: 'iron', trim: 'clothSlate', belt: 'leather' }), hands: A('gloves', { mat: 'leatherDark' }), feet: A('boots', { mat: 'leatherDark', trim: 'grizzle', fold: true }), H: { tabard: 'clothSlate' } },
+      { weapon: deserterSwords[2], offhand: A('shield', { shape: 'heater', face: 'clothSlate', paint: 'chevron', paint2: 'clothWhite', rim: 'steel', boss: 'steel', rivets: 'steel', runes: 'storm' }), head: A('helm', { look: 'helm', mat: 'steel', trim: 'clothSlate', eyes: 'storm', crest: false }), body: A('mail', { mat: 'steel', trim: 'blackiron', belt: 'leatherDark', pauldrons: 'steel' }), hands: A('gauntlets', { mat: 'steel', plate: 1 }), feet: A('boots', { mat: 'leatherDark', trim: 'grizzle', greave: 'steel' }), H: { tabard: 'clothSlate', cloak: 'clothSlate' } },
+    ],
+    extra: brigandX,
+  }),
+  rhune: H3('Rhune the Pass-Warden', 'relic-bearer', {
+    relic: 'windstep-boots', glow: () => 'storm',
+    H: { build: 'brute', skin: 'skinTan', hairMat: 'hairAuburn', hair: 'short', beard: true, eye: '#1c1f2c', tunic: 'clothSlate', pants: 'wool', boots: 'leatherDark', gloves: 'leatherDark', buckle: 'brass', mantle: 'grizzle', mantleTex: pileTex, cloak: 'clothSlate', tabard: 'clothSlate', emblem: 'clothBlue' },
+    gear: [
+      { weapon: beardAxe('iron', 'iron', { bladeTex: TX.rust(215) }), body: A('leather', { mat: 'leatherDark', shirt: 'clothSlate', pauldrons: 'leatherDark', belt: 'leather' }) },
+      { weapon: beardAxe('steel', 'iron'), body: A('leather', { mat: 'leatherDark', shirt: 'clothSlate', pauldrons: 'brass', belt: 'leather' }), hands: A('gloves', { mat: 'leatherDark', trim: 'brass' }) },
+      { weapon: beardAxe('steel', 'brass', { bands: [24], bandMat: 'brass' }), head: A('kettle', { look: 'kettle', mat: 'steel', trim: 'brass', crest: 'clothBlue' }), body: A('mail', { mat: 'steel', trim: 'brass', belt: 'leather', pauldrons: 'brass' }), hands: A('gloves', { mat: 'leatherDark', trim: 'brass' }) },
+      { weapon: beardAxe('steel', 'brass', { bands: [24], bandMat: 'brass', edge: 'storm', gem: 'stormglass', runes: 'storm' }), head: A('helm', { look: 'helm', mat: 'steel', trim: 'brass', plume: 'clothBlue', crest: false, eyes: 'storm' }), body: A('mail', { mat: 'steel', trim: 'brass', belt: 'leatherDark', pauldrons: 'brass', glyph: 'storm' }), hands: A('gauntlets', { mat: 'steel', plate: 1, trim: 'brass' }) },
+    ],
+    extra: rhuneX,
+  }),
+  'cutter-chief': H3('The Cutter-Chief', 'relic-bearer', {
+    relic: 'cutters-pick', glow: () => 'frost',
+    H: { build: 'brute', skin: 'skinAsh', hairMat: 'hairBlack', hair: 'none', eye: '#1a1a1a', tunic: 'clothGrey', pants: 'clothGrey', boots: 'leatherDark', gloves: 'leatherDark', shade: true, shadeEyes: 'frost', ledger: 'leatherDark', coins: true, buckle: 'blackiron', mantle: 'wolfPale', mantleTex: pileTex },
+    gear: [
+      { weapon: pick('iron', 'iron'), head: tallyHood('clothGrey', 'wolfPale', 'iron'), body: cutterRobe('wolfPale'), hands: A('gloves', { mat: 'leatherDark' }), feet: cleatBoots() },
+      { weapon: pick('iron', 'iron'), head: tallyHood('clothGrey', 'wolfPale', 'bronze'), body: cutterRobe('wolfPale', { sleeve: 'wolfFur' }), hands: A('gloves', { mat: 'leatherDark' }), feet: cleatBoots() },
+      { weapon: pick('steel', 'blackiron'), head: tallyHood('clothGrey', 'wolfPale', 'gold'), body: cutterRobe('wolfPale', { sleeve: 'wolfFur', glyph: 'frost' }), hands: A('gauntlets', { mat: 'blackiron', plate: 1 }), feet: cleatBoots({ greave: 'blackiron' }), H: { mantle: 'wolfFur' } },
+      { weapon: pick('steel', 'blackiron', { edge: 'frost' }), head: tallyHood('dark', 'wolfPale', 'gold', 'frost'), body: cutterRobe('rime', { sleeve: 'wolfFur', glyph: 'frost', sash: 'blackiron' }), hands: A('gauntlets', { mat: 'blackiron', plate: 1 }), feet: cleatBoots({ greave: 'blackiron' }), H: { mantle: 'wolfFur', cloak: 'wolfPale' } },
+    ],
+    extra: cutterX,
+  }),
+  sawyer: H3('Sawyer', 'rabble', {
+    H: { build: 'human', skin: 'skinTan', hairMat: 'hairBrown', hair: 'crop', eye: '#1c2a24', tunic: 'wool', pants: 'wool', boots: 'leatherDark', gloves: 'leather', scarf: 'clothTeal', buckle: 'iron', satchel: 'leather', mantle: 'wolfFur', mantleTex: pileTex },
+    gear: [
+      { weapon: iceSaw('iron', { bladeTex: TX.rust(217) }), head: A('coif', { look: 'coif', mat: 'wool', flaps: 1 }), body: A('leather', { mat: 'leather', shirt: 'wool', belt: 'leatherDark' }), feet: cleatBoots() },
+      { weapon: iceSaw('iron'), head: furHood(), body: A('leather', { mat: 'leather', shirt: 'wool', belt: 'leatherDark' }), hands: A('gloves', { mat: 'leather' }), feet: cleatBoots() },
+      { weapon: iceSaw('steel'), head: furHood({ clasp: 'iron' }), body: A('leather', { mat: 'leatherDark', shirt: 'clothTeal', studs: 'iron', pauldrons: 'wolfFur', belt: 'leather' }), hands: A('gloves', { mat: 'leatherDark' }), feet: cleatBoots(), H: { satchel: 'leatherDark' } },
+      { weapon: iceSaw('steel', { bladeTex: rimeTex, fuller: 'frost', fullerR: .7 }), head: furHood({ clasp: 'steel', gem: 'frost' }), body: A('leather', { mat: 'leatherDark', shirt: 'clothTeal', studs: 'steel', pauldrons: 'wolfFur', belt: 'leatherDark' }), hands: A('gauntlets', { mat: 'blackiron', plate: 1 }), feet: cleatBoots({ greave: 'blackiron' }), H: { satchel: 'leatherDark', cloak: 'wolfFur' } },
+    ],
+    extra: sawyerX,
+  }),
+});
+
+
+/* ---- RIME WOLF: a lean grey-white wolf of the high passes, frost in its ruff and on its muzzle, pale eyes, its breath
+   steaming (64x48, ground 45). The Waking hangs icicles off it (1), grows a ridge of ice down its spine (2) and
+   drives the ice through its hide, cold light in the cracks (3) ---- */
+function rimeWolf(F, st) {
+  const { pose, f, gT } = st, A = st.anchors, idle = !pose || pose === 'idle';
+  let bx = 0, by = 0, H = [50.5, 18 + f], ha = .06, jaw = 0, eye = 'open', lie = false;
+  let legs = {
+    ff: [[37, 31.5], [37.6, 37.6], [38, 43.4]], fn: [[41.5, 31], [43, 37.6], [44, 43.4]],
+    hf: [[16.5, 30.5], [19.6, 35.6], [15.8, 39.6], [16.6, 43.4]], hn: [[21, 29.5], [24.4, 35.2], [20.6, 39.6], [21.4, 43.4]],
+  };
+  let tail = [[12, 23.6], [7.6, 26.4], [5, 31], [4.4, 35.6]];
+  if (pose === 'attack') {
+    bx = 1; by = 2; H = [50, 23.4]; ha = .3; jaw = 1;
+    legs = { ff: [[40, 33.5], [45.5, 37], [50, 41.6]], fn: [[44.5, 33], [51, 35.6], [56.4, 39.6]], hf: [[19.5, 32], [14.5, 36.5], [9, 40.5], [6, 43.4]], hn: [[24, 31.5], [18.5, 36], [12.5, 40.5], [9.5, 43.6]] };
+    tail = [[15, 24.6], [10, 23.4], [5.4, 23.8], [1.8, 25.6]];
+  } else if (pose === 'hurt') {
+    bx = -3; by = 1; H = [45.5, 15.8]; ha = -.28; jaw = .5; eye = 'shut';
+    legs = { ff: [[34, 32.5], [36.5, 38], [39.5, 43.4]], fn: [[38.5, 32], [42, 37.5], [45, 43.4]], hf: [[13.5, 31.5], [17, 36.5], [12.5, 40], [13.2, 43.4]], hn: [[18, 30.5], [21.5, 36.5], [17, 40], [17.8, 43.4]] };
+    tail = [[9.4, 24.4], [7.2, 29], [7.8, 34], [10.4, 38]];
+  } else if (pose === 'ko') {
+    lie = true; H = [50.5, 38.4]; ha = .1; eye = 'shut';
+    legs = { ff: [[38, 38.5], [43, 40.4], [48.5, 41.8]], fn: [[41, 41.2], [47, 42.8], [53, 43.4]], hf: [[18, 38.5], [13, 40.2], [8, 41.4], [4.5, 42]], hn: [[21, 41.2], [16, 43], [11, 43.8], [7, 44]] };
+    tail = [[12.5, 35.5], [8.5, 38], [4.5, 40.5], [1.5, 42]];
+  }
+  const S = p => [p[0] + bx, p[1] + by];
+  const fur = 'rimeFur', pale = 'snow';
+  // grey fur streaked darker, rime settled on whatever faces up (more of it with each Waking)
+  const ftex = ({ x, y, ny }) => { const n = vnoise(x * .5, y * .22, 221); if (ny < -.5 + gT * .1 && vnoise(x * .4, y * .4, 222) > .68 - gT * .07) return { m: 'rime', dd: -1 }; return n > .72 ? -1 : ((x * 2 + y) % 6 === 0 ? -1 : 0); };
+  const legP = pts => (lie || !idle ? pts : pts.map((p, i) => (i === 0 ? S(p) : p)));
+  const paw = (p, far, g) => F.add({ mat: fur, prof: 'round', bw: 1.2, grp: g, shapes: [ell([p[0] + 1.3, p[1] + .9], 2.6, 1.3)], tex: far ? DARK : null });
+  const leg = (pts, far, name) => { const P = legP(pts); legOf(F, P, P.length === 3 ? [3.1, 2.1, 1.7] : [4.2, 2.6, 1.8, 1.6], fur, ftex, name, far); paw(P[P.length - 1], far, name + 'p'); };
+  leg(legs.hf, true, 'hf'); leg(legs.ff, true, 'ff');
+  const tl = lie || !idle ? tail : tail.map(S);
+  F.add({ mat: fur, prof: 'round', bw: 2.6, grp: 'tail', shapes: chainC(tl, [3.4, 4.2, 3.6, 2]), tex: ftex });
+  F.add({ mat: pale, prof: 'round', bw: 1, grp: 'tailtip', shapes: [circ(tl[3], 1.9)], tex: ftex });
+  const bodyS = lie ? [ell([20, 37], 8.6, 6.2), ell([29, 37.4], 11, 5.6), ell([39, 37], 8, 6.6)] : [ell(S([19.5, 26.6]), 8.2, 7.4), ell(S([29, 25.8]), 10.6, 5.8), ell(S([39.5, 26.6 - f * .3]), 8.4, 9 + f * .3)];
+  F.add({ mat: fur, prof: 'round', bw: 5.6, hs: .8, grp: 'body', shapes: bodyS, tex: ftex });
+  F.add({ mat: pale, prof: 'round', bw: 2.4, grp: 'chest', shapes: [lie ? ell([44, 38.5], 3.5, 4) : ell(S([44.4, 28.4]), 3.8, 6.4)], tex: q => furTex(223, 5)(q) - 1 });
+  // the spine: a ridge of ice from the second Waking, long shards of it through the hide at the third
+  const sp = lie ? [[43, 32.5], [35, 31.8], [27, 32], [19, 32], [13, 33.5]] : [[42.5, 19], [35, 20], [27, 20.4], [19.5, 20], [13, 22.2]].map(S);
+  if (gT >= 2) F.add({ mat: 'ice', prof: 'ridge', hs: .9, grp: 'icespine', shapes: spikesC(spineThorns(sp, gT >= 3 ? 8 : 6, (gT >= 3 ? 6.4 : 4) * (lie ? .75 : 1), gT >= 3 ? 1.35 : 1.1, lie ? -.6 : -.55)) });
+  if (gT >= 3 && !lie) F.add({ mat: 'frost', prof: 'round', bw: .6, grp: 'frostvein', noShadow: true, shapes: chainC([S([22, 25]), S([26, 27.4]), S([30, 25.2]), S([34.6, 27.6])], .5) });
+  // icicles hanging off the belly from the first Waking
+  if (gT >= 1 && !lie) F.add({ mat: 'ice', prof: 'ridge', hs: .9, grp: 'bellyicicles', shapes: spikesC([[S([24, 32])[0], S([24, 32])[1], .05, 1, 2.6 + gT * .5, .8], [S([30, 31.4])[0], S([30, 31.4])[1], -.05, 1, 3.2 + gT * .5, .9], [S([35.5, 32.2])[0], S([35.5, 32.2])[1], .1, 1, 2.4 + gT * .4, .8]]) });
+  leg(legs.hn, false, 'hn'); leg(legs.fn, false, 'fn');
+  const hf = frame(H[0], H[1], ha), neckA = lie ? [42, 35.5] : S([41, 22.6]);
+  // a heavy ruff of frosted fur round the neck
+  F.add({ mat: fur, prof: 'round', bw: 3.6, grp: 'neck', shapes: [cap(neckA, hf.P(-2.6, 1.6), 6.2, 4.6)], tex: ftex });
+  const rf = lie ? [] : [[-3.4, 3.6, -.9, .7], [-1.4, 5.2, -.4, 1], [-4.8, 1.2, -1, .2]].map(([t, s, dx, dy], k) => { const p = hf.P(t, s); return [p[0], p[1], dx + (hash(k, 1, 224) - .5) * .3, dy, 3.6 + k * .4, 1.4]; });
+  if (rf.length) F.add({ mat: pale, prof: 'ridge', hs: .8, grp: 'ruff', shapes: spikesC(rf), tex: ftex });
+  F.add({ mat: fur, prof: 'round', bw: 1.2, grp: 'earF', shapes: [hf.poly([[-.2, -3.9], [-.6, -9.4], [2.8, -4.2]])], tex: DARK });
+  const jf = frame(...hf.P(1.4, 3), ha + jaw * .6);
+  if (jaw > 0) F.add({ mat: 'flesh', prof: 'round', bw: 1.5, grp: 'maw', shapes: [poly([hf.P(1.2, 2), hf.P(9.2, 2.6), jf.P(7.4, .4), jf.P(0, 0)])] });
+  F.add({ mat: fur, prof: 'round', bw: 1.6, grp: 'jaw', shapes: [jf.cap(0, 0, 7.2, .3, 2.1, 1.3)], tex: ftex });
+  if (jaw > 0) F.add({ mat: 'bone', prof: 'ridge', grp: 'teethL', shapes: [jf.poly([[3, -1], [3.7, -3.2], [4.4, -1]]), jf.poly([[5.4, -.8], [6, -2.7], [6.6, -.7]])] });
+  F.add({ mat: fur, prof: 'round', bw: 3.4, grp: 'head', shapes: [rell(hf, 0, 0, 5.4, 4.6), hf.cap(1.8, .7, 10.2, 2.1, 3.1, 1.8)], tex: ftex });
+  F.add({ mat: pale, prof: 'round', bw: 1.2, grp: 'muzzle', shapes: [hf.cap(3, 3, 9, 3.1, 1.4, 1)], tex: ({ x, y }) => (hash(x, y, 225) < .3 ? { m: 'rime', dd: 0 } : 0) });
+  if (jaw > 0) F.add({ mat: 'bone', prof: 'ridge', grp: 'teethU', shapes: [hf.poly([[4.8, 3.3], [5.6, 5.6], [6.4, 3.3]]), hf.poly([[7.2, 3.1], [7.8, 4.9], [8.4, 3]])] });
+  F.add({ mat: 'dark', prof: 'round', bw: 1, grp: 'nose', shapes: [hf.circ(10.4, 1.5, 1.3)] });
+  F.add({ mat: fur, prof: 'round', bw: 1.2, grp: 'ear', shapes: [hf.poly([[-3.2, -3], [-5.4, -9.8], [-.2, -4.4]])], tex: ftex });
+  eyeOf(F, hf, 2.7, -1.3, 1.25, .8, 'frost', eye === 'shut');
+  if (eye !== 'shut') F.add({ mat: 'dark', prof: 'flat', grp: 'brow', noShadow: true, noOutline: true, shapes: [hf.cap(1.2, -2.8, 4.6, -2.1, .55)] });
+  if (gT >= 1 && !lie) F.add({ mat: 'ice', prof: 'ridge', grp: 'jawicicles', shapes: spikesC([[...jf.P(2.6, 1.4), .1, 1, 2.2 + gT * .3, .6], [...jf.P(5, 1.2), 0, 1, 1.6 + gT * .3, .5]]) });
+  // breath: a steaming puff when it stands, a spray of frost when it bites
+  if (!lie && pose !== 'hurt') {
+    const m = hf.P(10.8, 3.4);
+    if (jaw > .5) F.add({ mat: 'frost', prof: 'round', bw: 1, grp: 'breath', noShadow: true, noOutline: true, shapes: [circ([m[0] + 2.2, m[1] + 1], 1.6), circ([m[0] + 4.4, m[1] + 2.2], 1.1), circ([m[0] + 3.6, m[1] - .6], .8)] });
+    else F.add({ mat: 'mist', prof: 'flat', grp: 'breath', noShadow: true, noOutline: true, shapes: [circ([m[0] + 2 + f, m[1] - .6 - f], 1.5 + f * .3), circ([m[0] + 4.2 + f, m[1] - 2.2 - f], 1)], tex: ({ x, y }) => ((x + y) & 1 ? -1 : 0) });
+  }
+  A.head = hf.P(2.7, -1.3); A.mouth = hf.P(8.5, 3); A.center = lie ? [30, 37] : S([30, 26]);
+}
+
+/* ---- ROCKLING: a knee-high heap of grey scree that stood up: boulders for a body, pebbles for limbs, two chips of
+   mica for eyes, snow in its cracks; it rolls into you (48x48, ground 45). Lichen at the first Waking, a light like
+   hot ore in its seams at the second, crystals of quartz through it at the third ---- */
+function rockling(F, st) {
+  const { pose, f, gT } = st, A = st.anchors, idle = !pose || pose === 'idle', roll = pose === 'attack', lie = pose === 'ko';
+  const rock = gT >= 3 ? 'granite' : 'scree', seam = gT >= 3 ? 'ember' : 'amber';
+  const rtex = seed => ({ x, y, nx, ny }) => {
+    if (ny < -.45 && vnoise(x * .4, y * .4, seed + 1) > .5) return { m: 'snow', dd: 0 };
+    if (gT >= 1 && vnoise(x * .35, y * .35, seed + 2) > .78) return { m: 'lichen', dd: 0 };
+    const n = vnoise(x * .3, y * .3, seed); return n > .72 ? -1 : n < .22 ? 1 : hash(x, y, seed) < .06 ? -1 : 0;
+  };
+  if (lie) {
+    // knocked apart: a low heap of loose stones, the mica eyes dark
+    const P = [[14, 41.2, 5.4, 3.6], [22.4, 40.4, 6.4, 4.4], [31.6, 41.4, 5.6, 3.6], [38.6, 42.4, 3.8, 2.6], [19, 36.8, 4, 3], [27, 36.6, 4.2, 3.2], [8.4, 43, 3, 1.8]];
+    P.forEach(([x, y, rx, ry], k) => F.add({ mat: rock, prof: 'round', bw: 2.6, hs: .8, grp: 'stone' + k, shapes: [ell([x, y], rx, ry)], tex: rtex(230 + k) }));
+    F.add({ mat: 'dark', prof: 'flat', grp: 'mica', noShadow: true, shapes: [circ([25.6, 36.2], .8), circ([28.2, 36.4], .7)] });
+    A.head = [27, 36]; A.mouth = [27, 37]; A.center = [24, 40];
+    return;
+  }
+  if (roll) {
+    // tucked into a boulder and rolling in: one ball of stones, dust and pebbles behind it
+    const c = [30 + f, 34.6], R = 10.2 + gT * .3;
+    F.add({ mat: 'granite', prof: 'flat', grp: 'dust', noShadow: true, noOutline: true, shapes: [ell([14, 43.4], 7, 1.6), ell([8, 42.6], 4, 1.2)], tex: ({ x, y }) => ((x + y) & 1 ? -1 : -2) });
+    F.add({ mat: rock, prof: 'round', bw: 1.2, grp: 'pebbles', shapes: [circ([15.4, 38.4], 1.5), circ([11, 35.6], 1.1), circ([18, 32.6], 1)] });
+    F.add({ mat: rock, prof: 'round', bw: 6, hs: .85, grp: 'ball', shapes: [circ(c, R)], tex: rtex(236) });
+    const Sg = []; for (let k = 0; k < 5; k++) { const a = -.4 + k * 1.26; Sg.push(cap([c[0] + Math.cos(a) * R * .15, c[1] + Math.sin(a) * R * .15], [c[0] + Math.cos(a) * R * .95, c[1] + Math.sin(a) * R * .95], .5)); }
+    F.add({ mat: 'dark', prof: 'flat', grp: 'cracks', noShadow: true, noOutline: true, shapes: Sg });
+    if (gT >= 2) F.add({ mat: seam, prof: 'flat', grp: 'seamglow', noShadow: true, shapes: Sg.slice(0, gT >= 3 ? 5 : 3).map(s0 => cap(s0.a, [(s0.a[0] + s0.b[0]) / 2, (s0.a[1] + s0.b[1]) / 2], .45)) });
+    for (const [dx, dy] of [[-15, -2], [-18, 2], [-13, 5]]) F.add({ mat: 'granite', prof: 'flat', grp: 'streak' + dx, noShadow: true, noOutline: true, shapes: [cap([c[0] + dx, c[1] + dy], [c[0] + dx - 5, c[1] + dy], .45)], tex: () => -1 });
+    A.head = [c[0] + 4, c[1] - 3]; A.mouth = A.head; A.center = c;
+    return;
+  }
+  const hurt = pose === 'hurt', b = [24 + (hurt ? -2 : 0), 33 + (idle ? f * .4 : 0)];
+  // pebble limbs: a chain of small stones each; the far pair darker
+  const limb = (pts, g, far) => F.add({ mat: rock, prof: 'round', bw: 1.4, grp: g, shapes: pts.map(([x, y], k) => circ([x, y], 2.1 - k * .3)), tex: far ? farTex(rtex(240)) : rtex(240) });
+  limb([[b[0] - 7, b[1] + 6], [b[0] - 8.6, b[1] + 9], [b[0] - 9, b[1] + 11.4]], 'legF', true);
+  limb(hurt ? [[b[0] - 9, b[1] - 1], [b[0] - 12.4, b[1] - 4], [b[0] - 14.6, b[1] - 7]] : [[b[0] - 9.6, b[1] + 1], [b[0] - 12, b[1] + 4.4], [b[0] - 12.6, b[1] + 7.6]], 'armF', true);
+  // the heap: a big stone for the body, a smaller one for the head, a few more wedged in
+  const stones = [[b[0], b[1], 9.6, 8.4], [b[0] + 3.4, b[1] - 9.6 + (hurt ? 1.6 : 0), 6.6, 5.6], [b[0] - 7, b[1] - 3.4, 4.4, 4.2], [b[0] + 8.4, b[1] + 2.6, 4.4, 4], [b[0] - 3.6, b[1] + 6.4, 4.6, 3.2]].concat(gT >= 1 ? [[b[0] - 4.6, b[1] - 8.4, 3.2, 3]] : []).concat(gT >= 2 ? [[b[0] + 9.6, b[1] - 5.2, 3, 3]] : []);
+  stones.forEach(([x, y, rx, ry], k) => F.add({ mat: rock, prof: 'round', bw: Math.min(rx, ry) * .8, hs: .8, grp: 'stone' + k, shapes: [ell([x, y], rx, ry)], tex: rtex(230 + k) }));
+  // hot ore in the seams between the stones (the second Waking), quartz crystals (the third)
+  if (gT >= 2) F.add({ mat: seam, prof: 'flat', grp: 'seams', noShadow: true, shapes: chainC([[b[0] - 5.6, b[1] - 6.8], [b[0] - 2, b[1] - 3.6], [b[0] + 2, b[1] - 5], [b[0] + 6, b[1] - 2]], .5).concat(chainC([[b[0] - 1, b[1] + 4.4], [b[0] + 3, b[1] + 2.4], [b[0] + 6.6, b[1] + 4.4]], .45)) });
+  if (gT >= 3) F.add({ mat: 'glass', prof: 'ridge', hs: .9, grp: 'quartz', shapes: spikesC([[b[0] - 5, b[1] - 7.6, -.5, -1, 5.4, 1.4], [b[0] - 3.4, b[1] - 8.4, -.1, -1, 6.8, 1.5], [b[0] + 7.2, b[1] - 1, .6, -1, 4.8, 1.3], [b[0] + 8.4, b[1] - .2, 1, -.5, 3.6, 1.1]]) });
+  // the face: a crack for a mouth, two chips of mica for eyes
+  const hc = [b[0] + 5.4, b[1] - 9.6 + (hurt ? 1.6 : 0)];
+  F.add({ mat: 'dark', prof: 'flat', grp: 'mouth', noShadow: true, noOutline: true, shapes: [cap([hc[0] - 1, hc[1] + 3], [hc[0] + 3.6, hc[1] + 2.2], .5)] });
+  if (hurt) F.add({ mat: 'dark', prof: 'flat', grp: 'eyes', noShadow: true, noOutline: true, shapes: [cap([hc[0] - 1.6, hc[1] - .2], [hc[0] + .2, hc[1] - .2], .45), cap([hc[0] + 2, hc[1] - .4], [hc[0] + 3.8, hc[1] - .4], .45)] });
+  else F.add({ mat: gT >= 2 ? seam : 'pearl', prof: 'ridge', grp: 'eyes', noShadow: true, shapes: [poly([[hc[0] - 1.4, hc[1] - .6], [hc[0] - .4, hc[1] - 1.6], [hc[0] + .4, hc[1] + .2]]), poly([[hc[0] + 2.2, hc[1] - .6], [hc[0] + 3.2, hc[1] - 1.8], [hc[0] + 3.8, hc[1] + .1]])] });
+  limb([[b[0] + 6.4, b[1] + 6.4], [b[0] + 8, b[1] + 9.2], [b[0] + 8.6, b[1] + 11.6]], 'legN');
+  limb(hurt ? [[b[0] + 9, b[1] - 3], [b[0] + 11, b[1] - 7], [b[0] + 12, b[1] - 10]] : [[b[0] + 10.4, b[1] - 1], [b[0] + 13, b[1] + 2.4], [b[0] + 14, b[1] + 5.6]], 'armN');
+  if (hurt) F.add({ mat: rock, prof: 'round', bw: 1, grp: 'chip', shapes: [circ([b[0] + 13, b[1] - 13], 1.3), circ([b[0] + 16, b[1] - 9], .9)] });
+  A.head = hc; A.mouth = [hc[0] + 1.4, hc[1] + 2.6]; A.center = b;
+}
+
+/* ---- FORGE-SPARK: a fist-sized living cinder: a bright ember core in a cage of slag, trailing sparks; it floats at
+   head height and darts (40x40, ground 38). Hotter with every Waking; white at the last ---- */
+function forgeSpark(F, st) {
+  const { pose, f, gT } = st, A = st.anchors, lie = pose === 'ko';
+  const core = gT >= 3 ? 'primal' : 'ember', hot = gT >= 2;
+  if (lie) {
+    F.add({ mat: 'slag', prof: 'round', bw: 2, grp: 'cinder', shapes: [ell([20, 36], 5.6, 2.8)], tex: ({ x, y }) => (hash(x, y, 250) < .3 ? -1 : 0) });
+    F.add({ mat: 'ember', prof: 'flat', grp: 'lastglow', noShadow: true, shapes: [circ([19, 35.6], .9)] });
+    A.head = [20, 34]; A.mouth = A.head; A.center = [20, 35];
+    return;
+  }
+  const c = pose === 'attack' ? [26, 22] : pose === 'hurt' ? [17, 20] : [20, 19 + f * 1.2], R = 5.2 + gT * .3;
+  // a dithered glow on the floor under it
+  F.add({ mat: 'char', prof: 'flat', grp: 'floorglow', noShadow: true, noOutline: true, shapes: [ell([c[0], 36.8], 5.4, 1.1)], tex: ({ x, y }) => (pose !== 'hurt' && hash(x, y, 253) < .22 ? { m: 'ember', dd: -2 } : (x + y) & 1 ? -1 : 0) });
+  // a tail of sparks drifting behind it
+  const back = pose === 'attack' ? [-1, .25] : [-.9, .42];
+  F.add({ mat: core, prof: 'round', bw: .6, grp: 'trail', noShadow: true, noOutline: true, shapes: [2, 4.4, 7, 9.8].map((d, k) => circ([c[0] + back[0] * (R + d) + (k & 1 ? 1 : -1) * .8, c[1] + back[1] * (R + d)], .9 - k * .14)) });
+  // the core, then the slag cage over it
+  F.add({ mat: core, prof: 'round', bw: 2, grp: 'core', noShadow: true, shapes: [circ(c, R * (pose === 'hurt' ? .7 : .86))] });
+  if (hot) F.add({ mat: core, prof: 'round', bw: 1, grp: 'flames', noShadow: true, noOutline: true, shapes: spikesC([[c[0] - 2, c[1] - R * .7, -.2, -1, 3 + f, 1.2], [c[0] + 1.4, c[1] - R * .8, .15, -1, 4 - f, 1.3], [c[0] + 3.6, c[1] - R * .5, .5, -1, 2.4, 1]]) });
+  const bars = []; for (let k = 0; k < 4; k++) { const a = k / 4 * Math.PI + .4; bars.push(cap([c[0] + Math.cos(a) * R, c[1] + Math.sin(a) * R], [c[0] - Math.cos(a) * R, c[1] - Math.sin(a) * R], .95)); }
+  bars.push(...[0, 1, 2, 3, 4, 5].map(k => { const a = k / 6 * Math.PI * 2; return cap([c[0] + Math.cos(a) * R, c[1] + Math.sin(a) * R], [c[0] + Math.cos(a + 1.05) * R, c[1] + Math.sin(a + 1.05) * R], .9); }));
+  F.add({ mat: 'slag', prof: 'round', bw: .9, grp: 'cage', shapes: bars.slice(0, 2 + gT).concat(bars.slice(4)), tex: ({ x, y }) => (hash(x, y, 251) < .2 ? { m: 'ember', dd: -1 } : 0) });
+  // a pair of eyes in the heat
+  if (pose !== 'hurt') F.add({ mat: 'dark', prof: 'flat', grp: 'eyes', noShadow: true, noOutline: true, shapes: [cap([c[0] + .6, c[1] - .6], [c[0] + 1.6, c[1] - .4], .45), cap([c[0] + 3, c[1] - .4], [c[0] + 3.8, c[1] - .2], .4)] });
+  if (pose === 'attack') F.add({ mat: core, prof: 'round', bw: .8, grp: 'flare', noShadow: true, noOutline: true, shapes: spikesC([[c[0] + R, c[1], 1, 0, 5, 1.4], [c[0] + R * .7, c[1] - R * .7, .7, -.7, 3.6, 1.1], [c[0] + R * .7, c[1] + R * .7, .7, .7, 3.6, 1.1]]) });
+  A.head = c; A.mouth = c; A.center = c;
+}
+// draw a builder into a wider canvas: every shape it adds moved by (dx, dy), and the anchors it sets with them (the
+// foot anchor stays the def's)
+const moveShape = (s, dx, dy) => (s.k === 'c' ? { ...s, a: [s.a[0] + dx, s.a[1] + dy], b: [s.b[0] + dx, s.b[1] + dy] } : s.k === 'p' ? { ...s, pts: s.pts.map(([x, y]) => [x + dx, y + dy]) } : { ...s, c: [s.c[0] + dx, s.c[1] + dy] });
+const shifted = (build, dx, dy) => (F, st) => {
+  const foot = st.anchors.foot, mv = s => moveShape(s, dx, dy);
+  const F2 = { w: F.w, h: F.h, get parts() { return F.parts; }, add: p => { p.shapes = p.shapes.map(mv); if (p.cuts) p.cuts = p.cuts.map(mv); if (p.clip) p.clip = mv(p.clip); return F.add(p); } };
+  build(F2, st);
+  for (const k of Object.keys(st.anchors)) { const a = st.anchors[k]; if (k !== 'foot' && a) st.anchors[k] = k === 'relics' ? a.map(q => [q[0] + dx, q[1] + dy]) : [a[0] + dx, a[1] + dy]; }
+  st.anchors.foot = foot;
+};
+// sparks drifting up off the forge-spark (and more off the Bellows)
+const sparkMotes = (n, spread = 10) => (t, a) => { const c = a.center || [20, 20], out = []; for (let k = 0; k < n; k++) { const ph = (t * (.5 + hash(k, 2, 252) * .4) + hash(k, 3, 252)) % 1; out.push({ x: c[0] - spread / 2 + hash(k, 1, 252) * spread + Math.sin(t * 3 + k) * 1.5, y: c[1] + 4 - ph * 24, c: k % 3 ? [255, 176, 74] : [255, 236, 170], a: Math.min(1, (1 - ph) * 2) * .9 }); } return out; };
+
+Object.assign(FOE_ART, {
+  'rime-wolf': { name: 'Rime Wolf', kind: 'beast', w: 72, h: 48, foot: [35, 45], defaultTier: 'rabble', build: shifted(rimeWolf, 4, 0) },
+  rockling: { name: 'Rockling', kind: 'beast', w: 48, h: 48, foot: [24, 45], defaultTier: 'rabble', build: rockling },
+  'forge-spark': { name: 'Forge-Spark', kind: 'beast', w: 40, h: 40, foot: [20, 38], defaultTier: 'rabble', build: forgeSpark, motes: sparkMotes(5) },
+});
+
+
+/* ---- IRON SENTINELS: a dwarven automaton of riveted iron plate, broad and squat, a rune-lit visor slit and an iron
+   beard, a round dwarf shield and a fist like an anvil (64x64, ground 61). The Sentinel-Captain is taller, crested,
+   banded in gold runes, and holds Ironwall (80x80, ground 77). One builder, in a 64x64 base space mapped by
+   S = { k, dx, dy }. The Waking: rust (0), clean iron and bronze rivets (1), steel bands and more runes (2), black
+   iron, gold and steam (3) ---- */
+function sentinel(F, st, S) {
+  const { pose, f, gT, relic, held } = st, A = st.anchors, k = S.k, capt = !!S.captain, T = p => [S.dx + p[0] * k, S.dy + p[1] * k], R = r => r * k;
+  const idle = !pose || pose === 'idle', kneel = pose === 'ko';
+  const M = gT >= 3 ? 'blackiron' : 'iron', trim = capt || gT >= 3 ? 'gold' : gT >= 2 ? 'steel' : 'bronze', rune = 'amber';
+  let bx = 0, by = idle ? f * .5 : 0, tilt = 0, dim = false;
+  let J = { hipF: [27.4, 45], knF: [26.4, 52], ftF: [25.4, 59.6], hipN: [37, 45], knN: [38.6, 52], ftN: [39.8, 59.6], shF: [22.4, 27.6], elF: [30.6, 35], haF: [42.6, 37.4], shN: [43.4, 27.4], elN: [45.4, 37], haN: [45.8, 46], head: [34.6, 18.4] };
+  if (pose === 'attack') { bx = 1; tilt = .12; J = Object.assign(J, { elN: [48.6, 30.4], haN: [53.4, 30.2], elF: [30.4, 34], haF: [41.4, 35.6] }); }
+  else if (pose === 'hurt') { bx = -2.4; tilt = -.2; dim = true; J = Object.assign(J, { elN: [43.6, 38], haN: [42.6, 46.6], haF: [40.6, 38.6] }); }
+  else if (kneel) {
+    by = 8.6; tilt = .5; dim = true;
+    J = { hipF: [27.4, 53.4], knF: [25.4, 59.8], ftF: [18.4, 60.4], hipN: [37, 53.6], knN: [41.4, 59.8], ftN: [33.4, 60.6], shF: [22.4, 36], elF: [27.6, 45.4], haF: [34, 54], shN: [43.4, 36], elN: [46.6, 46], haN: [48.4, 55.6], head: [38.4, 29.4] };
+  }
+  const B = p => T([p[0] + bx, p[1] + by]), U = p => (kneel ? T(p) : B(p)), L = p => T(p);
+  const plateTex = seed => ({ x, y }) => { if (gT === 0 && vnoise(x * .3, y * .3, seed) > .74) return { m: 'rust', dd: hash(x, y, seed) < .4 ? -1 : 0 }; return (y % Math.round(4 * k) === 0 ? -.8 : 0) + (hash(x, y, seed) < .05 ? -1 : 0); };
+  const plate = (shapes, g, seed, far, o = {}) => F.add(Object.assign({ mat: M, prof: 'round', bw: R(2.4), grp: g, shapes, tex: far ? farTex(plateTex(seed)) : plateTex(seed) }, o));
+  const rivets = (pts, g) => F.add({ mat: trim, prof: 'round', bw: .6, grp: g, noShadow: true, shapes: pts.map(p => circ(p, R(.8))) });
+  const J2 = {}; for (const key of Object.keys(J)) J2[key] = (key.startsWith('hip') || key.startsWith('kn') || key.startsWith('ft')) ? (kneel ? T(J[key]) : key.startsWith('hip') ? B(J[key]) : L(J[key])) : U(J[key]);
+  // a leg: a thick thigh, a knee-cop, a greave and a flat iron boot
+  const leg = (h, kn, ft, g, far) => {
+    plate([cap(h, kn, R(4.2), R(3.8))], g + 'th', 301, far); plate([circ(kn, R(3))], g + 'kn', 302, far);
+    plate([cap(kn, [ft[0], ft[1] - R(2)], R(3.8), R(3.4))], g + 'sh', 303, far);
+    plate([poly([[ft[0] - R(4.4), ft[1] - R(3.4)], [ft[0] + R(3.6), ft[1] - R(3.4)], [ft[0] + R(6.2), ft[1] + R(.4)], [ft[0] - R(4.6), ft[1] + R(.4)]])], g + 'ft', 304, far, { bw: R(1.4) });
+  };
+  leg(J2.hipF, J2.knF, J2.ftF, 'legF', true);
+  // the far pauldron, the far arm, and the shield it holds forward (Ironwall for the Captain)
+  plate([ell(J2.shF, R(6.6), R(5.6))], 'pdF', 305, true, { bw: R(3) });
+  plate([cap(J2.shF, J2.elF, R(3.6), R(3.2)), cap(J2.elF, J2.haF, R(3.2), R(2.8))], 'armF', 306, true);
+  if (capt) { // the Captain's far hand is a fist too
+    const fa0 = Math.atan2(J2.haF[1] - J2.elF[1], J2.haF[0] - J2.elF[0]), f0 = frame(J2.haF[0], J2.haF[1], fa0);
+    plate([f0.poly([[-R(1), -R(3.6)], [R(5), -R(4)], [R(6), -R(2.8)], [R(6), R(2.8)], [R(5), R(4)], [-R(1), R(3.6)]])], 'fistF', 318, true, { bw: R(1.6) });
+  } else {
+    const c = [J2.haF[0] + R(9), J2.haF[1] - R(1.6)], r = R(9.2);
+    F.add({ mat: M, prof: 'round', bw: R(5), hs: .6, grp: 'shield', shapes: [circ(c, r)], tex: ({ x, y }) => (gT === 0 && vnoise(x * .3, y * .3, 307) > .66 ? { m: 'rust', dd: 0 } : Math.hypot(x - c[0], y - c[1]) % R(3.2) < .9 ? -1 : 0) });
+    F.add({ mat: trim, prof: 'round', bw: R(1.2), grp: 'shieldrim', shapes: [circ(c, r)], cuts: [circ(c, r - R(1.6))] });
+    F.add({ mat: trim, prof: 'round', bw: R(2.4), grp: 'shieldboss', shapes: [circ(c, R(3.1))] });
+    if (gT >= 2) F.add({ mat: rune, prof: 'flat', grp: 'shieldrunes', noShadow: true, shapes: [0, 1, 2, 3, 4, 5].map(i => { const a = i / 6 * Math.PI * 2 + .3; return cap([c[0] + Math.cos(a) * r * .66, c[1] + Math.sin(a) * r * .66], [c[0] + Math.cos(a + .3) * r * .66, c[1] + Math.sin(a + .3) * r * .66], R(.5)); }) });
+  }
+  // the body: plate faulds, a barrel of a cuirass, a belt, the chest rune (the Captain's gold rune-band)
+  const C = U([33.4, 35]), W = U([33.2, 44.6]);
+  for (let i = 0; i < 2; i++) plate([poly([[W[0] - R(10.6 + i), W[1] + R(i * 3.4)], [W[0] + R(10.6 + i), W[1] + R(i * 3.4)], [W[0] + R(11.4 + i), W[1] + R(3.6 + i * 3.4)], [W[0] - R(11.4 + i), W[1] + R(3.6 + i * 3.4)]])], 'fauld' + i, 308 + i, false, { bw: R(1.2) });
+  plate([ell(C, R(12.8), R(11.6))], 'cuirass', 310, false, { bw: R(5), hs: .8 });
+  F.add({ mat: 'leatherDark', prof: 'round', bw: R(1), grp: 'belt', shapes: [cap([C[0] - R(11.6), C[1] + R(8.8)], [C[0] + R(11.6), C[1] + R(8.8)], R(1.4))] });
+  F.add({ mat: trim, prof: 'bevel', bw: R(.8), grp: 'buckle', shapes: [poly([[C[0] - R(1.8), C[1] + R(7.2)], [C[0] + R(1.8), C[1] + R(7.2)], [C[0] + R(1.8), C[1] + R(10.4)], [C[0] - R(1.8), C[1] + R(10.4)]])] });
+  rivets([[-10, -3], [-7.4, -8.6], [-2, -11], [4, -10.8], [9, -7.6], [11, -2.6], [-9.4, 3.6], [10.4, 3.4]].map(([dx, dy]) => [C[0] + R(dx), C[1] + R(dy)]), 'rivets');
+  if (capt) {
+    F.add({ mat: 'gold', prof: 'round', bw: R(1.2), grp: 'runeband', shapes: [cap([C[0] - R(12), C[1] - R(1.2)], [C[0] + R(12), C[1] - R(1.2)], R(1.7))] });
+    F.add({ mat: rune, prof: 'flat', grp: 'bandrunes', noShadow: true, shapes: [-8, -4, 0, 4, 8].map(dx => cap([C[0] + R(dx - .8), C[1] - R(2.2)], [C[0] + R(dx + .6), C[1] - R(.2)], R(.45))) });
+  }
+  const ru = [[0, -7.4, 0, -1.4], [0, -4.4, 3, -6.8], [0, -4.4, -3, -6.8]].concat(gT >= 2 ? [[-4, 1.6, 4, 1.6]] : []);
+  F.add({ mat: dim && gT < 2 ? 'dark' : rune, prof: 'flat', grp: 'chestrune', noShadow: true, shapes: ru.map(([a, b2, c2, d2]) => cap([C[0] + R(a), C[1] + R(b2)], [C[0] + R(c2), C[1] + R(d2)], R(.55))) });
+  leg(J2.hipN, J2.knN, J2.ftN, 'legN', false);
+  // the head: a bucket helm sunk between the shoulders, the visor slit alight, an iron beard in braids; the Captain's crest
+  const hf = frame(...J2.head, tilt);
+  if (capt) F.add({ mat: 'gold', prof: 'ridge', hs: .9, grp: 'crest', shapes: [hf.poly([[-R(5.6), -R(5)], [-R(2), -R(11.6)], [R(3.6), -R(10.2)], [R(4.6), -R(5)]])] });
+  plate([hf.poly([[-R(6.4), R(5.6)], [-R(6.8), -R(2)], [-R(5), -R(5.8)], [0, -R(7)], [R(5), -R(5.8)], [R(6.8), -R(2)], [R(6.6), R(5.6)]])], 'helm', 311, false, { bw: R(3) });
+  F.add({ mat: 'dark', prof: 'flat', grp: 'visor', noShadow: true, shapes: [hf.cap(-R(.6), R(1), R(6.6), R(1), R(1))] });
+  F.add({ mat: dim ? 'dark' : rune, prof: 'flat', grp: 'visorglow', noShadow: true, noOutline: true, shapes: [hf.cap(R(.8), R(1), R(5.8), R(1), R(.5))] });
+  plate([hf.poly([[R(-.4), R(4.8)], [R(6.8), R(4.8)], [R(5.2), R(9.4)], [R(2.4), R(11.2)], [R(.6), R(8.6)]])], 'beard', 312, false, { bw: R(1.2), tex: ({ x, y }) => ((x + y) % Math.max(2, Math.round(2.6 * k)) === 0 ? -1.2 : 0) });
+  // pauldron over the near shoulder, then the near arm and the anvil fist
+  plate([ell(J2.shN, R(7), R(5.8))], 'pdN', 313, false, { bw: R(3.2) });
+  rivets([[-4, -1.6], [0, -3.4], [4, -1.8]].map(([dx, dy]) => [J2.shN[0] + R(dx), J2.shN[1] + R(dy)]), 'pdNr');
+  plate([cap(J2.shN, J2.elN, R(3.8), R(3.4))], 'armN', 314);
+  plate([circ(J2.elN, R(2.8))], 'elbowN', 315);
+  plate([cap(J2.elN, J2.haN, R(3.4), R(3))], 'foreN', 316);
+  const fa = Math.atan2(J2.haN[1] - J2.elN[1], J2.haN[0] - J2.elN[0]), ff = frame(J2.haN[0], J2.haN[1], fa);
+  plate([ff.poly([[-R(1), -R(4.4)], [R(6.4), -R(4.8)], [R(7.6), -R(3.4)], [R(7.6), R(3.4)], [R(6.4), R(4.8)], [-R(1), R(4.4)]])], 'fist', 317, false, { bw: R(2) });
+  F.add({ mat: trim, prof: 'round', bw: R(.8), grp: 'knuckles', shapes: [ff.cap(R(6.2), -R(3.6), R(6.2), R(3.6), R(.9))] });
+  const wall = capt && relic && held ? relicArt(relic) : null;
+  if (wall) {
+    const at = kneel ? [J2.haN[0] - R(2), J2.haN[1] - R(6)] : pose === 'attack' ? [J2.haN[0] + R(1), J2.haN[1] + R(2)] : [J2.haN[0] - R(3.4), J2.haN[1] - R(6.6)];
+    const m = drawRelic(F, wall, at, kneel ? .5 : pose === 'hurt' ? -.12 : 0, .43 * k, { center: [32, 33] });
+    if (m) A.relic = m([32, 30]);
+  } else if (capt) {
+    F.add({ mat: trim, prof: 'bevel', bw: R(1), grp: 'bracket', shapes: [poly([[J2.elN[0] - R(1.6), J2.elN[1] + R(1)], [J2.elN[0] + R(2), J2.elN[1] + R(1)], [J2.elN[0] + R(2), J2.elN[1] + R(5.4)], [J2.elN[0] - R(1.6), J2.elN[1] + R(5.4)]])] });
+  }
+  if (gT >= 3 && !kneel) F.add({ mat: 'mist', prof: 'flat', grp: 'steam', noShadow: true, noOutline: true, shapes: [circ([J2.shN[0] + R(1), J2.shN[1] - R(6.6) - f], R(1.8)), circ([J2.shN[0] + R(3), J2.shN[1] - R(9.4) - f], R(1.2)), circ([J2.shF[0] - R(1), J2.shF[1] - R(6.6) + f * .5], R(1.5))], tex: ({ x, y }) => ((x + y) & 1 ? -1 : 0) });
+  A.head = hf.P(R(3), R(1)); A.mouth = hf.P(R(3), R(6)); A.center = C;
+}
+const ironSentinel = (F, st) => sentinel(F, st, { k: 1, dx: 0, dy: 0 });
+const sentinelCaptain = (F, st) => sentinel(F, st, { k: 1.16, dx: 2.9, dy: 6.2, captain: true });
+
+/* ---- FORGEBORN: Harrow's molten servants: a hunched man-shape of black slag with the heat showing in its cracks,
+   a furnace glowing behind the grate of its chest (64x64, ground 61). The Bellows carries a great leather bellows on
+   its back and breathes sparks out of the nozzle (72x72, ground 69). Harrow's Journeyman stands straighter, half man
+   and half forge: a smith's apron and cap over the slag, one hand still flesh, carrying Harrow's Runestaff (64x72,
+   ground 69). The Waking opens the cracks (0-2) and burns the heart white (3) ---- */
+function forgeborn(F, st, S) {
+  const { pose, f, gT, relic, held } = st, A = st.anchors, k = S.k, T = p => [S.dx + p[0] * k, S.dy + p[1] * k], R = r => r * k;
+  const idle = !pose || pose === 'idle', lie = pose === 'ko', jm = S.variant === 'journeyman', bel = S.variant === 'bellows';
+  const heat = gT >= 3 ? 'heat' : 'ember', core = gT >= 3 ? 'primal' : 'ember', cr = .022 + gT * .009;
+  const slagTex = seed => ({ x, y }) => { const n = Math.abs(vnoise(x * .2 / k, y * .2 / k, seed) - .5); if (n < cr) return { m: 'ember', dd: n < cr * .4 ? 1 : 0 }; return vnoise(x * .3, y * .3, seed + 1) > .72 ? -1 : vnoise(x * .5, y * .5, seed + 2) < .25 ? .6 : 0; };
+  const slag = (shapes, g, seed, far, o = {}) => F.add(Object.assign({ mat: 'slag', prof: 'round', bw: R(2.4), grp: g, shapes, tex: far ? farTex(slagTex(seed)) : slagTex(seed) }, o));
+  const hunch = jm ? 0 : 1;
+  let bx = 0, by = idle ? f * .6 : 0, J;
+  J = { hipF: [27, 43], knF: [24.6, 51.4], ftF: [23.4, 59.8], hipN: [34.6, 43.4], knN: [37.4, 51.4], ftN: [38.6, 59.8], back: [28.6, 27 + hunch * 1.4], chest: [36, 32 + hunch], belly: [32.4, 39.4], shF: [27, 26.4 + hunch * 2], elF: [22.6, 36.6], haF: [24.4, 46.2], shN: [40, 27.4 + hunch * 2], elN: [44.6, 36.6], haN: [47.4, 44.6], head: [45 - (jm ? 4 : 0), 22.6 + hunch * 2.4 - (jm ? 3.6 : 0)] };
+  if (jm) Object.assign(J, { elN: [45.4, 33.6], haN: [48.6, 39.4], back: [30.6, 26.4], chest: [36.4, 30.4], belly: [33.4, 39.6], shF: [28.6, 24], shN: [40.6, 24.6], elF: [24.6, 33.6], haF: [25.4, 42.6] });
+  if (pose === 'attack') { bx = 1.6; Object.assign(J, { elN: [49.4, 30], haN: [54.4, 28.4], head: [J.head[0] + 2, J.head[1] + 1] }); if (jm) Object.assign(J, { elN: [47.4, 29], haN: [50.6, 24.4] }); }
+  else if (pose === 'hurt') { bx = -2.6; by = -.6; Object.assign(J, { head: [J.head[0] - 3, J.head[1] - 1.6], elN: [42, 34], haN: [41.4, 26.6], elF: [20.4, 33], haF: [16.4, 27.4] }); }
+  else if (lie) {
+    J = { hipF: [22, 55], knF: [15, 57.4], ftF: [8, 60], hipN: [24, 57], knN: [17, 59.6], ftN: [10, 60.8], back: [34, 52.6], chest: [38, 56], belly: [28.4, 56.4], shF: [40, 52], elF: [45.6, 50.4], haF: [51.6, 53.6], shN: [41, 57.6], elN: [47.4, 59.2], haN: [54, 59.6], head: [49.6, 55.4] };
+  }
+  const B = p => T(lie ? p : [p[0] + bx, p[1] + by]), P = {}; for (const key of Object.keys(J)) P[key] = key.startsWith('hip') || key.startsWith('kn') || key.startsWith('ft') ? (lie ? T(J[key]) : key.startsWith('hip') ? B(J[key]) : T(J[key])) : B(J[key]);
+  const limb = (pts, rs, g, seed, far) => slag(chainC(pts, rs.map(R)), g, seed, far, { bw: R(rs[0] * .7) });
+  const hand = (h, dir, g, far, flesh) => {
+    const Sh = [circ(h, R(2.6))]; for (const [a, l] of [[-.5, 4], [-.1, 4.6], [.3, 4.2]]) { const d = rot2(dir, a); Sh.push(cap(h, [h[0] + d[0] * R(l), h[1] + d[1] * R(l)], R(1.3), R(.8))); }
+    if (flesh) F.add({ mat: 'skinTan', prof: 'round', bw: R(1.2), grp: g, shapes: Sh, tex: far ? DARK : null });
+    else slag(Sh, g, 321, far, { bw: R(1.2) });
+  };
+  // legs, the far arm
+  limb([P.hipF, P.knF, P.ftF], [4, 3.2, 2.6], 'legF', 322, true);
+  slag([ell([P.ftF[0] + R(1.6), P.ftF[1] + R(.4)], R(3.8), R(1.6))], 'footF', 323, true, { bw: R(1.2) });
+  limb([P.shF, P.elF, P.haF], [3.6, 3, 2.6], 'armF', 324, true); hand(P.haF, lie ? [1, .2] : [.1, 1], 'handF', true, false);
+  // the Bellows: a great leather bellows strapped on its back, the nozzle over the shoulder (the boards squeeze with each
+  // breath), sparks puffing out of it
+  if (bel && !lie) {
+    const sq = idle ? f * .6 : pose === 'attack' ? 1.2 : 0, b0 = B([20.6, 25.6]);
+    F.add({ mat: 'wood', prof: 'bevel', bw: R(1.2), grp: 'board1', shapes: [poly([[b0[0] - R(9), b0[1] - R(2)], [b0[0] + R(4), b0[1] - R(9)], [b0[0] + R(8.6), b0[1] - R(5.6)], [b0[0] - R(4.4), b0[1] + R(3.4)]])], tex: TX.grain(331) });
+    F.add({ mat: 'leatherDark', prof: 'round', bw: R(2.6), grp: 'pleats', shapes: [poly([[b0[0] - R(8.4), b0[1] - R(.4)], [b0[0] + R(6.6), b0[1] - R(7.6 - sq)], [b0[0] + R(8.6), b0[1] + R(1.4)], [b0[0] - R(4), b0[1] + R(7.4)]])], tex: ({ x, y }) => ((x - y + 99) % Math.round(3 * k) === 0 ? -1.4 : .2) });
+    F.add({ mat: 'wood', prof: 'bevel', bw: R(1.2), grp: 'board2', shapes: [poly([[b0[0] - R(5), b0[1] + R(5.4 - sq * .5)], [b0[0] + R(8.4), b0[1] - R(1.4 + sq)], [b0[0] + R(11.4), b0[1] + R(2.6 - sq)], [b0[0] - R(1.4), b0[1] + R(9.6)]])], tex: TX.grain(332) });
+    F.add({ mat: 'brass', prof: 'round', bw: R(1.2), grp: 'nozzle', shapes: chainC([[b0[0] + R(6), b0[1] - R(6.6)], [b0[0] + R(10), b0[1] - R(12.4)], [b0[0] + R(15.4), b0[1] - R(14.4)]], [R(1.8), R(1.5), R(1.1)]) });
+    F.add({ mat: 'iron', prof: 'round', bw: R(.8), grp: 'bellowstraps', shapes: [cap([b0[0] + R(3), b0[1] - R(1)], B([36, 30]), R(.8)), cap([b0[0] + R(6), b0[1] + R(4)], B([33, 40]), R(.8))] });
+    A.nozzle = [b0[0] + R(16), b0[1] - R(14.6)];
+    F.add({ mat: core, prof: 'round', bw: .6, grp: 'nozzlesparks', noShadow: true, noOutline: true, shapes: [circ([A.nozzle[0] + R(1.6), A.nozzle[1] - R(.6) - f], R(.8)), circ([A.nozzle[0] + R(3.4), A.nozzle[1] - R(2.4)], R(.6)), circ([A.nozzle[0] + R(2.4), A.nozzle[1] + R(1.4) + f], R(.5))] });
+  }
+  // the body: a hump of slag, the belly, the chest with its furnace
+  slag([ell(P.back, R(10.4), R(9.4)), ell(P.belly, R(9.4), R(8)), ell(P.chest, R(9.8), R(9.2))], 'body', 325, false, { bw: R(5), hs: .8 });
+  if (jm && !lie) { // the smith's apron
+    const a0 = B([35.4, 30]);
+    F.add({ mat: 'leather', prof: 'round', bw: R(2), grp: 'apron', shapes: [poly([[a0[0] - R(5.2), a0[1]], [a0[0] + R(5), a0[1]], [a0[0] + R(7.4), a0[1] + R(19.6)], [a0[0] - R(6.4), a0[1] + R(20.2)]])], tex: ({ x, y }) => (hash(x, y, 333) < .1 ? { m: 'char', dd: 0 } : (x + y * 3) % 11 === 0 ? -1 : 0) });
+    F.add({ mat: 'leather', prof: 'round', bw: R(.6), grp: 'apronstrap', shapes: [cap([a0[0] - R(4.8), a0[1] + R(.4)], B([40, 21]), R(.6))] });
+  }
+  limb([P.hipN, P.knN, P.ftN], [4.2, 3.4, 2.8], 'legN', 326, false);
+  slag([ell([P.ftN[0] + R(1.8), P.ftN[1] + R(.4)], R(4), R(1.7))], 'footN', 327, false, { bw: R(1.2) });
+  // the head: a lump of slag thrust forward, eye-holes and a mouth full of fire (the Journeyman: a smith's cap, one eye
+  // still a man's)
+  const hf = frame(...P.head, lie ? .2 : pose === 'hurt' ? -.3 : .1);
+  slag([cap(hf.P(-R(6), R(3)), B(J.chest), R(3.4), R(4.4))], 'neck', 328);
+  slag([rell(hf, 0, 0, R(6.4), R(5.8)), hf.cap(R(1), R(1.6), R(6.4), R(2.4), R(3.8), R(2.8))], 'head', 329, false, { bw: R(3.4) });
+  F.add({ mat: pose === 'hurt' ? 'dark' : core, prof: 'flat', grp: 'mouthfire', noShadow: true, shapes: [hf.cap(R(2), R(3.8), R(6.8), R(3.4), R(1))] });
+  if (jm) {
+    F.add({ mat: 'leatherDark', prof: 'round', bw: R(1.6), grp: 'cap', shapes: [hf.poly([[-R(6), -R(1.4)], [-R(5), -R(5.4)], [R(1), -R(6.4)], [R(5.6), -R(3.4)], [R(6), -R(1)]])] });
+    F.add({ mat: 'clothWhite', prof: 'flat', grp: 'maneye', noShadow: true, noOutline: true, shapes: [hf.ell(R(3.4), -R(.4), R(1.2), R(.8))] });
+    F.add({ mat: 'dark', prof: 'flat', grp: 'manpupil', noShadow: true, noOutline: true, shapes: [hf.circ(R(3.8), -R(.4), R(.5))] });
+    eyeOf(F, hf, -R(.6), -R(.6), R(1), R(.7), heat, pose === 'hurt', 'forgeeye');
+  } else {
+    eyeOf(F, hf, R(3.4), -R(1), R(1.5), R(1), core, false, 'eyeN'); eyeOf(F, hf, -R(.4), -R(1.4), R(1.1), R(.8), core, false, 'eyeF');
+  }
+  // the furnace behind the grate of its chest (over the neck, so the head never hides it)
+  const gc = jm ? (lie ? [P.chest[0] - R(1), P.chest[1] - R(2)] : B([35.4, 25.4])) : lie ? [P.chest[0] - R(2), P.chest[1] - R(1)] : [P.chest[0] - R(3.4), P.chest[1] + R(3)];
+  const fw = R(jm ? 3.2 : 4.6), fh = R(jm ? 2.6 : 3.8);
+  F.add({ mat: 'blackiron', prof: 'round', bw: R(1), grp: 'furnaceframe', shapes: [ell(gc, fw + R(1.2), fh + R(1.2))] });
+  F.add({ mat: 'ember', prof: 'round', bw: R(1.4), grp: 'furnace', noShadow: true, shapes: [ell(gc, fw, fh)], tex: ({ x, y }) => (Math.hypot((x + .5 - gc[0]) / fw, (y + .5 - gc[1]) / fh) < .45 ? 1 : 0) + (gT >= 3 ? 1 : 0) });
+  F.add({ mat: 'blackiron', prof: 'round', bw: R(.6), grp: 'grate', shapes: [-.5, 0, .5].map(d => cap([gc[0] + fw * d * 1.2, gc[1] - fh * .9], [gc[0] + fw * d * 1.2, gc[1] + fh * .9], R(.55))) });
+  if (gT >= 3 && !lie) F.add({ mat: 'ember', prof: 'round', bw: R(1), grp: 'flames', noShadow: true, noOutline: true, shapes: spikesC([[P.shN[0], P.shN[1] - R(2), .1, -1, R(5 + f), R(1.6)], [P.shF[0] + R(1), P.shF[1] - R(2), -.2, -1, R(4.2 - f * .6), R(1.4)], [P.back[0] - R(2), P.back[1] - R(7), -.3, -1, R(3.6), R(1.2)]]) });
+  // the near arm; molten drops off the hand from the second Waking
+  limb([P.shN, P.elN, P.haN], [3.8, 3.2, 2.8], 'armN', 330, false);
+  const staff = jm && relic && held ? relicArt(relic) : null;
+  if (staff) {
+    const up = pose === 'attack' ? [.3, -1] : pose === 'hurt' ? [-.2, -1] : [.04, -1], ang = Math.atan2(up[1], up[0]);
+    const m = drawItem(F, staff, [P.haN[0], P.haN[1]], ang + Math.PI / 4, .42 * k, { center: cardPt(staff, 36) });
+    A.relic = m(cardPt(staff, 58 + 8)); A.weaponTip = A.relic;
+  }
+  hand(P.haN, pose === 'attack' ? [1, -.3] : lie ? [1, 0] : [.2, 1], 'handN', false, jm);
+  if (gT >= 2 && !lie) F.add({ mat: heat, prof: 'round', bw: R(.8), grp: 'drips', noShadow: true, shapes: [cap([P.haF[0], P.haF[1] + R(3.4)], [P.haF[0], P.haF[1] + R(5.6 + f)], R(.7), R(.9)), cap([P.belly[0] + R(4), P.belly[1] + R(7)], [P.belly[0] + R(4), P.belly[1] + R(9.4)], R(.6), R(.8))] });
+  A.head = hf.P(R(3), -R(1)); A.mouth = hf.P(R(4), R(3.4)); A.center = lie ? T([32, 55]) : P.chest;
+}
+const forgebornBase = (F, st) => forgeborn(F, st, { k: 1, dx: 0, dy: 0 });
+const bellowsBuild = (F, st) => forgeborn(F, st, { k: 1.12, dx: 0, dy: .7, variant: 'bellows' });
+const journeymanBuild = (F, st) => forgeborn(F, st, { k: 1.05, dx: -1.6, dy: 4.9, variant: 'journeyman' });
+
+/* ---- PEAK-TROLLS: a big grey-green troll of the high passes, mossed like a boulder with stone warts, long arms, a
+   tree-limb for a club; a wound on it knitting while you watch (72x72, ground 69). Old Horn is older and bigger: one
+   great horn and one broken, a grey muzzle, and the Trollhide Mantle over his shoulders (88x88, ground 85). The Waking:
+   snow on its shoulders and a wound that knits (1), plates of rock grown over its back and an iron band on the club
+   (2), quartz crystals through the rock and eyes like hot ore (3) ---- */
+function troll(F, st, S) {
+  const { pose, f, gT, relic, held } = st, A = st.anchors, k = S.k, T = p => [S.dx + p[0] * k, S.dy + p[1] * k], R = r => r * k;
+  const idle = !pose || pose === 'idle', lie = pose === 'ko', old = !!S.old;
+  const hide = 'trollHide', eyeM = gT >= 3 ? 'amber' : gT >= 2 ? 'eyeRed' : 'dark';
+  const htex = seed => ({ x, y, ny }) => {
+    if (gT >= 1 && ny < -.55 && vnoise(x * .4, y * .4, seed + 3) > .5) return { m: 'snow', dd: -1 };
+    const n = vnoise(x * .35 / k, y * .35 / k, seed); if (n > .78) return { m: 'moss', dd: 0 };
+    return n < .22 ? 1 : (x * 2 + y) % 7 === 0 ? -1 : 0;
+  };
+  const skin = (shapes, g, seed, far, o = {}) => F.add(Object.assign({ mat: hide, prof: 'round', bw: R(3), grp: g, shapes, tex: far ? farTex(htex(seed)) : htex(seed) }, o));
+  let bx = 0, by = idle ? f * .7 : 0, J = { hipF: [30.4, 50], knF: [27.6, 58.6], ftF: [26.4, 67.6], hipN: [40, 50.4], knN: [43.6, 58.6], ftN: [45.4, 67.6], belly: [35.4, 46.6], chest: [37, 35.4], hump: [29, 30.6], shF: [28.6, 31.6], elF: [22.4, 44], haF: [23.6, 56.6], shN: [43, 33], elN: [49.4, 44.4], haN: [51.2, 55.4], head: [49.4, 29.4] };
+  let club = [[51.2, 55.4], [66, 65.6]], ha = .06, eye = 'open';
+  if (pose === 'attack') { bx = 2.6; Object.assign(J, { elN: [50.6, 25.4], haN: [55.4, 16.4], head: [52, 31] }); club = [[55.4, 16.4], [62.6, 5.8]]; ha = .2; }
+  else if (pose === 'hurt') { bx = -3; by = -.6; Object.assign(J, { head: [44.4, 25.6], elN: [47, 41.6], haN: [48.4, 52], elF: [19.6, 40], haF: [18.4, 50.6] }); club = [[48.4, 52], [58.4, 64.6]]; ha = -.28; eye = 'shut'; }
+  else if (lie) {
+    J = { hipF: [24, 60], knF: [16.4, 62.4], ftF: [8.4, 66.4], hipN: [26, 63.4], knN: [18, 65.4], ftN: [10, 68.2], belly: [31, 60.4], chest: [41.4, 60], hump: [37.4, 55.6], shF: [45, 56.6], elF: [52.4, 54.6], haF: [59.4, 57.6], shN: [45, 62.4], elN: [52, 65.4], haN: [60.4, 66.4], head: [54.6, 58.6] };
+    club = [[60.4, 66.4], [45.4, 67.6]]; ha = .5; eye = 'shut';
+  }
+  const B = p => T(lie ? p : [p[0] + bx, p[1] + by]), P = {}; for (const key of Object.keys(J)) P[key] = key.startsWith('hip') || key.startsWith('kn') || key.startsWith('ft') ? (lie ? T(J[key]) : key.startsWith('hip') ? B(J[key]) : T(J[key])) : B(J[key]);
+  const limb = (pts, rs, g, seed, far) => skin(chainC(pts, rs.map(R)), g, seed, far, { bw: R(rs[0] * .7) });
+  const foot = (p, g, far) => { skin([ell([p[0] + R(2.2), p[1] + R(.2)], R(4.6), R(1.8))], g, 341, far, { bw: R(1.2) }); F.add({ mat: 'claw', prof: 'round', bw: R(.6), grp: g + 'toes', shapes: [circ([p[0] + R(6.4), p[1] + R(.8)], R(.9)), circ([p[0] + R(4.8), p[1] + R(1.2)], R(.9))], tex: far ? DARK : null }); };
+  const hand = (h, g, far) => skin([circ(h, R(3.2)), cap(h, [h[0] + R(2.6), h[1] + R(3)], R(1.6), R(1)), cap(h, [h[0] - R(1.2), h[1] + R(3.4)], R(1.5), R(.9))], g, 342, far, { bw: R(1.4) });
+  // the far leg and the far arm
+  limb([P.hipF, P.knF, P.ftF], [5, 4, 3.2], 'legF', 343, true); foot(P.ftF, 'footF', true);
+  limb([P.shF, P.elF, P.haF], [4.4, 3.6, 3], 'armF', 344, true); hand(P.haF, 'handF', true);
+  // the body: a hump, a chest, a pot-belly, mossy stone warts
+  skin([ell(P.hump, R(11.4), R(10)), ell(P.chest, R(11.6), R(10.2)), ell(P.belly, R(11.2), R(9.4))], 'body', 345, false, { bw: R(6), hs: .8 });
+  const warts = [[-6, -6.4], [-1.4, -8], [-9.6, -1.8], [5, -5]].map(([dx, dy]) => [P.hump[0] + R(dx), P.hump[1] + R(dy)]);
+  F.add({ mat: 'scree', prof: 'round', bw: R(1.2), grp: 'warts', shapes: warts.map((p, i) => circ(p, R(1.6 - i * .15))), tex: ({ x, y }) => (vnoise(x * .5, y * .5, 346) > .55 ? { m: 'moss', dd: 0 } : 0) });
+  if (gT >= 2 && !lie) F.add({ mat: 'slate', prof: 'bevel', bw: R(1.4), grp: 'rockplates', shapes: [[-4, -4, 5.6, 4.4, -.4], [3.4, -5, 4.6, 3.8, .3], [-10, 1, 4.4, 4, -.8]].map(([dx, dy, w, h, a]) => { const c0 = [P.hump[0] + R(dx), P.hump[1] + R(dy)], fr = frame(c0[0], c0[1], a); return fr.poly([[-R(w), R(h * .4)], [-R(w * .5), -R(h)], [R(w * .6), -R(h * .8)], [R(w), R(h * .3)], [0, R(h)]]); }), tex: ({ x, y }) => (hash(x, y, 347) < .1 ? -1 : 0) });
+  if (gT >= 3 && !lie) F.add({ mat: 'glass', prof: 'ridge', hs: .9, grp: 'quartz', shapes: spikesC([[P.hump[0] - R(3), P.hump[1] - R(8), -.3, -1, R(6), R(1.5)], [P.hump[0] + R(1), P.hump[1] - R(9.4), .1, -1, R(7.4), R(1.6)], [P.hump[0] + R(5.6), P.hump[1] - R(7), .5, -1, R(5), R(1.3)]]) });
+  // wounds that knit while you watch: a raw gash across the belly, pale new skin drawn over it in threads
+  if (!lie) {
+    const w0 = B(old ? [33.4, 44.6] : [30.6, 42.4]), wa = add2(w0, [-R(4), -R(3)]), wb = add2(w0, [R(3.6), R(2.8)]), wd = [wb[0] - wa[0], wb[1] - wa[1]];
+    F.add({ mat: 'flesh', prof: 'round', bw: R(.8), grp: 'wound', noShadow: true, shapes: [cap(wa, wb, R(.8), R(1.2))], tex: () => -1 });
+    const n = gT >= 2 ? 4 : 3; F.add({ mat: 'wolfPale', prof: 'round', bw: R(.4), grp: 'knit', noShadow: true, shapes: Array.from({ length: n }, (_, j) => { const u = (j + .6) / (n + .2), c = [wa[0] + wd[0] * u, wa[1] + wd[1] * u]; return cap([c[0] - R(1.1), c[1] + R(1.4)], [c[0] + R(1.1), c[1] - R(1.4)], R(.36)); }) });
+  }
+  // Old Horn: the Trollhide Mantle over his shoulders, the relic's own patchwork of the hides of trolls who argued with
+  // him (green hide, grizzled hide, dark hide, stitched along every seam), a grizzled ruff at the neck, a ragged hem
+  // and the horn toggle at the shoulder; torn stitches where it hung once it is taken
+  const mantle = old && relic && held ? relicArt(relic) : null;
+  const mTop = [[44.6, 24.6], [41.4, 21], [37, 19.2], [32.4, 18.4], [27.6, 18.8], [23.4, 20.8], [19.8, 24.4]];
+  if (mantle && !lie) {
+    const p = mantle.p, n0 = F.parts.length, hideM = p.mat || 'trollHide', ruffM = p.mat2 || 'grizzle', Q = q => B(q);
+    const seeds = [[[41, 25], hideM, 0], [[31, 21.4], ruffM, 0], [[21.4, 29], hideM, -1.6], [[22, 41], ruffM, -1.2], [[31.4, 32.6], hideM, -.6]].map(([q, m, dd]) => [Q(q), m, dd]);
+    const patch = ({ x, y }) => {
+      let d1 = 1e9, d2 = 1e9, best = 0; seeds.forEach(([c], i) => { const d = Math.hypot(x + .5 - c[0], y + .5 - c[1]); if (d < d1) { d2 = d1; d1 = d; best = i; } else if (d < d2) d2 = d; });
+      if (d2 - d1 < R(1.1)) return (x + y) % 3 === 0 ? { m: p.stitch || 'leatherDark', dd: 1.4 } : -2;
+      const [, m, dd] = seeds[best];
+      if (p.moss && best === 4 && vnoise(x * .3 / k, y * .3 / k, 349) > .66) return { m: p.moss, dd: 0 };
+      const fur = m === ruffM ? ((x * 1.6 + y) % 3.4 < .7 ? -1 : 0) : hash(x, y, 348) < .08 ? -1 : 0;
+      return { m, dd: dd + fur };
+    };
+    F.add({ mat: hideM, prof: 'round', bw: R(3.4), hs: .8, grp: 'mantle', shapes: [poly([[45.4, 25.6], [40.4, 20.2], [32.4, 18], [24.6, 19.8], [19, 25], [16.4, 32], [17, 40.6], [21.4, 46.2], [27, 45.8], [31.6, 42.8], [35.6, 38.4], [39.6, 33.8], [43.6, 30]].map(Q))], tex: patch });
+    // the hem: a ragged fringe of hide strips
+    const hem = [[17.6, 41.4], [20.2, 45], [23.8, 46.4], [27.8, 45.2], [31.4, 42.6], [34.8, 39], [38.2, 35.2]];
+    F.add({ mat: hideM, prof: 'ridge', hs: .8, grp: 'mantlefringe', shapes: spikesC(hem.map((q, i) => { const c = Q(q); return [c[0], c[1] - R(.8), -.25 + (hash(i, 1, 349) - .5) * .5, 1, R(2.4 + hash(i, 2, 349) * 2.2), R(1.2)]; })), tex: () => -1.4 });
+    // the ruff: shaggy grizzled fur standing up round the neck and the front of the shoulders
+    const hc = [31.4, 31], rTop = mTop.slice(0, 4);
+    F.add({ mat: ruffM, prof: 'ridge', hs: .8, grp: 'mantleruff', shapes: spikesC(rTop.map((q, i) => { const c = Q(q), d = [q[0] - hc[0], q[1] - hc[1]]; return [c[0], c[1] + R(.8), d[0], d[1], R(4.2 - i * .7 + hash(i, 3, 349) * 1.2), R(1.9 - i * .2)]; })) });
+    F.add({ mat: ruffM, prof: 'round', bw: R(1.8), grp: 'mantleruffband', shapes: chainC(rTop.map(Q), [R(3), R(2.7), R(2.2), R(1.4)]), tex: ({ x, y }) => ((x * 1.4 + y) % 2.8 < .7 ? -1 : 0) });
+    // the clasp: a troll's horn toggle through two iron loops at the front of the shoulder
+    const l1 = Q([37.2, 25]), l2 = Q([41.8, 27]);
+    F.add({ mat: p.clasp || 'iron', prof: 'round', bw: R(.8), grp: 'mantleloops', shapes: [circ(l1, R(1.5)), circ(l2, R(1.5))], cuts: [circ(l1, R(.6)), circ(l2, R(.6))] });
+    F.add({ mat: p.horn || 'bone', prof: 'round', bw: R(1.2), grp: 'mantlehorn', shapes: chainC([Q([34.6, 23.4]), Q([38, 25.4]), Q([41.6, 26.8]), Q([44.2, 26.4])], [R(.8), R(1.4), R(1.2), R(.5)]), tex: ({ x, y }) => ((x * 2 + y) % 3 === 0 ? -1 : 0) });
+    for (let i = n0; i < F.parts.length; i++) F.parts[i].relic = true;
+    A.relic = Q([39.4, 26]);
+  } else if (old && !lie) {
+    F.add({ mat: 'leatherDark', prof: 'round', bw: R(.5), grp: 'tornstitches', noShadow: true, shapes: mTop.slice(1, 6).map(q => { const c = B([q[0], q[1] + 2.4]); return cap([c[0] - R(1), c[1] - R(1)], [c[0] + R(1), c[1] + R(1)], R(.45)); }) });
+  }
+  limb([P.hipN, P.knN, P.ftN], [5.4, 4.2, 3.4], 'legN', 350, false); foot(P.ftN, 'footN', false);
+  // the head: a heavy brow, a big nose, small eyes under it, tusks up out of the jaw, a ragged ear; Old Horn's horns
+  const hf = frame(...P.head, ha);
+  skin([cap(B(J.chest), hf.P(-R(4), R(3)), R(6), R(4.4))], 'neck', 351);
+  if (old) F.add({ mat: 'bone', prof: 'round', bw: R(1.6), grp: 'hornF', shapes: [hf.poly([[-R(4.6), -R(4)], [-R(6.6), -R(7)], [-R(5), -R(9)], [-R(2.6), -R(6.4)]])], tex: DARK });
+  skin([rell(hf, 0, 0, R(7), R(6.2)), hf.cap(R(2), R(1.6), R(7.4), R(3.4), R(4.6), R(3.4))], 'head', 352, false, { bw: R(3.4) });
+  if (old) F.add({ mat: 'wolfPale', prof: 'round', bw: R(1.6), grp: 'muzzle', shapes: [hf.poly([[R(.6), R(3)], [R(8.6), R(3.6)], [R(8), R(7.6)], [R(3.4), R(8.4)], [-R(1.6), R(6)]])], tex: ({ x, y }) => ((x + y * 2) % 3 === 0 ? -1 : 0) });
+  F.add({ mat: 'bone', prof: 'ridge', grp: 'tusks', shapes: [hf.poly([[R(4.4), R(5)], [R(5.6), R(.8)], [R(6.4), R(5)]]), hf.poly([[R(7.2), R(4.8)], [R(8), R(2.2)], [R(8.6), R(4.6)]])] });
+  skin([hf.cap(R(6.6), -R(.4), R(9.6), R(1.6), R(2), R(2.2))], 'nose', 353, false, { bw: R(1.4) });
+  skin([hf.cap(-R(2.4), -R(3.4), R(5.8), -R(2.8), R(1.8), R(1.4))], 'brow', 354, false, { bw: R(1.2) });
+  eyeOf(F, hf, R(3.4), -R(1.2), R(.9), R(.7), eyeM, eye === 'shut', 'eyeN');
+  skin([hf.poly([[-R(5.4), -R(1.6)], [-R(9.6), -R(4.4)], [-R(5.8), R(1.6)]])], 'ear', 355, false, { bw: R(1) });
+  if (!old) F.add({ mat: 'hairBlack', prof: 'round', bw: R(1), grp: 'tuft', shapes: [hf.poly([[-R(3), -R(5.4)], [-R(1), -R(8.4)], [R(1.6), -R(5.6)], [R(3.4), -R(7.2)], [R(3.4), -R(4.6)]])] });
+  if (old) { // the great horn, curling up and forward; the other is a stump
+    F.add({ mat: 'bone', prof: 'round', bw: R(1.8), grp: 'horn', shapes: chainC([hf.P(-R(1), -R(5)), hf.P(-R(3), -R(10)), hf.P(-R(1), -R(15)), hf.P(R(4), -R(17.6)), hf.P(R(8.4), -R(16))], [R(2.6), R(2.3), R(1.9), R(1.3), R(.5)]), tex: ({ x, y }) => ((x * 2 + y) % 4 === 0 ? -1 : 0) });
+    F.add({ mat: 'claw', prof: 'round', bw: R(1), grp: 'hornstump', shapes: [hf.poly([[R(1.6), -R(5)], [R(2.6), -R(8)], [R(4.6), -R(7.6)], [R(4.2), -R(4.6)]])] });
+  }
+  // the near arm and the club: a limb torn off a pine (Old Horn's is a young trunk), grey bark in long grain, a knot, a
+  // lopped branch and a knobbled head; banded (2) and spiked (3) as it wakes
+  limb([P.shN, P.elN, P.haN], [4.8, 4, 3.4], 'armN', 356, false);
+  const cH = P.haN, cE = !lie && pose === 'attack' ? B(club[1]) : T(club[1]);
+  const cl = Math.hypot(cE[0] - cH[0], cE[1] - cH[1]) || 1, cu = [(cE[0] - cH[0]) / cl, (cE[1] - cH[1]) / cl], cn = [-cu[1], cu[0]];
+  const cP = (u, s) => [cH[0] + cu[0] * u + cn[0] * s, cH[1] + cu[1] * u + cn[1] * s];
+  const r0 = R(old ? 2.5 : 2), r1 = R(old ? 3.8 : 3.1);
+  const grain = ({ x, y }) => {
+    const rx = x + .5 - cH[0], ry = y + .5 - cH[1], a = rx * cu[0] + ry * cu[1], s = rx * cn[0] + ry * cn[1];
+    if (vnoise(x * .3, y * .3, 357) > .8) return { m: 'moss', dd: 0 };
+    const g = Math.sin(s * 2.1 / k + Math.sin(a * .3 / k) * 1.3); return g > .72 ? -1.2 : 0;
+  };
+  F.add({ mat: 'bogwood', prof: 'round', bw: R(2.2), grp: 'club', shapes: [cap(cP(-R(3.6), 0), cP(cl - r1 * .4, 0), r0, r1), circ(cP(cl * .8, r1 * .35), r1 * .98), circ(cP(cl - r1 * .3, -r1 * .3), r1 * .9)], tex: grain });
+  F.add({ mat: 'bogwood', prof: 'round', bw: R(.8), grp: 'clubstub', shapes: [cap(cP(cl * .44, -r0 * .7), cP(cl * .52, -r0 - R(3)), R(1.1), R(.8))], tex: grain });
+  F.add({ mat: 'claw', prof: 'flat', grp: 'clubstubend', noShadow: true, noOutline: true, shapes: [circ(cP(cl * .52, -r0 - R(3)), R(.6))] });
+  F.add({ mat: 'bark', prof: 'round', bw: R(.7), grp: 'clubknot', noShadow: true, shapes: [ell(cP(cl * .64, r1 * .1), R(1.2), R(.9))], tex: () => -1 });
+  if (gT >= 2) F.add({ mat: 'iron', prof: 'round', bw: R(.8), grp: 'clubband', shapes: [cap(cP(cl * .74, r1 * 1.08), cP(cl * .74, -r1 * 1.08), R(1))] });
+  if (gT >= 3) F.add({ mat: 'iron', prof: 'ridge', hs: .9, grp: 'clubspikes', shapes: spikesC([.86, 1].flatMap(u => [1, -1].map(g => { const c = cP(cl * u - r1 * .3, g * r1 * .85); return [c[0], c[1], cn[0] * g + cu[0] * .4, cn[1] * g + cu[1] * .4, R(2.6), R(.9)]; })).concat([(() => { const c = cP(cl + r1 * .1, 0); return [c[0], c[1], cu[0], cu[1], R(2.4), R(.9)]; })()])) });
+  hand(P.haN, 'handN', false);
+  A.head = hf.P(R(3.4), -R(1.2)); A.mouth = hf.P(R(6), R(4)); A.center = lie ? T([34, 60]) : P.chest; A.weaponTip = cE;
+}
+const peakTroll = (F, st) => troll(F, st, { k: 1, dx: 0, dy: 0 });
+const oldHorn = (F, st) => troll(F, st, { k: 1.18, dx: .9, dy: 3.6, old: true });
+
+Object.assign(FOE_ART, {
+  'iron-sentinel': { name: 'Iron Sentinel', kind: 'beast', w: 64, h: 64, foot: [33, 61], defaultTier: 'veteran', build: ironSentinel },
+  'sentinel-captain': { name: 'The Sentinel-Captain', kind: 'beast', w: 80, h: 80, foot: [41, 77], defaultTier: 'relic-bearer', relic: 'ironwall', build: sentinelCaptain },
+  forgeborn: { name: 'Forgeborn', kind: 'beast', w: 64, h: 64, foot: [32, 61], defaultTier: 'veteran', build: forgebornBase },
+  bellows: { name: 'The Bellows', kind: 'beast', w: 72, h: 72, foot: [36, 69], defaultTier: 'veteran', build: bellowsBuild, motes: sparkMotes(6, 8) },
+  journeyman: { name: 'Harrow\'s Journeyman', kind: 'beast', w: 64, h: 72, foot: [32, 69], defaultTier: 'relic-bearer', relic: 'runestaff', build: journeymanBuild },
+  'peak-troll': { name: 'Peak-Troll', kind: 'beast', w: 72, h: 72, foot: [36, 69], defaultTier: 'veteran', build: peakTroll },
+  'old-horn': { name: 'Old Horn', kind: 'beast', w: 88, h: 88, foot: [44, 85], defaultTier: 'relic-bearer', relic: 'trollhide-mantle', build: oldHorn },
+});
+
+/* ---- RIME-WRAITHS: the drowned monks of Frostmere, hovering over the ice in sodden grey habits rimed with frost,
+   the hood up over a blue-white face, water still dripping off them and freezing as it falls (64x64, ground 61). The
+   Drowned Abbess wears a wimple and a veil frozen stiff and swings the Drowned Censer, wet smoke out of it (72x72,
+   ground 69). A Choir-Wraith sings one long note with its mouth open, a hymnal frozen to its hands (64x64). One
+   builder in a 64x64 base space mapped by S = { k, dx, dy }. The Waking: rime over the shoulders and the hood (1), a
+   rosary of ice beads and longer icicles (2), Hush's violet light in the eyes and under the hood (3) ---- */
+function wraith(F, st, S) {
+  const { pose, f, gT, relic, held } = st, A = st.anchors, k = S.k, T = p => [S.dx + p[0] * k, S.dy + p[1] * k], R = r => r * k;
+  const idle = !pose || pose === 'idle', lie = pose === 'ko', abb = S.variant === 'abbess', choir = S.variant === 'choir';
+  const eyeM = gT >= 3 ? 'hush' : 'frost', skinM = 'drownedSkin';
+  let bx = 0, by = idle ? f * .8 - .4 : 0, tilt = 0, eye = 'open', sing = choir ? 1 : 0;
+  const J = { head: [37.4, 16.4], shF: [29.4, 25], shN: [40.6, 25.4], elF: [26.4, 34.4], haF: [27.6, 42.4], elN: [45, 33.4], haN: [49.4, 38.6] };
+  if (choir) Object.assign(J, { elF: [33, 34.6], haF: [41.4, 33.4], elN: [45.4, 34], haN: [48.6, 31] });
+  if (abb) Object.assign(J, { elN: [45.4, 32.4], haN: [50.4, 35.6] });
+  if (pose === 'attack') {
+    bx = 3; tilt = .14; sing = 1.5;
+    if (choir) Object.assign(J, { head: [38.4, 17.2], haF: [42.6, 31.4], haN: [50, 28.4], elN: [46.4, 32] });
+    else if (abb) Object.assign(J, { head: [38.6, 17.4], elN: [45.8, 28.8], haN: [49.8, 27.4], elF: [30.4, 33.4], haF: [34, 41] });
+    else Object.assign(J, { head: [39.4, 17.6], elN: [48, 27.8], haN: [54.2, 26.8], elF: [35.6, 29.4], haF: [45.6, 29.6] });
+  } else if (pose === 'hurt') {
+    bx = -3.4; by = -.8; tilt = -.26; eye = 'shut'; sing = 0;
+    Object.assign(J, choir ? { head: [34.6, 16.8], elN: [42.6, 33.4], haN: [45.6, 31], elF: [30.6, 34.4], haF: [38.6, 33] } : { head: [34.6, 16.8], elN: [43.4, 21.4], haN: [47, 15.6], elF: [23.6, 31.6], haF: [19.6, 37.6] });
+  }
+  // a lean: the top moves with the pose, the hem stays over its ice
+  const B = p => T([p[0] + bx * clamp((57 - p[1]) / 38, 0, 1), p[1] + by]);
+  const P = {}; for (const key of Object.keys(J)) P[key] = B(J[key]);
+  const habitTex = (seed, far) => ({ x, y, ny }) => {
+    const yb = (y - S.dy) / k;
+    if (gT >= 1 && ny < -.45 && yb < 36) return { m: 'rime', dd: far ? -1 : 0 };
+    if (hash(x, y, seed) < .018) return { m: 'rime', dd: -1 };
+    const fold = Math.sin((x + vnoise(x * .06, y * .09, seed) * 7) * 1.05 / k) > .78 ? -1 : 0;
+    return fold + (yb > 45 ? -1 : 0) + (far ? -1 : 0);
+  };
+  const cloth = (shapes, g, seed, far, o = {}) => F.add(Object.assign({ mat: 'drowned', prof: 'round', bw: R(3), grp: g, shapes, tex: habitTex(seed, far) }, o));
+  const icicles = (pts, g, len) => F.add({ mat: 'ice', prof: 'ridge', hs: .9, grp: g, shapes: spikesC(pts.map(([p, l], i) => [p[0], p[1] - R(.4), (hash(i, 7, 371) - .5) * .12, 1, R((l || 2.4) * len * (.7 + hash(i, 8, 371) * .6)), R(.75)])) });
+  const hand = (h, dir, g, far, spread = 1) => {
+    const Sh = [circ(h, R(1.7))]; for (const [a, l] of [[-.42 * spread, 3.4], [-.08 * spread, 4], [.28 * spread, 3.6]]) { const d = rot2(dir, a); Sh.push(cap(h, [h[0] + d[0] * R(l), h[1] + d[1] * R(l)], R(.8), R(.45))); }
+    F.add({ mat: skinM, prof: 'round', bw: R(.9), grp: g, shapes: Sh, tex: far ? DARK : ({ x, y }) => (hash(x, y, 372) < .12 ? -1 : 0) });
+  };
+  // a bell sleeve from shoulder to wrist, widening to the cuff, icicles under the cuff
+  const sleeve = (sh, el, ha, g, far) => {
+    cloth([cap(sh, el, R(3.6), R(3.8))], g + 'up', 373, far);
+    const a = Math.atan2(ha[1] - el[1], ha[0] - el[0]), d = Math.hypot(ha[0] - el[0], ha[1] - el[1]), X = frame(el[0], el[1], a);
+    cloth([X.poly([[-R(1), -R(3.6)], [d - R(1.6), -R(5)], [d + R(.4), -R(4.4)], [d + R(.6), R(4.6)], [d - R(1.4), R(5.6)], [-R(1), R(3.8)]])], g + 'cuff', 374, far);
+    if (!far || gT >= 1) icicles([[X.P(d - R(1.4), R(5.2)), 2], [X.P(d - R(.2), R(4.8)), 1.4], [X.P(d - R(3), R(5)), 1.2]].filter(([p]) => p[1] > el[1] - R(1)), g + 'ice', gT >= 2 ? 1.5 : 1);
+    return X.P(d + R(.4), 0);
+  };
+
+  if (lie) { // collapsed: the habit a heap on the ice, the hood fallen forward, one hand out, water pooling
+    F.add({ mat: 'ice', prof: 'flat', grp: 'pool', noShadow: true, noOutline: true, shapes: [ell(T([33, 60.4]), R(20), R(2))], tex: ({ x }) => (x % 5 === 0 ? 1 : 0) });
+    cloth([poly([[10.6, 61], [13.4, 55.6], [19, 51.6], [27, 49.8], [35, 50.4], [42, 52.6], [46.6, 56.4], [48, 61]].map(T))], 'heap', 375, false, { bw: R(5), hs: .8 });
+    F.add({ mat: 'string', prof: 'round', bw: R(.7), grp: 'cord', shapes: chainC([[20, 55.4], [28, 54.2], [36, 55.6], [40, 58.6]].map(T), R(.8)) });
+    const hf = frame(...T([47.6, 55.6]), 1.2);
+    if (abb) F.add({ mat: 'clothGrey', prof: 'round', bw: R(2), grp: 'veil', shapes: [hf.poly([[-R(6.4), -R(6)], [R(4), -R(7)], [R(7), -R(3)], [R(6.4), R(4)], [-R(8.4), R(6.6)]])], tex: ({ x, y }) => ((x + y) % 4 === 0 ? -1 : 0) });
+    else cloth([rell(hf, 0, 0, R(6.6), R(7.4)), hf.poly([[-R(6), -R(3)], [-R(10.4), R(1.4)], [-R(6), R(3)]])], 'hood', 376, false, { bw: R(3) });
+    hand(T([55.4, 59.2]), [1, .2], 'hand', false, 1.2);
+    icicles([[T([16, 56]), 1.2], [T([24, 52.4]), 1.4], [T([40, 53.4]), 1.2]], 'heapice', 1);
+    if (choir) { const b0 = T([22.6, 58.8]); F.add({ mat: 'leatherDark', prof: 'round', bw: R(1), grp: 'book', shapes: [poly([[b0[0] - R(5), b0[1] + R(1.6)], [b0[0] + R(5), b0[1] + R(1.6)], [b0[0] + R(4.4), b0[1] - R(1.4)], [b0[0] - R(4.4), b0[1] - R(1.4)]])] }); F.add({ mat: 'parchment', prof: 'round', bw: R(.8), grp: 'pages', shapes: [poly([[b0[0] - R(4.2), b0[1] + R(.6)], [b0[0], b0[1] + R(1)], [b0[0] + R(4.2), b0[1] + R(.6)], [b0[0] + R(3.6), b0[1] - R(1.6)], [b0[0], b0[1] - R(.8)], [b0[0] - R(3.6), b0[1] - R(1.6)]])] }); }
+    if (abb && relic && held) { const art = relicArt(relic), m = drawRelic(F, art, T([46, 57.4]), -1.5, .34 * k, { center: [32, 5] }); if (m) A.relic = m([32, 40]); }
+    A.head = hf.P(0, 0); A.mouth = hf.P(R(3), R(2)); A.center = T([30, 55]);
+    return;
+  }
+  // the ice it drips onto, and the drops falling
+  F.add({ mat: 'ice', prof: 'flat', grp: 'pool', noShadow: true, noOutline: true, shapes: [ell(T([32.6, 60.4]), R(13), R(1.7))], tex: ({ x }) => (x % 5 === 0 ? 1 : 0) });
+  F.add({ mat: 'water', prof: 'round', bw: .6, grp: 'drops', noShadow: true, noOutline: true, shapes: [circ(T([19.4, 57.4 + f * 1.6]), R(.6)), circ(T([29.4, 59.2 - f * 1.2]), R(.55)), circ(T([41, 57.8 + f]), R(.6))] });
+  // the far sleeve and hand (behind the habit), then the habit: a bell of sodden wool, ragged at the hem
+  const cuffF = choir ? null : sleeve(P.shF, P.elF, P.haF, 'sleeveF', true);
+  if (!choir) hand(cuffF, pose === 'attack' ? [1, -.1] : [.2, 1], 'handF', true);
+  const hem = [[15.6, 55.2], [18.8, 53.2], [21.6, 56.6], [25, 54.2], [28.6, 57.2], [32.4, 54.6], [36, 57.4], [39.6, 54.8], [43.2, 56.8], [46.8, 54.4]];
+  const habit = [[40.2, 21.4], [33, 20.6], [27.4, 22], [23.4, 31], [20, 42], [16.6, 50.6]].concat(hem, [[47.8, 51.6], [45.8, 43], [43.8, 33.6], [43, 25]]);
+  cloth([poly(habit.map(B))], 'habit', 377, false, { bw: R(5), hs: .8 });
+  icicles(hem.filter((_, i) => i % 2 === 0).map(q => [B([q[0], q[1] - .4]), 1.8]), 'hemice', gT >= 2 ? 1.5 : 1);
+  // the cord round the waist, its knotted end hanging; a rosary of ice beads from the second Waking
+  const w0 = B([24.4, 37.6]), w1 = B([44.8, 38.4]);
+  F.add({ mat: 'string', prof: 'round', bw: R(.7), grp: 'cord', shapes: [cap(w0, w1, R(.9))].concat(chainC([[43.2, 38.6], [44.4, 43.4], [43.6, 48.4]].map(B), R(.75))), tex: ({ x, y }) => ((x + y) % 3 === 0 ? -1 : 0) });
+  F.add({ mat: 'string', prof: 'round', bw: R(.8), grp: 'knots', shapes: [circ(B([44.2, 42.4]), R(1.2)), circ(B([43.7, 47]), R(1.1))] });
+  if (gT >= 2) {
+    const beads = []; for (let i = 0; i <= 8; i++) { const u = i / 8, x = 34.4 + u * 6.4, y = 39 + Math.sin(u * Math.PI) * 7; beads.push(circ(B([x, y]), R(.85))); }
+    F.add({ mat: 'ice', prof: 'round', bw: R(.6), grp: 'rosary', shapes: beads });
+    F.add({ mat: 'silver', prof: 'round', bw: R(.5), grp: 'rosarycross', shapes: [cap(B([37.6, 46]), B([37.6, 50.2]), R(.5)), cap(B([36.2, 47.4]), B([39, 47.4]), R(.5))] });
+  }
+  // the head: a cowl with the point hanging back (the Abbess: a veil frozen stiff over a wimple), the drowned face in it
+  const hf = frame(...P.head, tilt);
+  if (abb) {
+    F.add({ mat: 'clothGrey', prof: 'round', bw: R(2.4), grp: 'veil', shapes: [hf.poly([[-R(5.4), -R(7.6)], [R(1.6), -R(9)], [R(6.6), -R(7)], [R(7.8), -R(3.4)], [R(3), -R(5)], [-R(3), -R(3.6)], [-R(5.6), R(1.4)], [-R(7.4), R(8.4)], [-R(10.6), R(15.4)], [-R(13), R(11)], [-R(11), R(2)], [-R(8.8), -R(4.4)]])], tex: ({ x, y, ny }) => (gT >= 1 && ny < -.4 ? { m: 'rime', dd: -1 } : (x * 2 + y) % 6 === 0 ? -1 : 0) });
+    F.add({ mat: 'clothWhite', prof: 'round', bw: R(1.6), grp: 'wimple', shapes: [rell(hf, R(3), R(1.4), R(5.8), R(7)), hf.poly([[-R(1), R(5)], [R(7.6), R(5)], [R(8.6), R(10.4)], [-R(2.6), R(10.4)]])], cuts: [rell(hf, R(4), R(.4), R(3.4), R(4.4))], tex: ({ x, y }) => (hash(x, y, 378) < .1 ? { m: 'rime', dd: 0 } : (y % 3 === 0 ? -1 : 0)) });
+    icicles([[hf.P(R(7.4), -R(3)), 1.2], [hf.P(-R(10.4), R(14.4)), 1.6], [hf.P(-R(12.4), R(11.4)), 1.2]], 'veilice', gT >= 2 ? 1.4 : 1);
+  } else {
+    cloth([rell(hf, 0, 0, R(7.4), R(8.4)), hf.poly([[-R(6), -R(5.4)], [-R(11.4), -R(1)], [-R(12.6), R(3)], [-R(7), R(3)]])], 'hood', 379, false, { bw: R(3.4) });
+    F.add({ mat: gT >= 3 ? 'hush' : 'dark', prof: 'flat', grp: 'hoodin', noShadow: true, tex: gT >= 3 ? () => -2.6 : null, shapes: [rell(hf, R(3.8), R(.8), R(4.4), R(5.8))] });
+    icicles([[hf.P(R(6.4), -R(4.4)), 1.1], [hf.P(R(7.6), R(3.6)), 1.4], [hf.P(R(5.4), R(6.6)), 1]], 'hoodice', gT >= 2 ? 1.4 : 1);
+  }
+  // the face: blue-white and gaunt, dark sockets with a cold light in them, the mouth a hole (the Choir's open in its note)
+  F.add({ mat: skinM, prof: 'round', bw: R(1.6), grp: 'face', shapes: [rell(hf, R(4.4), R(.6), R(3.2), R(4.4))], tex: ({ x, y }) => (hash(x, y, 380) < .1 ? -1 : 0) });
+  F.add({ mat: 'dark', prof: 'flat', grp: 'sockets', noShadow: true, shapes: [rell(hf, R(4.4), -R(1), R(1.2), R(1), 10), rell(hf, R(6.6), -R(.8), R(.9), R(.9), 10)] });
+  if (eye !== 'shut') F.add({ mat: eyeM, prof: 'flat', grp: 'eyes', noShadow: true, noOutline: true, shapes: [hf.circ(R(4.6), -R(1), R(.66)), hf.circ(R(6.7), -R(.8), R(.56))] });
+  const mo = sing ? [R(1.2) + R(.3) * sing, R(1.3) + R(.6) * sing] : [R(1.1), R(.45)];
+  F.add({ mat: 'dark', prof: 'flat', grp: 'mouth', noShadow: true, shapes: [rell(hf, R(5.6), R(3.2), mo[0], mo[1], 12)] });
+  if (sing) { // the note: cold breath going out of it in rings
+    const m0 = hf.P(R(7), R(3.2)), n = choir ? 3 : 2;
+    F.add({ mat: 'frost', prof: 'flat', grp: 'note', noShadow: true, noOutline: true, shapes: Array.from({ length: n }, (_, i) => { const c = [m0[0] + R(2.6 + i * 3.2), m0[1] - R(i * .6)], r = R(1.6 + i * 1.1); return poly([[c[0], c[1] - r], [c[0] + R(1), c[1] - r * .5], [c[0] + R(1.2), c[1]], [c[0] + R(1), c[1] + r * .5], [c[0], c[1] + r], [c[0] + R(.3), c[1]]]); }), tex: () => -1 });
+  }
+  // the Choir's hymnal, frozen to both hands: an open book held up to sing from, ice down its edges
+  if (choir) {
+    const cF = sleeve(P.shF, P.elF, P.haF, 'sleeveF', true), cN = sleeve(P.shN, P.elN, P.haN, 'sleeveN', false);
+    const bc = [(cF[0] + cN[0]) / 2, (cF[1] + cN[1]) / 2 - R(3.2)], bf = frame(bc[0], bc[1], -.22 + (pose === 'attack' ? -.25 : 0));
+    F.add({ mat: 'leatherDark', prof: 'round', bw: R(1), grp: 'bookcover', shapes: [bf.poly([[-R(7), -R(5.2)], [0, -R(4)], [R(7), -R(5.2)], [R(7.2), R(4)], [0, R(5.2)], [-R(7.2), R(4)]])] });
+    F.add({ mat: 'parchment', prof: 'round', bw: R(1), grp: 'bookpages', shapes: [bf.poly([[-R(6.2), -R(4.4)], [0, -R(3.4)], [R(6.2), -R(4.4)], [R(6.4), R(3.2)], [0, R(4.4)], [-R(6.4), R(3.2)]])], tex: ({ x, y }) => (y % 2 === 0 && hash(x, y, 381) < .6 ? -1.2 : 0) });
+    F.add({ mat: 'ice', prof: 'round', bw: R(.8), grp: 'bookice', shapes: [bf.cap(-R(6.6), R(4), R(6.6), R(4), R(.9))] });
+    icicles([[bf.P(-R(4.4), R(4.8)), 1.4], [bf.P(R(.6), R(5.4)), 1.8], [bf.P(R(4.8), R(4.8)), 1.2]], 'bookicicles', 1);
+    hand(cF, [.3, -1], 'handF', false, .8); hand(cN, [-.2, -1], 'handN', false, .8);
+  }
+  // the near sleeve and hand (the Abbess swings the Drowned Censer from it on its chain, wet smoke out of the lid)
+  const cuffN = choir ? null : sleeve(P.shN, P.elN, P.haN, 'sleeveN', false);
+  const censer = abb && relic && held ? relicArt(relic) : null;
+  if (censer) {
+    const sw = pose === 'attack' ? -.66 : pose === 'hurt' ? .55 : f ? .12 : -.1;
+    const m = drawRelic(F, censer, cuffN, sw, .36 * k, { center: [32, 5] });
+    if (m) { A.relic = m([32, 40]); A.censer = m([32, 34]); }
+  } else if (abb) F.add({ mat: 'silver', prof: 'round', bw: R(.5), grp: 'brokenchain', shapes: [0, 1, 2].map(i => rell(frame(cuffN[0], cuffN[1] + R(1.6 + i * 1.6), 0), 0, 0, R(i & 1 ? .6 : .9), R(i & 1 ? 1 : .6), 8)) });
+  if (!choir) hand(cuffN, abb ? [.3, 1] : pose === 'attack' ? [1, -.15] : pose === 'hurt' ? [.1, -1] : [.35, 1], 'handN', false, pose === 'attack' ? 1.3 : 1);
+  A.head = hf.P(R(4.4), -R(.6)); A.mouth = hf.P(R(5.6), R(3.2)); A.center = B([33, 36]);
+}
+const rimeWraith = (F, st) => wraith(F, st, { k: 1, dx: 0, dy: 0 });
+const drownedAbbess = (F, st) => wraith(F, st, { k: 1.14, dx: 2.4, dy: 7.5, variant: 'abbess' });
+const choirWraith = (F, st) => wraith(F, st, { k: 1, dx: 0, dy: 0, variant: 'choir' });
+// frost mist curling up off the drowned (more of it as they wake)
+const rimeMotes = n => (t, a, gT) => { const c = a.center || [32, 36], out = []; for (let j = 0; j < n + (gT || 0); j++) { const ph = (t * (.25 + hash(j, 2, 382) * .2) + hash(j, 3, 382)) % 1; out.push({ x: c[0] - 14 + hash(j, 1, 382) * 28 + Math.sin(t * 1.4 + j) * 2, y: c[1] + 22 - ph * 34, c: gT >= 3 && j % 3 === 0 ? [180, 170, 255] : [200, 230, 255], a: Math.sin(ph * Math.PI) * .55 }); } return out; };
+
+Object.assign(FOE_ART, {
+  'rime-wraith': { name: 'Rime-Wraith', kind: 'beast', w: 64, h: 64, foot: [33, 61], defaultTier: 'veteran', build: rimeWraith, motes: rimeMotes(3) },
+  'drowned-abbess': { name: 'The Drowned Abbess', kind: 'beast', w: 80, h: 80, foot: [40, 77], defaultTier: 'relic-bearer', relic: 'drowned-censer', build: drownedAbbess, motes: rimeMotes(4) },
+  'choir-wraith': { name: 'Choir-Wraith', kind: 'beast', w: 64, h: 64, foot: [33, 61], defaultTier: 'veteran', build: choirWraith, motes: rimeMotes(3) },
+});
+
+/* ---- THE THUNDER-ROC: a storm-grey eagle the size of a barn, hanging over its eyrie with its wings up in a V,
+   lightning crackling along the pinions, the great yellow feet thrown forward with the talons open; the Roc-Feather
+   Cloak (a shepherd's cloak of its own feathers, from its recipe) snagged on a talon and streaming in the downdraught
+   (96x96, ground 93). The Waking: snow on its back (1), a brighter crackle and storm-cloud at the wingtips (2), eyes
+   and bolts white-hot (3) ---- */
+function thunderRoc(F, st) {
+  const { pose, f, gT, relic, held } = st, A = st.anchors, idle = !pose || pose === 'idle', lie = pose === 'ko';
+  const fm = 'rocFeather', eyeM = gT >= 3 ? 'storm' : 'amber';
+  let pitch = 0, bx = 0, by = idle ? f * 1.4 : 0, flap = idle ? f * .14 : 0, gape = 0, eye = 'open';
+  if (pose === 'attack') { pitch = .26; bx = 3; by = 3; flap = 0; gape = 1; }
+  else if (pose === 'hurt') { pitch = -.2; bx = -1.4; by = -1; flap = .06; gape = .7; eye = 'shut'; }
+  else if (lie) { pitch = .12; by = 6; }
+  const piv = [50, 52], cp = Math.cos(pitch), sp = Math.sin(pitch);
+  const W = p => { const dx = p[0] - piv[0], dy = p[1] - piv[1]; return [piv[0] + dx * cp - dy * sp + bx, piv[1] + dx * sp + dy * cp + by + 4]; };
+  // a pointed feather as a polygon: root, angle, length, half-width
+  const plume = (root, ang, len, w) => { const X = frame(root[0], root[1], ang), up = [], dn = []; for (let i = 0; i <= 8; i++) { const u = i / 8, h = w * Math.pow(Math.sin(Math.PI * (u * .94 + .06)), .65); up.push([u * len, -h]); dn.push([u * len, h * .8]); } return X.poly(up.concat(dn.reverse())); };
+  const barTex = (ang, far, seed) => ({ x, y, ny }) => {
+    if (gT >= 1 && !far && ny < -.5 && vnoise(x * .4, y * .4, seed) > .45) return { m: 'snow', dd: -1 };
+    const a = x * Math.cos(ang) + y * Math.sin(ang), b = ((a % 5) + 5) % 5;
+    return (b < 1 ? -1 : 0) + (far ? -1 : 0) + (hash(x, y, seed) < .04 ? 1 : 0);
+  };
+  const bolt = (pts, g, seed) => { // a zigzag of lightning along a line of points
+    const S = []; let prev = null;
+    pts.forEach(([p, q], i) => { const n = 4; for (let j = 0; j <= n; j++) { const u = j / n, x = p[0] + (q[0] - p[0]) * u, y = p[1] + (q[1] - p[1]) * u, dx = q[1] - p[1], dy = -(q[0] - p[0]), l = Math.hypot(dx, dy) || 1, o = (hash(i * 7 + j, f + gT * 3, seed) - .5) * 3.4; const c = [x + dx / l * o, y + dy / l * o]; if (prev) S.push(cap(prev, c, gT >= 2 ? .6 : .45)); prev = c; } });
+    F.add({ mat: 'storm', prof: 'flat', grp: g, noShadow: true, noOutline: true, shapes: S, tex: () => (gT >= 3 ? 1 : gT >= 2 ? .5 : 0) });
+  };
+  // a wing: arm from shoulder to wrist (coverts over the feather roots), secondaries off the forearm, primaries fanned
+  // from the wrist; `side` +1 fans the primaries forward (the far wing, behind the neck), -1 back (the near wing)
+  const wing = (sh, wr, prim, g, far) => {
+    const a = Math.atan2(wr[1] - sh[1], wr[0] - sh[0]), L = Math.hypot(wr[0] - sh[0], wr[1] - sh[1]), X = frame(sh[0], sh[1], a);
+    const Sec = [], Pri = [];
+    for (let i = 0; i < 5; i++) { const u = .12 + i * .19; Sec.push(plume(X.P(L * u, -R0(3.4)), a - 1.95 + i * .05, 13 + i * .6, 3)); }
+    prim.forEach(([ra, len], i) => Pri.push(plume(X.P(L - 1.4, -1.6 - i * .4), a + ra, len, 3.1)));
+    F.add({ mat: fm, prof: 'round', bw: 2.2, grp: g + 'sec', shapes: Sec, tex: barTex(a + 1.6, far, 391) });
+    F.add({ mat: fm, prof: 'round', bw: 2.2, grp: g + 'pri', shapes: Pri, tex: barTex(a + .6, far, 392) });
+    F.add({ mat: fm, prof: 'round', bw: 3, hs: .8, grp: g + 'arm', shapes: [X.poly([[-1, 3.6], [L * .5, 3.8], [L, 2.4], [L + 2.4, 0], [L + .6, -4.2], [L * .62, -7.4], [L * .3, -8.6], [-1, -9.4]])], tex: ({ x, y, ny }) => { if (gT >= 1 && !far && ny < -.5) return { m: 'snow', dd: -1 }; return (hash(x, y, 393) < .12 ? -1 : 0) + (far ? -1 : 0); } });
+    const tipDir = a + prim[0][0], tip = [wr[0] + Math.cos(tipDir) * prim[0][1], wr[1] + Math.sin(tipDir) * prim[0][1]];
+    return { lead: [[X.P(L * .2, 3.4), X.P(L * .9, 2.6)], [X.P(L * .9, 2.6), tip]], tips: prim.map(([ra, len]) => [wr[0] + Math.cos(a + ra) * len, wr[1] + Math.sin(a + ra) * len]) };
+  };
+  const R0 = r => r;
+  if (lie) { // down on the crag: one wing spread on the ground, the other folded, the head down, the feet up
+    wing([46, 72], [22, 80], [[.3, 20], [0, 21], [-.3, 19], [-.6, 17]], 'wingN', false);
+    F.add({ mat: fm, prof: 'round', bw: 5, hs: .8, grp: 'body', shapes: [rell(frame(52, 78, .15), 0, 0, 17, 9.4)], tex: barTex(1.2, false, 394) });
+    F.add({ mat: 'rimeFur', prof: 'round', bw: 3, grp: 'chest', shapes: [rell(frame(57, 81, .15), 0, 0, 10, 5)], tex: ({ y }) => (y % 3 === 0 ? -1 : 0) });
+    const hf = frame(74, 86, .5);
+    F.add({ mat: fm, prof: 'round', bw: 3, grp: 'head', shapes: [cap([64, 80], hf.P(0, 0), 5, 4.4), rell(hf, 0, 0, 6, 5)], tex: barTex(.4, false, 395) });
+    F.add({ mat: 'claw', prof: 'round', bw: 1.4, grp: 'beak', shapes: [hf.poly([[4.6, -2], [10, 0], [11.4, 3.6], [9, 4], [5, 2.6]])] });
+    F.add({ mat: 'rocLeg', prof: 'round', bw: 1, grp: 'legs', shapes: [cap([54, 74], [58, 66], 2, 1.6), cap([48, 74], [49, 65.4], 1.9, 1.5)] });
+    F.add({ mat: 'blackiron', prof: 'round', bw: .6, grp: 'talons', shapes: [[58, 66], [49, 65.4]].flatMap(p => [cap(p, [p[0] + 3, p[1] - 3], .9, .4), cap(p, [p[0] - 1, p[1] - 4], .9, .4), cap(p, [p[0] + 3.6, p[1] + .4], .9, .4)]) });
+    if (relic && held) { const art = relicArt(relic), m = drawRelic(F, art, [60, 64.4], 1.3, .3, { center: [29.4, 9.4] }); if (m) A.relic = m([32, 30]); }
+    A.head = hf.P(0, 0); A.mouth = hf.P(8, 2); A.center = [50, 78];
+    return;
+  }
+  // the far wing, up behind the neck, its primaries fanned forward
+  const shF = W([55, 40]), wrF = W([63 + flap * 16, 19 + flap * 24]);
+  const wf = wing(shF, wrF, [[.15, 17], [.45, 16], [.75, 15], [1.05, 14], [1.35, 12]], 'wingF', true);
+  // the tail: a fan of long feathers down behind
+  const tr = W([37, 60]);
+  F.add({ mat: fm, prof: 'round', bw: 2.2, grp: 'tail', shapes: [2.05, 2.25, 2.45, 2.65, 2.85].map((a, i) => plume(tr, a + pitch, 18 + (i === 2 ? 3 : i === 1 || i === 3 ? 2 : 0), 3.2)), tex: barTex(-1, false, 396) });
+  // the far leg, the body, the pale barred breast
+  const leg = (hip, kn, ft, g, far) => {
+    F.add({ mat: fm, prof: 'round', bw: 3, grp: g + 'thigh', shapes: [ell(hip, 5, 6.4), cap(hip, kn, 4.4, 3)], tex: ({ x, y }) => ((x + y * 2) % 5 === 0 ? -1 : 0) + (far ? -1 : 0) });
+    F.add({ mat: 'rocLeg', prof: 'round', bw: 1.2, grp: g + 'shank', shapes: [cap(kn, ft, 2.1, 1.8)], tex: ({ y }) => (y % 2 === 0 ? -1 : 0) + (far ? -1 : 0) });
+    const toes = pose === 'attack' ? [[5.4, -3], [6.6, .6], [5, 3.6], [-3, 2.4]] : [[5, -1.4], [6, 2], [3.6, 4.6], [-3.4, 2.6]];
+    const T0 = toes.map(([dx, dy]) => [ft[0] + dx, ft[1] + dy]);
+    const grip = () => { // the toes and their talons (drawn after anything they hold)
+      F.add({ mat: 'rocLeg', prof: 'round', bw: 1, grp: g + 'toes', shapes: T0.map(p => cap(ft, p, 1.5, 1.1)), tex: far ? DARK : null });
+      F.add({ mat: 'blackiron', prof: 'ridge', hs: .9, grp: g + 'talons', shapes: T0.map((p, i) => { const d = [p[0] - ft[0], p[1] - ft[1]], l = Math.hypot(d[0], d[1]) || 1, u = [d[0] / l, d[1] / l], cu = rot2(u, i === 3 ? -.9 : .9); return poly([[p[0] - cu[1] * .9, p[1] + cu[0] * .9], [p[0] + u[0] * 2.6 + cu[0] * 1.6, p[1] + u[1] * 2.6 + cu[1] * 1.6], [p[0] + cu[1] * .9, p[1] - cu[0] * .9]]); }), tex: far ? DARK : null });
+    };
+    if (far) grip();
+    return { T0, grip };
+  };
+  const kF = pose === 'attack' ? [55, 66] : [50, 68], fF = pose === 'attack' ? [60, 72] : [53.4, 75.4];
+  leg(W([47, 60]), W(kF), W(fF), 'legF', true);
+  const body = W([50, 52]);
+  F.add({ mat: fm, prof: 'round', bw: 6, hs: .8, grp: 'body', shapes: [rell(frame(body[0], body[1], -.62 + pitch), 0, 0, 17.4, 11.6)], tex: barTex(1.2, false, 397) });
+  const ch = W([57.4, 51.6]);
+  F.add({ mat: 'rimeFur', prof: 'round', bw: 4, grp: 'breast', shapes: [rell(frame(ch[0], ch[1], -.9 + pitch), 0, 0, 11, 7.2)], tex: ({ x, y }) => { const v = (y + Math.round(Math.sin(x * .7) * .8)) % 4; return v === 0 ? -1.4 : v === 2 && (x & 1) ? -1 : 0; } });
+  // the near leg thrown forward, the talon the cloak is caught on
+  const kN = pose === 'attack' ? [63, 60.4] : [61, 63.6], fN = pose === 'attack' ? [70, 61.4] : [66.6, 65.6];
+  const legN = leg(W([55, 60]), W(kN), W(fN), 'legN', false), talonsN = legN.T0;
+  // the Roc-Feather Cloak snagged on the front talon, streaming back in the downdraught
+  const cloak = relic && held ? relicArt(relic) : null;
+  if (cloak) {
+    const m = drawRelic(F, cloak, talonsN[1], pose === 'attack' ? 1.2 : pose === 'hurt' ? .6 : .86 + f * .08, .44, { center: [29.4, 9.4] });
+    if (m) A.relic = m([30, 30]);
+  } else F.add({ mat: 'rocFeather', prof: 'round', bw: .5, grp: 'snag', shapes: [cap(talonsN[0], [talonsN[0][0] - 1.6, talonsN[0][1] + 3], .6, .3)], tex: () => 1 });
+  legN.grip();
+  // the neck, hackles, head: a heavy brow, a fierce eye, the hooked beak (open to scream in the attack)
+  const nk0 = W([58, 44]), hc = W([68.4, 29]), ha = pitch * .6 + (pose === 'hurt' ? -.3 : 0), hf = frame(hc[0], hc[1], ha);
+  F.add({ mat: fm, prof: 'round', bw: 3.6, grp: 'neck', shapes: [cap(nk0, hf.P(-2, 2), 7, 5.4)], tex: barTex(.3, false, 398) });
+  F.add({ mat: fm, prof: 'ridge', hs: .8, grp: 'hackles', shapes: spikesC([[-4.6, -3.4, -1, -.5, 5.6, 1.6], [-5.6, .6, -1, -.1, 6, 1.7], [-5, 4.6, -1, .3, 5.4, 1.6], [-2.4, 7.4, -.9, .6, 4.4, 1.4]].map(([dx, dy, ux, uy, l, w]) => { const p = hf.P(dx, dy), d = rot2([ux, uy], ha); return [p[0], p[1], d[0], d[1], l, w]; })), tex: DARK });
+  F.add({ mat: fm, prof: 'round', bw: 3.4, grp: 'head', shapes: [rell(hf, 0, 0, 7.6, 6.4)], tex: ({ x, y, ny }) => (gT >= 1 && ny < -.6 ? { m: 'snow', dd: -1 } : (x + y) % 4 === 0 ? -1 : 0) });
+  F.add({ mat: 'claw', prof: 'round', bw: 1.6, grp: 'beak', shapes: [hf.poly([[4.4, -3.4], [9.4, -2.8], [12.6, -.4], [13.2, 3.6], [11.6, 5.8], [11, 2.8], [8.6, 2], [4.4, 2.4]])], tex: ({ x, y }) => { const p = hf.P(11.6, 3); return Math.hypot(x - p[0], y - p[1]) < 2.4 ? -2 : 0; } });
+  F.add({ mat: 'claw', prof: 'round', bw: 1, grp: 'jaw', shapes: [hf.poly([[4.8, 2.6 + gape * 1.4], [10.4, 3 + gape * 3.6], [9.4, 4.8 + gape * 3.8], [5, 4.4 + gape * 1.4]])], tex: () => -1 });
+  if (gape) F.add({ mat: 'dark', prof: 'flat', grp: 'gape', noShadow: true, shapes: [hf.poly([[5, 2.4], [10.6, 2.4], [10.2, 2.8 + gape * 3.2], [5, 2.6 + gape * 1.2]])] });
+  F.add({ mat: fm, prof: 'round', bw: 1.2, grp: 'brow', shapes: [hf.cap(.6, -3.6, 6.4, -2.8, 1.8, 1.3)], tex: () => -1 });
+  if (eye === 'shut') F.add({ mat: 'dark', prof: 'flat', grp: 'eye', noShadow: true, shapes: [hf.cap(2.8, -1.2, 5.8, -1, .5)] });
+  else { F.add({ mat: eyeM, prof: 'flat', grp: 'eye', noShadow: true, shapes: [rell(hf, 4.2, -1, 1.6, 1.3, 12)] }); F.add({ mat: 'dark', prof: 'flat', grp: 'pupil', noShadow: true, noOutline: true, shapes: [hf.circ(4.6, -1, .75)] }); }
+  // the near wing, up and back, over the body
+  const shN = W([49, 42]), wrN = W([31 - flap * 6, 22 + flap * 26]);
+  const wn = wing(shN, wrN, [[-.1, 20], [-.4, 20], [-.7, 19], [-1, 17.4], [-1.3, 15.6]], 'wingN', false);
+  // lightning along the pinions (more of it as it wakes), storm-cloud at the tips from the second Waking
+  bolt(wn.lead, 'boltN', 399); bolt(wf.lead, 'boltF', 400);
+  if (gT >= 1) bolt([[wn.tips[1], wn.tips[3]]], 'boltN2', 401);
+  if (gT >= 2) F.add({ mat: 'mist', prof: 'round', bw: 1.6, grp: 'cloud', noShadow: true, shapes: wn.tips.slice(0, 3).map((p, i) => circ(p, 2.6 - i * .4)).concat(wf.tips.slice(0, 2).map(p => circ(p, 2))), tex: ({ x, y }) => ((x + y) & 1 ? -1 : 0) });
+  A.head = hf.P(4, -1); A.mouth = hf.P(10, 2); A.center = W([52, 50]); A.weaponTip = talonsN[1];
+}
+// sparks jumping off the pinions
+const rocMotes = n => (t, a, gT) => { const c = a.center || [48, 44], out = []; for (let j = 0; j < n + (gT || 0) * 2; j++) { const ph = (t * (1.2 + hash(j, 2, 402)) + hash(j, 3, 402)) % 1; if (ph > .5) continue; out.push({ x: c[0] - 30 + hash(j, 1, 402) * 44, y: c[1] - 36 + hash(j, 4, 402) * 30, c: gT >= 3 ? [255, 252, 224] : [170, 210, 255], a: (1 - ph * 2) * .9 }); } return out; };
+
+Object.assign(FOE_ART, {
+  'thunder-roc': { name: 'The Thunder-Roc', kind: 'beast', w: 96, h: 96, foot: [52, 93], defaultTier: 'relic-bearer', relic: 'roc-feather-cloak', build: thunderRoc, motes: rocMotes(5) },
+});
+
+/* ---- MOTHER ANVIL (the Champion): Harrow's first forge-golem, an anvil the size of a cart on four iron legs: the face
+   on top polished by a thousand years of blows, the horn thrust forward for a head with a slit of fire under an iron
+   brow, Harrow's broken-ring mark on her flank, the Anvil Heart burning in a cage at her waist (its own ribs and heart,
+   from its recipe) and the Worldforge Hammer in her one great arm (from its recipe). Each piece is gone when it is
+   snapped off: an empty cage going cold, an empty fist. Quench (2): steam off her, her plate tempered blue in patches;
+   the Last Strike (3): the Heart white through the ribs, the cracks in her plate alight, the Hammer lifted high
+   (96x96, ground 93) ---- */
+function motherAnvil(F, st) {
+  const { pose, f, phase, broken, held } = st, A = st.anchors, P2 = phase >= 2, P3 = phase >= 3, idle = !pose || pose === 'idle', lie = pose === 'ko';
+  const hammerArt = relicArt('worldforge-hammer'), heartArt0 = relicArt('anvil-heart');
+  const hammerOn = held && !broken.includes('worldforge-hammer') && !!hammerArt, heartOn = held && !broken.includes('anvil-heart') && !!heartArt0;
+  const heartArt = heartOn && P3 ? Object.assign({}, heartArt0, { p: Object.assign({}, heartArt0.p, { core: 'radiant' }) }) : heartArt0;
+  let pitch = 0, bx = 0, by = idle ? f * .8 : lie ? 12 : 0, eye = lie ? 'shut' : 'open';
+  let hand = [60, 24], elbow = [53, 29], hamA = -2.3; // the hammer's direction, grip to head
+  if (P3) { hand = [59, 22]; elbow = [52, 28]; hamA = -2.12; }
+  if (pose === 'attack') { pitch = -.06; bx = 2; hand = [70, 35]; elbow = [60, 31]; hamA = .85; }
+  else if (pose === 'hurt') { pitch = .04; bx = -3; hand = [52, 21]; elbow = [47, 28]; hamA = -2.7; eye = 'shut'; }
+  else if (lie) { pitch = .07; hand = [66, 30]; elbow = [58, 31]; }
+  const piv = [26, 84], cp = Math.cos(pitch), sp = Math.sin(pitch);
+  const W = p => { const dx = p[0] - piv[0], dy = p[1] - piv[1]; return [piv[0] + dx * cp - dy * sp + bx, piv[1] + dx * sp + dy * cp + by + 7]; };
+  const plateTex = (seed, far) => ({ x, y }) => {
+    let r;
+    if (P3 && Math.abs(vnoise(x * .15, y * .15, seed) - .5) < .026) r = { m: 'ember', dd: 0 };
+    else if (P2 && vnoise(x * .12, y * .12, seed + 5) > .6) r = { m: 'temperBlue', dd: hash(x, y, seed) < .1 ? -2 : -1 };
+    else r = { m: 'blackiron', dd: (hash(x, y, seed) < .06 ? -1 : 0) + (vnoise(x * .4, y * .4, seed + 2) > .76 ? 1 : 0) };
+    if (far) r.dd -= 1;
+    return r;
+  };
+  const iron = (shapes, g, seed, far, o = {}) => F.add(Object.assign({ mat: 'blackiron', prof: 'round', bw: 2.6, grp: g, shapes, tex: plateTex(seed, far) }, o));
+  const rivets = (pts, g) => F.add({ mat: 'bronze', prof: 'round', bw: .6, grp: g, noShadow: true, shapes: pts.map(p => circ(p, .95)) });
+  // a leg: a plated thigh, a knee-cop, a shin and a flared anvil-foot with three claws
+  const leg = (hip, kn, an, g, far) => {
+    const [h, k2, a] = lie ? [W(hip), [kn[0] + (kn[0] > 46 ? 6 : -6), 88.6], [an[0] + (an[0] > 46 ? 12 : -12), 89]] : [W(hip), W(kn), W(an)];
+    iron([cap(h, k2, 4.8, 4.2)], g + 'th', 411, far); iron([circ(k2, 3.6)], g + 'kn', 412, far, { bw: 2 });
+    iron([cap(k2, a, 4.2, 3.4)], g + 'sh', 413, far);
+    iron([poly([[a[0] - 5.4, a[1] + 3.4], [a[0] - 3.4, a[1] - 1.4], [a[0] + 3.4, a[1] - 1.4], [a[0] + 5.8, a[1] + 3.4]])], g + 'ft', 414, far, { bw: 1.4 });
+    F.add({ mat: 'blackiron', prof: 'ridge', hs: .9, grp: g + 'claws', shapes: spikesC([[a[0] + 5, a[1] + 2.6, 1, .3, 2.6, 1], [a[0] + 1.4, a[1] + 3, .4, 1, 1.6, .9], [a[0] - 4.6, a[1] + 2.6, -1, .3, 2, .9]]), tex: far ? DARK : null });
+  };
+  const front = pose === 'attack' ? [[62, 64], [67, 71.4], [70, 78]] : [[61, 64], [64.6, 73.4], [63, 81.8]];
+  const frontN = pose === 'attack' ? [[68, 66], [74, 72.4], [77, 78.8]] : [[68, 66], [71.6, 74.4], [70, 82]];
+  leg([27, 64], [22.4, 73.4], [24, 81.8], 'legBF', true); leg(front[0], front[1], front[2], 'legFF', true);
+  // steam off her from the Quench on
+  const wisp = (pts, r) => chainC(pts.map(([x, y], i) => [x + (f && i ? 1 : 0), y - (f ? 1 : 0)]), r);
+  if (P2 && !lie) F.add({ mat: 'mist', prof: 'flat', grp: 'steamlow', noShadow: true, noOutline: true, shapes: [...wisp([[16, 86], [13, 80], [16, 74], [13, 68]], [1.8, 1.6, 1.2, .7]), ...wisp([[78, 86], [81, 80], [78, 75], [80, 70]], [1.8, 1.5, 1.1, .6])], tex: ({ x, y }) => ((x + y) & 1 ? -1.4 : 0) });
+  // the body: the foot of the anvil, the waist with its cage, the face block with the heel overhang, the horn
+  iron([poly([[16, 57.6], [76, 57.6], [80.6, 67.4], [11.4, 67.4]].map(W))], 'base', 415, false, { bw: 3 });
+  iron([poly([[15.4, 43.4], [31, 43.4], [31, 58], [13, 58], [17.4, 51]].map(W))], 'heel', 416, false, { bw: 3 });
+  iron([poly([[61, 43.4], [71.4, 43.4], [75.4, 51], [78.4, 58], [61, 58]].map(W))], 'waistN', 417, false, { bw: 3 });
+  // the cage: dark inside, the Anvil Heart in it (its own ribs and heart), two great bars of hers across it
+  F.add({ mat: 'char', prof: 'round', bw: 3, hs: .6, grp: 'cavity', shapes: [poly([[30, 43.6], [62, 43.6], [62, 58], [30, 58]].map(W))], tex: ({ x, y }) => (heartOn ? (hash(x, y, 418) < .2 ? { m: 'ember', dd: -2.6 } : -1) : hash(x, y, 418) < .06 ? { m: 'ember', dd: -3 } : -2) });
+  if (heartOn) {
+    const m = drawItem(F, heartArt, W([46, 51.6]), pitch, .56, { center: [32, 46], drop: ['chain', 'bail'] });
+    A.heart = m([32.2, 43.4]);
+  }
+  iron([cap(W([35.4, 44]), W([34, 57.6]), 1.8, 1.8), cap(W([56.6, 44]), W([58, 57.6]), 1.8, 1.8)], 'bars', 419, false, { bw: 1.6 });
+  iron([poly([[6, 31.4], [70, 31.4], [70, 44.4], [16, 44.4], [16, 40.4], [8.6, 39.6]].map(W))], 'face', 420, false, { bw: 3.4, hs: .8 });
+  F.add({ mat: 'steel', prof: 'round', bw: 1.2, grp: 'faceplate', shapes: [cap(W([7, 32]), W([69.4, 32]), 1.3)], tex: ({ x }) => (x % 7 === 0 ? -1 : 0) });
+  rivets([[20, 41.6], [28, 41.6], [52, 41.6], [60, 41.6], [22, 64.4], [36, 64.4], [56, 64.4], [70, 64.4]].map(W), 'rivets');
+  // Harrow's mark, the broken ring, on her flank (the same mark as on the Hammer)
+  const mk = W([42.6, 37.6]), mS = []; for (let i = 0; i < 9; i++) { const a = .5 + i / 9 * Math.PI * 1.7, b = .5 + (i + 1) / 9 * Math.PI * 1.7; mS.push(cap([mk[0] + Math.cos(a) * 3, mk[1] + Math.sin(a) * 3], [mk[0] + Math.cos(b) * 3, mk[1] + Math.sin(b) * 3], .55)); }
+  F.add({ mat: 'gold', prof: 'flat', grp: 'mark', noShadow: true, shapes: mS });
+  // the horn, her head: an iron brow, one slit of fire for an eye, a seam of a mouth (glowing when she strikes)
+  iron([poly([[68.6, 31.6], [78, 33], [86, 35.8], [91.4, 39], [86.6, 40.8], [78, 42.8], [70, 45.4]].map(W))], 'horn', 421, false, { bw: 3 });
+  F.add({ mat: 'steel', prof: 'round', bw: .8, grp: 'hornplate', shapes: [cap(W([69, 32.2]), W([84, 35.4]), .9, .6)] });
+  iron([cap(W([68.6, 34.6]), W([76.6, 35.4]), 1.6, 1.1)], 'brow', 422, false, { bw: 1.2, tex: () => -1 });
+  const eM = P3 ? 'heat' : 'ember';
+  if (eye === 'shut') F.add({ mat: 'dark', prof: 'flat', grp: 'eye', noShadow: true, shapes: [cap(W([70.6, 37.4]), W([74.6, 37.8]), .5)] });
+  else F.add({ mat: eM === 'heat' ? 'radiant' : 'ember', prof: 'flat', grp: 'eye', noShadow: true, shapes: [cap(W([70.2, 37.3]), W([75, 37.9]), 1.1)] });
+  F.add({ mat: pose === 'attack' ? 'ember' : 'dark', prof: 'flat', grp: 'mouth', noShadow: true, shapes: [cap(W([71.6, 41.6]), W([83.4, 39.6]), pose === 'attack' ? .8 : .45)] });
+  leg([34, 66], [29.4, 74.4], [31, 82], 'legBN', false); leg(frontN[0], frontN[1], frontN[2], 'legFN', false);
+  // the arm: a great pauldron on the face block, the arm in plates, the Worldforge Hammer in the fist
+  const sh = W([45.4, 36.4]), el = W(elbow), ha = W(hand);
+  iron([cap(sh, el, 4.2, 3.8)], 'upperarm', 423); iron([circ(el, 3.4)], 'elbow', 424, false, { bw: 2 });
+  iron([cap(el, ha, 3.8, 3.2)], 'forearm', 425);
+  if (hammerOn) {
+    const a = lie ? -.08 : hamA + pitch, at = lie ? [58, 88] : ha;
+    const m = drawItem(F, hammerArt, at, a + Math.PI / 4, .56, { center: cardPt(hammerArt, 12) });
+    A.hammer = m(cardPt(hammerArt, 52)); A.weaponTip = A.hammer;
+  }
+  iron([ell(sh, 6.4, 5.4)], 'pauldron', 426, false, { bw: 3.4 });
+  rivets([[-3.6, -2.4], [0, -3.8], [3.6, -2.4]].map(([dx, dy]) => [sh[0] + dx, sh[1] + dy]), 'pauldronr');
+  const fa = Math.atan2(ha[1] - el[1], ha[0] - el[0]), ff = frame(ha[0], ha[1], fa);
+  iron([ff.poly([[-1.4, -4], [4.6, -4.4], [6, -2.8], [6, 2.8], [4.6, 4.4], [-1.4, 4]])], 'fist', 427, false, { bw: 2 });
+  F.add({ mat: 'bronze', prof: 'round', bw: .8, grp: 'knuckles', shapes: [ff.cap(4.8, -3.2, 4.8, 3.2, .9)] });
+  if (P2 && !lie) F.add({ mat: 'mist', prof: 'flat', grp: 'steamhigh', noShadow: true, noOutline: true, shapes: [...wisp([W([22, 30]), W([19, 24]), W([22, 18]), W([19, 13])], [1.7, 1.4, 1.1, .6]), ...wisp([W([36, 30]), W([39, 25]), W([36, 20])], [1.5, 1.2, .7])], tex: ({ x, y }) => ((x + y) & 1 ? -1.4 : 0) });
+  A.head = W([73, 37.6]); A.mouth = W([78, 41]); A.center = W([46, 50]);
+  A.relics = [A.hammer, A.heart].filter(Boolean); A.relic = A.relics[0] || null;
+}
+// sparks off the anvil and the Heart; steam from the Quench; more of both as she wakes
+const anvilMotes = (t, a, gT, phase = 1) => {
+  const out = [], c = a.heart || a.center || [46, 50], n = 3 + phase * 2;
+  for (let j = 0; j < n; j++) { const ph = (t * (.7 + hash(j, 2, 428) * .6) + hash(j, 3, 428)) % 1; out.push({ x: c[0] - 10 + hash(j, 1, 428) * 20 + Math.sin(t * 2 + j) * 3, y: c[1] - ph * 40, c: phase >= 3 && j % 2 ? [255, 250, 220] : [255, 170, 70], a: (1 - ph) * .9 }); }
+  if (phase >= 2) for (let j = 0; j < 4; j++) { const ph = (t * .3 + hash(j, 5, 428)) % 1; out.push({ x: 20 + hash(j, 6, 428) * 60, y: 88 - ph * 60, c: [220, 226, 232], a: Math.sin(ph * Math.PI) * .45 }); }
+  return out;
+};
+
+Object.assign(FOE_ART, {
+  'mother-anvil': { name: 'Mother Anvil', kind: 'beast', w: 96, h: 96, foot: [48, 93], defaultTier: 'champion', relic: 'worldforge-hammer', relics: ['worldforge-hammer', 'anvil-heart'], phases: 3, build: motherAnvil, motes: anvilMotes },
+});
+
+/* ---- THE RIME-ABBOT (the Champion): Brother Aurel, who went down to listen to Hush and did not come up. A tall
+   frozen abbot standing in the ice to his knees, facing you: a cope rimed stiff over a drowned habit, a beard of
+   icicles, the Hushweave Cowl over his head (from its recipe, his face in its shadow) and the Rime Crozier frozen to
+   his hand (from its recipe, the cold light in its curl). Each piece is gone when it is snapped off: his bare frozen
+   head, the tonsure white with frost; a jag of ice in his fist where the Crozier broke. Vespers (1): the Crozier's
+   light; Compline (2): he sings, the ice climbing his cope; Hush (3): violet light up through the ice from what
+   sleeps under it, in his eyes and in the cracks (96x96, ground 93) ---- */
+function rimeAbbot(F, st) {
+  const { pose, f, phase, broken, held } = st, A = st.anchors, P2 = phase >= 2, P3 = phase >= 3, idle = !pose || pose === 'idle', lie = pose === 'ko';
+  const crozArt = relicArt('rime-crozier'), cowlArt = relicArt('hushweave-cowl');
+  const crozOn = held && !broken.includes('rime-crozier') && !!crozArt, cowlOn = held && !broken.includes('hushweave-cowl') && !!cowlArt;
+  const eyeM = P3 ? 'hush' : 'frost', skinM = 'drownedSkin';
+  let lean = 0, by = idle ? f * .6 : 0, eye = 'open', sing = P2 ? 1 : 0, crozA = 0, hand = [71.4, 57], farHand = [27.4, 63.4];
+  if (pose === 'attack') { lean = .1; crozA = .44; hand = [70, 49]; farHand = [24, 54]; sing = 1.4; }
+  else if (pose === 'hurt') { lean = -.1; crozA = -.22; hand = [69, 58]; farHand = [22, 58]; eye = 'shut'; sing = .8; }
+  else if (lie) { by = 18; eye = 'shut'; sing = 0; }
+  // lean the figure about its feet (the hem stays frozen in the ice)
+  const L = p => { const k2 = clamp((91 - p[1]) / 60, 0, 1); return [p[0] + lean * (91 - p[1]) * .5 * k2, p[1] + by * (lie ? clamp((93 - p[1]) / 40, 0, 1) : 1)]; };
+  const iceT = seed => ({ x, y, ny }) => (P3 && Math.abs(vnoise(x * .25, y * .25, seed) - .5) < .04 ? { m: 'hush', dd: -1 } : ny < -.3 ? 1 : hash(x, y, seed) < .1 ? -1 : 0);
+  const clothT = (seed, rime) => ({ x, y, ny }) => {
+    if (P3 && y > 84 && hash(x, y, seed) < (y - 84) * .08) return { m: 'hush', dd: -2.4 };
+    if ((rime || P2) && ny < -.35 && vnoise(x * .3, y * .3, seed) > (P2 ? .3 : .5)) return { m: 'rime', dd: 0 };
+    if (hash(x, y, seed) < .02) return { m: 'rime', dd: -1 };
+    return Math.sin((x + vnoise(x * .05, y * .08, seed) * 8) * .9) > .8 ? -1 : 0;
+  };
+  const icicles = (list, g) => F.add({ mat: 'ice', prof: 'ridge', hs: .9, grp: g, shapes: spikesC(list.map(([p, len, w], i) => [p[0], p[1], (hash(i, 3, 431) - .5) * .15, 1, len, w || .9])) });
+  // the ice he stands in: a sheet with shards grown up round his hem (cracked violet from under it at Hush)
+  F.add({ mat: 'ice', prof: 'flat', grp: 'sheet', noShadow: true, noOutline: true, shapes: [ell([46, 91.6], 30, 2.6)], tex: ({ x }) => (P3 && x % 4 === 0 ? { m: 'hush', dd: -1 } : x % 5 === 0 ? 1 : 0) });
+  // the crozier planted behind his near hand when it rests; drawn first so the hand grips it
+  const croz = () => {
+    if (!crozOn) return;
+    const a = lie ? 1.34 : crozA, at = lie ? [34, 90] : L(hand), g = lie ? 20 : 34;
+    const m = drawItem(F, crozArt, at, a - Math.PI / 4, 1.1, { center: cardPt(crozArt, g) });
+    A.crozier = m(cardPt(crozArt, 60, -8)); A.weaponTip = A.crozier;
+  };
+  if (lie) croz();
+  // the robe: a drowned habit under a cope, the hem frozen into the ice
+  const robe = lie ? [[26, 93], [30, 76], [36, 66], [56, 66], [62, 76], [68, 93]] : [[33, 40], [59, 40], [63.4, 60], [68.4, 91], [23.6, 91], [28.4, 60]];
+  F.add({ mat: 'drowned', prof: 'round', bw: 6, hs: .8, grp: 'habit', shapes: [poly(robe.map(L))], tex: clothT(432, false) });
+  // the sleeves and the far hand (the near hand after the cope, on the crozier)
+  const sleeve = (sh, cu, g) => F.add({ mat: 'clothSlate', prof: 'round', bw: 3, grp: g, shapes: [cap(L(sh), L(cu), 4, 5.4)], tex: clothT(433, true) });
+  const hnd = (h, dir, g, spread = 1) => { const Sh = [circ(h, 2)]; for (const [a, l] of [[-.5 * spread, 4], [-.15 * spread, 4.6], [.2 * spread, 4.3], [.55 * spread, 3.4]]) { const d = rot2(dir, a); Sh.push(cap(h, [h[0] + d[0] * l, h[1] + d[1] * l], .9, .55)); } F.add({ mat: skinM, prof: 'round', bw: 1, grp: g, shapes: Sh, tex: ({ x, y }) => (hash(x, y, 434) < .12 ? -1 : 0) }); };
+  if (!lie) {
+    sleeve([33, 44], [farHand[0] + 1, farHand[1] - 3], 'sleeveF');
+    hnd(L(farHand), pose === 'attack' ? [-.4, -1] : [-.1, 1], 'handF', pose === 'attack' ? 1.3 : 1);
+  }
+  // the cope: two stiff panels over the shoulders, silver orphreys down the front edges, a morse at the chest
+  const pan = sd => (lie ? [[46 + sd * 2, 66], [46 + sd * 16, 68], [46 + sd * 21, 86], [46 + sd * 8, 86]] : [[46 + sd * 16, 38], [46 + sd * 2, 41], [46 + sd * 5, 66], [46 + sd * 17, 77], [46 + sd * 22, 64], [46 + sd * 20, 46]]).map(L);
+  for (const sd of [-1, 1]) F.add({ mat: 'clothSlate', prof: 'round', bw: 4, grp: 'cope' + sd, shapes: [poly(pan(sd))], tex: clothT(435 + sd, true) });
+  if (!lie) {
+    F.add({ mat: 'silver', prof: 'round', bw: 1.2, grp: 'orphrey', shapes: [-1, 1].map(sd => cap(L([46 + sd * 2.4, 41.4]), L([46 + sd * 5.2, 66]), 1.4)), tex: ({ y }) => (y % 4 === 0 ? -1.5 : 0) });
+    icicles([[L([29.4, 76]), 4.4], [L([33, 74]), 3], [L([62.6, 76]), 4.8], [L([59, 74]), 3.2], [L([25, 65]), 3], [L([67, 65]), 3.4]], 'copeice');
+  }
+  // the near sleeve and the hand on the crozier
+  if (!lie) { croz(); sleeve([59, 44], [hand[0] - 1.6, hand[1] - 1.4], 'sleeveN'); }
+  const hN = L(hand);
+  if (!lie) {
+    if (crozOn) { F.add({ mat: skinM, prof: 'round', bw: 1.2, grp: 'fist', shapes: [ell(hN, 2.6, 3.2), cap([hN[0] - 2.2, hN[1] - 1.6], [hN[0] - 2.2, hN[1] + 2], 1)], tex: ({ x, y }) => ((x + y) % 3 === 0 ? -1 : 0) }); F.add({ mat: 'ice', prof: 'round', bw: 1, grp: 'frozenhand', shapes: [cap([hN[0] - 2, hN[1] + 2.4], [hN[0] + 2, hN[1] + 3], 1.2)] }); }
+    else { // the Crozier broke off at his fist: a jag of ice stuck in it
+      F.add({ mat: skinM, prof: 'round', bw: 1.2, grp: 'fist', shapes: [ell(hN, 2.6, 3.2)] });
+      F.add({ mat: 'ice', prof: 'ridge', hs: .9, grp: 'stump', shapes: [poly([[hN[0] - 1.4, hN[1] - 2], [hN[0] - .4, hN[1] - 8.4], [hN[0] + .8, hN[1] - 5], [hN[0] + 1.8, hN[1] - 7.4], [hN[0] + 1.6, hN[1] - 2]]), poly([[hN[0] - 1.2, hN[1] + 2.4], [hN[0] + .4, hN[1] + 7], [hN[0] + 1.4, hN[1] + 2.4]])] });
+    }
+  }
+  // the head: the Hushweave Cowl with his face in its shadow, or his bare frozen head once it is snapped off
+  const hc = L(lie ? [48, 60] : [46, 29.6]), tilt = lie ? .5 : pose === 'hurt' ? -.12 : pose === 'attack' ? .08 : 0;
+  if (cowlOn) {
+    const m = drawItem(F, cowlArt, hc, tilt, .5, { center: [32, 36] });
+    A.cowl = m([32, 20]);
+  } else {
+    F.add({ mat: skinM, prof: 'round', bw: 3.4, grp: 'skull', shapes: [rell(frame(hc[0], hc[1] - 1.4, tilt), 0, 0, 7, 8.6)], tex: ({ x, y }) => (hash(x, y, 436) < .1 ? -1 : 0) });
+    const hf0 = frame(hc[0], hc[1], tilt);
+    F.add({ mat: 'hairSilver', prof: 'round', bw: 1.6, grp: 'tonsure', shapes: [hf0.poly([[-7.4, -2.6], [-5.4, -6.6], [-2, -8], [2, -8], [5.4, -6.6], [7.4, -2.6], [6.6, 1.6], [4.6, -3.6], [0, -5.4], [-4.6, -3.6], [-6.6, 1.6]])], tex: ({ x, y }) => ((x + y) % 2 === 0 ? { m: 'rime', dd: 0 } : 0) });
+    F.add({ mat: 'rime', prof: 'round', bw: 1, grp: 'crownrime', shapes: [rell(hf0, 0, -8.6, 3.4, 1.4)] });
+    icicles([[hf0.P(-6.6, 1.4), 3], [hf0.P(-7, -1), 2.4], [hf0.P(6.6, 1.4), 3.2], [hf0.P(7, -1), 2.2]], 'hairice');
+    F.add({ mat: skinM, prof: 'round', bw: 1, grp: 'ears', shapes: [rell(hf0, -7.4, .6, 1.4, 2.4), rell(hf0, 7.4, .6, 1.4, 2.4)], tex: () => -1 });
+  }
+  // the face: blue-white, the brows heavy with frost, eyes of cold light, the mouth open when he sings
+  const hf = frame(hc[0], hc[1], tilt);
+  F.add({ mat: skinM, prof: 'round', bw: 2.4, grp: 'face', shapes: [rell(hf, 0, .4, 5.6, 6.6)], tex: ({ x, y }) => (hash(x, y, 437) < .12 ? -1 : 0) });
+  F.add({ mat: 'rime', prof: 'round', bw: .8, grp: 'brows', shapes: [hf.cap(-4.6, -2.8, -1, -2, .9, .7), hf.cap(4.6, -2.8, 1, -2, .9, .7)] });
+  F.add({ mat: 'dark', prof: 'flat', grp: 'sockets', noShadow: true, shapes: [rell(hf, -2.6, -.6, 1.6, 1.2, 10), rell(hf, 2.6, -.6, 1.6, 1.2, 10)] });
+  if (eye !== 'shut') F.add({ mat: eyeM, prof: 'flat', grp: 'eyes', noShadow: true, noOutline: true, shapes: [hf.circ(-2.4, -.6, .8), hf.circ(2.4, -.6, .8)] });
+  F.add({ mat: skinM, prof: 'round', bw: .8, grp: 'nose', shapes: [hf.cap(0, -1, 0, 2.4, .8, 1)], tex: () => -1 });
+  F.add({ mat: 'dark', prof: 'flat', grp: 'mouth', noShadow: true, shapes: [rell(hf, 0, 4.4, 1.4 + sing * .4, .5 + sing * 1.1, 12)] });
+  // the beard: icicles hanging from his chin over the morse, longer as the ice climbs him
+  const bl = P2 ? 1.25 : 1;
+  icicles([[-3.6, 8], [-1.8, 12], [0, 15], [1.8, 11], [3.6, 7.6]].map(([dx, l]) => [hf.P(dx, 5.6 + Math.abs(dx) * .3), l * bl * (lie ? .5 : 1), .75]), 'beard');
+  if (!lie) {
+    const mo = L([46, 46.6]);
+    F.add({ mat: 'silver', prof: 'round', bw: 1.6, grp: 'morse', shapes: [circ(mo, 3)] });
+    F.add({ mat: 'sapphire', prof: 'round', bw: 1.4, grp: 'morsegem', noShadow: true, shapes: [circ(mo, 1.5)] });
+  }
+  if (sing) { // the office he sings, going out of him as rings of cold
+    const m0 = hf.P(0, 6.4), n = pose === 'attack' ? 3 : 2;
+    F.add({ mat: P3 ? 'hush' : 'frost', prof: 'flat', grp: 'note', noShadow: true, noOutline: true, shapes: Array.from({ length: n }, (_, i) => { const c = [m0[0] + 11 + i * 4.4, m0[1] - 2 - i * 1.4], r = 2 + i * 1.3; return poly([[c[0], c[1] - r], [c[0] + 1.1, c[1] - r * .5], [c[0] + 1.3, c[1]], [c[0] + 1.1, c[1] + r * .5], [c[0], c[1] + r], [c[0] + .3, c[1]]]); }), tex: () => -1 });
+  }
+  if (!lie) {
+    // shards of ice grown up round the hem
+    F.add({ mat: 'ice', prof: 'ridge', hs: .9, grp: 'hemshards', shapes: spikesC([[25, 91.6, -.3, -1, 7.6, 2], [30, 92, .1, -1, 5, 1.8], [37, 92.4, -.2, -1, 4, 1.6], [56, 92.4, .2, -1, 4.4, 1.6], [62.4, 92, -.1, -1, 5.6, 1.8], [67.6, 91.6, .3, -1, 8, 2.1]]), tex: iceT(438) });
+  } else hnd([72, 88], [1, .1], 'handN', 1.2);
+  A.head = hf.P(0, -1); A.mouth = hf.P(0, 4.4); A.center = L(lie ? [46, 78] : [46, 56]);
+  A.relics = [A.crozier, A.cowl].filter(Boolean); A.relic = A.relics[0] || null;
+}
+// snow falling round him; the drowned choir's cold notes rising at Compline; violet motes up out of the ice at Hush
+const abbotMotes = (t, a, gT, phase = 1) => {
+  const out = [];
+  for (let j = 0; j < 6; j++) { const ph = (t * (.12 + hash(j, 2, 439) * .1) + hash(j, 3, 439)) % 1; out.push({ x: 10 + hash(j, 1, 439) * 76 + Math.sin(t + j) * 2, y: ph * 90, c: [236, 244, 255], a: .7 }); }
+  if (phase >= 2) for (let j = 0; j < 4; j++) { const ph = (t * .25 + hash(j, 5, 439)) % 1; out.push({ x: 18 + hash(j, 6, 439) * 60, y: 86 - ph * 70, c: [170, 220, 255], a: Math.sin(ph * Math.PI) * .8 }); }
+  if (phase >= 3) for (let j = 0; j < 6; j++) { const ph = (t * .4 + hash(j, 7, 439)) % 1; out.push({ x: 20 + hash(j, 8, 439) * 56, y: 92 - ph * 40, c: [170, 160, 255], a: (1 - ph) * .9 }); }
+  return out;
+};
+
+Object.assign(FOE_ART, {
+  'rime-abbot': { name: 'The Rime-Abbot', kind: 'beast', w: 96, h: 96, foot: [46, 93], defaultTier: 'champion', relic: 'rime-crozier', relics: ['rime-crozier', 'hushweave-cowl'], phases: 3, build: rimeAbbot, motes: abbotMotes },
+});
 
 // any art key data/foes.js names that has no art of its own yet draws a stand-in of its kind, so a battle or a Ladder
 // poster never meets "unknown foe" (test/art-keys.test.mjs lists every stand-in as a failure)

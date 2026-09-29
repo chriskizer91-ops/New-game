@@ -14,12 +14,13 @@
 // keyIcon(kind, { size=12, dim }) -> ImageData  kinds: KEY_ICON_KEYS ('power' = a relic's map power, then the
 //   Domain ids); an unknown kind draws a plain token
 // markIcon(ok, { size=12 }) -> ImageData        a green check (ok) or a red cross
-// statusIcon draws a neutral token for a status key it has no icon for.
+// statusIcon draws a neutral token for a status key it has no icon for. (M5 adds burrowed, swallowed, charmed.)
 // M4 (Hilda's forge, the Sunscorch locks):
 // gemIcon(id, { size=12 }) -> ImageData       ids: GEM_ICON_KEYS (data/gems.js); an unknown id draws a plain stone
 //   in its GEMS colour, or grey
 // materialIcon(id, { size=12 }) -> ImageData  ids: MATERIAL_ICON_KEYS ('scrap', 'silver', 'embers')
-// lockIcon also draws the four Sunscorch locks: 'dune-glass', 'mirage', 'quicksand', 'vault-seal' (M5: and 'chasm', 'ice', 'rune-seal', 'drift'). Their keys are
+// lockIcon also draws the four Sunscorch locks: 'dune-glass', 'mirage', 'quicksand', 'vault-seal' (M5: and 'chasm', 'ice', 'rune-seal', 'drift';
+// gemIcon: 'frost-opal'). Their keys are
 // relic powers ('power') and the Craft, Knowledge and Survival Domains, which keyIcon already draws.
 import { MAT, hx, mix } from './forge.js';
 import { lru } from './cache.js';
@@ -138,6 +139,10 @@ const ST = {
   exposed: C => { fillPoly(C, [[1.6, 1.4], [10.4, 1.4], [10.2, 6], [6, 11.2], [1.8, 6]], col('#8290a8')); fillPoly(C, [[6.6, 1.4], [8.8, 1.4], [7.2, 4], [8.4, 6.2], [6.4, 8.4], [5.6, 6.2], [6.6, 4.4], [5.4, 2.8]], raw('#0b0910')); fillPoly(C, [[9.4, 7.4], [11.4, 7], [11, 9.4]], col('#8290a8')); },
   provoked: C => { const c = col('#e8503a'); stroke(C, [[2.2, 4.6], [4.2, 4], [4.6, 2]], .6, c); stroke(C, [[7.4, 2], [7.8, 4], [9.8, 4.6]], .6, c); stroke(C, [[2.2, 7.4], [4.2, 8], [4.6, 10]], .6, c); stroke(C, [[9.8, 7.4], [7.8, 8], [7.4, 10]], .6, c); },
   rooted: C => { const c = col('#8a5428'); stroke(C, [[6, 1.4], [6, 6.6]], .8, c); stroke(C, [[6, 6], [3, 8.4], [1.4, 11]], .55, c); stroke(C, [[6, 6], [9, 8.4], [10.6, 11]], .55, c); stroke(C, [[6, 6.4], [6, 11.2]], .55, c); stroke(C, [[4.2, 8.6], [4, 11]], .4, c); stroke(C, [[7.8, 8.6], [8.2, 11]], .4, c); fillPoly(C, [[6, 2.6], [9.2, .8], [8.6, 3.2]], col('#5aa83a')); fillPoly(C, [[6, 3.2], [2.8, 1.6], [3.6, 3.8]], col('#46903a')); },
+  // M5: gone under the ground (a mound and its hole, the way down), held in something's jaws, beguiled (a heart in a swirl)
+  burrowed: C => { fillPoly(C, [[.6, 11.2], [2.4, 7.6], [6, 6.2], [9.6, 7.6], [11.4, 11.2]], col('#b08a58')); fillPoly(C, [[3.6, 9], [6, 7.8], [8.4, 9], [6, 10.2]], raw('#2a1a0e')); stroke(C, [[6, .8], [6, 4]], .55, col('#e8d8b0')); fillPoly(C, [[3.9, 3.4], [8.1, 3.4], [6, 6.2]], col('#e8d8b0')); px(C, 2.2, 6, raw('#d8c090')); px(C, 9.8, 5.6, raw('#d8c090')); },
+  swallowed: C => { fillPoly(C, [[.8, 6], [2.6, 2.4], [6, 1.2], [9.4, 2.4], [11.2, 6], [9.4, 9.6], [6, 10.8], [2.6, 9.6]], col('#a8403a')); fillPoly(C, [[2.4, 6], [3.6, 3.8], [6, 3.2], [8.4, 3.8], [9.6, 6], [8.4, 8.2], [6, 8.8], [3.6, 8.2]], raw('#2a0a10')); for (const x of [3.8, 6, 8.2]) { fillPoly(C, [[x - .9, 3.6], [x + .9, 3.6], [x, 5.4]], raw('#f4ecd8')); fillPoly(C, [[x - .9, 8.4], [x + .9, 8.4], [x, 6.6]], raw('#f4ecd8')); } },
+  charmed: C => { const pts = []; for (let k = 0; k <= 20; k++) { const a = k * .55, r = 1 + k * .22; pts.push([6 + Math.cos(a) * r, 6.2 + Math.sin(a) * r * .9]); } stroke(C, pts, .35, raw('#f8b8dc')); fillDisc(C, 4.7, 5.2, 1.9, col('#f06aa8')); fillDisc(C, 7.3, 5.2, 1.9, col('#f06aa8')); fillPoly(C, [[2.9, 5.8], [9.1, 5.8], [6, 9.6]], col('#f06aa8')); px(C, 4.2, 4.4, raw('#ffe0f0')); },
 };
 export const STATUS_KEYS = Object.keys(ST);
 
@@ -255,7 +260,7 @@ const LK = {
     for (const [a, b] of [[[2.4, 2.8], [4, 4.6]], [[9.4, 8.6], [8, 7.2]]]) stroke(C, [a, b], .32, raw('#6a5a52'));
     fillDisc(C, 6, 4.9, 1.35, raw('#ff8a2a')); fillPoly(C, [[5.2, 5.6], [6.8, 5.6], [7.2, 8.6], [4.8, 8.6]], raw('#ff8a2a')); px(C, 5.6, 4.4, raw('#fff0b4'));
   },
-  // M5: the Ironspire locks (first drafts from the M5 scaffold; P6 may redraw them)
+  // M5: the Ironspire locks: a chasm between two cliffs, a wall of ice, the dwarves' rune-seal (the rune alight), a snow drift
   chasm: C => {
     fillPoly(C, [[.4, 11.4], [.8, 3.6], [3, 2.4], [4.6, 4.2], [4.2, 11.4]], col('#6a6470'));
     fillPoly(C, [[7.6, 11.4], [7.2, 4.6], [9, 2.8], [11.2, 3.8], [11.6, 11.4]], col('#6a6470'));
@@ -269,8 +274,8 @@ const LK = {
   },
   'rune-seal': C => {
     fillDisc(C, 6, 6, 5.3, col('#5a5a64')); fillDisc(C, 6, 6, 4.1, col('#3a3a44'));
-    stroke(C, [[6, 2.6], [6, 9.4]], .45, raw('#b0b8c8')); stroke(C, [[6, 4], [8.2, 6], [6, 8]], .4, raw('#b0b8c8')); stroke(C, [[6, 6], [3.8, 4.2]], .4, raw('#b0b8c8'));
-    px(C, 4.2, 3.2, raw('#e4e8f4'));
+    stroke(C, [[6, 2.6], [6, 9.4]], .45, raw('#ffb04a')); stroke(C, [[6, 4], [8.2, 6], [6, 8]], .4, raw('#ffb04a')); stroke(C, [[6, 6], [3.8, 4.2]], .4, raw('#ffb04a'));
+    px(C, 6, 5.6, raw('#fff0b4')); px(C, 4.2, 3.2, raw('#e4e8f4'));
   },
   drift: C => {
     fillPoly(C, [[.4, 11.2], [1.6, 7.4], [4, 5.4], [7, 4.8], [9.6, 6.2], [11.6, 11.2]], col('#e8f2fc'));
@@ -360,8 +365,13 @@ const GEM_IC = {
   'moss-agate': C => { fillDisc(C, 6, 6.4, 4.8, col('#4a8a48')); stroke(C, [[3, 9], [4.6, 6.8], [4, 4.6]], .38, raw('#1e3a1c')); stroke(C, [[4.6, 6.8], [7, 6], [8.6, 7.8]], .34, raw('#1e3a1c')); stroke(C, [[7, 6], [7.6, 3.8]], .3, raw('#1e3a1c')); px(C, 4, 3.6, raw('#dcf4c8')); },
   'glass-pearl': C => { fillDisc(C, 6, 6.4, 4.6, col('#a4bcd8')); fillDisc(C, 6.8, 7.2, 3, raw('#7c90aa')); fillDisc(C, 5.4, 5.6, 3, raw('#dcecfc')); fillDisc(C, 4.4, 4.4, 1.1, raw('#ffffff')); },
   'ash-garnet': C => { fillPoly(C, [[2, 3.4], [3.4, 2], [8.6, 2], [10, 3.4], [10, 8.6], [8.6, 10], [3.4, 10], [2, 8.6]], col('#b3261e')); fillPoly(C, [[3.4, 2], [8.6, 2], [7.4, 4.4], [4.6, 4.4]], raw('#e0604a')); fillPoly(C, [[4.6, 7.6], [7.4, 7.6], [8.6, 10], [3.4, 10]], raw('#5a0e10')); px(C, 7.6, 5.4, raw('#9e9690')); px(C, 4.2, 3, raw('#ffd0c0')); },
-  // M5: the Frost Opal (a first draft from the M5 scaffold)
-  'frost-opal': C => { facet(C, 6, 6.4, 5, 4.4, '#3c6c9a', '#9cd4f4', '#f0fbff'); px(C, 4.4, 3.4, raw('#ffffff')); px(C, 7.8, 7.4, raw('#ffd6f4')); px(C, 5.2, 8, raw('#c8f4d8')); },
+  // M5: the Frost Opal: a milky blue cabochon with fire in it (pink, green, violet, gold flecks)
+  'frost-opal': C => {
+    const oval = (cx, cy, rx, ry) => Array.from({ length: 16 }, (_, k) => { const a = k / 16 * Math.PI * 2; return [cx + Math.cos(a) * rx, cy + Math.sin(a) * ry]; });
+    fillPoly(C, oval(6, 6.6, 4.8, 4.2), col('#9cc8e4')); fillPoly(C, oval(6.9, 7.5, 3.4, 2.8), raw('#6a9cc8')); fillPoly(C, oval(5.4, 5.8, 3.2, 2.7), raw('#d4ecfa'));
+    for (const [x, y, c] of [[7.4, 5.6, '#ff9ad8'], [4.6, 7.8, '#8af0b0'], [8.2, 8.2, '#c0a0ff'], [6.2, 8.8, '#fff0a0']]) fillDisc(C, x, y, .62, raw(c));
+    px(C, 4.2, 4.4, raw('#ffffff'));
+  },
 };
 export const GEM_ICON_KEYS = Object.keys(GEM_IC);
 export function gemIcon(id, o = {}) {
