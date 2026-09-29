@@ -15,4 +15,7 @@ export const SHOPS = deepFreeze({
   idris: { id: 'idris', name: 'Idris the Gemwright', items: [], gems: ['sunstone', 'moss-agate', 'glass-pearl'] },
   // Old Ode's store at the pithead: the same stock, with the Frost Draught first (the Sunscorch burns)
   pithead: { id: 'pithead', name: 'The Pithead Store', items: ['frost-draught', 'hearth-tonic', 'bitterroot', 'ember-salts'] },
+  // M5 (spec §3.7): Durra Ironhand's armoury at Ironhold (consumables and three gems), Quill's stores at Stormwatch
+  durra: { id: 'durra', name: 'Durra Ironhand\'s Armoury', items: ['ember-salts', 'hearth-tonic', 'bitterroot', 'frost-draught'], gems: ['moss-agate', 'glass-pearl', 'frost-opal'] },
+  quill: { id: 'quill', name: 'Quartermaster Quill\'s Stores', items: ['ember-salts', 'hearth-tonic', 'bitterroot', 'frost-draught'] },
 });

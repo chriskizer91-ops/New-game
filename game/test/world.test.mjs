@@ -75,7 +75,7 @@ test('findPath walks around solid things; chests open once', () => {
   assert.equal(r.ok, true);
   assert.equal(r.game.gold, game.gold + 5);
   assert.equal(openChest(r.game, 'mini-chest').ok, false);
-  assert.equal(lockStatus(game, 'stream').keys.length, 3, 'two power keys and a Domain key');
+  assert.equal(lockStatus(game, 'stream').keys.length, 4, 'three power keys (M5: the Cutter\'s Pick) and a Domain key');
 });
 
 // ---- roamers (spec §4.5 "Roamer rules") -------------------------------------------------------------------

@@ -60,6 +60,9 @@ test('NPCs, map talk and triggers point at real dialogue', () => {
 const ACT2_POSTERS = [
   ['rasa', 'sr-toll'], ['sand-wyrm', 'wyrm-lair'], ['brask', 'ds-crew'], ['kharzul', 'kharzul-heart'],
   ['gnash', 'gnash-camp'], ['wisp-queen', 'wisp-queen'], ['ash-captain', 'sg-captain'], ['ashen-warden', 'ashen-warden'],
+  // M5: the Ironspire
+  ['rhune', 'rp-brigands'], ['thunder-roc', 'roc-eyrie'], ['old-horn', 'troll-cave'], ['sentinel-captain', 'is-sentinels'],
+  ['journeyman', 'id-smith'], ['mother-anvil', 'mother-anvil'], ['drowned-abbess', 'fm-shrine'], ['rime-abbot', 'rime-abbot'],
 ];
 
 test('quests, bounties, shops, the Ladder and letters name real things', () => {
@@ -83,7 +86,8 @@ test('quests, bounties, shops, the Ladder and letters name real things', () => {
   assert.deepEqual([...SHOPS.idris.gems].sort(), ['glass-pearl', 'moss-agate', 'sunstone']);
   assert.ok(SHOPS.pithead.items.length);
   assert.equal(LADDER.filter(p => p.act === 1).length, 17);
-  // M4: the Act I rumour of a glass scorpion is Kharzul's poster now; Gloomfen and Ironspire stay rumours
+  // M4: the Act I rumour of a glass scorpion is Kharzul's poster now; Gloomfen stays a rumour, and so does
+  // Harrow (M5 finds his forge, not him)
   assert.deepEqual(LADDER.filter(p => p.act === 2 && !p.silhouette).map(p => [p.id, p.enc]), ACT2_POSTERS);
   assert.deepEqual(LADDER.filter(p => p.silhouette).map(p => p.id), ['lantern-mother', 'missing-smith']);
   assert.equal(new Set(LADDER.map(p => p.id)).size, LADDER.length, 'poster ids are unique');
@@ -112,7 +116,7 @@ test('arrivals, after-fight lines, rests and lookouts point at real things', () 
 });
 
 // Flags set outside the story data, by the rules (gauntlet, migrate, world).
-const RULE_FLAGS = ['act1-complete', 'tamsin-yielded', 'starter', 'm2-save', 'intro-done', 'met-dael', 'bounty-briarmaw', 'sunscorch-complete'];
+const RULE_FLAGS = ['act1-complete', 'tamsin-yielded', 'starter', 'm2-save', 'intro-done', 'met-dael', 'bounty-briarmaw', 'sunscorch-complete', 'ironspire-complete'];
 
 test('no flag is read that is never set', () => {
   const read = new Map(), set = new Set(RULE_FLAGS);

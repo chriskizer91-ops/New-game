@@ -32,10 +32,12 @@ const cellsOf = e => { const [x0, y0, x1, y1] = areaOf(e), out = []; for (let y 
 const DIRS = { n: [0, -1], e: [1, 0], s: [0, 1], w: [-1, 0] };
 const entities = () => Object.values(MAPS).flatMap(m => m.entities.map(e => ({ map: m.id, e })));
 
-test('25 maps (14 in the Wilds, 10 in the Sunscorch, and the reliquary\'s Gallery); every row is w characters from the legend; entities and exits are in bounds', () => {
-  assert.equal(MAP_IDS.length, 25);
+test('37 maps (14 in the Wilds, 10 in the Sunscorch, 11 in the Ironspire, and the reliquary\'s two Galleries); every row is w characters from the legend; entities and exits are in bounds', () => {
+  assert.equal(MAP_IDS.length, 37);
   assert.ok(MAPS['keep-gallery'], 'the Sunscorch Gallery');
+  assert.ok(MAPS['keep-gallery-2'], 'the Ironspire Gallery');
   assert.equal(MAP_IDS.filter(id => MAPS[id].region === 'sunscorch').length, 10);
+  assert.equal(MAP_IDS.filter(id => MAPS[id].region === 'ironspire').length, 11);
   for (const m of Object.values(MAPS)) {
     assert.equal(m.rows.length, m.h, `${m.id} height`);
     m.rows.forEach((r, y) => {
@@ -50,7 +52,7 @@ test('25 maps (14 in the Wilds, 10 in the Sunscorch, and the reliquary\'s Galler
   }
 });
 
-test('exits pair up both ways and land on walkable anchors; 4 sealed exits and 2 gated ones', () => {
+test('exits pair up both ways and land on walkable anchors; 2 sealed exits and 6 gated ones', () => {
   let sealed = 0;
   const gated = [];
   for (const m of Object.values(MAPS)) {
@@ -58,7 +60,8 @@ test('exits pair up both ways and land on walkable anchors; 4 sealed exits and 2
       for (let yy = x.area[1]; yy <= x.area[3]; yy++) for (let xx = x.area[0]; xx <= x.area[2]; xx++) assert.ok(!solidTile(m, xx, yy), `${m.id}/${x.id} exit tile walkable`);
       if (x.sealed) assert.ok(REGIONS[x.sealed.region] && x.sealed.text, x.id);
       if (x.sealed && !x.to) { sealed++; continue; }
-      // a gated exit (M4: the Keep's south-east gate; M4.5: Sandspire's east gate) is a real way through
+      // a gated exit (M4: the Keep's south-east gate; M4.5: Sandspire's east gate; M5: the Keep's east postern,
+      // Fawnrest's scree path, Peak's Veil's Highfold gate and Stormwatch's north gate) is a real way through
       // once its gate holds, so it pairs up like any other
       if (x.sealed) { assert.ok(x.gate, `${m.id}/${x.id} leads somewhere, so it has a gate`); gated.push(x.id); }
       const a = anchor(x.to, x.anchor);
@@ -73,8 +76,8 @@ test('exits pair up both ways and land on walkable anchors; 4 sealed exits and 2
       assert.ok(!on, `${m.id}:${name} is not under ${on?.id}`);
     }
   }
-  assert.equal(sealed, 4);
-  assert.deepEqual(gated.sort(), ['keep-se', 'ss-e']);
+  assert.equal(sealed, 2, 'the two ways into the Gloomfen');
+  assert.deepEqual(gated.sort(), ['fr-highfold', 'keep-e', 'keep-se', 'pv-w', 'ss-e', 'sw-n']);
 });
 
 test('every exit pairs with an exit on the far map whose anchor is where the first one leads back', () => {
@@ -159,12 +162,13 @@ test('world tables: the critical path, leads and zones name real things', () => 
   for (const m of Object.values(MAPS)) if (m.zone) assert.ok(ZONES[m.zone], `${m.id} zone`);
 });
 
-test('world tables agree with the maps: the 17 Hearthfires, the 17 places, the regions and their sealed entries', () => {
+test('world tables agree with the maps: the 24 Hearthfires, the 17 places, the regions and their sealed entries', () => {
   const inView = ([x, y]) => x >= 0 && x <= 1200 && y >= 0 && y <= 800;
   const fires = Object.keys(ENCOUNTERS).filter(id => ENCOUNTERS[id].type === 'hearthfire');
   assert.deepEqual(Object.keys(HEARTHS).sort(), fires.sort(), 'HEARTHS covers every Hearthfire');
-  assert.equal(fires.length, 17);
+  assert.equal(fires.length, 24);
   assert.equal(fires.filter(id => ENCOUNTERS[id].region === 'sunscorch').length, 7, 'seven in the Sunscorch (M4 spec §2.5)');
+  assert.equal(fires.filter(id => ENCOUNTERS[id].region === 'ironspire').length, 7, 'seven in the Ironspire (M5 spec §2.5)');
   for (const [id, h] of Object.entries(HEARTHS)) {
     const e = ENTITY_OF[id].entity;
     assert.equal(h.name, ENCOUNTERS[id].name, `${id} name`);
@@ -192,7 +196,7 @@ test('world tables agree with the maps: the 17 Hearthfires, the 17 places, the r
   for (const m of Object.values(MAPS)) for (const [lx, ly, tx, ty] of m.lore) assert.ok(inView([lx, ly]) && inside(m, tx, ty), `${m.id} lore`);
 });
 
-test('the reliquary: a pedestal per relic in codex order, Page I on rows 10 and 12 of the Great Hall, Page II on rows 2 and 5 of the Gallery', () => {
+test('the reliquary: a pedestal per relic in codex order, Page I on rows 10 and 12 of the Great Hall, Pages II and III on rows 2 and 5 of their Galleries', () => {
   const byCodex = Object.values(RELICS).sort((a, b) => a.codex - b.codex).map(r => r.id);
   const room = (mapId, ys, from, to) => {
     const peds = MAPS[mapId].entities.filter(e => e.kind === 'pedestal');
@@ -205,7 +209,8 @@ test('the reliquary: a pedestal per relic in codex order, Page I on rows 10 and 
   };
   room('keep-hall', [10, 12], 1, 24);
   room('keep-gallery', [2, 5], 25, 38);
-  assert.equal(byCodex.length, 38);
+  room('keep-gallery-2', [2, 5], 39, 52);
+  assert.equal(byCodex.length, 52);
 });
 
 test('pack homes are walkable, roamable, off the exits and inside a roam rect', () => {
@@ -363,7 +368,8 @@ for (const starter of Object.keys(STARTERS)) {
 }
 
 // Everything held: level 20, every relic, every fight won. `brand` adds every Brand so far (the Verdant
-// pair, then, M4.5, the Sunscorch pair, which opens Sandspire's east gate) and every duel's yield.
+// pair, then, M4.5, the Sunscorch pair, which opens Sandspire's east gate; M5, the Ironspire pair and the
+// flags of the Ironspire's gates) and every duel's yield.
 function allKeys({ brand }) {
   const g = structuredClone(newGame({ name: 'Map', starter: 'hearthbrand', seed: 11 }));
   setLevels(g, 20);
@@ -376,10 +382,12 @@ function allKeys({ brand }) {
   }
   Object.assign(f.story, { 'rangers-home': true, 'bell-rung': true, 'intro-done': true });
   if (brand) {
-    g.progress.brands = ['brand-of-briars', 'brand-of-the-heartroot', 'brand-of-glass', 'brand-of-ash'];
-    g.progress.waking = 4;
+    g.progress.brands = ['brand-of-briars', 'brand-of-the-heartroot', 'brand-of-glass', 'brand-of-ash', 'brand-of-iron', 'brand-of-frost'];
+    g.progress.waking = 6;
     for (const e of Object.values(ENCOUNTERS)) if (e.duel) f.story[e.yields || 'tamsin-yielded'] = true;
     f.story['act1-complete'] = true;
+    // M5: the second council opens the Keep's east postern; the monks open the Highfold
+    Object.assign(f.story, { 'sunscorch-complete': true, 'council-2-done': true, 'highfold-open': true });
   }
   return g;
 }
@@ -420,6 +428,10 @@ test('every hard lock is the only way through to something (a chest, an encounte
   assert.deepEqual(bad, []);
 });
 
+// the story flags of Act I's end and after (M5: the second council opens the Keep's east postern, and the
+// monks the Highfold path down to Fawnrest)
+const LATER = ['act1-complete', 'sunscorch-complete', 'council-2-done', 'highfold-open'];
+
 test('story gates: the north gate, the toll chain, the crownwalls and the Eldest Tree door hold', () => {
   const open = allKeys({ brand: true });
   const mapsOf = r => new Set([...r.seen].map(k => k.split(':')[0]));
@@ -429,13 +441,18 @@ test('story gates: the north gate, the toll chain, the crownwalls and the Eldest
     for (const k of Object.keys(g.progress.flags.done)) delete g.progress.flags.done[k];
     for (const k of Object.keys(g.progress.flags.cleared)) delete g.progress.flags.cleared[k];
     for (const k of Object.keys(g.progress.flags.beaten)) delete g.progress.flags.beaten[k];
-    delete g.progress.flags.story['act1-complete']; // before the vault fight there is no Act I to have finished
-    assert.deepEqual([...mapsOf(flood(g))].sort(), ['keep', 'keep-gallery', 'keep-hall'], 'keep-n-gate holds until keep-vault is done');
+    // before the vault fight there is no Act I to have finished, and so no council after it (M5: the second
+    // council opens the Keep's east postern)
+    for (const k of LATER) delete g.progress.flags.story[k];
+    assert.deepEqual([...mapsOf(flood(g))].sort(), ['keep', 'keep-gallery', 'keep-gallery-2', 'keep-hall'], 'keep-n-gate holds until keep-vault is done');
   }
   // Until Skarn is beaten, his chain closes the road: Thornhollow and the Smugglers' Hollow are out of reach.
+  // (Skarn is on the road to Act I, so nothing after it has happened either: M5's Highfold path is a back
+  // way into the Wilds from the Ironspire, which opens only after the second council.)
   {
     const g = structuredClone(open);
     delete g.progress.flags.unlocked['bramble-toll-chain'];
+    for (const k of LATER) delete g.progress.flags.story[k];
     const r = flood(openHeldLocks(g));
     assert.ok(!mapsOf(r).has('thornhollow'), 'bramble-toll-chain holds');
     assert.ok(!reaches(r, 'hearth-road', MAPS['hearth-road'].entities.find(e => e.id === 'hr-smugglers')), 'the Smugglers\' Hollow is past the toll');

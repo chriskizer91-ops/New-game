@@ -1,4 +1,5 @@
-// The people of the Verdant Wilds (M3 spec §3.1, §4.4) and the Sunscorch Wastes (M4 spec §3.1).
+// The people of the Verdant Wilds (M3 spec §3.1, §4.4), the Sunscorch Wastes (M4 spec §3.1) and the
+// Ironspire Peaks (M5 spec §3.1).
 //
 // NPCS[id] = { id, name, art, role, talk: [{ if?, d }] }
 //   art   npc sprite key (art/map-sprites.js npcSheet)
@@ -49,6 +50,8 @@ export const NPCS = deepFreeze({
     // M4: Hilda critiques the Sunscorch's blades by name, and has news of her brother after the second council
     { if: { wears: 'cinderfang' }, d: 'notice-hilda-cinderfang' },
     { if: { wears: 'dunebreaker' }, d: 'notice-hilda-dunebreaker' },
+    // M5: she knows her brother's hammer on sight (the quest harrows-hammer)
+    { if: { all: [{ owns: 'worldforge-hammer' }, { not: { flag: 'hammer-shown' } }] }, d: 'hilda-hammer' },
     { if: { flag: 'council-2-done' }, d: 'hilda-ironspire' },
     { if: { owns: 'ichor-mask' }, d: 'hilda-mask' },
     { if: { wears: 'thornwreath' }, d: 'notice-hilda-crown' },
@@ -167,6 +170,33 @@ export const NPCS = deepFreeze({
     { d: 'cinder-again' },
   ]),
   'ashen-warden': N('ashen-warden', 'The Ashen Warden', 'Champion', []),
+
+  // ---- M5: the Ironspire Peaks (spec §3.1). STUBS from the M5 scaffold until P3 writes their talk ----
+  // Peak's Veil
+  wynn: N('wynn', 'Mother Wynn', 'Abbess of Peak\'s Veil', [
+    { if: { all: [{ beaten: 'fm-shrine' }, { not: { flag: 'bell-rung-veil' } }] }, d: 'wynn-bell' },
+    { if: { not: { flag: 'met-wynn' } }, d: 'wynn' },
+    { d: 'wynn-again' },
+  ]),
+  kesh: N('kesh', 'Brother Kesh', 'Monk', [{ d: 'kesh' }]),
+  novice: N('novice', 'Novice', 'Novice', [{ d: 'novice' }]),
+  // Ironhold
+  brundar: N('brundar', 'Thane Brundar', 'Thane of Ironhold', [
+    { if: { all: [{ any: [{ done: 'tamsin-ironhold' }, { flag: 'tamsin-yielded-3' }] }, { not: { flag: 'rune-given' } }] }, d: 'brundar-rune' },
+    { if: { all: [{ beaten: 'id-smith' }, { not: { flag: 'smith-told' } }] }, d: 'brundar-smith' },
+    { if: { not: { flag: 'met-brundar' } }, d: 'brundar' },
+    { d: 'brundar-again' },
+  ]),
+  durra: N('durra', 'Durra Ironhand', 'Armourer', [{ d: 'durra' }]),
+  'ih-guard': N('ih-guard', 'Hold Guard', 'Hold Guard', [{ d: 'ih-guard' }]),
+  // Stormwatch
+  rook: N('rook', 'Rook', 'Once a Tallyman', [
+    { if: { all: [{ beaten: 'fr-cutters' }, { not: { flag: 'ledger-given' } }] }, d: 'rook-ledger' },
+    { if: { not: { flag: 'met-rook' } }, d: 'rook' },
+    { d: 'rook-again' },
+  ]),
+  ysolde: N('ysolde', 'Captain Ysolde', 'Captain of Stormwatch', [{ d: 'ysolde' }]),
+  quill: N('quill', 'Quartermaster Quill', 'Quartermaster', [{ d: 'quill' }]),
 });
 
 export const NPC_IDS = Object.freeze(Object.keys(NPCS));

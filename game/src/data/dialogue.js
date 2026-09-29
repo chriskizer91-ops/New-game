@@ -614,6 +614,79 @@ export const DIALOGUE = deepFreeze({
     ],
     do: [{ set: 'harrow-named' }, { end: 'act2' }],
   },
+
+  // ---- M5: the Ironspire Peaks (spec §3.1, §3.6). STUBS from the M5 scaffold; P3 writes the real scenes ----
+  wynn: {
+    lines: [['wynn', 'Welcome to Peak\'s Veil, Warden. The bell has been quiet since Brother Aurel went down to the lake.'], ['wynn', 'The Highfold gate is open to you. The path goes down to Fawnrest.']],
+    do: [{ set: 'met-wynn' }, { set: 'highfold-open' }],
+    choices: [LEAVE],
+  },
+  'wynn-again': { lines: [['wynn', 'The bell will ring again. I have to believe that.']], choices: [LEAVE] },
+  'wynn-bell': {
+    lines: [['wynn', 'The Abbess is at rest? Then ring it, Warden. Ring it for all of them.'], ['narrator', 'The bell of Peak\'s Veil rings out over the ice.']],
+    do: [{ set: 'met-wynn' }, { set: 'highfold-open' }, { set: 'bell-rung-veil' }, { claim: 'bell-of-veil' }],
+    choices: [LEAVE],
+  },
+  kesh: { lines: [['kesh', 'Frostmere was a holy lake once. Now nobody walks on it.']], choices: [LEAVE] },
+  novice: { lines: [['novice', 'Mother Wynn says nobody may ring the bell. Not even me.']], choices: [LEAVE] },
+  brundar: {
+    lines: [['brundar', 'A Warden of the Keep, in my hall. Say what you want, and say it quickly.']],
+    do: [{ set: 'met-brundar' }],
+    choices: [LEAVE],
+  },
+  'brundar-again': { lines: [['brundar', 'The Deeps stay sealed until I say otherwise.']], choices: [LEAVE] },
+  'brundar-rune': {
+    lines: [['brundar', 'You dealt with the girl on my stair. Take the Rune-Key. The Deeps are yours to walk.']],
+    do: [{ set: 'met-brundar' }, { set: 'rune-given' }, { give: 'thanes-rune' }],
+    choices: [LEAVE],
+  },
+  'brundar-smith': {
+    lines: [['brundar', 'Harrow\'s journeyman, quiet at last. Take this for your trouble.']],
+    do: [{ set: 'met-brundar' }, { set: 'smith-told' }, { claim: 'sentinel-oath' }],
+    choices: [LEAVE],
+  },
+  durra: { lines: [['durra', 'Harrow\'s sister sent you? Then you get my honest prices. Look.']], choices: [{ text: 'Buy.', do: [{ open: 'shop:durra' }] }, LEAVE] },
+  'ih-guard': { lines: [['ih-guard', 'Mind the Thane. He has not slept since the Deeps went dark.']], choices: [LEAVE] },
+  rook: {
+    lines: [['rook', 'I kept the Tallymen\'s books once. I can tell you what they cut out of that lake.']],
+    do: [{ set: 'met-rook' }],
+    choices: [LEAVE],
+  },
+  'rook-again': { lines: [['rook', 'Bring me the Cutter-Chief\'s ledger and I will read it to you.']], choices: [LEAVE] },
+  'rook-ledger': {
+    lines: [['rook', 'The Cutter-Chief\'s ledger. Give it here. Ice, by the ton, for a buyer with no name.']],
+    do: [{ set: 'met-rook' }, { set: 'ledger-given' }, { claim: 'rooks-ledger' }],
+    choices: [LEAVE],
+  },
+  ysolde: {
+    lines: [['ysolde', 'Stormwatch holds the north road. What is left of it.']],
+    choices: [
+      { text: 'Turn in bounties.', if: { bounty: 'any', state: 'ready' }, do: [{ claim: 'bounties' }], next: 'ysolde-paid' },
+      { text: 'Read the bounty board.', do: [{ open: 'bounties' }] },
+      LEAVE,
+    ],
+  },
+  'ysolde-paid': { lines: [['ysolde', 'Paid in Stormwatch silver. Try not to spend it all at Quill\'s.']], choices: [LEAVE] },
+  quill: { lines: [['quill', 'Everything you need for the ice, at army prices.']], choices: [{ text: 'Buy.', do: [{ open: 'shop:quill' }] }, LEAVE] },
+  'hilda-hammer': {
+    lines: [['hilda', 'That\'s my brother\'s hammer. He never put it down in his life. Where is he?']],
+    do: [{ set: 'hammer-shown' }, { claim: 'harrows-hammer' }],
+    choices: [LEAVE],
+  },
+  'tamsin-ironhold': {
+    lines: [['tamsin', 'You again. Harrow is mine to find, Warden. Out of my way, or through me.']],
+    choices: [{ text: 'Through you, then.', do: [{ fight: 'tamsin-ironhold' }] }, LEAVE],
+  },
+  'tamsin-ironhold-yield': {
+    lines: [['tamsin', 'Fine. Go down, then. He is not there anyway.']],
+    do: [{ set: 'tamsin-yielded-3' }],
+  },
+  // the third council (keep-hall trigger `council-3`, guarded by the flag it sets)
+  'council-3': {
+    lines: [['isolde', 'Six coals, {warden}. The Council sits again, and this time the Thane of Ironhold sits with us.']],
+    do: [{ set: 'council-3-done' }, { claim: 'ironspire-waking' }],
+    choices: [LEAVE],
+  },
 });
 
 export const ARRIVALS = deepFreeze({
@@ -631,6 +704,8 @@ export const ARRIVALS = deepFreeze({
 // gets a shorter line, so nothing is found or relieved twice.
 export const AFTER = deepFreeze({
   'tamsin-duel': [{ on: 'victory', d: 'tamsin-after-win' }, { on: 'yield', d: 'tamsin-yield' }],
+  // M5 (a stub until P3 writes the scenes)
+  'tamsin-ironhold': [{ on: 'yield', d: 'tamsin-ironhold-yield' }],
   'hollowed-patrol': [{ on: 'victory', d: 'corra-freed' }],
   'rotwarden-heart': [{ on: 'victory', if: { owns: 'ichor-mask' }, d: 'rotwarden-after' }],
   // M4

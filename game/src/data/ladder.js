@@ -38,7 +38,16 @@ export const LADDER = deepFreeze([
   P2('wisp-queen', 'wisp-queen', 'The Wisp-Queen'),
   P2('ash-captain', 'sg-captain', 'The Ash-Captain'),
   P2('ashen-warden', 'ashen-warden', 'The Ashen Warden'),
-  // Act II rumours: Gloomfen and Ironspire stay sealed until a later chapter
+  // M5: the Ironspire Peaks (spec §3.6). Harrow himself is still missing: his rumour stays below.
+  P2('rhune', 'rp-brigands', 'Rhune the Pass-Warden'),
+  P2('thunder-roc', 'roc-eyrie', 'The Thunder-Roc'),
+  P2('old-horn', 'troll-cave', 'Old Horn'),
+  P2('sentinel-captain', 'is-sentinels', 'The Sentinel-Captain'),
+  P2('journeyman', 'id-smith', 'Harrow\'s Journeyman'),
+  P2('mother-anvil', 'mother-anvil', 'Mother Anvil'),
+  P2('drowned-abbess', 'fm-shrine', 'The Drowned Abbess'),
+  P2('rime-abbot', 'rime-abbot', 'The Rime-Abbot'),
+  // Act II rumours: Gloomfen stays sealed until a later chapter, and Harrow is still missing
   { id: 'lantern-mother', name: 'the Lantern Mother', silhouette: true, act: 2 },
   { id: 'missing-smith', name: 'the missing smith', silhouette: true, act: 2 },
 ]);

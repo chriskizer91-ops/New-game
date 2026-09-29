@@ -21,7 +21,7 @@
 // tools/map-draft.mjs draws any map as ASCII or PNG (--png, --art for the real tiles) with a lint.
 // Owner: WP3 (index, keep, keep-hall, hearth-road, thornhollow, thornway, briarmaw-den, mossfall);
 // WP3B (mosswatch-1, mosswatch-2, hindwood, fawnrest, eldergrove, heartroot-1, heartroot-2); M4 P2 (the
-// Sunscorch maps).
+// Sunscorch maps); M5 P2 (the Ironspire maps and the Ironspire Gallery).
 
 import keep from './keep.js';
 import keepHall from './keep-hall.js';
@@ -49,9 +49,23 @@ import miragewell from './miragewell.js';
 import scorchgate from './scorchgate.js';
 import scorchgateVaults from './scorchgate-vaults.js';
 import keepGallery from './keep-gallery.js';
+// M5: the Ironspire Peaks (spec §2.1) and the reliquary's third room
+import rockslidePass from './rockslide-pass.js';
+import peaksVeil from './peaks-veil.js';
+import highfold from './highfold.js';
+import ironStair from './iron-stair.js';
+import ironhold from './ironhold.js';
+import ironholdDeeps from './ironhold-deeps.js';
+import harrowsForge from './harrows-forge.js';
+import stormwatch from './stormwatch.js';
+import frostRoad from './frost-road.js';
+import frostmere from './frostmere.js';
+import frostmereBelow from './frostmere-below.js';
+import keepGallery2 from './keep-gallery-2.js';
 
 const LIST = [keep, keepHall, hearthRoad, thornhollow, thornway, briarmawDen, mossfall, mosswatch1, mosswatch2, hindwood, fawnrest, eldergrove, heartroot1, heartroot2,
-  sunRoad, sandspire, dustTrail, dusthaven, deepShaft1, deepShaft2, glassFlats, miragewell, scorchgate, scorchgateVaults, keepGallery];
+  sunRoad, sandspire, dustTrail, dusthaven, deepShaft1, deepShaft2, glassFlats, miragewell, scorchgate, scorchgateVaults, keepGallery,
+  rockslidePass, peaksVeil, highfold, ironStair, ironhold, ironholdDeeps, harrowsForge, stormwatch, frostRoad, frostmere, frostmereBelow, keepGallery2];
 
 export const MAPS = Object.freeze(Object.fromEntries(LIST.map(m => [m.id, m])));
 export const MAP_IDS = Object.freeze(LIST.map(m => m.id));

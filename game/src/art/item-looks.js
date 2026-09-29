@@ -165,6 +165,22 @@ export const RELIC_ART = Object.freeze({
   'cinder-crown': { r: 'crown', relic: true, fx: 'rise', aspect: 'ember', p: { style: 'regal', metal: 'blackiron', tines: 7, tall: true, gem: 'ember', gem2: 'ruby', embers: 'ember', tex: ashFlecks } },
   // cut from a glassed dune, crusted with salt, strung to sing
   saltglass: { r: 'bow', relic: true, fx: 'spark', aspect: 'storm', p: { len: 62, bulge: 10, limbR: 3.1, tipR: 1.4, limb: 'glass', limbTex: saltCrust, nock: 'silver', grip: 'clothIndigo', bindings: [.3, .7], bindMat: 'silver', gem: 'stormglass', gemMat: 'silver', tassel: 'clothWhite', spark: 'storm' } },
+  // ---- M5: Codex Page III (codex 39-52). STAND-INS from the M5 scaffold (stub: true), each its own look;
+  // P6 draws the real ones. ----
+  'windstep-boots': { r: 'boots', relic: true, stub: true, fx: 'spark', aspect: 'storm', p: { mat: 'leatherDark', trim: 'clothBlue', fold: true, buckle: 'silver', gem: 'stormglass', straps: 'leather' } },
+  veilbell: { r: 'amulet', relic: true, stub: true, fx: 'fall', aspect: 'frost', p: { style: 'sun', chain: 'silver', metal: 'silver', rays: 'silver', frame: 'blackiron', gem: 'sapphire', core: 'frost' } },
+  ironwall: { r: 'shield', relic: true, stub: true, fx: 'dust', aspect: 'stone', p: { style: 'scale', shape: 'tower', face: 'blackiron', rim: 'iron', boss: 'silver', rivets: 'iron', runes: 'amber', gem: 'topaz' } },
+  'drowned-censer': { r: 'focus', relic: true, stub: true, fx: 'fall', aspect: 'frost', p: { style: 'lantern', metal: 'silver', frame: 'blackiron', stone: 'sapphire', core: 'frost', rays: 'water', capGem: 'sapphire', gem: 'water' } },
+  'ironvein-bracers': { r: 'gauntlets', relic: true, stub: true, fx: 'rise', aspect: 'ember', p: { mat: 'blackiron', plate: 1, cuffMat: 'blackiron', flare: 1, trim: 'bronze', cuffBand: 'bronze', knuckles: 'bronze', engrave: 'ember', bolt: 'ember', cuffGem: 'ruby' } },
+  'roc-feather-cloak': { r: 'leather', relic: true, stub: true, fx: 'spark', aspect: 'storm', p: { mat: 'leatherDark', shirt: 'clothBlue', pauldrons: 'clothWhite', trim: 'silver', belt: 'leather', buckle: 'silver', gem: 'stormglass', pouch: 'leather' } },
+  'thanes-rune': { r: 'ring', relic: true, stub: true, fx: 'dust', aspect: 'stone', p: { style: 'signet', metal: 'blackiron', face: 'granite', seal: 'iron', runes: 'amber', gem: 'topaz' } },
+  'trollhide-mantle': { r: 'leather', relic: true, stub: true, fx: 'dust', aspect: 'stone', p: { mat: 'leather', shirt: 'leatherDark', pauldrons: 'leatherDark', trim: 'iron', belt: 'leatherDark', buckle: 'iron', gem: 'topaz', pouch: 'leatherDark' } },
+  runestaff: { r: 'staff', relic: true, stub: true, fx: 'rise', aspect: 'ember', p: { style: 'song', headT: 54, haft: 'blackiron', haftR: 2.3, wobble: .2, spiral: 'bronze', holes: 'dark', holeRim: 'bronze', foot: 'blackiron', bands: [], orb: 'ember', orbR: 5.6, roots: 'bronze', leaves: 'bronze', berries: 'ruby', thorns: 'blackiron' } },
+  'anvil-heart': { r: 'amulet', relic: true, stub: true, fx: 'rise', aspect: 'ember', p: { style: 'heart', chain: 'blackiron', metal: 'blackiron', stone: 'ruby', core: 'ember', veins: 'ember', gem: 'ruby' } },
+  'worldforge-hammer': { r: 'hammer', relic: true, stub: true, fx: 'rise', aspect: 'ember', p: { headT: 53, headH: 16, headW: 16, haft: 'blackiron', haftR: 2.6, wrap: 'leatherDark', wrapEnd: 18, bands: [25, 35], bandMat: 'bronze', headMat: 'blackiron', headTex: stoneHead, pommelMat: 'bronze', pommelR: 3.3, faces: 1, trim: 'bronze', langets: 1, runes: 'ember', spike: 0 } },
+  'cutters-pick': { r: 'axe', relic: true, stub: true, fx: 'fall', aspect: 'frost', p: { headT: 47, bladeLo: 12, bladeHi: 8, bladeW: 15, bulge: 2, back: 'spike', spikeL: 8, haft: 'wood', haftR: 2.2, blade: 'steel', bladeTex: mossBlade, edge: 'frost', socket: 'iron', gem: 'sapphire', pommel: 'iron' } },
+  'rime-crozier': { r: 'staff', relic: true, stub: true, fx: 'fall', aspect: 'frost', p: { style: 'song', headT: 54, haft: 'bone', haftR: 2.2, wobble: .3, spiral: 'silver', holes: 'dark', holeRim: 'silver', foot: 'silver', bands: [], orb: 'water', orbR: 6, roots: 'silver', leaves: 'clothWhite', berries: 'sapphire', thorns: 'silver' } },
+  'hushweave-cowl': { r: 'hood', relic: true, stub: true, fx: 'fall', aspect: 'frost', p: { look: 'hood', mat: 'clothWhite', trim: 'silver', clasp: 'silver', gem: 'sapphire', tip: 1, tex: TX2.folds(5) } },
 });
 export const RELIC_IDS = Object.keys(RELIC_ART);
 

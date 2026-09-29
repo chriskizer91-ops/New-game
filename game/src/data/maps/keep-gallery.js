@@ -17,7 +17,7 @@ export default deepFreeze({
     '#::::::::::::::::#', // 1
     '#::::::::::::::::#', // 2
     '#:______________:#', // 3
-    '+:______________:#', // 4
+    '+:______________:+', // 4
     '#::::::::::::::::#', // 5
     '#::::::::::::::::#', // 6
     '####*###*###*###*#', // 7
@@ -37,11 +37,13 @@ export default deepFreeze({
     { id: 'pedestal-ashen-aegis', kind: 'pedestal', relic: 'ashen-aegis', at: [11, 5] },
     { id: 'pedestal-cinder-crown', kind: 'pedestal', relic: 'cinder-crown', at: [13, 5] },
     { id: 'pedestal-saltglass', kind: 'pedestal', relic: 'saltglass', at: [15, 5] },
-    { id: 'gal-plaque', kind: 'sign', at: [16, 4], look: 'plaque', text: 'The Sunscorch Gallery: fourteen pedestals of Sandspire stone, cut for the second page of the Codex. The first is warm to the touch.' },
+    { id: 'gal-plaque', kind: 'sign', at: [16, 1], look: 'plaque', text: 'The Sunscorch Gallery: fourteen pedestals of Sandspire stone, cut for the second page of the Codex. The first is warm to the touch.' },
   ],
   exits: [
     { id: 'gal-w', area: [0, 4, 0, 4], to: 'keep-hall', anchor: 'from-gallery' },
+    // M5: the door to the Ironspire Gallery, the reliquary's third room (spec §2.4)
+    { id: 'gal-e', area: [17, 4, 17, 4], to: 'keep-gallery-2', anchor: 'from-gallery' },
   ],
-  anchors: { 'from-hall': [1, 4, 'e'] },
+  anchors: { 'from-hall': [1, 4, 'e'], 'from-gallery-2': [16, 4, 'w'] },
   roam: null,
 });

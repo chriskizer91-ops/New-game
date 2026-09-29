@@ -58,10 +58,10 @@ test('every shared item kind has at least one base item', () => {
   for (const c of ['hearth-tonic', 'ember-salts', 'frost-draught']) assert.ok(CONSUMABLES[c]);
 });
 
-test('the twelve M2 relics match the shared vocabulary; M3 adds twelve heirlooms (codex 13-24), M4 fourteen more (25-38)', () => {
+test('the twelve M2 relics match the shared vocabulary; M3 adds twelve heirlooms (codex 13-24), M4 fourteen more (25-38), M5 fourteen more (39-52)', () => {
   for (const id of Object.keys(RELIC_TABLE)) assert.ok(RELICS[id], id);
-  assert.equal(Object.keys(RELICS).length, 38);
-  assert.deepEqual(Object.values(RELICS).map(r => r.codex).sort((a, b) => a - b), Array.from({ length: 38 }, (_, i) => i + 1));
+  assert.equal(Object.keys(RELICS).length, 52);
+  assert.deepEqual(Object.values(RELICS).map(r => r.codex).sort((a, b) => a - b), Array.from({ length: 52 }, (_, i) => i + 1));
   for (const r of Object.values(RELICS).filter(r => r.codex > 12 && r.codex <= 24)) {
     assert.equal(r.rarity, 'heirloom', r.id);
     assert.ok(r.power && r.mapPower, `${r.id} has a power and a map power`);
@@ -148,13 +148,13 @@ test('data tables are frozen', () => {
 
 // ---- M3 data (spec §3.2-§3.5, §6.1 WP4) ----------------------------------------------------------------
 
-test('M3 and M4 encounters: every one has a region, a valid backdrop, real families and real relics', async () => {
+test('M3, M4 and M5 encounters: every one has a region, a valid backdrop, real families and real relics', async () => {
   const { BRANDS, PATROLS } = await import('../src/data/encounters.js');
   const { REGIONS } = await import('../src/data/world.js');
   const { familyOf } = await import('../src/rules/foe.js');
   for (const [id, n] of Object.entries(ENCOUNTERS)) {
     assert.ok(BACKDROPS.includes(n.backdrop), `${id} backdrop`);
-    if (!GAUNTLET.includes(id)) assert.ok(n.region === 'verdant' || n.region === 'sunscorch', `${id} region`);
+    if (!GAUNTLET.includes(id)) assert.ok(['verdant', 'sunscorch', 'ironspire'].includes(n.region), `${id} region`);
     for (const s of n.spawns || []) {
       if (s.variant && s.variant !== '$rival') assert.ok(FOES[s.family].variants?.[s.variant], `${id}: ${s.family}/${s.variant}`);
       for (const r of [s.relic, s.wears]) if (r && r !== '$rival') assert.ok(RELICS[r], `${id}: relic ${r}`);
@@ -339,7 +339,7 @@ test('M4 relics: Codex Nos. 25-38 follow the spec table, each with a signature p
   assert.equal(c.lore, 'Forged in Scorchgate to kill the dragon that burned it. It failed. It has been warm ever since.');
 });
 
-test('M4 relics: all 38 carry sockets (0-2), three deeds from DEED_IDS and two awakening branches with names and stats', async () => {
+test('M4 and M5 relics: all 52 carry sockets (0-2), three deeds from DEED_IDS and two awakening branches with names and stats', async () => {
   const { DEED_IDS } = await import('../src/data/deeds.js');
   const { POWERS, branchPowerId } = await import('../src/rules/stats.js');
   const STAT_KEYS = new Set([...Object.values(AFFIXES).map(a => a.stat), 'resist', 'STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA']);
@@ -377,7 +377,7 @@ test('M4 relics: all 38 carry sockets (0-2), three deeds from DEED_IDS and two a
     }
   }
   for (const s of statusRefs) assert.ok(STATUSES[s], s);
-  assert.equal(names.size, 76);
+  assert.equal(names.size, 104); // two named branches for each of the 52 relics
   // starters and Champion pieces carry two sockets; a key ring with no key has none
   for (const id of HAND_NAMED) assert.equal(RELICS[id].sockets, 2, id);
   assert.equal(RELICS['scorchgate-key'].sockets, 0);

@@ -453,6 +453,8 @@ function earnBrand(g, node, report) {
   if (REGIONS.verdant.brands.every(b => p.brands.includes(b))) f.story = { ...(f.story || {}), 'act1-complete': true };
   // M4: both Sunscorch Brands call the second council (data/maps/keep-hall.js council-2)
   if (REGIONS.sunscorch.brands.every(b => p.brands.includes(b))) f.story = { ...(f.story || {}), 'sunscorch-complete': true };
+  // M5: both Ironspire Brands call the third council (data/maps/keep-hall.js council-3)
+  if (REGIONS.ironspire.brands.every(b => p.brands.includes(b))) f.story = { ...(f.story || {}), 'ironspire-complete': true };
   report.brand = { ...brand, waking: p.waking, first: true, count: new Set(p.brands).size };
 }
 

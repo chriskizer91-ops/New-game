@@ -111,6 +111,52 @@ export const QUESTS = deepFreeze({
     ],
     reward: { gold: 150, gems: { 'glass-pearl': 2 } },
   },
+  // ---- M5: the Ironspire Peaks (spec §3.6). STUBS from the M5 scaffold until P3 finishes them ----
+  'ironspire-waking': {
+    id: 'ironspire-waking', name: 'The Ironspire Waking', kind: 'main', giver: 'isolde', start: { flag: 'sunscorch-complete' },
+    steps: [
+      step('Sit the second council, then take the Keep\'s east postern.', { flag: 'council-2-done' }, 'keep-hall', 'isolde'),
+      step('Climb the Rockslide Pass to Peak\'s Veil.', { any: [{ flag: 'met-wynn' }, { brand: 'brand-of-iron' }] }, 'peaks-veil', 'wynn'),
+      step('Climb to Ironhold and speak with the Thane.', { any: [{ flag: 'met-brundar' }, { brand: 'brand-of-iron' }] }, 'ironhold', 'brundar'),
+      step('Win the Thane\'s leave to go down into the Deeps.', { any: [{ flag: 'rune-given' }, { brand: 'brand-of-iron' }] }, 'ironhold', 'brundar'),
+      step('Take the Brand of Iron in Harrow\'s Forge.', { brand: 'brand-of-iron' }, 'harrows-forge', 'mother-anvil'),
+      step('Reach Stormwatch and hear Rook out.', { any: [{ flag: 'met-rook' }, { brand: 'brand-of-frost' }] }, 'stormwatch', 'rook'),
+      step('Take the Brand of Frost beneath Frostmere.', { brand: 'brand-of-frost' }, 'frostmere-below', 'rime-abbot'),
+      step('Come home to the Keep.', { flag: 'council-3-done' }, 'keep-hall', 'isolde'),
+    ],
+    reward: {},
+  },
+  'bell-of-veil': {
+    id: 'bell-of-veil', name: 'The Bell of Peak\'s Veil', kind: 'side', giver: 'wynn', start: { flag: 'met-wynn' },
+    steps: [
+      step('Quiet the Drowned Abbess on Frostmere.', { beaten: 'fm-shrine' }, 'frostmere', 'fm-shrine'),
+      step('Ring the bell of Peak\'s Veil.', { flag: 'bell-rung-veil' }, 'peaks-veil', 'wynn'),
+    ],
+    reward: { relic: 'veilbell' },
+  },
+  'harrows-hammer': {
+    id: 'harrows-hammer', name: 'Harrow\'s Hammer', kind: 'side', giver: 'hilda', start: { owns: 'worldforge-hammer' },
+    steps: [
+      step('Show Hilda the Worldforge Hammer.', { flag: 'hammer-shown' }, 'keep', 'hilda'),
+    ],
+    reward: { gold: 300, materials: { embers: 2 } },
+  },
+  'rooks-ledger': {
+    id: 'rooks-ledger', name: 'Rook\'s Ledger', kind: 'side', giver: 'rook', start: { flag: 'met-rook' },
+    steps: [
+      step('Take the Cutter-Chief\'s ledger on the Frost Road.', { beaten: 'fr-cutters' }, 'frost-road', 'fr-cutters'),
+      step('Bring the ledger to Rook.', { flag: 'ledger-given' }, 'stormwatch', 'rook'),
+    ],
+    reward: { gold: 250, gems: { 'frost-opal': 1 } },
+  },
+  'sentinel-oath': {
+    id: 'sentinel-oath', name: 'The Sentinel\'s Oath', kind: 'side', giver: 'brundar', start: { flag: 'met-brundar' },
+    steps: [
+      step('Quiet Harrow\'s journeyman in the Deeps.', { beaten: 'id-smith' }, 'ironhold-deeps', 'id-smith'),
+      step('Tell the Thane.', { flag: 'smith-told' }, 'ironhold', 'brundar'),
+    ],
+    reward: { gold: 200, materials: { silver: 2 } },
+  },
 });
 
 export const BOUNTIES = deepFreeze({
@@ -125,6 +171,11 @@ export const BOUNTIES = deepFreeze({
   'b-raiders': { id: 'b-raiders', enc: 'gf-raiders', name: 'Dune Raiders of the Flats', gold: 90, giver: 'zara' },
   'b-scorpions': { id: 'b-scorpions', enc: 'ds-scorpions', name: 'Scorpions in the Shaft', gold: 90, giver: 'zara' },
   'b-wights': { id: 'b-wights', enc: 'sg-wights', name: 'The Wall-Walkers of Scorchgate', gold: 120, giver: 'zara' },
+  // M5 (spec §3.6): the Stormwatch board, turned in to Captain Ysolde
+  'b-wolves': { id: 'b-wolves', enc: 'rp-wolves', name: 'Wolves on the Pass', gold: 90, giver: 'ysolde' },
+  'b-trolls': { id: 'b-trolls', enc: 'is-trolls', name: 'Trolls on the Stair', gold: 120, giver: 'ysolde' },
+  'b-frostwolves': { id: 'b-frostwolves', enc: 'fr-wolves', name: 'The Frost Pack', gold: 120, giver: 'ysolde' },
+  'b-roc': { id: 'b-roc', enc: 'roc-eyrie', name: 'The Thunder-Roc', gold: 160, giver: 'ysolde' },
 });
 
 export const QUEST_IDS = Object.freeze(Object.keys(QUESTS));

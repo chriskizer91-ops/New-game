@@ -33,6 +33,10 @@ const S = (family, level, o = {}) => ({ family, level, gearTier: 0, omens: [], .
 // the region (and both orders) fair, where +6 would need Waking-0 levels below 1 for the second half.
 const SUN_WAKE = 4;
 const SUN = (family, level, o = {}) => S(family, level, { wakeLevels: SUN_WAKE, ...o });
+// M5: the Ironspire's spawns that are not rabble climb IRON_WAKE levels per Waking, as the Sunscorch's do
+// (spec §2.6). A player arrives at Waking 4 (every earlier Brand is held).
+const IRON_WAKE = 4;
+const IRON = (family, level, o = {}) => S(family, level, { wakeLevels: IRON_WAKE, ...o });
 
 export const ENCOUNTERS = deepFreeze({
   'hearthstone-keep': {
@@ -354,6 +358,136 @@ export const ENCOUNTERS = deepFreeze({
     spawns: [SUN('ashen-warden', 7)],
     text: 'The Ashen Warden stands where the fire stopped, with the Aegis up and the Crown lit. Break them both.',
   },
+
+  // ---- M5: the Ironspire Peaks (spec §2.5, §3.3; owner P4). STUBS from the M5 scaffold: the spawn lines
+  // are the spec's, with placeholder levels; P4 tunes them with tools/sim.mjs. A player arrives at Waking 4.
+  // The backdrops are Sunscorch stand-ins until P6 paints each map's own (spec §6.2: backdrop = the map id).
+  'pass-shrine': {
+    id: 'pass-shrine', type: 'hearthfire', name: 'The Pass Shrine', place: 'The Rockslide Pass', backdrop: 'dust-trail', region: 'ironspire',
+    text: 'A way-shrine cut into the rock, with a coal the monks keep lit for travellers.',
+  },
+  'veil-hearth': {
+    id: 'veil-hearth', type: 'hearthfire', name: 'The Cloister Fire', place: 'Peak\'s Veil', backdrop: 'mosswatch', region: 'ironspire',
+    text: 'The cloister fire of Peak\'s Veil, fed with pine and silence.',
+  },
+  'stair-cairn': {
+    id: 'stair-cairn', type: 'hearthfire', name: 'The Stair Cairn', place: 'The Iron Stair', backdrop: 'dust-trail', region: 'ironspire',
+    text: 'A dwarf cairn halfway up the stair, with a fire-bowl gone cold.',
+  },
+  'thanes-hearth': {
+    id: 'thanes-hearth', type: 'hearthfire', name: 'The Thane\'s Hearth', place: 'Ironhold', backdrop: 'scorchgate', region: 'ironspire',
+    text: 'The great hearth of Ironhold, big enough to roast an ox, and the Thane\'s chair beside it.',
+  },
+  'deeps-forge': {
+    id: 'deeps-forge', type: 'hearthfire', name: 'The Deeps Furnace', place: 'The Ironhold Deeps', backdrop: 'deep-shaft', region: 'ironspire',
+    text: 'One of Harrow\'s furnaces, cold since the Thane sealed the Deeps.',
+  },
+  'stormwatch-fire': {
+    id: 'stormwatch-fire', type: 'hearthfire', name: 'The Watch Fire', place: 'Stormwatch', backdrop: 'scorchgate', region: 'ironspire',
+    text: 'The watch fire in the Stormwatch yard, where the sentries warm their hands between rounds.',
+  },
+  'frost-cairn': {
+    id: 'frost-cairn', type: 'hearthfire', name: 'The Frost Cairn', place: 'The Frost Road', backdrop: 'glass-flats', region: 'ironspire',
+    text: 'A road-cairn on the ice, with a fire-bowl full of snow.',
+  },
+  'rp-brigands': {
+    id: 'rp-brigands', type: 'fight', name: 'Rhune\'s Toll', place: 'The Rockslide Pass', backdrop: 'dust-trail', region: 'ironspire',
+    spawns: [IRON('brigand', 5, { variant: 'warden', relic: 'windstep-boots', name: 'Rhune the Pass-Warden' }), IRON('brigand', 4), IRON('brigand', 4)],
+    text: 'Rhune the Pass-Warden and his deserters have chained the cleared slide, and want a toll in coin.',
+  },
+  'rp-rocklings': {
+    id: 'rp-rocklings', type: 'fight', name: 'The Scree Field', place: 'The Rockslide Pass', backdrop: 'dust-trail', region: 'ironspire',
+    spawns: [IRON('rockling', 4), IRON('rockling', 4), IRON('rockling', 4), IRON('rockling', 4)],
+    text: 'The scree moves. Then it stands up.',
+  },
+  'rp-wolves': {
+    id: 'rp-wolves', type: 'fight', name: 'Rime Wolves', place: 'The Rockslide Pass', backdrop: 'dust-trail', region: 'ironspire',
+    spawns: [S('rime-wolf', 12), S('rime-wolf', 12), S('rime-wolf', 12)],
+    text: 'Wolves with frost in their fur, hunting in a side hollow.',
+  },
+  'hf-trolls': {
+    id: 'hf-trolls', type: 'fight', name: 'Trolls on the Path', place: 'The Highfold', backdrop: 'dust-trail', region: 'ironspire',
+    spawns: [IRON('peak-troll', 5), IRON('peak-troll', 5)],
+    text: 'Two peak-trolls sitting on the scree path, arguing about whose it is.',
+  },
+  'roc-eyrie': {
+    id: 'roc-eyrie', type: 'fight', name: 'The Thunder-Roc', place: 'The Highfold', backdrop: 'dust-trail', region: 'ironspire',
+    spawns: [IRON('thunder-roc', 6, { relic: 'roc-feather-cloak', name: 'The Thunder-Roc' })],
+    text: 'An eyrie on a crag, and a bird the size of a barn that carries off goats, and sometimes shepherds.',
+  },
+  'is-sentinels': {
+    id: 'is-sentinels', type: 'fight', name: 'The Stair Sentinels', place: 'The Iron Stair', backdrop: 'dust-trail', region: 'ironspire',
+    spawns: [IRON('iron-sentinel', 5, { variant: 'captain', relic: 'ironwall', name: 'The Sentinel-Captain' }), IRON('iron-sentinel', 4), IRON('iron-sentinel', 4)],
+    text: 'Dwarf automatons at the stair-head gate, still keeping out whoever the Thane told them to keep out.',
+  },
+  'is-trolls': {
+    id: 'is-trolls', type: 'fight', name: 'Stair Trolls', place: 'The Iron Stair', backdrop: 'dust-trail', region: 'ironspire',
+    spawns: [IRON('peak-troll', 4), S('rockling', 13), S('rockling', 13)],
+    text: 'A troll and its rocklings, foraging on the switchbacks.',
+  },
+  'troll-cave': {
+    id: 'troll-cave', type: 'fight', name: 'Old Horn\'s Cave', place: 'The Iron Stair', backdrop: 'dust-trail', region: 'ironspire',
+    spawns: [IRON('peak-troll', 6, { variant: 'old-horn', relic: 'trollhide-mantle', name: 'Old Horn' }), IRON('peak-troll', 5)],
+    text: 'Behind a wall of old blue ice, Old Horn the Peak-Troll sleeps in a mantle made of other trolls.',
+  },
+  'tamsin-ironhold': {
+    id: 'tamsin-ironhold', type: 'fight', name: 'Tamsin at Ironhold', place: 'Ironhold', backdrop: 'scorchgate', region: 'ironspire',
+    once: true, duel: true, yields: 'tamsin-yielded-3', talk: 'tamsin-ironhold',
+    spawns: [S('tamsin', 'party', { partyDelta: 4, gearTier: 4, variant: '$rival', relic: '$rival', lend: true, noWaking: true, name: 'Tamsin', wears: 'ironvein-bracers' })],
+    text: 'Tamsin on the Deeps stair, hunting Harrow too, and not in the mood to share. Losing is a yield.',
+  },
+  'id-forgeborn': {
+    id: 'id-forgeborn', type: 'fight', name: 'The Forgeborn', place: 'The Ironhold Deeps', backdrop: 'deep-shaft', region: 'ironspire', dark: true,
+    spawns: [IRON('forgeborn', 5), IRON('forgeborn', 5), IRON('forgeborn', 5)],
+    text: 'Harrow\'s molten servants, still tending forges nobody lights.',
+  },
+  'id-bellows': {
+    id: 'id-bellows', type: 'fight', name: 'The Bellows Hall', place: 'The Ironhold Deeps', backdrop: 'deep-shaft', region: 'ironspire', dark: true,
+    spawns: [IRON('forgeborn', 6, { variant: 'bellows', name: 'The Bellows' }), IRON('forgeborn', 5), IRON('forgeborn', 5)],
+    text: 'A forgeborn built around a great bellows, breathing sparks into its brothers.',
+  },
+  'id-smith': {
+    id: 'id-smith', type: 'fight', name: 'Harrow\'s Journeyman', place: 'The Ironhold Deeps', backdrop: 'deep-shaft', region: 'ironspire', dark: true,
+    spawns: [IRON('forgeborn', 6, { variant: 'journeyman', relic: 'runestaff', name: 'Harrow\'s Journeyman' }), IRON('forgeborn', 5)],
+    text: 'Harrow\'s journeyman, more forge than man now, working a staff of runes at an anvil in the dark.',
+  },
+  'mother-anvil': {
+    id: 'mother-anvil', type: 'fight', name: 'Harrow\'s Forge', place: 'Harrow\'s Forge', backdrop: 'glass-heart', region: 'ironspire',
+    brand: 'brand-of-iron',
+    spawns: [IRON('mother-anvil', 7)],
+    text: 'Mother Anvil, Harrow\'s first forge-golem, with his hammer in one arm and a heart of fire in her ribs. Break them both.',
+  },
+  'fr-cutters': {
+    id: 'fr-cutters', type: 'fight', name: 'The Ice-Saw Camp', place: 'The Frost Road', backdrop: 'glass-flats', region: 'ironspire',
+    spawns: [IRON('tallyman', 6, { variant: 'ice-cutter', relic: 'cutters-pick', name: 'The Cutter-Chief' }), IRON('smuggler', 5, { variant: 'sawyer' }), IRON('smuggler', 5, { variant: 'sawyer' })],
+    text: 'A Tallyman ice-saw camp across the road, cutting blocks out of the lake for someone who pays in iron.',
+  },
+  'fr-wolves': {
+    id: 'fr-wolves', type: 'fight', name: 'The Frost Pack', place: 'The Frost Road', backdrop: 'glass-flats', region: 'ironspire',
+    spawns: [S('rime-wolf', 14), S('rime-wolf', 14), S('rime-wolf', 14), S('rime-wolf', 14)],
+    text: 'A pack of rime wolves running the snow beside the road.',
+  },
+  'fm-wraiths': {
+    id: 'fm-wraiths', type: 'fight', name: 'The Drowned', place: 'Frostmere', backdrop: 'miragewell', region: 'ironspire',
+    spawns: [IRON('rime-wraith', 6), IRON('rime-wraith', 6), IRON('rime-wraith', 6)],
+    text: 'Drowned monks standing round the hole in the ice, as if they were waiting to go back down.',
+  },
+  'fm-shrine': {
+    id: 'fm-shrine', type: 'fight', name: 'The Drowned Shrine', place: 'Frostmere', backdrop: 'miragewell', region: 'ironspire',
+    spawns: [IRON('rime-wraith', 7, { variant: 'abbess', relic: 'drowned-censer', name: 'The Drowned Abbess' }), IRON('rime-wraith', 6, { variant: 'choir' }), IRON('rime-wraith', 6, { variant: 'choir' })],
+    text: 'On the island shrine the Drowned Abbess still swings her censer, and the smoke smells of lake-water.',
+  },
+  'fb-choir': {
+    id: 'fb-choir', type: 'fight', name: 'The Choir', place: 'Beneath Frostmere', backdrop: 'scorchgate-vaults', region: 'ironspire', dark: true,
+    spawns: [IRON('rime-wraith', 7, { variant: 'choir' }), IRON('rime-wraith', 7, { variant: 'choir' }), IRON('rime-wraith', 7, { variant: 'choir' })],
+    text: 'Three drowned monks singing the same note, over and over, under the ice.',
+  },
+  'rime-abbot': {
+    id: 'rime-abbot', type: 'fight', name: 'The Rime-Abbot', place: 'Beneath Frostmere', backdrop: 'scorchgate-vaults', region: 'ironspire',
+    brand: 'brand-of-frost', dark: true,
+    spawns: [IRON('rime-abbot', 8)],
+    text: 'Brother Aurel, who went down to listen to Hush and did not come up. The Crozier in his hand, the Cowl on his head. Break them both.',
+  },
 });
 
 export const GAUNTLET = Object.freeze([
@@ -378,6 +512,13 @@ export const PATROLS = deepFreeze({
   'deep-shaft': [[S('smuggler', 0), S('smuggler', 0), S('sand-skink', 0)], [S('scavenger', 0), S('smuggler', 0)]],
   'glass-flats': [[S('scavenger', 0), S('scavenger', 0), S('sand-skink', 0)], [S('sand-skink', 0), S('sand-skink', 0), S('sand-skink', 0)]],
   scorchgate: [[S('scavenger', 0), S('scavenger', 0), S('scavenger', 0)], [S('smuggler', 0), S('scavenger', 0)]],
+  // M5: the Ironspire zones (spec §2.6). Rabble only: rime wolves, pass brigands, rocklings, forge-sparks.
+  'rockslide-pass': [[S('rime-wolf', 0), S('rime-wolf', 0), S('brigand', 0)], [S('brigand', 0), S('brigand', 0)]],
+  highfold: [[S('rime-wolf', 0), S('rime-wolf', 0)], [S('rockling', 0), S('rockling', 0), S('rime-wolf', 0)]],
+  'iron-stair': [[S('rockling', 0), S('rockling', 0), S('brigand', 0)], [S('brigand', 0), S('rockling', 0)]],
+  deeps: [[S('rockling', 0), S('rockling', 0)], [S('rockling', 0), S('rockling', 0), S('rockling', 0)]],
+  'frost-road': [[S('rime-wolf', 0), S('rime-wolf', 0), S('brigand', 0)], [S('rime-wolf', 0), S('rime-wolf', 0), S('rime-wolf', 0)]],
+  frostmere: [[S('rime-wolf', 0), S('rime-wolf', 0)], [S('rockling', 0), S('rime-wolf', 0), S('rime-wolf', 0)]],
 });
 
 export const BRANDS = deepFreeze({
@@ -386,4 +527,7 @@ export const BRANDS = deepFreeze({
   // M4 (spec §3.3)
   'brand-of-glass': { id: 'brand-of-glass', name: 'The Brand of Glass', from: 'kharzul', region: 'sunscorch', text: 'A third coal relights, clear as glass. The whole world wakes another notch.' },
   'brand-of-ash': { id: 'brand-of-ash', name: 'The Brand of Ash', from: 'ashen-warden', region: 'sunscorch', text: 'A fourth coal relights, grey and hot. The Sunscorch is yours, and the world wakes again.' },
+  // M5 (spec §3.3)
+  'brand-of-iron': { id: 'brand-of-iron', name: 'The Brand of Iron', from: 'mother-anvil', region: 'ironspire', text: 'A fifth coal relights, dull red like iron in the forge. The world wakes another notch.' },
+  'brand-of-frost': { id: 'brand-of-frost', name: 'The Brand of Frost', from: 'rime-abbot', region: 'ironspire', text: 'A sixth coal relights, blue at the heart. The Ironspire is yours, and under the ice something turns over.' },
 });

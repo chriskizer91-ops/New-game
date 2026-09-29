@@ -1,8 +1,9 @@
-// The world above the maps (M3 spec §2, §3.3, §4.2; M4 spec §2): regions, Brands, patrol zones,
+// The world above the maps (M3 spec §2, §3.3, §4.2; M4 spec §2; M5 spec §2): regions, Brands, patrol zones,
 // Hearthfires, the start position, the 17 places on the illustrated map, the critical paths and the
 // optional leads.
 // Coordinates: tiles for maps, viewBox 1200x800 for the illustrated map (`lore`).
-// Owner: WP3; M4 P2 (the Sunscorch stands, SUN_PATH, SUN_LEADS). Imports nothing from rules/.
+// Owner: WP3; M4 P2 (the Sunscorch stands, SUN_PATH, SUN_LEADS); M5 P2 (the Ironspire stands, IRON_PATH,
+// IRON_LEADS). Imports nothing from rules/.
 
 import { deepFreeze } from '../core/freeze.js';
 
@@ -10,7 +11,7 @@ import { deepFreeze } from '../core/freeze.js';
 export const REGIONS = deepFreeze({
   verdant: { id: 'verdant', name: 'The Verdant Wilds', act: 1, lore: [270, 220], brands: ['brand-of-briars', 'brand-of-the-heartroot'], open: true },
   sunscorch: { id: 'sunscorch', name: 'The Sunscorch Wastes', act: 2, lore: [870, 470], entries: ['keep-se'], brands: ['brand-of-glass', 'brand-of-ash'], open: true },
-  ironspire: { id: 'ironspire', name: 'The Ironspire Peaks', act: 2, lore: [870, 160], entries: ['keep-e', 'fr-highfold'], brands: [], open: false },
+  ironspire: { id: 'ironspire', name: 'The Ironspire Peaks', act: 2, lore: [870, 160], entries: ['keep-e', 'fr-highfold'], brands: ['brand-of-iron', 'brand-of-frost'], open: true },
   gloomfen: { id: 'gloomfen', name: 'The Gloomfen Marsh', act: 2, lore: [280, 530], entries: ['keep-sw', 'mf-fen-stair'], brands: [], open: false },
 });
 export const REGION_IDS = Object.freeze(Object.keys(REGIONS));
@@ -31,9 +32,16 @@ export const ZONES = deepFreeze({
   'deep-shaft': { id: 'deep-shaft', level: 11, sets: 'deep-shaft', backdrop: 'deep-shaft' },
   'glass-flats': { id: 'glass-flats', level: 11, sets: 'glass-flats', backdrop: 'glass-flats' },
   scorchgate: { id: 'scorchgate', level: 12, sets: 'scorchgate', backdrop: 'scorchgate' },
+  // M5: the Ironspire Peaks (spec §2.6; levels are P4's to tune; Sunscorch backdrops stand in until P6 paints)
+  'rockslide-pass': { id: 'rockslide-pass', level: 13, sets: 'rockslide-pass', backdrop: 'dust-trail' },
+  highfold: { id: 'highfold', level: 14, sets: 'highfold', backdrop: 'dust-trail' },
+  'iron-stair': { id: 'iron-stair', level: 14, sets: 'iron-stair', backdrop: 'dust-trail' },
+  deeps: { id: 'deeps', level: 15, sets: 'deeps', backdrop: 'deep-shaft' },
+  'frost-road': { id: 'frost-road', level: 16, sets: 'frost-road', backdrop: 'glass-flats' },
+  frostmere: { id: 'frostmere', level: 16, sets: 'frostmere', backdrop: 'miragewell' },
 });
 
-// The Hearthfires (ten in the Wilds, seven in the Sunscorch). x, y, face is the STAND (where the party wakes, rests and arrives by
+// The Hearthfires (ten in the Wilds, seven in the Sunscorch, seven in the Ironspire). x, y, face is the STAND (where the party wakes, rests and arrives by
 // travel), facing the fire. `cold` fires start unlit (the cold-hearth lock).
 const H = (map, x, y, lore, name, o = {}) => ({ map, x, y, face: 'n', lore, name, cold: false, ...o });
 export const HEARTHS = deepFreeze({
@@ -56,6 +64,14 @@ export const HEARTHS = deepFreeze({
   'shaft-lamp': H('deep-shaft-1', 8, 12, [770, 575], 'The Shaft Lamp', { cold: true }),
   'well-fire': H('miragewell', 10, 13, [1010, 540], 'The Well Fire'),
   'last-watchfire': H('scorchgate', 20, 13, [930, 660], 'The Last Watchfire', { cold: true, face: 's' }),
+  // M5 (spec §2.5). Stands are the scaffold's placeholders until P2 lays the maps out.
+  'pass-shrine': H('rockslide-pass', 12, 41, [650, 330], 'The Pass Shrine'),
+  'veil-hearth': H('peaks-veil', 14, 12, [750, 240], 'The Cloister Fire'),
+  'stair-cairn': H('iron-stair', 12, 29, [800, 200], 'The Stair Cairn', { cold: true }),
+  'thanes-hearth': H('ironhold', 16, 12, [870, 160], 'The Thane\'s Hearth'),
+  'deeps-forge': H('ironhold-deeps', 14, 18, [875, 175], 'The Deeps Furnace', { cold: true }),
+  'stormwatch-fire': H('stormwatch', 13, 12, [1020, 240], 'The Watch Fire'),
+  'frost-cairn': H('frost-road', 20, 14, [1000, 180], 'The Frost Cairn', { cold: true }),
 });
 export const HEARTH_IDS = Object.freeze(Object.keys(HEARTHS));
 
@@ -75,10 +91,10 @@ export const LORE = deepFreeze({
   dusthaven: P('Dusthaven', 'Mining Camp', 'sunscorch', [780, 560], 'dusthaven'),
   miragewell: P('Miragewell', 'Oasis Village', 'sunscorch', [1010, 540], 'miragewell'),
   scorchgate: P('Scorchgate Ruins', 'Ancient Ruins', 'sunscorch', [930, 660], 'scorchgate'),
-  ironhold: P('Ironhold Fortress', 'Dwarven Stronghold', 'ironspire', [870, 160]),
-  peaksveil: P('Peak\'s Veil', 'Monastery', 'ironspire', [750, 240]),
-  stormwatch: P('Stormwatch Outpost', 'Military Post', 'ironspire', [1020, 240]),
-  frostmere: P('Frostmere Lake', 'Sacred Lake', 'ironspire', [980, 120]),
+  ironhold: P('Ironhold Fortress', 'Dwarven Stronghold', 'ironspire', [870, 160], 'ironhold'),
+  peaksveil: P('Peak\'s Veil', 'Monastery', 'ironspire', [750, 240], 'peaks-veil'),
+  stormwatch: P('Stormwatch Outpost', 'Military Post', 'ironspire', [1020, 240], 'stormwatch'),
+  frostmere: P('Frostmere Lake', 'Sacred Lake', 'ironspire', [980, 120], 'frostmere'),
   bogmire: P('Bogmire', 'Swamp Town', 'gloomfen', [280, 530]),
   rotbridge: P('Rotbridge', 'Crossing Point', 'gloomfen', [170, 600]),
   willowmurk: P('Willowmurk', 'Hidden Village', 'gloomfen', [410, 620]),
@@ -95,6 +111,14 @@ export const SUN_PATH = Object.freeze(['waystone', 'sr-toll', 'spire-hearth', 'd
   'kharzul-heart', 'gf-raiders', 'last-watchfire', 'sg-captain', 'tamsin-scorchgate', 'vault-guard', 'ashen-warden']);
 export const SUN_LEADS = deepFreeze({
   caravan: ['gf-caravan'], wyrm: ['wyrm-lair'], gnash: ['gnash-camp'], well: ['wisp-queen'], aqueduct: ['dt-aqueduct'],
+});
+
+// M5: the Ironspire critical path (spec §2.2), road-first: the Brand of Iron, then the Brand of Frost.
+export const IRON_PATH = Object.freeze(['pass-shrine', 'rp-brigands', 'rp-rocklings', 'veil-hearth', 'is-sentinels', 'stair-cairn', 'thanes-hearth',
+  'tamsin-ironhold', 'id-forgeborn', 'deeps-forge', 'id-bellows', 'mother-anvil', 'stormwatch-fire',
+  'fr-cutters', 'frost-cairn', 'fm-wraiths', 'fb-choir', 'rime-abbot']);
+export const IRON_LEADS = deepFreeze({
+  roc: ['hf-trolls', 'roc-eyrie'], horn: ['troll-cave'], smith: ['id-smith'], shrine: ['fm-shrine'],
 });
 
 // The optional leads after the Brand (and the early optional fights), by name.

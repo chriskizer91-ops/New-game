@@ -14,6 +14,7 @@ import { MAPS, MAP_IDS, ENTITY_OF } from '../src/data/maps/index.js';
 import { HEARTHS } from '../src/data/world.js';
 import { RELICS } from '../src/data/relics.js';
 import { QUESTS } from '../src/data/quests.js';
+import { DIALOGUE } from '../src/data/dialogue.js';
 import { carryFacts, saveLine, inSentence, RELIC_TOTAL } from '../src/ui/lib/carry-facts.js';
 import { VIEWS, REGION_VIEW, regionOpen, placeOf, loreAt, entityLore, toFrame, relax, RELIC_SITE } from '../src/ui/lib/atlas-geo.js';
 import { TRACK_NAMES, badNotes } from '../src/core/audio.js';
@@ -23,13 +24,13 @@ import { grudgeView } from '../src/ui/screens/journal.js';
 const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures/v1');
 const fixtures = readdirSync(dir).filter(f => f.endsWith('.json')).map(f => [f, JSON.parse(readFileSync(path.join(dir, f), 'utf8'))]);
 
-test('the carry-over card has the party, the relics out of 38, and a real place to wake for every M2 fixture', () => {
-  assert.equal(RELIC_TOTAL, 38);
+test('the carry-over card has the party, the relics out of 52, and a real place to wake for every M2 fixture', () => {
+  assert.equal(RELIC_TOTAL, 52);
   for (const [name, v1] of fixtures) {
     const g = migrate(v1);
     const F = carryFacts(g);
     assert.equal(F.heroes.length, 4, name);
-    assert.equal(F.total, 38, name);
+    assert.equal(F.total, 52, name);
     assert.equal(F.gold, v1.gold, name);
     assert.equal(F.waking, v1.progress.waking, name);
     assert.equal(F.place, MAPS[g.progress.pos.map].name, name);
@@ -43,8 +44,8 @@ test('the carry-over card has the party, the relics out of 38, and a real place 
 
 test('the title Continue line reads name · place · day · level · relics', () => {
   const g = newGame({ name: 'Wren', starter: 'hearthbrand', seed: 7 });
-  assert.match(saveLine(g), /^Wren · The Great Hall · Day 1 · Lv 1 · 1\/38 relics$/);
-  for (const [name, v1] of fixtures) assert.match(saveLine(migrate(v1)), /^.+ · .+ · Day \d+ · Lv \d+ · \d+\/38 relics$/, name);
+  assert.match(saveLine(g), /^Wren · The Great Hall · Day 1 · Lv 1 · 1\/52 relics$/);
+  for (const [name, v1] of fixtures) assert.match(saveLine(migrate(v1)), /^.+ · .+ · Day \d+ · Lv \d+ · \d+\/52 relics$/, name);
 });
 
 test('you-are-here projects onto each route between its lore ends, and points stay put', () => {
@@ -134,8 +135,11 @@ test('every held or worn relic has a placed holder for the Atlas', () => {
     assert.ok(RELICS[relic], relic);
     assert.ok(ENTITY_OF[enc], `${relic}: ${enc} is placed on a map`);
   }
-  // a quest's reward (M4: the Orrery, the Signet, the Sunstone Heart) and Garret's Kettle have no holder
-  const given = new Set(['watchkeepers-kettle', ...Object.values(QUESTS).map(q => q.reward?.relic).filter(Boolean)]);
+  // a quest's reward (M4: the Orrery, the Signet, the Sunstone Heart) and a gift in a scene (Garret's Kettle;
+  // M5: the Thane's Rune-Key) have no holder
+  const gifts = Object.values(DIALOGUE).flatMap(d => [...(d.do || []), ...(d.choices || []).flatMap(c => c.do || [])]).map(e => e.give).filter(Boolean);
+  assert.ok(gifts.includes('watchkeepers-kettle'), 'Garret gives the Kettle in a scene');
+  const given = new Set([...gifts, ...Object.values(QUESTS).map(q => q.reward?.relic).filter(Boolean)]);
   const held = Object.values(RELICS).filter(r => !r.starter && !given.has(r.id)).map(r => r.id);
   for (const r of held) assert.ok(RELIC_SITE[r], `${r} has a holder`);
 });
@@ -153,7 +157,7 @@ test('every map\'s music names a real track (M4: the Sunscorch roads play the de
   assert.ok(MAP_IDS.some(id => MAPS[id].music === 'desert'), 'the desert track is used');
 });
 
-test('the Codex binder: Page I counts your starter and the other 21, Page II all 14, III and IV are sealed', () => {
+test('the Codex binder: Page I counts your starter and the other 21, Pages II and III all 14, IV is sealed', () => {
   for (const id of Object.keys(RELICS)) {
     assert.ok(RIDDLES[id], `${id} has a riddle for its unsighted pocket`);
     assert.ok(HOLDER[id], `${id} has a holder line for its sighted pocket`);
@@ -170,7 +174,11 @@ test('the Codex binder: Page I counts your starter and the other 21, Page II all
   assert.equal(II.relics.length, 14);
   assert.deepEqual([II.progress.claimed, II.progress.needed], [0, 14]);
   assert.equal(II.reward.name, 'The Sunscorch Compact');
-  for (const id of ['ironspire', 'gloomfen']) {
+  const III = binderPage(g, 'ironspire');
+  assert.equal(III.relics.length, 14);
+  assert.deepEqual([III.progress.claimed, III.progress.needed], [0, 14]);
+  assert.equal(III.reward.name, 'The Ironspire Accord');
+  for (const id of ['gloomfen']) {
     const P = binderPage(g, id);
     assert.equal(P.sealed, true, id);
     assert.equal(P.relics.length, 0, id);

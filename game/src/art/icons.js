@@ -19,7 +19,7 @@
 // gemIcon(id, { size=12 }) -> ImageData       ids: GEM_ICON_KEYS (data/gems.js); an unknown id draws a plain stone
 //   in its GEMS colour, or grey
 // materialIcon(id, { size=12 }) -> ImageData  ids: MATERIAL_ICON_KEYS ('scrap', 'silver', 'embers')
-// lockIcon also draws the four Sunscorch locks: 'dune-glass', 'mirage', 'quicksand', 'vault-seal'. Their keys are
+// lockIcon also draws the four Sunscorch locks: 'dune-glass', 'mirage', 'quicksand', 'vault-seal' (M5: and 'chasm', 'ice', 'rune-seal', 'drift'). Their keys are
 // relic powers ('power') and the Craft, Knowledge and Survival Domains, which keyIcon already draws.
 import { MAT, hx, mix } from './forge.js';
 import { lru } from './cache.js';
@@ -255,6 +255,28 @@ const LK = {
     for (const [a, b] of [[[2.4, 2.8], [4, 4.6]], [[9.4, 8.6], [8, 7.2]]]) stroke(C, [a, b], .32, raw('#6a5a52'));
     fillDisc(C, 6, 4.9, 1.35, raw('#ff8a2a')); fillPoly(C, [[5.2, 5.6], [6.8, 5.6], [7.2, 8.6], [4.8, 8.6]], raw('#ff8a2a')); px(C, 5.6, 4.4, raw('#fff0b4'));
   },
+  // M5: the Ironspire locks (first drafts from the M5 scaffold; P6 may redraw them)
+  chasm: C => {
+    fillPoly(C, [[.4, 11.4], [.8, 3.6], [3, 2.4], [4.6, 4.2], [4.2, 11.4]], col('#6a6470'));
+    fillPoly(C, [[7.6, 11.4], [7.2, 4.6], [9, 2.8], [11.2, 3.8], [11.6, 11.4]], col('#6a6470'));
+    fillPoly(C, [[4.2, 11.4], [4.6, 4.2], [7.2, 4.6], [7.6, 11.4]], raw('#14101c'));
+    stroke(C, [[5, 9], [6, 7.4], [6.8, 8.8]], .3, raw('#cfe8ff')); px(C, 2, 3.4, raw('#b8b0c0')); px(C, 9.6, 3.6, raw('#b8b0c0'));
+  },
+  ice: C => {
+    fillPoly(C, [[1, 11.4], [1.4, 2.4], [6, .8], [10.6, 2.4], [11, 11.4]], col('#7ab8dc'));
+    fillPoly(C, [[2.4, 3], [6, 1.8], [9.6, 3], [6, 4.4]], raw('#d4f0ff'));
+    stroke(C, [[4, 5], [5.4, 7.4], [4.6, 9.6]], .3, raw('#2a5a7c')); stroke(C, [[5.4, 7.4], [8, 8.2]], .28, raw('#2a5a7c')); px(C, 8.4, 4.4, raw('#ffffff'));
+  },
+  'rune-seal': C => {
+    fillDisc(C, 6, 6, 5.3, col('#5a5a64')); fillDisc(C, 6, 6, 4.1, col('#3a3a44'));
+    stroke(C, [[6, 2.6], [6, 9.4]], .45, raw('#b0b8c8')); stroke(C, [[6, 4], [8.2, 6], [6, 8]], .4, raw('#b0b8c8')); stroke(C, [[6, 6], [3.8, 4.2]], .4, raw('#b0b8c8'));
+    px(C, 4.2, 3.2, raw('#e4e8f4'));
+  },
+  drift: C => {
+    fillPoly(C, [[.4, 11.2], [1.6, 7.4], [4, 5.4], [7, 4.8], [9.6, 6.2], [11.6, 11.2]], col('#e8f2fc'));
+    fillPoly(C, [[5.6, 11.2], [8.4, 7.8], [10.2, 8.4], [11.6, 11.2]], raw('#a4c0dc'));
+    for (const [x, y] of [[2.4, 2.4], [6.4, 1.6], [9.6, 2.8], [4.4, 3.6]]) px(C, x, y, raw('#ffffff'));
+  },
   lock: C => {
     stroke(C, [[3.6, 6], [3.6, 3.6], [6, 1.4], [8.4, 3.6], [8.4, 6]], .75, col('#8c96ac'));
     fillPoly(C, [[2, 5.6], [10, 5.6], [10, 11.2], [2, 11.2]], col('#c89a2e'));
@@ -338,6 +360,8 @@ const GEM_IC = {
   'moss-agate': C => { fillDisc(C, 6, 6.4, 4.8, col('#4a8a48')); stroke(C, [[3, 9], [4.6, 6.8], [4, 4.6]], .38, raw('#1e3a1c')); stroke(C, [[4.6, 6.8], [7, 6], [8.6, 7.8]], .34, raw('#1e3a1c')); stroke(C, [[7, 6], [7.6, 3.8]], .3, raw('#1e3a1c')); px(C, 4, 3.6, raw('#dcf4c8')); },
   'glass-pearl': C => { fillDisc(C, 6, 6.4, 4.6, col('#a4bcd8')); fillDisc(C, 6.8, 7.2, 3, raw('#7c90aa')); fillDisc(C, 5.4, 5.6, 3, raw('#dcecfc')); fillDisc(C, 4.4, 4.4, 1.1, raw('#ffffff')); },
   'ash-garnet': C => { fillPoly(C, [[2, 3.4], [3.4, 2], [8.6, 2], [10, 3.4], [10, 8.6], [8.6, 10], [3.4, 10], [2, 8.6]], col('#b3261e')); fillPoly(C, [[3.4, 2], [8.6, 2], [7.4, 4.4], [4.6, 4.4]], raw('#e0604a')); fillPoly(C, [[4.6, 7.6], [7.4, 7.6], [8.6, 10], [3.4, 10]], raw('#5a0e10')); px(C, 7.6, 5.4, raw('#9e9690')); px(C, 4.2, 3, raw('#ffd0c0')); },
+  // M5: the Frost Opal (a first draft from the M5 scaffold)
+  'frost-opal': C => { facet(C, 6, 6.4, 5, 4.4, '#3c6c9a', '#9cd4f4', '#f0fbff'); px(C, 4.4, 3.4, raw('#ffffff')); px(C, 7.8, 7.4, raw('#ffd6f4')); px(C, 5.2, 8, raw('#c8f4d8')); },
 };
 export const GEM_ICON_KEYS = Object.keys(GEM_IC);
 export function gemIcon(id, o = {}) {

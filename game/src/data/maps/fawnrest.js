@@ -49,9 +49,10 @@ export default deepFreeze({
     { id: 'fr-offering', kind: 'chest', at: [3, 3], loot: { items: [{ rarity: 'storied', slot: 'amulet' }] }, lock: 'boulder' },
   ],
   exits: [
-    { id: 'fr-highfold', area: [21, 9, 21, 10], sealed: { region: 'ironspire', text: 'Fallen scree, and somewhere past it, a bell.' } },
+    // M5: the Highfold's scree path, opened from Peak's Veil's side (spec §2.4)
+    { id: 'fr-highfold', area: [21, 9, 21, 10], to: 'highfold', anchor: 'from-fawnrest', gate: { flag: 'highfold-open' }, sealed: { region: 'ironspire', text: 'Fallen scree, and somewhere past it, a bell.', hint: 'The monks of Peak\'s Veil clear this path from above.' } },
     { id: 'fr-s', area: [10, 19, 11, 19], to: 'hindwood', anchor: 'from-fawnrest' },
   ],
-  anchors: { 'from-hindwood': [11, 17, 'n'] },
+  anchors: { 'from-hindwood': [11, 17, 'n'], 'from-highfold': [20, 9, 'w'] },
   roam: null,
 });

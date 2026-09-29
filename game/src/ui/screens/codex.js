@@ -68,6 +68,21 @@ export const RIDDLES = Object.freeze({
   'ashen-aegis': 'Scorchgate’s last shield, carried out of the fire and never put down. It still stands watch below.',
   'cinder-crown': 'Every ember in it was a soldier. Whoever wears it in the Vault of Ash still gives them orders.',
   saltglass: 'It sings when it is drawn. A sharpshooter rides with the Tallyman caravan across the Flats.',
+  // M5: Page III (STUBS from the M5 scaffold; P7 writes the real riddles)
+  'windstep-boots': 'Boots that never touch the slide. A deserter takes tolls on the pass in them.',
+  veilbell: 'A bell that has not rung since the Abbot went down. The abbess of Peak’s Veil keeps its rope.',
+  ironwall: 'A dwarf door-shield on an iron arm. The Stair Sentinels still hold it for a Thane who sealed his halls.',
+  'drowned-censer': 'It swings by itself, and the smoke is wet. An abbess who drowned still carries it on the lake.',
+  'ironvein-bracers': 'Ironhold work, small at the wrist. Someone who hunts Harrow too wears them now.',
+  'roc-feather-cloak': 'Three feathers make a cloak. The bird that dropped them nests on the Highfold crags.',
+  'thanes-rune': 'A black iron ring the Deeps’ doors were cut to know. Only the Thane can give it.',
+  'trollhide-mantle': 'Hides that still grow back a little. An old troll wears them in a cave behind the ice.',
+  runestaff: 'Runes cut by a smith who is missing. His journeyman works it in the dark under Ironhold.',
+  'anvil-heart': 'A heart of fire in iron ribs. It has never gone cold.',
+  'worldforge-hammer': 'A smith who never put his hammer down. Something in his forge holds it now.',
+  'cutters-pick': 'A pick with a tally cut into the haft for every block of lake it took.',
+  'rime-crozier': 'A crozier frozen to its bearer’s hand for thirty years, under the ice.',
+  'hushweave-cowl': 'Woven from something that was not wool, by someone who was listening.',
 });
 
 // Who holds each relic, short enough for a pocket ("Held by ...") and the grey card's stamp.
@@ -82,6 +97,10 @@ export const HOLDER = Object.freeze({
   'glass-carapace': 'Kharzul the Glass Scorpion', dunebreaker: 'Gnash the Raider-King', cinderfang: 'Kharzul the Glass Scorpion',
   'mirage-glass': 'the Wisp-Queen', 'qasims-signet': 'Cistern Lord Qasim', 'sunstone-heart': 'Luma of Dusthaven',
   'scorchgate-key': 'the Ash-Captain', 'ashen-aegis': 'the Ashen Warden', 'cinder-crown': 'the Ashen Warden', saltglass: 'Vell Saltglass',
+  'windstep-boots': 'Rhune the Pass-Warden', veilbell: 'Mother Wynn', ironwall: 'the Sentinel-Captain', 'drowned-censer': 'the Drowned Abbess',
+  'ironvein-bracers': 'Tamsin', 'roc-feather-cloak': 'the Thunder-Roc', 'thanes-rune': 'Thane Brundar', 'trollhide-mantle': 'Old Horn',
+  runestaff: 'Harrow’s Journeyman', 'anvil-heart': 'Mother Anvil', 'worldforge-hammer': 'Mother Anvil', 'cutters-pick': 'the Cutter-Chief',
+  'rime-crozier': 'the Rime-Abbot', 'hushweave-cowl': 'the Rime-Abbot',
 });
 
 const PAGE_IDS = PAGES.map(p => p.id);

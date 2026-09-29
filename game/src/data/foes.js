@@ -1,4 +1,4 @@
-// Foe families of the Verdant Wilds (M2, M3) and the Sunscorch Wastes (M4). Art keys match the shared vocabulary.
+// Foe families of the Verdant Wilds (M2, M3), the Sunscorch Wastes (M4) and the Ironspire Peaks (M5). Art keys match the shared vocabulary.
 //
 // Stats are for level 1; rules/foe.js scales them by level, gear tier, Omens and the Waking.
 // Each family has a MOVE TABLE read like a D&D random table: the foe rolls its intent die
@@ -655,6 +655,43 @@ const TALLY_SUN = {
   },
 };
 
-export const FOES = deepFreeze({ ...VERDANT, ...TALLY_SUN, ...SUNSCORCH });
+// ---- M5: the Ironspire Peaks (spec §3.2; owner P4). STUBS from the M5 scaffold: each borrows an earlier
+// family's numbers, moves and look until P4 writes the real family in its place (with `art: <its id>`,
+// which P6 draws; art-keys.test.mjs fails for a new key until both have landed).
+const stub = (id, name, from, o = {}) => ({ ...from, id, name, stub: true, variants: {}, ...o });
+const stubHolder = (name, hp, o = {}) => ({ name, tier: 'relic-bearer', hp, ...o });
+const IRONSPIRE = {
+  'rime-wolf': stub('rime-wolf', 'Rime Wolf', VERDANT.thornhound, { aspect: 'frost', text: 'A wolf with frost in its fur. Its bite leaves you cold.' }),
+  brigand: stub('brigand', 'Pass Brigand', VERDANT.cutpurse, { aspect: null,
+    variants: { warden: stubHolder('Rhune the Pass-Warden', 60) },
+    text: 'A Stormwatch deserter working the pass for tolls.' }),
+  rockling: stub('rockling', 'Rockling', VERDANT.briarling, { kind: 'construct', aspect: 'stone', text: 'A heap of scree that stood up. It rolls into you.' }),
+  'iron-sentinel': stub('iron-sentinel', 'Iron Sentinel', VERDANT.bandit, { humanoid: false, kind: 'construct', aspect: 'stone',
+    variants: { captain: stubHolder('The Sentinel-Captain', 60) },
+    text: 'A dwarven automaton of iron plate, still keeping the stair.' }),
+  forgeborn: stub('forgeborn', 'Forgeborn', VERDANT.sapwight, { kind: 'construct', aspect: 'ember',
+    variants: { bellows: { name: 'The Bellows', hp: 40 }, journeyman: stubHolder('Harrow\'s Journeyman', 64) },
+    text: 'One of Harrow\'s molten servants, slag for skin and a furnace for a heart.' }),
+  'peak-troll': stub('peak-troll', 'Peak-Troll', VERDANT.sapwight, { kind: 'beast', aspect: 'stone',
+    variants: { 'old-horn': stubHolder('Old Horn', 90) },
+    text: 'A troll of the high passes. Cut it and it grows back.' }),
+  'rime-wraith': stub('rime-wraith', 'Rime-Wraith', VERDANT['hollowed-ranger'], { kind: 'undead', aspect: 'frost',
+    variants: { abbess: stubHolder('The Drowned Abbess', 70), choir: { name: 'Choir-Wraith', hp: 30 } },
+    text: 'A drowned monk of Frostmere, still wet under the frost.' }),
+  'thunder-roc': stub('thunder-roc', 'The Thunder-Roc', VERDANT.gloamwing, { aspect: 'storm', unique: true, relics: ['roc-feather-cloak'],
+    text: 'A bird the size of a barn, nesting on the Highfold crags.' }),
+  'mother-anvil': stub('mother-anvil', 'Mother Anvil', VERDANT.rotwarden, { kind: 'construct', aspect: 'ember', unique: true, relics: ['worldforge-hammer', 'anvil-heart'],
+    text: 'Harrow\'s first forge-golem: an anvil the size of a cart on four iron legs.' }),
+  'rime-abbot': stub('rime-abbot', 'The Rime-Abbot', VERDANT.rotwarden, { kind: 'undead', aspect: 'frost', unique: true, relics: ['rime-crozier', 'hushweave-cowl'],
+    text: 'Brother Aurel of Peak\'s Veil, who went down to listen to Hush and did not come up.' }),
+};
+
+// the Tallymen of the Ironspire: new variants of the M3 families (spec §3.2)
+const TALLY_IRON = {
+  tallyman: { ...TALLY_SUN.tallyman, variants: { ...TALLY_SUN.tallyman.variants, 'ice-cutter': stubHolder('The Cutter-Chief', 64) } },
+  smuggler: { ...TALLY_SUN.smuggler, variants: { ...TALLY_SUN.smuggler.variants, sawyer: { name: 'Sawyer', hp: 20 } } },
+};
+
+export const FOES = deepFreeze({ ...VERDANT, ...TALLY_SUN, ...SUNSCORCH, ...TALLY_IRON, ...IRONSPIRE });
 
 export const FOE_IDS = Object.freeze(Object.keys(FOES));

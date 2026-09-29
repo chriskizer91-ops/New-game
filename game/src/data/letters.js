@@ -12,4 +12,7 @@ export const LETTERS = deepFreeze({
   // M4: the Sunscorch
   'brand-of-glass': { text: 'The scorpion is only glass again, and you have a warm sword. Keep it polished, little Warden. Metal melts better clean. — U.' },
   'brand-of-ash': { text: 'Scorchgate\'s Warden has finally sat down. Ask Fenwick why your hearth never needed wood. Then ask him how old he is. — U.' },
+  // M5: the Ironspire (STUBS until P3 writes them)
+  'brand-of-iron': { text: 'Harrow\'s anvil is quiet at last. Did he leave the fire burning for you, or for me? — U.' },
+  'brand-of-frost': { text: 'You have woken the Sleeper\'s neighbours. Listen at the ice some night, little Warden. It is listening back. — U.' },
 });
