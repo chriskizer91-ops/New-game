@@ -10,10 +10,12 @@ import { check, canAfford, condErrors, priceErrors } from '../src/rules/cond.js'
 import { talkTo, dialogueView, choose } from '../src/rules/story.js';
 import { DIALOGUE } from '../src/data/dialogue.js';
 import { DOMAINS } from '../src/data/domains.js';
+import { CONSUMABLES } from '../src/data/items.js';
 
 const fresh = () => migrate(newGame({ name: 'Tess', seed: 12 }));
 const onDay = (game, day) => ({ ...game, progress: { ...game.progress, flags: { ...game.progress.flags, day } } });
-const rich = game => ({ ...game, gold: 1000, bag: { ...game.bag, 'hearth-tonic': 5 }, materials: { ...game.materials, silver: 3 } });
+// a party with the means: plenty of gold, of every consumable and of every forge material
+const rich = game => ({ ...game, gold: 5000, bag: Object.fromEntries(Object.keys(CONSUMABLES).map(id => [id, 9])), materials: { scrap: 9, silver: 9, embers: 9 } });
 const poor = game => ({ ...game, gold: 0, bag: {}, materials: {} });
 
 test('{ day: { every, at } } holds on every n-th day from `at` (day 1 when the day is unset)', () => {

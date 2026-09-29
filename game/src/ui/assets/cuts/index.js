@@ -3,5 +3,7 @@
 // its own scene when the still is missing.
 import hearthBlue from './hearth-blue.js';
 import hearthGold from './hearth-gold.js';
+import regionGloomfen from './region-gloomfen.js';
+import titleWorld from './title-world.js';
 
-export const CUTS = Object.freeze({ 'hearth-blue': hearthBlue, 'hearth-gold': hearthGold });
+export const CUTS = Object.freeze({ 'hearth-blue': hearthBlue, 'hearth-gold': hearthGold, 'region-gloomfen': regionGloomfen, 'title-world': titleWorld });
