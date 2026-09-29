@@ -13,7 +13,7 @@
 // Picture sizes are what image generators make: 1536x1024, 1024x1024 and 1024x1536.
 // Playwright and Chromium as in tools/gallery.mjs.
 import { build } from 'esbuild';
-import { writeFile, mkdir } from 'node:fs/promises';
+import { writeFile, mkdir, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { createRequire } from 'node:module';
@@ -41,15 +41,28 @@ export function planMap(w, h) {
   }
   const best = single.sort((a, b) => b.px - a.px || a.waste - b.waste)[0];
   if (best.px >= MIN_PX) return [{ key: '', aspect: best.aspect, rect: [0, 0, w, h], pad: best.pad }];
-  // panels along the long side
-  const tall = h > w;
-  const across = tall ? w : h, span = tall ? h : w;
-  const len = Math.round(across * 1.5);
-  const n = Math.max(2, Math.ceil((span - OVERLAP) / (len - OVERLAP)));
+  // Panels the full width (cut across the rows) or the full height (cut across the columns) of the map, at
+  // 3:2 or 2:3: the fewest panels that draw it at MIN_PX or more, then the largest. A long road is cut along
+  // its long side; a big, nearly square map (M6's Murkway) the other way, since a panel along it would be
+  // longer than the map.
+  const plans = [];
+  for (const aspect of ['2:3', '3:2']) {
+    const [aw, ah] = aspect.split(':').map(Number);
+    for (const fullWidth of [true, false]) {
+      const span = fullWidth ? h : w;
+      const len = Math.round(fullWidth ? (w * ah) / aw : (h * aw) / ah);
+      if (len >= span || len <= OVERLAP) continue;
+      const px = fullWidth ? SIZE[aspect][0] / w : SIZE[aspect][1] / h;
+      if (px < MIN_PX) continue;
+      plans.push({ aspect, fullWidth, span, len, px, n: Math.max(2, Math.ceil((span - OVERLAP) / (len - OVERLAP))) });
+    }
+  }
+  const p = plans.sort((a, b) => a.n - b.n || b.px - a.px)[0];
+  if (!p) throw new Error(`no way to paint a ${w}x${h} map in panels`);
   const out = [];
-  for (let i = 0; i < n; i++) {
-    const at = Math.round((i * (span - len)) / (n - 1));
-    out.push({ key: '-' + 'abcdefgh'[i], aspect: tall ? '2:3' : '3:2', rect: tall ? [0, at, w, len] : [at, 0, len, h], pad: null });
+  for (let i = 0; i < p.n; i++) {
+    const at = Math.round((i * (p.span - p.len)) / (p.n - 1));
+    out.push({ key: '-' + 'abcdefgh'[i], aspect: p.aspect, rect: p.fullWidth ? [0, at, w, p.len] : [at, 0, p.len, h], pad: null });
   }
   return out;
 }
@@ -109,5 +122,6 @@ for (const id of ids) {
 }
 await writeFile(path.join(outDir, 'refs.json'), JSON.stringify(manifest, null, 2) + '\n');
 await browser.close();
+await rm(pageFile, { force: true }); // the drawing page is scaffolding, not a reference
 const n = Object.values(manifest).reduce((s, m) => s + m.panels.length, 0);
 console.log(`wrote ${n} references for ${ids.length} maps, and refs.json, to ${outDir}`);

@@ -1,0 +1,497 @@
+{
+  "murkway": {
+    "name": "The Murkway",
+    "region": "gloomfen",
+    "biome": "fen",
+    "tiles": [
+      44,
+      40
+    ],
+    "panels": [
+      {
+        "ref": "ref-murkway-a.png",
+        "painting": "map-murkway-a.png",
+        "aspect": "2:3",
+        "size": [
+          1024,
+          1536
+        ],
+        "rect": [
+          0,
+          0,
+          27,
+          40
+        ],
+        "pad": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "px": 37.9
+      },
+      {
+        "ref": "ref-murkway-b.png",
+        "painting": "map-murkway-b.png",
+        "aspect": "2:3",
+        "size": [
+          1024,
+          1536
+        ],
+        "rect": [
+          17,
+          0,
+          27,
+          40
+        ],
+        "pad": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "px": 37.9
+      }
+    ]
+  },
+  "willowmurk": {
+    "name": "Willowmurk",
+    "region": "gloomfen",
+    "biome": "willow-village",
+    "tiles": [
+      30,
+      26
+    ],
+    "panels": [
+      {
+        "ref": "ref-willowmurk.png",
+        "painting": "map-willowmurk.png",
+        "aspect": "3:2",
+        "size": [
+          1536,
+          1024
+        ],
+        "rect": [
+          0,
+          0,
+          30,
+          26
+        ],
+        "pad": [
+          0,
+          5,
+          0,
+          4
+        ],
+        "px": 39.4
+      }
+    ]
+  },
+  "rotbridge": {
+    "name": "Rotbridge",
+    "region": "gloomfen",
+    "biome": "channel",
+    "tiles": [
+      40,
+      28
+    ],
+    "panels": [
+      {
+        "ref": "ref-rotbridge.png",
+        "painting": "map-rotbridge.png",
+        "aspect": "3:2",
+        "size": [
+          1536,
+          1024
+        ],
+        "rect": [
+          0,
+          0,
+          40,
+          28
+        ],
+        "pad": [
+          0,
+          1,
+          0,
+          1
+        ],
+        "px": 36.6
+      }
+    ]
+  },
+  "bogmire": {
+    "name": "Bogmire",
+    "region": "gloomfen",
+    "biome": "stilt-town",
+    "tiles": [
+      34,
+      28
+    ],
+    "panels": [
+      {
+        "ref": "ref-bogmire.png",
+        "painting": "map-bogmire.png",
+        "aspect": "3:2",
+        "size": [
+          1536,
+          1024
+        ],
+        "rect": [
+          0,
+          0,
+          34,
+          28
+        ],
+        "pad": [
+          0,
+          4,
+          0,
+          4
+        ],
+        "px": 36.6
+      }
+    ]
+  },
+  "lanternfen": {
+    "name": "The Lanternfen",
+    "region": "gloomfen",
+    "biome": "bog",
+    "tiles": [
+      40,
+      32
+    ],
+    "panels": [
+      {
+        "ref": "ref-lanternfen.png",
+        "painting": "map-lanternfen.png",
+        "aspect": "3:2",
+        "size": [
+          1536,
+          1024
+        ],
+        "rect": [
+          0,
+          0,
+          40,
+          32
+        ],
+        "pad": [
+          0,
+          4,
+          0,
+          4
+        ],
+        "px": 32
+      }
+    ]
+  },
+  "mothers-hollow": {
+    "name": "The Mother's Hollow",
+    "region": "gloomfen",
+    "biome": "drowned-grove",
+    "tiles": [
+      22,
+      20
+    ],
+    "panels": [
+      {
+        "ref": "ref-mothers-hollow.png",
+        "painting": "map-mothers-hollow.png",
+        "aspect": "3:2",
+        "size": [
+          1536,
+          1024
+        ],
+        "rect": [
+          0,
+          0,
+          22,
+          20
+        ],
+        "pad": [
+          0,
+          4,
+          0,
+          4
+        ],
+        "px": 51.2
+      }
+    ]
+  },
+  "long-boardwalk": {
+    "name": "The Long Boardwalk",
+    "region": "gloomfen",
+    "biome": "boardwalk",
+    "tiles": [
+      56,
+      18
+    ],
+    "panels": [
+      {
+        "ref": "ref-long-boardwalk-a.png",
+        "painting": "map-long-boardwalk-a.png",
+        "aspect": "3:2",
+        "size": [
+          1536,
+          1024
+        ],
+        "rect": [
+          0,
+          0,
+          27,
+          18
+        ],
+        "pad": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "px": 56.9
+      },
+      {
+        "ref": "ref-long-boardwalk-b.png",
+        "painting": "map-long-boardwalk-b.png",
+        "aspect": "3:2",
+        "size": [
+          1536,
+          1024
+        ],
+        "rect": [
+          15,
+          0,
+          27,
+          18
+        ],
+        "pad": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "px": 56.9
+      },
+      {
+        "ref": "ref-long-boardwalk-c.png",
+        "painting": "map-long-boardwalk-c.png",
+        "aspect": "3:2",
+        "size": [
+          1536,
+          1024
+        ],
+        "rect": [
+          29,
+          0,
+          27,
+          18
+        ],
+        "pad": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "px": 56.9
+      }
+    ]
+  },
+  "misthollow": {
+    "name": "The Misthollow Ruins",
+    "region": "gloomfen",
+    "biome": "sunken-city",
+    "tiles": [
+      36,
+      32
+    ],
+    "panels": [
+      {
+        "ref": "ref-misthollow.png",
+        "painting": "map-misthollow.png",
+        "aspect": "3:2",
+        "size": [
+          1536,
+          1024
+        ],
+        "rect": [
+          0,
+          0,
+          36,
+          32
+        ],
+        "pad": [
+          0,
+          6,
+          0,
+          6
+        ],
+        "px": 32
+      }
+    ]
+  },
+  "drowned-belfry": {
+    "name": "The Drowned Belfry",
+    "region": "gloomfen",
+    "biome": "belfry",
+    "tiles": [
+      22,
+      24
+    ],
+    "panels": [
+      {
+        "ref": "ref-drowned-belfry.png",
+        "painting": "map-drowned-belfry.png",
+        "aspect": "2:3",
+        "size": [
+          1024,
+          1536
+        ],
+        "rect": [
+          0,
+          0,
+          22,
+          24
+        ],
+        "pad": [
+          4,
+          0,
+          5,
+          0
+        ],
+        "px": 46.5
+      }
+    ]
+  },
+  "blackwater-reach": {
+    "name": "The Blackwater Reach",
+    "region": "gloomfen",
+    "biome": "channel",
+    "tiles": [
+      48,
+      26
+    ],
+    "panels": [
+      {
+        "ref": "ref-blackwater-reach.png",
+        "painting": "map-blackwater-reach.png",
+        "aspect": "3:2",
+        "size": [
+          1536,
+          1024
+        ],
+        "rect": [
+          0,
+          0,
+          48,
+          26
+        ],
+        "pad": [
+          3,
+          0,
+          3,
+          0
+        ],
+        "px": 32
+      }
+    ]
+  },
+  "tidal-flats": {
+    "name": "The Tidal Flats",
+    "region": "gloomfen",
+    "biome": "mudflat",
+    "tiles": [
+      40,
+      30
+    ],
+    "panels": [
+      {
+        "ref": "ref-tidal-flats.png",
+        "painting": "map-tidal-flats.png",
+        "aspect": "3:2",
+        "size": [
+          1536,
+          1024
+        ],
+        "rect": [
+          0,
+          0,
+          40,
+          30
+        ],
+        "pad": [
+          0,
+          3,
+          0,
+          2
+        ],
+        "px": 34.1
+      }
+    ]
+  },
+  "causeway": {
+    "name": "The Blackwater Causeway",
+    "region": "gloomfen",
+    "biome": "causeway",
+    "tiles": [
+      48,
+      16
+    ],
+    "panels": [
+      {
+        "ref": "ref-causeway.png",
+        "painting": "map-causeway.png",
+        "aspect": "3:2",
+        "size": [
+          1536,
+          1024
+        ],
+        "rect": [
+          0,
+          0,
+          48,
+          16
+        ],
+        "pad": [
+          8,
+          0,
+          8,
+          0
+        ],
+        "px": 32
+      }
+    ]
+  },
+  "keep-gallery-3": {
+    "name": "The Gloomfen Gallery",
+    "region": "verdant",
+    "biome": "keep",
+    "tiles": [
+      18,
+      8
+    ],
+    "panels": [
+      {
+        "ref": "ref-keep-gallery-3.png",
+        "painting": "map-keep-gallery-3.png",
+        "aspect": "3:2",
+        "size": [
+          1536,
+          1024
+        ],
+        "rect": [
+          0,
+          0,
+          18,
+          8
+        ],
+        "pad": [
+          2,
+          0,
+          2,
+          0
+        ],
+        "px": 85.3
+      }
+    ]
+  }
+}

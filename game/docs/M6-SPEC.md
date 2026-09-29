@@ -490,10 +490,12 @@ starter's Art keeps faces 8–11, as in her earlier duels. `$rival:rotbridge` re
   `test/paint.test.mjs` fails when a painted map's rows change after it. P2 edits three painted maps (§2.4: the
   Keep, Mossfall, the Ironspire Gallery) and keeps their rows as they are; any row change there is checked on the
   grid overlay and restamped by the lead (`tools/paint-import.mjs --stamp=<id>`).
-- **Batch 3** (after P2): the 13 new maps (the Gloomfen's twelve and the Gloomfen Gallery) draw from their tiles
-  until the player paints them. Their layout references and prompts (`tools/paint-refs.mjs`,
-  `tools/paint-prompts.mjs`) go in `art-requests/batch-3.md` once P2's maps are final, and the player is asked
-  about the budget again if they would pass the 24 MB limit.
+- **Batch 3, requested** (`art-requests/batch-3.md`, written once P2's maps were final): the 13 new maps (the
+  Gloomfen's twelve and the Gloomfen Gallery) draw from their tiles until the player paints them. 16 pictures (the
+  Murkway in two panels, the long boardwalk in three), prompted in the style of the player's own whole-map paintings
+  (`paint-prompts.mjs --style=atlas`: the layout reference and one of the player's paintings as the style). At the
+  batch-2 density they would add about 5 MB, past the 24 MB limit: the player is asked about the budget when they
+  arrive.
 - The title backdrop and the Gloomfen card's still (A10), as `CUTS`.
 
 ## 7. Work packages

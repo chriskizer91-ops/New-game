@@ -9,7 +9,9 @@ way in all four directions. The battles stay exactly as they are.
 ## The loop
 
 1. Pick a batch: `pilot.md` (four images, done), then `batch-2.md` (every map of the Verdant Wilds and
-   the Sunscorch that was not painted yet; done in Milestone 6, with the Ironspire's maps too).
+   the Sunscorch that was not painted yet; done in Milestone 6, with the Ironspire's maps too), then
+   `batch-3.md` (the Gloomfen's maps and the Gloomfen Gallery, in the style of your whole-map paintings:
+   each prompt takes its layout reference and one of your paintings as the style).
 2. For each image, open your image generator, attach the reference picture it names (maps only),
    paste the prompt, and generate. Make two to four tries and keep the best, or keep them all.
 3. Name each file exactly as the batch says (`map-keep.png`, and `map-keep-2.png` for a second try).
