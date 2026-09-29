@@ -36,7 +36,7 @@ numbers, and the known issues.
 | e2e-codes | **48/48** (24 codes at both sizes): every real M2 code, plus M3, M4 and Milestone 4.5 codes; the earlier milestones' keys are never written. |
 | Balance | Every M5 target met, every M3 and M4 target still met, 0 stuck runs; see §2.1. |
 | Performance | At 4× CPU throttle: the Frost Road p95 frame JS 4.9-8.2 ms with at most 20 `drawImage` per frame; the painted Old Bridge p95 2.4-3.1 ms with at most 10 (targets 16 ms and 40). |
-| Size | The game **2167 KB** (warns above 2.5 MB, fails above 3.2 MB); the paintings **5926 KB** (fails above 8 MB); the file **8093 KB**. |
+| Size | The game **2168 KB** (warns above 2.5 MB, fails above 3.2 MB); the paintings **5926 KB** (fails above 8 MB); the file **8094 KB**. |
 
 ### 2.1 Balance (`node tools/sim.mjs --seeds 200`, starters rotated)
 

@@ -1,10 +1,10 @@
 # Handoff: Aethermoor: Hearth & Heirloom
 
-This is for a fresh session with none of the earlier conversation. Read it top to bottom, then read `CLAUDE.md`, and you can start the next step without re-exploring: milestone 5 (§3.2).
+This is for a fresh session with none of the earlier conversation. Read it top to bottom, then read `CLAUDE.md`, and you can start the next step without re-exploring (§3.3).
 
 - **Branch:** `claude/cool-ptolemy-uc93gg`. It contains the whole history of the earlier branch `claude/dnd-game-prototype-bsv3xb`. If your session names a different branch, use that one and carry this history over. Never create a PR unless the player asks for one.
-- **State at handoff:** **Milestone 4.5, "the Road", is done and delivered** as the download `game/dist/aethermoor-m4.5.html` (M4 was delivered before it as `game/dist/aethermoor-m4.html`). It answers the M4 playtest (§3.1): every fight on the route holds the road, every contact is a full fight, every fight starts with Auto off. Every gate is green: 299/299 tests, lint, build (about 1.78 MB), `e2e-world` (20 scenarios), `e2e-flow`, `e2e-battle` (18) and `e2e-codes` at both sizes, the balance sim on target. An independent review found 2 should-fix and 6 minor issues; all are fixed or recorded. The full record is `game/docs/M45-STATUS.md`.
-- **M5 is under way** (§3.2): its spec, `game/docs/M5-SPEC.md`, and a scaffold were written, and its packages are being built.
+- **State at handoff:** **Milestone 5, the Ironspire Peaks, is done and delivered** as the download `game/dist/aethermoor-m5.html` (Milestone 4.5 was delivered before it as `game/dist/aethermoor-m4.5.html`). The Keep's east postern opens after the second council onto the East Road, six maps painted from the player's own pictures, and on up into eleven Ironspire maps: two Champions, Codex Page III, three exact battle statuses and Tamsin's third duel. Every gate is green: 395/395 tests, lint, build (the game 2.2 MB and the player's paintings 5.9 MB: 8.1 MB in all), `e2e-world` (27 scenarios), `e2e-flow`, `e2e-battle` (22) and `e2e-codes` at both sizes, the balance sim on target. Two independent reviews found no must-fix issue in the game; every finding is fixed. The full record is `game/docs/M5-STATUS.md`.
+- **Waiting on the player:** the second batch of paintings (`art-requests/batch-2.md`). Mind their size budget before importing them (§3.3).
 
 ---
 
@@ -49,8 +49,8 @@ The roadmap is in `docs/DESIGN-BRIEF.md` §13. Status:
 | M3 "The Verdant Wilds" | ✅ done, delivered as a download | 14 walkable maps, roaming packs, locks, quests, the Atlas and Journal, save v2. Frozen at `game/dist/aethermoor-m3.html`. See `game/docs/M3-STATUS.md` |
 | M4 "The Sunscorch Wastes" | ✅ **done, delivered as a download** | 10 desert maps, 2 Champions, the Codex binder with page rewards, Hilda's full forge (temper +10, reroll, salvage, gems, awakening), hunting Grudges, save v3. See `game/docs/M4-STATUS.md` |
 | Milestone 4.5 "The Road" | ✅ **done, delivered as a download** | The M4 playtest: M2's pacing on the walkable maps. Road gates held by every route fight, no Routs, Auto off. Its own file and save. See `game/docs/M45-STATUS.md` |
-| **M5** | ⬜ **in progress** | Ironspire and Hush (the roadmap), built road-first: `game/docs/M5-SPEC.md` |
-| M6 | ⬜ | Gloomfen, Hodge, Tamsin's fall |
+| M5 "The Ironspire Peaks" | ✅ **done, delivered as a download** | 11 mountain maps and the painted East Road, Mother Anvil and the Rime-Abbot, Codex Page III, the burrowed, swallowed and charmed statuses, Tamsin's kits, save v4, the player's paintings as map ground. See `game/docs/M5-STATUS.md` |
+| **M6** | ⬜ **next** | Gloomfen, Hodge, Tamsin's fall |
 | M7 | ⬜ | The Hollow Council, the Unsmith, 3 endings, the Heat ladder |
 | M8 | ⬜ | The optional Hearthteller (AI DM) and cloud saves |
 
@@ -108,12 +108,28 @@ The player, after their testers played M4: "the way the game progressed at m2 wa
 - **Balance:** fights you cannot skip and a fixed order change the XP curve. Re-run `node tools/sim.mjs --seeds 200` and retune.
 - **Size:** 1.77 MB against the 1.8 MB warning; `--minify` saves about 10%.
 
-### 3.2 Now: M5
+### 3.2 Done: Milestone 5, the Ironspire Peaks
 
-1. **Step 0:** freeze `dist/aethermoor-m4.5.html` (pin its sha256 in `test/frozen.test.mjs` next to M2's, M3's and M4's), then give M5 its own save key (`aethermoor.save.m5`, reading the M4.5, M4, M3 and M2 saves newest first), save version 4 (`AETH4.` codes) and delivery file `dist/aethermoor-m5.html`, as Milestone 4.5's step 0 did (`core/save.js`, `ui/app.js`, `ui/lib/carry.js`, `ui/screens/title.js`, `ui/screens/settings.js`, `tools/build.mjs`).
-2. **The contract is `game/docs/M5-SPEC.md`:** the Keep's east postern opens after the second council onto eleven Ironspire maps built road-first; Mother Anvil and the Rime-Abbot; Codex Page III; the exact statuses (burrowed, swallowed, charmed); Tamsin's per-duel kits (`$rival:<duel>`); save version 4.
-3. **Deliver** `dist/aethermoor-m5.html` the same way (§6 "Delivery"), and send the earlier files alongside it if the player wants them.
-4. **The art pilot** (`art-requests/pilot.md`): if the player uploads the four pilot images to `art-in/pilot/`, M5's optional package P8 adds painted backdrops behind the tile maps (M5 spec A10).
+**M5 in one breath** (details and numbers in `game/docs/M5-STATUS.md`; the contract is `game/docs/M5-SPEC.md`):
+- **Places:** after the second council the Keep's east postern opens onto the East Road, six maps traced from the player's paintings (the Old Bridge, Drystone Lea, Plankford, Shrinewood, Silverfall, the Last Camp; spec A11), then the Rockslide Pass, Peak's Veil, the Iron Stair, Ironhold, the Ironhold Deeps, Harrow's Forge, Stormwatch, the Frost Road, Frostmere and Beneath Frostmere. The Highfold joins Peak's Veil to Fawnrest once Mother Wynn is met. The Ironspire Gallery holds Codex Page III. 25 Hearthfires in all.
+- **Content:** 11 foe families (39 in all), 22 fights, the Champions Mother Anvil and the Rime-Abbot, Tamsin's third duel with her own kit (`$rival:ironhold`), 14 relics (52 in all) and the Frost Opal, 5 quests, 4 bounties, 8 posters, 2 letters, 2 shops, Hush's scene, the third council.
+- **Systems:** the statuses `burrowed`, `swallowed` and `charmed` (spec §4.2; M4's Kharzul, Sand Wyrm and wisps use them now); per-duel rival kits; save version 4 (`AETH4.`).
+- **Painted art:** `PAINTINGS` (`ui/assets/paint/`) draws a map's painting as its ground at twice the canvas density; `CUTS` (`ui/assets/cuts/`) holds the prologue's stills. A map traced from a painting sets `overTiles: false`, and a thing its painting shows is a sign with `look: 'painted'`. The tools are `paint-refs.mjs`, `paint-prompts.mjs` and `paint-import.mjs` (ARCHITECTURE.md "Painted maps").
+- **Saves:** its own key `aethermoor.save.m5` (+ `.bak`, `aethermoor.m5.started`); the M4.5, M4, M3 and M2 saves are carry-overs, newest first; `toV4` marks the version only.
+- **Known issues:** `M5-STATUS.md` §3. The top one: the paintings' budget (5.9 of 8 MB) will not hold batch 2 as it is.
+
+**How M5 was built** (as M4, with three changes):
+1. The spec and a scaffold came first (every id stubbed, all tests green), then step 0 (its own key and file; the M4.5 file frozen).
+2. The lead built the rules while agents built maps (P2), story (P3), foes, relics and balance (P4), overworld art (P5), battle art (P6) and the UI (P7) in parallel, each on its own files, never running git. The lead also built the painted maps (P8 and the East Road).
+3. **New:** the work lived on a local branch (`m5-scaffold`, in a git worktree in the scratchpad) and was merged into this branch at delivery. Three files conflicted (the spec, `core/save.js`'s code check and its test); the M5 side was right for all three.
+4. **New:** two independent reviews ran in parallel (rules, saves, security and UX; content and tests), read the diff against the delivered Milestone 4.5 and proved each finding with a script.
+5. **New lesson:** a package that copies files back from an older private tree can silently drop another package's fixes. Three M4.5 review tests were lost that way and restored. Before committing a package, list the assertions its test files lost against the base.
+
+### 3.3 Next
+
+1. **Batch 2 of the paintings** (`art-requests/batch-2.md`; the references are in `art-requests/batch-2/refs/`: 26 pictures of the Verdant and Sunscorch maps, long roads as panels `-a`/`-b`). The player may send them in chat, where the file names are lost: match each picture to its reference by its layout, then run `node tools/paint-import.mjs --batch=<dir> --refs=../art-requests/batch-2/refs/refs.json --grid` and check each grid overlay. **Settle the budget first.** The eight paintings in the game take 5.9 MB of the 8 MB paint limit (A6), and a claude.ai page holds 16 MB. 26 more at the same density and quality (about 600 KB for a 48×32 map) will not fit. Choose before importing: a lower `--density` for the big maps, a lower `--quality`, or a second file.
+2. **Milestone 6, Gloomfen** (the roadmap: Gloomfen, Hodge, Tamsin's fall). The player's regional map `art-in/extra/region-gloomfen.jpg` names its places: Mirrordeep Lake, Bogmire, the Misthollow Ruins, Rotbridge, Willowmurk, the Tidal Flats. Step 0 as before: freeze `dist/aethermoor-m5.html` (pin its sha256 in `test/frozen.test.mjs`), give M6 its own key (`aethermoor.save.m6`, reading M5, M4.5, M4, M3 and M2 newest first), save version 5 (`AETH5.` codes) and `dist/aethermoor-m6.html`. Gloomfen's sealed entry already exists (`REGIONS.gloomfen`, the Atlas's padlock).
+3. **Deliver** the same way (§6 "Delivery").
 
 ## 4. Architecture and key decisions
 
@@ -121,20 +137,20 @@ The player, after their testers played M4: "the way the game progressed at m2 wa
 - `tools/build.mjs` inlines the JS and CSS into `src/index.html` (split at `<!--BODY-->`). It writes, into `dist/` or `--out <dir>`:
   - `aethermoor.html`: a full document, for local play
   - `aethermoor.artifact.html`: a fragment with no doctype/html/head/body, for claude.ai pages
-  - `aethermoor-m4.5.html`: the delivery copy (`dist/aethermoor-m2.html`, `-m3.html`, `-m4.html` and `-m4.5.html` are committed as delivered; the earlier ones are pinned by a test)
-  - It warns above 1.8 MB and fails above 2.2 MB (M4 spec A3). M4 is about 1.77 MB; `--minify` saves about 10% if M5 needs room.
+  - `aethermoor-m5.html`: the delivery copy (`dist/aethermoor-m2.html`, `-m3.html`, `-m4.html`, `-m4.5.html` and `-m5.html` are committed as delivered; all but the newest are pinned by a test)
+  - For the game it warns above 2.5 MB and fails above 3.2 MB (M5 spec A6), counting the player's paintings apart: they fail above 8 MB. M5's game is about 2.2 MB and its paintings 5.9 MB; `--minify` saves about 10% of the game if it needs room.
 - The only outside request allowed is Google Fonts. All art, music and data are generated or embedded.
-- `game/ARCHITECTURE.md` is the technical contract: the state shape (v2), the battle API, the world engine, the event table and the shared vocabulary.
+- `game/ARCHITECTURE.md` is the technical contract: the state shape (v4), the battle API, the world engine, the event table and the shared vocabulary.
 
 **Layers** (dependencies point downward only: `ui → art/rules → data/core`; inside `rules/`: `world → story → cond → gauntlet`, and `gauntlet` never imports those three):
 
 | Folder | What it holds |
 |---|---|
-| `src/core/` | `rng.js` (a serializable mulberry32), `dice.js`, `save.js` (v2 key plus `.bak`, `AETH1.`/`AETH2.` codes, `scrub()` of pasted codes, migration injected as a function), `input.js`, `audio.js` (a WebAudio synth that starts only after a gesture) |
+| `src/core/` | `rng.js` (a serializable mulberry32), `dice.js`, `save.js` (this milestone's key plus `.bak`, the earlier milestones' saves read as carry-overs, `AETH1.` to `AETH4.` codes, `scrub()` of pasted codes, migration injected as a function), `input.js`, `audio.js` (a WebAudio synth that starts only after a gesture) |
 | `src/data/` | Frozen tables: heroes, foes, items, affixes, rarity, aspects, skills, statuses, relics, encounters, omens, tuning, domains, names. M3: tiles, locks, world (`REGIONS`, `HEARTHS`, `ZONES`, `START_AT`), `maps/*` (14 maps), npcs, dialogue, quests, shops, ladder, letters |
-| `src/rules/` | **Pure, deterministic** logic with no DOM, `Math.random` or `Date`. stats, foe (`buildFoe`, `escalateSpawn`, `addOmens`), ai, combat, battle, loot, progression, party (equip, reforge, `temper`, `buy`), autoplay, gauntlet (the flow: `newGame`, `startBattle` (M4.5: `caught`), `resolveBattle`, `earnBrand`, wipe, `yieldDuel`, `rest`). M3: world (`enterMap`, `move`, `tick`, `interact`, `present`, `threat`, `commit`, roamers), story (dialogue, quests, bounties, letters), cond (conditions), path (A*), migrate (v1 → v2 → v3). M4: forge (temper, reroll, salvage, sockets, `buyGem`, awakening), codex (pages, `pageBonus`, deeds, stages), gear (`canUse`); `stats.heroStats(game, id)` is `deriveHero` with the pages' bonus: use it wherever a hero's numbers are shown |
+| `src/rules/` | **Pure, deterministic** logic with no DOM, `Math.random` or `Date`. stats, foe (`buildFoe`, `escalateSpawn`, `addOmens`), ai, combat, battle, loot, progression, party (equip, reforge, `temper`, `buy`), autoplay, gauntlet (the flow: `newGame`, `startBattle` (M4.5: `caught`), `resolveBattle`, `earnBrand`, wipe, `yieldDuel`, `rest`). M3: world (`enterMap`, `move`, `tick`, `interact`, `present`, `threat`, `commit`, roamers), story (dialogue, quests, bounties, letters), cond (conditions), path (A*), migrate (v1 → v2 → v3 → v4). M4: forge (temper, reroll, salvage, sockets, `buyGem`, awakening), codex (pages, `pageBonus`, deeds, stages), gear (`canUse`); `stats.heroStats(game, id)` is `deriveHero` with the pages' bonus: use it wherever a hero's numbers are shown. M5: the `burrowed`, `swallowed` and `charmed` statuses in battle and combat; rival kits (`data/rivals.js`, `$rival:<duel>`) |
 | `src/art/` | The procedural "Forge" renderer returning ImageData. `heroes.js` and `hero-looks.js` are **frozen** (the player approved them). M3: `tiles.js` (biome atlases), `walkers.js` (a separate 16×24 rig), `map-sprites.js`, item looks with Temper. Documented in `game/docs/ART.md` |
-| `src/ui/` | `app.js` (the shell: ctx with `game`, `setGame`, `replaceGame`, `adopt`, `settings`, `audio`, `go(name, params)`, `services`), screens (title, newgame, world, battle, aftermath, party, codex, journal, atlas, settings), `card.js`, `battle/*`, `world/*` (view, camera, actors, controls, dialogue, sheets, story-fx, hud, loop, session), `lib/*` |
+| `src/ui/` | `app.js` (the shell: ctx with `game`, `setGame`, `replaceGame`, `adopt`, `settings`, `audio`, `go(name, params)`, `services`), screens (title, newgame, world, battle, aftermath, party, codex, journal, atlas, settings), `card.js`, `battle/*`, `world/*` (view, camera, actors, controls, dialogue, sheets, story-fx, hud, loop, session), `lib/*`, `assets/` (M5: `paint/` the player's map paintings, `cuts/` the prologue's stills, written by `tools/paint-import.mjs`) |
 | `src/main.js` | Registers the screens, installs the card services, and exposes a test seam: `globalThis.__aethTest(app)` if defined. The world screen then installs `window.__world` and `window.__worldTools` |
 
 **Why the main decisions were made:**
@@ -153,21 +169,22 @@ cd game
 npm install                      # esbuild only; eslint is installed globally in this environment
 npm run atlas                    # rebuilds the Atlas WebP from the player's map (only if the map changes)
 npm run build                    # dist/aethermoor.html, .artifact.html and the milestone's delivery copy
-npm test                         # node --test test/*.test.mjs  (299 tests at Milestone 4.5)
+npm test                         # node --test test/*.test.mjs  (395 tests at Milestone 5)
 npm run lint                     # eslint src test tools; no-undef is an error
 export NODE_PATH=$(npm root -g)  # Playwright is global; Chromium is at /opt/pw-browsers
-node tools/e2e-world.mjs         # 20 world scenarios at 360x740 and 1280x800 (~25 min), prints PERF lines
-node tools/e2e-flow.mjs          # the shell, the forge, the Codex, plus M2 and M3 carry-over profiles (~15 min)
-node tools/e2e-battle.mjs        # 18 battle scenarios, both Sunscorch Champions included (~5 min)
-node tools/e2e-codes.mjs         # pastes all 18 real M2 codes and 3 M3 codes at both sizes (~10 min)
-node tools/sim.mjs --seeds 200   # balance, all nine modes (~7 min); --modes, --seed N, --trace
+node tools/e2e-world.mjs         # 27 world scenarios at 360x740 and 1280x800 (~8 min), prints PERF lines
+node tools/e2e-flow.mjs          # the shell, the forge, the Codex, plus the carry-over profiles (~5 min)
+node tools/e2e-battle.mjs        # 22 battle scenarios, the four Champions included (~6 min)
+node tools/e2e-codes.mjs         # pastes 24 codes (every real M2 code; M3, M4 and M4.5 codes) at both sizes (~6 min)
+node tools/sim.mjs --seeds 200 --jobs 4   # balance, all twelve modes (~8 min); --modes, --seed N, --trace
+node tools/paint-import.mjs --map=<id> --src=<picture> --grid   # a painting as a map's ground; check tools/shots/paint/<id>-grid.png
 node tools/gallery.mjs           # art gallery screenshots into tools/shots/
 node tools/dev-battle.mjs        # tools/shots/dev-battle.html#node=oldsnag&level=5
 node tools/map-draft.mjs --all   # ASCII preview of every map with entities
 ```
 
 - Private builds for parallel work: `node tools/build.mjs --out /tmp/x`, then `AETH_HTML=/tmp/x/aethermoor.html node tools/e2e-world.mjs` (same for `e2e-flow` and `e2e-codes`); `node tools/e2e-battle.mjs --out /tmp/x`.
-- `e2e-world --scenario=3,11` and `--only=phone|laptop` run a subset.
+- `e2e-world --scenario=3,11` and `--only=phone|laptop` run a subset. `--only` picks a size, not a scenario: `--only=21` runs nothing and passes.
 - Screenshots go to the OS temp folder (or `--out`). To look at one, read the PNG.
 
 ## 6. Gotchas, known bugs and approaches that failed
@@ -206,9 +223,12 @@ node tools/map-draft.mjs --all   # ASCII preview of every map with entities
 - **Test fixtures and seeds:** `relicItem(id, createRng(9))` in a game made with `newGame({ seed: 9 })` gives the same uid as the starter. Use a distinct seed for test items.
 - The stop hook requires every change to be committed **and pushed** before a turn ends.
 - Subagents never run git; tell them so in every prompt. Background agents can die on the account's usage limit, so keep each package small enough to finish, and check their notes before relaunching.
+- **A container restart** stops background jobs (a long e2e run is simply lost; start it again) but keeps the disk: the repo, local branches, worktrees and the scratchpad survive.
+- **Killing a run:** `pgrep -f <pattern>` also matches your own shell's command line (the kill ends your shell). Look up the node processes' PIDs and kill those.
+- **Packages that work in private copies** and copy files back can overwrite another package's fixes. Before committing a package, list the assertions its test files lost against the base (M5 lost three M4.5 review tests this way).
 
-**Delivery** (how M3 and M4 went out; repeat it for M5):
-1. `npm run build`, then audit the delivery file before sending it: the only URLs are Google Fonts (and the SVG namespace); no `fetch`/XHR/WebSocket/`eval`, no local paths, no AI model names; look at its HTML shell. Publishing it as a claude.ai page is different: the Artifact rules require reading the whole file first.
-2. Commit it (un-ignore it in `game/.gitignore`), push.
+**Delivery** (how M3 to M5 went out; repeat it for M6):
+1. `npm run build`, then audit the delivery file before sending it: the only URLs are Google Fonts (and the SVG namespace); no `fetch`/XHR/WebSocket/`eval`, no local paths, no AI model names (scan with the base64 image data stripped: a long base64 run can spell anything); look at its HTML shell. Publishing it as a claude.ai page is different: the Artifact rules require reading the whole file first.
+2. Commit it (`dist/` is tracked; check nothing in `game/.gitignore` hides it), push.
 3. Send it with SendUserFile, `display: 'attach'`.
 4. Tell the player how to move their save (old version: Settings → Make a save code; new version: Settings → Load a code), the iPhone caveat, and offer a new, separate page for phone play. Never republish the M2 URL.
