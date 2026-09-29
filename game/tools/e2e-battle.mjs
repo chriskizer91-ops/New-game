@@ -9,7 +9,7 @@
 // Rime-Abbot holding a hero under the ice ("Held under", by him, the turns left, out of the line) and
 // letting go early (abbot); Kharzul's exact Burrow: sunk into the floor, out of reach, up again at its
 // turn with its forced blow (burrow); a charmed hero ("Charmed", then its turn played against a friend)
-// (charm). A scenario whose foes are still the scaffold's stand-ins reports BLOCKED, not a pass.
+// (charm). A scenario whose foes are still the scaffold's stand-ins reports BLOCKED, not a pass, and fails the run.
 // Asserts no console errors or uncaught exceptions, no horizontal scroll, 44px tap targets, and the
 // aftermath hand-off. Screenshots of the key moments go to tools/shots/battle-*.png.
 //
@@ -821,3 +821,5 @@ console.log(`\n${results.filter(r => r.ok).length}/${results.length} scenarios p
 for (const r of results) for (const p of r.shots) console.log('  ' + path.relative(root, p));
 if (blockedList.length) console.log('\nBlocked on other packages:\n  ' + blockedList.join('\n  '));
 if (failures.length) { console.log('\nFailures:\n  ' + failures.join('\n  ')); process.exit(1); }
+// M5 is whole (no stand-ins are left), so a blocked scenario is one that did not run: it fails the run
+if (blockedList.length) process.exit(1);

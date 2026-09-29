@@ -100,6 +100,9 @@ for (const { map, road, key } of ROADS) {
         const enc = map.entities.find(e => e.kind === 'encounter' && e.enc === g.guard);
         assert.ok(enc, `${g.guard} stands on ${map.id}`);
         assert.notEqual(enc.mode, 'pack', `${g.guard} stands still (a block or a lair)`);
+        // A2: the gate and its guard hold the road together, so the guard has no condition of its own
+        // (the M4.5 review: Tamsin waited on the Ash-Captain, and the portcullis had a hole beside it)
+        assert.equal(enc.if, undefined, `${g.guard} stands whenever ${g.id} is shut`);
         assert.ok(hits(map, seen, around(areaOf(enc))), `you can walk up to ${g.guard} before ${g.id} opens`);
       } else {
         const fights = [...named].filter(id => ENCOUNTERS[id]);

@@ -259,6 +259,18 @@ test('Trackless: all-rabble packs never alert; Stillness makes the pause 6 ticks
   assert.equal(a.walk.roamers[0].wait, 6);
 });
 
+test('Hymn of Rest (the Drowned Censer, M5): roaming undead never notice you; the living still do (review)', () => {
+  const game = fresh();
+  const wights = g => pack(g, { spawns: [{ family: 'ash-wight', level: 6 }], trackless: false, x: 17, y: 10 });
+  assert.ok(tick(game, onField(game, [wights(game)], 15, 10, 'e')).events.some(e => e.t === 'alert'), 'without it the wights see you');
+  const censer = deepFreeze({ ...game, inventory: [...game.inventory, relicItem('drowned-censer', createRng(4))] });
+  const quiet = idle(censer, onField(censer, [wights(censer)], 15, 10, 'e'), 6);
+  assert.equal(quiet.all.some(e => e.t === 'alert'), false, 'the undead never notice you pass');
+  assert.ok(!['alert', 'chase'].includes(quiet.walk.roamers[0].mood));
+  const hounds = tick(censer, onField(censer, [pack(censer, { x: 17, y: 10 })], 15, 10, 'e'));
+  assert.ok(hounds.events.some(e => e.t === 'alert'), 'the living still do');
+});
+
 test('afterBattle: grace, a beaten roamer is gone, one you fled from is stunned for 12 ticks', () => {
   const game = fresh();
   const w = onField(game, [pack(game, { x: 17, y: 10, mood: 'chase' })], 15, 10, 'e');

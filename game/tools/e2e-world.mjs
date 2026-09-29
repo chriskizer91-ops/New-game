@@ -1805,5 +1805,7 @@ await browser.close();
 console.log(`\nScreenshots: ${outDir}`);
 if (perfLines.length) console.log(`Performance:\n - ${perfLines.join('\n - ')}`);
 if (blocked.length) console.log(`Blocked on other packages (${blocked.length}):\n - ${blocked.join('\n - ')}`);
+// M5 is whole (no stand-ins are left), so a blocked check is a check that did not run: it fails the run
+for (const b of blocked) fails.push(`blocked: ${b}`);
 console.log(fails.length ? `\nE2E-WORLD FAILED (${fails.length}):\n - ${fails.join('\n - ')}` : '\nE2E-WORLD passed');
 process.exit(fails.length ? 1 : 0);

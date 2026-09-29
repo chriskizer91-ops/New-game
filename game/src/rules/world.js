@@ -45,7 +45,8 @@
 // lock or gate areas, Hearthfire stands, entity tiles or 1-wide corridors.
 // M4 (spec §4.6): a pack with an unsettled Grudge is a hunter: it sees TUNING.world.hunterSight
 // farther, is never weak (never flees), and its chase ignores the leash until you leave
-// the map. Saltglass's Longsight widens the Sighted range (spec §4.7).
+// the map. Saltglass's Longsight widens the Sighted range (spec §4.7). M5: the Drowned Censer's Hymn of
+// Rest keeps roaming undead from ever noticing you.
 // registerMap() lets tests use test/fixtures/map-mini.mjs.
 // Import direction (A6): world -> story -> cond -> gauntlet.
 // Owner: WP1.
@@ -669,6 +670,8 @@ function tickRoamers(game, walk, events) {
   const dark = light(game, walk) !== Infinity;
   const sight = dark ? TW.sightDark : TW.sight;
   const trackless = powerOwned(game, 'trackless');
+  const hymn = powerOwned(game, 'hymn-of-rest'); // M5: the Drowned Censer: roaming undead never notice you pass
+  const undead = r => r.spawns.every(s => familyOf(s).kind === 'undead');
   const alertWait = powerOwned(game, 'stillness') ? TW.alertWaitStill : TW.alertWait;
   const taken = (x, y) => roamers.some(o => o.x === x && o.y === y);
   const free = (x, y) => x >= 0 && y >= 0 && x < map.w && y < map.h && !!mask[y * map.w + x] && !taken(x, y) && !(x === px && y === py);
@@ -733,7 +736,7 @@ function tickRoamers(game, walk, events) {
       continue;
     }
     // wander (and notice)
-    if (sees && !r.weak && !(trackless && r.trackless)) {
+    if (sees && !r.weak && !(trackless && r.trackless) && !(hymn && undead(r))) {
       r.mood = 'alert';
       r.wait = alertWait;
       r.face = faceTo(r.x, r.y, px, py);

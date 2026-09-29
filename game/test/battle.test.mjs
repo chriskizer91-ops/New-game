@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { createBattle, timeline, current, commands, targets, act, foeTurn, outcome, inspect } from '../src/rules/battle.js';
 import { autoCommand } from '../src/rules/autoplay.js';
 import { battleWith, playOut, toHeroTurn, party } from './helpers.mjs';
+import { relicItem } from '../src/rules/loot.js';
+import { createRng } from '../src/core/rng.js';
 
 const RABBLE = [{ family: 'cutpurse', level: 1 }, { family: 'thornhound', level: 1 }];
 
@@ -545,4 +547,24 @@ test('Ironspire holders: each Art needs its relic; pried loose, the Art falls ba
   await pry(s, 'f1', 'roc-feather-cloak');
   assert.equal(resolveMoveId(s, s.units.f1, 'storm-mantle'), 'talons');
   assert.equal(s.units.f1.die, 8);
+});
+
+test('Iron Stance (Ironwall, M5): its bearer starts every fight Guarding until its own first turn; nobody else does (review)', () => {
+  const { game, heroes } = party();
+  const shield = relicItem('ironwall', createRng(41));
+  const bearer = heroes[0].id;
+  const withShield = heroes.map(h => (h.id === bearer ? { ...h, gear: { ...h.gear, offhand: shield.uid } } : h));
+  const s = createBattle({ heroes: withShield, foes: [{ family: 'thornhound', level: 2 }], seed: 5, ctx: { inventory: [...game.inventory, shield] } });
+  const guarding = u => u.statuses.some(st => st.id === 'guarding');
+  assert.ok(guarding(s.units[bearer]), 'the bearer starts braced');
+  for (const h of heroes.filter(h => h.id !== bearer)) assert.ok(!guarding(s.units[h.id]), `${h.id} does not`);
+  assert.ok(s.openingEvents.some(e => e.t === 'text' && /braced behind Ironwall/.test(e.text)));
+  // carried in the pack, not worn: no stance
+  const packed = createBattle({ heroes, foes: [{ family: 'thornhound', level: 2 }], seed: 5, ctx: { inventory: [...game.inventory, shield] } });
+  assert.ok(!guarding(packed.units[bearer]), 'only its bearer, and only while worn');
+  // it lasts until the bearer's own first turn starts
+  let t = s;
+  for (let i = 0; i < 40 && current(t) !== bearer; i++) t = t.units[current(t)].side === 'hero' ? act(t, autoCommand(t, current(t))).state : foeTurn(t).state;
+  assert.equal(current(t), bearer);
+  assert.ok(!guarding(t.units[bearer]), 'gone once its turn comes');
 });

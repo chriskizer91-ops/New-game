@@ -447,7 +447,7 @@ export const ENCOUNTERS = deepFreeze({
   'is-sentinels': {
     id: 'is-sentinels', type: 'fight', name: 'The Stair Sentinels', place: 'The Iron Stair', backdrop: 'iron-stair', region: 'ironspire',
     spawns: [IRON('iron-sentinel', 6, { variant: 'captain', relic: 'ironwall', name: 'The Sentinel-Captain' }), IRON('iron-sentinel', 5), IRON('iron-sentinel', 5)],
-    text: 'Dwarf automatons at the stair-head gate, still keeping out whoever the Thane told them to keep out. The Captain carries a door for a shield.',
+    text: 'Dwarf automatons at the gate at the stair\'s foot, still keeping out whoever the Thane told them to keep out. The Captain carries a door for a shield.',
   },
   'is-trolls': {
     id: 'is-trolls', type: 'fight', name: 'Stair Trolls', place: 'The Iron Stair', backdrop: 'iron-stair', region: 'ironspire',

@@ -73,8 +73,8 @@ export const RIDDLES = Object.freeze({
   saltglass: 'It sings when it is drawn. A sharpshooter rides with the Tallyman caravan across the Flats.',
   // Page III: the Ironspire Peaks (M5)
   'windstep-boots': 'A monk crossed the great slide in them without touching a stone. A deserter wears them now, at his toll chain on the Rockslide Pass.',
-  veilbell: 'Cast from the great bell’s first crack, and silent since the Abbot went under the ice. The abbess of Peak’s Veil will ring it for whoever quiets the drowned.',
-  ironwall: 'A dwarf door, cut down to carry. Iron hands hold it at the head of the Iron Stair, for a Thane who has sealed his own halls.',
+  veilbell: 'Cast from the great bell’s first crack. The abbess of Peak’s Veil rings it for the drowned every evening, and will give it to whoever quiets them.',
+  ironwall: 'A dwarf door, cut down to carry. Iron hands hold it at the foot of the Iron Stair, for a Thane who has sealed his own halls.',
   'drowned-censer': 'It swings by itself, and its smoke is always wet. An abbess who drowned still carries it on the island in Frostmere.',
   'ironvein-bracers': 'Ironhold work, small at the wrist. Someone else is hunting Harrow, and she waits on the Deeps stair with them on.',
   'roc-feather-cloak': 'Three feathers make a cloak that sheds rain, snow and arrows. The bird that grew them nests on the Highfold crags.',

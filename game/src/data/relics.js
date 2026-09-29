@@ -756,7 +756,7 @@ export const RELICS = deepFreeze({
   },
   ironwall: {
     id: 'ironwall', codex: 41, name: 'Ironwall', kind: 'shield', slot: 'offhand', aspect: 'stone', rarity: 'heirloom', ilvl: 17,
-    holder: 'The Sentinel-Captain, at the head of the Iron Stair', grip: 30,
+    holder: 'The Sentinel-Captain, at the foot of the Iron Stair', grip: 30,
     stats: { guard: 3, hp: 10, speed: -1, resist: { stone: 15 } },
     power: {
       id: 'hold-the-stair', name: 'Hold the Stair', target: 'all-allies',

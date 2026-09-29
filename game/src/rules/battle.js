@@ -29,6 +29,7 @@ import { battleLoot } from './loot.js';
 import { rngFrom, rollExpr, indexItems, clamp } from './util.js';
 import { ASPECT_IDS, PHYSICAL_KINDS } from '../data/aspects.js';
 import { OMENS } from '../data/omens.js';
+import { RELICS } from '../data/relics.js';
 
 const R = TUNING.ribbon;
 
@@ -92,6 +93,7 @@ export function createBattle({ heroes = [], foes = [], seed = 1, waking = 0, ctx
   if (ctx.ambush) ambush(B, items, heroes);
   if (ctx.firstStrike) firstStrike(B);
   if (ctx.warded) ward(B, ctx.warded);
+  ironStance(B, heroes, items);
   for (const f of unitsOf(s, 'foe')) {
     f.intent = rollIntent(s, f, rng);
     B.ev.push(intentEvent(f));
@@ -127,6 +129,19 @@ function firstStrike(B) {
   B.s.ctx.firstStrike = true;
   for (const f of unitsOf(B.s, 'foe')) f.next += R.firstStrikeDelay;
   B.ev.push({ t: 'text', text: 'First strike! You caught them with their backs turned.' });
+}
+
+// M5 (spec §3.4): Ironwall's Iron Stance. Whoever carries it starts every fight braced: Guarding until
+// its own first turn.
+function ironStance(B, heroes, items) {
+  const byId = indexItems(items);
+  for (const h of heroes) {
+    const u = B.s.units[h.id];
+    const braced = Object.values(h.gear || {}).some(uid => byId[uid] && !byId[uid].shattered && RELICS[byId[uid].base]?.mapPower?.id === 'iron-stance');
+    if (!braced || !alive(u)) continue;
+    addStatus(B, u, 'guarding', { source: u.id });
+    B.ev.push({ t: 'text', text: `${u.name} starts the fight braced behind Ironwall.` });
+  }
 }
 
 // M3 (Forewarned): every hero starts the fight Warded for the rolled amount.

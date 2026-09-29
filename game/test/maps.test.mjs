@@ -570,16 +570,39 @@ test('after each Sunscorch Brand, the re-armed fights never shut the way home fr
     const from = nextTo(g, hit.map, hit.entity);
     assert.ok(from, `${id} can be stood beside`);
     const r = flood(g, { from: [hit.map, ...from] });
-    // every fire the party has kindled on the way stays reachable (M4.5: the road still ahead is held by
-    // its own gates, so a fire past them is not "home" yet)
-    const kindled = ['hearthstone-keep', ...Object.keys(HEARTHS).filter(h => MAPS[HEARTHS[h].map].region === 'sunscorch' && g.progress.flags.kindled[h])];
-    assert.ok(kindled.length >= (id === 'kharzul-heart' ? 6 : 7), `after ${id}: ${kindled.join(', ')}`);
-    for (const fire of kindled) {
-      assert.ok(reaches(r, HEARTHS[fire].map, ENTITY_OF[fire].entity), `after ${id}, ${fire} is still reachable from the lair`);
+    // every Sunscorch fire and the Keep's stays reachable from the lair, but for a fire behind a road gate
+    // whose fight is still ahead (M4.5: after Kharzul, the Last Watchfire lies past the raiders' chain)
+    const ahead = { 'kharzul-heart': ['last-watchfire'], 'ashen-warden': [] }[id];
+    const fires = ['hearthstone-keep', ...Object.keys(HEARTHS).filter(h => MAPS[HEARTHS[h].map].region === 'sunscorch')];
+    assert.equal(fires.length, 8);
+    for (const fire of fires) {
+      assert.equal(reaches(r, HEARTHS[fire].map, ENTITY_OF[fire].entity), !ahead.includes(fire), `after ${id}, ${fire} is ${ahead.includes(fire) ? 'still behind the road ahead' : 'reachable from the lair'}`);
     }
-    // and the re-armed road guards stand beside open gates
-    for (const e of present(g, 'sun-road')) if (e.kind === 'gate' && e.guard) assert.equal(e.state, 'open', `after ${id}, ${e.id} stays open`);
+    // and every re-armed road guard stands beside its open gate
+    let checked = 0;
+    for (const m of SUN) {
+      for (const e of present(g, m)) {
+        if (e.kind !== 'gate' || !e.guard || !g.progress.flags.beaten[e.guard]) continue;
+        assert.equal(e.state, 'open', `after ${id}, ${m}/${e.id} stays open`);
+        checked++;
+      }
+    }
+    assert.ok(checked >= (id === 'kharzul-heart' ? 3 : 6), `after ${id}: ${checked} beaten road gates checked`);
   }
+});
+
+test('one order (M4.5 A3): the Glass Flats open with the Brand of Glass, even to a party holding every relic', () => {
+  const stage = i => {
+    const g = sunStage('hearthbrand', i, { keys: false });
+    setLevels(g, 20);
+    for (const id of Object.keys(RELICS)) if (!g.inventory.some(it => it.base === id)) g.inventory.push({ uid: `a3-${id}`, base: id, kind: RELICS[id].kind, slot: RELICS[id].slot });
+    return mapsOf(flood(openHeldLocks(g)));
+  };
+  const before = stage(SP.indexOf('kharzul-heart'));
+  assert.ok(before.has('sandspire') && before.has('deep-shaft-2'), 'the west side is open before the Brand of Glass');
+  for (const m of ['glass-flats', 'miragewell', 'scorchgate', 'scorchgate-vaults']) assert.ok(!before.has(m), `${m} is shut until the Brand of Glass`);
+  const after = stage(SP.indexOf('kharzul-heart') + 1);
+  for (const m of ['glass-flats', 'miragewell']) assert.ok(after.has(m), `${m} opens with the Brand of Glass`);
 });
 
 test('world tables: SUN_PATH is spec §2.2\'s route and SUN_LEADS its leads, each placed once in the Sunscorch and reachable', () => {

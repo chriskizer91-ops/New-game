@@ -220,6 +220,19 @@ test('save (M5): its own key; the M4.5, M4, M3 and M2 saves are only read, offer
   delete globalThis.localStorage;
 });
 
+test('save (M5): from an empty store, saving, backing up and exporting write only the M5 keys (no earlier marker either)', async () => {
+  const S = await import('../src/core/save.js');
+  const store = shim();
+  const g = migrate(load('v1-after-brand.json'));
+  assert.equal(S.saveGame(g), true);
+  assert.equal(S.backupGame(), true);
+  assert.equal(S.saveGame(g), true);
+  S.exportCode(g);
+  assert.deepEqual([...store.keys()].sort(), ['aethermoor.m5.started', 'aethermoor.save.m5', 'aethermoor.save.m5.bak'],
+    'never an earlier milestone\'s save, backup or started marker (the M4.5 review\'s check, without the markers set first)');
+  delete globalThis.localStorage;
+});
+
 test('save (M5): an M2 save alone is offered; clearGame keeps the older saves and the backup; restoreBackup migrates', async () => {
   const S = await import('../src/core/save.js');
   const store = shim();

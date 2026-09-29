@@ -42,7 +42,7 @@ export const ZONES = deepFreeze({
   frostmere: { id: 'frostmere', level: 16, sets: 'frostmere', backdrop: 'frostmere' },
 });
 
-// The Hearthfires (ten in the Wilds, seven in the Sunscorch, seven in the Ironspire). x, y, face is the STAND (where the party wakes, rests and arrives by
+// The Hearthfires (ten in the Wilds, seven in the Sunscorch, eight in the Ironspire). x, y, face is the STAND (where the party wakes, rests and arrives by
 // travel), facing the fire. `cold` fires start unlit (the cold-hearth lock).
 const H = (map, x, y, lore, name, o = {}) => ({ map, x, y, face: 'n', lore, name, cold: false, ...o });
 export const HEARTHS = deepFreeze({

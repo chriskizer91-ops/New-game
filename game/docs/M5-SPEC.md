@@ -88,7 +88,7 @@ quest step); the Deeps and Beneath Frostmere are dark but soft.
 | `plankford` | `from-lea` → the exit to Shrinewood | `er-toll` (the deserters' chain at the foot of the plank bridge) |
 | `last-camp` | `from-falls` → the exit to the pass | `er-camp` (the palisade gate, barred) |
 | `rockslide-pass` | `from-camp` → the exit to Peak's Veil | `rp-brigands` (Rhune's toll chain across the cleared slide), `rp-rocklings` (a scree field where the rocklings nest) |
-| `iron-stair` | from Peak's Veil → the exit to Ironhold | `is-sentinels` (the dwarf gate at the stair's head) |
+| `iron-stair` | from Peak's Veil → the exit to Ironhold | `is-sentinels` (the dwarf gate at the stair's foot) |
 | `ironhold` | from the Iron Stair → the Deeps door | `tamsin-ironhold` (she waits on the Deeps stair; a yield opens it too) |
 | `ironhold-deeps` | from Ironhold → the stair to Harrow's Forge | `id-forgeborn`, `id-bellows` |
 | `frost-road` | from Stormwatch → the exit to Frostmere | `fr-cutters` (the Tallymen's ice-saw camp across the road) |

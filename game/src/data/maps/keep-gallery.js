@@ -1,6 +1,7 @@
 // The Sunscorch Gallery (M4 spec §2.1, §2.4): the reliquary's second room, through a door on the Great
 // Hall's east wall (0,4). A long gallery with torches between the pedestals on both walls and a runner
-// down the middle from the door to the plaque on the east wall (16,4). Codex Page II's 14 pedestals
+// down the middle from the door to the east door (17,4), to the Ironspire Gallery (M5); the plaque hangs
+// on the north wall at (16,1). Codex Page II's 14 pedestals
 // stand in codex order on rows 2 and 5 (west to east), seven a side, with the walkway between; the
 // flagstone aisles behind them let you walk round every one.
 // Tiles (keep): '#' stone walls, '*' torches, ':' flagstones, '_' the runner, '+' the door to the Hall.
