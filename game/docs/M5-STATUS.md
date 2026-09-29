@@ -30,12 +30,12 @@ numbers, and the known issues.
 | Gate | Result |
 |---|---|
 | Units | **395/395** node tests pass (`npm test`), lint clean. |
-| e2e-world | **372** checks, 0 failed, 0 blocked, at 360×740 and 1280×800: scenarios 1-27. Scenario 21 walks through the east postern onto the painted Old Bridge (drawn from its painting, the road track) and up to the pass (the peaks track); 22-27 cover Peak's Veil, the chasm and ice locks, Mother Anvil's card, the Deeps' dark, the Frost Road's performance and the third council. |
+| e2e-world | **378** checks, 0 failed, 0 blocked (a blocked check now fails the run), at 360×740 and 1280×800: scenarios 1-27. Scenario 21 walks through the east postern onto the painted Old Bridge (drawn from its painting, the road track) and up to the pass (the peaks track); 22-27 cover Peak's Veil, the chasm and ice locks, Mother Anvil's card, the Deeps' dark, the Frost Road's performance and the third council. |
 | e2e-battle | **22/22** scenarios, among them Mother Anvil through three phases with both pieces snapped, the Rime-Abbot with a hero held under and freed early, Kharzul's exact Burrow and a charmed hero. |
 | e2e-flow | Passes at both sizes (**296** checks), with the Milestone 4.5 carry-over profile. |
 | e2e-codes | **48/48** (24 codes at both sizes): every real M2 code, plus M3, M4 and Milestone 4.5 codes; the earlier milestones' keys are never written. |
 | Balance | Every M5 target met, every M3 and M4 target still met, 0 stuck runs; see §2.1. |
-| Performance | At 4× CPU throttle: the Frost Road p95 frame JS 4.9-8.2 ms with at most 20 `drawImage` per frame; the painted Old Bridge p95 2.4-3.1 ms with at most 10 (targets 16 ms and 40). |
+| Performance | At 4× CPU throttle: the Frost Road p95 frame JS 3.6-4.9 ms with at most 20 `drawImage` per frame; the painted Old Bridge p95 2.5 ms with at most 10 (targets 16 ms and 40). |
 | Size | The game **2168 KB** (warns above 2.5 MB, fails above 3.2 MB); the paintings **5926 KB** (fails above 8 MB); the file **8094 KB**. |
 
 ### 2.1 Balance (`node tools/sim.mjs --seeds 200`, starters rotated)
