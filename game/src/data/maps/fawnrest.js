@@ -2,8 +2,9 @@
 // a mossy paved court with four old pillars, the empty bell-frame (7,6) at its west edge and Brother
 // Ivo by the south pillar. The white-deer meadow (north-east, behind a hedge) is where the deer come
 // home. The pilgrims' tents and bathing pool are in the south-west, Vesper stands in front of his
-// awning stall in the east, and the scree path runs east to the sealed Highfold way (21,9..10). The
-// offering chest (3,3) waits in a rocky nook.
+// awning stall in the east, and the scree path runs east to the Highfold way (21,9..10), which the
+// monks of Peak's Veil clear from above (flag highfold-open, M5 spec §2.4). The offering chest (3,3)
+// waits in a rocky nook.
 // Every entity sits at its spec coordinates except two, each moved 1 tile south:
 // - the Dreaming Stone, to (11,6), so it touches its stand (11,7) and interact reaches it there;
 // - Vesper, to (16,13), so the awning (an overhead roof) never hides his head.

@@ -6,12 +6,16 @@
 // M4 (spec §2.2, §8; owner M4 P2): the same bot walks SUN_PATH from an Act-I-complete save (both Verdant
 // Brands, act1-complete, at the Keep, level 8 with only its starter relic) through the Keep's south-east
 // gate, then comes home to the Great Hall for the second council.
+// M5 (spec §2.2, §8; owner M5 P2): the same bot walks IRON_PATH from a Sunscorch-complete save (all four earlier
+// Brands, the second council sat, at the Keep, level 8 with only its starter relic) through the Keep's east
+// postern, asks Thane Brundar for the Rune-Key once Tamsin's duel is settled, earns both Ironspire Brands and
+// comes home to the Great Hall for the third council.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { newGame, startBattle, resolveBattle, rest } from '../src/rules/gauntlet.js';
 import { enterMap, move, interact, findPath, present, lockStatus, openLock, afterBattle } from '../src/rules/world.js';
 import { enterDialogue, choose, dialogueView } from '../src/rules/story.js';
-import { START_AT, CRITICAL_PATH, SUN_PATH, HEARTHS } from '../src/data/world.js';
+import { START_AT, CRITICAL_PATH, SUN_PATH, IRON_PATH, HEARTHS } from '../src/data/world.js';
 import { MAPS, ENTITY_OF } from '../src/data/maps/index.js';
 import { ENCOUNTERS } from '../src/data/encounters.js';
 import { DIALOGUE } from '../src/data/dialogue.js';
@@ -257,10 +261,25 @@ function makeBot(starter, { game = null, path = CRITICAL_PATH, start = null } = 
     if (!settled()) stuck(`could not settle ${id}`);
   }
 
+  // M5: a path step 'npc:<id>' walks up to that person and talks (Thane Brundar gives the Rune-Key)
+  function talk(npc) {
+    const where = Object.values(MAPS).find(m => m.entities.some(e => e.kind === 'npc' && e.npc === npc));
+    if (!where) stuck(`nobody called ${npc} stands on a map`);
+    const e = where.entities.find(x => x.kind === 'npc' && x.npc === npc);
+    goToMap(where.id);
+    if (walkTo(e.at[0], e.at[1], { adjacent: true }) === 'exit') return talk(npc);
+    face(e.at[0], e.at[1]);
+    const r = interact(s.game, s.walk);
+    s.game = r.game; s.walk = r.walk;
+    if (!r.events.some(ev => ev.t === 'talk')) stuck(`could not talk to ${npc}`);
+    handle(r.events);
+    return null;
+  }
+
   return {
     run() {
       enter(start || { map: START_AT.map, at: [START_AT.x, START_AT.y], face: START_AT.face });
-      for (const id of path) { log(`-> ${id}`); reach(id); }
+      for (const id of path) { log(`-> ${id}`); if (id.startsWith('npc:')) talk(id.slice(4)); else reach(id); }
       return s;
     },
     // walk (across maps) into `mapId`
@@ -324,5 +343,50 @@ for (const starter of ['hearthbrand', 'stillwater-lance', 'cairnmaul']) {
     assert.equal(f.story['council-2-done'] || s.game.progress.flags.story['council-2-done'], true, 'the second council plays in the Great Hall');
     assert.ok(s.steps > 300, `${s.steps} steps`);
     assert.ok(s.held >= 5, `the road held before ${s.held} fights (M4.5)`);
+  });
+}
+
+// ---- M5: the Ironspire walk (spec §2.2, §8) ------------------------------------------------------------
+
+// A Sunscorch-complete save: the M3 and M4 critical paths behind it (all four earlier Brands, the Waking at 4,
+// both councils sat), standing in the Keep's courtyard, every hero at level 8 (the worst case the map tests
+// allow) and only the starter relic in the pack.
+function sunscorchSave(starter) {
+  const g = actOneSave(starter);
+  g.progress.brands.push('brand-of-glass', 'brand-of-ash');
+  g.progress.waking = 4;
+  const f = g.progress.flags;
+  for (const id of SUN_PATH) {
+    const e = ENCOUNTERS[id];
+    if (e.type === 'hearthfire') { f.kindled[id] = true; continue; }
+    f.beaten[id] = 1;
+    if (e.once) f.done[id] = true;
+    if (e.opens) f.unlocked[e.opens] = true;
+  }
+  Object.assign(f.story, { 'tamsin-yielded-2': true, 'sunscorch-complete': true, 'council-2-done': true });
+  return g;
+}
+
+// IRON_PATH as a player walks it: Thane Brundar is asked for his Rune-Key once Tamsin's duel is settled
+const IRON_WALK = IRON_PATH.flatMap(id => (id === 'tamsin-ironhold' ? [id, 'npc:brundar'] : [id]));
+
+for (const starter of ['hearthbrand', 'stillwater-lance', 'cairnmaul']) {
+  test(`the Ironspire walk (${starter}): from a Sunscorch-complete save through the east postern, IRON_PATH to both Brands, then home`, () => {
+    const bot = makeBot(starter, { game: sunscorchSave(starter), path: IRON_WALK, start: { map: 'keep', anchor: 'from-hall' } });
+    const s = bot.run();
+    const f = s.game.progress.flags;
+    assert.ok(s.game.progress.brands.includes('brand-of-iron') && s.game.progress.brands.includes('brand-of-frost'), 'both Ironspire Brands');
+    assert.equal(f.story['ironspire-complete'], true);
+    for (const id of IRON_PATH) {
+      if (HEARTHS[id]) assert.ok(f.kindled[id], `${id} kindled`);
+      else assert.ok(f.beaten[id] || f.story[ENCOUNTERS[id].yields], `${id} fought`);
+    }
+    assert.ok(f.story['rune-given'], 'Thane Brundar gave the Rune-Key');
+    // the way home from under Frostmere is open (the Deeps and Beneath Frostmere are underground: no travel)
+    bot.home('keep-hall');
+    assert.equal(s.walk.map, 'keep-hall');
+    assert.equal(s.game.progress.flags.story['council-3-done'], true, 'the third council plays in the Great Hall');
+    assert.ok(s.steps > 300, `${s.steps} steps`);
+    assert.ok(s.held >= 9, `the road held before ${s.held} fights (M4.5)`);
   });
 }

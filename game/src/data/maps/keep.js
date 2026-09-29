@@ -2,10 +2,12 @@
 // curtain wall rings the flagstone yard, with the lake lapping at it on every side. The north gate
 // (torches on both towers) opens onto the causeway to the Hearth Road; the Great Hall's facade runs
 // along the top, so you walk round it to reach the gate. Three posterns open onto piers and causeway
-// ends on the island's edge, each with a gate guard: east (Ironspire) and south-west (Gloomfen) stay
-// sealed; south-east is the way into the Sunscorch, gated on act1-complete (M4 spec §2.4). The yard: the old well (NW), the barred armory (NE), the refugee
-// tents along the west wall with the Keep's forge among them (Hilda works it after the second Brand),
-// the courtyard tree and its flower bed, Marta's stall (E), and the barracks (SE).
+// ends on the island's edge, each with a gate guard: south-east is the way into the Sunscorch, gated
+// on act1-complete (M4 spec §2.4); east is the way up the Rockslide Pass into the Ironspire, gated on
+// council-2-done (M5 spec §2.4); south-west (Gloomfen) stays sealed. The yard: the old well (NW), the
+// barred armory (NE), the refugee tents along the west wall with the Keep's forge among them (Hilda
+// works it after the second Brand), the courtyard tree and its flower bed, Marta's stall (E), and the
+// barracks (SE).
 // M4.5 (docs/M45-SPEC.md §4): the road from the Great Hall's door to the causeway runs through the
 // north gate, which waits on the vault fight in the Great Hall.
 // Format: src/data/maps/index.js. Owner: WP3.

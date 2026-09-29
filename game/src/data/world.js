@@ -32,13 +32,14 @@ export const ZONES = deepFreeze({
   'deep-shaft': { id: 'deep-shaft', level: 11, sets: 'deep-shaft', backdrop: 'deep-shaft' },
   'glass-flats': { id: 'glass-flats', level: 11, sets: 'glass-flats', backdrop: 'glass-flats' },
   scorchgate: { id: 'scorchgate', level: 12, sets: 'scorchgate', backdrop: 'scorchgate' },
-  // M5: the Ironspire Peaks (spec §2.6; levels are P4's to tune; Sunscorch backdrops stand in until P6 paints)
-  'rockslide-pass': { id: 'rockslide-pass', level: 13, sets: 'rockslide-pass', backdrop: 'dust-trail' },
-  highfold: { id: 'highfold', level: 14, sets: 'highfold', backdrop: 'dust-trail' },
-  'iron-stair': { id: 'iron-stair', level: 14, sets: 'iron-stair', backdrop: 'dust-trail' },
-  deeps: { id: 'deeps', level: 15, sets: 'deeps', backdrop: 'deep-shaft' },
-  'frost-road': { id: 'frost-road', level: 16, sets: 'frost-road', backdrop: 'glass-flats' },
-  frostmere: { id: 'frostmere', level: 16, sets: 'frostmere', backdrop: 'miragewell' },
+  // M5: the Ironspire Peaks (spec §2.6; levels are P4's to tune). Each zone fights on its own map's backdrop
+  // (the Deeps' patrols on the Deeps').
+  'rockslide-pass': { id: 'rockslide-pass', level: 13, sets: 'rockslide-pass', backdrop: 'rockslide-pass' },
+  highfold: { id: 'highfold', level: 14, sets: 'highfold', backdrop: 'highfold' },
+  'iron-stair': { id: 'iron-stair', level: 14, sets: 'iron-stair', backdrop: 'iron-stair' },
+  deeps: { id: 'deeps', level: 15, sets: 'deeps', backdrop: 'ironhold-deeps' },
+  'frost-road': { id: 'frost-road', level: 16, sets: 'frost-road', backdrop: 'frost-road' },
+  frostmere: { id: 'frostmere', level: 16, sets: 'frostmere', backdrop: 'frostmere' },
 });
 
 // The Hearthfires (ten in the Wilds, seven in the Sunscorch, seven in the Ironspire). x, y, face is the STAND (where the party wakes, rests and arrives by
@@ -64,14 +65,14 @@ export const HEARTHS = deepFreeze({
   'shaft-lamp': H('deep-shaft-1', 8, 12, [770, 575], 'The Shaft Lamp', { cold: true }),
   'well-fire': H('miragewell', 10, 13, [1010, 540], 'The Well Fire'),
   'last-watchfire': H('scorchgate', 20, 13, [930, 660], 'The Last Watchfire', { cold: true, face: 's' }),
-  // M5 (spec §2.5). Stands are the scaffold's placeholders until P2 lays the maps out.
-  'pass-shrine': H('rockslide-pass', 12, 41, [650, 330], 'The Pass Shrine'),
+  // M5 (spec §2.5): the stands of the laid-out Ironspire maps (M5 P2). Each fire faces north from its stand.
+  'pass-shrine': H('rockslide-pass', 19, 41, [650, 330], 'The Pass Shrine'),
   'veil-hearth': H('peaks-veil', 14, 12, [750, 240], 'The Cloister Fire'),
-  'stair-cairn': H('iron-stair', 12, 29, [800, 200], 'The Stair Cairn', { cold: true }),
-  'thanes-hearth': H('ironhold', 16, 12, [870, 160], 'The Thane\'s Hearth'),
-  'deeps-forge': H('ironhold-deeps', 14, 18, [875, 175], 'The Deeps Furnace', { cold: true }),
-  'stormwatch-fire': H('stormwatch', 13, 12, [1020, 240], 'The Watch Fire'),
-  'frost-cairn': H('frost-road', 20, 14, [1000, 180], 'The Frost Cairn', { cold: true }),
+  'stair-cairn': H('iron-stair', 7, 25, [800, 200], 'The Stair Cairn', { cold: true }),
+  'thanes-hearth': H('ironhold', 15, 6, [870, 160], 'The Thane\'s Hearth'),
+  'deeps-forge': H('ironhold-deeps', 6, 14, [875, 175], 'The Deeps Furnace', { cold: true }),
+  'stormwatch-fire': H('stormwatch', 13, 14, [1020, 240], 'The Watch Fire'),
+  'frost-cairn': H('frost-road', 28, 12, [1000, 180], 'The Frost Cairn', { cold: true }),
 });
 export const HEARTH_IDS = Object.freeze(Object.keys(HEARTHS));
 

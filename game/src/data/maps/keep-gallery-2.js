@@ -1,7 +1,8 @@
-// The Ironspire Gallery (M5 spec §2.1, §2.4): the reliquary's third room, through a door on the
-// Sunscorch Gallery's east wall. Codex Page III's 14 pedestals stand in codex order on rows 2 and 5
-// (west to east), seven a side, with the walkway between. STUB from the M5 scaffold: P2 (maps) may
-// dress it (the Sunscorch Gallery is the model).
+// The Ironspire Gallery (M5 spec §2.1, §2.4): the reliquary's third room, through the door on the
+// Sunscorch Gallery's east wall (0,4). A torch-lit gallery like the Sunscorch Gallery, with the runner
+// from the door to the plaque at the east end (16,4). Codex Page III's 14 pedestals stand in codex order
+// on rows 2 and 5 (west to east), seven a side, with the walkway between; the flagstone aisles behind
+// them let you walk round every one.
 // Tiles (keep): '#' stone walls, '*' torches, ':' flagstones, '_' the runner, '+' the door to the Gallery.
 // Format: src/data/maps/index.js. Owner: M5 P2.
 import { deepFreeze } from '../../core/freeze.js';
