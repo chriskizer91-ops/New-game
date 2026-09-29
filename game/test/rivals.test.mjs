@@ -54,7 +54,7 @@ test('a kit adds to her moves and replaces her table; no kit, no change', () => 
   assert.ok(!seen2.has('iron-grip'));
 });
 
-test('the earlier duels keep $rival as it was: no kit at the Eldest Tree or at Scorchgate', () => {
+test('the earlier duels keep $rival as it was (no kit at the Eldest Tree or at Scorchgate); Ironhold brings her kit', () => {
   const g = newGame({ starter: 'stillwater-lance', seed: 3 });
   g.progress.flags.story.starter = 'stillwater-lance';
   for (const id of ['tamsin-duel', 'tamsin-scorchgate']) {
@@ -62,11 +62,13 @@ test('the earlier duels keep $rival as it was: no kit at the Eldest Tree or at S
     assert.equal(sp.variant, STARTERS['stillwater-lance'].rival, id);
     assert.ok(!sp.kit, `${id} has no kit`);
   }
-  // Ironhold: once its spawn names '$rival:ironhold', she brings the kit
-  const iron = ENCOUNTERS['tamsin-ironhold'].spawns[0];
-  if (iron.variant === '$rival:ironhold') {
-    const [sp] = spawnsFor(g, 'tamsin-ironhold');
-    assert.equal(sp.variant, STARTERS['stillwater-lance'].rival);
-    assert.equal(sp.kit, 'ironhold');
+  // Ironhold's spawn names '$rival:ironhold': she brings the kit
+  assert.equal(ENCOUNTERS['tamsin-ironhold'].spawns[0].variant, '$rival:ironhold');
+  for (const starter of Object.keys(STARTERS)) {
+    const gs = newGame({ starter, seed: 3 });
+    gs.progress.flags.story.starter = starter;
+    const [sp] = spawnsFor(gs, 'tamsin-ironhold');
+    assert.equal(sp.variant, STARTERS[starter].rival, starter);
+    assert.equal(sp.kit, 'ironhold', starter);
   }
 });

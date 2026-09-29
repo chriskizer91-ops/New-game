@@ -14,6 +14,7 @@ import { animate, isReduced } from '../lib/anim.js';
 import { portraitCanvas } from '../lib/art.js';
 import { mainStat, ABIL, ABIL_NAME } from '../lib/items.js';
 import { screenNav } from '../lib/keys.js';
+import { CUTS } from '../assets/cuts/index.js';
 
 const STEPS = ['Name', 'Look', 'Abilities', 'Heirloom', 'Prologue'];
 const NAMES = ['Wren', 'Tess', 'Bram', 'Rowan', 'Maren', 'Corin', 'Ada', 'Hale', 'Isla', 'Odo'];
@@ -299,6 +300,18 @@ export function mount(root, ctx) {
     const wrap = el('section', 'prologue');
     const scene = el('div', 'pro-scene');
     const cv = el('canvas', { class: 'px', 'aria-hidden': 'true' });
+    // The painted Council hall (M5 spec A10): gold until the hearth turns, then blue to the end. Without
+    // both stills (or when one fails to load) the drawn scene plays as before.
+    const gold = CUTS['hearth-gold'], blue = CUTS['hearth-blue'];
+    let painted = !!(gold && blue);
+    if (painted) {
+      scene.classList.add('painted');
+      for (const [c, k] of [[gold, 'gold'], [blue, 'blue']]) {
+        const still = el('img', { class: `pro-still ${k}`, src: c.src, alt: '', 'aria-hidden': 'true', width: c.w, height: c.h, draggable: 'false' });
+        still.addEventListener('error', () => { if (painted) { painted = false; scene.classList.remove('painted'); drawn(); scene.classList.toggle('blue', !!LINES[i].blue); } });
+        scene.append(still);
+      }
+    }
     scene.append(cv);
     const text = el('p', { class: 'pro-text', 'aria-live': 'polite' });
     const btn = button('Continue', 'btn primary big', () => step(), { 'data-primary': '' });
@@ -312,12 +325,15 @@ export function mount(root, ctx) {
       W = Math.max(60, Math.floor(Math.min(scene.clientWidth || innerWidth - 42, 1000) / k));
       cv.width = W; cv.height = H; cv.style.width = W * k + 'px'; cv.style.height = H * k + 'px';
     };
-    size();
-    requestAnimationFrame(size);
-    animate(cv, t => toCanvas(renderBackdrop('hearth-road', { w: W, h: H, t, reduced: isReduced() }), cv), 10);
+    const drawn = () => {
+      size();
+      requestAnimationFrame(size);
+      animate(cv, t => toCanvas(renderBackdrop('hearth-road', { w: W, h: H, t, reduced: isReduced() }), cv), 10);
+    };
+    if (!painted) drawn();
     const show = async () => {
       const L = LINES[i];
-      scene.classList.toggle('blue', !!L.blue);
+      scene.classList.toggle('blue', painted ? i > 0 : !!L.blue);
       if (L.blue && i === 1) ctx.audio.sfx('phase');
       text.classList.remove('in'); await sleep(isReduced() ? 0 : 60);
       text.textContent = L.t; text.classList.add('in');

@@ -58,6 +58,7 @@ const RATING = { easy: 'Easy', fair: 'Fair', hard: 'Hard', deadly: 'Deadly' };
 const LOCK_VERB = {
   thornwall: 'Cut', bramble: 'Part', stream: 'Cross', boulder: 'Break', 'cold-hearth': 'Light', 'tally-seal': 'Break', 'barred-gate': 'Open', 'rot-knot': 'Untie', 'rope-ledge': 'Climb', darkness: 'Look', ichor: 'Look',
   'dune-glass': 'Break', mirage: 'Look', quicksand: 'Cross', 'vault-seal': 'Open', // M4
+  chasm: 'Cross', ice: 'Melt', 'rune-seal': 'Read', drift: 'Cross', // M5
 };
 // Loot words for a toast (M4: materials and gems by their data names): "+40 gold · 1 scrap · Glass Pearl ×2".
 function lootWords({ gold = 0, bag = {}, materials = {}, gems = {} } = {}) {
@@ -645,8 +646,12 @@ export function mount(root, ctx, params = {}) {
   // ---- flows ------------------------------------------------------------------------------------------
   async function dialogueFlow(id, { enc = null } = {}) {
     if (!id || !DIALOGUE[id]) return null;
-    // the Council's title card: the first council (Act I) and the second (the Sunscorch won, M4)
-    if (id === 'council' || id === 'council-2') { await playCouncil(ctx, { second: id === 'council-2' }); if (dead) return 'stop'; }
+    // the Council's title card: the first council (Act I), the second (the Sunscorch won, M4) and the
+    // third (the Ironspire won, M5)
+    if (id === 'council' || id === 'council-2' || id === 'council-3') {
+      await playCouncil(ctx, { second: id === 'council-2', third: id === 'council-3' });
+      if (dead) return 'stop';
+    }
     talking = true; loop.dirty();
     let r;
     try { r = await openDialogue(ctx, { game, id, dock: dockRect() }); } finally { talking = false; loop.dirty(); }
@@ -987,7 +992,16 @@ export function mount(root, ctx, params = {}) {
     }
     if (params.rematch) ctx.toast('A rematch: the Brand is already yours.');
     if (params.wokeAt && fresh) ctx.toast(`You wake at ${HEARTHS[params.wokeAt]?.name || ENCOUNTERS[params.wokeAt]?.name || 'the Hearthfire'}.`, 3000);
-    // an unread Unsmith letter (after a Brand, or an M2 looper's first visit)
+    // the lines after a fight first: Tamsin's win or yield, Corra freed, a Champion's last words (M5: the
+    // Rime-Abbot's lead into Hush's scene)
+    const enc = pending?.enc || params.enc;
+    const res = params.yield ? 'yield' : params.result;
+    if (enc && res && typeof Story.afterDialogue === 'function') {
+      const d = Story.afterDialogue(game, enc, res);
+      if (d && DIALOGUE[d]) { await dialogueFlow(d); if (dead) return; }
+    }
+    // then an unread Unsmith letter (after a Brand, or an M2 looper's first visit): it follows the scene
+    // the fight ends on (M5 spec §3.5: the Frost letter after Hush's scene)
     const letter = typeof Story.pendingLetter === 'function' ? Story.pendingLetter(game) : null;
     if (letter) {
       await showLetter(ctx, letter);
@@ -996,13 +1010,6 @@ export function mount(root, ctx, params = {}) {
       save();
     }
     if (brand || letter) refreshWorld();
-    // the lines after a fight: Tamsin's win or yield, Corra freed, the Rotwarden's last words
-    const enc = pending?.enc || params.enc;
-    const res = params.yield ? 'yield' : params.result;
-    if (enc && res && typeof Story.afterDialogue === 'function') {
-      const d = Story.afterDialogue(game, enc, res);
-      if (d && DIALOGUE[d]) await dialogueFlow(d);
-    }
   }
 
   // ---- go ----------------------------------------------------------------------------------------------

@@ -11,6 +11,10 @@
 //   tileAt(clientX, clientY) -> [tx, ty] | null
 //   camera, fade (0..1), map (the baked map), destroy()
 // }
+// Painted maps (M5 spec A10): a map listed in ui/assets/paint/ draws its painting as its ground (the
+// objects on top as usual) and its overhead layer takes the painting's pixels wherever the tiles' own
+// overhead layer would draw, so the party passes behind the same canopies and roofs. Every other map,
+// and a painted one until its image has decoded, draws its tiles.
 // Sprite records (filled by ui/world/actors.js): { img, sx, sy, sw, sh, dx, dy, ys, alpha, fx, fxA, fxB, fxC, col, show }
 //   fx: 0 none, 1 relic glint (fxA, fxB = offset, fxC = phase ms), 3 count pips (fxA = n), 4 chest twinkle.
 //   `show` false skips the record.
@@ -23,6 +27,7 @@ import { LOCKS } from '../../data/locks.js';
 import { present, mapOf } from '../../rules/world.js';
 import { storyOf } from '../../rules/cond.js';
 import { el } from '../lib/dom.js';
+import { PAINTINGS } from '../assets/paint/index.js';
 import { TILE, CHUNK, ANIM_FLIP_MS, GLINT_MS } from './constants.js';
 import { createCamera, backingSize, scaleFor } from './camera.js';
 
@@ -95,6 +100,30 @@ export function emoteSprite(kind) {
   return o;
 }
 export const emoteCanvas = kind => emoteSprite(kind).frames[0];
+
+// A painting decodes when its map is first baked (the map's fade-in covers the wait; until it is ready the
+// map draws its tiles). The last PAINT_KEEP maps' paintings stay decoded: more than the two baked maps
+// BAKED keeps, so a baked map's painting is never let go.
+const PAINT = new Map(); // mapId -> { img, ready }, the most recently used last
+const PAINT_KEEP = 4;
+function paintOf(id) {
+  if (!Object.prototype.hasOwnProperty.call(PAINTINGS, id) || typeof Image === 'undefined') return null;
+  let p = PAINT.get(id);
+  if (p) { PAINT.delete(id); PAINT.set(id, p); return p; }
+  p = { img: new Image(), ready: false };
+  p.img.onload = () => { p.ready = p.img.naturalWidth > 0; };
+  p.img.src = PAINTINGS[id].src;
+  PAINT.set(id, p);
+  while (PAINT.size > PAINT_KEEP) {
+    const [k, old] = PAINT.entries().next().value;
+    PAINT.delete(k);
+    old.ready = false;
+    old.img.onload = null;
+    old.img.removeAttribute('src');
+  }
+  return p;
+}
+const paintImg = B => (B.paint && B.paint.ready ? B.paint.img : null);
 
 const BAKED = new Map(); // mapId -> baked map; the current and the previous map stay (§5.3)
 function remember(id, B) {
@@ -171,7 +200,8 @@ function makeBaked(map) {
   const w = map.w, h = map.h, ids = new Array(w * h);
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) ids[y * w + x] = tileOf(map.rows[y]?.[x]).id;
   const cols = Math.max(1, Math.ceil((w * TILE) / CHUNK)), rows = Math.max(1, Math.ceil((h * TILE) / CHUNK));
-  return { id: map.id, map, A, w, h, ids, cols, rows, pw: w * TILE, ph: h * TILE, ground: new Array(cols * rows), over: new Array(cols * rows), ents: [], sigs: new Map(), dark: null, darkKey: '' };
+  return { id: map.id, map, A, w, h, ids, cols, rows, pw: w * TILE, ph: h * TILE, ground: new Array(cols * rows), over: new Array(cols * rows), ents: [], sigs: new Map(), dark: null, darkKey: '',
+    paint: paintOf(map.id), painted: false };
 }
 
 // Draw one entity object onto a chunk: its foot on each covered tile's bottom-centre.
@@ -190,8 +220,9 @@ function bakeChunk(B, ci) {
   const tx1 = Math.min(w, tx0 + CHUNK / TILE), ty1 = Math.min(h, ty0 + CHUNK / TILE);
   const pw = (tx1 - tx0) * TILE, ph = (ty1 - ty0) * TILE;
   const ents = B.ents.filter(o => o.area[2] >= tx0 - 1 && o.area[0] <= tx1 && o.area[3] >= ty0 && o.area[1] <= ty1 + 1);
+  const P = paintImg(B);
   let anim = ents.some(o => objSprite(o.kind, o.state, o.opts).frames.length > 1);
-  for (let y = ty0; y < ty1 && !anim; y++) for (let x = tx0; x < tx1; x++) if (A.atlas.frames(ids[y * w + x]) > 1) { anim = true; break; }
+  if (!P) for (let y = ty0; y < ty1 && !anim; y++) for (let x = tx0; x < tx1; x++) if (A.atlas.frames(ids[y * w + x]) > 1) { anim = true; break; }
   const old = B.ground[ci] || [];
   const out = [];
   for (let f = 0; f < (anim ? 2 : 1); f++) {
@@ -199,7 +230,8 @@ function bakeChunk(B, ci) {
     const g = c.getContext('2d');
     g.imageSmoothingEnabled = false;
     g.clearRect(0, 0, pw, ph);
-    for (let y = ty0; y < ty1; y++) {
+    if (P) g.drawImage(P, tx0 * TILE, ty0 * TILE, pw, ph, 0, 0, pw, ph);
+    for (let y = ty0; y < ty1 && !P; y++) {
       for (let x = tx0; x < tx1; x++) {
         const dx0 = (x - tx0) * TILE, dy0 = (y - ty0) * TILE;
         if (A.cell) {
@@ -244,7 +276,7 @@ function bakeOver(B, ci) {
         for (const o of ops) pen().drawImage(A.canvas, o[0], o[1], o[2], o[3], dx0 + o[4], dy0 + o[5], o[2], o[3]);
       }
     }
-    B.over[ci] = c;
+    B.over[ci] = paintOver(B, c, tx0, ty0);
     return;
   }
   // an atlas without cell(): the tree cell again over the row above, roofs, and the bottom of tall grass
@@ -263,7 +295,18 @@ function bakeOver(B, ci) {
       }
     }
   }
-  B.over[ci] = c;
+  B.over[ci] = paintOver(B, c, tx0, ty0);
+}
+
+// A painted map's overhead layer: the painting, cut to the shape the tiles' overhead layer has.
+function paintOver(B, c, tx0, ty0) {
+  const P = paintImg(B);
+  if (!P || !c) return c;
+  const g = c.getContext('2d');
+  g.globalCompositeOperation = 'source-in';
+  g.drawImage(P, tx0 * TILE, ty0 * TILE, c.width, c.height, 0, 0, c.width, c.height);
+  g.globalCompositeOperation = 'source-over';
+  return c;
 }
 
 function chunksOf(B, area) {
@@ -294,6 +337,7 @@ export function mapImage(game, mapId, { keep = () => true, over = true, pad = nu
     keep = () => false;
   }
   const B = makeBaked(map);
+  B.paint = null; // a layout reference is drawn from the tiles, never from a painting
   B.ents = bakedEntities(game, map).filter(o => keep(o));
   const c = canvasOf(null, B.pw, B.ph), g = c.getContext('2d');
   g.imageSmoothingEnabled = false;
@@ -351,14 +395,20 @@ export function createView(canvas, { reduced = false, plateHost = null } = {}) {
     const map = mapOf(mapId);
     if (!map) { B = null; return null; }
     const cached = BAKED.get(mapId);
-    if (cached && cached.map === map) { B = cached; remember(mapId, B); refresh(game); return B; }
+    if (cached && cached.map === map) { B = cached; if (B.paint) B.paint = paintOf(mapId); remember(mapId, B); refresh(game); repaint(); return B; }
     B = makeBaked(map);
     B.ents = bakedEntities(game, map);
     for (const o of B.ents) B.sigs.set(o.id, o.sig);
-    for (let i = 0; i < B.ground.length; i++) { bakeChunk(B, i); bakeOver(B, i); }
+    bakeAll(B);
     remember(mapId, B);
     return B;
   }
+  function bakeAll(b) {
+    for (let i = 0; i < b.ground.length; i++) { bakeChunk(b, i); bakeOver(b, i); }
+    b.painted = !!paintImg(b);
+  }
+  // a painting that finished decoding after its map was baked from tiles: bake it again, painted
+  function repaint() { if (B && B.paint && B.paint.ready && !B.painted) bakeAll(B); }
 
   // Re-bake the chunks under objects whose state changed (a chest opened, a lock cut, a gate open).
   function refresh(game) {
@@ -373,6 +423,8 @@ export function createView(canvas, { reduced = false, plateHost = null } = {}) {
     for (const o of B.ents) if (!seen.has(o.id)) for (const c of chunksOf(B, o.area)) dirty.add(c);
     B.ents = ents;
     B.sigs = new Map(ents.map(o => [o.id, o.sig]));
+    // a painting let go and decoding again: these chunks bake from tiles, and every chunk again once it is back
+    if (B.paint && B.painted && !B.paint.ready) B.painted = false;
     for (const c of dirty) bakeChunk(B, c);
   }
 
@@ -431,6 +483,7 @@ export function createView(canvas, { reduced = false, plateHost = null } = {}) {
     g.fillStyle = '#07060a';
     g.fillRect(0, 0, W, H);
     if (!B) return 0;
+    repaint();
     const f = reduced ? 0 : ((now / ANIM_FLIP_MS) | 0) & 1;
     const c0 = Math.max(0, Math.floor(cx / CHUNK)), c1 = Math.min(B.cols - 1, Math.floor((cx + W - 1) / CHUNK));
     const r0 = Math.max(0, Math.floor(cy / CHUNK)), r1 = Math.min(B.rows - 1, Math.floor((cy + H - 1) / CHUNK));

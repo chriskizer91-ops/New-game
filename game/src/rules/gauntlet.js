@@ -1,8 +1,8 @@
 // Game flow (no DOM): new game, Hearthfire rests and travel, battles in and out, party wipes and the
 // duel yield, Grudges, Brands and the Waking.
 //
-// M3 (spec §4.6; owner WP2) keeps this file name for import stability. newGame makes version 3
-// games that start in the Great Hall (START_AT); where you are is progress.pos, and the world
+// M3 (spec §4.6; owner WP2) keeps this file name for import stability. newGame makes games at the
+// current save version (4 since M5, rules/migrate.js SAVE_VERSION) that start in the Great Hall (START_AT); where you are is progress.pos, and the world
 // (rules/world.js) decides what you can reach. progress.node is only kept on migrated M2 saves,
 // verbatim, and never read.
 //   newGame, spawnsFor, startBattle(game, { nodeId } | { patrol: { spawns, where, backdrop, dark } },
@@ -75,7 +75,7 @@ export function newGame({ name = 'Wren', starter = 'hearthbrand', seed = 1, base
   const codex = {};
   for (const r of Object.keys(STARTERS)) codex[r] = { sighted: true, claimed: r === starter, awakened: false };
   return {
-    version: 3, seed, rngState: rng.getState(),
+    version: 4, seed, rngState: rng.getState(), // SAVE_VERSION (rules/migrate.js; test/gauntlet.test.mjs holds them equal)
     party: { active: [...HERO_IDS], roster },
     inventory, gold: 50, codex, materials: { scrap: 0, silver: 0, embers: 0 }, gems: {},
     progress: {
@@ -433,14 +433,18 @@ function fightDeeds(g, battle, out, report) {
   }
 }
 
-// Won Sunscorch fights pay forge materials by the tier of each foe beaten (a Twinned foe's twin pays
-// nothing, as it drops nothing); Scorchgate's pay Ash Garnets.
+// Won Sunscorch and Ironspire fights pay forge materials by the tier of each foe beaten (a Twinned foe's
+// twin pays nothing, as it drops nothing); Scorchgate's pay Ash Garnets and Frostmere's Frost Opals
+// (M5 spec §3.7).
+const SPOILS = new Set(['sunscorch', 'ironspire']);
 function spoils(g, battle, node, out, report) {
-  if (!node || (node.region || 'verdant') !== 'sunscorch') return;
+  if (!node || !SPOILS.has(node.region || 'verdant')) return;
   const F = TUNING.forge;
   let materials = {};
   for (const b of out.beaten) if (!battle.units[b.id]?.noLoot) materials = addCounts(materials, F.spoils[b.tier] || {});
-  const gems = F.garnets[node.id] ? { 'ash-garnet': F.garnets[node.id] } : {};
+  const gems = {};
+  if (F.garnets[node.id]) gems['ash-garnet'] = F.garnets[node.id];
+  if (F.opals?.[node.id]) gems['frost-opal'] = F.opals[node.id];
   g.materials = addCounts(g.materials, materials);
   g.gems = addCounts(g.gems, gems);
   report.materials = materials;

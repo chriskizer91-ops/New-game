@@ -2,7 +2,8 @@
 // SAVE_VERSION and is injected into core/save.js as loadGame(migrate) / importCode(code, migrate), so
 // core/ imports nothing game-specific.
 //   toV2(save)   v1 (M2) -> v2 (M3), M3 spec §4.9, exact
-//   toV3(save)   v2 (M3) -> v3 (M4)
+//   toV3(save)   v2 (M3) -> v3 (M4, and Milestone 4.5)
+//   toV4(save)   v3 -> v4 (M5)
 // Imports data only (A6): encounters, heroes, world, relics, maps/index.
 // Owner: WP2.
 
@@ -23,7 +24,7 @@ export function starterOf(g) {
   return STARTERS[it?.base] ? it.base : (claimed[0] || 'hearthbrand');
 }
 
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 export function toV2(save) {
   if (!save || typeof save !== 'object' || !save.version) throw new Error('Not an Aethermoor save');
@@ -82,8 +83,17 @@ export function toV3(save) {
   return v;
 }
 
+// M5 (spec §4.1): M5 adds no new state (its quests, flags, relics and maps live in the shapes version 3
+// already has), so version 4 only marks a save as this milestone's: the files of M4 and Milestone 4.5 stop
+// at AETH3 and name an AETH4 code as newer instead of loading a save they cannot read. Idempotent.
+export function toV4(save) {
+  const v = toV3(save);
+  if (v.version < 4) v.version = 4;
+  return v;
+}
+
 // Any save, of any version so far, as the current version.
-export const migrate = save => toV3(save);
+export const migrate = save => toV4(save);
 
 // A pasted code is untrusted: before it replaces the journey on this device, check that the migrated
 // save has the shape the game walks on (not its balance). Returns what is wrong, [] when it is sound.

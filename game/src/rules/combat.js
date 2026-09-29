@@ -48,7 +48,10 @@ export function aspectMult(attack, defend) {
 export function damageMult(t, kind, aspect) {
   let m = 1;
   if (PHYSICAL_KINDS.includes(kind)) m *= ARMOR_CHART[kind][t.armor || 'none'] ?? 1;
-  m *= aspectMult(aspect, t.aspect);
+  // M5 (spec §3.5): a foe named weak to an aspect is weak to it even where the wheel would halve it
+  // (Mother Anvil, an ember construct, is weak to frost); no earlier foe is named so
+  const wheel = aspectMult(aspect, t.aspect);
+  m *= wheel < 1 && t.weak?.includes(aspect) ? 1 : wheel;
   for (const k of new Set([kind, aspect].filter(Boolean))) {
     if (t.immune?.includes(k)) return 0;
     if (t.weak?.includes(k)) m *= 1.5;
@@ -95,7 +98,8 @@ export function addStatus(B, t, id, { stacks = 1, turns, value, source, label } 
     if (label) st.label = label; // M5: how a hold reads on the hero's plate ("Held under", "Carried off")
     t.statuses.push(st);
   }
-  B.ev.push({ t: 'status', target: t.id, status: id, op: 'add', stacks: st.stacks, turns: st.turns, value: st.value });
+  B.ev.push({ t: 'status', target: t.id, status: id, op: 'add', stacks: st.stacks, turns: st.turns, value: st.value,
+    ...(st.source ? { source: st.source } : {}), ...(st.label ? { label: st.label } : {}) });
   if (def.atMax && st.stacks >= def.maxStacks) {
     removeStatus(B, t, id);
     addStatus(B, t, def.atMax, { source });
@@ -433,7 +437,7 @@ function resolveSummon(B, a, eff) {
     const up = Object.values(s.units).filter(u => alive(u) && u.summonedBy === a.id).length;
     if (up >= (eff.max || 2)) return;
     const id = `f${++s.nextId}`;
-    const u = buildFoe({ family: eff.family, level: Math.max(1, a.level + (eff.levelDelta || 0)), gearTier: 0, omens: [], summonedBy: a.id, noLoot: true }, { id, seq: s.seq++ });
+    const u = buildFoe({ family: eff.family, variant: eff.variant, level: Math.max(1, a.level + (eff.levelDelta || 0)), gearTier: 0, omens: [], summonedBy: a.id, noLoot: true }, { id, seq: s.seq++ });
     u.xp = 0;
     u.gold = 0;
     u.next = s.time + Math.round(u.delay * 0.6);

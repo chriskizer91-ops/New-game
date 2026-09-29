@@ -5,7 +5,7 @@
 // Every milestone keeps its own save: nothing here ever writes an earlier milestone's.
 // mount(root, ctx, { from }): Back returns to `from` ('world' with a journey, else 'title').
 // Owner: WP8.
-import { exportCode, importCode, exportV1Code, exportV2Code, exportM4Code, readV1, hasV1, readV2, hasV2, readM4, hasM4, hasBackup, backupGame, restoreBackup, saveGame } from '../../core/save.js';
+import { exportCode, importCode, exportV1Code, exportV2Code, exportM4Code, exportM45Code, readV1, hasV1, readV2, hasV2, readM4, hasM4, readM45, hasM45, hasBackup, backupGame, restoreBackup, saveGame } from '../../core/save.js';
 import { el, esc, button } from '../lib/dom.js';
 import { screenNav } from '../lib/keys.js';
 import { openCarryCard } from '../lib/carry.js';
@@ -164,6 +164,13 @@ export function mount(root, ctx, params = {}) {
     sec.append(el('div', 'row-btns', [exp, carryOver]), box.box);
     root.append(sec);
   };
+  if (hasM45()) {
+    earlier({
+      cls: 'set-m45', title: 'Your Milestone 4.5 save', who: 'Milestone 4.5', kind: 'm45', read: readM45, exportOld: exportM45Code,
+      blurb: 'journey on the road is still on this device, untouched: the Milestone 4.5 file keeps playing it. You can copy it out as an AETH3 code, or carry it into this milestone.',
+      codeLabel: 'Your Milestone 4.5 save code', codeCls: 'code-m45', exportLabel: 'Export M4.5 backup (AETH3)', carryLabel: 'Carry over my M4.5 save',
+    });
+  }
   if (hasM4()) {
     earlier({
       cls: 'set-m4', title: 'Your Milestone 4 save', who: 'Milestone 4', kind: 'm4', read: readM4, exportOld: exportM4Code,

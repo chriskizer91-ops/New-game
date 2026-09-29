@@ -1,10 +1,11 @@
 // The migration checklist (M3 spec §7), automated: paste every real M2 code in test/fixtures/v1/ into
 // the built game through the title's Settings → Load a code, plus (M4 spec §8) Milestone 3 codes
-// (AETH2., the M3 game each of three fixtures becomes), in Chromium at phone (360x740, touch)
-// and laptop (1280x800) sizes. For each code: the carry-over card opens, "Walk on" reaches the
-// world, the party walks, Party, Codex, Journal and Atlas open, this milestone's own save is the
-// migrated game, the M2 and Milestone 3 keys are never written, nothing scrolls sideways, and there is
-// no console error.
+// (AETH2., the M3 game each of three fixtures becomes) and (M5) Milestone 4 and 4.5 codes (AETH3., the
+// same three as those files would export them), in Chromium at phone (360x740, touch) and laptop
+// (1280x800) sizes. For each code: the carry-over card opens, "Walk on" reaches the world, the party
+// walks, Party, Codex, Journal and Atlas open, this milestone's own save (aethermoor.save.m5) is the
+// migrated game, the M2, Milestone 3, 4 and 4.5 keys are never written, nothing scrolls sideways, and
+// there is no console error.
 //
 //   node tools/e2e-codes.mjs                  # build into dist/, then run
 //   node tools/e2e-codes.mjs --no-build       # reuse dist/
@@ -17,7 +18,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
-import { SAVE_VERSION, toV2 } from '../src/rules/migrate.js';
+import { SAVE_VERSION, toV2, toV3 } from '../src/rules/migrate.js';
 import { exportCode } from '../src/core/save.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -26,7 +27,8 @@ if (!args['no-build'] && !process.env.AETH_HTML) execSync('npm run build', { cwd
 const file = process.env.AETH_HTML ? path.resolve(process.env.AETH_HTML) : path.join(root, 'dist/aethermoor.html');
 const fixtures = path.join(root, 'test/fixtures/v1');
 const load = id => JSON.parse(readFileSync(path.join(fixtures, `${id}.json`), 'utf8'));
-// every real M2 code, then Milestone 3 codes: the version 2 game an M3 player would have exported
+// every real M2 code, then Milestone 3 codes: the version 2 game an M3 player would have exported, then
+// the version 3 game an M4 or Milestone 4.5 player would have
 const M3_FROM = ['v1-node-thornhollow', 'v1-after-brand', 'v1-grudges'];
 const entries = [
   ...readdirSync(fixtures).filter(f => f.endsWith('.code.txt')).map(f => {
@@ -34,8 +36,10 @@ const entries = [
     return { id, code: readFileSync(path.join(fixtures, f), 'utf8').trim(), gold: load(id).gold };
   }),
   ...M3_FROM.map(id => { const m3 = toV2(load(id)); return { id: `m3-${id}`, code: exportCode(m3), gold: m3.gold }; }),
+  ...M3_FROM.map(id => { const m45 = toV3(load(id)); return { id: `m45-${id}`, code: exportCode(m45), gold: m45.gold }; }),
 ].filter(e => !args.codes || e.id.includes(String(args.codes)));
 for (const e of entries) if (e.id.startsWith('m3-') && !e.code.startsWith('AETH2.')) throw new Error(`${e.id} is not an AETH2 code`);
+for (const e of entries) if (e.id.startsWith('m45-') && !e.code.startsWith('AETH3.')) throw new Error(`${e.id} is not an AETH3 code`);
 
 const require = createRequire(import.meta.url);
 let pw;
@@ -84,7 +88,7 @@ for (const V of VIEWPORTS) {
         await b.click().catch(() => {});
         await page.waitForTimeout(180);
       }
-      const st = await page.evaluate(() => ({ live: localStorage.getItem('aethermoor.save.m4.5') }));
+      const st = await page.evaluate(() => ({ live: localStorage.getItem('aethermoor.save.m5') }));
       const g = st.live ? JSON.parse(st.live) : null;
       if (!g || g.version !== SAVE_VERSION || g.migratedFrom !== 1) problems.push('the live save is not the migrated game');
       if (g && g.gold !== gold) problems.push(`gold ${g.gold} is not the code's ${gold}`);
@@ -98,10 +102,12 @@ for (const V of VIEWPORTS) {
         await here();
       }
       if (tiles.size < 2) problems.push('the party did not walk');
-      const old = await page.evaluate(() => [localStorage.getItem('aethermoor.save.v1'), localStorage.getItem('aethermoor.save.v2'), localStorage.getItem('aethermoor.save.m4')]);
+      const old = await page.evaluate(() => [localStorage.getItem('aethermoor.save.v1'), localStorage.getItem('aethermoor.save.v2'), localStorage.getItem('aethermoor.save.m4'),
+        localStorage.getItem('aethermoor.save.m4.5'), localStorage.getItem('aethermoor.m4.5.started')]);
       if (old[0] !== null) problems.push('the M2 key was written');
       if (old[1] !== null) problems.push('a Milestone 3 key was written');
       if (old[2] !== null) problems.push('a Milestone 4 key was written');
+      if (old[3] !== null || old[4] !== null) problems.push('a Milestone 4.5 key was written');
       for (const name of ['party', 'codex', 'journal', 'atlas']) {
         await page.evaluate(n => window.__app.go(n, { from: 'world' }), name);
         await page.waitForTimeout(400);

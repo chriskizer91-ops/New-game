@@ -15,11 +15,11 @@ and every fight is fought in full. Part A overrides Part B.
 | A3 | **Road-first.** Every M5 map declares its `roads`; every fight on `IRON_PATH` holds a gate (or a Brand); lead fights guard their side roads; no route or lead fight is a roaming pack. `test/road.test.mjs` covers the new maps with no new code (its map list grows). Zone patrols roam as before, and a caught weak pack is a full battle. |
 | A4 | **One order.** The Brand of Iron (Ironhold) comes first; Stormwatch's north gate, onto the Frost Road, opens with it. Then the Brand of Frost under Frostmere. |
 | A5 | **The way in.** The Keep's east postern (`keep-e`) opens once the second council is sat (`council-2-done`), onto the Rockslide Pass. Fawnrest's scree path (`fr-highfold`) opens from Peak's Veil's side once you reach it (`flag: 'highfold-open'`, set by the monks), as a second way home. Gloomfen stays sealed ("the way opens in the next chapter"). |
-| A6 | **Size.** A third region needs room: the build warns above **2.5 MB** and fails above **3.2 MB** (M4's 1.8/2.2 were set for two regions). `--minify` stays in reserve. |
+| A6 | **Size.** A third region needs room: the build warns above **2.5 MB** and fails above **3.2 MB** (M4's 1.8/2.2 were set for two regions). `--minify` stays in reserve. These limits count the game without the player's paintings (A10), which have their own limit of **8 MB**, so the file stays well under the 16 MB a page holds. |
 | A7 | **Building** as in M4: the lead builds the rules (P1) and integrates; agents build maps, story, foes and relics, art and UI in parallel with disjoint files (§7), never run git, build into private folders and write `game/notes/M5-<pkg>.md`. |
 | A8 | **Ids are fixed by this spec.** A package may add ids only inside its own files; a missing id is asked for in its notes. |
 | A9 | **Frozen, as before:** `art/heroes.js`, `art/hero-looks.js`, the card reveal, the M2 encounter and spawn arrays, and every delivered file (M2, M3, M4, M4.5). Earlier content changes only where §2.4 says. |
-| A10 | **Painted art is optional in M5.** If the player's art pilot (`art-requests/pilot.md`) comes back and looks right in the game, package P8 (§7) adds painted backdrops for the pilot maps, the prologue still and Hilda's portrait, each behind its own data entry, so a map with no painting draws its tiles as now. Otherwise P8 is skipped and M5 ships without it. |
+| A10 | **Painted art.** The player's art pilot (`art-requests/pilot.md`) came back and looks right in the game, so package P8 (§7) is in: the paintings of Hearthstone Keep and Thornhollow draw as those maps' ground, and the prologue shows the Council hall gold, then blue. Each is its own data entry (`ui/assets/paint/`, `ui/assets/cuts/`), so a map with no painting draws its tiles as before. Hilda's portrait did not come; there is no portrait frame yet. The next batch (`art-requests/batch-2/`, every Verdant and Sunscorch map, long roads in two overlapping panels) lands as it comes back. |
 
 ## Part B. Build spec
 
@@ -33,7 +33,7 @@ and every fight is fought in full. Part A overrides Part B.
 
 **Out (later milestones):** Gloomfen (M6); companion recruitment (Luma stays a hint); the Signature Masterpiece; Table Mode; card PNG export; the Hearthteller.
 
-**Stretch (only if every gate is green):** P8's painted art (A10); a blizzard pass over the Frost Road (drifting snow over the view); Hilda's lines naming the gem you set.
+**Stretch (only if every gate is green):** a blizzard pass over the Frost Road (drifting snow over the view); Hilda's lines naming the gem you set.
 
 ## 2. World
 
@@ -400,7 +400,7 @@ gets a new one (she fights like someone who has been to the Ironspire before).
 | P5 overworld art | agent | `art/tiles.js`, `art/walkers.js`, `art/map-sprites.js`, `tools/gallery*.{mjs,js}` |
 | P6 battle and item art | agent | `art/foes.js`, `art/scenes.js`, `art/recipes.js`, `art/item-looks.js`, `art/item-art.js`, `art/icons.js`, `art/index.js` |
 | P7 UI | agent | `ui/screens/{codex,atlas,journal,battle}.js`, `ui/battle/*`, `ui/world/sheets.js`, `core/audio.js` (the peaks track), `ui/*.css`, `tools/e2e-world.mjs` (Ironspire scenarios), `tools/e2e-battle.mjs` (Champions) |
-| P8 painted art (A10, optional) | lead | `tools/paint-import.mjs` (new), `ui/world/view.js` (a painted ground layer), `ui/assets/paint/*` |
+| P8 painted art (A10) | lead | `tools/paint-import.mjs`, `tools/paint-refs.mjs` (new), `ui/world/view.js` (a painted ground layer), `ui/screens/newgame.js` (the prologue's stills), `ui/assets/{paint,cuts}/*`, `test/paint.test.mjs` |
 
 Order: step 0 (the lead), then P1 with a scaffold that stubs every id so the tests stay green; P2–P5 in
 parallel; P6–P7 when the foe and relic data land; then integrate, tune, review and deliver.
@@ -430,7 +430,7 @@ new key until both halves have landed; that is expected in a package's private t
   wipe 30–40%; the Rime-Abbot 30–40%; Tamsin at Ironhold party win 55–70%; each lead's lair taken first
   15–25%; a forged party ≤ 20% against each Champion; every M3, M4 and M4.5 target unchanged; zero stuck.
 - **Performance:** the Frost Road at 4× throttle: p95 frame JS ≤ 16 ms, ≤ 40 `drawImage` per frame.
-- **Size:** under 3.2 MB (A6).
+- **Size:** the game under 3.2 MB and the paintings under 8 MB (A6).
 - **No stand-in is left:** no `stub: true` in `data/foes.js` or `art/item-looks.js`, no "STUB from the M5
   scaffold" comment in `src/`, every M5 backdrop in `BACKDROPS`, and every mountain map on the `peaks` track.
 
@@ -442,5 +442,5 @@ new key until both halves have landed; that is expected in a package's private t
 | Three regions in one file | A6's new limit; share palettes and rigs; `--minify` |
 | Agents run out of usage mid-package | Small packages, notes files, stubs that keep the tests green |
 
-**Cut order** (last first): P8; the blizzard; the Highfold lead (keep the map as the way home); the
+**Cut order** (last first): the batch 2 paintings; the blizzard; the Highfold lead (keep the map as the way home); the
 Drowned Abbess's lead; `charmed` (keep the approximation).
