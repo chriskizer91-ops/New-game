@@ -399,8 +399,8 @@ export function flamesEl(temper, { next = false, box = 20, cls = '' } = {}) {
   return row;
 }
 
-// What a fight did for the forge and the Codex (rules/gauntlet.js resolveBattle's and routPack's report),
-// ready for the aftermath and the Rout strip. Every field may be missing on an older report.
+// What a fight did for the forge and the Codex (rules/gauntlet.js resolveBattle's report), ready for the
+// aftermath. Every field may be missing on an older report.
 //   deeds: [{ uid, name, deed, text }]  "Cinderfang: Legend Strike"
 //   kindled: [{ uid, name, bonus }]     a relic newly Kindled, and what that gives it
 //   ready: [{ uid, name }]              a relic with all three deeds: Hilda can wake it

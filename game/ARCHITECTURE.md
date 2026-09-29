@@ -202,22 +202,25 @@ Walk   = { map, visit, x, y, face, tick, rng, grace, gone: {}, roamers: [Roamer]
 Roamer = { id, enc|null, zone|null, spawns, lead: { family, variant, art, gearTier, count }, x, y, home, leash,
            face, mood: 'wander'|'alert'|'chase'|'return'|'flee'|'stunned', wait, weak, trackless }
 
-enterMap(game, { map, anchor } | { map, at: [x, y], face }) -> { game, walk, events }   // seeds roamers
+enterMap(game, { map, anchor } | { map, at: [x, y], face }) -> { game, walk, events }   // seeds roamers; an `at` inside
+                                              // something solid moves to the nearest free tile of its own stretch of
+                                              // road (M4.5); an `at` off the map enters at the map's first anchor
 move(game, walk, dir, { run }) -> { game, walk, events }
 interact(game, walk) -> { game, walk, events }
 tick(game, walk) -> { game, walk, events }
-afterBattle(game, walk, { roamerId, result }) -> walk     // grace; the roamer gone (won, routed) or stunned (fled)
+afterBattle(game, walk, { roamerId, result }) -> walk     // grace; the roamer gone (won) or stunned (fled)
 commit(game, walk) -> game                               // writes progress.pos (same object if unchanged)
 present(game, mapId) -> [Entity & { solid, state, glint, grudge, name, lead }]   // memoised per game object
 canWalk, findPath (A*, 4-way), threat, keys, lockStatus, openLock, openChest, sightEncounter, light, isWeak, roamMask
 ```
 
-**Events** (the UI stops at the first one that starts a battle: `encounter`, `contact`, `rout`):
+**Events** (the UI stops at the first one that starts a battle: `encounter`, `contact`):
 `turn`, `step`, `bump`, `exit {id, to, anchor, unlock?}`, `sealed {id, region, text, nextChapter}`,
 `encounter {id}`, `gate {id, text, guard}`, `lock {id, lock, status}`, `trigger {id, dialogue}`,
 `sighted {relic, enc}`, `hazard {pct, hurt}`, `talk {npc, dialogue, enc?}`, `sign {text}`,
 `use {kind, id}`, `chest {id, lock?}`, `hearthfire {id}`, `enter {map}`, `alert {id}`,
-`roam {moves: [[id, x, y, face]]}`, `contact {id, enc, by, firstStrike, ambush}`, `rout {id, enc}`.
+`roam {moves: [[id, x, y, face]]}`, `contact {id, enc, by, firstStrike, ambush, weak?}` (a weak pack you ran down is
+`weak: true`, a full battle with `caught`; M4.5 has no Routs).
 
 - **Roamers** come from their own RNG stream (`roam:<seed>:<map>:<visit>`), never `game.rngState`.
   They wander within their leash, notice you within 5 tiles with line of sight (2 in the dark),

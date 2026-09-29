@@ -37,4 +37,7 @@ test('save codes round-trip and a pasted code cannot carry markup', async () => 
   assert.deepEqual(Object.keys(back.bag), ['btonic/b']);
   assert.throws(() => importCode('AETH1.bm90IGpzb24='), /damaged/);
   assert.throws(() => importCode('hello'), /not an Aethermoor save code/);
+  // a later milestone's code (a newer save shape) is named as such, not called a stranger
+  assert.throws(() => importCode('AETH4.eyJ2ZXJzaW9uIjo0fQ=='), /newer Aethermoor \(AETH4\)/);
+  assert.throws(() => importCode('AETH12.eyJ2ZXJzaW9uIjo0fQ=='), /newer Aethermoor \(AETH12\)/);
 });

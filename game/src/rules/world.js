@@ -175,28 +175,64 @@ function fireTriggers(g, map, x, y, on, events) {
 
 // A position inside something solid (a save carried over from before a Milestone 4.5 road gate or its
 // new terrain stood there) moves to the nearest free tile, breadth-first in n, e, s, w order. On a map
-// with roads it must be a tile you can reach from where a road starts, as things stand, so a nudge never
-// lands beyond a gate that is still shut. A free position stays put.
+// with roads it must be a tile of the save's own stretch of road (or one before it): the save's stretch is
+// how many of the road's gates, in order, stand between the road's start and the free tiles nearest the
+// save, with every gate shut and its guard standing. So a save that walked past a fight in M4 stays past
+// it, and a nudge never lands beyond a gate the save had not passed. A free position stays put.
 function freeSpot(game, map, x, y) {
   const here = present(game, map.id);
-  const inside = (tx, ty) => tx >= 0 && ty >= 0 && tx < map.w && ty < map.h;
+  const W = map.w;
+  const inside = (tx, ty) => tx >= 0 && ty >= 0 && tx < W && ty < map.h;
   const solid = (tx, ty) => tileOf(map.rows[ty][tx]).solid || here.some(e => e.solid && covers(e, tx, ty));
   if (!solid(x, y)) return [x, y];
+  // the free tiles nearest the save: the first ring of a breadth-first search that has any
+  let ring = [[x, y]], nearest = [];
+  const ringSeen = new Set([y * W + x]);
+  while (ring.length && !nearest.length) {
+    const next = [];
+    for (const [cx, cy] of ring) for (const k of DIR_KEYS) {
+      const nx = cx + DIRS[k][0], ny = cy + DIRS[k][1];
+      if (!inside(nx, ny) || ringSeen.has(ny * W + nx)) continue;
+      ringSeen.add(ny * W + nx);
+      next.push([nx, ny]);
+      if (!solid(nx, ny)) nearest.push([nx, ny]);
+    }
+    ring = next;
+  }
   let near = null;
   for (const road of map.roads || []) {
     const a = map.anchors?.[road.from];
     if (!a || solid(a[0], a[1])) continue;
-    near = near || new Uint8Array(map.w * map.h);
-    const q = [[a[0], a[1]]];
-    near[a[1] * map.w + a[0]] = 1;
-    for (let i = 0; i < q.length; i++) {
-      for (const k of DIR_KEYS) {
-        const nx = q[i][0] + DIRS[k][0], ny = q[i][1] + DIRS[k][1];
-        if (!inside(nx, ny) || near[ny * map.w + nx] || solid(nx, ny)) continue;
-        near[ny * map.w + nx] = 1;
+    const parts = road.gates.map(id => {
+      const g = map.entities.find(e => e.id === id);
+      const guard = g?.guard && map.entities.find(e => e.kind === 'encounter' && e.enc === g.guard);
+      return [g, guard].filter(Boolean);
+    });
+    const on = (list, tx, ty) => list.some(e => covers(e, tx, ty));
+    // from the road's start with its first k gates (and their guards) passed; the rest shut with their
+    // guards standing (shut), or as things stand
+    const flood = (k, shut) => {
+      const passed = parts.slice(0, k).flat(), ahead = parts.slice(k).flat();
+      const seen = new Uint8Array(W * map.h), q = [[a[0], a[1]]];
+      seen[a[1] * W + a[0]] = 1;
+      for (let i = 0; i < q.length; i++) for (const d of DIR_KEYS) {
+        const nx = q[i][0] + DIRS[d][0], ny = q[i][1] + DIRS[d][1];
+        if (!inside(nx, ny) || seen[ny * W + nx]) continue;
+        if (!on(passed, nx, ny) && (solid(nx, ny) || (shut && on(ahead, nx, ny)))) continue;
+        seen[ny * W + nx] = 1;
         q.push([nx, ny]);
       }
+      return seen;
+    };
+    const stretches = parts.map((_, k) => flood(k, true)).concat([flood(parts.length, true)]);
+    let mine = Infinity;
+    for (const [fx, fy] of nearest) {
+      const k = stretches.findIndex(s => s[fy * W + fx]);
+      if (k >= 0) mine = Math.min(mine, k);
     }
+    const r = flood(Number.isFinite(mine) ? mine : 0, false);
+    near = near || new Uint8Array(W * map.h);
+    for (let i = 0; i < r.length; i++) if (r[i]) near[i] = 1;
   }
   const ok = (tx, ty) => !solid(tx, ty) && (!near || near[ty * map.w + tx]);
   const seen = new Set([y * map.w + x]), q = [[x, y]];
@@ -217,9 +253,15 @@ function freeSpot(game, map, x, y) {
 export function enterMap(game, target) {
   const map = mapOf(target.map);
   if (!map) throw new Error(`Unknown map ${target.map}`);
-  let pos = target.anchor ? anchorOf(map.id, target.anchor) : { x: target.at[0], y: target.at[1], face: target.face || 's' };
+  let pos = target.anchor ? anchorOf(map.id, target.anchor) : { x: target.at?.[0], y: target.at?.[1], face: target.face || 's' };
   if (!pos) throw new Error(`Unknown anchor ${target.anchor} on ${map.id}`);
-  if (!target.anchor) { const [x, y] = freeSpot(game, map, pos.x, pos.y); pos = { ...pos, x, y }; }
+  if (!target.anchor) {
+    // a position off the map (a damaged save) enters at the map's first anchor
+    const onMap = Number.isInteger(pos.x) && Number.isInteger(pos.y) && pos.x >= 0 && pos.y >= 0 && pos.x < map.w && pos.y < map.h;
+    const first = Object.keys(map.anchors || {})[0];
+    if (!onMap && first) pos = anchorOf(map.id, first);
+    else { const [x, y] = freeSpot(game, map, pos.x, pos.y); pos = { ...pos, x, y }; }
+  }
   const g = structuredClone(game);
   const f = g.progress.flags;
   f.visits = { ...(f.visits || {}) };

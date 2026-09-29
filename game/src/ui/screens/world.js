@@ -385,6 +385,9 @@ export function mount(root, ctx, params = {}) {
       case 'gate': {
         if (e.state === 'open') return { a: '', p: '', label: 'An open gate' };
         if (e.look === 'crownwall') return { a: 'Look', p: 'Crownwall · a story seal', label: 'Crownwall', sub: 'a story seal' };
+        // M4.5: a road gate whose guard stands by it is its guard's fight (A opens the pre-fight card)
+        const guard = e.guard && presentNow().find(q => q.kind === 'encounter' && q.enc === e.guard);
+        if (guard) return describe(guard);
         return { a: 'Look', p: 'The way is shut', label: 'A shut gate' };
       }
       case 'encounter': {

@@ -129,6 +129,8 @@ function scrub(v) {
 // importCode(code, migrate?) accepts the codes of every milestone so far (AETH1. M2, AETH2. M3,
 // AETH3. M4 and Milestone 4.5); scrub(), then migrate() when given.
 export function importCode(code, migrate) {
+  const newer = String(code).trim().match(/^AETH(\d+)\./);
+  if (newer && +newer[1] > 3) throw new Error(`That code comes from a newer Aethermoor (AETH${+newer[1]}). Load it in the version that made it.`);
   const m = String(code).trim().match(/^AETH[123]\.([A-Za-z0-9+/=\s]+)$/);
   if (!m) throw new Error('That is not an Aethermoor save code. Codes start with AETH and a number, like AETH3.');
   let game;
