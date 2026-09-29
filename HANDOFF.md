@@ -1,9 +1,10 @@
 # Handoff: Aethermoor: Hearth & Heirloom
 
-This is for a fresh session with none of the earlier conversation. Read it top to bottom, then read `CLAUDE.md`, and you can start milestone 5 without re-exploring.
+This is for a fresh session with none of the earlier conversation. Read it top to bottom, then read `CLAUDE.md`, and you can start the next step without re-exploring: the playtest edits in §3 first, then milestone 5.
 
 - **Branch:** `claude/cool-ptolemy-uc93gg`. It contains the whole history of the earlier branch `claude/dnd-game-prototype-bsv3xb`. If your session names a different branch, use that one and carry this history over. Never create a PR unless the player asks for one.
 - **State at handoff:** **M4 is done and delivered** as the download `game/dist/aethermoor-m4.html`, sent together with `aethermoor-m3.html` (the player asked for both as downloads). Every gate is green: 276/276 tests, lint, build (about 1.77 MB), `e2e-world` (19 scenarios), `e2e-flow`, `e2e-battle` (18) and `e2e-codes` (18 M2 + 3 M3 codes) at both sizes, the balance sim on target. A final review found 6 issues (one blocker: reforged relics were never Claimed); all are fixed with regression tests. The full record is `game/docs/M4-STATUS.md`. **M5 has not started.**
+- **Playtest feedback after M4:** the testers love walking the overworld, but preferred M2's pacing: a road you go down slowly, where every encounter is a full fight with dice rolls. The player wants those edits made first, then M5. The details and a plan are in §3.
 
 ---
 
@@ -21,7 +22,7 @@ This is for a fresh session with none of the earlier conversation. Read it top t
 - **Party wipe:** you wake at the last Hearthfire with all your gear and lose 10% of your gold.
 - **Grinding:** optional but beneficial.
 - **Tone:** warm epic with an edge.
-- **World structure:** a guided start, then as open-world as possible.
+- **World structure:** a guided start, then as open-world as possible. **Revised by the M4 playtest:** keep the walkable maps, but progress down the road one stretch at a time, with every encounter a full fight (§3).
 - **AI Dungeon Master:** "seems cool but I don't want to make it dependent on that". It is optional and never required.
 - **Lore:** honour the player's own Aethermoor world. The repo root holds their files:
   - `aethermoor-interactive-image-map-polished.html`: an illustrated map, a 4.8 MB PNG with SVG markers in a 1200×800 viewBox. M3's Atlas uses it (shrunk to a WebP inside the build).
@@ -47,7 +48,8 @@ The roadmap is in `docs/DESIGN-BRIEF.md` §13. Status:
 | M2 "Gauntlet" | ✅ done, **published** | Full battle system plus a fixed 14-node road. Frozen copy at `game/dist/aethermoor-m2.html` |
 | M3 "The Verdant Wilds" | ✅ done, delivered as a download | 14 walkable maps, roaming packs, locks, quests, the Atlas and Journal, save v2. Frozen at `game/dist/aethermoor-m3.html`. See `game/docs/M3-STATUS.md` |
 | M4 "The Sunscorch Wastes" | ✅ **done, delivered as a download** | 10 desert maps, 2 Champions, the Codex binder with page rewards, Hilda's full forge (temper +10, reroll, salvage, gems, awakening), hunting Grudges, save v3. See `game/docs/M4-STATUS.md` |
-| **M5** | ⬜ **next** | Ironspire and Hush (the roadmap); Luma's recruitment was held back from M4 for "M5+" |
+| **Road pacing** | ⬜ **next** | The M4 playtest: M2's pacing on the walkable maps (§3). Ask the player whether it ships as its own build before M5 |
+| **M5** | ⬜ after that | Ironspire and Hush (the roadmap), built road-first; Luma's recruitment was held back from M4 for "M5+" |
 | M6 | ⬜ | Gloomfen, Hodge, Tamsin's fall |
 | M7 | ⬜ | The Hollow Council, the Unsmith, 3 endings, the Heat ladder |
 | M8 | ⬜ | The optional Hearthteller (AI DM) and cloud saves |
@@ -69,12 +71,40 @@ The roadmap is in `docs/DESIGN-BRIEF.md` §13. Status:
 4. Integration per package: check each package on a clean snapshot of HEAD plus its files, look at its screenshots, commit it separately. Needs from one package's notes were relayed to the owners.
 5. A final review agent read the whole diff with proof scripts; every finding was fixed with a test that fails without it.
 
-**Next concrete steps (M5):**
-1. **Ask the player how M4 plays** before building much. Their answer outranks this list.
-2. **M5 step 0:** freeze `dist/aethermoor-m4.html` (pin its sha256 in `test/frozen.test.mjs`), move M5 to its own save key (`aethermoor.save.m5`, reading m4, v2 and v1 newest first) and delivery file, as M4's step 0 did (see `core/save.js`, `ui/app.js`, `ui/screens/settings.js`, `tools/build.mjs`).
-3. **Write `game/docs/M5-SPEC.md`** in M4's shape. Roadmap row: "Ironspire and Hush" (`docs/DESIGN-BRIEF.md` §13). Ironspire opens through the Keep's east exit (`keep-e`, sealed today; give it a `gate` as `keep-se` has). Page III of the Codex is sealed until then (`data/codex.js`). Consider Luma joining (she hints at it in M4).
-4. **Known issues worth fixing early:** new statuses (burrowed, swallowed, charmed) so M4's approximated Champion moves can become exact; a `$rival:<suffix>` for Tamsin's later duels.
-5. **Deliver** `dist/aethermoor-m5.html` the same way (§6 "Delivery"), and send the M4 file alongside it if the player wants both.
+### 3.1 Next: the playtest edits (before M5)
+
+The player, after their testers played M4: "the way the game progressed at m2 was enjoyed much more by the play testers so walking around the overworld is amazing very fun but the way interactions happen if the map only let you slowly progress down the road and every encounter was a full fight with dice rolls." They want those edits first, then M5.
+
+**What it means** (the M4 lead's reading; settle the open points below with the player before building):
+- **Keep** walking the maps. The testers call it "amazing, very fun".
+- **Bring back M2's pacing.** M2 was one fixed road of 14 nodes: you moved on only once the node in front of you was beaten, and every node was a full battle with the dice tray. M3 and M4 opened the land instead: three leads at once after Briarmaw (M3 spec D2) and five in the Sunscorch; roaming packs you can walk around (they never enter gate areas or 1-wide corridors, so they never block the road); weak packs that flee from you and, when touched, scatter with no battle at all (a Rout).
+- **So:** the map lets you go down the road one stretch at a time, and every encounter is a full fight with dice rolls.
+
+**Open points for the player** (each changes what gets built):
+1. Which fights must be fought? Suggested: every encounter on the road becomes a guard you must beat to pass, as M2's nodes were; packs off the road stay optional, but none flee and none Rout.
+2. Do the leads become one fixed order, like M2's single road, or does each lead open once the road to it is fought through?
+3. Does this ship as its own build first? Suggested: yes, so the testers judge the new pacing before M5's maps are built on it. By the player's rule it gets its own labeled file and save key, and reads the M4, M3 and M2 saves as carry-overs. `core/save.js` matches keys exactly, so any new key name is safe.
+4. Auto battle. M2 had it too, but the settings (`aethermoor.settings.v1`, `battleAuto`) are shared by every milestone's file in one browser: a tester who switched Auto on in one file has it on in all of them. Should the new build start with Auto off?
+
+**What exists to build it with:**
+- A gate with a guard: `{ kind: 'gate', open: { beaten: '<encounter>' }, guard: '<encounter>' }`, as on the Sun Road (`sr-toll-chain`) and in the Vaults (`sv-inner-door`). The map tests already check that a gate is the only way through to what it guards.
+- Weak packs and Routs: `rules/world.js` (`isWeak`, the roamers' flee, contact returning `rout`), `rules/gauntlet.js` (`routPack`), `TUNING.world.fleeGap`, `TUNING.rout`, and the rout handler in `ui/screens/world.js`. M4's Grudge hunters already never flee or Rout.
+- M2's road as it shipped: `git show ce12713:game/src/rules/gauntlet.js` (`route`, `canAdvance`, `advance`) and `git show ce12713:game/src/ui/screens/road.js`.
+
+**Mind:**
+- **The Rout deed.** 12 relics (Nos. 2, 4, 5, 6, 8, 10, 13, 15, 18, 25, 28, 33) need a Rout as one of their three deeds, and awakening needs all three. If Routs go, give the `rout` deed a new trigger (for example: win a fight against a pack that once would have fled) and keep its id, because saves already hold it and `saveProblems` checks deed ids.
+- **Saves.** A carried-over M4 save can stand anywhere on any map. A gate whose encounter it already beat must stay open (`flags.beaten`, `flags.cleared`), and no save may be stranded behind a new gate: test from every Hearthfire and with every M2 and M3 fixture.
+- **Tests that pin the old design.** Routs and fleeing are asserted in `test/` (battle, data, gauntlet, loot, migrate, walk, world) and in `tools/e2e-*.mjs` and `tools/sim.mjs`. Replace each such check with one for the new rule, and say so in the commit; never just delete it.
+- **Frozen:** the M2 encounter and spawn arrays (new guards are new encounters), the battle look, the card reveal, and the delivered M2, M3 and M4 files.
+- **Balance:** fights you cannot skip and a fixed order change the XP curve. Re-run `node tools/sim.mjs --seeds 200` and retune.
+- **Size:** 1.77 MB against the 1.8 MB warning; `--minify` saves about 10%.
+
+### 3.2 Then M5
+
+1. **Step 0 for the next build, whichever ships first:** freeze `dist/aethermoor-m4.html` (pin its sha256, `a324d1ca4fb1eeb248092caeb8a4caff312fbaed8595a37d65af884e22999c4f`, in `test/frozen.test.mjs`), then give the new build its own save key (M5: `aethermoor.save.m5`, reading the newer saves first) and delivery file, as M4's step 0 did (see `core/save.js`, `ui/app.js`, `ui/lib/carry.js`, `ui/screens/title.js`, `ui/screens/settings.js`, `tools/build.mjs`). If the road edits ship on their own, M5's step 0 freezes that file too.
+2. **Write `game/docs/M5-SPEC.md`** in M4's shape, with the road pacing from §3.1 as a rule for every new map. Roadmap row: "Ironspire and Hush" (`docs/DESIGN-BRIEF.md` §13). Ironspire opens through the Keep's east exit (`keep-e`, sealed today; give it a `gate` as `keep-se` has). Page III of the Codex is sealed until then (`data/codex.js`). Consider Luma joining (she hints at it in M4).
+3. **Known issues worth fixing early:** new statuses (burrowed, swallowed, charmed) so M4's approximated Champion moves can become exact; a `$rival:<suffix>` for Tamsin's later duels.
+4. **Deliver** `dist/aethermoor-m5.html` the same way (§6 "Delivery"), and send the earlier files alongside it if the player wants them.
 
 ## 4. Architecture and key decisions
 
