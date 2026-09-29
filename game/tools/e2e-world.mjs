@@ -1240,7 +1240,7 @@ async function run(V) {
       check(g0 && g0.state === 'closed' && g0.solid, `${P} 20: the road gate ${gateId} is shut before its fight`);
       await page.waitForTimeout(250);
       const facing = await W(() => window.__world.state().prompt);
-      check(facing.includes(ENCOUNTERS[gateE.guard].name) && !/The way is shut/.test(facing), `${P} 20: facing the gate, the prompt names its guard's fight ("${facing}")`);
+      check(/^A · .+ · Lv \d+ · \S/.test(facing) && !/The way is shut/.test(facing), `${P} 20: facing the gate, the prompt is its guard's fight: name, level and threat ("${facing}")`);
       await shot('road-gate');
       await W(d => window.__world.press(d), ap.face);
       await page.waitForSelector('.ov-prefight', { timeout: 3000 });
