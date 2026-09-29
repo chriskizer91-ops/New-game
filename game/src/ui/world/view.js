@@ -274,6 +274,33 @@ function chunksOf(B, area) {
   return out;
 }
 
+// Tools only (tools/map-shots.mjs, the painters' layout references): the whole map as one canvas at
+// 1 art px per px, without actors. keep(object) picks the baked objects to draw; over: the overhead
+// layer on top; pad [top, right, bottom, left] tiles carries the edge's ground, water and roads
+// outward and fills the rest with `fill` (then no objects).
+const PAD_CARRY = new Set(['=', 'b', '~', 'w', '.', ',', '"', 'm', ':']);
+export function mapImage(game, mapId, { keep = () => true, over = true, pad = null, fill = '.' } = {}) {
+  let map = mapOf(mapId);
+  if (!map) return null;
+  if (pad) {
+    const [t, r, b, l] = pad;
+    const out = ch => (PAD_CARRY.has(ch) ? ch : fill);
+    const row = s => out(s[0]).repeat(l) + s + out(s[s.length - 1]).repeat(r);
+    const rows = map.rows.map(row), edge = s => [...s].map(out).join('');
+    map = { ...map, id: `${map.id}#pad`, w: map.w + l + r, h: map.h + t + b, entities: [],
+      rows: [...Array(t).fill(edge(rows[0])), ...rows, ...Array(b).fill(edge(rows[rows.length - 1]))] };
+    keep = () => false;
+  }
+  const B = makeBaked(map);
+  B.ents = bakedEntities(game, map).filter(o => keep(o));
+  const c = canvasOf(null, B.pw, B.ph), g = c.getContext('2d');
+  g.imageSmoothingEnabled = false;
+  const at = i => [(i % B.cols) * CHUNK, ((i / B.cols) | 0) * CHUNK];
+  for (let i = 0; i < B.ground.length; i++) { bakeChunk(B, i); bakeOver(B, i); g.drawImage(B.ground[i][0], ...at(i)); }
+  if (over) for (let i = 0; i < B.over.length; i++) if (B.over[i]) g.drawImage(B.over[i], ...at(i));
+  return c;
+}
+
 // A pixel-stepped light hole of radius r (art px): solid inside, then two dithered rings.
 const HOLES = new Map();
 function holeCanvas(r) {
