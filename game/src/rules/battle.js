@@ -14,6 +14,9 @@
 // targetable); a swallowed unit loses its turns and takes its swallower's tick until it is spat out; a
 // charmed unit's next turn is played for it (a plain attack on one of its own side); a move's `then`
 // forces the foe's next intent (a Burrow, then its eruption).
+// M6 (spec §4.2, §4.4): rotting halves heals and hexed rolls its d20s with disadvantage (combat.js); a family's
+// `opener` is its first move in every fight (Hodge's Toll Is Due); Hodge's Unfair Toll makes the strongest
+// foe pay a toll at the start of every fight its bearer is in.
 
 import { createRng } from '../core/rng.js';
 import { rollD20 } from '../core/dice.js';
@@ -23,8 +26,8 @@ import { CONSUMABLES } from '../data/items.js';
 import { TUNING } from '../data/tuning.js';
 import { deriveHero, heroSkills, POWERS } from './stats.js';
 import { buildFoe } from './foe.js';
-import { alive, targetable, unitsOf, familyData, rollIntent, refreshIntent, intentEvent, intentFor } from './ai.js';
-import { runEffects, dealDamage, applyHeal, addStatus, removeStatus, addSurge, damageMult, effLabel, statusOf } from './combat.js';
+import { alive, targetable, unitsOf, familyData, rollIntent, refreshIntent, intentEvent, intentFor, strongest } from './ai.js';
+import { runEffects, dealDamage, applyHeal, addStatus, removeStatus, addSurge, damageMult, effLabel, statusOf, savingThrow } from './combat.js';
 import { battleLoot } from './loot.js';
 import { rngFrom, rollExpr, indexItems, clamp } from './util.js';
 import { ASPECT_IDS, PHYSICAL_KINDS } from '../data/aspects.js';
@@ -94,8 +97,10 @@ export function createBattle({ heroes = [], foes = [], seed = 1, waking = 0, ctx
   if (ctx.firstStrike) firstStrike(B);
   if (ctx.warded) ward(B, ctx.warded);
   ironStance(B, heroes, items);
+  tollIsDue(B, heroes, items);
   for (const f of unitsOf(s, 'foe')) {
-    f.intent = rollIntent(s, f, rng);
+    const opener = familyData(f).opener; // M6: a foe whose first move is always the same
+    f.intent = opener ? intentFor(s, f, opener, rng) : rollIntent(s, f, rng);
     B.ev.push(intentEvent(f));
   }
   advance(B);
@@ -142,6 +147,24 @@ function ironStance(B, heroes, items) {
     addStatus(B, u, 'guarding', { source: u.id });
     B.ev.push({ t: 'text', text: `${u.name} starts the fight braced behind Ironwall.` });
   }
+}
+
+// M6 (spec §4.4): Hodge's Unfair Toll. While its bearer is standing in the fight, the strongest foe (the
+// highest level, then the most max HP) makes a CHA save against DC 13 or pays the toll: its first turn comes
+// later by a First Strike, doubled.
+function tollIsDue(B, heroes, items) {
+  const byId = indexItems(items);
+  const bearer = heroes.map(h => ({ h, u: B.s.units[h.id] }))
+    .find(({ h, u }) => alive(u) && Object.values(h.gear || {}).some(uid => byId[uid]?.base === 'unfair-toll' && !byId[uid].shattered))?.u;
+  const f = bearer && strongest(unitsOf(B.s, 'foe').filter(alive));
+  if (!f) return;
+  B.ev.push({ t: 'text', text: `${bearer.name} holds up Hodge's Unfair Toll. The toll is due.` });
+  if (savingThrow(B, f, 'CHA', TUNING.toll.dc, bearer)) {
+    B.ev.push({ t: 'text', text: `${f.name} pays it no mind.` });
+    return;
+  }
+  f.next += TUNING.toll.strikes * R.firstStrikeDelay;
+  B.ev.push({ t: 'text', text: `${f.name} stops to pay the toll, and loses a turn.` });
 }
 
 // M3 (Forewarned): every hero starts the fight Warded for the rolled amount.

@@ -20,7 +20,7 @@
 // lockStatus(game, lockType) -> { open, soft, by, keys: [{ kind: 'power'|'domain', id, label, have, detail }] }
 // openLock(game, entityId) -> { game, ok, by }
 // openChest(game, entityId) -> { game, ok, items, gold, bag, materials, gems }   (M4: loot.materials, loot.gems)
-// sightEncounter(game, encId) -> game                 light(game, walk) -> 2 | Infinity
+// sightEncounter(game, encId) -> game                 light(game, walk) -> 2 (dark) | 3 (M6: fog) | Infinity
 // isWeak(game, spawns) -> boolean
 //
 // Events (in order; the UI stops at the first battle-starting one: encounter, contact):
@@ -352,7 +352,7 @@ function sightHolders(game, walk, events) {
   const T = TW;
   let range = ownedRelics(game).has('thornwatch-hood') ? T.sightRelicWatchful : T.sightRelic;
   if (powerOwned(game, 'longsight')) range += T.longsight;
-  if (light(game, walk) !== Infinity) range = Math.min(range, T.darkRadius);
+  range = Math.min(range, light(game, walk)); // in the dark (or the fog) you see only so far
   let g = game;
   for (const e of present(game, walk.map)) {
     // once scouted (sighted or fought), its relics already carry the codex stamp: nothing to do
@@ -530,10 +530,13 @@ export function sightEncounter(game, encId) {
   return g;
 }
 
+// How far the party sees: everything, unless the map is dark (or, M6, foggy) and its lock is not open for
+// the party (spec §4.4: the fog closes in the sight as darkness does). A map is never both.
 export function light(game, walk) {
   const map = mapOf(walk.map);
-  if (!map?.dark) return Infinity;
-  return lockStatus(game, 'darkness').open ? Infinity : TUNING.world.darkRadius;
+  if (map?.dark) return lockStatus(game, 'darkness').open ? Infinity : TUNING.world.darkRadius;
+  if (map?.fog) return lockStatus(game, 'fog').open ? Infinity : TUNING.world.fogRadius;
+  return Infinity;
 }
 
 export function isWeak(game, spawns) {

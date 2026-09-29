@@ -10,6 +10,7 @@ import { spawnsFor } from '../src/rules/gauntlet.js';
 import { relicItem } from '../src/rules/loot.js';
 import { createRng } from '../src/core/rng.js';
 import { MINI } from './fixtures/map-mini.mjs';
+import { TUNING } from '../src/data/tuning.js';
 import { MAPS } from '../src/data/maps/index.js';
 
 registerMap(MINI);
@@ -343,6 +344,36 @@ test('M5: a snowdrift is soft like the ichor: 3% of max HP a step, named in the 
   const shod = { ...game, inventory: [...game.inventory, relicItem('trollhide-mantle', createRng(12))] };
   assert.equal(lockStatus(shod, 'drift').by, 'trollhide-mantle', 'Snowshoe');
   assert.ok(!move(shod, onDrift, 's').events.some(e => e.t === 'hazard'), 'no bite with the key');
+});
+
+test('M6: a foggy map closes the sight to 3 tiles without a fog key; a fog key or Attunement 7 clears it; darkness keys do not', () => {
+  const game = fresh();
+  registerMap(deepFreeze({ ...MINI, id: 'mini-fog', fog: true }));
+  const inFog = { ...at(5, 5), map: 'mini-fog' };
+  assert.equal(light(game, inFog), TUNING.world.fogRadius);
+  assert.equal(TUNING.world.fogRadius, 3);
+  assert.ok(lockStatus(game, 'darkness').open, 'this party carries a light (a darkness key)...');
+  assert.equal(lockStatus(game, 'fog').open, false, '...which is no fog key');
+  const lantern = { ...game, inventory: [...game.inventory, relicItem('lamplighters-lantern', createRng(14))] };
+  assert.equal(lockStatus(lantern, 'fog').by, 'lamplighters-lantern', 'the Lamplighter\'s Lantern');
+  assert.equal(light(lantern, inFog), Infinity);
+  const warden = game.party.roster.warden;
+  const attuned = { ...game, party: { ...game.party, roster: { ...game.party.roster, warden: { ...warden, domains: { ...warden.domains, attunement: { level: 7 } } } } } };
+  assert.equal(lockStatus(attuned, 'fog').by, 'attunement');
+  assert.equal(light(attuned, inFog), Infinity);
+  assert.equal(light(game, at(5, 5)), Infinity, 'a clear map');
+});
+
+test('M6: a bog stretch is soft like the drift: 3% of max HP a step, named in the hazard; the Bogstriders walk it', () => {
+  const game = fresh();
+  registerMap(deepFreeze({ ...MINI, id: 'mini-bog', entities: MINI.entities.map(e => (e.lock === 'ichor' ? { ...e, id: 'mini-bog-lock', lock: 'bog' } : e)) }));
+  const onBog = { ...at(8, 5), map: 'mini-bog' };
+  const hz = move(game, onBog, 's').events.find(e => e.t === 'hazard');
+  assert.ok(hz, 'the bog bites');
+  assert.deepEqual([hz.lock, hz.pct], ['bog', 0.03]);
+  const shod = { ...game, inventory: [...game.inventory, relicItem('bogstriders', createRng(15))] };
+  assert.equal(lockStatus(shod, 'bog').by, 'bogstriders');
+  assert.ok(!move(shod, onBog, 's').events.some(e => e.t === 'hazard'), 'no bite with the key');
 });
 
 test('sealed exits say whether the next chapter has opened them', () => {

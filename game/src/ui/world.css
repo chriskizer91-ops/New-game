@@ -237,6 +237,8 @@
 .dlg-choice-n { font-family: var(--f-pixel); font-size: 10px; color: var(--ash); }
 .dlg-choice-t { flex: 1 1 auto; }
 .dlg-odds { font-family: var(--f-pixel); font-size: 9px; letter-spacing: .03em; padding: 2px 6px; color: #0b0910; background: var(--marsh); }
+.dlg-price { background: var(--hearth-hot); }
+.dlg-choice.is-disabled { cursor: not-allowed; opacity: .55; }
 .ov-dialogue.docked .dlg { right: auto; min-height: 150px; padding-bottom: 10px; box-shadow: 0 0 0 3px var(--ink), 0 0 0 5px var(--seam-2), 0 14px 40px rgba(0, 0, 0, .6); }
 
 /* ---------- story overlays ---------- */

@@ -433,10 +433,10 @@ function fightDeeds(g, battle, out, report) {
   }
 }
 
-// Won Sunscorch and Ironspire fights pay forge materials by the tier of each foe beaten (a Twinned foe's
-// twin pays nothing, as it drops nothing); Scorchgate's pay Ash Garnets and Frostmere's Frost Opals
-// (M5 spec §3.7).
-const SPOILS = new Set(['sunscorch', 'ironspire']);
+// Won Sunscorch, Ironspire and Gloomfen fights pay forge materials by the tier of each foe beaten (a Twinned
+// foe's twin pays nothing, as it drops nothing); Scorchgate's pay Ash Garnets, Frostmere's Frost Opals and the
+// bogs' Bog Amber (M5 spec §3.7, M6 spec §3.7).
+const SPOILS = new Set(['sunscorch', 'ironspire', 'gloomfen']);
 function spoils(g, battle, node, out, report) {
   if (!node || !SPOILS.has(node.region || 'verdant')) return;
   const F = TUNING.forge;
@@ -445,6 +445,7 @@ function spoils(g, battle, node, out, report) {
   const gems = {};
   if (F.garnets[node.id]) gems['ash-garnet'] = F.garnets[node.id];
   if (F.opals?.[node.id]) gems['frost-opal'] = F.opals[node.id];
+  if (F.ambers?.[node.id]) gems['bog-amber'] = F.ambers[node.id];
   g.materials = addCounts(g.materials, materials);
   g.gems = addCounts(g.gems, gems);
   report.materials = materials;

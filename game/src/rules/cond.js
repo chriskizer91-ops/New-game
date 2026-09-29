@@ -16,6 +16,8 @@
 //   { bounty, state }        bountyState(game, bounty) === state ('active'|'ready'|'done'); bounty 'any'
 //                            holds when any bounty is in that state
 //   { since: { flag, days } } story[flag] is not a day number yet, or flags.day - story[flag] >= days
+//   { day: { every, at } }   M6: flags.day % every === at (Hodge's price of the day, spec §4.4)
+//   { afford: { gold?, bag?: { [id]: n }, materials?: { [id]: n } } }   M6: the party has all of it
 //   { all: [...] } { any: [...] } { not: cond }
 // Import direction (A6): world -> story -> cond -> gauntlet. Never import world or story here.
 // Owner: WP1.
@@ -113,12 +115,39 @@ export function check(game, cond) {
     const at = storyOf(game)[cond.since.flag];
     return typeof at !== 'number' || (f.day || 1) - at >= (cond.since.days || 0);
   }
+  if ('day' in cond) return (f.day || 1) % cond.day.every === (cond.day.at || 0);
+  if ('afford' in cond) return canAfford(game, cond.afford);
   throw new Error(`Unknown condition ${JSON.stringify(cond)}`);
+}
+
+// M6: does the party have every part of a price? { gold?, bag?: { [consumableId]: n }, materials?: { [id]: n } }
+export function canAfford(game, price) {
+  if (!price) return true;
+  if ((price.gold || 0) > (game?.gold || 0)) return false;
+  for (const [id, n] of Object.entries(price.bag || {})) if ((game?.bag?.[id] || 0) < n) return false;
+  for (const [id, n] of Object.entries(price.materials || {})) if ((game?.materials?.[id] || 0) < n) return false;
+  return true;
 }
 
 // The keys check() understands, and a validator for data tests ("all conditions parse").
 export const COND_KEYS = Object.freeze(['all', 'any', 'not', 'flag', 'cleared', 'done', 'beaten', 'brand', 'brands', 'waking', 'level',
-  'owns', 'power', 'wears', 'active', 'domain', 'unlocked', 'opened', 'kindled', 'quest', 'bounty', 'since']);
+  'owns', 'power', 'wears', 'active', 'domain', 'unlocked', 'opened', 'kindled', 'quest', 'bounty', 'since', 'day', 'afford']);
+
+// M6: a price is { gold?, bag?, materials? } with whole, positive amounts (the `afford` condition, the `pay` effect)
+export function priceErrors(price, at = 'price') {
+  if (!price || typeof price !== 'object' || Array.isArray(price)) return [`${at}: not an object`];
+  const out = [];
+  const whole = n => Number.isInteger(n) && n > 0;
+  for (const k of Object.keys(price)) if (!['gold', 'bag', 'materials'].includes(k)) out.push(`${at}: unknown part ${k}`);
+  if ('gold' in price && !whole(price.gold)) out.push(`${at}.gold: a whole number above 0`);
+  for (const part of ['bag', 'materials']) {
+    if (!(part in price)) continue;
+    if (!price[part] || typeof price[part] !== 'object') { out.push(`${at}.${part}: not an object`); continue; }
+    for (const [id, n] of Object.entries(price[part])) if (!whole(n)) out.push(`${at}.${part}.${id}: a whole number above 0`);
+  }
+  if (!Object.keys(price).length) out.push(`${at}: empty`);
+  return out;
+}
 
 export function condErrors(cond, at = 'cond') {
   if (cond == null) return [];
@@ -133,5 +162,10 @@ export function condErrors(cond, at = 'cond') {
   const known = keys.filter(k => COND_KEYS.includes(k));
   if (!known.length) return [`${at}: unknown condition ${JSON.stringify(cond)}`];
   if ('since' in cond && !(cond.since && typeof cond.since.flag === 'string')) return [`${at}: since needs { flag, days }`];
+  if ('day' in cond) {
+    const d = cond.day;
+    if (!(d && Number.isInteger(d.every) && d.every >= 1 && Number.isInteger(d.at ?? 0) && (d.at ?? 0) >= 0 && (d.at ?? 0) < d.every)) return [`${at}: day needs { every, at } with 0 <= at < every`];
+  }
+  if ('afford' in cond) return priceErrors(cond.afford, `${at}.afford`);
   return [];
 }

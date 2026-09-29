@@ -52,11 +52,17 @@ export function stepDownDie(die) {
   return i > 0 ? DIE_STEPS[i - 1] : die;
 }
 
+// M6 (spec §4.4, Toll Is Due): the strongest of some units: the highest level, then the most max HP, then
+// the first in the line.
+export const strongest = units => units.reduce((b, u) => (!b || u.level > b.level || (u.level === b.level && u.maxHp > b.maxHp) ? u : b), null);
+
 // Pick who a foe's move is aimed at. Foes focus the wounded, sometimes go for the healer,
-// love a Marked target, and must answer a Challenge (provoked).
+// love a Marked target, and must answer a Challenge (provoked). M6: a move aimed at the `strongest`
+// takes the strongest hero, a Challenge or not.
 export function chooseTarget(s, foe, move, rng) {
   if (move.target === 'self') return foe.id;
   if (move.target === 'all-enemies' || move.target === 'all-allies') return null;
+  if (move.target === 'strongest') return strongest(unitsOf(s, 'hero').filter(targetable))?.id ?? null;
   if (move.target === 'ally') {
     const allies = unitsOf(s, 'foe').filter(targetable);
     return allies.sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0]?.id || foe.id;
@@ -114,7 +120,7 @@ export function refreshIntent(s, foe, intent, rng) {
   const moveId = resolveMoveId(s, foe, intent.move);
   const move = familyData(foe).moves[moveId];
   let target = intent.target;
-  const needsTarget = move.target === 'enemy';
+  const needsTarget = move.target === 'enemy' || move.target === 'strongest';
   if (moveId !== intent.move || (needsTarget && !targetable(s.units[target]))) target = chooseTarget(s, foe, move, rng);
   const targetName = target && target !== foe.id ? s.units[target]?.name : null;
   return { ...intent, move: moveId, name: move.name, target, charging: !!move.charge, text: intentText(intent.face, move, targetName) };

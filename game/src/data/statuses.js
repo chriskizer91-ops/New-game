@@ -23,6 +23,8 @@
 //   untargetable   (M5) nothing can target the bearer, and area moves pass over it (burrowed, swallowed)
 //   held           (M5) the bearer is out of the line, held by the unit that applied it (swallowed)
 //   charm          (M5) the bearer's next turn is a plain weapon attack on a random ally (charmed)
+//   healMult       (M6) multiplies every heal the bearer receives (rotting: halved, rounded down)
+//   hex            (M6) the bearer rolls its attack and save d20s with disadvantage (hexed); advantage cancels it
 
 import { deepFreeze } from '../core/freeze.js';
 
@@ -104,5 +106,15 @@ export const STATUSES = deepFreeze({
   charmed: {
     id: 'charmed', name: 'Charmed', harmful: true, turns: null, charm: true, // it lasts until the turn it plays
     text: 'Its next turn is a plain attack on one of its own side. An ally\'s hit wakes it.',
+  },
+  // M6 (spec §4.2): the fen's two, from the brief
+  rotting: {
+    id: 'rotting', name: 'Rotting', harmful: true, turns: 3, maxStacks: 3, healMult: 0.5,
+    tick: { dice: '1d6', kind: 'blight', aspect: 'blight', perStack: true },
+    text: 'Takes 1d6 blight damage per stack at the start of each turn, and every heal it gets is halved.',
+  },
+  hexed: {
+    id: 'hexed', name: 'Hexed', harmful: true, turns: 2, hex: true,
+    text: 'Rolls its attacks and saves with disadvantage. Advantage cancels it out.',
   },
 });

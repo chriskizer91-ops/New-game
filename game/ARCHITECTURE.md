@@ -133,13 +133,13 @@ The UI animates events one by one and then renders the returned state.
 | `intent` | `foe, die, face, move, text` | foe rolled its intent die (d6/d8/d12/d20) and shows its next move; a move's `then` forces the next intent (`forced`, M5) |
 | `roll` | `actor, target, purpose, die, rolls, kept, bonus, total, vs, result, adv, dis` | a visible d20 roll; `result` is `crit`/`hit`/`graze`/`miss`/`fumble`/`save`/`fail` |
 | `damage` | `target, amount, dice:[{sides,value}], flat, aspect, kind, eff, crit` | `eff` is `weak`/`resist`/`immune`/`normal`; `kind` is `slash`/`pierce`/`crush`/aspect |
-| `heal` | `target, amount` | |
+| `heal` | `target, amount` | `rot: true` when a Rotting unit got half (M6) |
 | `status` | `target, status, op, stacks, turns, source?, label?` | `op` is `add`/`remove`/`tick`/`trigger`/`release` (a hold let go early, M5); an `add` names its `source` and a hold's `label` ("Held under") |
 | `grip` | `target, relic, from, to, max` | the holder's grip on its relic changed |
 | `disarm` | `target, relic` | relic clatters loose; the holder loses its Art |
 | `surge` | `actor, from, to` | Legend Surge gauge changed (0-100) |
 | `legend` | `actor, item, power` | a Legend Surge fires: the UI slams the item card across the screen |
-| `ko` / `revive` | `target` | |
+| `ko` / `revive` | `target` | a foe family's `koText` rides on its `ko` as `text` (M6: Hodge sits down on his stool) |
 | `phase` | `foe, phase, text` | boss changes phase |
 | `move` | `actor, name, text` | a named skill or Art is used; `charm: true, target` is a charmed hero's turn played for it (M5) |
 | `text` | `text` | narration line |
@@ -182,6 +182,21 @@ The UI animates events one by one and then renders the returned state.
   `kit: '<duel>'`, and `data/rivals.js` `withKit` adds that duel's moves and replaces her table
   (`$rival` alone is unchanged). Summon effects may name a `variant`. An explicit `weak` aspect beats
   the aspect wheel's halving (Mother Anvil: ember, weak to frost).
+
+### M6 statuses and the toll (`data/statuses.js`, `rules/combat.js`, `rules/battle.js`; M6 spec §4.2, §4.4)
+
+- **rotting** (`healMult: 0.5`): 1d6 blight a stack at each turn start (up to 3 stacks, 3 turns); every heal the
+  unit gets is halved, rounded down (`applyHeal`, so potions, moves and regeneration alike). A cleanse clears it.
+- **hexed** (`hex`): the unit's attack and save d20s roll with disadvantage for 2 of its turns; advantage
+  cancels it (one die), as in D&D. `savingThrow` rolls with `dis` for a hexed unit.
+- **The `delay` effect** `{ type: 'delay', save?, dc?, turns = 1, text? }`: unless the target saves, its next
+  turn comes `turns` of its own delay later (`{target}` in `text` names it).
+- **Foe aim** `target: 'strongest'`: the strongest hero (the highest level, then the most max HP; `ai.js`
+  `strongest`), past a Challenge. A family's **`opener`** names its first move in every fight (Hodge opens
+  with Toll Is Due: `delay` at the strongest hero, CHA save).
+- **Toll Is Due** (`battle.js` `tollIsDue`): while a standing hero wears Hodge's Unfair Toll, the strongest foe
+  makes a CHA save against `TUNING.toll.dc` (13) at the start of the fight, or its first turn comes
+  `TUNING.toll.strikes` (2) First Strikes later.
 
 ## Flow (`rules/gauntlet.js`, M3 spec §4.6)
 
@@ -252,12 +267,19 @@ canWalk, findPath (A*, 4-way), threat, keys, lockStatus, openLock, openChest, si
   entity tiles or 1-wide corridors (`roamMask`).
 - **Locks** (`data/locks.js`) each open with a relic map power (owned, not shattered) OR a Domain
   level of the best active hero. Darkness and ichor are soft: without a key you see 2 tiles, and
-  ichor burns 4% of max HP a step (never below 1).
+  ichor burns 4% of max HP a step (never below 1). M5's snowdrift and M6's bog burn 3%. M6: a `fog: true`
+  map closes the sight to `TUNING.world.fogRadius` (3) until the `fog` lock is open (`light()`, as a
+  `dark: true` map does with the darkness lock; a map is never both), and roamers see you as in the dark.
 - **Conditions** (`rules/cond.js`): one evaluator, `check(game, cond)`, drives entity presence,
-  gates, NPC talk, dialogue choices, quests and bounties.
+  gates, NPC talk, dialogue choices, quests and bounties. M6 adds `{ day: { every, at } }` (Hodge's price of
+  the day) and `{ afford: price }`, a price being `{ gold?, bag?: { id: n }, materials?: { id: n } }`
+  (`canAfford`, `priceErrors`).
 - **Story** (`rules/story.js`): `talkTo`, `dialogueView`, `enterDialogue`, `choose` (Domain checks and
   contests roll from `game.rngState`; `odds.pct` is exact), `questLog`, `nextObjective`,
   `claimQuest`, `bounties`, `ladder`, `afterDialogue`, `restDialogue`, `pendingLetter`, `readLetter`.
+  M6: the `{ pay: price }` effect (event `paid`); a choice that pays carries its `price` in the view, with
+  `disabled: true` while the party cannot afford it, and `choose` refuses it then. A check may name an
+  `ability` with or without a `domain`, and a `name` for its label ("Deception DC 14").
 
 Import direction inside `rules/`: `world -> story -> cond -> gauntlet`; `gauntlet` never imports
 the other three, and `migrate` imports data only.

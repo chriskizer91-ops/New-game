@@ -19,7 +19,7 @@ import { HERO_IDS } from '../src/data/heroes.js';
 import { CONSUMABLES } from '../src/data/items.js';
 import { GEMS } from '../src/data/gems.js';
 import { DOMAINS } from '../src/data/domains.js';
-import { condErrors } from '../src/rules/cond.js';
+import { condErrors, priceErrors } from '../src/rules/cond.js';
 
 const SPEAKERS = new Set([...Object.keys(NPCS), ...HERO_IDS, 'narrator']);
 const conds = [];
@@ -207,11 +207,19 @@ test('every id a story condition names is real (relics, encounters, Brands, fire
     if ('domain' in c) assert.ok(DOMAINS[c.domain], `${at}: domain ${c.domain}`);
     if ('quest' in c) { assert.ok(QUESTS[c.quest], `${at}: quest ${c.quest}`); assert.ok(['hidden', 'active', 'ready', 'done'].includes(c.state || 'done'), at); }
     if ('bounty' in c) assert.ok(c.bounty === 'any' || BOUNTIES[c.bounty], `${at}: bounty ${c.bounty}`);
+    if ('afford' in c) assertPrice(c.afford, `${at}: afford`); // M6
   }
 });
 
+// M6 (spec §4.4): a price (the `afford` condition, the `pay` effect) is whole amounts of real things
+function assertPrice(price, at) {
+  assert.deepEqual(priceErrors(price, at), []);
+  for (const id of Object.keys(price.bag || {})) assert.ok(CONSUMABLES[id], `${at}: consumable ${id}`);
+  for (const id of Object.keys(price.materials || {})) assert.ok(['scrap', 'silver', 'embers'].includes(id), `${at}: material ${id}`);
+}
+
 test('effects use the known vocabulary and name real things', () => {
-  const KEYS = ['set', 'unset', 'give', 'item', 'gold', 'bag', 'gems', 'materials', 'unlock', 'heal', 'fight', 'claim', 'open', 'letter', 'end'];
+  const KEYS = ['set', 'unset', 'give', 'item', 'gold', 'bag', 'gems', 'materials', 'unlock', 'heal', 'fight', 'claim', 'open', 'letter', 'end', 'pay'];
   const OPEN = ['forge', 'atlas', 'journal', 'ladder', 'bounties'];
   for (const [id, d] of Object.entries(DIALOGUE)) for (const e of [...(d.do || []), ...(d.choices || []).flatMap(c => c.do || [])]) {
     const k = Object.keys(e).find(x => KEYS.includes(x));
@@ -225,6 +233,7 @@ test('effects use the known vocabulary and name real things', () => {
     // M6: 'gloomfen' is the card after the fourth council, the end of Act II
     if (k === 'end') assert.ok(['act1', 'act2', 'ironspire', 'gloomfen'].includes(e.end), `${id}: end ${e.end}`);
     if (k === 'gold') assert.ok(Number.isInteger(e.gold) && e.gold > 0, `${id}: gold`);
+    if (k === 'pay') assertPrice(e.pay, `${id}: pay`); // M6: Hodge's price of the day
   }
 });
 

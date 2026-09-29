@@ -1107,10 +1107,13 @@ export const DIALOGUE = deepFreeze({
   'hodge-toll': {
     lines: [['hodge', 'Toll. Don\'t look at me like that. It\'s a bridge. Bridges have tolls. Mine has a bigger one.']],
     choices: [
-      { text: 'Pay the toll.', do: [{ set: 'toll-paid' }] },
+      // the price of the day rotates over three days (spec §4.4; the lead's stand-in prices, P3 sets them)
+      { text: 'Pay today\'s toll.', if: { day: { every: 3, at: 1 } }, do: [{ pay: { gold: 120 } }, { set: 'toll-paid' }] },
+      { text: 'Pay today\'s toll.', if: { day: { every: 3, at: 2 } }, do: [{ pay: { materials: { silver: 1 } } }, { set: 'toll-paid' }] },
+      { text: 'Pay today\'s toll.', if: { day: { every: 3, at: 0 } }, do: [{ pay: { bag: { 'hearth-tonic': 2 } } }, { set: 'toll-paid' }] },
       {
         text: 'Play him for it: best of three.', if: { all: [{ since: { flag: 'hodge-tried', days: 1 } }, { not: { owns: 'unfair-toll' } }] }, do: [{ set: 'hodge-tried', value: 'day' }],
-        contest: { checks: [{ domain: 'influence', dc: 14 }, { ability: 'CHA', dc: 14 }, { domain: 'influence', dc: 15 }], need: 2, pass: 'hodge-won', fail: 'hodge-lost' },
+        contest: { checks: [{ domain: 'influence', dc: 14, name: 'Persuasion' }, { ability: 'CHA', dc: 14, name: 'Deception' }, { domain: 'influence', dc: 15, name: 'Intimidation' }], need: 2, pass: 'hodge-won', fail: 'hodge-lost' },
       },
       { text: 'Refuse, and make him move.', do: [{ fight: 'hodge' }] },
       LEAVE,

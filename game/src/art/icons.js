@@ -14,7 +14,7 @@
 // keyIcon(kind, { size=12, dim }) -> ImageData  kinds: KEY_ICON_KEYS ('power' = a relic's map power, then the
 //   Domain ids); an unknown kind draws a plain token
 // markIcon(ok, { size=12 }) -> ImageData        a green check (ok) or a red cross
-// statusIcon draws a neutral token for a status key it has no icon for. (M5 adds burrowed, swallowed, charmed.)
+// statusIcon draws a neutral token for a status key it has no icon for. (M5 adds burrowed, swallowed, charmed; M6 rotting and hexed.)
 // M4 (Hilda's forge, the Sunscorch locks):
 // gemIcon(id, { size=12 }) -> ImageData       ids: GEM_ICON_KEYS (data/gems.js); an unknown id draws a plain stone
 //   in its GEMS colour, or grey
@@ -142,6 +142,9 @@ const ST = {
   // M5: gone under the ground (a mound and its hole, the way down), held in something's jaws, beguiled (a heart in a swirl)
   burrowed: C => { fillPoly(C, [[.6, 11.2], [2.4, 7.6], [6, 6.2], [9.6, 7.6], [11.4, 11.2]], col('#b08a58')); fillPoly(C, [[3.6, 9], [6, 7.8], [8.4, 9], [6, 10.2]], raw('#2a1a0e')); stroke(C, [[6, .8], [6, 4]], .55, col('#e8d8b0')); fillPoly(C, [[3.9, 3.4], [8.1, 3.4], [6, 6.2]], col('#e8d8b0')); px(C, 2.2, 6, raw('#d8c090')); px(C, 9.8, 5.6, raw('#d8c090')); },
   swallowed: C => { fillPoly(C, [[.8, 6], [2.6, 2.4], [6, 1.2], [9.4, 2.4], [11.2, 6], [9.4, 9.6], [6, 10.8], [2.6, 9.6]], col('#a8403a')); fillPoly(C, [[2.4, 6], [3.6, 3.8], [6, 3.2], [8.4, 3.8], [9.6, 6], [8.4, 8.2], [6, 8.8], [3.6, 8.2]], raw('#2a0a10')); for (const x of [3.8, 6, 8.2]) { fillPoly(C, [[x - .9, 3.6], [x + .9, 3.6], [x, 5.4]], raw('#f4ecd8')); fillPoly(C, [[x - .9, 8.4], [x + .9, 8.4], [x, 6.6]], raw('#f4ecd8')); } },
+  // M6 (spec §4.2): a rot spreading, dripping; a hex-sigil round a violet eye
+  rotting: C => { fillPoly(C, [[1.4, 7], [2.6, 3.6], [6, 2], [9.4, 3.6], [10.6, 7], [8.8, 9.6], [6, 10.4], [3.2, 9.6]], col('#6f8a2e')); fillDisc(C, 4.4, 5.4, 1.3, raw('#2a2a10')); fillDisc(C, 7.6, 7.2, 1.1, raw('#2a2a10')); fillDisc(C, 7.2, 4.2, .7, raw('#c8d870')); stroke(C, [[5.4, 10], [5.4, 11.6]], .5, col('#6f8a2e')); },
+  hexed: C => { const hex = [0, 1, 2, 3, 4, 5].map(k => [6 + Math.cos(k * Math.PI / 3 + Math.PI / 6) * 5.2, 6 + Math.sin(k * Math.PI / 3 + Math.PI / 6) * 5.2]); fillPoly(C, hex, col('#5a2a7a')); fillPoly(C, [[2.4, 6], [6, 3.6], [9.6, 6], [6, 8.4]], raw('#e8d0ff')); fillDisc(C, 6, 6, 1.5, raw('#8a2ae0')); px(C, 6, 6, raw('#140820')); },
   charmed: C => { const pts = []; for (let k = 0; k <= 20; k++) { const a = k * .55, r = 1 + k * .22; pts.push([6 + Math.cos(a) * r, 6.2 + Math.sin(a) * r * .9]); } stroke(C, pts, .35, raw('#f8b8dc')); fillDisc(C, 4.7, 5.2, 1.9, col('#f06aa8')); fillDisc(C, 7.3, 5.2, 1.9, col('#f06aa8')); fillPoly(C, [[2.9, 5.8], [9.1, 5.8], [6, 9.6]], col('#f06aa8')); px(C, 4.2, 4.4, raw('#ffe0f0')); },
 };
 export const STATUS_KEYS = Object.keys(ST);

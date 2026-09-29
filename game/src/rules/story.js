@@ -3,7 +3,8 @@
 // new game and never mutates its input. Rolls come from game.rngState.
 //
 // talkTo(game, npcId) -> dialogueId | null
-// dialogueView(game, id) -> { id, lines: [{ speaker, name, text }], choices: [{ i, text, odds: null | { pct, label, hero } }] }
+// dialogueView(game, id) -> { id, lines: [{ speaker, name, text }], choices: [{ i, text, odds: null | { pct, label, hero },
+//                              price?, disabled? }] }   M6: a choice that pays shows its price, disabled when unaffordable
 // enterDialogue(game, id) -> { game, events }            applies node.do once
 // choose(game, id, i) -> { game, next: dialogueId | null, events, roll: null | { label, dc, total, nat, pass, parts? } }
 // questLog(game) -> [{ id, name, kind, state: 'active'|'ready'|'done', step: { text, target } }]   (hidden omitted)
@@ -20,6 +21,10 @@
 //         M4: { t: 'gems', gems } { t: 'materials', materials } { t: 'page', id } (a gift finished a Codex page)
 // M4 effects: { gems: { [gemId]: n } }, { materials: { scrap?, silver?, embers? } }; quest rewards may
 // carry `gems` and `materials` too.
+// M6 effect: { pay: { gold?, bag?: { [id]: n }, materials?: { [id]: n } } } takes the price (event { t: 'paid', price });
+// a choice whose `do` pays is refused (and shown disabled) while the party cannot afford it (cond.js canAfford).
+// A check or a contest's check may name an `ability` as well as (or instead of) a `domain`, and a `name` for its
+// label (Hodge's toll game: "Deception DC 13").
 // Import direction (A6): world -> story -> cond -> gauntlet. Never import world here.
 // Owner: WP1.
 
@@ -30,7 +35,7 @@ import { QUESTS, BOUNTIES } from '../data/quests.js';
 import { LADDER } from '../data/ladder.js';
 import { HEROES } from '../data/heroes.js';
 import { DOMAINS } from '../data/domains.js';
-import { check, questState, bountyState, flagsOf, storyOf } from './cond.js';
+import { check, questState, bountyState, flagsOf, storyOf, canAfford } from './cond.js';
 import { deriveHero } from './stats.js';
 import { generateItem, relicItem } from './loot.js';
 import { pageBonus, markPages } from './codex.js';
@@ -65,7 +70,7 @@ function bonusFor(game, { domain, ability }) {
   }
   return best;
 }
-const labelOf = c => `${c.domain ? DOMAINS[c.domain]?.name.split(' ')[0] : c.ability} DC ${c.dc}`;
+const labelOf = c => `${c.name || (c.domain ? DOMAINS[c.domain]?.name.split(' ')[0] : c.ability)} DC ${c.dc}`;
 function passChance(game, c) {
   const { bonus, heroId } = bonusFor(game, c);
   const p = Math.max(0, Math.min(1, (21 - (c.dc - bonus)) / 20));
@@ -105,8 +110,24 @@ export function dialogueView(game, id) {
     id,
     lines: node.lines.map(([speaker, text]) => ({ speaker, name: speakerName(game, speaker), text: fill(game, text) })),
     choices: (node.choices || []).map((c, i) => ({ c, i })).filter(({ c }) => check(game, c.if))
-      .map(({ c, i }) => ({ i, text: fill(game, c.text), odds: oddsFor(game, c) })),
+      .map(({ c, i }) => {
+        const price = priceOf(c);
+        return { i, text: fill(game, c.text), odds: oddsFor(game, c), ...(price ? { price, ...(canAfford(game, price) ? {} : { disabled: true }) } : {}) };
+      }),
   };
+}
+
+// M6: what a choice costs (its `pay` effects, summed), or null
+function priceOf(choice) {
+  const pays = (choice.do || []).filter(e => 'pay' in e).map(e => e.pay);
+  if (!pays.length) return null;
+  const out = {};
+  for (const p of pays) {
+    if (p.gold) out.gold = (out.gold || 0) + p.gold;
+    if (p.bag) out.bag = addCounts(out.bag, p.bag);
+    if (p.materials) out.materials = addCounts(out.materials, p.materials);
+  }
+  return out;
 }
 
 // ---- effects ------------------------------------------------------------------------------------
@@ -140,6 +161,7 @@ function apply(g, effects, rng, events) {
     else if ('bag' in e) for (const [id, n] of Object.entries(e.bag)) g.bag[id] = (g.bag[id] || 0) + n;
     else if ('gems' in e) { g.gems = addCounts(g.gems, e.gems); events.push({ t: 'gems', gems: { ...e.gems } }); }
     else if ('materials' in e) { g.materials = addCounts(g.materials, e.materials); events.push({ t: 'materials', materials: { ...e.materials } }); }
+    else if ('pay' in e) payInto(g, e.pay, events);
     else if ('unlock' in e) f.unlocked = { ...(f.unlocked || {}), [e.unlock]: true };
     else if ('heal' in e) healAll(g);
     else if ('fight' in e) events.push({ t: 'fight', enc: e.fight });
@@ -148,6 +170,15 @@ function apply(g, effects, rng, events) {
     else if ('letter' in e) { f.story[`letter:${e.letter}`] = true; events.push({ t: 'letter', id: e.letter }); }
     else if ('end' in e) events.push({ t: 'end', act: e.end });
   }
+}
+
+// M6: take a price the party can afford (choose() refuses a choice it cannot)
+function payInto(g, price, events) {
+  const minus = o => Object.fromEntries(Object.entries(o || {}).map(([k, n]) => [k, -n]));
+  if (price.gold) g.gold -= price.gold;
+  if (price.bag) g.bag = addCounts(g.bag, minus(price.bag));
+  if (price.materials) g.materials = addCounts(g.materials, minus(price.materials));
+  events.push({ t: 'paid', price: structuredClone(price) });
 }
 
 function run(game, fn) {
@@ -168,6 +199,8 @@ export function enterDialogue(game, id) {
 export function choose(game, id, i) {
   const c = DIALOGUE[id]?.choices?.[i];
   if (!c) return { game, next: null, events: [], roll: null };
+  const price = priceOf(c);
+  if (price && !canAfford(game, price)) return { game, next: null, events: [], roll: null }; // M6: shown disabled
   return run(game, (g, rng, events) => {
     apply(g, c.do, rng, events);
     if (c.check) {

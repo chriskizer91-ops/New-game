@@ -89,10 +89,12 @@ export const TUNING = deepFreeze({
     spawnDistance: 8,                    // roamers spawn at least this far (Chebyshev) from you
     hazardPct: 0.04,                     // soft ichor: max HP lost per step without a key
     darkRadius: 2,                       // soft darkness: sight radius without a key
+    fogRadius: 3,                        // M6: soft fog (a `fog: true` map): sight radius without a key
     hunterSight: 3,                      // M4: a Grudge pack hunts you: it sees this much farther (spec §4.6)
     longsight: 4,                        // M4: Saltglass's Longsight widens the Sighted range by this much
   },
   forewarned: { ward: '2d6+4' },         // the dream of the four Sleepers: every hero starts the Rotwarden fight Warded
+  toll: { dc: 13, strikes: 2 },          // M6: Hodge's Unfair Toll: the strongest foe's CHA save, and how many First Strikes it costs
   // ---- M4: Hilda's full forge (read by rules/forge.js; spec §4.2, §4.3, §3.7) ----
   // The step from +t to +t+1 costs base * ceil(ilvl / 2) * mult[t] gold, plus silver[t] silver and
   // embers[t] embers (the higher tempers are paced by Sunscorch loot). Each step is +1 enchant.
@@ -111,9 +113,12 @@ export const TUNING = deepFreeze({
     kindled: { hit: 1, guard: 1, hp: 5 },  // a Kindled relic: +1 hit (weapons), +1 Guard (armour, shields), +5 max HP (the rest)
     // Won Sunscorch fights pay materials per foe beaten, by tier; Ash Garnets only come from Scorchgate.
     // M5 (spec §3.7; P4): won Ironspire fights pay the same spoils, and Frost Opals only come from the
-    // Frostmere maps' fights (the lake and the caves beneath it) and chests.
+    // Frostmere maps' fights (the lake and the caves beneath it) and chests. M6 (spec §3.7): won Gloomfen
+    // fights pay the same spoils, and Bog Amber only comes from the bogs' fights (the Lanternfen, the
+    // Mother's Hollow, Grandfather Willow's side road) and chests.
     spoils: { veteran: { scrap: 1 }, 'relic-bearer': { silver: 1 }, champion: { silver: 2, embers: 2 } },
     garnets: { 'sg-captain': 1, 'vault-guard': 1, 'ashen-warden': 2 },
     opals: { 'fm-wraiths': 1, 'fm-shrine': 1, 'fb-choir': 1, 'rime-abbot': 2 },
+    ambers: { 'lf-hags': 1, 'grue-hollow': 1, 'wm-willow': 1, 'lantern-mother': 2 },
   },
 });

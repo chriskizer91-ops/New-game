@@ -300,7 +300,7 @@ test('every status has its own icon, the Ironspire holds and charms too', async 
   const { STATUSES } = await import('../src/data/statuses.js');
   const { statusIcon, STATUS_KEYS } = await import('../src/art/icons.js');
   for (const id of Object.keys(STATUSES)) { assert.ok(STATUS_KEYS.includes(id), `no status icon ${id}`); assert.equal(statusIcon(id, { size: 12 }).width, 12); }
-  for (const id of ['burrowed', 'swallowed', 'charmed']) assert.notDeepEqual(statusIcon(id).data, statusIcon('no-such-status').data, `${id} draws its own icon, not the neutral token`);
+  for (const id of ['burrowed', 'swallowed', 'charmed', 'rotting', 'hexed']) assert.notDeepEqual(statusIcon(id).data, statusIcon('no-such-status').data, `${id} draws its own icon, not the neutral token`);
 });
 
 // the M4 art is held as it shipped: hashes taken from the M4 art before any M5 change

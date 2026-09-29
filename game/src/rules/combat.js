@@ -123,9 +123,13 @@ export function removeStatus(B, t, id, op = 'remove') {
 
 export function applyHeal(B, t, amount, extra = {}) {
   if (!alive(t) || amount <= 0) return 0;
+  // M6: a rotting unit gets half of every heal, rounded down (a 1 HP trickle is eaten whole)
+  const mult = t.statuses.reduce((m, st) => m * (STATUSES[st.id]?.healMult ?? 1), 1);
+  const got = mult === 1 ? amount : Math.floor(amount * mult);
+  if (got <= 0) return 0;
   const before = t.hp;
-  t.hp = Math.min(t.maxHp, t.hp + amount);
-  B.ev.push({ t: 'heal', target: t.id, amount: t.hp - before, hp: t.hp, ...extra });
+  t.hp = Math.min(t.maxHp, t.hp + got);
+  B.ev.push({ t: 'heal', target: t.id, amount: t.hp - before, hp: t.hp, ...(mult !== 1 ? { rot: true } : {}), ...extra });
   return t.hp - before;
 }
 
@@ -156,7 +160,8 @@ function knockOut(B, t, src) {
   t.hp = 0;
   t.ko = true;
   t.statuses = [];
-  B.ev.push({ t: 'ko', target: t.id });
+  const said = t.side === 'foe' ? familyData(t).koText : null; // M6: Hodge never dies: he sits down on his stool
+  B.ev.push({ t: 'ko', target: t.id, ...(said ? { text: said } : {}) });
   release(B, t, 'is free: what held them has fallen.');
   freeLastHeld(B, t.side);
   if (src && src.side === 'hero' && t.side === 'foe') {
@@ -318,7 +323,7 @@ function attackKindAspect(a, eff) {
 
 function rollAttack(B, a, t, eff) {
   const adv = !!eff.adv || anyStatus(t, 'attackersAdv');
-  const dis = anyStatus(a, 'attackDis');
+  const dis = anyStatus(a, 'attackDis') || anyStatus(a, 'hex'); // M6: a hexed attacker; advantage cancels it
   const r = rollD20(B.rng, { adv, dis });
   const bonus = attackBonus(a, eff);
   const vs = effGuard(t);
@@ -380,11 +385,12 @@ function reflectThorns(B, a, t, eff, dealt) {
 // ---- non-roll effects ------------------------------------------------------------------------------
 
 export function savingThrow(B, t, ability, dc, src) {
-  const r = rollD20(B.rng);
+  const dis = anyStatus(t, 'hex'); // M6: a hexed unit saves with disadvantage
+  const r = rollD20(B.rng, { dis });
   const bonus = saveBonus(t, ability);
   const total = r.kept + bonus;
   const ok = r.kept === 20 || (r.kept !== 1 && total >= dc);
-  B.ev.push({ t: 'roll', actor: t.id, target: src?.id || null, purpose: 'save', ability, die: 20, rolls: r.rolls, kept: r.kept, bonus, total, vs: dc, result: ok ? 'save' : 'fail', adv: false, dis: false });
+  B.ev.push({ t: 'roll', actor: t.id, target: src?.id || null, purpose: 'save', ability, die: 20, rolls: r.rolls, kept: r.kept, bonus, total, vs: dc, result: ok ? 'save' : 'fail', adv: false, dis });
   return ok;
 }
 
@@ -416,6 +422,14 @@ function resolveStatus(B, a, t, eff) {
   let value;
   if (eff.value) value = rollExpr(B.rng, eff.value.dice, levelOf(a), eff.value.diceEvery).total + modOf(a, eff.value.stat);
   addStatus(B, t, eff.status, { stacks: eff.stacks || 1, turns: eff.turns, value, source: a.id, label: eff.label });
+}
+
+// M6 (spec §4.4, Hodge's Toll Is Due): the target's next turn comes a whole turn later (`turns` of its own
+// delay), unless it makes the save (`dc`, else the user's save DC).
+function resolveDelay(B, a, t, eff) {
+  if (eff.save && savingThrow(B, t, eff.save, eff.dc ?? saveDC(a), a)) return;
+  t.next += Math.round(t.delay * (eff.turns || 1));
+  B.ev.push({ t: 'text', text: eff.text ? eff.text.replaceAll('{target}', t.name) : `${t.name} loses a turn.` });
 }
 
 function resolveCleanse(B, t, eff) {
@@ -470,6 +484,7 @@ export function applyEffect(B, a, t, eff) {
     case 'heal': return resolveHeal(B, a, t, eff);
     case 'status': return resolveStatus(B, a, t, eff);
     case 'cleanse': return resolveCleanse(B, t, eff);
+    case 'delay': return resolveDelay(B, a, t, eff);
     case 'revive': return resolveRevive(B, t, eff);
     case 'grip': return applyGrip(B, a, t, { dice: eff.dice, stat: eff.stat, relic: B.relic });
     case 'reveal': return resolveReveal(B, t, eff);

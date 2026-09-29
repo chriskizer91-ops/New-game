@@ -12,12 +12,20 @@
 
 import { enterDialogue, dialogueView, choose } from '../../rules/story.js';
 import { NPCS } from '../../data/npcs.js';
+import { CONSUMABLES } from '../../data/items.js';
 import { HEROES } from '../../data/heroes.js';
 import { npcSheet } from '../../art/index.js';
 import { openOverlay } from '../lib/overlay.js';
 import { el } from '../lib/dom.js';
 import { bustCanvas } from '../lib/art.js';
 import { TYPE_CPS } from './constants.js';
+
+// M6: a choice's price as a chip ("120 gold", "2 Hearth Tonics", "1 silver")
+const priceText = p => [
+  p.gold ? `${p.gold} gold` : '',
+  ...Object.entries(p.bag || {}).map(([id, n]) => `${n} ${CONSUMABLES[id]?.name || id}${n > 1 && CONSUMABLES[id] && !/s$/.test(CONSUMABLES[id].name) ? 's' : ''}`),
+  ...Object.entries(p.materials || {}).map(([id, n]) => `${n} ${id}`),
+].filter(Boolean).join(', ');
 
 const voiceOf = speaker => { let h = 5; for (const c of String(speaker || '')) h = (h * 33 + c.charCodeAt(0)) >>> 0; return h % 8; };
 
@@ -156,10 +164,18 @@ function dialogueBox(ctx, { dock } = {}) {
             b.append(chip);
             b.setAttribute('aria-label', `${c.text} (${chip.textContent})`);
           }
+          if (c.price) {
+            // M6: a choice that pays shows its price, and is disabled while you cannot afford it
+            const chip = el('span', 'dlg-odds dlg-price');
+            chip.textContent = priceText(c.price);
+            b.append(chip);
+            b.setAttribute('aria-label', `${c.text} (${chip.textContent}${c.disabled ? ': you cannot afford it' : ''})`);
+          }
+          if (c.disabled) { b.disabled = true; b.classList.add('is-disabled'); }
           b.addEventListener('click', () => { ctx.audio.sfx('confirm'); choices.replaceChildren(); nextB.hidden = false; skip.hidden = false; res(c.i); });
           choices.append(b);
         });
-        const first = choices.firstElementChild;
+        const first = choices.querySelector('.dlg-choice:not([disabled])');
         if (first) first.focus({ preventScroll: true });
         skipAll = false;
       });

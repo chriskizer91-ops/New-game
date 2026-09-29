@@ -42,7 +42,7 @@ export function logLine(ev, disp) {
     case 'disarm': return null; // the engine's text line says it
     case 'surge': return ev.to >= 100 && ev.from < 100 ? { text: `${N(ev.actor)}'s Legend Surge is full!`, kind: 'surge' } : null;
     case 'legend': return { text: `${N(ev.actor)} unleashes ${ev.name}!`, kind: 'legend' };
-    case 'ko': return { text: `${N(ev.target)} falls.`, kind: 'ko' };
+    case 'ko': return { text: ev.text || `${N(ev.target)} falls.`, kind: 'ko' };
     case 'revive': return { text: `${N(ev.target)} is back on their feet.`, kind: 'heal' };
     case 'phase': return { text: `${N(ev.foe)}, phase ${ev.phase}: ${ev.text || ''}`, kind: 'phase' };
     case 'move': return ev.charm && ev.text ? { text: ev.text, kind: 'move' } : { text: `${N(ev.actor)}: ${ev.name}`, kind: 'move' };
