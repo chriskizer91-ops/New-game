@@ -8,7 +8,8 @@ way in all four directions. The battles stay exactly as they are.
 
 ## The loop
 
-1. Pick a batch (the first is `pilot.md`: four images).
+1. Pick a batch: `pilot.md` (four images, done), then `batch-2.md` (every map of the Verdant Wilds and
+   the Sunscorch that is not painted yet).
 2. For each image, open your image generator, attach the reference picture it names (maps only),
    paste the prompt, and generate. Make two to four tries and keep the best, or keep them all.
 3. Name each file exactly as the batch says (`map-keep.png`, and `map-keep-2.png` for a second try).
@@ -33,11 +34,15 @@ it looks."* Small slips are fine; the game's map gets fitted to the painting aft
 
 ## Sending them back
 
-Upload the PNGs (or one zip of them) to GitHub:
+The easiest way: attach them in the chat, as you did with the pilot, and say which is which if the
+file names got lost (the chat renames uploads). Send them in as many rounds as you like; every map
+whose pictures have arrived goes into the game.
+
+Or upload the PNGs (or one zip of them) to GitHub:
 
 1. Open https://github.com/chriskizer91-ops/New-game and switch the branch to
    `claude/cool-ptolemy-uc93gg`.
-2. Open the folder `art-in/pilot/` (a later batch has its own folder).
+2. Open the batch's folder: `art-in/pilot/`, `art-in/batch-2/`.
 3. **Add file → Upload files**, drag the images in, then **Commit changes**.
 4. Tell me in the chat, and I'll take it from there.
 

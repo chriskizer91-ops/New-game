@@ -1,0 +1,827 @@
+{
+  "briarmaw-den": {
+    "name": "Briarmaw's Den",
+    "region": "verdant",
+    "biome": "den",
+    "tiles": [
+      16,
+      18
+    ],
+    "panels": [
+      {
+        "ref": "ref-briarmaw-den.png",
+        "painting": "map-briarmaw-den.png",
+        "aspect": "2:3",
+        "size": [
+          1024,
+          1536
+        ],
+        "rect": [
+          0,
+          0,
+          16,
+          18
+        ],
+        "pad": [
+          3,
+          0,
+          3,
+          0
+        ],
+        "px": 64
+      }
+    ]
+  },
+  "deep-shaft-1": {
+    "name": "The Deep Shaft",
+    "region": "sunscorch",
+    "biome": "mine",
+    "tiles": [
+      24,
+      24
+    ],
+    "panels": [
+      {
+        "ref": "ref-deep-shaft-1.png",
+        "painting": "map-deep-shaft-1.png",
+        "aspect": "1:1",
+        "size": [
+          1024,
+          1024
+        ],
+        "rect": [
+          0,
+          0,
+          24,
+          24
+        ],
+        "pad": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "px": 42.7
+      }
+    ]
+  },
+  "deep-shaft-2": {
+    "name": "The Glass Heart",
+    "region": "sunscorch",
+    "biome": "crystal",
+    "tiles": [
+      18,
+      18
+    ],
+    "panels": [
+      {
+        "ref": "ref-deep-shaft-2.png",
+        "painting": "map-deep-shaft-2.png",
+        "aspect": "1:1",
+        "size": [
+          1024,
+          1024
+        ],
+        "rect": [
+          0,
+          0,
+          18,
+          18
+        ],
+        "pad": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "px": 56.9
+      }
+    ]
+  },
+  "dust-trail": {
+    "name": "The Dust Trail",
+    "region": "sunscorch",
+    "biome": "canyon",
+    "tiles": [
+      46,
+      24
+    ],
+    "panels": [
+      {
+        "ref": "ref-dust-trail.png",
+        "painting": "map-dust-trail.png",
+        "aspect": "3:2",
+        "size": [
+          1536,
+          1024
+        ],
+        "rect": [
+          0,
+          0,
+          46,
+          24
+        ],
+        "pad": [
+          3,
+          0,
+          4,
+          0
+        ],
+        "px": 33.4
+      }
+    ]
+  },
+  "dusthaven": {
+    "name": "Dusthaven",
+    "region": "sunscorch",
+    "biome": "mine-camp",
+    "tiles": [
+      24,
+      22
+    ],
+    "panels": [
+      {
+        "ref": "ref-dusthaven.png",
+        "painting": "map-dusthaven.png",
+        "aspect": "3:2",
+        "size": [
+          1536,
+          1024
+        ],
+        "rect": [
+          0,
+          0,
+          24,
+          22
+        ],
+        "pad": [
+          0,
+          5,
+          0,
+          4
+        ],
+        "px": 46.5
+      }
+    ]
+  },
+  "eldergrove": {
+    "name": "Eldergrove",
+    "region": "verdant",
+    "biome": "grove",
+    "tiles": [
+      30,
+      26
+    ],
+    "panels": [
+      {
+        "ref": "ref-eldergrove.png",
+        "painting": "map-eldergrove.png",
+        "aspect": "3:2",
+        "size": [
+          1536,
+          1024
+        ],
+        "rect": [
+          0,
+          0,
+          30,
+          26
+        ],
+        "pad": [
+          0,
+          5,
+          0,
+          4
+        ],
+        "px": 39.4
+      }
+    ]
+  },
+  "fawnrest": {
+    "name": "Fawnrest Shrine",
+    "region": "verdant",
+    "biome": "grove",
+    "tiles": [
+      22,
+      20
+    ],
+    "panels": [
+      {
+        "ref": "ref-fawnrest.png",
+        "painting": "map-fawnrest.png",
+        "aspect": "3:2",
+        "size": [
+          1536,
+          1024
+        ],
+        "rect": [
+          0,
+          0,
+          22,
+          20
+        ],
+        "pad": [
+          0,
+          4,
+          0,
+          4
+        ],
+        "px": 51.2
+      }
+    ]
+  },
+  "glass-flats": {
+    "name": "The Glass Flats",
+    "region": "sunscorch",
+    "biome": "dunes",
+    "tiles": [
+      52,
+      30
+    ],
+    "panels": [
+      {
+        "ref": "ref-glass-flats.png",
+        "painting": "map-glass-flats.png",
+        "aspect": "3:2",
+        "size": [
+          1536,
+          1024
+        ],
+        "rect": [
+          0,
+          0,
+          52,
+          30
+        ],
+        "pad": [
+          2,
+          0,
+          3,
+          0
+        ],
+        "px": 29.5
+      }
+    ]
+  },
+  "hearth-road": {
+    "name": "The Hearth Road North",
+    "region": "verdant",
+    "biome": "wilds",
+    "tiles": [
+      26,
+      70
+    ],
+    "panels": [
+      {
+        "ref": "ref-hearth-road-a.png",
+        "painting": "map-hearth-road-a.png",
+        "aspect": "2:3",
+        "size": [
+          1024,
+          1536
+        ],
+        "rect": [
+          0,
+          0,
+          26,
+          39
+        ],
+        "pad": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "px": 39.4
+      },
+      {
+        "ref": "ref-hearth-road-b.png",
+        "painting": "map-hearth-road-b.png",
+        "aspect": "2:3",
+        "size": [
+          1024,
+          1536
+        ],
+        "rect": [
+          0,
+          31,
+          26,
+          39
+        ],
+        "pad": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "px": 39.4
+      }
+    ]
+  },
+  "heartroot-1": {
+    "name": "The Heartroot",
+    "region": "verdant",
+    "biome": "roots",
+    "tiles": [
+      24,
+      24
+    ],
+    "panels": [
+      {
+        "ref": "ref-heartroot-1.png",
+        "painting": "map-heartroot-1.png",
+        "aspect": "1:1",
+        "size": [
+          1024,
+          1024
+        ],
+        "rect": [
+          0,
+          0,
+          24,
+          24
+        ],
+        "pad": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "px": 42.7
+      }
+    ]
+  },
+  "heartroot-2": {
+    "name": "The Heart Chamber",
+    "region": "verdant",
+    "biome": "roots",
+    "tiles": [
+      18,
+      16
+    ],
+    "panels": [
+      {
+        "ref": "ref-heartroot-2.png",
+        "painting": "map-heartroot-2.png",
+        "aspect": "3:2",
+        "size": [
+          1536,
+          1024
+        ],
+        "rect": [
+          0,
+          0,
+          18,
+          16
+        ],
+        "pad": [
+          0,
+          3,
+          0,
+          3
+        ],
+        "px": 64
+      }
+    ]
+  },
+  "hindwood": {
+    "name": "The Hindwood",
+    "region": "verdant",
+    "biome": "wilds",
+    "tiles": [
+      32,
+      40
+    ],
+    "panels": [
+      {
+        "ref": "ref-hindwood.png",
+        "painting": "map-hindwood.png",
+        "aspect": "2:3",
+        "size": [
+          1024,
+          1536
+        ],
+        "rect": [
+          0,
+          0,
+          32,
+          40
+        ],
+        "pad": [
+          4,
+          0,
+          4,
+          0
+        ],
+        "px": 32
+      }
+    ]
+  },
+  "keep-gallery": {
+    "name": "The Sunscorch Gallery",
+    "region": "verdant",
+    "biome": "keep",
+    "tiles": [
+      18,
+      8
+    ],
+    "panels": [
+      {
+        "ref": "ref-keep-gallery.png",
+        "painting": "map-keep-gallery.png",
+        "aspect": "3:2",
+        "size": [
+          1536,
+          1024
+        ],
+        "rect": [
+          0,
+          0,
+          18,
+          8
+        ],
+        "pad": [
+          2,
+          0,
+          2,
+          0
+        ],
+        "px": 85.3
+      }
+    ]
+  },
+  "keep-hall": {
+    "name": "The Great Hall",
+    "region": "verdant",
+    "biome": "keep",
+    "tiles": [
+      24,
+      14
+    ],
+    "panels": [
+      {
+        "ref": "ref-keep-hall.png",
+        "painting": "map-keep-hall.png",
+        "aspect": "3:2",
+        "size": [
+          1536,
+          1024
+        ],
+        "rect": [
+          0,
+          0,
+          24,
+          14
+        ],
+        "pad": [
+          1,
+          0,
+          1,
+          0
+        ],
+        "px": 64
+      }
+    ]
+  },
+  "miragewell": {
+    "name": "Miragewell",
+    "region": "sunscorch",
+    "biome": "oasis",
+    "tiles": [
+      22,
+      20
+    ],
+    "panels": [
+      {
+        "ref": "ref-miragewell.png",
+        "painting": "map-miragewell.png",
+        "aspect": "3:2",
+        "size": [
+          1536,
+          1024
+        ],
+        "rect": [
+          0,
+          0,
+          22,
+          20
+        ],
+        "pad": [
+          0,
+          4,
+          0,
+          4
+        ],
+        "px": 51.2
+      }
+    ]
+  },
+  "mossfall": {
+    "name": "Mossfall",
+    "region": "verdant",
+    "biome": "fen",
+    "tiles": [
+      52,
+      22
+    ],
+    "panels": [
+      {
+        "ref": "ref-mossfall.png",
+        "painting": "map-mossfall.png",
+        "aspect": "3:2",
+        "size": [
+          1536,
+          1024
+        ],
+        "rect": [
+          0,
+          0,
+          52,
+          22
+        ],
+        "pad": [
+          6,
+          0,
+          7,
+          0
+        ],
+        "px": 29.5
+      }
+    ]
+  },
+  "mosswatch-1": {
+    "name": "Mosswatch Tower",
+    "region": "verdant",
+    "biome": "tower",
+    "tiles": [
+      14,
+      16
+    ],
+    "panels": [
+      {
+        "ref": "ref-mosswatch-1.png",
+        "painting": "map-mosswatch-1.png",
+        "aspect": "2:3",
+        "size": [
+          1024,
+          1536
+        ],
+        "rect": [
+          0,
+          0,
+          14,
+          16
+        ],
+        "pad": [
+          2,
+          0,
+          3,
+          0
+        ],
+        "px": 73.1
+      }
+    ]
+  },
+  "mosswatch-2": {
+    "name": "The Lamp Room",
+    "region": "verdant",
+    "biome": "tower",
+    "tiles": [
+      12,
+      12
+    ],
+    "panels": [
+      {
+        "ref": "ref-mosswatch-2.png",
+        "painting": "map-mosswatch-2.png",
+        "aspect": "1:1",
+        "size": [
+          1024,
+          1024
+        ],
+        "rect": [
+          0,
+          0,
+          12,
+          12
+        ],
+        "pad": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "px": 85.3
+      }
+    ]
+  },
+  "sandspire": {
+    "name": "Sandspire",
+    "region": "sunscorch",
+    "biome": "desert-town",
+    "tiles": [
+      30,
+      26
+    ],
+    "panels": [
+      {
+        "ref": "ref-sandspire.png",
+        "painting": "map-sandspire.png",
+        "aspect": "3:2",
+        "size": [
+          1536,
+          1024
+        ],
+        "rect": [
+          0,
+          0,
+          30,
+          26
+        ],
+        "pad": [
+          0,
+          5,
+          0,
+          4
+        ],
+        "px": 39.4
+      }
+    ]
+  },
+  "scorchgate": {
+    "name": "Scorchgate Ruins",
+    "region": "sunscorch",
+    "biome": "ash",
+    "tiles": [
+      32,
+      32
+    ],
+    "panels": [
+      {
+        "ref": "ref-scorchgate.png",
+        "painting": "map-scorchgate.png",
+        "aspect": "1:1",
+        "size": [
+          1024,
+          1024
+        ],
+        "rect": [
+          0,
+          0,
+          32,
+          32
+        ],
+        "pad": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "px": 32
+      }
+    ]
+  },
+  "scorchgate-vaults": {
+    "name": "The Scorchgate Vaults",
+    "region": "sunscorch",
+    "biome": "vault",
+    "tiles": [
+      24,
+      24
+    ],
+    "panels": [
+      {
+        "ref": "ref-scorchgate-vaults.png",
+        "painting": "map-scorchgate-vaults.png",
+        "aspect": "1:1",
+        "size": [
+          1024,
+          1024
+        ],
+        "rect": [
+          0,
+          0,
+          24,
+          24
+        ],
+        "pad": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "px": 42.7
+      }
+    ]
+  },
+  "sun-road": {
+    "name": "The Sunward Road",
+    "region": "sunscorch",
+    "biome": "desert",
+    "tiles": [
+      26,
+      64
+    ],
+    "panels": [
+      {
+        "ref": "ref-sun-road-a.png",
+        "painting": "map-sun-road-a.png",
+        "aspect": "2:3",
+        "size": [
+          1024,
+          1536
+        ],
+        "rect": [
+          0,
+          0,
+          26,
+          39
+        ],
+        "pad": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "px": 39.4
+      },
+      {
+        "ref": "ref-sun-road-b.png",
+        "painting": "map-sun-road-b.png",
+        "aspect": "2:3",
+        "size": [
+          1024,
+          1536
+        ],
+        "rect": [
+          0,
+          25,
+          26,
+          39
+        ],
+        "pad": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "px": 39.4
+      }
+    ]
+  },
+  "thornway": {
+    "name": "The Thornway",
+    "region": "verdant",
+    "biome": "wilds",
+    "tiles": [
+      30,
+      56
+    ],
+    "panels": [
+      {
+        "ref": "ref-thornway-a.png",
+        "painting": "map-thornway-a.png",
+        "aspect": "2:3",
+        "size": [
+          1024,
+          1536
+        ],
+        "rect": [
+          0,
+          0,
+          30,
+          45
+        ],
+        "pad": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "px": 34.1
+      },
+      {
+        "ref": "ref-thornway-b.png",
+        "painting": "map-thornway-b.png",
+        "aspect": "2:3",
+        "size": [
+          1024,
+          1536
+        ],
+        "rect": [
+          0,
+          11,
+          30,
+          45
+        ],
+        "pad": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "px": 34.1
+      }
+    ]
+  }
+}
