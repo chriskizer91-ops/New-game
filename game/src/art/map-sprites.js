@@ -20,7 +20,7 @@
 // NPC_LOOKS, OBJECT_KINDS, OBJECT_STATES, EMOTES, MAP_FOE_SIZE
 // Owner: WP5.
 
-import { Forge, compose, bayer } from './forge.js';
+import { Forge, compose, bayer, hash } from './forge.js';
 import { rigSheet, resolveGear, WALKER_W, WALKER_H, WALKER_FOOT } from './walkers.js';
 import { foeLooks, relicSlot, FOE_ART } from './foes.js';
 import { itemArt, itemIcon, lookFor } from './item-looks.js';
@@ -72,6 +72,18 @@ export const NPC_LOOKS = Object.freeze({
   'pilgrim-mw': { H: { build: 'human', skin: 'skinTan', hairMat: 'hairBrown', hair: 'short', beard: true, eye: '#2a2030', cloak: 'rags', gloves: 'skinTan', boots: 'leather', trinket: { kind: 'gourd', mat: 'w.saffron' } }, gear: { head: { look: 'wrap', mat: 'clothTeal', tail: 'clothTeal' }, body: { kind: 'robe', mat: 'w.canvas', trim: 'leather', sash: 'leather' }, weapon: A('staff', { style: 'crook', haft: 'wood' }) } },
   cinder: { H: { build: 'human', skin: 'skinAsh', hairMat: 'hairSilver', hair: 'none', beard: true, eye: '#3a1a10', cloak: 'w.char', gloves: 'skinAsh', boots: 'w.char' }, gear: { head: { look: 'hood', mat: 'w.char', tip: 0, trim: 'w.ash' }, body: { kind: 'robe', mat: 'clothGrey', trim: 'w.char', sash: 'string' }, offhand: { look: 'lantern', metal: 'blackiron', glow: 'ember' } } },
   'ashen-warden': { H: { build: 'brute', skin: 'skinAsh', hairMat: 'hairBlack', hair: 'none', eye: '#1a1a1a', cloak: 'w.char', tunic: 'w.char', pants: 'w.char', boots: 'blackiron', gloves: 'blackiron' }, gear: { head: { look: 'helm', mat: 'blackiron', eyes: 'ember', glowEyes: 1, crest: 'ember', trim: 'gold' }, body: { kind: 'plate', mat: 'blackiron', trim: 'bronze' }, offhand: { look: 'tower', face: 'w.char', rim: 'bronze', boss: 'ember' }, weapon: A('sword', { blade: 'blackiron', guardMat: 'bronze', grip: 'leatherDark', pommel: 'bronze', fuller: 'ember', bladeL: 52 }) } },
+  // M5: the Ironspire (the monks of Peak's Veil in grey and white, Ironhold's dwarves, Stormwatch's blue-grey)
+  wynn: { H: { build: 'human', skin: 'skinPale', hairMat: 'hairSilver', hair: 'bun', eye: '#2a2030', mantle: 'clothWhite', gloves: 'skinPale', boots: 'leatherDark' }, gear: { head: { look: 'hood', mat: 'clothWhite', tip: 0, trim: 'w.habit' }, body: { kind: 'robe', mat: 'w.habit', trim: 'clothWhite', sash: 'string' }, weapon: A('staff', { style: 'crook', haft: 'bogwood', metal: 'silver' }), amulet: { metal: 'silver', gem: 'pearl' } } },
+  kesh: { H: { build: 'brute', skin: 'skinTan', hairMat: 'hairBlack', hair: 'none', eye: '#1c1f38', gloves: 'clothWhite', boots: 'leather', pants: 'w.habit' }, gear: { body: { kind: 'leather', mat: 'w.habit', shirt: 'w.habit', sash: 'robeRed' }, weapon: A('staff', { style: 'quarter', haft: 'wood', metal: 'iron' }) } },
+  novice: { H: { build: 'youth', skin: 'skin', hairMat: 'hairBrown', hair: 'crop', eye: '#24381c', mantle: 'clothWhite', gloves: 'skin', boots: 'leather' }, gear: { body: { kind: 'robe', mat: 'w.habit', trim: 'w.habit', sash: 'string' }, offhand: { look: 'lantern', metal: 'iron', glow: 'ember' } } },
+  brundar: { H: { build: 'dwarf', skin: 'skinTan', hairMat: 'hairAuburn', hair: 'long', beard: 'braid', clasp: 'gold', eye: '#2a2030', cloak: 'robeRed', mantle: 'wolfPale', gloves: 'leatherDark', boots: 'blackiron' }, gear: { head: { look: 'crown', style: 'regal', metal: 'iron', gem: 'ruby' }, body: { kind: 'plate', mat: 'iron', trim: 'gold' }, weapon: A('axe', { blade: 'steel', haft: 'bogwood', socket: 'iron' }) } },
+  durra: { H: { build: 'dwarf', skin: 'skin', hairMat: 'hairCopper', hair: 'braid', eye: '#3a1a10', apron: 'leather', tunic: 'wool', gloves: 'leatherDark', boots: 'leatherDark' }, gear: { weapon: A('hammer', { headMat: 'iron', haft: 'wood', headW: 14, bandMat: 'iron' }), hands: { kind: 'gloves', mat: 'leatherDark' } } },
+  'ih-guard': { H: { build: 'dwarf', skin: 'skinTan', hairMat: 'hairBrown', hair: 'short', beard: true, eye: '#1c1f38', gloves: 'iron', boots: 'blackiron' }, gear: { head: { look: 'kettle', mat: 'iron', trim: 'gold' }, body: { kind: 'plate', mat: 'steel', tabard: 'robeRed' }, offhand: { look: 'round', face: 'robeRed', rim: 'iron', boss: 'gold' }, weapon: A('axe', { blade: 'steel', haft: 'bogwood', socket: 'iron' }) } },
+  rook: { H: { build: 'human', skin: 'skinPale', hairMat: 'hairBlack', hair: 'crop', eye: '#1a1a1a', mantle: 'leatherDark', gloves: 'leatherDark', boots: 'leatherDark', pants: 'clothGrey', trinket: { kind: 'ledger', mat: 'leatherDark' } }, gear: { body: { kind: 'robe', mat: 'clothGrey', trim: 'bronze', sash: 'robeRed' } } },
+  ysolde: { H: { build: 'human', skin: 'skinTan', hairMat: 'hairBlack', hair: 'bun', eye: '#1c2a48', cloak: 'w.army', gloves: 'leather', boots: 'leatherDark' }, gear: { body: { kind: 'mail', mat: 'iron', tabard: 'w.army', belt: 'leatherDark', trim: 'silver' }, weapon: A('sword', { blade: 'steel', guardMat: 'silver', grip: 'leatherDark', pommel: 'silver', bladeL: 44 }) } },
+  // Brother Aurel, the Rime-Abbot, as he speaks after his fight (P3's 'abbot-after'): frozen, a beard of icicles, rimed grey
+  'rime-abbot': { H: { build: 'human', skin: 'w.rimeskin', hairMat: 'hairSilver', hair: 'crop', beard: true, icicles: 'w.glacier', eye: '#b8ecff', mantle: 'w.ice', gloves: 'w.rimeskin', boots: 'w.drowned' }, gear: { body: { kind: 'robe', mat: 'w.habit', trim: 'w.ice', sash: 'w.drowned' }, weapon: A('staff', { style: 'crook', haft: 'w.drowned', metal: 'silver', gem: 'w.glacier' }) } },
+  quill: { H: { build: 'brute', skin: 'skinPale', hairMat: 'hairSilver', hair: 'crop', eye: '#2a2030', spectacles: '#d8f0f6', gloves: 'skinPale', boots: 'leather', pants: 'wool', trinket: { kind: 'pouch', mat: 'leather' } }, gear: { body: { kind: 'leather', mat: 'w.army', shirt: 'wool', belt: 'leather', trim: 'bronze' }, offhand: { look: 'clipboard', mat: 'wood' } } },
 });
 const SKINS = ['skin', 'skinPale', 'skinTan', 'skinDeep'], HAIRS = ['hairBrown', 'hairBlack', 'hairAuburn', 'hairBlond', 'hairSilver', 'hairCopper'], STYLES = ['short', 'crop', 'long', 'pony', 'bun'];
 const TUNICS = ['wool', 'gambeson', 'rags', 'clothBlue', 'hoodGreen', 'robeRed'];
@@ -102,6 +114,7 @@ export const MAP_FOE_SIZE = Object.freeze({
   rotstag: [32, 32], oldsnag: [32, 24], briarmaw: [32, 32], gloamwing: [32, 32], mirelord: [32, 32], sapwight: [16, 24], rotwarden: [32, 32],
   'sand-skink': [16, 12], 'glass-scorpion': [24, 16], 'glass-matriarch': [32, 24], 'mirage-wisp': [16, 20],
   'wisp-queen': [32, 32], 'sand-wyrm': [32, 32], gnash: [32, 32], kharzul: [48, 32], 'ashen-warden': [32, 32],
+  'rime-wolf': [24, 16], rockling: [16, 16], 'forge-spark': [16, 16], 'peak-troll': [24, 24], 'old-horn': [32, 32], 'thunder-roc': [48, 40], 'mother-anvil': [48, 40], 'rime-abbot': [32, 48],
 });
 // a relic's look for the walker rig, in its slot (relics without RELIC_ART fall back to their kind's art)
 function relicLook(relic) {
@@ -115,8 +128,12 @@ function relicLook(relic) {
 // M4: a Sunscorch family's named variant -> its own map sprite (the ids are fixed by the M4 spec §3.2-§3.3)
 const SUN_VARIANT = { 'dune-raider:rider': 'rasa', 'dune-raider:raider-king': 'gnash', 'glass-scorpion:matriarch': 'glass-matriarch', 'mirage-wisp:queen': 'wisp-queen',
   'ash-wight:captain': 'ash-captain', 'tallyman:foreman': 'brask', 'tallyman:quartermaster': 'quartermaster', 'smuggler:sharpshooter': 'vell' };
+// M5: the same for the Ironspire (P4 gives these variants their own art keys too; this covers a family key with the variant)
+const IRON_VARIANT = { 'brigand:warden': 'rhune', 'iron-sentinel:captain': 'sentinel-captain', 'forgeborn:bellows': 'bellows', 'forgeborn:journeyman': 'journeyman',
+  'peak-troll:old-horn': 'old-horn', 'rime-wraith:abbess': 'drowned-abbess', 'rime-wraith:choir': 'choir-wraith', 'tallyman:ice-cutter': 'cutter-chief', 'smuggler:sawyer': 'sawyer' };
 function resolveFoeKey(artKey, variant) {
   if (variant && SUN_VARIANT[artKey + ':' + variant]) return SUN_VARIANT[artKey + ':' + variant];
+  if (variant && IRON_VARIANT[artKey + ':' + variant]) return IRON_VARIANT[artKey + ':' + variant];
   if (variant && FOES[artKey] && FOES[artKey].variants && FOES[artKey].variants[variant]) {
     const a = FOES[artKey].variants[variant].art;
     if (a && (FOE_ART[a] || MAP_FOE_SIZE[a])) return a;
@@ -209,8 +226,42 @@ const SUN_FOES = {
     })),
   },
 };
-function sunFoeSheet(key, gT, rel) {
-  const S = SUN_FOES[key], kit = S.gear[gT] || S.gear[0], H = Object.assign({}, S.H, kit.H || {}), gear = Object.assign({}, kit);
+/* M5: the Ironspire's constructs and drowned monks on the walker rig (their battle art is built, not rigged; P6 rigged
+   the brigands, Rhune, the Cutter-Chief and the sawyers, and those come through foeLooks() like M3's). */
+const SENTINEL = { build: 'dwarf', skin: 'iron', hairMat: 'iron', hair: 'none', eye: '#1a1a1a', tunic: 'iron', pants: 'iron', boots: 'blackiron', gloves: 'iron' };
+const SLAG = { build: 'brute', skin: 'w.slag', hairMat: 'w.char', hair: 'none', eye: '#1a1a1a', tunic: 'w.char', pants: 'w.char', boots: 'w.slag', gloves: 'w.slag', shade: true, shadeEyes: 'amber' };
+const DROWNED = { build: 'human', skin: 'w.rimeskin', hairMat: 'hairSilver', hair: 'none', eye: '#5ab4dc', tunic: 'w.drowned', pants: 'w.drowned', boots: 'w.drowned', gloves: 'w.rimeskin' };
+// a sentinel's kit by gearTier: iron rusted at the joins, rune-lit iron, steel with storm runes, black iron burning; the captain has
+// a crest and a hammer
+const sentinelKit = (t, cap) => { const m = ['iron', 'iron', 'steel', 'blackiron'][t], rune = ['amber', 'amber', 'storm', 'ember'][t], worn = t ? m : 'rust'; return {
+  head: { look: 'helm', mat: m, eyes: rune, glowEyes: 1, crest: cap ? 'gold' : null, trim: cap ? 'gold' : t ? 'bronze' : 'rust' },
+  body: { kind: 'plate', mat: m, trim: cap ? 'gold' : t >= 2 ? rune : t ? 'iron' : 'rust', pauldrons: worn }, hands: { kind: 'gauntlets', mat: worn, plate: 1 },
+  offhand: cap ? null : { look: 'round', face: worn, rim: 'bronze', boss: t >= 2 ? rune : 'iron' },
+  weapon: cap ? A('hammer', { headMat: m, haft: 'iron', headW: 14, bandMat: 'gold' }) : null,
+}; };
+const IRON_FOES = {
+  'iron-sentinel': { H: SENTINEL, gear: [0, 1, 2, 3].map(t => sentinelKit(t)) },
+  'sentinel-captain': { relic: 'ironwall', relicSlot: 'offhand', relicLook: { look: 'tower', face: 'iron', rim: 'gold', boss: 'amber', heirloom: true }, glintAt: ['offhand'],
+    H: Object.assign({}, SENTINEL, { build: 'brute' }), gear: [0, 1, 2, 3].map(t => sentinelKit(t, true)) },
+  forgeborn: { H: SLAG, gear: [0, 1, 2, 3].map(t => ({ body: { kind: 'plate', mat: t >= 2 ? 'blackiron' : 'w.char', tabard: t ? 'ember' : 'amber', trim: 'ember' },
+    weapon: t ? A('hammer', { headMat: 'w.slag', haft: 'w.char', headW: 13, bandMat: 'ember' }) : null, H: t >= 3 ? { mantle: 'ember' } : null })) },
+  bellows: { H: Object.assign({}, SLAG, { pack: { mat: 'leather' } }), gear: [0, 1, 2, 3].map(t => ({ body: { kind: 'plate', mat: t >= 2 ? 'blackiron' : 'w.char', tabard: 'ember', trim: t >= 1 ? 'ember' : 'w.slag' },
+    hands: { kind: 'gauntlets', mat: 'w.slag', plate: 1 }, H: t >= 3 ? { mantle: 'ember' } : null })) },
+  journeyman: { relic: 'runestaff', relicSlot: 'weapon', relicLook: Object.assign(A('staff', { style: 'orb', haft: 'bogwood', metal: 'iron', glow: 'ember' }), { relic: true }),
+    H: Object.assign({}, SLAG, { build: 'human', apron: 'leather', gloves: 'skinTan' }),
+    gear: [0, 1, 2, 3].map(t => ({ body: { kind: 'leather', mat: 'w.char', shirt: 'w.slag', belt: 'leather', tabard: t >= 1 ? 'ember' : null }, head: t >= 2 ? { look: 'cap', mat: 'leatherDark', metal: 'iron', glow: 'ember' } : null })) },
+  'rime-wraith': { H: DROWNED, gear: [0, 1, 2, 3].map(t => ({ head: { look: 'hood', mat: t >= 3 ? 'w.drowned' : 'w.habit', tip: 1, trim: t >= 1 ? 'w.ice' : null },
+    body: { kind: 'robe', mat: t >= 3 ? 'w.drowned' : 'w.habit', trim: t >= 1 ? 'w.ice' : 'w.habit', sash: t >= 2 ? 'frost' : 'string' }, H: t >= 2 ? { cloak: 'w.drowned' } : null })) },
+  'drowned-abbess': { relic: 'drowned-censer', relicSlot: 'offhand', relicLook: { look: 'lantern', metal: 'silver', glow: 'frost', heirloom: true }, glintAt: ['offhand'],
+    H: Object.assign({}, DROWNED, { mantle: 'clothWhite' }), gear: [0, 1, 2, 3].map(t => ({ head: { look: 'hood', mat: 'clothWhite', tip: 0, trim: 'w.ice' },
+    body: { kind: 'robe', mat: 'w.drowned', trim: 'clothWhite', sash: t >= 2 ? 'frost' : 'silver' }, H: t >= 2 ? { cloak: 'w.drowned' } : null })) },
+  'choir-wraith': { H: Object.assign({}, DROWNED, { build: 'youth', shade: false, song: true, eye: '#10141c' }), gear: [0, 1, 2, 3].map(t => ({ head: { look: 'hood', mat: 'w.habit', tip: 1, trim: 'w.ice' },
+    body: { kind: 'robe', mat: t >= 2 ? 'w.drowned' : 'w.habit', trim: 'w.ice', sash: t >= 3 ? 'frost' : 'string' }, offhand: { look: 'tome', cover: t >= 2 ? 'w.drowned' : 'w.ice' } })) },
+};
+// the M5 humanoids P6 rigged: a relic on the feet or in the off hand glints there (as the M4 holders' do)
+const IRON_RIGGED = new Set(['brigand', 'rhune', 'cutter-chief', 'sawyer']);
+function sunFoeSheet(key, gT, rel, S = SUN_FOES[key]) {
+  const kit = S.gear[gT] || S.gear[0], H = Object.assign({}, S.H, kit.H || {}), gear = Object.assign({}, kit);
   delete gear.H;
   const mine = rel && rel === S.relic, real = mine && !S.own && typeof rel === 'string' ? itemArt(rel) : null;
   if (mine && S.relicLook && !real) gear[S.relicSlot] = S.relicLook;
@@ -222,16 +273,16 @@ function sunFoeSheet(key, gT, rel) {
 }
 const foeCache = lru(64);
 export function mapFoeSheet(artKey, { gearTier = 0, variant = null, relic } = {}) {
-  const key = resolveFoeKey(artKey, variant), gT = Math.max(0, Math.min(3, gearTier | 0));
-  if (SUN_FOES[key]) {
-    const rel = relic !== undefined ? relic : SUN_FOES[key].relic || null;
-    const img = foeCache.get(`s|${key}|${gT}|${rel || '-'}`, () => sunFoeSheet(key, gT, rel));
+  const key = resolveFoeKey(artKey, variant), gT = Math.max(0, Math.min(3, gearTier | 0)), kitted = SUN_FOES[key] || IRON_FOES[key];
+  if (kitted) {
+    const rel = relic !== undefined ? relic : kitted.relic || null;
+    const img = foeCache.get(`s|${key}|${gT}|${rel || '-'}`, () => sunFoeSheet(key, gT, rel, kitted));
     return { img, w: WALKER_W, h: WALKER_H, foot: WALKER_FOOT.slice(), frames: 2, rows: 4, head: [8, 3] };
   }
   const def = FOE_ART[key], beast = BEASTS[key] || (def && def.kind === 'beast' && BEASTS[def.aliasOf]);
-  if (beast && (SUN_BEASTS.has(key) || !(def && def.kind === 'humanoid'))) {
+  if (beast && (SUN_BEASTS.has(key) || IRON_BEASTS.has(key) || !(def && def.kind === 'humanoid'))) {
     const [w, h] = MAP_FOE_SIZE[key] || MAP_FOE_SIZE[def && def.aliasOf] || [16, 16];
-    const rel = relic === undefined ? SUN_BEAST_RELIC[key] || (def && def.relic) || null : relic;
+    const rel = relic === undefined ? SUN_BEAST_RELIC[key] || IRON_BEAST_RELIC[key] || (def && def.relic) || null : relic;
     const img = foeCache.get(`b|${key}|${gT}|${rel || '-'}`, () => beastSheet(beast, w, h, { gT, relic: rel }));
     return { img, w, h, foot: [w >> 1, h - 1], frames: 2, rows: 4, head: [w >> 1, 1] };
   }
@@ -242,7 +293,7 @@ export function mapFoeSheet(artKey, { gearTier = 0, variant = null, relic } = {}
     const f = def ? foeLooks(key, { gearTier: gT }) : { H: null };
     if (f.H) { H = f.H; L = Object.assign({}, f.gear); } else { const v = NPC_LOOKS[key] || villager(key); H = v.H; ({ L, M } = resolveGear(v.gear)); }
     if (key === 'tamsin' && !L.hands) { const g = relicLook('vale-gauntlets'); if (g) { L.hands = g.look; M.hands = { heirloom: true, relic: true }; } }
-    if (rel) { const r = relicLook(rel); if (r) { L[r.slot] = r.look; M[r.slot] = { heirloom: true, relic: true }; } }
+    if (rel) { const r = relicLook(rel); if (r) { L[r.slot] = r.look; M[r.slot] = { heirloom: true, relic: true }; if (IRON_RIGGED.has(key) && (r.slot === 'feet' || r.slot === 'offhand')) M.glintAt = [r.slot]; } }
     return rigSheet(H, L, { meta: M, frames: 2, pick: k => k + 1 });
   });
   return { img, w: WALKER_W, h: WALKER_H, foot: WALKER_FOOT.slice(), frames: 2, rows: 4, head: [8, 3] };
@@ -254,7 +305,7 @@ export function mapFoeSheet(artKey, { gearTier = 0, variant = null, relic } = {}
    ===================================================================== */
 const spike = (at, ang, len, wd = .8) => { const c = Math.cos(ang), s = Math.sin(ang); return P([[at[0] - s * wd, at[1] + c * wd], [at[0] + c * len, at[1] + s * len], [at[0] + s * wd, at[1] - c * wd]]); };
 const FAR = () => -1;
-const EYE = { amber: [248, 200, 90], red: [240, 58, 42], blight: [180, 214, 90], dark: [22, 18, 26], gold: [245, 205, 88], pale: [236, 230, 214] };
+const EYE = { amber: [248, 200, 90], red: [240, 58, 42], blight: [180, 214, 90], dark: [22, 18, 26], gold: [245, 205, 88], pale: [236, 230, 214], frost: [184, 236, 255], mica: [228, 246, 252], ember: [255, 170, 60] };
 const eyeCol = gT => (gT >= 2 ? EYE.red : EYE.amber);
 const fur = seed => q => (((q.x * 2 + q.y + seed) % 5) === 0 ? -1 : 0);
 
@@ -760,6 +811,230 @@ const BEASTS = { briarling, thornhound, boglurcher, glowcap, rotgrub, rotstag, o
 const SUN_BEASTS = new Set(['sand-skink', 'glass-scorpion', 'glass-matriarch', 'mirage-wisp', 'wisp-queen', 'sand-wyrm', 'gnash', 'kharzul', 'ashen-warden']);
 const SUN_BEAST_RELIC = { 'sand-wyrm': 'wyrmscale', gnash: 'dunebreaker', 'wisp-queen': 'mirage-glass', kharzul: 'cinderfang', 'ashen-warden': 'ashen-aegis' };
 
+/* ---- M5: the Ironspire's beasts and lairs ---- */
+// rime-wolf 24x16: a lean grey-white wolf, ice crystals in its ruff from tier 1, pale blue eyes (red from tier 2), dark at tier 3
+function rimeWolf(F, st) {
+  const { dir, f, gT, anchors } = st, g = f ? 1.1 : -1.1, fur1 = gT >= 3 ? 'w.crag' : 'w.rimefur', eye = gT >= 2 ? EYE.red : EYE.frost, n = 1 + gT;
+  if (dir === 'e') {
+    F.add({ mat: fur1, prof: 'round', bw: .7, grp: 'legF', tex: FAR, shapes: [C([16, 10], [16.8 - g, 15.2], 1, .75), C([8, 10.5], [7.2 + g, 15.2], 1.05, .75)] });
+    F.add({ mat: fur1, prof: 'round', bw: .8, grp: 'tail', shapes: [C([4.8, 8.4], [1.4, 7.2 - f * .6], 1.5, .8)], tex: fur(1) });
+    F.add({ mat: fur1, prof: 'round', bw: 2, grp: 'body', shapes: [E([11, 9.2], 6.2, 3), E([15.4, 8.2], 3.2, 3.2)], tex: fur(1) });
+    if (gT) F.add({ mat: 'w.glacier', prof: 'ridge', grp: 'ruff', shapes: Array.from({ length: n }, (_, k) => spike([13 + k * 1.4, 6.4 - (k & 1) * .4], -Math.PI / 2 - .6 + k * .15, 1.6 + (k % 2) * .6 + gT * .2, .6)) });
+    F.add({ mat: fur1, prof: 'round', bw: .7, grp: 'legN', shapes: [C([15, 10.8], [14.4 + g, 15.2], 1.05, .8), C([8.6, 11], [9.4 - g, 15.2], 1.1, .8)] });
+    F.add({ mat: fur1, prof: 'round', bw: 1.6, grp: 'head', shapes: [E([18.8, 6.4], 3, 2.4), C([20.4, 7.3], [23, 7.9], 1.3, .95)] });
+    F.add({ mat: 'wolfPale', prof: 'round', bw: .6, grp: 'jaw', noShadow: true, shapes: [C([20.8, 8.6], [22.6, 8.9], .55)] });
+    F.add({ mat: fur1, prof: 'round', bw: .6, grp: 'ear', shapes: [P([[17.2, 4.8], [18, 1.8], [19.6, 4.4]])] });
+    anchors.eyes = [[19.9, 5.9, eye], [22.9, 7.5, EYE.dark]];
+    return;
+  }
+  const s = dir === 's', l1 = f ? .8 : 0, l2 = f ? 0 : .8;
+  if (gT) F.add({ mat: 'w.glacier', prof: 'ridge', grp: 'ruff', shapes: Array.from({ length: n + 1 }, (_, k) => spike([8.4 + k * (7 / n), s ? 5.8 : 6.4], -Math.PI / 2 + (k - n / 2) * .28, 1.8 + (k % 2) * .6 + gT * .2, .6)) });
+  if (!s) F.add({ mat: fur1, prof: 'round', bw: 1.4, grp: 'headB', shapes: [E([12, 4.6], 2.8, 2.2), P([[9.4, 3.8], [9.2, .8], [11, 3]]), P([[14.6, 3.8], [14.8, .8], [13, 3]])] });
+  F.add({ mat: fur1, prof: 'round', bw: 2, grp: 'body', shapes: [E([12, s ? 8.6 : 9.6], s ? 4.4 : 4.7, s ? 3.4 : 3.9)], tex: fur(2) });
+  if (!s) F.add({ mat: fur1, prof: 'round', bw: .7, grp: 'tail', shapes: [C([12, 7.4], [12.6 + (f ? .8 : -.8), 3.2], 1.3, .7)] });
+  F.add({ mat: fur1, prof: 'round', bw: .7, grp: 'legs', shapes: [C([10.2, 11], [10, 15.2 - l1], 1.05, .8), C([13.8, 11], [14, 15.2 - l2], 1.05, .8)] });
+  if (s) {
+    F.add({ mat: 'wolfPale', prof: 'round', bw: 1.6, grp: 'chest', shapes: [E([12, 10.6], 3.1, 2.6)] });
+    F.add({ mat: fur1, prof: 'round', bw: 1.8, grp: 'head', shapes: [E([12, 7], 3.4, 3), P([[9.4, 5], [8.4, 1.6], [11, 4.2]]), P([[14.6, 5], [15.6, 1.6], [13, 4.2]])], tex: fur(3) });
+    F.add({ mat: 'wolfPale', prof: 'round', bw: 1, grp: 'snout', shapes: [E([12, 9.2], 1.7, 1.35)] });
+    anchors.eyes = [[10.5, 6.4, eye], [13.5, 6.4, eye], [11.6, 8.5, EYE.dark]];
+  }
+}
+// rockling 16x16: a heap of grey scree that stood up, pebble feet and fists, mica chips for eyes; lichen, then amber veins, then
+// glowing cracks as the Waking climbs
+function rockling(F, st) {
+  const { dir, f, gT, anchors } = st, e = dir === 'e', bob = f ? .6 : 0, m = gT >= 3 ? 'w.slag' : 'w.crag';
+  F.add({ mat: m, prof: 'round', bw: .8, grp: 'feet', shapes: [O([4.6 + (e ? (f ? 1 : -.4) : 0), 14.6 - (!e && f ? .6 : 0)], 1.6), O([11.4 - (e ? (f ? 1 : -.4) : 0), 14.6 - (!e && !f ? .6 : 0)], 1.6)] });
+  F.add({ mat: m, prof: 'round', bw: 2.2, grp: 'body', shapes: [[8, 10.2, 5.8, 4.2], [5.4, 7, 3.4, 3], [10.6, 6.6, 3.6, 3.2], [8, 4.4, 3, 2.6]].map(([x, y, rx, ry]) => E([x, y + bob], rx, ry)), tex: q => ((q.x * 3 + q.y * 5) % 7 === 0 ? -1 : 0) + ((q.x + q.y * 2) % 9 === 0 ? .6 : 0) });
+  F.add({ mat: m, prof: 'round', bw: .9, grp: 'fists', shapes: e ? [O([12.6, 10.4 + bob], 1.5)] : [O([2.2, 10.4 + bob], 1.5), O([13.8, 10.4 + bob], 1.5)] });
+  if (gT >= 1) F.add({ mat: gT >= 2 ? 'amber' : 'w.alpine', prof: 'flat', grp: 'vein', noShadow: true, noOutline: true, shapes: gT >= 2 ? [C([5, 9 + bob], [7.4, 11.6 + bob], .45), C([10.6, 5.8 + bob], [11.8, 8.4 + bob], .4), C([8.6, 12 + bob], [10.4, 10.6 + bob], .4)] : [E([6, 4.6 + bob], 1.6, .8), E([11.4, 11.6 + bob], 1.4, .7)], tex: () => (gT >= 3 ? .2 : gT >= 2 ? -.8 : 0) });
+  if (dir !== 'n') anchors.eyes = e ? [[11.4, 7.6 + bob, EYE.mica]] : [[6.4, 7.8 + bob, EYE.mica], [9.6, 7.8 + bob, EYE.mica]];
+  if (gT >= 2) anchors.halo = true;
+}
+// forge-spark 16x16: a fist-sized living cinder, an ember core in a cage of slag, sparks trailing; it floats (white-hot at tier 3)
+function forgeSpark(F, st) {
+  const { dir, f, gT, anchors } = st, cy = 7 - (f ? .8 : 0);
+  anchors.shadow = [8, 14.4, 2.8]; anchors.halo = true;
+  F.add({ mat: gT >= 3 ? 'radiant' : 'ember', prof: 'round', bw: 1.6, grp: 'core', shapes: [O([8, cy], 2.8)], tex: () => (f ? .6 : 0) });
+  F.add({ mat: 'w.slag', prof: 'round', bw: .9, grp: 'cage', shapes: [0, 1, 2, 3, 4].map(k => { const a = k * 1.26 + (f ? .3 : 0); return E([8 + Math.cos(a) * 3.2, cy + Math.sin(a) * 2.8], 1.5, 1.2); }) });
+  F.add({ mat: 'amber', prof: 'flat', grp: 'sparks', noShadow: true, noOutline: true, shapes: (f ? [[5, 12], [11, 11.4], [8, 13.2], [3, 9]] : [[6, 11.4], [10, 12.6], [3.6, 10], [12.6, 9]]).slice(0, 2 + (gT >> 1)).map(([x, y]) => O([x, y], .55)) });
+  if (dir !== 'n') anchors.eyes = dir === 'e' ? [[9.6, cy - .4, EYE.dark]] : [[7, cy - .4, EYE.dark], [9, cy - .4, EYE.dark]];
+}
+// peak-troll 24x24: grey-green hide, mossy stone warts, a heavy brow over a big nose, an underbite with tusks, long arms and a
+// tree-limb club dragged along; Old Horn (32x32, k 4/3) is older, one great horn, a grey muzzle, the Trollhide Mantle (a
+// patchwork of other trolls' hides) over his shoulders
+function peakTroll(F, st, o = {}) {
+  const { dir, f, gT, anchors, relic } = st, e = dir === 'e', n = dir === 'n', k = o.k || 1;
+  const T = ([x, y]) => [x * k, y * k], r = v => v * k, cap = (a, b, ra, rb = ra) => C(T(a), T(b), r(ra), r(rb)), ell = (c, rx, ry) => E(T(c), r(rx), r(ry));
+  const hide = gT >= 3 ? 'w.crag' : 'w.troll', sw = f ? .7 : -.7, eye = gT >= 2 ? EYE.red : EYE.amber, jaw = o.horn ? 'wolfPale' : hide;
+  const warts = q => ((q.x * 5 + q.y * 3) % 11 === 0 ? { m: 'w.crag', dd: .3 } : (q.x * 2 + q.y * 7) % 13 === 0 ? { m: 'w.alpine', dd: 0 } : 0);
+  const mantle = o.horn && relic, patch = q => ({ m: ['w.hide', 'leather', 'wolfFur', 'w.troll'][((q.x >> 2) + (q.y >> 2) * 3) & 3], dd: (q.x + q.y) % 5 === 0 ? -1 : 0 });
+  if (e) {
+    F.add({ mat: hide, prof: 'round', bw: 1, grp: 'legF', tex: FAR, shapes: [cap([9.4, 16], [8.6 - sw, 23], 2, 1.7)] });
+    F.add({ mat: hide, prof: 'round', bw: 1, grp: 'armF', tex: FAR, shapes: [cap([12.4, 9.6], [15.4 - sw * .5, 17.4], 1.5, 1.2)] });
+    F.add({ mat: hide, prof: 'round', bw: 2.4, grp: 'body', shapes: [ell([10.6, 12], 6, 5.4), ell([8.4, 8.6], 4.4, 3.8)], tex: warts });
+    if (mantle) F.add({ mat: 'w.hide', prof: 'round', bw: 1.4, grp: 'mantle', relic: true, shapes: [P([T([4, 7.4]), T([12.4, 5.6]), T([14, 10]), T([9.6, 15.4]), T([4.6, 14])])], tex: patch });
+    F.add({ mat: hide, prof: 'round', bw: 1, grp: 'legN', shapes: [cap([12, 16.2], [12.8 + sw, 23], 2.1, 1.8)] });
+    F.add({ mat: hide, prof: 'round', bw: .6, grp: 'ear', shapes: [P([T([13.6, 8.8]), T([12, 6.6]), T([14.8, 7.8])])] });
+    F.add({ mat: hide, prof: 'round', bw: 1.6, grp: 'head', shapes: [ell([16, 9.8], 3.2, 2.7)], tex: warts });
+    F.add({ mat: jaw, prof: 'round', bw: 1, grp: 'jaw', shapes: [ell([17.6, 11.4], 2.2, 1.3)] });
+    F.add({ mat: hide, prof: 'round', bw: 1, grp: 'nose', shapes: [ell([19.2, 9.8], 1.3, 1.2)], tex: () => .6 });
+    F.add({ mat: 'bone', prof: 'ridge', grp: 'tusk', shapes: [spike(T([18.4, 11]), -Math.PI / 2.4, r(1.8), r(.5))] });
+    F.add({ mat: 'dark', prof: 'flat', grp: 'brow', noShadow: true, noOutline: true, shapes: [cap([15.6, 8], [18.2, 8.4], .45)] });
+    if (o.horn) F.add({ mat: 'bone', prof: 'round', bw: .8, grp: 'horn', shapes: [cap([15.6, 7.4], [13.4, 3], 1.1, .8), cap([13.4, 3], [15.4, .8], .8, .4)], tex: q => (q.y % 2 ? -.6 : 0) });
+    F.add({ mat: hide, prof: 'round', bw: 1, grp: 'armN', shapes: [cap([11.4, 10], [14.8, 18.4], 1.7, 1.4), ell([15.2, 19.2], 1.9, 1.6)] });
+    F.add({ mat: 'bark', prof: 'round', bw: .8, grp: 'club', shapes: [cap([15.2, 19.2], [22.4, 22.8], 1, 1.7)], tex: q => (q.x % 3 === 0 ? -1 : 0) });
+    anchors.eyes = [T([17.2, 8.9]).concat([eye])];
+    if (mantle) anchors.glint = T([6, 9]);
+    return;
+  }
+  const l1 = f ? .8 : 0, l2 = f ? 0 : .8;
+  if (n) F.add({ mat: hide, prof: 'round', bw: 1.6, grp: 'headB', shapes: [ell([12, 7.4], 3.2, 2.6)] });
+  if (o.horn && n) F.add({ mat: 'bone', prof: 'round', bw: .8, grp: 'horn', shapes: [cap([10, 6], [6.4, 1.6], 1.1, .8), cap([6.4, 1.6], [4.8, 3.6], .8, .4)] });
+  F.add({ mat: hide, prof: 'round', bw: 1, grp: 'legs', shapes: [cap([9, 17], [8.6, 23 - l1], 2, 1.7), cap([15, 17], [15.4, 23 - l2], 2, 1.7)] });
+  F.add({ mat: hide, prof: 'round', bw: 2.6, grp: 'body', shapes: [ell([12, 12.6], 7, 6)], tex: warts });
+  F.add({ mat: hide, prof: 'round', bw: 1.8, grp: 'shoulders', shapes: [ell([6, 9.4], 3.2, 2.8), ell([18, 9.4], 3.2, 2.8)], tex: warts });
+  if (mantle) F.add({ mat: 'w.hide', prof: 'round', bw: 1.4, grp: 'mantle', relic: true, shapes: [P([T([3, 8.4]), T([21, 8.4]), T([20, 14]), T([12, 16]), T([4, 14])])], tex: patch });
+  F.add({ mat: hide, prof: 'round', bw: 1, grp: 'arms', shapes: [cap([5.4, 10], [4 - sw * .4, 19.6], 1.7, 1.4), cap([18.6, 10], [20 + sw * .4, 19.6], 1.7, 1.4), ell([4 - sw * .4, 20.4], 2, 1.7), ell([20 + sw * .4, 20.4], 2, 1.7)] });
+  F.add({ mat: 'bark', prof: 'round', bw: .8, grp: 'club', shapes: [n ? cap([20 + sw * .4, 20.4], [21.4, 23.6], 1, 1.6) : cap([4 - sw * .4, 20.4], [2.6, 23.6], 1, 1.6)] });
+  if (!n) {
+    F.add({ mat: hide, prof: 'round', bw: .6, grp: 'ears', shapes: [P([T([9, 7.6]), T([6.8, 6]), T([9.2, 9.2])]), P([T([15, 7.6]), T([17.2, 6]), T([14.8, 9.2])])] });
+    F.add({ mat: hide, prof: 'round', bw: 1.8, grp: 'head', shapes: [ell([12, 8.2], 3.6, 3)], tex: warts });
+    F.add({ mat: jaw, prof: 'round', bw: 1, grp: 'jaw', shapes: [ell([12, 10.6], 2.8, 1.4)] });
+    F.add({ mat: hide, prof: 'round', bw: 1, grp: 'nose', shapes: [ell([12, 8.9], 1.2, 1.2)], tex: () => .6 });
+    F.add({ mat: 'dark', prof: 'flat', grp: 'brow', noShadow: true, noOutline: true, shapes: [cap([9.6, 6.8], [11.4, 7.4], .45), cap([12.6, 7.4], [14.4, 6.8], .45)] });
+    F.add({ mat: 'bone', prof: 'ridge', grp: 'tusks', shapes: [spike(T([10.4, 10.4]), -Math.PI / 2 - .25, r(1.7), r(.55)), spike(T([13.6, 10.4]), -Math.PI / 2 + .25, r(1.7), r(.55))] });
+    if (o.horn) F.add({ mat: 'bone', prof: 'round', bw: .8, grp: 'horn', shapes: [cap([10, 6], [6.4, 1.6], 1.1, .8), cap([6.4, 1.6], [4.8, 3.6], .8, .4)], tex: q => (q.y % 2 ? -.6 : 0) });
+    anchors.eyes = [T([10.8, 7.9]).concat([eye]), T([13.2, 7.9]).concat([eye])];
+  }
+  if (mantle) anchors.glint = T([6, 10]);
+}
+// the Thunder-Roc 48x40 on its eyrie: a storm-dark eagle mantling over its nest, wings raised and pinions spread like fingers,
+// lightning running along their leading edges (2 frames), a hooked beak, yellow talons on the rim; the Roc-Feather Cloak
+// snagged on the sticks
+function thunderRoc(F, st) {
+  const { dir, f, anchors, relic } = st, e = dir === 'e', n = dir === 'n', fl = f ? -1 : 0, fe = 'w.stormfeather';
+  anchors.halo = true;
+  const barred = q => ((q.y + (q.x >> 2)) % 3 === 0 ? -.7 : 0);
+  const bolt = pts => pts.slice(0, -1).map((a, i) => C(a, pts[i + 1], .45));
+  F.add({ mat: 'bogwood', prof: 'round', bw: 1.6, grp: 'nest', shapes: [E([24, 35.6], 21, 4.2)], tex: q => ((q.x + q.y * 3) % 5 === 0 ? { m: 'bark', dd: .4 } : (q.x * 2 + q.y) % 7 === 0 ? -1 : 0) });
+  F.add({ mat: 'bark', prof: 'round', bw: .5, grp: 'sticks', shapes: [C([2, 33], [14, 37.6], .6), C([46, 32.6], [34, 38], .6), C([10, 38.6], [26, 36], .55), C([22, 38.8], [40, 36.4], .55)] });
+  if (relic) { // the Roc-Feather Cloak, caught on the rim
+    F.add({ mat: 'clothBlue', prof: 'round', bw: .8, grp: 'cloak', relic: true, shapes: [P([[31, 31.4], [37.4, 30.8], [39, 38.8], [31.6, 38.8]])], tex: q => ((q.y + (q.x & 1)) % 2 ? { m: fe, dd: .6 } : 0) });
+    anchors.glint = [33, 32.2];
+  }
+  if (e) {
+    F.add({ mat: fe, prof: 'round', bw: 1.6, grp: 'wingF', tex: FAR, shapes: [P([[21, 15], [26, 5 + fl], [23.6, .4 + fl], [19, 1 + fl], [17, 12]])] });
+    F.add({ mat: fe, prof: 'round', bw: 1, grp: 'tail', shapes: [P([[15, 25], [4, 32], [7, 35.4], [18, 30]])], tex: barred });
+    F.add({ mat: fe, prof: 'round', bw: 2.8, grp: 'body', shapes: [P([[16, 15], [27, 12], [32, 19], [29, 29], [19, 31], [13, 24]])], tex: q => (q.x > 25 && q.y > 15 ? (q.y % 3 ? .5 : -.4) : barred(q)) });
+    F.add({ mat: fe, prof: 'round', bw: 1, grp: 'legs', shapes: [E([22.6, 30], 2.4, 2.6), E([27, 29.6], 2, 2.4)] });
+    F.add({ mat: 'gold', prof: 'round', bw: .5, grp: 'talons', shapes: [C([21.6, 32], [21, 34.4], .7), C([23.6, 32], [24.8, 34.4], .7), C([27, 31.6], [28.6, 34], .7)] });
+    F.add({ mat: fe, prof: 'round', bw: .8, grp: 'pinions', shapes: [0, 1, 2, 3].map(i => C([12.4 + i * .6, 4 + i * 2.8 + fl * .6], [5.6 + i * 1.2, 1.4 + i * 4.4 + fl * .6], 1.2, .7)), tex: q => (q.y < 5 + fl ? .4 : 0) });
+    F.add({ mat: fe, prof: 'round', bw: 1.8, grp: 'wingN', shapes: [P([[17, 16], [25, 14], [23, 6 + fl], [16, 1.6 + fl], [11, 3 + fl], [11.4, 12], [15, 20]])], tex: q => (q.y < 8 + fl ? .5 : barred(q)) });
+    F.add({ mat: fe, prof: 'round', bw: 1.6, grp: 'head', shapes: [E([31, 10.6], 4, 3.6)] });
+    F.add({ mat: fe, prof: 'ridge', grp: 'crest', shapes: [spike([28, 8.4], Math.PI + .6, 3.6, .8), spike([27.6, 10.4], Math.PI + .25, 3.2, .8)] });
+    F.add({ mat: 'iron', prof: 'bevel', bw: .8, grp: 'beak', shapes: [P([[33.4, 9.2], [37.6, 9.8], [39, 12.2], [38, 14.6], [37, 12.6], [33.4, 12.8]])] });
+    F.add({ mat: 'gold', prof: 'flat', grp: 'cere', noShadow: true, shapes: [C([33.6, 10], [34.8, 10.2], .55)] });
+    F.add({ mat: 'dark', prof: 'flat', grp: 'brow', noShadow: true, noOutline: true, shapes: [C([30, 8.6], [33, 9.2], .45)] });
+    F.add({ mat: 'storm', prof: 'flat', grp: 'bolts', noShadow: true, noOutline: true, shapes: bolt(f ? [[4, 3.4], [8, .8], [11, 3.6], [16, 1.4], [21, 5.6]] : [[8, 4.6], [12, 2], [15, 4.6], [20, 3], [24, 9]]), tex: () => .5 });
+    anchors.eyes = [[32.4, 10, EYE.gold]];
+    return;
+  }
+  // facing, or seen from behind: mantling, both wings raised
+  // the pinions fan out from the wrist as separate fingers, then the arm of the wing covers their roots
+  F.add({ mat: fe, prof: 'round', bw: .8, grp: 'pinions', shapes: [-1, 1].flatMap(s => [0, 1, 2, 3].map(i => C([24 + s * 15.6, 6.4 + i * 3 + fl * (1 - i / 4)], [24 + s * (22.8 - i * .5), 2.6 + i * 4.8 + fl * (1 - i / 4)], 1.2, .7))), tex: q => (q.y < 7 + fl ? .4 : 0) });
+  const wing = s => P([[24 + s * 5, 15], [24 + s * 12, 4 + fl], [24 + s * 17.6, 4.6 + fl], [24 + s * 18.6, 17], [24 + s * 13, 24.6], [24 + s * 6, 24]]);
+  F.add({ mat: fe, prof: 'round', bw: 2, grp: 'wings', shapes: [wing(1), wing(-1)], tex: q => (Math.abs(q.x - 24) > 7 && q.y < 9 + fl ? .5 : barred(q)) });
+  F.add({ mat: fe, prof: 'round', bw: 1, grp: 'tail', shapes: [P([[19, 28], [29, 28], [32.4, 34.6], [15.6, 34.6]])], tex: barred });
+  F.add({ mat: fe, prof: 'round', bw: 3, grp: 'body', shapes: [E([24, 21.6], 7.4, 9.4)], tex: q => (!n && Math.abs(q.x - 24) < 5 && q.y > 15 ? (q.y % 3 ? .5 : -.5) : barred(q)) });
+  F.add({ mat: fe, prof: 'round', bw: 1, grp: 'legs', shapes: [E([20.4, 29.4], 2.4, 2.6), E([27.6, 29.4], 2.4, 2.6)] });
+  F.add({ mat: 'gold', prof: 'round', bw: .5, grp: 'talons', shapes: [-1, 1].flatMap(s => [C([24 + s * 2.8, 31.4], [24 + s * 2, 34.2], .7), C([24 + s * 4.2, 31.6], [24 + s * 4.6, 34.4], .7), C([24 + s * 5.6, 31.4], [24 + s * 7, 33.6], .7)]) });
+  F.add({ mat: fe, prof: 'round', bw: 1.8, grp: 'head', shapes: [E([24, 10.8], 4.2, 3.8)] });
+  F.add({ mat: fe, prof: 'ridge', grp: 'crest', shapes: [spike([22.4, 8], -Math.PI / 2 - .5, 3, .8), spike([24, 7.4], -Math.PI / 2, 3.2, .8), spike([25.6, 8], -Math.PI / 2 + .5, 3, .8)] });
+  if (!n) {
+    F.add({ mat: 'iron', prof: 'bevel', bw: .8, grp: 'beak', shapes: [P([[22.4, 12], [25.6, 12], [25, 15], [24, 17], [23, 15]])] });
+    F.add({ mat: 'gold', prof: 'flat', grp: 'cere', noShadow: true, shapes: [C([22.8, 12.2], [25.2, 12.2], .5)] });
+    F.add({ mat: 'dark', prof: 'flat', grp: 'brow', noShadow: true, noOutline: true, shapes: [C([20.4, 9.4], [23, 10.4], .45), C([25, 10.4], [27.6, 9.4], .45)] });
+    anchors.eyes = [[22, 10.8, EYE.gold], [26, 10.8, EYE.gold]];
+  }
+  const edge = [[29, 15], [37, 4 + fl], [45, 5 + fl], [47, 12 + fl]].map(([x, y], i) => [x, y + (i % 2 ? 1.2 : -.6)]);
+  F.add({ mat: 'storm', prof: 'flat', grp: 'bolts', noShadow: true, noOutline: true, shapes: bolt(f ? edge.map(([x, y]) => [48 - x, y]) : edge), tex: () => .5 });
+}
+// Mother Anvil 48x40 (a 3x2 lair): a black-iron anvil the size of a cart on four stubby legs, the Anvil Heart glowing in a barred
+// window in its waist (2 frames: it breathes), ember eyes under its face, the Worldforge Hammer raised in one iron arm
+function motherAnvil(F, st) {
+  const { dir, f, gT, anchors, relic } = st, e = dir === 'e', n = dir === 'n', m = 'blackiron', hr = f ? 3.6 : 3.1;
+  anchors.halo = true;
+  const face = q => (q.y <= 8 ? 1.4 : q.y === 9 ? .6 : (q.x * 3 + q.y) % 13 === 0 ? -.8 : 0);
+  const heart = (c, w0) => {
+    F.add({ mat: 'dark', prof: 'flat', grp: 'chamber', shapes: [RECT(c - w0 - .6, 13.2, c + w0 + .6, 21.6)] });
+    F.add({ mat: gT >= 3 ? 'radiant' : 'ember', prof: 'round', bw: 2, grp: 'heart', shapes: [O([c, 17.4], hr)], tex: () => (f ? .5 : 0) });
+  };
+  const bars = (c, w0) => F.add({ mat: 'iron', prof: 'round', bw: .4, grp: 'bars', shapes: [-1, 0, 1].map(i => C([c + i * w0 * .55, 13.8], [c + i * w0 * .55, 21], .5)) });
+  if (e) {
+    F.add({ mat: m, prof: 'round', bw: 1, grp: 'legsF', tex: FAR, shapes: [C([15, 27], [13.6, 38.4], 2.2, 1.8), C([31, 27], [32.4, 38.4], 2.2, 1.8)] });
+    heart(23, 5);
+    F.add({ mat: m, prof: 'bevel', bw: 1.6, grp: 'body', shapes: [P([[4, 7], [38, 7], [47, 9], [38, 12], [34, 12.6], [32, 21], [37, 23], [38, 28], [8, 28], [9, 23], [14, 21], [12, 12.6], [4, 12]])], cuts: [RECT(18, 13.8, 28, 21)], tex: face });
+    bars(23, 5);
+    F.add({ mat: m, prof: 'round', bw: 1.2, grp: 'legs', shapes: [C([12, 27], [10.6, 38.6], 2.4, 2), C([34, 27], [35.4, 38.6], 2.4, 2)] });
+    F.add({ mat: 'ember', prof: 'flat', grp: 'eye', noShadow: true, noOutline: true, shapes: [C([37.6, 10.6], [41, 10], .5)], tex: () => .3 });
+    if (gT >= 1) F.add({ mat: 'ember', prof: 'flat', grp: 'seams', noShadow: true, noOutline: true, shapes: [C([10, 26.4], [18, 25.6], .4), C([28, 25.6], [36, 26.4], .4)].concat(gT >= 3 ? [C([8, 9.6], [14, 10.6], .4), C([26, 10.6], [32, 9.6], .4)] : []), tex: () => -1 });
+    if (relic) { F.add({ mat: m, prof: 'round', bw: 1, grp: 'arm', shapes: [C([11, 12], [7, 4.6], 1.8, 1.4)] }); F.add({ mat: 'iron', prof: 'bevel', bw: 1, grp: 'hammer', relic: true, shapes: [RECT(1, .4, 12.4, 5.4)], tex: q => (q.x === 6 ? { m: 'ember', dd: -.6 } : 0) }); anchors.glint = [2.4, 1.4]; }
+    return;
+  }
+  F.add({ mat: m, prof: 'round', bw: 1, grp: 'legsF', tex: FAR, shapes: [C([17, 27], [16.4, 38], 2, 1.7), C([31, 27], [31.6, 38], 2, 1.7)] });
+  if (!n) heart(24, 6.4);
+  F.add({ mat: m, prof: 'bevel', bw: 1.6, grp: 'body', shapes: [P([[6, 7], [42, 7], [44, 8.4], [43, 12], [36, 12], [34, 21], [39, 23], [40, 28], [8, 28], [9, 23], [14, 21], [12, 12], [6, 12]]), P([[6, 7.6], [.6, 9.6], [6, 11.6]])], cuts: n ? [] : [RECT(17.6, 13.8, 30.4, 21)], tex: face });
+  if (!n) bars(24, 6.4);
+  F.add({ mat: m, prof: 'round', bw: 1.2, grp: 'legs', shapes: [C([12, 27], [9.6, 38.6], 2.4, 2), C([36, 27], [38.4, 38.6], 2.4, 2)] });
+  if (gT >= 1) F.add({ mat: 'ember', prof: 'flat', grp: 'seams', noShadow: true, noOutline: true, shapes: [C([9, 26.4], [17, 25.6], .4), C([31, 25.6], [39, 26.4], .4)].concat(gT >= 3 ? [C([8, 10.8], [13, 11.4], .4), C([35, 11.4], [41, 10.8], .4)] : []), tex: () => -1 });
+  if (!n) F.add({ mat: 'ember', prof: 'flat', grp: 'eyes', noShadow: true, noOutline: true, shapes: [C([16.4, 9.8], [20, 10.6], .5), C([28, 10.6], [31.6, 9.8], .5)], tex: () => .3 });
+  if (relic) { F.add({ mat: m, prof: 'round', bw: 1, grp: 'arm', shapes: [C([39, 12], [43, 4.6], 1.8, 1.4)] }); F.add({ mat: 'iron', prof: 'bevel', bw: 1, grp: 'hammer', relic: true, shapes: [RECT(38, .4, 47.4, 5.4)], tex: q => (q.x === 43 ? { m: 'ember', dd: -.6 } : 0) }); anchors.glint = [39.4, 1.4]; }
+}
+// the Rime-Abbot 32x48 (a 3x2 lair): Brother Aurel, tall and frozen: a blue-white face under the Hushweave Cowl (it stirs: 2
+// frames), a beard of icicles, a slate habit rimed with frost and frozen at the hem, the Rime Crozier in his hand, ice at his feet
+function rimeAbbot(F, st) {
+  const { dir, f, gT, anchors, relic } = st, e = dir === 'e', n = dir === 'n', sw = f ? .5 : -.5, robe = gT >= 3 ? 'dark' : 'w.drowned';
+  anchors.halo = true;
+  const rime = q => (hash(q.x, q.y, 23) < .07 + Math.max(0, q.y - 30) * .006 ? { m: 'w.rimefur', dd: .4 } : q.y > 42 ? { m: 'w.ice', dd: (q.x + q.y) % 2 ? -.3 : .3 } : q.x % 3 === 0 ? -1 : 0);
+  const sx = e ? 23 : n ? 7.4 : 24.6;
+  F.add({ mat: 'w.ice', prof: 'flat', grp: 'pool', noOutline: true, noShadow: true, shapes: [E([16, 46.2], 12.6, 1.8)], tex: q => ((q.x * 3 + q.y) % 5 === 0 ? .8 : 0) });
+  const crozier = () => {
+    F.add({ mat: 'silver', prof: 'round', bw: .5, grp: 'crozier', relic: true, shapes: [C([sx, 46], [sx, 6.4], .8)], tex: q => (q.y % 6 === 0 ? { m: 'w.glacier', dd: .4 } : 0) });
+    if (n) return;
+    F.add({ mat: 'w.glacier', prof: 'round', bw: .6, grp: 'crook', relic: true, shapes: [C([sx, 6.4], [sx + 2.4, 3], .8), C([sx + 2.4, 3], [sx + 4.4, 5], .7)] });
+    F.add({ mat: 'frost', prof: 'round', bw: .8, grp: 'orb', relic: true, noShadow: true, shapes: [O([sx + 1.8, 6.4], 1.3)], tex: () => (f ? .5 : 0) });
+    anchors.glint = [sx - .4, 9];
+  };
+  if (relic && n) crozier();
+  F.add({ mat: robe, prof: 'round', bw: 2.6, grp: 'robe', shapes: [P(e ? [[12.6, 15], [19.6, 15], [22.4 + sw, 45.4], [19, 46.4], [14, 45.6], [9.6, 46.4]] : [[10.4, 15], [21.6, 15], [26 + sw, 45.6], [22, 46.6], [16, 45.8], [10, 46.6], [6 - sw, 45.6]])], tex: rime });
+  F.add({ mat: 'w.glacier', prof: 'ridge', grp: 'hem', shapes: (e ? [11, 14, 17, 20] : [8, 11, 14, 17, 20, 23]).map((x, i) => spike([x + .5, 45.2], Math.PI / 2, 1.6 + (i % 2) * .6, .7)) });
+  if (!n) F.add({ mat: 'w.habit', prof: 'round', bw: 1, grp: 'scapular', shapes: [e ? RECT(17.4, 17, 20.2, 44.4) : RECT(13.8, 17, 18.2, 44.6)], tex: rime });
+  F.add({ mat: 'string', prof: 'round', bw: .4, grp: 'belt', shapes: [e ? C([12.8, 27.4], [21, 27.4], .55) : C([10.6, 27.4], [21.4, 27.4], .55), C(e ? [13.4, 27.6] : [12, 27.6], e ? [13, 33] : [11.6, 33.4], .45)] });
+  F.add({ mat: robe, prof: 'round', bw: 1.6, grp: 'sleeves', shapes: e ? [C([16.2, 17], [21.4, 26], 2.2, 2.8)] : [C([10.6, 17], [8.4, 27.4], 2.2, 3), C([21.4, 17], [23.4, 26.2], 2.2, 2.8)], tex: rime });
+  F.add({ mat: 'w.rimeskin', prof: 'round', bw: .8, grp: 'hands', shapes: e ? [O([sx, 27], 1.6)] : n ? [O([8.4, 29.2], 1.5), O([23.6, 28], 1.5)] : [O([8.4, 29.2], 1.5), O([sx, 27.2], 1.6)] });
+  if (relic) { // the Hushweave Cowl, grey and faintly moving
+    F.add({ mat: 'w.habit', prof: 'round', bw: 2, grp: 'cowl', relic: true, shapes: [e ? E([16.4, 11.4], 5.4, 6) : E([16, 11.4], 5.8, 6.2), e ? P([[12.4, 7], [14, 2.8], [17.4, 6]]) : P([[13.6, 6.4], [16.6, 2.6], [18.8, 7]]),
+      P(e ? [[11.6, 14.4], [20.6, 14.4], [22 + sw, 20], [16, 21.2], [10.6, 20]] : [[9.6, 14.4], [22.4, 14.4], [24.2 + sw, 20], [16, 21.4], [7.8 - sw, 20]])],
+      tex: q => ((((q.x + q.y + f * 2) >> 1) % 3 === 0 ? -1 : 0) + ((q.x * 5 + q.y * 3) % 13 === 0 ? .8 : 0)) });
+    anchors.glint2 = [e ? 14 : 12.4, 7];
+  } else F.add({ mat: 'w.rimeskin', prof: 'round', bw: 2, grp: 'head', shapes: [e ? E([17, 11.6], 3.6, 4) : E([16, 11.6], 3.8, 4.2)] });
+  if (!n) {
+    if (relic) F.add({ mat: 'dark', prof: 'flat', grp: 'hollow', noShadow: true, shapes: [e ? E([19, 12.8], 2.4, 3.6) : E([16, 12.8], 3.4, 3.8)] });
+    F.add({ mat: 'w.rimeskin', prof: 'round', bw: 1.2, grp: 'face', shapes: [e ? E([19.6, 13.2], 1.8, 2.8) : E([16, 13.4], 2.6, 3)] });
+    F.add({ mat: 'dark', prof: 'flat', grp: 'brow', noShadow: true, noOutline: true, shapes: [e ? C([18.8, 11.6], [21, 11.8], .45) : C([13.8, 11.6], [18.2, 11.6], .45)] });
+    F.add({ mat: 'w.glacier', prof: 'bevel', bw: .5, grp: 'beard', shapes: (e ? [[19.4, 3.4], [20.8, 4.6], [21.8, 2.6]] : [[13.8, 3], [15, 4.6], [16.2, 5.6], [17.4, 4.4], [18.4, 2.8]]).map(([x, l]) => P([[x - .8, 15.6], [x + .8, 15.6], [x, 15.8 + l]])) });
+    anchors.eyes = e ? [[20.6, 12.6, EYE.frost]] : [[14.8, 12.8, EYE.frost], [17.2, 12.8, EYE.frost]];
+  }
+  if (relic && !n) crozier();
+  F.add({ mat: 'frost', prof: 'flat', grp: 'motes', noShadow: true, noOutline: true, shapes: (f ? [[4, 20], [28, 30], [6, 38]] : [[5, 26], [27, 22], [29, 40]]).map(([x, y]) => O([x, y], .5)), tex: () => -.5 });
+}
+Object.assign(BEASTS, { 'rime-wolf': rimeWolf, rockling, 'forge-spark': forgeSpark, 'peak-troll': (F, st) => peakTroll(F, st), 'old-horn': (F, st) => peakTroll(F, st, { k: 4 / 3, horn: 1 }),
+  'thunder-roc': thunderRoc, 'mother-anvil': motherAnvil, 'rime-abbot': rimeAbbot });
+// the Ironspire beasts and lairs draw their own sprites whatever FOE_ART says, and carry their relics by default
+const IRON_BEASTS = new Set(['rime-wolf', 'rockling', 'forge-spark', 'peak-troll', 'old-horn', 'thunder-roc', 'mother-anvil', 'rime-abbot']);
+const IRON_BEAST_RELIC = { 'old-horn': 'trollhide-mantle', 'thunder-roc': 'roc-feather-cloak', 'mother-anvil': 'worldforge-hammer', 'rime-abbot': 'rime-crozier' };
+
 function beastSheet(build, w, h, { gT = 0, relic = null } = {}) {
   const out = new ImageData(w * 2, h * 4), d = out.data;
   ['s', 'n', 'e', 'w'].forEach((row, ri) => {
@@ -791,28 +1066,34 @@ function beastSheet(build, w, h, { gT = 0, relic = null } = {}) {
    ===================================================================== */
 export const OBJECT_KINDS = Object.freeze(['chest', 'hearth', 'gate', 'chain', 'crownwall', 'thornwall', 'bramble', 'boulder', 'ford-ice',
   'pedestal', 'board', 'sign', 'bellframe', 'lookout', 'rope', 'deer', 'ichor', 'door', 'table', 'tally-seal', 'barred-gate', 'rot-knot', 'stream',
-  'dune-glass', 'mirage', 'quicksand', 'vault-seal', 'glass-spire', 'vault-door']);
+  'dune-glass', 'mirage', 'quicksand', 'vault-seal', 'glass-spire', 'vault-door',
+  'chasm', 'ice', 'rune-seal', 'drift', 'prayer-flags', 'hush', 'ice-blocks', 'frozen-door']);
 // states each kind draws (the first is the default); any other state string falls back to the default
 export const OBJECT_STATES = Object.freeze({
   chest: ['closed', 'open', 'locked', 'sealed'], hearth: ['lit', 'cold'], gate: ['closed', 'open'], chain: ['closed', 'post', 'open'],
   crownwall: ['closed', 'open'], thornwall: ['closed', 'open'], bramble: ['closed', 'open'], boulder: ['closed', 'open'],
-  'ford-ice': ['ice', 'stream', 'roots'], pedestal: ['unlit', 'lit'], board: ['bounties', 'ladder'], sign: ['post', 'stone', 'plaque', 'cradle', 'cradle-full', 'monolith', 'spire'],
+  'ford-ice': ['ice', 'stream', 'roots'], pedestal: ['unlit', 'lit'], board: ['bounties', 'ladder'], sign: ['post', 'stone', 'plaque', 'cradle', 'cradle-full', 'monolith', 'spire', 'bell-rope', 'throne', 'frozen-monk', 'altar'],
   bellframe: ['empty', 'rung'], lookout: ['closed'], rope: ['closed', 'open'], deer: ['graze', 'alert'], ichor: ['closed'],
   door: ['closed', 'open'], table: ['closed'], 'tally-seal': ['closed', 'open'], 'barred-gate': ['closed', 'open'], 'rot-knot': ['closed', 'open'], stream: ['closed'],
   'dune-glass': ['closed', 'open'], mirage: ['closed', 'open'], quicksand: ['closed', 'open'], 'vault-seal': ['closed', 'open'], 'glass-spire': ['closed'], 'vault-door': ['closed', 'open'],
+  chasm: ['closed', 'open'], ice: ['closed', 'open'], 'rune-seal': ['closed', 'open'], drift: ['closed', 'open'], 'prayer-flags': ['closed'], hush: ['closed'],
+  'ice-blocks': ['closed', 'open'], 'frozen-door': ['closed', 'open'],
 });
 // hearthfire id -> look (pass { id } to objectSprite('hearth', state, { id }))
 export const HEARTH_LOOKS = Object.freeze({
   'hearthstone-keep': 'hall', 'milestone-fire': 'ring', thornhollow: 'ring', 'den-mouth': 'ring', 'mossfall-cairn': 'cairn', 'mosswatch-fire': 'brazier',
   'hindwood-cairn': 'cairn', 'fawnrest-stone': 'stone', 'eldergrove-hearth': 'ring', 'last-green-coal': 'coal',
   waystone: 'sandring', 'spire-hearth': 'sunbrazier', 'dust-cairn': 'sandcairn', pithead: 'brazier', 'shaft-lamp': 'lamp', 'well-fire': 'sandring', 'last-watchfire': 'watch',
+  'pass-shrine': 'shrine', 'veil-hearth': 'cloister', 'stair-cairn': 'snowcairn', 'thanes-hearth': 'dwarfhall', 'deeps-forge': 'furnace', 'stormwatch-fire': 'beacon', 'frost-cairn': 'snowcairn',
 });
 const OBJ_SIZE = { gate: [16, 24], crownwall: [16, 24], thornwall: [16, 24], pedestal: [16, 24], board: [16, 24], bellframe: [16, 24], lookout: [16, 32], door: [16, 24], 'barred-gate': [16, 24] };
 Object.assign(OBJ_SIZE, { 'dune-glass': [16, 24], 'vault-seal': [16, 24], 'glass-spire': [16, 24], 'vault-door': [16, 24] });
-const OBJ_STATE_SIZE = { 'sign:monolith': [16, 24], 'sign:spire': [16, 32] };
-const TALL_HEARTH = new Set(['hall', 'sunbrazier', 'lamp', 'watch']);
+Object.assign(OBJ_SIZE, { ice: [16, 24], 'rune-seal': [16, 24], 'prayer-flags': [16, 24], hush: [112, 64], 'ice-blocks': [16, 24], 'frozen-door': [16, 24] });
+const OBJ_STATE_SIZE = { 'sign:monolith': [16, 24], 'sign:spire': [16, 32], 'sign:bell-rope': [16, 24], 'sign:throne': [16, 24], 'sign:frozen-monk': [16, 24] };
+const TALL_HEARTH = new Set(['hall', 'sunbrazier', 'lamp', 'watch', 'shrine', 'cloister', 'dwarfhall', 'furnace', 'beacon']);
 const ANIM = new Set(['crownwall', 'ichor', 'stream']);
 const SUN_ANIM = new Set(['mirage', 'quicksand', 'vault-seal']); // two frames while shut
+const IRON_ANIM = new Set(['chasm', 'rune-seal', 'drift', 'prayer-flags', 'hush']); // M5: two frames while shut
 const flame = (F, cx, base, f, s = 1, mat = 'ember') => {
   const fl = f ? [[cx + .6 * s, base - 6.4 * s], [cx + 2.6 * s, base - 2.6 * s], [cx + 2.2 * s, base], [cx - 2.2 * s, base], [cx - 2.4 * s, base - 2.4 * s]] : [[cx - .6 * s, base - 6.8 * s], [cx + 2.4 * s, base - 2.2 * s], [cx + 2.2 * s, base], [cx - 2.2 * s, base], [cx - 2.6 * s, base - 3 * s]];
   F.add({ mat, prof: 'round', bw: 1.6 * s, grp: 'flame', noShadow: true, shapes: [P(fl)], tex: q => (q.y > base - 2.4 * s ? .9 : .2) + (f ? .3 : 0) });
@@ -868,6 +1149,56 @@ function hearthParts(F, look, lit, f) {
     F.add({ mat: 'iron', prof: 'bevel', bw: .8, grp: 'lamp', shapes: [RECT(7.6, 8.8, 13.6, 15.6), P([[7, 9.2], [10.6, 7.4], [14.2, 9.2]]), RECT(8.4, 15.4, 12.8, 16.8)] });
     F.add({ mat: lit ? 'amber' : 'dark', prof: 'flat', grp: 'glass', noShadow: true, shapes: [RECT(8.6, 10, 12.6, 14.6)], tex: () => (lit ? (f ? .6 : 0) : -1) });
     return lit ? 'halo' : undefined;
+  }
+  // M5: the Ironspire Hearthfires
+  if (look === 'shrine') { // the Pass Shrine: a way-shrine of fitted stone under a slate roof, a coal in its niche (16 x 24)
+    F.add({ mat: 'w.crag', prof: 'bevel', bw: 1, grp: 'base', shapes: [RECT(2.4, 17, 13.6, 23.6)], tex: q => (q.y === 20 ? -1 : 0) });
+    F.add({ mat: 'w.crag', prof: 'round', bw: 1.2, grp: 'sides', shapes: [RECT(2.4, 8.4, 4.8, 17.2), RECT(11.2, 8.4, 13.6, 17.2)] });
+    F.add({ mat: 'dark', prof: 'flat', grp: 'niche', shapes: [RECT(4.8, 9, 11.2, 17)] });
+    F.add({ mat: 'w.slate', prof: 'bevel', bw: 1, grp: 'roof', shapes: [P([[.4, 9.4], [8, 2.6], [15.6, 9.4], [15.6, 10.8], [.4, 10.8]])], tex: q => (q.y % 2 ? -.6 : 0) });
+    F.add({ mat: 'w.snow', prof: 'round', bw: .8, grp: 'snow', shapes: [P([[2, 8.2], [8, 2.6], [14, 8.2], [8, 4.6]])] });
+    if (lit) flame(F, 8, 16.4, f, .75); else F.add({ mat: 'rot', prof: 'round', bw: .6, grp: 'coal', shapes: [E([8, 16.2], 2, .9)] });
+    return;
+  }
+  if (look === 'cloister') { // the Cloister Fire: a bronze fire-bowl on a pale stone plinth (16 x 24)
+    F.add({ mat: 'w.limestone', prof: 'bevel', bw: 1, grp: 'plinth', shapes: [RECT(3, 18, 13, 23.6)] });
+    F.add({ mat: 'w.limestone', prof: 'round', bw: 1.6, grp: 'pillar', shapes: [RECT(5.6, 10.6, 10.4, 18.4)], tex: q => (q.x === 7 ? .4 : 0) });
+    F.add({ mat: 'bronze', prof: 'round', bw: 1.2, grp: 'bowl', shapes: [P([[2.2, 7.4], [13.8, 7.4], [11.6, 11.2], [4.4, 11.2]])] });
+    if (lit) flame(F, 8, 7.8, f, 1.1); else F.add({ mat: 'rot', prof: 'round', bw: .6, grp: 'char', shapes: [E([8, 7.6], 3.8, 1)] });
+    return;
+  }
+  if (look === 'snowcairn') { // the Stair Cairn and the Frost Cairn: grey stones heaped, snow on their shoulders
+    F.add({ mat: 'w.crag', prof: 'round', bw: 1.6, grp: 'stones', shapes: [E([8, 13.2], 6.4, 2.6), E([5.6, 10.6], 3, 2), E([10.6, 10.8], 3, 2), E([8, 8.6], 3.2, 1.9)] });
+    F.add({ mat: 'w.snow', prof: 'round', bw: .8, grp: 'snow', shapes: [E([5, 9.4], 2, .8), E([11.2, 9.6], 1.8, .7), E([3.6, 12], 1.4, .6)] });
+    if (lit) flame(F, 8, 7.8, f, .9); else F.add({ mat: 'rot', prof: 'round', bw: .6, grp: 'char', shapes: [E([8, 7.6], 2.2, .9)] });
+    return;
+  }
+  if (look === 'dwarfhall') { // the Thane's Hearth: a granite mantel banded with iron, a rune over it, fire-dogs (16 x 24)
+    F.add({ mat: 'w.hewn', prof: 'bevel', bw: 1.2, grp: 'mantel', shapes: [RECT(.4, 3, 15.6, 23.6)], cuts: [RECT(3.2, 9.4, 12.8, 23.8)], tex: q => (q.y % 5 === 0 ? -.8 : 0) });
+    F.add({ mat: 'iron', prof: 'bevel', bw: .6, grp: 'band', shapes: [RECT(.2, 6.2, 15.8, 8)] });
+    F.add({ mat: 'dark', prof: 'flat', grp: 'back', shapes: [RECT(3.2, 9.4, 12.8, 23.6)] });
+    F.add({ mat: lit ? 'amber' : 'iron', prof: 'flat', grp: 'rune', noShadow: true, noOutline: true, shapes: [C([8, 3.6], [8, 5.6], .45), C([6.4, 4.2], [9.6, 5], .4)], tex: () => (lit ? -.8 : -1) });
+    F.add({ mat: 'blackiron', prof: 'round', bw: .6, grp: 'dogs', shapes: [C([4.6, 22.8], [4.6, 18.4], .6), C([11.4, 22.8], [11.4, 18.4], .6)] });
+    logs(F, 8, 21.8, !lit);
+    if (lit) flame(F, 8, 21.2, f, 1.2); else F.add({ mat: 'clothGrey', prof: 'round', bw: .8, grp: 'ash', shapes: [E([8, 22.4], 3.6, 1.2)] });
+    return lit ? 'halo' : undefined;
+  }
+  if (look === 'furnace') { // the Deeps Furnace: a brick furnace, its arch dark and full of ash until it is lit again (16 x 24)
+    F.add({ mat: 'w.brick', prof: 'round', bw: 2, grp: 'dome', shapes: [P([[.8, 23.6], [1, 11], [3, 6.6], [8, 5], [13, 6.6], [15, 11], [15.2, 23.6]]), RECT(5.8, .8, 10.2, 6)], tex: q => ((q.y & 1) === 0 || ((q.x + ((q.y >> 1) & 1) * 2) & 3) === 0 ? -1.2 : q.y < 9 ? -.6 : 0) });
+    F.add({ mat: 'w.char', prof: 'bevel', bw: .6, grp: 'lip', shapes: [RECT(5.2, .2, 10.8, 1.8)] });
+    F.add({ mat: 'dark', prof: 'flat', grp: 'mouth', shapes: [P([[4, 23.6], [4, 16], [5.6, 13.2], [8, 12.4], [10.4, 13.2], [12, 16], [12, 23.6]])] });
+    F.add({ mat: 'iron', prof: 'round', bw: .4, grp: 'grate', noShadow: true, shapes: [C([4, 20.6], [12, 20.6], .4)] });
+    if (lit) { flame(F, 8, 22.8, f, 1); return 'halo'; }
+    F.add({ mat: 'clothGrey', prof: 'round', bw: .8, grp: 'ash', shapes: [E([8, 22.6], 3.4, 1)] });
+    return;
+  }
+  if (look === 'beacon') { // the Watch Fire: an iron fire-basket on a strapped timber post (16 x 24)
+    F.add({ mat: 'w.timber', prof: 'round', bw: 1, grp: 'post', shapes: [RECT(6.4, 9.6, 9.6, 23.6), P([[4, 23.6], [6.4, 19], [9.6, 19], [12, 23.6]])], tex: q => (q.y % 4 === 0 ? -1 : 0) });
+    F.add({ mat: 'iron', prof: 'round', bw: .5, grp: 'straps', noShadow: true, shapes: [RECT(6.2, 13, 9.8, 14), RECT(6.2, 17, 9.8, 18)] });
+    F.add({ mat: 'blackiron', prof: 'round', bw: .6, grp: 'basket', shapes: [C([2.8, 4.2], [5.2, 9.8], .55), C([13.2, 4.2], [10.8, 9.8], .55), C([8, 4.4], [8, 9.8], .5), C([3, 6.6], [13, 6.6], .45), C([4.4, 9.6], [11.6, 9.6], .55)] });
+    logs(F, 8, 8.6, !lit);
+    if (lit) flame(F, 8, 7.6, f, 1.05); else F.add({ mat: 'w.ash', prof: 'round', bw: .6, grp: 'ash', shapes: [E([8, 7.8], 3.4, .9)] });
+    return;
   }
   if (look === 'watch') { // the Last Watchfire: a scorched stone pillar and its iron fire-bowl (16 x 24)
     F.add({ mat: 'w.char', prof: 'round', bw: 1.6, grp: 'pillar', shapes: [RECT(4.6, 10.4, 11.4, 23.6)], tex: q => (q.y % 4 === 0 ? -1 : 0) });
@@ -989,6 +1320,34 @@ function objectParts(F, kind, st, f, o, W, H) {
       if (st === 'spire') { // the Spire: a finger of red rock the city grew round (16 x 32)
         F.add({ mat: 'w.redrock', prof: 'round', bw: 2.6, grp: 'rock', shapes: [P([[2.4, B + .4], [3.6, 16], [5, 6], [7.4, 1], [9.6, 2.2], [11.4, 9], [12.6, 18], [13.6, B + .4]])], tex: q => ((q.y + (q.x >> 2)) % 4 === 0 ? -.8 : 0) });
         F.add({ mat: 'dark', prof: 'flat', grp: 'words', noShadow: true, noOutline: true, shapes: [C([5.4, 26], [10.6, 26], .35), C([6, 28], [10, 28], .35)], tex: () => -1 });
+        return;
+      }
+      if (st === 'bell-rope') { // Peak's Veil's bell rope: down from the tower, a fat red-and-white sally, the tail coiled on the floor
+        F.add({ mat: 'string', prof: 'round', bw: .6, grp: 'rope', shapes: [C([8, -1], [8.2, 18.6], .8), C([8.2, 18.6], [11.6, 21.4], .7), E([7.8, 21.6], 3.4, 1.4)], cuts: [E([7.8, 21.6], 1.6, .5)], tex: q => ((q.y + (q.x & 1)) % 3 === 0 ? -1.2 : 0) });
+        F.add({ mat: 'paintRed', prof: 'round', bw: 1, grp: 'sally', shapes: [C([8.1, 7.6], [8.2, 14.6], 1.9)], tex: q => ((q.y >> 1) % 2 ? { m: 'clothWhite', dd: -.2 } : .2) });
+        return;
+      }
+      if (st === 'altar') { // the drowned chapel's altar: a stone block under a rime-white cloth, frost on its step
+        F.add({ mat: 'w.crag', prof: 'bevel', bw: 1, grp: 'step', shapes: [RECT(.6, 12.4, 15.4, B + .4)] });
+        F.add({ mat: 'w.crag', prof: 'bevel', bw: 1.2, grp: 'block', shapes: [RECT(2, 4.6, 14, 13.4)], tex: q => (q.y === 9 ? -1 : 0) });
+        F.add({ mat: 'clothWhite', prof: 'round', bw: .8, grp: 'cloth', shapes: [P([[1.4, 4], [14.6, 4], [14.6, 6.2], [12.4, 10.4], [11.2, 6.4], [4.8, 6.4], [3.6, 10.4], [1.4, 6.2]])], tex: q => (q.x % 3 === 0 ? -.6 : 0) });
+        F.add({ mat: 'w.ice', prof: 'flat', grp: 'frost', noShadow: true, noOutline: true, shapes: [C([3, 14.2], [7, 14.6], .6), C([10.6, 14.4], [13, 14.2], .5)], tex: () => .6 });
+        return;
+      }
+      if (st === 'throne') { // the Thane's chair: one block of black granite, iron-studded, a new red cushion
+        F.add({ mat: 'blackiron', prof: 'bevel', bw: 1.2, grp: 'back', shapes: [RECT(2.4, 1.4, 13.6, 17)], tex: q => (q.y === 4 || q.x === 8 ? -.8 : 0) });
+        F.add({ mat: 'amber', prof: 'flat', grp: 'rune', noShadow: true, noOutline: true, shapes: [C([8, 5.4], [8, 10.4], .45), C([6, 6.6], [10, 9.2], .42)], tex: () => -1.4 });
+        F.add({ mat: 'blackiron', prof: 'bevel', bw: 1, grp: 'seat', shapes: [RECT(1, 14.6, 15, B + .4)] });
+        F.add({ mat: 'robeRed', prof: 'round', bw: 1.2, grp: 'cushion', shapes: [RECT(2.8, 13.2, 13.2, 16.2)], tex: q => (q.x === 8 ? -.8 : 0) });
+        F.add({ mat: 'steel', prof: 'round', bw: .4, grp: 'studs', noShadow: true, shapes: [O([3.6, 3], .5), O([12.4, 3], .5), O([2.6, 19.4], .5), O([13.4, 19.4], .5)] });
+        return;
+      }
+      if (st === 'frozen-monk') { // a monk of Peak's Veil frozen upright in the ice, hands folded, hood up
+        F.add({ mat: 'w.habit', prof: 'round', bw: 1.4, grp: 'monk', shapes: [P([[4.6, B], [5.2, 12], [6.4, 8.6], [9.6, 8.6], [10.8, 12], [11.4, B]]), O([8, 7], 2.8)], tex: q => (q.y > 18 && q.x % 3 === 0 ? -.8 : 0) });
+        F.add({ mat: 'skinAsh', prof: 'round', bw: .8, grp: 'face', shapes: [E([8, 7.8], 1.7, 1.6)] });
+        F.add({ mat: 'skinAsh', prof: 'round', bw: .6, grp: 'hands', shapes: [E([8, 13.4], 1.8, 1)] });
+        F.add({ mat: 'w.glacier', prof: 'flat', grp: 'ice', noShadow: true, shapes: [P([[1.6, B + .4], [1.8, 5.6], [4.6, 2], [10.4, 1.2], [14, 4.4], [14.4, B + .4]])], cuts: [P([[4.4, B], [5, 12], [6.2, 8.4], [5.8, 5], [8, 3.8], [10.2, 5], [9.8, 8.4], [11, 12], [11.6, B]])], tex: q => ((q.x + q.y) % 6 === 0 ? .4 : -.9) });
+        F.add({ mat: 'w.ice', prof: 'flat', grp: 'glaze', noShadow: true, noOutline: true, shapes: [C([6, 17], [7.2, 11], .5), C([9.6, 5.4], [10.4, 3.6], .45)], tex: () => .4 });
         return;
       }
       if (st === 'stone') { F.add({ mat: 'granite', prof: 'round', bw: 2, grp: 'stone', shapes: [P([[4, 15.4], [4.4, 5], [8, 2.6], [11.6, 5], [12, 15.4]])], tex: q => ((q.x * 3 + q.y) % 11 === 0 ? { m: 'moss', dd: 0 } : 0) }); F.add({ mat: 'dark', prof: 'flat', grp: 'mark', noShadow: true, noOutline: true, shapes: [C([8, 6], [8, 11], .5), C([6.4, 7.6], [9.6, 7.6], .45)] }); return; }
@@ -1125,8 +1484,132 @@ function objectParts(F, kind, st, f, o, W, H) {
     F.add({ mat: 'bronze', prof: 'round', bw: .5, grp: 'rings', shapes: [O([6.4, 15], .9), O([9.6, 15], .9)], cuts: [O([6.4, 15], .4), O([9.6, 15], .4)] });
     return;
   }
+  // M5: the Ironspire's locks and props
+  if (kind === 'chasm') { // a gap in the rock that the way crosses east-west (as P2's maps lay it): the void runs on through it north
+    // and south, the wind coming up it (2 frames). The rock look is 16x25 with its foot 8 px from the bottom, so it reaches 2 px
+    // into the tile above and 7 px into the one below, over the void's lip and far face there. With look 'floes' (Frostmere's)
+    // it is black water and broken floes, one tile. Every piece fills its tile edge to edge, so an area joins east-west. Open,
+    // planks are lashed across it (floes: the floes have jammed together into a crossing).
+    const floes = o.look === 'floes', y0 = floes ? 0 : 2, Y = y => y + y0, open = st === 'open';
+    if (floes) F.add({ mat: 'w.frostwater', prof: 'flat', grp: 'deep', noShadow: true, noOutline: true, lo: 1, hi: 2, shapes: [RECT(-1, -1, 17, H + 1)], tex: q => -2.62 + (hash(q.x, q.y, 61 + f) < .06 ? .8 : 0) });
+    else F.add({ mat: 'dark', prof: 'flat', grp: 'deep', noShadow: true, noOutline: true, lo: 1, hi: 1, shapes: [RECT(-1, -1, 17, H + 1)], tex: () => -3 });
+    if (!open && floes) { // broken floes drifting east (2 frames)
+      const d = f ? 1 : 0, plates = [[[1.2, 3.4], [6.8, 2.6], [8, 5.6], [5.6, 7.4], [1.6, 6.8]], [[9.4, 8.8], [14.4, 8], [15.4, 11.4], [11.2, 13.2], [8.8, 11.8]], [[2.4, 11.2], [5.8, 10.8], [6.2, 13.4], [2.8, 13.8]]];
+      F.add({ mat: 'w.snow', prof: 'bevel', bw: .8, grp: 'floes', shapes: plates.map(pts => P(pts.map(([x, y]) => [x + d, y]))), tex: q => (hash(q.x - d, q.y, 91) < .08 ? -1 : -.3) });
+    }
+    if (!open && !floes) F.add({ mat: 'w.snow', prof: 'flat', grp: 'wind', noShadow: true, noOutline: true, shapes: (f ? [[3, 9, 4], [8.6, 14, 8], [13, 6.4, 1.6]] : [[3.4, 12, 7], [9, 10, 5], [12.6, 15, 10.4]]).map(([x, ya, yb]) => C([x, Y(ya)], [x + .6, Y(yb)], .45)), tex: () => -2.4 });
+    if (open && floes) { // the floes jammed edge to edge into a crossing
+      F.add({ mat: 'w.snow', prof: 'bevel', bw: .9, grp: 'jam', shapes: [P([[-1, 4.4], [6.4, 3.6], [7.4, 9.6], [-1, 10.2]]), P([[7.2, 3.8], [17, 4.6], [17, 10], [8.2, 9.4]]), P([[-1, 10.8], [9.4, 10], [8.6, 15.6], [-1, 15.4]]), P([[10, 10.2], [17, 10.6], [17, 15.4], [9.2, 15.6]])], tex: q => (hash(q.x, q.y, 90) < .1 ? -.8 : -.3) });
+    }
+    if (open && !floes) { // planks lashed across the gap, a rope along each side
+      F.add({ mat: 'wood', prof: 'bevel', bw: .7, grp: 'planks', shapes: [RECT(-1, Y(4.6), 17, Y(7.6)), RECT(-1, Y(8.2), 17, Y(11.2)), RECT(-1, Y(11.8), 17, Y(14.8))], tex: q => ((q.x + (q.y >> 2) * 5) % 9 === 0 ? -1 : 0) });
+      F.add({ mat: 'string', prof: 'round', bw: .4, grp: 'lashing', noShadow: true, shapes: [C([2.2, Y(4.4)], [2.2, Y(15)], .5), C([13.8, Y(4.4)], [13.8, Y(15)], .5), C([-1, Y(3.4)], [17, Y(3.4)], .4)] });
+    }
+    return;
+  }
+  if (kind === 'ice') { // a wall of old blue ice, bubbles frozen in it; it joins its neighbours. Open, it has melted to a pool and shards
+    if (st === 'open') {
+      F.add({ mat: 'w.frostwater', prof: 'flat', grp: 'pool', noShadow: true, shapes: [E([8, B - 1.6], 6.6, 1.8)], tex: q => ((q.x + q.y) % 4 === 0 ? -1.2 : -2) });
+      F.add({ mat: 'w.glacier', prof: 'bevel', bw: .6, grp: 'shards', shapes: [spike([3.2, B - 1.2], -2.4, 2.6, .8), spike([12.8, B - 1], -.8, 2.2, .7)] });
+      return;
+    }
+    F.add({ mat: 'w.glacier', prof: 'round', bw: 3, grp: 'mass', shapes: [P([[-1, B + .5], [-1, 8.6], [1.6, 4.8], [5.2, 3.4], [8.6, 1.6], [12.2, 3], [15.4, 4.8], [17, 8], [17, B + .5]])], tex: q => -1.1 + (q.y > B - 2 ? -.6 : 0) + ((q.x * 2 + q.y) % 11 === 0 ? .6 : 0) });
+    F.add({ mat: 'w.glacier', prof: 'round', bw: 2, grp: 'lumps', shapes: [E([4.4, 15.2], 3.6, 3.4), E([11.6, 10.6], 3.8, 3.4)], tex: () => -.7 });
+    F.add({ mat: 'w.snow', prof: 'flat', grp: 'bubbles', noShadow: true, noOutline: true, shapes: [O([5.5, 9.5], .6), O([10.5, 16.5], .7), O([12.5, 6.5], .5), O([3.5, 18.5], .5)], tex: () => -.2 });
+    F.add({ mat: 'w.ice', prof: 'flat', grp: 'crack', noShadow: true, noOutline: true, shapes: [C([7.5, 4.5], [6, 10.5], .5), C([6, 10.5], [8, 14.5], .5)], tex: () => 1 });
+    F.add({ mat: 'w.snow', prof: 'flat', grp: 'cap', noShadow: true, shapes: [P([[1.4, 5], [5.2, 3.2], [8.6, 1.4], [12.2, 2.8], [15.2, 4.6], [12, 4.2], [8.6, 2.8], [5, 4.4]])], tex: () => .4 });
+    return 'halo';
+  }
+  if (kind === 'rune-seal') { // a door-slab of dwarf granite, its runes cut deep and filled with iron (they glint, then glow, as
+    // they read you); the slabs join in a row. Open, the slab has sunk into the floor and the way is dark
+    F.add({ mat: 'w.hewn', prof: 'bevel', bw: 1, grp: 'lintel', shapes: [RECT(-1, 1.6, 17, 4.6)], tex: q => (q.x === 0 ? -1 : 0) });
+    if (st === 'open') {
+      F.add({ mat: 'dark', prof: 'flat', grp: 'way', shapes: [RECT(-1, 4.6, 17, B + .5)], tex: q => (q.y > 17 ? -1 : 0) });
+      F.add({ mat: 'w.hewn', prof: 'bevel', bw: .7, grp: 'sunk', shapes: [RECT(-1, B - 1.6, 17, B + .5)] });
+      return;
+    }
+    F.add({ mat: 'w.hewn', prof: 'bevel', bw: 1, grp: 'slab', shapes: [RECT(-1, 4.6, 17, B + .5)], tex: q => (q.x === 0 ? { m: 'dark', dd: -1.4 } : q.y % 6 === 5 ? -.5 : 0) });
+    const R = [[[8, 7.4], [8, 19.6]], [[8, 10], [11.4, 7.6]], [[8, 13], [4.6, 15.8]], [[8, 16.4], [11, 18.8]]].map(([a, b]) => C(a, b, .7));
+    F.add({ mat: 'iron', prof: 'round', bw: .5, grp: 'runes', noShadow: true, shapes: R, tex: () => (f ? .6 : 0) });
+    if (f) F.add({ mat: 'amber', prof: 'flat', grp: 'glow', noShadow: true, noOutline: true, shapes: R.map(r => C(r.a, r.b, .3)), tex: () => -1.2 });
+    return 'halo';
+  }
+  if (kind === 'ice-blocks') { // gate look: sledges lashed across the way, stacked with blocks of lake-ice; the pieces join along
+    // the way's width. Open, the sledges are dragged aside: one runner and loose blocks at the edge
+    const ice = q => (hash(q.x, q.y, 310) < .07 ? { m: 'w.snow', dd: -.2 } : (q.x * 2 + q.y) % 9 === 0 ? -.9 : -.4);
+    if (st === 'open') {
+      F.add({ mat: 'wood', prof: 'bevel', bw: .6, grp: 'runner', shapes: [RECT(-1, B - 2.2, 4.4, B - .6)] });
+      F.add({ mat: 'w.ice', prof: 'bevel', bw: 1, grp: 'blocks', shapes: [RECT(-.6, B - 8.4, 3.8, B - 2.2), P([[11.6, B - .6], [12.6, B - 3.8], [15.6, B - 3.2], [15.2, B - .4]])], tex: ice });
+      return;
+    }
+    F.add({ mat: 'wood', prof: 'bevel', bw: .7, grp: 'runners', shapes: [RECT(-1, B - 2.4, 17, B - .6), RECT(-1, 13.2, 17, 14.6)], tex: q => (q.x % 5 === 0 ? -1 : 0) });
+    F.add({ mat: 'w.ice', prof: 'bevel', bw: 1.2, grp: 'blocks', shapes: [RECT(-.4, 14.6, 7.6, B - 2.4), RECT(8.2, 14.6, 16.4, B - 2.4), RECT(-.2, 7.2, 5.4, 13.2), RECT(5.8, 6.6, 11, 13.2), RECT(11.4, 7.6, 16.2, 13.2), RECT(3.6, 1.8, 10.6, 6.6)], tex: ice });
+    F.add({ mat: 'w.snow', prof: 'round', bw: .8, grp: 'caps', shapes: [E([7.1, 2.4], 3.6, 1), E([2.6, 7.6], 2.4, .8), E([13.8, 8], 2.2, .8)], tex: () => .4 });
+    F.add({ mat: 'string', prof: 'round', bw: .4, grp: 'lashing', noShadow: true, shapes: [C([-1, 10.6], [17, 10.2], .45), C([2, 20.4], [14.4, 15.6], .4)] });
+    return 'halo';
+  }
+  if (kind === 'frozen-door') { // gate look: a chapel door of black oak under a skin of old ice, iron-banded, icicles hanging from the
+    // lintel; the leaves join east-west into one door. Open, the ice has shattered and the doorway stands dark, shards on the sill
+    F.add({ mat: 'granite', prof: 'bevel', bw: 1, grp: 'lintel', shapes: [RECT(-1, 1.4, 17, 4.4)], tex: q => (q.y === 2 ? .6 : 0) });
+    if (st === 'open') {
+      F.add({ mat: 'dark', prof: 'flat', grp: 'way', shapes: [RECT(-1, 4.4, 17, B + .5)], tex: q => (q.y > 18 ? -.6 : 0) });
+      F.add({ mat: 'w.glacier', prof: 'bevel', bw: .5, grp: 'shards', shapes: [spike([2.4, B - .4], -2.2, 3, .9), spike([7.6, B - .2], -1.3, 2.4, .8), spike([13.4, B - .4], -.8, 3.2, .9)] });
+      F.add({ mat: 'w.glacier', prof: 'bevel', bw: .4, grp: 'icicles', shapes: [3, 9, 14].map((x, i) => P([[x - .8, 4.2], [x + .8, 4.2], [x, 5.8 + i % 2]])) });
+      return;
+    }
+    F.add({ mat: 'bogwood', prof: 'bevel', bw: .8, grp: 'leaves', shapes: [RECT(-1, 4.4, 17, B + .5)], tex: q => (q.x % 4 === 3 ? -1.2 : 0) });
+    F.add({ mat: 'iron', prof: 'round', bw: .5, grp: 'bands', shapes: [C([-1, 8.6], [17, 8.6], .7), C([-1, 17.4], [17, 17.4], .7)] });
+    F.add({ mat: 'w.glacier', prof: 'bevel', bw: 1.4, grp: 'glaze', shapes: [P([[-1, 11], [4, 9.6], [9, 11.2], [13.4, 9.8], [17, 10.6], [17, B + .5], [-1, B + .5]]), E([12, 6.8], 2.6, 1.8)], tex: q => (hash(q.x, q.y, 320) < .1 ? { m: 'w.snow', dd: -.4 } : (q.x + q.y * 2) % 11 === 0 ? .3 : -1) });
+    F.add({ mat: 'w.glacier', prof: 'bevel', bw: .5, grp: 'icicles', shapes: [1.6, 4.6, 7.6, 10.6, 13.6].map((x, i) => P([[x - .9, 4.2], [x + .9, 4.2], [x, 7 + (i % 3) * 1.4]])) });
+    F.add({ mat: 'w.snow', prof: 'flat', grp: 'rime', noShadow: true, noOutline: true, shapes: [RECT(-1, B - 1.4, 17, B + .5)], tex: q => (q.x % 3 ? -.6 : .2) });
+    return 'halo';
+  }
+  if (kind === 'drift') { // on a drift's snow: a wind-cut cornice and glitter; open, a trench of firm boot prints
+    if (st === 'open') {
+      F.add({ mat: 'w.snow', prof: 'flat', grp: 'trench', noShadow: true, noOutline: true, shapes: [RECT(4.6, -1, 11.4, 17)], tex: q => (q.x === 5 || q.x === 10 ? -.2 : -1.3) + bayer(q.x, q.y) * .3 });
+      F.add({ mat: 'w.snow', prof: 'flat', grp: 'prints', noShadow: true, noOutline: true, shapes: [[6.4, 2], [9.4, 6], [6.4, 10], [9.4, 14]].map(([x, y]) => E([x, y], .9, 1.4)), tex: () => -2 });
+      return;
+    }
+    F.add({ mat: 'w.snow', prof: 'round', bw: 1.4, grp: 'cornice', shapes: [P([[-1, 9.4], [3, 6.6], [7.4, 5.8], [11.6, 6.8], [17, 9], [17, 10.4], [12, 9.2], [7.4, 8.6], [3, 9.4], [-1, 11]])], tex: q => (q.y < 7.6 ? .8 : -.4) });
+    F.add({ mat: 'w.snow', prof: 'flat', grp: 'lee', noShadow: true, noOutline: true, shapes: [P([[-1, 11], [3, 9.4], [7.4, 8.6], [12, 9.2], [17, 10.4], [17, 12], [11, 11], [6, 11.4], [-1, 12.6]])], tex: () => -1.6 });
+    F.add({ mat: 'w.snow', prof: 'flat', grp: 'glitter', noShadow: true, noOutline: true, shapes: [f ? O([4.5, 3.5], .6) : O([12.5, 13.5], .6), f ? O([13.5, 4.5], .5) : O([2.5, 14.5], .5)], tex: () => 2 });
+    return;
+  }
+  if (kind === 'prayer-flags') { // a pole with a line of prayer flags run down to a stake, snapping in the wind (2 frames)
+    F.add({ mat: 'w.timber', prof: 'round', bw: .6, grp: 'pole', shapes: [C([3.4, B + .2], [3.4, 1.6], .75), O([3.4, 1.2], .9)] });
+    F.add({ mat: 'string', prof: 'flat', grp: 'cord', noShadow: true, noOutline: true, shapes: [C([3.8, 2.2], [9, 10.6], .35), C([9, 10.6], [14.6, B - 1.8], .35)] });
+    F.add({ mat: 'wood', prof: 'round', bw: .5, grp: 'stake', shapes: [C([14.8, B - 2.4], [14.8, B + .2], .6)] });
+    ['paintRed', 'clothWhite', 'clothBlue', 'gold', 'hoodGreen'].forEach((m, i) => {
+      const t = (i + .5) / 5.2, x = 3.8 + t * 10.8, y = 2.2 + t * (B - 4) + Math.sin(t * Math.PI) * 1, fl = (f + i) % 2 ? 1 : 0;
+      F.add({ mat: m, prof: 'flat', grp: 'flag' + i, shapes: [P([[x - 1.2, y], [x + 1.3, y + .5], [x + 1.3 + fl * .6, y + 3.6], [x - 1.2 + fl * .8, y + 3.2]])], tex: q => (q.y % 2 ? 0 : .5) });
+    });
+    return;
+  }
+  if (kind === 'hush') { // Hush asleep under the floor (112 x 64): a vast body curled on itself, a great eye shut, its heart glowing faintly
+    // and beating (2 frames). objectSprite dithers the dark away toward the edges, so the floor shows through
+    const at = t => { const a = Math.PI * (-.15 + t * 1.55); return [58 + Math.cos(a) * 40, 34 + Math.sin(a) * 15]; };
+    const tube = []; for (let i = 0; i <= 26; i++) tube.push(O(at(i / 26), 3 + i / 26 * 10));
+    F.add({ mat: 'w.hush', prof: 'flat', grp: 'under', noOutline: true, noShadow: true, shapes: [E([60, 33], 28, 10)], tex: () => -1.2 });
+    F.add({ mat: 'w.hush', prof: 'round', bw: 7, grp: 'body', noOutline: true, shapes: tube, tex: q => ((q.x * 3 + q.y * 7) % 23 === 0 ? .8 : 0) });
+    F.add({ mat: 'w.hush', prof: 'round', bw: 1.2, grp: 'ridge', noOutline: true, noShadow: true, shapes: [4, 7, 10, 13, 16, 19, 22].map(i => { const [x, y] = at(i / 26); return E([x, y - 1 - i * .15], 2.2 + i * .12, 1.2); }), tex: () => 1 });
+    F.add({ mat: 'w.hush', prof: 'flat', grp: 'eye', noShadow: true, noOutline: true, shapes: [C([36, 16.4], [44.6, 15.2], .6), C([44.6, 15.2], [48, 16.6], .5)], tex: () => 2 });
+    const hc = at(.62), veins = [[at(.5), at(.3)], [at(.5), at(.18)], [hc, at(.8)], [at(.8), at(.95)], [hc, [hc[0] + 10, hc[1] - 12]]];
+    F.add({ mat: 'w.hushglow', prof: 'flat', grp: 'veins', noShadow: true, noOutline: true, shapes: veins.map(([a, b]) => C(a, b, .6)).concat([C(hc, at(.5), .6)]), tex: () => (f ? 0 : -.7) });
+    F.add({ mat: 'w.hushglow', prof: 'round', bw: 3, grp: 'heart', noShadow: true, noOutline: true, shapes: [O(hc, f ? 5.2 : 4.2)], tex: () => (f ? .4 : -.5) });
+    return 'halo';
+  }
   // unknown kind: a neutral marker stone
   F.add({ mat: 'granite', prof: 'round', bw: 1.6, grp: 'x', shapes: [E([8, 12], 4, 3)] });
+}
+// Hush lies under the floor: its dark body thins out (dithered) toward its edge so the floor shows through; the glow, the
+// ridges and the eye stay whole
+function underIce(R) {
+  const { w, h, own, emi, parts } = R, a = Uint8Array.from(own, o => (o >= 0 ? 1 : 0));
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = y * w + x; if (!a[i] || emi[i] || parts[own[i]].grp !== 'body' && parts[own[i]].grp !== 'under') continue;
+    let e = 9; for (let r = 1; r <= 8 && e === 9; r++) if (!a[Math.max(0, y - r) * w + x] || !a[Math.min(h - 1, y + r) * w + x] || !a[y * w + Math.max(0, x - r)] || !a[y * w + Math.min(w - 1, x + r)]) e = r;
+    if (bayer(x, y) + .5 > Math.min(.9, e * .13)) own[i] = -1;
+  }
 }
 // periodic value noise (16 px) for the quicksand's swirl
 function qsNoise(x, y) {
@@ -1140,22 +1623,24 @@ export function objectSprite(kind, state = null, { frame = 0, relic = null, id =
   const states = OBJECT_STATES[kind] || ['closed'];
   const st = states.includes(state) ? state : states[0];
   const lit = kind === 'hearth' && st === 'lit';
-  const frames = ANIM.has(kind) || lit || (kind === 'ford-ice' && st === 'stream') || (kind === 'deer' && st !== 'alert') || (SUN_ANIM.has(kind) && st === 'closed') ? 2 : 1;
+  const frames = ANIM.has(kind) || lit || (kind === 'ford-ice' && st === 'stream') || (kind === 'deer' && st !== 'alert') || ((SUN_ANIM.has(kind) || IRON_ANIM.has(kind)) && st === 'closed') ? 2 : 1;
   const f = frames > 1 ? frame & 1 : 0;
-  const hl = kind === 'hearth' ? look || HEARTH_LOOKS[id] || 'ring' : '';
+  const hl = kind === 'hearth' ? look || HEARTH_LOOKS[id] || 'ring' : look || '';
   const rk = relic && typeof relic === 'object' ? `${relic.uid || relic.base || relic.id || '?'}:${relic.temper || 0}` : relic || '';
   return objCache.get(`${kind}|${st}|${f}|${hl}|${rk}`, () => {
-    const [W, Hh] = kind === 'hearth' && TALL_HEARTH.has(hl) ? [16, 24] : OBJ_STATE_SIZE[kind + ':' + st] || OBJ_SIZE[kind] || [16, 16];
+    const deep = kind === 'chasm' && hl !== 'floes'; // the rock chasm reaches over the void's lip above and its far face below
+    const [W, Hh] = kind === 'hearth' && TALL_HEARTH.has(hl) ? [16, 24] : deep ? [16, 25] : OBJ_STATE_SIZE[kind + ':' + st] || OBJ_SIZE[kind] || [16, 16];
     const F = new Forge(W, Hh);
     const r = objectParts(F, kind, st, f, { look: hl, id }, W, Hh);
     const R = F.raster();
     for (let i = 0; i < R.idx.length; i++) if (R.own[i] >= 0 && R.idx[i] < 1) R.idx[i] = 1;
+    if (kind === 'hush') underIce(R);
     const img = compose(R, { glow: r === 'halo' || lit });
     if (kind === 'pedestal' && st === 'lit' && relic) { // the claimed relic floats over its pedestal
       const icon = itemIcon(relic, { size: 12 });
       if (icon) for (let y = 0; y < 12; y++) for (let x = 0; x < 12; x++) { const i = (y * 12 + x) * 4; if (!icon.data[i + 3]) continue; const X = x + 2, Y = y; const j = (Y * W + X) * 4; img.data[j] = icon.data[i]; img.data[j + 1] = icon.data[i + 1]; img.data[j + 2] = icon.data[i + 2]; img.data[j + 3] = 255; }
     }
-    img.anchors = { foot: [8, Hh - 1] };
+    img.anchors = { foot: [W >> 1, deep ? Hh - 8 : Hh - 1] };
     img.frames = frames;
     return img;
   });
