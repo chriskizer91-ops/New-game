@@ -605,7 +605,8 @@ export function mount(root, ctx, params = {}) {
   }
   function hazard(e) {
     stage.classList.remove('hurt'); void stage.offsetWidth; stage.classList.add('hurt');
-    setPrompt(`The ichor burns: ${Math.round((e.pct || 0.04) * 100)}% of everyone's HP`);
+    const pct = `${Math.round((e.pct || 0.04) * 100)}% of everyone's HP`;
+    setPrompt(e.lock === 'drift' ? `The cold bites through the snow: ${pct}` : `The ichor burns: ${pct}`);
     refreshUi();
   }
 

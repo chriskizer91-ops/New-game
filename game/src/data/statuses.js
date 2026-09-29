@@ -102,7 +102,7 @@ export const STATUSES = deepFreeze({
     text: 'Taken out of the line: it cannot act or be targeted, and takes the swallower\'s tick each turn until spat out.',
   },
   charmed: {
-    id: 'charmed', name: 'Charmed', harmful: true, turns: 1, charm: true,
+    id: 'charmed', name: 'Charmed', harmful: true, turns: null, charm: true, // it lasts until the turn it plays
     text: 'Its next turn is a plain attack on one of its own side. An ally\'s hit wakes it.',
   },
 });

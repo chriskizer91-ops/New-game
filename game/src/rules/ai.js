@@ -2,16 +2,20 @@
 
 import { FOES, DIE_STEPS } from '../data/foes.js';
 import { HEROES } from '../data/heroes.js';
+import { STATUSES } from '../data/statuses.js';
+import { withKit } from '../data/rivals.js';
 import { weightedPick } from './util.js';
 
 export const alive = u => u && !u.ko && !u.gone;
 export const unitsOf = (s, side) => s.order.map(id => s.units[id]).filter(u => u.side === side);
 export const hasStatus = (u, id) => u.statuses.some(st => st.id === id);
+// M5: a burrowed or swallowed unit is still in the fight but cannot be targeted, and area moves pass over it
+export const targetable = u => alive(u) && !u.statuses.some(st => STATUSES[st.id]?.untargetable);
 
 export function familyData(foe) {
   const fam = FOES[foe.family];
   const v = foe.variant && fam.variants?.[foe.variant];
-  return v ? { ...fam, ...v } : fam;
+  return withKit(v ? { ...fam, ...v } : fam, foe.variant, foe.kit); // M5: Tamsin's kit for the duel
 }
 
 // Champions read the table of their current phase (phase is 1-based, like the art).
@@ -54,10 +58,10 @@ export function chooseTarget(s, foe, move, rng) {
   if (move.target === 'self') return foe.id;
   if (move.target === 'all-enemies' || move.target === 'all-allies') return null;
   if (move.target === 'ally') {
-    const allies = unitsOf(s, 'foe').filter(alive);
+    const allies = unitsOf(s, 'foe').filter(targetable);
     return allies.sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0]?.id || foe.id;
   }
-  const heroes = unitsOf(s, 'hero').filter(alive);
+  const heroes = unitsOf(s, 'hero').filter(targetable);
   if (!heroes.length) return null;
   const prov = foe.statuses.find(st => st.id === 'provoked');
   if (prov && heroes.some(h => h.id === prov.source)) return prov.source;
@@ -91,6 +95,15 @@ export function rollIntent(s, foe, rng) {
   };
 }
 
+// M5: a move's `then` forces the foe's next intent (a Burrow's eruption): the same die face, the named move.
+export function intentFor(s, foe, moveId, rng, face = foe.die) {
+  const id = resolveMoveId(s, foe, moveId);
+  const move = familyData(foe).moves[id];
+  const target = chooseTarget(s, foe, move, rng);
+  const targetName = target && target !== foe.id ? s.units[target]?.name : null;
+  return { die: foe.die, face, move: id, name: move.name, target, charging: !!move.charge, forced: true, text: intentText(face, move, targetName) };
+}
+
 export function intentEvent(foe) {
   const it = foe.intent;
   return { t: 'intent', foe: foe.id, die: it.die, face: it.face, move: it.move, name: it.name, text: it.text, target: it.target, charging: it.charging };
@@ -102,7 +115,7 @@ export function refreshIntent(s, foe, intent, rng) {
   const move = familyData(foe).moves[moveId];
   let target = intent.target;
   const needsTarget = move.target === 'enemy';
-  if (moveId !== intent.move || (needsTarget && !alive(s.units[target]))) target = chooseTarget(s, foe, move, rng);
+  if (moveId !== intent.move || (needsTarget && !targetable(s.units[target]))) target = chooseTarget(s, foe, move, rng);
   const targetName = target && target !== foe.id ? s.units[target]?.name : null;
   return { ...intent, move: moveId, name: move.name, target, charging: !!move.charge, text: intentText(intent.face, move, targetName) };
 }

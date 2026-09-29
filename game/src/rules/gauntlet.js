@@ -20,6 +20,7 @@ import { createRng } from '../core/rng.js';
 import { HEROES, HERO_IDS, STARTERS, STARTING_BAG } from '../data/heroes.js';
 import { RELICS } from '../data/relics.js';
 import { ENCOUNTERS, GAUNTLET, BRANDS } from '../data/encounters.js';
+import { RIVAL_KITS } from '../data/rivals.js';
 import { HEARTHS, START_AT, REGIONS } from '../data/world.js';
 import { FOES } from '../data/foes.js';
 import { TUNING } from '../data/tuning.js';
@@ -152,14 +153,23 @@ function heldFor(game, spawn, key) {
 
 // M3 spawn fields resolved before escalation: level 'party' (party level + partyDelta, default +1),
 // variant/relic '$rival' (the rival starter of story.starter, else of the claimed starter).
+// M5: variant '$rival:<duel>' is the rival starter's variant with that duel's kit (data/rivals.js).
 function rivalOf(game) {
   const starter = game.progress.flags.story?.starter || Object.keys(STARTERS).find(id => game.codex?.[id]?.claimed) || 'hearthbrand';
   return STARTERS[starter]?.rival || 'cairnmaul';
 }
 function resolveSpawn(game, sp) {
-  if (sp.level !== 'party' && sp.variant !== '$rival' && sp.relic !== '$rival') return sp;
+  const kit = typeof sp.variant === 'string' && sp.variant.startsWith('$rival:') ? sp.variant.slice(7) : null;
+  if (sp.level !== 'party' && sp.variant !== '$rival' && sp.relic !== '$rival' && !kit) return sp;
   const s = { ...sp };
   if (s.level === 'party') s.level = partyLevel(game) + (s.partyDelta ?? 1);
+  if (kit) {
+    s.variant = rivalOf(game);
+    if (RIVAL_KITS[s.variant]?.[kit]) {
+      s.kit = kit;
+      if (RIVAL_KITS[s.variant][kit].gearTier != null) s.gearTier = RIVAL_KITS[s.variant][kit].gearTier;
+    }
+  }
   if (s.variant === '$rival') s.variant = rivalOf(game);
   if (s.relic === '$rival') s.relic = rivalOf(game);
   return s;

@@ -28,6 +28,9 @@ export const TUNING = deepFreeze({
     takenPct: 50,        // taking 100% of max HP in damage would add this much
     healGiven: 3,
   },
+  swallow: {             // M5 (spec §4.2): a swallower lets go when a single hit takes this share of its max HP
+    releasePct: 0.15,
+  },
   grip: {
     crushMult: 0.6,      // crush damage wears grip by 60% of the damage dealt
     critPct: 0.25,       // a Legend Strike on a holder jars 25% of max grip loose

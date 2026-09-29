@@ -9,7 +9,7 @@ import { OMENS } from '../data/omens.js';
 import { RELICS } from '../data/relics.js';
 import { TUNING } from '../data/tuning.js';
 import { scaledTerms, rollTerms, rollExpr, clamp } from './util.js';
-import { alive, familyData, rollIntent, refreshIntent, intentEvent, stepDownDie } from './ai.js';
+import { alive, targetable, unitsOf, familyData, rollIntent, refreshIntent, intentEvent, stepDownDie } from './ai.js';
 import { buildFoe } from './foe.js';
 
 const T = TUNING;
@@ -71,11 +71,16 @@ export function addSurge(B, u, amount) {
 
 // ---- statuses --------------------------------------------------------------------------------
 
-export function addStatus(B, t, id, { stacks = 1, turns, value, source } = {}) {
+export function addStatus(B, t, id, { stacks = 1, turns, value, source, label } = {}) {
   const def = STATUSES[id];
   if (!def || !alive(t)) return false;
   if (t.stats?.immune?.includes(id) || t.immune?.includes(id)) {
     B.ev.push({ t: 'text', text: `${t.name} shrugs off ${def.name}.` });
+    return false;
+  }
+  // M5: a side with nobody else left to fight is never swallowed whole: the last one is spat straight back out
+  if (def.held && !unitsOf(B.s, t.side).some(u => u.id !== t.id && targetable(u))) {
+    B.ev.push({ t: 'text', text: `${t.name} is caught, and spat straight back out.` });
     return false;
   }
   const dur = turns ?? def.turns ?? null;
@@ -87,6 +92,7 @@ export function addStatus(B, t, id, { stacks = 1, turns, value, source } = {}) {
     if (source) st.source = source;
   } else {
     st = { id, stacks: Math.min(def.maxStacks || 1, stacks), turns: dur, value: value ?? null, source: source || null };
+    if (label) st.label = label; // M5: how a hold reads on the hero's plate ("Held under", "Carried off")
     t.statuses.push(st);
   }
   B.ev.push({ t: 'status', target: t.id, status: id, op: 'add', stacks: st.stacks, turns: st.turns, value: st.value });
@@ -119,11 +125,22 @@ export function applyHeal(B, t, amount, extra = {}) {
   return t.hp - before;
 }
 
+// M5: whoever `holder` has swallowed comes back into the line.
+export function release(B, holder, why) {
+  for (const u of Object.values(B.s.units)) {
+    const st = alive(u) && u.statuses.find(x => STATUSES[x.id]?.held && x.source === holder.id);
+    if (!st) continue;
+    removeStatus(B, u, st.id, 'release');
+    B.ev.push({ t: 'text', text: `${u.name} ${why}` });
+  }
+}
+
 function knockOut(B, t, src) {
   t.hp = 0;
   t.ko = true;
   t.statuses = [];
   B.ev.push({ t: 'ko', target: t.id });
+  release(B, t, 'is free: what held them has fallen.');
   if (src && src.side === 'hero' && t.side === 'foe') {
     addSurge(B, src, T.surge.kill);
     B.s.kills[src.id] = (B.s.kills[src.id] || 0) + 1; // for the weapon's Chronicle
@@ -158,7 +175,15 @@ export function dealDamage(B, src, t, raw, info) {
   });
   if (t.side === 'hero' && amount) addSurge(B, t, T.surge.takenPct * amount / t.maxHp);
   if (t.hp === 0) knockOut(B, t, src);
-  else if (t.side === 'foe') afterFoeHurt(B, t);
+  else {
+    if (t.side === 'foe') afterFoeHurt(B, t);
+    // M5: a hard enough hit makes a swallower let go; a charmed unit hit by its own side wakes
+    if (amount >= t.maxHp * T.swallow.releasePct) release(B, t, `is spat out as ${t.name} reels.`);
+    if (src && src !== t && src.side === t.side && statusOf(t, 'charmed')) {
+      removeStatus(B, t, 'charmed', 'release');
+      B.ev.push({ t: 'text', text: `${t.name} snaps out of the charm.` });
+    }
+  }
   return amount;
 }
 
@@ -372,7 +397,7 @@ function resolveStatus(B, a, t, eff) {
   if (eff.save && savingThrow(B, t, eff.save, saveDC(a), a)) return;
   let value;
   if (eff.value) value = rollExpr(B.rng, eff.value.dice, levelOf(a), eff.value.diceEvery).total + modOf(a, eff.value.stat);
-  addStatus(B, t, eff.status, { stacks: eff.stacks || 1, turns: eff.turns, value, source: a.id });
+  addStatus(B, t, eff.status, { stacks: eff.stacks || 1, turns: eff.turns, value, source: a.id, label: eff.label });
 }
 
 function resolveCleanse(B, t, eff) {
@@ -436,6 +461,7 @@ export function applyEffect(B, a, t, eff) {
     case 'escape':
       a.gone = true;
       B.ev.push({ t: 'escape', foe: a.id, text: `${a.name} breaks and runs.` });
+      release(B, a, 'is dropped as it runs.');
       return undefined;
     default: return undefined;
   }

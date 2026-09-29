@@ -280,14 +280,15 @@ export function move(game, walk, dir, { run = false } = {}) {
     fireTriggers(g, map, nx, ny, 'step', events);
   }
   g = sightHolders(g, w, events);
-  const ichor = here.find(e => e.kind === 'lock' && e.state === 'locked' && LOCKS[e.lock]?.soft?.hpPct && covers(e, nx, ny));
-  if (ichor && !lockStatus(g, ichor.lock).open) g = burn(g, LOCKS[ichor.lock].soft.hpPct, events);
+  const soft = here.find(e => e.kind === 'lock' && e.state === 'locked' && LOCKS[e.lock]?.soft?.hpPct && covers(e, nx, ny));
+  if (soft && !lockStatus(g, soft.lock).open) g = burn(g, LOCKS[soft.lock].soft.hpPct, events, soft.lock);
   return { game: g, walk: tickRoamers(g, w, events), events };
 }
 
-// Soft ichor: every active hero loses pct of max HP per step, never below 1. A fallen hero (0 HP)
-// stays down: the ichor never lifts anyone back to 1.
-function burn(game, pct, events) {
+// Soft ichor (M5: and the Ironspire's snowdrifts): every active hero loses pct of max HP per step, never
+// below 1. A fallen hero (0 HP) stays down: the ichor never lifts anyone back to 1. The hazard event names
+// the lock, so the world screen can say what hurts.
+function burn(game, pct, events, lock = 'ichor') {
   const g = structuredClone(game);
   const hurt = {};
   const bonus = pageBonus(g);
@@ -299,7 +300,7 @@ function burn(game, pct, events) {
     const hp = Math.max(1, cur - Math.max(1, Math.round(max * pct)));
     if (hp !== cur) { hurt[id] = cur - hp; g.party.roster[id] = { ...h, hp }; }
   }
-  events.push({ t: 'hazard', pct, hurt });
+  events.push({ t: 'hazard', pct, hurt, lock });
   return Object.keys(hurt).length ? g : game;
 }
 

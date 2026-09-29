@@ -319,6 +319,20 @@ test('two keys: each key alone opens a lock; soft darkness and ichor', () => {
   for (const id of g.party.active) assert.ok(g.party.roster[id].hp >= 1, `${id} never below 1`);
 });
 
+test('M5: a snowdrift is soft like the ichor: 3% of max HP a step, named in the hazard; the Trollhide Mantle walks it', () => {
+  const game = fresh();
+  registerMap(deepFreeze({ ...MINI, id: 'mini-drift', entities: MINI.entities.map(e => (e.lock === 'ichor' ? { ...e, id: 'mini-drift-lock', lock: 'drift' } : e)) }));
+  const onDrift = { ...at(8, 5), map: 'mini-drift' };
+  const hz = move(game, onDrift, 's').events.find(e => e.t === 'hazard');
+  assert.ok(hz, 'the drift bites');
+  assert.equal(hz.lock, 'drift');
+  assert.equal(hz.pct, 0.03);
+  assert.equal(move(game, at(8, 5), 's').events.find(e => e.t === 'hazard').lock, 'ichor', 'the ichor still names itself');
+  const shod = { ...game, inventory: [...game.inventory, relicItem('trollhide-mantle', createRng(12))] };
+  assert.equal(lockStatus(shod, 'drift').by, 'trollhide-mantle', 'Snowshoe');
+  assert.ok(!move(shod, onDrift, 's').events.some(e => e.t === 'hazard'), 'no bite with the key');
+});
+
 test('sealed exits say whether the next chapter has opened them', () => {
   const game = fresh();
   assert.equal(move(game, at(10, 4, 'e'), 'e').events[0].nextChapter, false);
