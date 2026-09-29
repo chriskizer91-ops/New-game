@@ -2,8 +2,9 @@
 // mount(root, ctx, { mode: 'travel' | 'view' = 'view', from = 'world', view? })
 //
 //   - views: "Wilds" (the Verdant quarter fills the frame), "Sunscorch" (the Sunscorch Wastes, once
-//     the region is open: the Keep's south-east gate after Act I) and "Realm" (the whole map). Travel
-//     and phones open on the view of the region you stand in; a view picked this session sticks
+//     the region is open: the Keep's south-east gate after Act I), "Ironspire" (M5: the Ironspire
+//     Peaks, once the Keep's east postern opens with the second council) and "Realm" (the whole map).
+//     Travel and phones open on the view of the region you stand in; a view picked this session sticks
 //   - 44 px markers at viewBox coordinates (1200x800, the image's own aspect), pushed apart where
 //     they would overlap, with a leader line back to the true spot:
 //       the Hearthfires of the region in view (all of them in the Realm view on a laptop; on a phone
@@ -12,7 +13,9 @@
 //       and returns to the world. Labels (laptop) name the place a fire stands in (Sandspire,
 //       Thornhollow), else the fire itself
 //       "you are here", projected onto the current map's lore line (it slides as you walk)
-//       padlocks on the sealed regions (Sandspire until Act I is done, Ironhold, Bogmire)
+//       padlocks on the sealed regions (Sandspire until Act I is done, Ironhold until the second
+//       council, Bogmire); a sealed region's note says what opens its road (SEALED_NOTE, else the hint
+//       of its entry gate)
 //   - map annotations: routes you have walked (only the open regions' routes), sighted holders (an
 //     eye), claimed relics (a star), Longwatch marks (a spyglass: the chests, locks and holders on the
 //     maps of every lookout in data/dialogue.js LOOKOUTS whose flag is set), and dimmed place names in
@@ -25,7 +28,7 @@
 // Test hooks: markers are .atlas-mk[data-key] (hearths also [data-hearth]); list rows are
 // .atlas-hf[data-hearth] (grouped in .atlas-grp[data-region]); view buttons are
 // .atlas-view[data-view]; the frame carries data-view and data-art ('image' | 'parchment').
-// Owner: WP8; M4 P7b (the Sunscorch).
+// Owner: WP8; M4 P7b (the Sunscorch); M5 P7 (the Ironspire).
 import ATLAS_IMAGE, { ATLAS_PLACEHOLDER } from '../assets/atlas-image.js';
 import { HEARTHS, HEARTH_IDS, REGIONS, LORE, BRAND_TOTAL } from '../../data/world.js';
 import { MAPS, MAP_IDS } from '../../data/maps/index.js';
@@ -51,8 +54,15 @@ const ICON = {
   wilds: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1l4 6H9.5l3 4H9v4H7v-4H3.5l3-4H4z"/></svg>',
   // a sun over a dune
   sunscorch: '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="6.2" r="3"/><path d="M8 .6v1.6M3 2.6l1.1 1.1M13 2.6l-1.1 1.1M1.4 7h1.6M13 7h1.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M0.5 15c2-3.4 4.6-4.6 7.5-4.6s5.5 1.2 7.5 4.6z"/></svg>',
+  // two peaks, snow on the taller one (M5)
+  ironspire: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M0.5 14.5L6 4.2l2.6 4.6 1.9-3 5 8.7z"/><path d="M6 4.2l1.9 3.4-1.1-.6-.8 1.2-.9-1.1-1 .5z" fill="#f5ecd0"/></svg>',
 };
-const REGION_ICON = { verdant: ICON.wilds, sunscorch: ICON.sunscorch };
+const REGION_ICON = { verdant: ICON.wilds, sunscorch: ICON.sunscorch, ironspire: ICON.ironspire };
+// What opens a sealed region's road, for its padlock's note (else its entry gate's own hint)
+const SEALED_NOTE = {
+  sunscorch: 'The Keep\'s south-east gate opens once both Brands of the Wilds are yours.',
+  ironspire: 'The Keep\'s east postern opens once the Council has sat a second time.',
+};
 const TREE = 'M0 -6 L4 0 H1.5 L4.5 4 H0.9 V7 H-0.9 V4 H-4.5 L-1.5 0 H-4 Z';
 const EYE = 'M-6 0 C-3 -4.5 3 -4.5 6 0 C3 4.5 -3 4.5 -6 0 Z';
 const STAR = 'M0 -6 L1.8 -1.9 6 -1.9 2.6 0.8 3.8 5.2 0 2.6 -3.8 5.2 -2.6 0.8 -6 -1.9 -1.8 -1.9 Z';
@@ -63,8 +73,8 @@ const holderName = s => {
   const base = s.name || F?.variants?.[s.variant]?.name || F?.name || s.family;
   return s.title ? `${base} ${s.title}` : base;
 };
-const VIEW_NAME = { wilds: 'The Verdant Wilds', sunscorch: 'The Sunscorch Wastes', realm: 'The Realm of Aethermoor' };
-const VIEW_BUTTON = { wilds: 'Wilds', sunscorch: 'Sunscorch', realm: 'Realm' };
+const VIEW_NAME = { wilds: 'The Verdant Wilds', sunscorch: 'The Sunscorch Wastes', ironspire: 'The Ironspire Peaks', realm: 'The Realm of Aethermoor' };
+const VIEW_BUTTON = { wilds: 'Wilds', sunscorch: 'Sunscorch', ironspire: 'Ironspire', realm: 'Realm' };
 const VIEW_REGION = Object.fromEntries(Object.entries(REGION_VIEW).map(([r, v]) => [v, r]));
 const shortRegion = r => String(REGIONS[r]?.name || r).replace(/^The /, '');
 // The keys that light a cold Hearthfire, from the lock itself ("Kindle, Lamplight or Attunement 3").
@@ -150,10 +160,14 @@ export function mount(root, ctx, params = {}) {
   // a region is sealed until one of its roads opens (the Sunscorch: the Keep's south-east gate, after
   // Act I); REGIONS.open alone says only that its maps exist
   const sealed = Object.values(REGIONS).filter(r => !open.has(r.id)).map(r => {
-    const texts = [];
-    for (const m of MAP_IDS) for (const x of MAPS[m].exits) if (x.sealed?.region === r.id) texts.push(x.sealed.text);
+    const texts = [], hints = [];
+    // the roads into it from outside (a gate inside the region, like Stormwatch's north gate, is not its road)
+    for (const m of MAP_IDS) {
+      if (MAPS[m].region === r.id) continue;
+      for (const x of MAPS[m].exits) if (x.sealed?.region === r.id) { texts.push(x.sealed.text); if (x.sealed.hint) hints.push(x.sealed.hint); }
+    }
     const cap = Object.values(LORE).find(p => p.region === r.id && p.at[0] === r.lore[0] && p.at[1] === r.lore[1]);
-    return { id: r.id, name: r.name, place: cap?.name || r.name, at: r.lore, texts, later: !r.open };
+    return { id: r.id, name: r.name, place: cap?.name || r.name, at: r.lore, texts, hint: SEALED_NOTE[r.id] || hints[0] || null, later: !r.open };
   });
 
   // ---- skeleton ---------------------------------------------------------------------------------
@@ -164,7 +178,7 @@ export function mount(root, ctx, params = {}) {
   top.append(button('‹ Back', 'btn ghost back', back), title);
 
   const bar = el('div', 'atlas-bar');
-  const viewBar = el('div', { class: 'atlas-views', role: 'group', 'aria-label': 'Map view' });
+  const viewBar = el('div', { class: 'atlas-views', role: 'group', 'aria-label': 'Map view', 'data-n': String(views.length) });
   viewBar.style.setProperty('--n', String(views.length));
   const vBtn = {};
   for (const v of views) {
@@ -237,7 +251,7 @@ export function mount(root, ctx, params = {}) {
         const st = hfState(x);
         out.push({
           key: `hf:${x.id}`, kind: 'hearth', at: x.h.lore, cls: `mk-hearth is-${st}`, icon: st === 'kindled' ? ICON.fire : ICON.coal,
-          label: x.label, hearth: x.id,
+          label: x.label, hearth: x.id, place: x.label !== x.h.name,
           aria: `${x.h.name}, ${x.mapName}: ${stateWord[st]}${canTravel && x.kindled ? '. Travel here' : ''}`,
         });
       }
@@ -294,15 +308,26 @@ export function mount(root, ctx, params = {}) {
   // Greedy: the most useful labels first (lit fires, then known ones, then the rest); a label that
   // would overlap one already shown, or another marker, stays hidden.
   function hideCrowdedLabels(nodes) {
-    const rank = n => (n.kind === 'sealed' ? 1 : n.cls.includes('is-kindled') ? 0 : n.cls.includes('is-unknown') ? 3 : 2);
+    // (M5: at the same state, a place's name wins over a plain fire's, so Ironhold Fortress is named
+    // before the Deeps Furnace under it)
+    const rank = n => (n.kind === 'sealed' ? 1 : n.cls.includes('is-kindled') ? 0 : n.cls.includes('is-unknown') ? 3 : 2) - (n.place ? 0.5 : 0);
     const shown = [];
     const icons = [...marks.querySelectorAll('.atlas-mk:not(.mk-here) .mk-ico')].map(e => e.getBoundingClientRect());
     const hit = (a, b) => a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1;
+    const fr = frame.getBoundingClientRect();
     for (const n of nodes.slice().sort((a, b) => rank(a) - rank(b))) {
       const lbl = markerEls.get(n.key)?.querySelector('.mk-lbl');
       if (!lbl) continue;
-      const r = lbl.getBoundingClientRect();
-      if (shown.some(o => hit(o, r)) || icons.some(o => hit(o, r))) { lbl.classList.add('crowded'); continue; }
+      let r = lbl.getBoundingClientRect();
+      const blocked = q => shown.some(o => hit(o, q)) || icons.some(o => hit(o, q));
+      if (blocked(r)) {
+        // the other side of its marker, if that is free and still inside the frame (M5: Ironhold's label
+        // goes above its fire, clear of the Deeps Furnace below it)
+        const up = lbl.classList.contains('up');
+        lbl.classList.toggle('up', !up);
+        r = lbl.getBoundingClientRect();
+        if (blocked(r) || r.top < fr.top || r.bottom > fr.bottom) { lbl.classList.toggle('up', up); lbl.classList.add('crowded'); continue; }
+      }
       shown.push(r);
     }
   }
@@ -322,10 +347,13 @@ export function mount(root, ctx, params = {}) {
       svg += `<polyline class="rt${walked ? ' walked' : ''}" points="${pts.map(p => p.map(v => v.toFixed(1)).join(',')).join(' ')}"/>`;
     }
     // place names beyond the Wilds (dimmed while their region is sealed), where there is room and no
-    // marker already stands on them (an open region's places are its fires' labels)
-    if (view === 'realm' && ppu >= 0.5) {
+    // marker already stands on them (an open region's places are its fires' labels); a region's own view
+    // names its places that have no fire of their own (M5: Frostmere Lake)
+    const regionView = VIEW_REGION[view] || null;
+    if ((view === 'realm' && ppu >= 0.5) || (regionView && regionView !== 'verdant')) {
       for (const p of Object.values(LORE)) {
         if (!p.region || p.region === 'verdant') continue;
+        if (regionView && p.region !== regionView) continue;
         const [x, y] = P(p.at);
         // a padlock sits on its region's capital, so that name goes under the padlock
         if (sealed.some(r => r.at[0] === p.at[0] && r.at[1] === p.at[1])) { svg += `<text class="pl pl-sealed" x="${x.toFixed(1)}" y="${(y + 34).toFixed(1)}">${esc(p.name)}</text>`; continue; }
@@ -413,8 +441,8 @@ export function mount(root, ctx, params = {}) {
       const r = sealed.find(y => `sealed:${y.id}` === n.key);
       head('Sealed', r.name, r.place);
       for (const t of r.texts.slice(0, 2)) info.append(el('p', { class: 'ai-text', text: `“${t}”` }));
-      // the Sunscorch waits on Act I; Ironspire and Gloomfen on a later chapter
-      const note = !r.later ? 'The Keep\'s south-east gate opens once both Brands of the Wilds are yours.'
+      // the Sunscorch waits on Act I, the Ironspire on the second council (M5); Gloomfen on a later chapter
+      const note = !r.later ? r.hint || 'Its road opens further on in the story.'
         : story['act1-complete'] ? 'The way opens in a later chapter.' : 'No road goes there yet.';
       info.append(el('p', { class: 'ai-note', text: note }));
       return;

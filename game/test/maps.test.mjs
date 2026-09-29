@@ -1,4 +1,5 @@
-// Map data tests (M3 spec §2, §4.2, §6.1 WP3; M4 spec §2, §8) over all 25 maps. Owner: WP3; M4 P2.
+// Map data tests (M3 spec §2, §4.2, §6.1 WP3; M4 spec §2, §8; M5 spec §2, §8) over all 37 maps. Owner: WP3;
+// M4 P2; M5 P2.
 // Shape, bounds, exits, anchors, placements and locks, then the flood fills: every CRITICAL_PATH
 // target is reachable with only the guaranteed keys (per starter), every chest with all keys, every
 // hard lock and story gate really is the only way through to what it guards. The flood fills run
@@ -7,6 +8,11 @@
 // target is reachable from an Act-I-complete party with only its starter relic, no hard lock but the
 // Vault door stands on that path, the re-armed fights never shut the way home, and the maps hold what
 // spec §2.3 puts on them.
+// M5: the same for the Ironspire: it opens through the Keep's east postern once the second council is
+// sat, every IRON_PATH target is reachable from a Sunscorch-complete party (with Thane Brundar's Rune-Key
+// once he gives it), no hard lock but the Deeps' rune-seal stands on that path, the re-armed fights never
+// shut the way home, the leads are reachable, the maps hold what spec §2.3 puts on them, and the chests
+// pay as the region should.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { MAPS, MAP_IDS, ENTITY_OF, anchor, v1Anchor } from '../src/data/maps/index.js';
@@ -16,7 +22,8 @@ import { RELICS } from '../src/data/relics.js';
 import { DOMAINS } from '../src/data/domains.js';
 import { STARTERS } from '../src/data/heroes.js';
 import { ENCOUNTERS, GAUNTLET, PATROLS, BRANDS } from '../src/data/encounters.js';
-import { HEARTHS, START_AT, CRITICAL_PATH, LEADS, ZONES, REGIONS, LORE, SUN_PATH, SUN_LEADS } from '../src/data/world.js';
+import { HEARTHS, START_AT, CRITICAL_PATH, LEADS, ZONES, REGIONS, LORE, SUN_PATH, SUN_LEADS, IRON_PATH, IRON_LEADS } from '../src/data/world.js';
+import { DIALOGUE } from '../src/data/dialogue.js';
 import { GEMS, MATERIALS } from '../src/data/gems.js';
 import { newGame } from '../src/rules/gauntlet.js';
 import { levelUp } from '../src/rules/progression.js';
@@ -32,10 +39,12 @@ const cellsOf = e => { const [x0, y0, x1, y1] = areaOf(e), out = []; for (let y 
 const DIRS = { n: [0, -1], e: [1, 0], s: [0, 1], w: [-1, 0] };
 const entities = () => Object.values(MAPS).flatMap(m => m.entities.map(e => ({ map: m.id, e })));
 
-test('25 maps (14 in the Wilds, 10 in the Sunscorch, and the reliquary\'s Gallery); every row is w characters from the legend; entities and exits are in bounds', () => {
-  assert.equal(MAP_IDS.length, 25);
+test('43 maps (14 in the Wilds, 10 in the Sunscorch, 17 in the Ironspire with the East Road, and the reliquary\'s two Galleries); every row is w characters from the legend; entities and exits are in bounds', () => {
+  assert.equal(MAP_IDS.length, 43);
   assert.ok(MAPS['keep-gallery'], 'the Sunscorch Gallery');
+  assert.ok(MAPS['keep-gallery-2'], 'the Ironspire Gallery');
   assert.equal(MAP_IDS.filter(id => MAPS[id].region === 'sunscorch').length, 10);
+  assert.equal(MAP_IDS.filter(id => MAPS[id].region === 'ironspire').length, 17);
   for (const m of Object.values(MAPS)) {
     assert.equal(m.rows.length, m.h, `${m.id} height`);
     m.rows.forEach((r, y) => {
@@ -50,7 +59,7 @@ test('25 maps (14 in the Wilds, 10 in the Sunscorch, and the reliquary\'s Galler
   }
 });
 
-test('exits pair up both ways and land on walkable anchors; 4 sealed exits and 2 gated ones', () => {
+test('exits pair up both ways and land on walkable anchors; 2 sealed exits and 6 gated ones', () => {
   let sealed = 0;
   const gated = [];
   for (const m of Object.values(MAPS)) {
@@ -58,7 +67,8 @@ test('exits pair up both ways and land on walkable anchors; 4 sealed exits and 2
       for (let yy = x.area[1]; yy <= x.area[3]; yy++) for (let xx = x.area[0]; xx <= x.area[2]; xx++) assert.ok(!solidTile(m, xx, yy), `${m.id}/${x.id} exit tile walkable`);
       if (x.sealed) assert.ok(REGIONS[x.sealed.region] && x.sealed.text, x.id);
       if (x.sealed && !x.to) { sealed++; continue; }
-      // a gated exit (M4: the Keep's south-east gate; M4.5: Sandspire's east gate) is a real way through
+      // a gated exit (M4: the Keep's south-east gate; M4.5: Sandspire's east gate; M5: the Keep's east postern,
+      // Fawnrest's scree path, Peak's Veil's Highfold gate and Stormwatch's north gate) is a real way through
       // once its gate holds, so it pairs up like any other
       if (x.sealed) { assert.ok(x.gate, `${m.id}/${x.id} leads somewhere, so it has a gate`); gated.push(x.id); }
       const a = anchor(x.to, x.anchor);
@@ -73,8 +83,8 @@ test('exits pair up both ways and land on walkable anchors; 4 sealed exits and 2
       assert.ok(!on, `${m.id}:${name} is not under ${on?.id}`);
     }
   }
-  assert.equal(sealed, 4);
-  assert.deepEqual(gated.sort(), ['keep-se', 'ss-e']);
+  assert.equal(sealed, 2, 'the two ways into the Gloomfen');
+  assert.deepEqual(gated.sort(), ['fr-highfold', 'keep-e', 'keep-se', 'pv-w', 'ss-e', 'sw-n']);
 });
 
 test('every exit pairs with an exit on the far map whose anchor is where the first one leads back', () => {
@@ -159,12 +169,13 @@ test('world tables: the critical path, leads and zones name real things', () => 
   for (const m of Object.values(MAPS)) if (m.zone) assert.ok(ZONES[m.zone], `${m.id} zone`);
 });
 
-test('world tables agree with the maps: the 17 Hearthfires, the 17 places, the regions and their sealed entries', () => {
+test('world tables agree with the maps: the 25 Hearthfires, the 17 places, the regions and their sealed entries', () => {
   const inView = ([x, y]) => x >= 0 && x <= 1200 && y >= 0 && y <= 800;
   const fires = Object.keys(ENCOUNTERS).filter(id => ENCOUNTERS[id].type === 'hearthfire');
   assert.deepEqual(Object.keys(HEARTHS).sort(), fires.sort(), 'HEARTHS covers every Hearthfire');
-  assert.equal(fires.length, 17);
+  assert.equal(fires.length, 25);
   assert.equal(fires.filter(id => ENCOUNTERS[id].region === 'sunscorch').length, 7, 'seven in the Sunscorch (M4 spec §2.5)');
+  assert.equal(fires.filter(id => ENCOUNTERS[id].region === 'ironspire').length, 8, 'eight in the Ironspire (M5 spec §2.5: seven, and the East Road\'s Last Camp)');
   for (const [id, h] of Object.entries(HEARTHS)) {
     const e = ENTITY_OF[id].entity;
     assert.equal(h.name, ENCOUNTERS[id].name, `${id} name`);
@@ -192,7 +203,7 @@ test('world tables agree with the maps: the 17 Hearthfires, the 17 places, the r
   for (const m of Object.values(MAPS)) for (const [lx, ly, tx, ty] of m.lore) assert.ok(inView([lx, ly]) && inside(m, tx, ty), `${m.id} lore`);
 });
 
-test('the reliquary: a pedestal per relic in codex order, Page I on rows 10 and 12 of the Great Hall, Page II on rows 2 and 5 of the Gallery', () => {
+test('the reliquary: a pedestal per relic in codex order, Page I on rows 10 and 12 of the Great Hall, Pages II and III on rows 2 and 5 of their Galleries', () => {
   const byCodex = Object.values(RELICS).sort((a, b) => a.codex - b.codex).map(r => r.id);
   const room = (mapId, ys, from, to) => {
     const peds = MAPS[mapId].entities.filter(e => e.kind === 'pedestal');
@@ -205,7 +216,8 @@ test('the reliquary: a pedestal per relic in codex order, Page I on rows 10 and 
   };
   room('keep-hall', [10, 12], 1, 24);
   room('keep-gallery', [2, 5], 25, 38);
-  assert.equal(byCodex.length, 38);
+  room('keep-gallery-2', [2, 5], 39, 52);
+  assert.equal(byCodex.length, 52);
 });
 
 test('pack homes are walkable, roamable, off the exits and inside a roam rect', () => {
@@ -273,6 +285,7 @@ function beat(g, id) {
     for (const [k, x] of Object.entries(ENCOUNTERS)) if ((x.region || 'verdant') === region && !x.once) delete f.cleared[k];
     if (REGIONS.verdant.brands.every(b => g.progress.brands.includes(b))) f.story['act1-complete'] = true;
     if (REGIONS.sunscorch.brands.every(b => g.progress.brands.includes(b))) f.story['sunscorch-complete'] = true;
+    if (REGIONS.ironspire.brands.every(b => g.progress.brands.includes(b))) f.story['ironspire-complete'] = true;
   }
 }
 
@@ -363,7 +376,8 @@ for (const starter of Object.keys(STARTERS)) {
 }
 
 // Everything held: level 20, every relic, every fight won. `brand` adds every Brand so far (the Verdant
-// pair, then, M4.5, the Sunscorch pair, which opens Sandspire's east gate) and every duel's yield.
+// pair, then, M4.5, the Sunscorch pair, which opens Sandspire's east gate; M5, the Ironspire pair and the
+// flags of the Ironspire's gates) and every duel's yield.
 function allKeys({ brand }) {
   const g = structuredClone(newGame({ name: 'Map', starter: 'hearthbrand', seed: 11 }));
   setLevels(g, 20);
@@ -376,10 +390,12 @@ function allKeys({ brand }) {
   }
   Object.assign(f.story, { 'rangers-home': true, 'bell-rung': true, 'intro-done': true });
   if (brand) {
-    g.progress.brands = ['brand-of-briars', 'brand-of-the-heartroot', 'brand-of-glass', 'brand-of-ash'];
-    g.progress.waking = 4;
+    g.progress.brands = ['brand-of-briars', 'brand-of-the-heartroot', 'brand-of-glass', 'brand-of-ash', 'brand-of-iron', 'brand-of-frost'];
+    g.progress.waking = 6;
     for (const e of Object.values(ENCOUNTERS)) if (e.duel) f.story[e.yields || 'tamsin-yielded'] = true;
     f.story['act1-complete'] = true;
+    // M5: the second council opens the Keep's east postern; the monks open the Highfold
+    Object.assign(f.story, { 'sunscorch-complete': true, 'council-2-done': true, 'highfold-open': true });
   }
   return g;
 }
@@ -420,6 +436,10 @@ test('every hard lock is the only way through to something (a chest, an encounte
   assert.deepEqual(bad, []);
 });
 
+// the story flags of Act I's end and after (M5: the second council opens the Keep's east postern, and the
+// monks the Highfold path down to Fawnrest)
+const LATER = ['act1-complete', 'sunscorch-complete', 'council-2-done', 'highfold-open'];
+
 test('story gates: the north gate, the toll chain, the crownwalls and the Eldest Tree door hold', () => {
   const open = allKeys({ brand: true });
   const mapsOf = r => new Set([...r.seen].map(k => k.split(':')[0]));
@@ -429,13 +449,18 @@ test('story gates: the north gate, the toll chain, the crownwalls and the Eldest
     for (const k of Object.keys(g.progress.flags.done)) delete g.progress.flags.done[k];
     for (const k of Object.keys(g.progress.flags.cleared)) delete g.progress.flags.cleared[k];
     for (const k of Object.keys(g.progress.flags.beaten)) delete g.progress.flags.beaten[k];
-    delete g.progress.flags.story['act1-complete']; // before the vault fight there is no Act I to have finished
-    assert.deepEqual([...mapsOf(flood(g))].sort(), ['keep', 'keep-gallery', 'keep-hall'], 'keep-n-gate holds until keep-vault is done');
+    // before the vault fight there is no Act I to have finished, and so no council after it (M5: the second
+    // council opens the Keep's east postern)
+    for (const k of LATER) delete g.progress.flags.story[k];
+    assert.deepEqual([...mapsOf(flood(g))].sort(), ['keep', 'keep-gallery', 'keep-gallery-2', 'keep-hall'], 'keep-n-gate holds until keep-vault is done');
   }
   // Until Skarn is beaten, his chain closes the road: Thornhollow and the Smugglers' Hollow are out of reach.
+  // (Skarn is on the road to Act I, so nothing after it has happened either: M5's Highfold path is a back
+  // way into the Wilds from the Ironspire, which opens only after the second council.)
   {
     const g = structuredClone(open);
     delete g.progress.flags.unlocked['bramble-toll-chain'];
+    for (const k of LATER) delete g.progress.flags.story[k];
     const r = flood(openHeldLocks(g));
     assert.ok(!mapsOf(r).has('thornhollow'), 'bramble-toll-chain holds');
     assert.ok(!reaches(r, 'hearth-road', MAPS['hearth-road'].entities.find(e => e.id === 'hr-smugglers')), 'the Smugglers\' Hollow is past the toll');
@@ -651,4 +676,265 @@ test('Sunscorch chests: a little silver, gems and materials by real ids, embers 
   }
   assert.ok(chests.filter(({ e }) => e.loot.materials?.silver).length * 2 >= chests.length, 'most hold a little silver');
   assert.ok(chests.filter(({ e }) => e.loot.materials?.embers).length >= 1, 'somewhere, an ember');
+});
+
+// ---- M5: the Ironspire Peaks (spec §2, §8) -----------------------------------------------------------------
+
+const IP = IRON_PATH;
+const IRON = MAP_IDS.filter(id => MAPS[id].region === 'ironspire');
+const EAST_ROAD = ['old-bridge', 'drystone-lea', 'plankford', 'shrinewood', 'silverfall', 'last-camp'];
+const relicItem = id => ({ uid: `map-${id}`, base: id, kind: RELICS[id].kind, slot: RELICS[id].slot });
+// Thane Brundar gives his Rune-Key once Tamsin's duel is done or yielded (spec §2.2; the main quest's step)
+const giveRuneKey = g => {
+  Object.assign(g.progress.flags.story, { 'met-brundar': true, 'rune-given': true });
+  if (!g.inventory.some(i => i.base === 'thanes-rune')) g.inventory.push(relicItem('thanes-rune'));
+};
+
+// A Sunscorch-complete party (spec §2.2, §8): the M3 and M4 critical paths behind it (all four earlier Brands,
+// the Waking at 4, act1-complete and sunscorch-complete), the second council sat, at level 8 (the worst case
+// the earlier tests allow; nothing says it has levelled since), with only its starter relic. Then the first i
+// IRON_PATH targets are beaten (an Ironspire Brand re-arms the region, as the rules do): Mother Wynn opens the
+// Highfold when the party reaches Peak's Veil, and Thane Brundar gives the Rune-Key once Tamsin's duel is
+// settled. `keys` opens every lock whose key the party holds.
+function ironStage(starter, i, { keys = true } = {}) {
+  const g = structuredClone(newGame({ name: 'Map', starter, seed: 11 }));
+  setLevels(g, 8);
+  for (const id of [...CP, ...SP]) beat(g, id);
+  g.progress.flags.story['council-2-done'] = true;
+  for (let j = 0; j < i; j++) beat(g, IP[j]);
+  if (i > IP.indexOf('veil-hearth')) Object.assign(g.progress.flags.story, { 'met-wynn': true, 'highfold-open': true });
+  if (i > IP.indexOf('tamsin-ironhold')) giveRuneKey(g);
+  return keys ? openHeldLocks(g) : g;
+}
+
+test('the Ironspire opens through the Keep\'s east postern once the second council is sat, and not before', () => {
+  const east = MAPS.keep.exits.find(x => x.id === 'keep-e');
+  assert.deepEqual(east.gate, { flag: 'council-2-done' });
+  assert.equal(east.to, 'old-bridge', 'the postern opens on the East Road');
+  assert.equal(east.sealed.region, 'ironspire');
+  assert.equal(IRON.length, 17);
+  // the East Road: six painted maps, one after another, from the Old Bridge to the Rockslide Pass
+  for (let i = 0; i < EAST_ROAD.length; i++) {
+    const next = EAST_ROAD[i + 1] || 'rockslide-pass';
+    assert.ok(MAPS[EAST_ROAD[i]].exits.some(x => x.to === next), `${EAST_ROAD[i]} leads on to ${next}`);
+    assert.ok(MAPS[next].exits.some(x => x.to === EAST_ROAD[i]), `${next} leads back to ${EAST_ROAD[i]}`);
+  }
+  const open = openHeldLocks(allKeys({ brand: true }));
+  // before anyone has met Mother Wynn the Highfold is barred at both ends, so the postern is the way in
+  const first = structuredClone(open);
+  delete first.progress.flags.story['highfold-open'];
+  const r1 = flood(first);
+  assert.ok(r1.used.has('keep-e'), 'the fill goes through keep-e');
+  for (const id of IRON) assert.equal(mapsOf(r1).has(id), id !== 'highfold', `${id}: ${id === 'highfold' ? 'waits on the monks' : 'reachable once the council is sat'}`);
+  // once the monks have unbarred it, the Highfold joins Peak's Veil to Fawnrest: a second way home (spec A5)
+  const r2 = flood(open);
+  for (const id of IRON) assert.ok(mapsOf(r2).has(id), `${id} is reachable once the Highfold is open`);
+  assert.ok(r2.used.has('pv-w') && r2.used.has('fr-highfold'), 'both ends of the Highfold open with highfold-open');
+  assert.deepEqual(MAPS['peaks-veil'].exits.find(x => x.id === 'pv-w').gate, { flag: 'highfold-open' });
+  assert.deepEqual(MAPS.fawnrest.exits.find(x => x.id === 'fr-highfold').gate, { flag: 'highfold-open' });
+  // before the council nothing in the Ironspire can be reached, even with every key (and highfold-open is only
+  // ever set in Peak's Veil)
+  const shut = structuredClone(first);
+  delete shut.progress.flags.story['council-2-done'];
+  const seen = mapsOf(flood(shut));
+  for (const id of IRON) assert.ok(!seen.has(id), `${id} stays sealed before the second council, even with every key`);
+  // the postern and the Highfold are the only ways between the Ironspire and the rest of the world
+  for (const id of IRON) {
+    for (const x of MAPS[id].exits) {
+      assert.ok(x.to && (!x.sealed || x.gate), `${id}/${x.id} is a way through`);
+      if (MAPS[x.to].region !== 'ironspire') assert.ok((id === 'old-bridge' && x.to === 'keep') || (id === 'highfold' && x.to === 'fawnrest'), `${id}/${x.id} leaves the Ironspire only for the Keep or Fawnrest`);
+    }
+  }
+  const home = anchor('keep', 'from-east-road');
+  assert.ok(cellsOf({ area: east.area }).some(([x, y]) => Math.abs(x - home.x) + Math.abs(y - home.y) === 1), 'the road home lands beside keep-e');
+});
+
+for (const starter of Object.keys(STARTERS)) {
+  test(`reachability (${starter}): every IRON_PATH target from a Sunscorch-complete party, with only the starter relic at the worst-case level and the Rune-Key once it is given`, () => {
+    for (let i = 0; i < IP.length; i++) {
+      const g = ironStage(starter, i);
+      const hit = ENTITY_OF[IP[i]];
+      assert.ok(hit, `${IP[i]} is placed`);
+      assert.equal(MAPS[hit.map].region, 'ironspire', `${IP[i]} is in the Ironspire`);
+      const live = present(g, hit.map).find(e => e.id === hit.entity.id);
+      assert.ok(live, `${IP[i]} is present when it is next (stage ${i})`);
+      assert.ok(reaches(flood(g), hit.map, hit.entity), `${IP[i]} (${hit.map}) is reachable at stage ${i} (level 8)`);
+    }
+  });
+}
+
+test('no hard lock stands on the Ironspire path but the Deeps\' rune-seal, and the Thane\'s Rune-Key opens it (spec §2.2)', () => {
+  const given = IP.indexOf('tamsin-ironhold');
+  for (let i = 0; i < IP.length; i++) {
+    const g = ironStage('cairnmaul', i, { keys: false });              // every hard lock shut
+    if (i > given) g.progress.flags.unlocked['ih-rune-door'] = true;    // opened with the key the path just gave
+    const hit = ENTITY_OF[IP[i]];
+    assert.ok(reaches(flood(g), hit.map, hit.entity), `${IP[i]} needs no key but the path's own (stage ${i})`);
+  }
+  // until it is opened the rune-seal keeps the Deeps (and Harrow's Forge under them) shut
+  const sealed = mapsOf(flood(ironStage('cairnmaul', given + 1, { keys: false })));
+  assert.ok(sealed.has('ironhold') && !sealed.has('ironhold-deeps') && !sealed.has('harrows-forge'), 'the Deeps wait on the rune-seal');
+  const door = MAPS.ironhold.entities.find(e => e.id === 'ih-rune-door'), down = MAPS.ironhold.exits.find(x => x.to === 'ironhold-deeps');
+  assert.equal(door.lock, 'rune-seal');
+  assert.ok(cellsOf(down).every(([x, y]) => cellsOf(door).some(([dx, dy]) => dx === x && dy > y)), 'the stair down lies behind the rune-sealed door');
+  // the key: a new party (Knowledge 1) holding only the Thane's Rune-Key opens the seal, and a scene gives it
+  const g = structuredClone(newGame({ name: 'Map', starter: 'cairnmaul', seed: 11 }));
+  g.inventory.push(relicItem('thanes-rune'));
+  const st = lockStatus(g, 'rune-seal');
+  assert.ok(st.open && st.by === 'thanes-rune', 'the Rune-Key opens the rune-seal');
+  assert.ok(Object.values(DIALOGUE).some(d => (d.do || []).some(e => e.give === 'thanes-rune') && (d.do || []).some(e => e.set === 'rune-given')), 'a scene gives the Rune-Key and sets rune-given');
+  // one order (spec A4): Stormwatch's north gate onto the Frost Road opens with the Brand of Iron
+  const north = MAPS.stormwatch.exits.find(x => x.id === 'sw-n');
+  assert.deepEqual(north.gate, { brand: 'brand-of-iron' });
+  assert.ok(north.sealed.hint, 'the north gate says what opens it');
+  const before = ironStage('cairnmaul', IP.indexOf('mother-anvil'));
+  assert.ok(!mapsOf(flood(before)).has('frost-road'), 'the Frost Road waits on the Brand of Iron');
+});
+
+test('after each Ironspire Brand, the re-armed fights never shut the way home from the Brand\'s lair', () => {
+  for (const id of ['mother-anvil', 'rime-abbot']) {
+    const g = ironStage('hearthbrand', IP.indexOf(id) + 1);            // the Brand is won: the region re-arms
+    assert.ok(present(g, 'rockslide-pass').some(e => e.id === 'rp-brigands'), `after ${id} Rhune is back at his toll`);
+    const hit = ENTITY_OF[id];
+    const from = nextTo(g, hit.map, hit.entity);
+    assert.ok(from, `${id} can be stood beside`);
+    const r = flood(g, { from: [hit.map, ...from] });
+    // the lairs are underground (no Hearthfire travel): every fire kindled on the way, and the Keep's own,
+    // stays reachable on foot
+    const kindled = ['hearthstone-keep', ...Object.keys(HEARTHS).filter(h => MAPS[HEARTHS[h].map].region === 'ironspire' && g.progress.flags.kindled[h])];
+    assert.ok(kindled.length >= (id === 'mother-anvil' ? 6 : 8), `after ${id}: ${kindled.join(', ')}`);
+    for (const fire of kindled) assert.ok(reaches(r, HEARTHS[fire].map, ENTITY_OF[fire].entity), `after ${id}, ${fire} is still reachable from the lair`);
+    // and every re-armed road guard of the path behind stands beside its open gate
+    const behind = IP.slice(0, IP.indexOf(id));
+    for (const m of IRON) for (const e of present(g, m)) if (e.kind === 'gate' && e.guard && behind.includes(e.guard)) assert.equal(e.state, 'open', `after ${id}, ${m}/${e.id} stays open`);
+  }
+});
+
+test('world tables: IRON_PATH is spec §2.2\'s route and IRON_LEADS its leads, each placed once in the Ironspire and reachable', () => {
+  assert.deepEqual([...IP], ['er-wolves', 'er-toll', 'camp-fire', 'er-camp', 'pass-shrine', 'rp-brigands', 'rp-rocklings', 'veil-hearth', 'is-sentinels', 'stair-cairn', 'thanes-hearth',
+    'tamsin-ironhold', 'id-forgeborn', 'deeps-forge', 'id-bellows', 'mother-anvil', 'stormwatch-fire',
+    'fr-cutters', 'frost-cairn', 'fm-wraiths', 'fb-choir', 'rime-abbot']);
+  assert.deepEqual(JSON.parse(JSON.stringify(IRON_LEADS)), { roc: ['hf-trolls', 'roc-eyrie'], horn: ['troll-cave'], smith: ['id-smith'], shrine: ['fm-shrine'] });
+  const leads = Object.values(IRON_LEADS).flat();
+  const placedIn = id => MAPS[ENTITY_OF[id]?.map]?.region;              // undefined when no map places it
+  for (const id of [...IP, ...leads]) {
+    assert.ok(ENCOUNTERS[id] && ENCOUNTERS[id].region === 'ironspire', `${id} is an Ironspire encounter`);
+    assert.equal(placedIn(id), 'ironspire', `${id} is placed in the Ironspire`);
+  }
+  for (const id of Object.keys(ENCOUNTERS).filter(k => ENCOUNTERS[k].region === 'ironspire')) assert.equal(placedIn(id), 'ironspire', `${id} sits on an Ironspire map`);
+  const all = flood(openHeldLocks(allKeys({ brand: true })));
+  for (const id of leads) assert.ok(reaches(all, ENTITY_OF[id].map, ENTITY_OF[id].entity), `the lead ${id} is reachable with every key`);
+  // at the path's end a party that kept Rhune's Windstep Boots (and the Rune-Key) can reach every lead
+  const g = ironStage('stillwater-lance', IP.length, { keys: false });
+  g.inventory.push(relicItem('windstep-boots'));
+  const r = flood(openHeldLocks(g));
+  for (const id of leads) assert.ok(reaches(r, ENTITY_OF[id].map, ENTITY_OF[id].entity), `the lead ${id} is reachable with the path's own relics`);
+});
+
+// What spec §2.3 (with §2.5, §2.7, §3.1, §3.3) puts on each map: its biome, its Hearthfires (true = cold), its
+// fights and their modes, at least this many locks of each type, and its people. Road-first (A3): every route
+// and lead fight stands still (a block or a lair); only the zone packs roam.
+const IRON_SPEC = {
+  // the East Road (the player's six wilderness paintings): green lowland roads, so the Hearth Road's backdrop
+  'old-bridge': { biome: 'wilds', backdrop: 'hearth-road', fires: {}, fights: {}, locks: {}, npcs: [] },
+  'drystone-lea': { biome: 'wilds', backdrop: 'hearth-road', fires: {}, fights: { 'er-wolves': 'block' }, locks: {}, npcs: [] },
+  plankford: { biome: 'wilds', backdrop: 'hearth-road', fires: {}, fights: { 'er-toll': 'block' }, locks: {}, npcs: [] },
+  shrinewood: { biome: 'wilds', backdrop: 'hearth-road', fires: {}, fights: {}, locks: {}, npcs: [] },
+  silverfall: { biome: 'wilds', backdrop: 'hearth-road', fires: {}, fights: {}, locks: {}, npcs: [] },
+  'last-camp': { biome: 'wilds', backdrop: 'hearth-road', fires: { 'camp-fire': false }, fights: { 'er-camp': 'block' }, locks: {}, npcs: [] },
+  'rockslide-pass': { biome: 'mountain', fires: { 'pass-shrine': false }, fights: { 'rp-brigands': 'block', 'rp-rocklings': 'block', 'rp-wolves': 'pack' }, locks: { chasm: 1 }, npcs: [] },
+  'peaks-veil': { biome: 'monastery', fires: { 'veil-hearth': false }, fights: {}, locks: {}, npcs: ['wynn', 'kesh', 'novice'] },
+  highfold: { biome: 'scree', fires: {}, fights: { 'hf-trolls': 'block', 'roc-eyrie': 'lair' }, locks: { chasm: 1, drift: 1 }, npcs: [] },
+  'iron-stair': { biome: 'mountain', fires: { 'stair-cairn': true }, fights: { 'is-sentinels': 'block', 'is-trolls': 'pack', 'troll-cave': 'lair' }, locks: { ice: 1 }, npcs: [] },
+  ironhold: { biome: 'dwarf-hall', fires: { 'thanes-hearth': false }, fights: { 'tamsin-ironhold': 'block' }, locks: { 'rune-seal': 1 }, npcs: ['brundar', 'durra', 'ih-guard'] },
+  'ironhold-deeps': { biome: 'forge', fires: { 'deeps-forge': true }, fights: { 'id-forgeborn': 'block', 'id-bellows': 'block', 'id-smith': 'block' }, locks: { 'rune-seal': 1 }, npcs: [] },
+  'harrows-forge': { biome: 'forge', fires: {}, fights: { 'mother-anvil': 'lair' }, locks: {}, npcs: [] },
+  stormwatch: { biome: 'outpost', fires: { 'stormwatch-fire': false }, fights: {}, locks: {}, npcs: ['quill', 'rook', 'ysolde'] },
+  'frost-road': { biome: 'tundra', fires: { 'frost-cairn': true }, fights: { 'fr-cutters': 'block', 'fr-wolves': 'pack' }, locks: { drift: 1, ice: 1 }, npcs: [] },
+  frostmere: { biome: 'frozen-lake', fires: {}, fights: { 'fm-wraiths': 'block', 'fm-shrine': 'lair' }, locks: { chasm: 1 }, npcs: [] },
+  'frostmere-below': { biome: 'ice-cave', fires: {}, fights: { 'fb-choir': 'block', 'rime-abbot': 'lair' }, locks: {}, npcs: [] },
+};
+
+test('the Ironspire maps hold what spec §2.3 puts on them', () => {
+  assert.deepEqual(Object.keys(IRON_SPEC).sort(), [...IRON].sort());
+  for (const [id, want] of Object.entries(IRON_SPEC)) {
+    const m = MAPS[id], of = k => m.entities.filter(e => e.kind === k);
+    assert.equal(m.biome, want.biome, `${id} biome`);
+    assert.ok(m.lore.length >= 1, `${id} has lore for the Atlas`);
+    assert.ok(m.roads?.length, `${id} declares its roads (spec A3)`);
+    assert.equal(m.backdrop, want.backdrop || id, `${id} fights on ${want.backdrop ? `the ${want.backdrop} backdrop` : 'its own backdrop'} (spec §6.2)`);
+    assert.deepEqual(Object.fromEntries(of('hearthfire').map(e => [e.id, !!e.cold])), want.fires, `${id} Hearthfires`);
+    assert.deepEqual(Object.fromEntries(of('encounter').map(e => [e.id, e.mode])), want.fights, `${id} fights`);
+    for (const [type, n] of Object.entries(want.locks)) assert.ok(of('lock').filter(e => e.lock === type).length >= n, `${id}: ${n} ${type}`);
+    for (const npc of want.npcs) assert.ok(of('npc').some(e => e.npc === npc), `${id}: ${npc}`);
+  }
+  const on = (map, id) => MAPS[map].entities.find(e => e.id === id);
+  // the mountain maps play the peaks track; the towns and dungeons keep theirs
+  assert.deepEqual(IRON.filter(id => MAPS[id].music === 'peaks').sort(), ['frost-road', 'frostmere', 'highfold', 'iron-stair', 'rockslide-pass']);
+  assert.deepEqual(IRON.filter(id => MAPS[id].music === 'road').sort(), [...EAST_ROAD].sort(), 'the East Road plays the road');
+  // the East Road is painted: every map of it has its painting, and a painted stone or pool draws no sprite
+  for (const id of EAST_ROAD) {
+    assert.equal(MAPS[id].overTiles, false, `${id} is traced from its painting`);
+    for (const e of MAPS[id].entities) if (e.look === 'painted') assert.ok(e.kind === 'sign' && e.name && e.text, `${id}/${e.id}: a painted thing to look at has a name and words`);
+  }
+  // the dark places (M3's soft darkness): the Deeps and Beneath Frostmere; underground, no Hearthfire travel
+  assert.deepEqual(IRON.filter(id => MAPS[id].dark).sort(), ['frostmere-below', 'ironhold-deeps']);
+  assert.deepEqual(IRON.filter(id => !MAPS[id].travel).sort(), ['frostmere-below', 'harrows-forge', 'ironhold-deeps']);
+  // the zones (spec §2.6)
+  assert.deepEqual(IRON.filter(id => MAPS[id].zone).map(id => [id, MAPS[id].zone]).sort(), [['frost-road', 'frost-road'], ['frostmere', 'frostmere'], ['highfold', 'highfold'], ['iron-stair', 'iron-stair'], ['ironhold-deeps', 'deeps'], ['rockslide-pass', 'rockslide-pass']]);
+  // Peak's Veil: the bell rope (the quest) in the tower, the lookout; the boards of Ironhold and Stormwatch
+  assert.equal(on('peaks-veil', 'pv-bell-rope')?.kind, 'bellframe', 'the bell rope');
+  assert.equal(on('peaks-veil', 'pv-lookout')?.kind, 'lookout', 'the lookout');
+  assert.equal(on('ironhold', 'ih-board')?.opens, 'bounties', 'the Ironhold board');
+  assert.equal(on('stormwatch', 'sw-board')?.opens, 'bounties', 'the Stormwatch board');
+  assert.equal(on('harrows-forge', 'fg-mark')?.kind, 'sign', 'Harrow\'s broken-ring mark');
+  // Tamsin at Ironhold holds the Deeps stair: a win or a yield opens it, and she talks first
+  const stair = on('ironhold', 'ih-deeps-gate');
+  assert.deepEqual(stair.open, { any: [{ done: 'tamsin-ironhold' }, { flag: 'tamsin-yielded-3' }] });
+  assert.equal(stair.guard, 'tamsin-ironhold');
+  assert.equal(on('ironhold', 'tamsin-ironhold').talk, 'tamsin-ironhold');
+  // the journeyman's side works are behind a rune-seal; the drowned shrine is over the broken floes; Old Horn
+  // behind the ice; the Roc on its crag across a crevasse (the lock test: each is the only way in)
+  assert.equal(on('ironhold-deeps', 'id-works-seal')?.lock, 'rune-seal');
+  assert.equal(on('frostmere', 'fm-floes')?.lock, 'chasm');
+  assert.equal(on('iron-stair', 'is-ice-wall')?.lock, 'ice');
+  assert.equal(on('highfold', 'hf-crevasse')?.lock, 'chasm');
+  // Hush is a shape under the ice floor of Beneath Frostmere (a prop the scene uses); the monks' prayer-flags
+  // stand on the lake
+  const hush = on('frostmere-below', 'hush');
+  assert.ok(hush && hush.kind === 'prop' && hush.prop === 'hush' && !hush.solid, 'Hush, under the floor');
+  assert.ok(MAPS.frostmere.entities.filter(e => e.kind === 'prop' && e.prop === 'prayer-flags').length >= 3, 'the prayer-flags');
+  // the Champions' lairs are 3 by 2, and every big lair carries its sprite foot inside its footprint
+  for (const [map, id] of [['harrows-forge', 'mother-anvil'], ['frostmere-below', 'rime-abbot']]) {
+    const [x0, y0, x1, y1] = on(map, id).area;
+    assert.deepEqual([x1 - x0 + 1, y1 - y0 + 1], [3, 2], `${id}'s footprint`);
+  }
+  for (const id of IRON) for (const e of MAPS[id].entities) if (e.kind === 'encounter' && e.area) assert.ok(covers(e, e.at[0], e.at[1]), `${id}/${e.id} stands in its footprint`);
+  // the Highfold runs from Peak's Veil (east) down to Fawnrest (south)
+  assert.deepEqual(MAPS.highfold.exits.map(x => x.to).sort(), ['fawnrest', 'peaks-veil']);
+  // Ironhold's east exit leads to Stormwatch
+  assert.equal(MAPS.ironhold.exits.find(x => x.id === 'ih-e')?.to, 'stormwatch');
+});
+
+test('Ironspire chests: a little silver, embers and scrap, gems by real ids, frost opals only in the Frostmere maps, embers behind a key, no relic', () => {
+  const chests = IRON.flatMap(id => MAPS[id].entities.filter(e => e.kind === 'chest').map(e => ({ map: id, e })));
+  assert.ok(chests.length >= 10, `${chests.length} chests`);
+  // with every key but the hard locks on the chest's own map shut: what is reached then is not hidden by a lock
+  const open = openHeldLocks(allKeys({ brand: true }));
+  const behindKey = (map, e) => {
+    const g = structuredClone(open);
+    for (const x of MAPS[map].entities) if (x.kind === 'lock' && !LOCKS[x.lock].soft) delete g.progress.flags.unlocked[x.id];
+    return !reaches(flood(g), map, e);
+  };
+  for (const { map, e } of chests) {
+    for (const [k, n] of Object.entries(e.loot.materials || {})) assert.ok(MATERIALS[k] && n >= 1 && n <= 2, `${map}/${e.id}: ${k} x${n}`);
+    for (const [k, n] of Object.entries(e.loot.gems || {})) assert.ok(GEMS[k] && n >= 1 && n <= 2, `${map}/${e.id}: ${k} x${n}`);
+    if (e.loot.gems?.['frost-opal']) assert.ok(['frostmere', 'frostmere-below'].includes(map), `${e.id}: frost opals only in the Frostmere maps`);
+    assert.ok(!e.loot.gems?.['ash-garnet'], `${e.id}: the Ash Garnet only drops in Scorchgate`);
+    if (e.loot.materials?.embers) assert.ok(e.hidden || e.lock || behindKey(map, e), `${e.id}: embers are well hidden (hidden, or behind a key)`);
+    assert.ok(!e.loot.relic && (e.loot.items || []).every(it => !it.base || !RELICS[it.base]), `${e.id}: no chest duplicates a relic`);
+  }
+  assert.ok(chests.filter(({ e }) => e.loot.materials?.silver).length * 2 >= chests.length, 'most hold a little silver');
+  assert.ok(chests.some(({ e }) => e.loot.materials?.embers) && chests.some(({ e }) => e.loot.materials?.scrap), 'somewhere, an ember and some scrap');
+  assert.ok(chests.some(({ e }) => e.loot.gems?.['frost-opal']), 'Frostmere pays in frost opals');
 });

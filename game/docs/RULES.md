@@ -113,6 +113,9 @@ over time ticks at the start of the bearer's turn.
 | hasted | acts ×0.7 sooner | 2 turns |
 | regenerating | heals its value each turn | 3 turns |
 | guarding | +2 Guard, half damage (Defend) | until its next turn |
+| burrowed (M5) | under the floor: nothing can target it, and area moves pass over it | until its next turn starts |
+| swallowed (M5) | out of the line: loses its turns, cannot be targeted, takes 1d6 of the swallower's aspect at the start of each; spat out when the swallower takes a hit of 15% of its max HP, falls or runs, or the turns run out (the last hero standing is caught and spat straight back out). The Roc's is "Carried off", the Abbot's "Held under" | 2 turns |
+| charmed (M5) | its next turn is played for it: a plain attack on a random ally (never itself); a hit from its own side wakes it | until that turn |
 
 ## 5. Foes: intent dice, move tables, phases
 
@@ -199,6 +202,60 @@ Keep's south-east gate):
 - What the engine has no status for is built from the nearest one: blinding is Frightened, a charm is
   Rooted, being swallowed is Staggered and Rooted, burrowing is a charge followed by Guarding, "every foe
   acts twice this round" is Hasted, and "the party's first hit each round is absorbed" is Warded.
+  M5 made the burrow, the swallow and the charm exact (below).
+
+**M5 foes** (the Ironspire Peaks; a player arrives at Waking 4, every earlier Brand held, and meets the Frost
+half at Waking 5, after the Brand of Iron):
+- **The Ironspire Waking.** Every Ironspire spawn that is not rabble climbs 4 levels per Waking (the `IRON`
+  spawns in `data/encounters.js`): +16 on arrival, +20 after the Brand of Iron. Rabble climb the usual 2.
+  **At most three Waking Omens** on any Ironspire spawn (`wakeOmenCap: 3`): at Waking 4 and 5 an elite would
+  otherwise carry four or five of the six, every foe looked alike, and a frost wraith came out Emberblooded
+  (resisting the ember it is weak to). Champions and the named lair holders carry **chosen Omens** instead
+  (`omens`, `wakeOmenCap: 0`), because a base level also picks a spawn's Omens and a one-level change swung a
+  lair by 20 points.
+- Rabble: rime-wolf (frost; Rime Bite Chills, Lunge charges, Circle Hastes it), brigand (Stormwatch deserters,
+  humanoid; Hack, Crossbow, Desert runs), rockling (stone construct, weak to crush; Roll In Staggers, Hunker
+  Guards), forge-spark (ember construct; Singe Burns, Flare hits every hero, Gutter goes out: the Deeps'
+  patrols and the Bellows' sparks), and the sawyer (a smuggler with one end of an ice saw).
+- Veterans: iron-sentinel (stone construct, plate; Gate Slam charges and Staggers, Lock Shields Guards the
+  line), forgeborn (ember construct; Molten Fist Burns, Slag Spit, Stoke Hastes it; the Bellows blows sparks),
+  peak-troll (stone beast; Pummel hits twice, Hurl Boulder charges and Staggers, Regrow Regenerates),
+  rime-wraith (frost undead; Drowned Grasp Chills, Dirge frightens (WIS), Pull Under charges; a choir-wraith's
+  Note Chills the line), and the East Road's deserter sergeant.
+- Relic-Bearers: the Thunder-Roc (storm beast; **Carry Off** charges and carries a hero off the crag,
+  `swallowed` as "Carried off"; **Storm Mantle** needs the Roc-Feather Cloak), and the named holders, each
+  with its Art on the d12's high faces: Rhune the Pass-Warden (Gale Step, the Windstep Boots; Toll Chain
+  Staggers), the Sentinel-Captain (Ironwall and Shield Rush, Ironwall), Old Horn (Mantle of Trolls, the
+  Trollhide Mantle; Horn Toss), Harrow's Journeyman (Rune-Fire, Harrow's Runestaff; White Heat charges; Temper
+  the Kin Wards his forgeborn), the Drowned Abbess (Censer Swing, the Drowned Censer; Last Rites heals her
+  choir) and the Cutter-Chief (Split the Ice, the Cutter's Pick). The Bellows (a forgeborn veteran) blows
+  forge-sparks out of its bellows.
+- **Mother Anvil** (Champion, ember construct, plate, crush-resistant, weak to frost; a foe named weak to an
+  aspect is weak to it even where the wheel would halve it, so frost is ×1.5 on her and crush ×0.625):
+  *The Anvil Wakes* (Hammerfall 2d10 crushing; Sparks, 1d6 ember to every hero and Burning; **Temper** needs
+  the Anvil Heart: Guarding and Warded); at 66% *Quench* (Steam Burst, 2d6 ember to every hero, DEX for half;
+  **Anvil Strike** needs the Worldforge Hammer: 3d8 crushing and Staggered; Bellows calls a forgeborn, at most
+  two); at 33% *The Last Strike* (**Heart Flare** needs the Heart: 3d6 ember to every hero and Burning;
+  **Worldforge Blow** needs the Hammer: charging, 4d10 crushing on one hero). 170 HP, Guard 18, atk 9, dmg 6,
+  speed 10; Thornskinned, Frenzied and Ironclad.
+- **The Rime-Abbot** (Champion, frost undead; ember beats frost on the wheel): *Vespers* (Crozier Strike, 2d8
+  frost and Chilled; Toll, every hero WIS or Frightened; **Rime Ward** needs the Rime Crozier: Warded); at 66%
+  *Compline* (**Drown**: charging, 1d8 frost and the hero is held under the ice, `swallowed` as "Held under",
+  for up to two turns; Call the Choir: a choir-wraith, at most two; **Hushing** needs the Hushweave Cowl: WIS
+  or `charmed`, else Toll); at 33% *Hush* (on the d20: Crozier Strike 1-8; Heartbeat 9-14, he heals 2d8 and
+  every hero is Chilled; Rime Nova 15-20, 3d8 frost to every hero, DEX for half, Chilled). 160 HP, Guard 21, atk 8,
+  dmg 7, speed 8 with the Swift Omen (so 12) and Frenzied.
+- **Tamsin at Ironhold** (`variant: '$rival:ironhold'`): her Ironhold kit (`data/rivals.js`) on the d12:
+  Riposte 1-3, Iron Grip 4 (2d8 crushing, Staggered), Cheap Shot 5, Hunter's Mark 6 (Marked), Bracer Block 7
+  (Guarding and Warded 1d8), her lent counter-starter's Art 8-11, Not Like This 12. Party level + 4, gear
+  tier 4, and the Swift, Ironclad and Thornskinned Omens; she wears the Ironvein Bracers, which drop when you
+  win.
+- **M4's stand-ins are exact now** (the three statuses in §4): Kharzul's Burrow goes under the floor
+  (`burrowed`) and forces its next intent (`then`) to **Erupt**, a charging 4d10 piercing strike that
+  Staggers and Bleeds (two stacks), after which it Guards; the Sand Wyrm's Swallow is `swallowed`; the
+  mirage-wisps' and the Wisp-Queen's Beguile is `charmed` (WIS save). With M4's 3d8 the exact Burrow round was
+  a free round for the party (nothing to hit, so it braced and healed) and Kharzul fell to 27% wipes: the
+  Erupt's 4d10 and its riders put him back at 32%.
 
 **Omens** (stack on elites; the Waking and Grudges add them): emberblooded (hits Burn, resists
 ember), thornskinned (reflects 25% of melee damage), twinned (splits in two at half HP; never on
@@ -228,6 +285,14 @@ A holder shows a grip meter per relic: `max = relic grip × (1 + 0.1(L−1))` (�
   Art whose piece comes loose fizzles (the intent is re-rolled), and a Champion keeps its d20. The
   autoplay pries both pieces loose in every fight it wins (sim: Cinderfang by round 2-3, the Carapace
   by round 5).
+- **M5 Champions** hold two pieces each (base grip before the level scaling): Mother Anvil the Worldforge Hammer
+  44 (held) and the Anvil Heart 36 (worn), the Rime-Abbot the Rime Crozier 44 (held) and the Hushweave Cowl 30
+  (worn). Snapping a piece off shuts its moves down: without the Heart Mother Anvil cannot Temper and her Heart
+  Flare is Sparks; without the Hammer, Anvil Strike and Worldforge Blow are Hammerfall; without the Crozier the
+  Abbot's Rime Ward is a Crozier Strike, and without the Cowl his Hushing is a Toll. Mother Anvil is Ironclad,
+  so her grips are half again as strong. The M5 holders' relics: the Windstep Boots 26, Ironwall 30, the
+  Drowned Censer 28, the Roc-Feather Cloak 30, the Trollhide Mantle 32, Harrow's Runestaff 28, the Cutter's
+  Pick 28.
 
 ## 7. Legend Surge
 
@@ -252,6 +317,23 @@ Opens (Qasim's Signet: every ally heals 2d8, Burning washed away), Sunbeat (the 
 ally heals 2d8 and Regenerates), The Last Door (the Scorchgate Key: every foe Staggers and is Exposed),
 Ward of Ash (the Ashen Aegis: every ally Warded 3d8), Command of Cinders (the Cinder Crown: every ally
 Hasted and +15 Surge) and The Glass Sings (Saltglass: an auto-crit shot that Staggers).
+
+**M5 relics (Codex Nos. 39-52)** each carry a signature Surge: Windstride (the Windstep Boots: every ally
+Hasted and Warded 2d6), The Bell Tolls (the Veilbell: every ally heals 2d6 and shakes off Frightened, Chilled
+and Charmed), Hold the Stair (Ironwall: every ally Guarding and Warded 2d8), Requiem (the Drowned Censer: 2d8
+frost to every foe and two stacks of Chilled), Vein of Iron (the Ironvein Bracers: 4d6 grip damage and a
+weapon strike that Staggers), Thunder-Stoop (the Roc-Feather Cloak: 4d8 storm on one foe, and it Staggers),
+Rune-Ward (the Thane's Rune-Key: every ally Warded 3d6 and one harmful status shed), Troll Blood (the
+Trollhide Mantle: every ally heals 2d6 and Regenerates 1d8), Harrow's Rune (Harrow's Runestaff: 4d6 grip
+damage, 3d8 ember and Exposed), **Heart of the Forge** (the Anvil Heart: every ally heals 2d8, is Hasted and
+thaws), **Worldfall** (the Worldforge Hammer: 3d10 crushing and 2d6 grip damage to every foe, and they
+Stagger), Split the Lake (the Cutter's Pick: a weapon strike against every foe, each hit two stacks of
+Chilled), **The Last Office** (the Rime Crozier: every ally heals 3d8 and is Warded 2d6) and **Hush** (the
+Hushweave Cowl: every foe Staggers, losing a charging move, and is Frightened). Each has three deeds, one
+socket (the four Champions' pieces two) and two awakened branches; the Champions' pieces have their own
+names (the Anvil Heart: The Forge-Heart / The Banked Fire; the Worldforge Hammer: The Worldbreaker / The
+Maker's Hammer; the Rime Crozier: The Bell-Clapper / The Abbot's Light; the Hushweave Cowl: The Silent Step /
+The Listener's Hood), the rest read "the Gale-Footed Hand", "the Wandering Heart".
 
 **Deeds, sockets and awakening (M4 data; rules in `rules/forge.js` and `rules/codex.js`).** Every relic
 names three deeds (`data/deeds.js`), gem `sockets` (0-2: the starters and the Champions' pieces 2, the
@@ -324,6 +406,12 @@ veteran 1, relic-bearer 2, champion 3) + Waking + ½ per Omen + 1 for a Grudge.
   always from a Champion (Hearth Tonic 5 : Frost Draught 2 : Bitterroot 2 : Ember Salts 1).
 - **Grudges:** a settled Grudge always adds a bonus item, and all its gear drops are one rarity
   higher, stamped `grudge-settled`.
+- **Forge spoils** (M4, and the Ironspire in M5): a won Sunscorch or Ironspire fight pays materials by the
+  tier of each foe beaten (veteran 1 scrap, relic-bearer 1 silver, Champion 2 silver and 2 embers; a
+  Twinned foe's twin pays nothing). Scorchgate's fights pay Ash Garnets (the Captain's and the Vault Guard's
+  1, the Ashen Warden 2) and Frostmere's pay **Frost Opals** (`TUNING.forge.opals`: the Drowned 1, the Drowned
+  Shrine 1, the Choir 1, the Rime-Abbot 2); three Frostmere chests, Rook's Ledger and Durra's armoury in
+  Ironhold have them too.
 - **Generated items:** base type by slot (newer bases likelier at higher item level), rarity,
   affixes (≤2 prefixes named for regions, ≤2 suffixes named for Domains, no duplicates within a
   family), value = roll × rarity multiplier + item level × per-level. Names: "Patched Leather
@@ -683,3 +771,165 @@ random/worn-gear drops by rarity: worn 536, wrought 1056, tempered 4072, runed 2
 
 party level entering the Sunscorch: 11.8
 
+### M5: the Ironspire Peaks (Gate 5, M5 spec §8)
+
+`node tools/sim.mjs --seeds 200 --modes ironspire,ironspire-forged,iron-first-lead` (add `--iron-leads roc,shrine`
+to run only some leads, `--jobs 4` to split the seeds over four processes, and `--sun-cache <file>` to keep each
+seed's Sunscorch end state between tuning runs). Each mode starts from the end state of a `sunscorch` run: the
+party that has just beaten the Ashen Warden, at Waking 4 with both Sunscorch Brands (party level 21.1 on average).
+The tables are the M5 release's, with every M5 rule in (the exact statuses, Ironwall's Iron Stance, the held hero let
+go when the last one standing falls).
+- `ironspire`: home to the Eternal Hearth, out through the east postern and along the East Road (the Lea's
+  wolves, the Plankford toll, a rest at the Last Camp Fire, the deserters' camp; the East Road's maps have no
+  roaming zone), then `IRON_PATH` in order with one zone patrol per zone map walked through and a rest at each
+  Hearthfire passed. The party rests at the Deeps Furnace before Mother Anvil (on the same map) and, after the
+  Brand of Iron (Waking 5), walks back across the lake to the Frost Cairn before the Rime-Abbot (a patrol each
+  way), as the Sunscorch route rests before its Champions.
+- `ironspire-forged`: the same party with every hero's weapon tempered to +6 and one gem each (a Frost Opal in
+  the weapon when it has a socket, else in the first socketed piece they wear: 799 of 800).
+- `iron-first-lead`: each lead's lair (`IRON_LEADS`) as the first thing done once the road reaches it: the
+  Thunder-Roc (past the Highfold's trolls) and Old Horn from Peak's Veil, Harrow's Journeyman from the Deeps
+  Furnace (Waking 4), and the Drowned Abbess from the Frost Cairn once the Brand of Iron opens Stormwatch's north
+  gate (Waking 5).
+- **After an Ironspire wipe the sim's party re-arms** against the foe that beat it, as a player does who has read
+  its card: each hero takes the bag weapon that hits it hardest (hit chance × average × the damage multiplier)
+  when that beats the one in hand by a fifth, and the old weapon goes back when the fight is done. First tries
+  never re-arm, and the M3 and M4 modes never do.
+
+**M5 targets vs results (200 seeds, starters rotated):**
+
+| target | result |
+|---|---|
+| `ironspire`: Mother Anvil first-try wipe 30-40% | 32% (party level 25.5; 29.5 rounds) |
+| `ironspire`: the Rime-Abbot first-try wipe 30-40% | 35.5% (party level 29.0; 19.3 rounds) |
+| `ironspire`: Tamsin at Ironhold first-try party win 55-70% | 61% (39% yield) |
+| `ironspire-forged`: a forged party <= 20% against each Champion | Mother Anvil 6%, the Rime-Abbot 13.5% |
+| `iron-first-lead`: each lead's lair taken first 15-25% | the Thunder-Roc 19%, Old Horn 19.5%, Harrow's Journeyman 22.5%, the Drowned Abbess 20% |
+| zero stuck runs | 0 in every mode (M3's, M4's and M5's) |
+| every M3 and M4 target unchanged | M3: every first-try result is M4.5's (m2 13% / 1% / 33%; direct Tamsin 66% win, Rotwarden 33%; leads2 4%; looper-w2 10%; first-lead 20% / 28% / 23% / 20%). M4, after Kharzul's exact Burrow: Kharzul 31.5%, the Ashen Warden 33.5%, Tamsin at Scorchgate 69.5% win, forged 16.5% / 7%, the leads 19% / 20% / 22% / 24% / 18.5% (the caravan with its plain smuggler at 6, below) |
+
+**What the tuning settled:**
+- Ironspire spawns that are not rabble climb 4 levels per Waking (§5); Waking-0 levels are 2-11: Mother Anvil 7
+  (level 23 on arrival), the Rime-Abbot 7 (27 after the Brand of Iron), the Thunder-Roc 5, Old Horn 10, Harrow's
+  Journeyman 11, the Drowned Abbess 6 (26 at Waking 5); the zone levels stay the scaffold's (the Rockslide Pass
+  13, the Highfold and the Iron Stair 14, the Deeps 15, the Frost Road and Frostmere 16). The East Road's fights
+  are rabble at 10-12 and a veteran sergeant at 2 (18-20 at Waking 4): a warm-up, 0-2% wipes.
+- At most three Waking Omens on an Ironspire spawn, and chosen Omens on the Champions and the named lair holders
+  (§5): Mother Anvil Thornskinned, Frenzied and Ironclad; the Rime-Abbot Frenzied and Swift; the Thunder-Roc
+  Swift, Frenzied and Thornskinned; Old Horn and Harrow's Journeyman Frenzied and Swift; the Drowned Abbess
+  Thornskinned and Swift; Rhune Swift; the Cutter-Chief Ironclad. None is ever Twinned.
+- Mother Anvil: 170 HP, Guard 18, atk 9, dmg 6. Her plate and her crush resistance put a party whose four weapons
+  were all ember or crush at 0.31-0.63x; before the re-arm such a party was stuck at eight tries with a Stillwater
+  Lance in its bag.
+- The Rime-Abbot: 160 HP, Guard 21, atk 8, dmg 7, speed 8 with Swift from the start. A lost fight makes a Champion
+  a Grudge with one Omen it lacks; with Frenzied and Ironclad chosen, a Grudge could add Swift, which on a Frenzied
+  Abbot is 40-50 more points of wipes, and 2-4 runs in 200 stuck on the retries. With Swift his already, a Grudge
+  adds Emberblooded, Thornskinned or Ironclad. His difficulty was almost all Frenzied's burst under a quarter of
+  his health (without it: 2-4% wipes), which the forged party escaped only in part (24% forged at 35%); so his
+  last phase rolls Rime Nova on 6 faces in 20 (was 8), his blows hit harder all fight and his Guard is 21, so the
+  forge's +6 to hit counts.
+- Tamsin at Ironhold: the spec's spawn (party + 4, gear tier 4) with the Swift, Ironclad and Thornskinned Omens,
+  and her Ironhold kit's Iron Grip at 2d8. A fourth Omen was far too much (Frenzied: 19-29% party wins).
+- The Thunder-Roc 140 HP (at 120 it cost 13-15% first-try wipes).
+- Kharzul's exact Burrow (§5): Erupt 4d10 with Stagger and two Bleeds keeps him on target (31.5%); it moved the M4
+  run's later numbers a little: Tamsin at Scorchgate 65% to 69.5% (inside), and with the wisps' Beguile now a real
+  charm the Wisp-Queen 19% to 24%; the caravan went from 22% to 25.5%, outside M4's 15-25%, so its plain smuggler is
+  level 6 now (was 7): 19%. It is a lead, so nothing after it moves.
+- The Deeps' zone patrol costs 11% first-try wipes on the route: it is met straight after Tamsin's duel with no
+  rest between (as M4's Vault Guard after Scorchgate's duel, 16%).
+
+### ironspire: from the sunscorch run's end (Waking 4), home to the Keep, then IRON_PATH
+
+| node | foes | lvl | win 1st | rounds | hp left | wipe 1st | yield | wipes | claimed | shattered | stuck |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| er-wolves | rime-wolf+rime-wolf+rime-wolf | 21.1 | 100% | 3.1 | 78% | 0% |  | 0 |  |  |  |
+| er-toll | brigand+brigand+brigand | 21.4 | 100% | 5.2 | 68% | 0% |  | 0 |  |  |  |
+| er-camp | brigand+brigand+brigand | 21.5 | 99% | 6.7 | 66% | 2% |  | 3 |  |  |  |
+| patrol:rockslide-pass | (zone patrol, 6% ran) | 21.8 | 99% | 6.2 | 63% | 1% |  | 2 |  |  |  |
+| rp-brigands | brigand+brigand+brigand | 22.0 | 98% | 8.0 | 67% | 3% |  | 5 | 200 |  |  |
+| rp-rocklings | rockling+rockling+rockling+rockling | 22.4 | 100% | 4.5 | 67% | 1% |  | 1 |  |  |  |
+| patrol:iron-stair | (zone patrol, 7% ran) | 22.7 | 99% | 5.6 | 73% | 1% |  | 2 |  |  |  |
+| is-sentinels | iron-sentinel+iron-sentinel+iron-sentinel | 22.9 | 97% | 14.1 | 69% | 3% |  | 6 | 200 |  |  |
+| tamsin-ironhold | tamsin | 23.7 | 61% | 19.2 | 54% | 0% | 39% | 0 |  |  |  |
+| patrol:deeps | (zone patrol, 6% ran) | 24.1 | 89% | 4.3 | 52% | 11% |  | 22 |  |  |  |
+| id-forgeborn | forgeborn+forgeborn+forgeborn | 24.4 | 96% | 11.0 | 68% | 4% |  | 8 |  |  |  |
+| id-bellows | forgeborn+forgeborn+forgeborn | 24.9 | 90% | 12.9 | 54% | 10% |  | 20 |  |  |  |
+| mother-anvil | mother-anvil | 25.5 | 68% | 29.5 | 45% | 32% |  | 87 | 400 |  |  |
+| patrol:deeps@back | (zone patrol, 14% ran) | 26.7 | 99% | 4.5 | 61% | 1% |  | 2 |  |  |  |
+| patrol:frost-road | (zone patrol, 7% ran) | 26.9 | 100% | 4.4 | 69% | 0% |  | 0 |  |  |  |
+| fr-cutters | tallyman+smuggler+smuggler | 27.1 | 92% | 11.6 | 69% | 9% |  | 20 | 200 |  |  |
+| patrol:frostmere | (zone patrol, 11% ran) | 27.5 | 100% | 3.6 | 78% | 0% |  | 0 |  |  |  |
+| fm-wraiths | rime-wraith+rime-wraith+rime-wraith | 27.7 | 98% | 6.4 | 70% | 3% |  | 5 |  |  |  |
+| fb-choir | rime-wraith+rime-wraith+rime-wraith | 28.3 | 94% | 5.1 | 57% | 7% |  | 13 |  |  |  |
+| patrol:frostmere@back | (zone patrol, 36% ran) | 28.6 | 99% | 4.1 | 66% | 1% |  | 2 |  |  |  |
+| patrol:frostmere@again | (zone patrol, 39% ran) | 28.8 | 100% | 3.8 | 80% | 0% |  | 0 |  |  |  |
+| rime-abbot | rime-abbot | 29.0 | 65% | 19.3 | 47% | 36% |  | 121 | 400 |  |  |
+
+runs cleared 200/200 (stuck 0); end party level 30.1; grind fights/run 5.7
+hero attack rolls: hit 60%, graze 13%, crit 11%, miss 12%, fumble 4%
+random/worn-gear drops by rarity: worn 366, wrought 899, tempered 1488, runed 2889, storied 2286; named relics dropped: 122
+party level entering the Ironspire: 21.1
+### ironspire-forged: the same party with weapons tempered to +6 and one gem each
+
+| node | foes | lvl | win 1st | rounds | hp left | wipe 1st | yield | wipes | claimed | shattered | stuck |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| er-wolves | rime-wolf+rime-wolf+rime-wolf | 21.1 | 100% | 2.3 | 82% | 0% |  | 0 |  |  |  |
+| er-toll | brigand+brigand+brigand | 21.4 | 100% | 4.1 | 73% | 0% |  | 0 |  |  |  |
+| er-camp | brigand+brigand+brigand | 21.5 | 100% | 5.3 | 70% | 0% |  | 0 |  |  |  |
+| patrol:rockslide-pass | (zone patrol, 6% ran) | 21.8 | 100% | 4.4 | 67% | 0% |  | 0 |  |  |  |
+| rp-brigands | brigand+brigand+brigand | 22.1 | 100% | 6.0 | 69% | 0% |  | 0 | 200 |  |  |
+| rp-rocklings | rockling+rockling+rockling+rockling | 22.5 | 100% | 3.9 | 70% | 1% |  | 1 |  |  |  |
+| patrol:iron-stair | (zone patrol, 7% ran) | 22.7 | 100% | 4.2 | 78% | 0% |  | 0 |  |  |  |
+| is-sentinels | iron-sentinel+iron-sentinel+iron-sentinel | 23.0 | 100% | 10.8 | 73% | 0% |  | 0 | 200 |  |  |
+| tamsin-ironhold | tamsin | 23.7 | 79% | 14.9 | 55% | 0% | 22% | 0 |  |  |  |
+| patrol:deeps | (zone patrol, 7% ran) | 24.2 | 96% | 3.4 | 57% | 4% |  | 8 |  |  |  |
+| id-forgeborn | forgeborn+forgeborn+forgeborn | 24.4 | 100% | 7.6 | 69% | 0% |  | 0 |  |  |  |
+| id-bellows | forgeborn+forgeborn+forgeborn | 24.9 | 99% | 9.6 | 60% | 1% |  | 2 |  |  |  |
+| mother-anvil | mother-anvil | 25.4 | 94% | 21.1 | 50% | 6% |  | 15 | 400 |  |  |
+| patrol:deeps@back | (zone patrol, 9% ran) | 26.4 | 100% | 3.4 | 62% | 0% |  | 0 |  |  |  |
+| patrol:frost-road | (zone patrol, 2% ran) | 26.5 | 100% | 3.3 | 72% | 0% |  | 0 |  |  |  |
+| fr-cutters | tallyman+smuggler+smuggler | 26.8 | 99% | 8.6 | 67% | 1% |  | 2 | 200 |  |  |
+| patrol:frostmere | (zone patrol, 5% ran) | 27.2 | 100% | 3.1 | 81% | 0% |  | 0 |  |  |  |
+| fm-wraiths | rime-wraith+rime-wraith+rime-wraith | 27.4 | 100% | 5.1 | 73% | 1% |  | 1 |  |  |  |
+| fb-choir | rime-wraith+rime-wraith+rime-wraith | 27.9 | 98% | 4.0 | 64% | 2% |  | 4 |  |  |  |
+| patrol:frostmere@back | (zone patrol, 24% ran) | 28.3 | 100% | 3.2 | 70% | 0% |  | 0 |  |  |  |
+| patrol:frostmere@again | (zone patrol, 28% ran) | 28.4 | 100% | 2.9 | 83% | 0% |  | 0 |  |  |  |
+| rime-abbot | rime-abbot | 28.6 | 87% | 14.9 | 52% | 14% |  | 50 | 400 |  |  |
+
+runs cleared 200/200 (stuck 0); end party level 29.5; grind fights/run 1.5
+hero attack rolls: hit 77%, graze 5%, crit 11%, miss 3%, fumble 4%
+random/worn-gear drops by rarity: worn 304, wrought 796, tempered 1484, runed 2755, storied 1957; named relics dropped: 157
+party level entering the Ironspire: 21.1
+forged: 800 heroes' weapons at +6; 799 gems set (583 in the weapon)
+### iron-first-lead: each Ironspire lead's lair taken first: the Roc's and Old Horn's from Peak's Veil and the Journeyman's from the Deeps (Waking 4), the Drowned Abbess's once the Brand of Iron opens the Frost Road (Waking 5)
+
+| node | foes | lvl | win 1st | rounds | hp left | wipe 1st | yield | wipes | claimed | shattered | stuck |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| er-wolves | rime-wolf+rime-wolf+rime-wolf | 21.1 | 100% | 3.1 | 78% | 0% |  | 0 |  |  |  |
+| er-toll | brigand+brigand+brigand | 21.4 | 100% | 5.2 | 68% | 0% |  | 0 |  |  |  |
+| er-camp | brigand+brigand+brigand | 21.5 | 99% | 6.7 | 66% | 2% |  | 14 |  |  |  |
+| patrol:rockslide-pass | (zone patrol, 6% ran) | 21.8 | 98% | 6.2 | 62% | 2% |  | 19 |  |  |  |
+| rp-brigands | brigand+brigand+brigand | 22.0 | 98% | 8.0 | 67% | 2% |  | 18 | 800 |  |  |
+| rp-rocklings | rockling+rockling+rockling+rockling | 22.5 | 99% | 4.6 | 66% | 1% |  | 7 |  |  |  |
+| patrol:highfold | (zone patrol, 6% ran) | 22.7 | 100% | 3.5 | 81% | 0% |  | 0 |  |  |  |
+| hf-trolls | peak-troll+peak-troll | 22.9 | 100% | 6.3 | 74% | 0% |  | 0 |  |  |  |
+| roc-eyrie | thunder-roc | 23.3 | 81% | 14.6 | 39% | 19% |  | 54 | 200 |  |  |
+| patrol:iron-stair | (zone patrol, 7% ran) | 22.7 | 100% | 5.5 | 74% | 0% |  | 1 |  |  |  |
+| troll-cave | peak-troll+peak-troll | 22.9 | 81% | 16.2 | 57% | 20% |  | 39 | 200 |  |  |
+| is-sentinels | iron-sentinel+iron-sentinel+iron-sentinel | 23.0 | 97% | 13.7 | 69% | 3% |  | 11 | 400 |  |  |
+| tamsin-ironhold | tamsin | 23.7 | 61% | 19.1 | 54% | 0% | 39% | 0 |  |  |  |
+| patrol:deeps | (zone patrol, 7% ran) | 24.2 | 87% | 4.4 | 53% | 14% |  | 54 |  |  |  |
+| id-forgeborn | forgeborn+forgeborn+forgeborn | 24.4 | 97% | 11.1 | 69% | 3% |  | 12 |  |  |  |
+| id-smith | forgeborn+forgeborn | 24.8 | 78% | 24.3 | 61% | 23% |  | 51 | 200 |  |  |
+| id-bellows | forgeborn+forgeborn+forgeborn | 24.8 | 92% | 12.6 | 51% | 8% |  | 16 |  |  |  |
+| mother-anvil | mother-anvil | 25.4 | 67% | 29.2 | 46% | 34% |  | 94 | 400 |  |  |
+| patrol:deeps@back | (zone patrol, 14% ran) | 26.7 | 100% | 4.5 | 59% | 0% |  | 0 |  |  |  |
+| patrol:frost-road | (zone patrol, 4% ran) | 26.9 | 99% | 4.3 | 68% | 1% |  | 2 |  |  |  |
+| fr-cutters | tallyman+smuggler+smuggler | 27.1 | 92% | 11.7 | 66% | 8% |  | 16 | 200 |  |  |
+| patrol:frostmere | (zone patrol, 10% ran) | 27.5 | 100% | 3.8 | 78% | 0% |  | 0 |  |  |  |
+| fm-shrine | rime-wraith+rime-wraith+rime-wraith | 27.7 | 80% | 10.3 | 62% | 20% |  | 47 | 200 |  |  |
+
+runs cleared 800/800 (stuck 0); end party level 25.4; grind fights/run 1.7
+hero attack rolls: hit 62%, graze 12%, crit 11%, miss 11%, fumble 4%
+random/worn-gear drops by rarity: worn 652, wrought 1779, tempered 2798, runed 6347, storied 3673; named relics dropped: 245
+party level entering the Ironspire: 21.1

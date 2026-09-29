@@ -1,8 +1,8 @@
 // Game flow (no DOM): new game, Hearthfire rests and travel, battles in and out, party wipes and the
 // duel yield, Grudges, Brands and the Waking.
 //
-// M3 (spec §4.6; owner WP2) keeps this file name for import stability. newGame makes version 3
-// games that start in the Great Hall (START_AT); where you are is progress.pos, and the world
+// M3 (spec §4.6; owner WP2) keeps this file name for import stability. newGame makes games at the
+// current save version (4 since M5, rules/migrate.js SAVE_VERSION) that start in the Great Hall (START_AT); where you are is progress.pos, and the world
 // (rules/world.js) decides what you can reach. progress.node is only kept on migrated M2 saves,
 // verbatim, and never read.
 //   newGame, spawnsFor, startBattle(game, { nodeId } | { patrol: { spawns, where, backdrop, dark } },
@@ -20,6 +20,7 @@ import { createRng } from '../core/rng.js';
 import { HEROES, HERO_IDS, STARTERS, STARTING_BAG } from '../data/heroes.js';
 import { RELICS } from '../data/relics.js';
 import { ENCOUNTERS, GAUNTLET, BRANDS } from '../data/encounters.js';
+import { RIVAL_KITS } from '../data/rivals.js';
 import { HEARTHS, START_AT, REGIONS } from '../data/world.js';
 import { FOES } from '../data/foes.js';
 import { TUNING } from '../data/tuning.js';
@@ -74,7 +75,7 @@ export function newGame({ name = 'Wren', starter = 'hearthbrand', seed = 1, base
   const codex = {};
   for (const r of Object.keys(STARTERS)) codex[r] = { sighted: true, claimed: r === starter, awakened: false };
   return {
-    version: 3, seed, rngState: rng.getState(),
+    version: 4, seed, rngState: rng.getState(), // SAVE_VERSION (rules/migrate.js; test/gauntlet.test.mjs holds them equal)
     party: { active: [...HERO_IDS], roster },
     inventory, gold: 50, codex, materials: { scrap: 0, silver: 0, embers: 0 }, gems: {},
     progress: {
@@ -152,14 +153,23 @@ function heldFor(game, spawn, key) {
 
 // M3 spawn fields resolved before escalation: level 'party' (party level + partyDelta, default +1),
 // variant/relic '$rival' (the rival starter of story.starter, else of the claimed starter).
+// M5: variant '$rival:<duel>' is the rival starter's variant with that duel's kit (data/rivals.js).
 function rivalOf(game) {
   const starter = game.progress.flags.story?.starter || Object.keys(STARTERS).find(id => game.codex?.[id]?.claimed) || 'hearthbrand';
   return STARTERS[starter]?.rival || 'cairnmaul';
 }
 function resolveSpawn(game, sp) {
-  if (sp.level !== 'party' && sp.variant !== '$rival' && sp.relic !== '$rival') return sp;
+  const kit = typeof sp.variant === 'string' && sp.variant.startsWith('$rival:') ? sp.variant.slice(7) : null;
+  if (sp.level !== 'party' && sp.variant !== '$rival' && sp.relic !== '$rival' && !kit) return sp;
   const s = { ...sp };
   if (s.level === 'party') s.level = partyLevel(game) + (s.partyDelta ?? 1);
+  if (kit) {
+    s.variant = rivalOf(game);
+    if (RIVAL_KITS[s.variant]?.[kit]) {
+      s.kit = kit;
+      if (RIVAL_KITS[s.variant][kit].gearTier != null) s.gearTier = RIVAL_KITS[s.variant][kit].gearTier;
+    }
+  }
   if (s.variant === '$rival') s.variant = rivalOf(game);
   if (s.relic === '$rival') s.relic = rivalOf(game);
   return s;
@@ -423,14 +433,18 @@ function fightDeeds(g, battle, out, report) {
   }
 }
 
-// Won Sunscorch fights pay forge materials by the tier of each foe beaten (a Twinned foe's twin pays
-// nothing, as it drops nothing); Scorchgate's pay Ash Garnets.
+// Won Sunscorch and Ironspire fights pay forge materials by the tier of each foe beaten (a Twinned foe's
+// twin pays nothing, as it drops nothing); Scorchgate's pay Ash Garnets and Frostmere's Frost Opals
+// (M5 spec §3.7).
+const SPOILS = new Set(['sunscorch', 'ironspire']);
 function spoils(g, battle, node, out, report) {
-  if (!node || (node.region || 'verdant') !== 'sunscorch') return;
+  if (!node || !SPOILS.has(node.region || 'verdant')) return;
   const F = TUNING.forge;
   let materials = {};
   for (const b of out.beaten) if (!battle.units[b.id]?.noLoot) materials = addCounts(materials, F.spoils[b.tier] || {});
-  const gems = F.garnets[node.id] ? { 'ash-garnet': F.garnets[node.id] } : {};
+  const gems = {};
+  if (F.garnets[node.id]) gems['ash-garnet'] = F.garnets[node.id];
+  if (F.opals?.[node.id]) gems['frost-opal'] = F.opals[node.id];
   g.materials = addCounts(g.materials, materials);
   g.gems = addCounts(g.gems, gems);
   report.materials = materials;
@@ -453,6 +467,8 @@ function earnBrand(g, node, report) {
   if (REGIONS.verdant.brands.every(b => p.brands.includes(b))) f.story = { ...(f.story || {}), 'act1-complete': true };
   // M4: both Sunscorch Brands call the second council (data/maps/keep-hall.js council-2)
   if (REGIONS.sunscorch.brands.every(b => p.brands.includes(b))) f.story = { ...(f.story || {}), 'sunscorch-complete': true };
+  // M5: both Ironspire Brands call the third council (data/maps/keep-hall.js council-3)
+  if (REGIONS.ironspire.brands.every(b => p.brands.includes(b))) f.story = { ...(f.story || {}), 'ironspire-complete': true };
   report.brand = { ...brand, waking: p.waking, first: true, count: new Set(p.brands).size };
 }
 

@@ -1,4 +1,7 @@
 // Plain-language battle log lines for every event (the accessible record of the fight).
+// M5: a hold reads by its label ("Pip is held under by the Rime-Abbot"); a hold's lost turn, a release and
+// a charmed hero's turn are said by the engine's own text and move lines, so they add no line of their own.
+import { STATUSES } from '../../data/statuses.js';
 import { statusName, relicLabel } from './model.js';
 
 const RES = { crit: 'LEGEND STRIKE', hit: 'hit', graze: 'graze', miss: 'miss', fumble: 'fumble', save: 'saved', fail: 'failed' };
@@ -24,11 +27,17 @@ export function logLine(ev, disp) {
       return { text: `${N(ev.target)} takes ${ev.amount} ${what}${EFF[ev.eff] || ''}${ev.absorbed ? `, ${ev.absorbed} warded` : ''}${ev.graze ? ' (graze)' : ''}`, kind: 'damage' };
     }
     case 'heal': return ev.amount ? { text: `${N(ev.target)} recovers ${ev.amount} HP`, kind: 'heal' } : null;
-    case 'status':
-      if (ev.op === 'add') return { text: `${N(ev.target)} is ${statusName(ev.status)}${ev.stacks > 1 ? ` x${ev.stacks}` : ''}`, kind: 'status' };
-      if (ev.op === 'remove') return { text: `${N(ev.target)} is no longer ${statusName(ev.status)}`, kind: 'status' };
-      if (ev.op === 'trigger') return { text: `${statusName(ev.status)} takes hold of ${N(ev.target)}`, kind: 'status' };
+    case 'status': {
+      const def = STATUSES[ev.status] || {};
+      if (ev.op === 'add') {
+        if (def.held && ev.label) return { text: `${N(ev.target)} is ${ev.label.toLowerCase()}${ev.source && U(ev.source) ? ` by ${N(ev.source)}` : ''}`, kind: 'status' };
+        return { text: `${N(ev.target)} is ${statusName(ev.status)}${ev.stacks > 1 ? ` x${ev.stacks}` : ''}`, kind: 'status' };
+      }
+      if (ev.op === 'remove') return { text: def.held ? `${N(ev.target)} is back in the line` : `${N(ev.target)} is no longer ${statusName(ev.status)}`, kind: 'status' };
+      if (ev.op === 'release') return null; // the engine's text says why ("... is spat out as the Roc reels.")
+      if (ev.op === 'trigger') return def.held || def.charm ? null : { text: `${statusName(ev.status)} takes hold of ${N(ev.target)}`, kind: 'status' };
       return null;
+    }
     case 'grip': return { text: `${N(ev.target)}'s grip on ${relicLabel(ev.relic, U(ev.target))}: ${ev.to}/${ev.max}`, kind: 'grip' };
     case 'disarm': return null; // the engine's text line says it
     case 'surge': return ev.to >= 100 && ev.from < 100 ? { text: `${N(ev.actor)}'s Legend Surge is full!`, kind: 'surge' } : null;
@@ -36,7 +45,7 @@ export function logLine(ev, disp) {
     case 'ko': return { text: `${N(ev.target)} falls.`, kind: 'ko' };
     case 'revive': return { text: `${N(ev.target)} is back on their feet.`, kind: 'heal' };
     case 'phase': return { text: `${N(ev.foe)}, phase ${ev.phase}: ${ev.text || ''}`, kind: 'phase' };
-    case 'move': return { text: `${N(ev.actor)}: ${ev.name}`, kind: 'move' };
+    case 'move': return ev.charm && ev.text ? { text: ev.text, kind: 'move' } : { text: `${N(ev.actor)}: ${ev.name}`, kind: 'move' };
     case 'text': case 'spawn': case 'escape': return ev.text ? { text: ev.text, kind: 'text' } : null;
     case 'victory': return { text: 'Victory!', kind: 'end' };
     case 'defeat': return { text: 'The party falls.', kind: 'end' };

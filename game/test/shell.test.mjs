@@ -14,22 +14,32 @@ import { MAPS, MAP_IDS, ENTITY_OF } from '../src/data/maps/index.js';
 import { HEARTHS } from '../src/data/world.js';
 import { RELICS } from '../src/data/relics.js';
 import { QUESTS } from '../src/data/quests.js';
+import { DIALOGUE } from '../src/data/dialogue.js';
 import { carryFacts, saveLine, inSentence, RELIC_TOTAL } from '../src/ui/lib/carry-facts.js';
 import { VIEWS, REGION_VIEW, regionOpen, placeOf, loreAt, entityLore, toFrame, relax, RELIC_SITE } from '../src/ui/lib/atlas-geo.js';
 import { TRACK_NAMES, badNotes } from '../src/core/audio.js';
 import { binderPage, defaultPage, RIDDLES, HOLDER } from '../src/ui/screens/codex.js';
+import { chapterEnd } from '../src/ui/world/story-fx.js';
+import { PAGES } from '../src/data/codex.js';
 import { grudgeView } from '../src/ui/screens/journal.js';
+import { Labels, makeDisp, applyStatus, heldStatus, untargetable, isCharmed, isSunk, holdInfo, withStatusSource } from '../src/ui/battle/model.js';
+import { logLine } from '../src/ui/battle/log.js';
+import { createBattle, current, act, foeTurn } from '../src/rules/battle.js';
+import { autoCommand } from '../src/rules/autoplay.js';
+import { addStatus } from '../src/rules/combat.js';
+import { targetable } from '../src/rules/ai.js';
+import { createRng } from '../src/core/rng.js';
 
 const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures/v1');
 const fixtures = readdirSync(dir).filter(f => f.endsWith('.json')).map(f => [f, JSON.parse(readFileSync(path.join(dir, f), 'utf8'))]);
 
-test('the carry-over card has the party, the relics out of 38, and a real place to wake for every M2 fixture', () => {
-  assert.equal(RELIC_TOTAL, 38);
+test('the carry-over card has the party, the relics out of 52, and a real place to wake for every M2 fixture', () => {
+  assert.equal(RELIC_TOTAL, 52);
   for (const [name, v1] of fixtures) {
     const g = migrate(v1);
     const F = carryFacts(g);
     assert.equal(F.heroes.length, 4, name);
-    assert.equal(F.total, 38, name);
+    assert.equal(F.total, 52, name);
     assert.equal(F.gold, v1.gold, name);
     assert.equal(F.waking, v1.progress.waking, name);
     assert.equal(F.place, MAPS[g.progress.pos.map].name, name);
@@ -43,8 +53,8 @@ test('the carry-over card has the party, the relics out of 38, and a real place 
 
 test('the title Continue line reads name · place · day · level · relics', () => {
   const g = newGame({ name: 'Wren', starter: 'hearthbrand', seed: 7 });
-  assert.match(saveLine(g), /^Wren · The Great Hall · Day 1 · Lv 1 · 1\/38 relics$/);
-  for (const [name, v1] of fixtures) assert.match(saveLine(migrate(v1)), /^.+ · .+ · Day \d+ · Lv \d+ · \d+\/38 relics$/, name);
+  assert.match(saveLine(g), /^Wren · The Great Hall · Day 1 · Lv 1 · 1\/52 relics$/);
+  for (const [name, v1] of fixtures) assert.match(saveLine(migrate(v1)), /^.+ · .+ · Day \d+ · Lv \d+ · \d+\/52 relics$/, name);
 });
 
 test('you-are-here projects onto each route between its lore ends, and points stay put', () => {
@@ -107,12 +117,13 @@ test('M4 Atlas: each open region has a view that frames its maps and fires; the 
   for (const id of MAP_IDS) assert.ok(typeof placeOf(id) === 'string' && placeOf(id).length > 2, `${id} has a place name`);
 });
 
-test('Atlas markers never overlap: each region\'s Hearthfires in its own view and all of them in the realm view, on a phone and a laptop', () => {
+test('Atlas markers never overlap: each region\'s Hearthfires in its own view (M5: the Ironspire\'s too) and all of them in the realm view, on a phone and a laptop', () => {
   const inRegion = region => Object.values(HEARTHS).filter(h => MAPS[h.map].region === region);
-  const VIEW_FIRES = { wilds: inRegion('verdant'), sunscorch: inRegion('sunscorch'), realm: Object.values(HEARTHS) };
+  const VIEW_FIRES = { wilds: inRegion('verdant'), sunscorch: inRegion('sunscorch'), ironspire: inRegion('ironspire'), realm: Object.values(HEARTHS) };
   assert.equal(VIEW_FIRES.sunscorch.length, 7, 'the Sunscorch view has the seven Sunscorch fires');
+  assert.equal(VIEW_FIRES.ironspire.length, 8, 'M5: the Ironspire view has the eight Ironspire fires (the East Road\'s Last Camp among them)');
   for (const [W, H] of [[318, 212], [866, 577]]) {
-    for (const view of ['wilds', 'sunscorch', 'realm']) {
+    for (const view of ['wilds', 'sunscorch', 'ironspire', 'realm']) {
       const run = () => relax(VIEW_FIRES[view].map(h => { const [x0, y0] = toFrame(VIEWS[view], h.lore, W, H); return { x0, y0 }; }), { W, H, r: 22 });
       const nodes = run();
       for (const n of nodes) assert.ok(n.x >= 22 && n.x <= W - 22 && n.y >= 22 && n.y <= H - 22, `${view} ${W}: inside the frame`);
@@ -134,14 +145,17 @@ test('every held or worn relic has a placed holder for the Atlas', () => {
     assert.ok(RELICS[relic], relic);
     assert.ok(ENTITY_OF[enc], `${relic}: ${enc} is placed on a map`);
   }
-  // a quest's reward (M4: the Orrery, the Signet, the Sunstone Heart) and Garret's Kettle have no holder
-  const given = new Set(['watchkeepers-kettle', ...Object.values(QUESTS).map(q => q.reward?.relic).filter(Boolean)]);
+  // a quest's reward (M4: the Orrery, the Signet, the Sunstone Heart) and a gift in a scene (Garret's Kettle;
+  // M5: the Thane's Rune-Key) have no holder
+  const gifts = Object.values(DIALOGUE).flatMap(d => [...(d.do || []), ...(d.choices || []).flatMap(c => c.do || [])]).map(e => e.give).filter(Boolean);
+  assert.ok(gifts.includes('watchkeepers-kettle'), 'Garret gives the Kettle in a scene');
+  const given = new Set([...gifts, ...Object.values(QUESTS).map(q => q.reward?.relic).filter(Boolean)]);
   const held = Object.values(RELICS).filter(r => !r.starter && !given.has(r.id)).map(r => r.id);
   for (const r of held) assert.ok(RELIC_SITE[r], `${r} has a holder`);
 });
 
 test('the world music tracks exist and every note parses', () => {
-  for (const t of ['title', 'road', 'battle', 'boss', 'victory', 'hearth', 'wilds', 'town', 'dungeon', 'desert']) assert.ok(TRACK_NAMES.includes(t), t);
+  for (const t of ['title', 'road', 'battle', 'boss', 'victory', 'hearth', 'wilds', 'town', 'dungeon', 'desert', 'peaks']) assert.ok(TRACK_NAMES.includes(t), t);
   assert.deepEqual(badNotes(), []);
 });
 
@@ -151,9 +165,10 @@ test('every map\'s music names a real track (M4: the Sunscorch roads play the de
     assert.ok(TRACK_NAMES.includes(MAPS[id].music), `${id}: "${MAPS[id].music}" is a track in core/audio.js`);
   }
   assert.ok(MAP_IDS.some(id => MAPS[id].music === 'desert'), 'the desert track is used');
+  assert.ok(MAP_IDS.some(id => MAPS[id].music === 'peaks'), 'M5: the peaks track is used');
 });
 
-test('the Codex binder: Page I counts your starter and the other 21, Page II all 14, III and IV are sealed', () => {
+test('the Codex binder: Page I counts your starter and the other 21, Pages II and III all 14, IV is sealed', () => {
   for (const id of Object.keys(RELICS)) {
     assert.ok(RIDDLES[id], `${id} has a riddle for its unsighted pocket`);
     assert.ok(HOLDER[id], `${id} has a holder line for its sighted pocket`);
@@ -170,7 +185,11 @@ test('the Codex binder: Page I counts your starter and the other 21, Page II all
   assert.equal(II.relics.length, 14);
   assert.deepEqual([II.progress.claimed, II.progress.needed], [0, 14]);
   assert.equal(II.reward.name, 'The Sunscorch Compact');
-  for (const id of ['ironspire', 'gloomfen']) {
+  const III = binderPage(g, 'ironspire');
+  assert.equal(III.relics.length, 14);
+  assert.deepEqual([III.progress.claimed, III.progress.needed], [0, 14]);
+  assert.equal(III.reward.name, 'The Ironspire Accord');
+  for (const id of ['gloomfen']) {
     const P = binderPage(g, id);
     assert.equal(P.sealed, true, id);
     assert.equal(P.relics.length, 0, id);
@@ -215,4 +234,148 @@ test('the Journal\'s Grudges: an M2 save\'s Grudge reads, the settled ones carry
   // M4.5: the raiders became the Glass Flats' road guard, and a guard keeps its ground
   assert.equal(odd.active.find(r => r.key === 'gf-raiders#0').hunts, false, 'a road guard with a Grudge waits');
   assert.equal(odd.settled[0].name, 'A foe you know');
+});
+
+// ---- M5 (spec §4.2, §5): the battle screen's holds, charms and burrows, read from the display model ----
+
+const hero = (o = {}) => ({ id: 'pip', side: 'hero', label: 'Pip', ko: false, statuses: [], ...o });
+const foe = (o = {}) => ({ id: 'f1', side: 'foe', label: 'The Rime-Abbot', ko: false, statuses: [], ...o });
+
+test('M5 battle UI: a hold reads by its label, names its holder and counts the turns left', () => {
+  const names = { f1: 'The Rime-Abbot', f2: 'The Thunder-Roc' };
+  const nameOf = id => names[id] || '';
+  const u = hero({ statuses: [{ id: 'swallowed', stacks: 1, turns: 2, source: 'f1', label: 'Held under' }] });
+  assert.ok(heldStatus(u));
+  assert.equal(untargetable(u), true);
+  assert.equal(isSunk(u), false, 'a held hero is out of the line, not under the floor');
+  assert.deepEqual(holdInfo(u, nameOf), { id: 'swallowed', label: 'Held under', by: 'The Rime-Abbot', turns: 2, text: 'Held under by The Rime-Abbot, 2 turns left' });
+  const roc = hero({ statuses: [{ id: 'swallowed', stacks: 1, turns: 1, source: 'f2', label: 'Carried off' }] });
+  assert.equal(holdInfo(roc, nameOf).text, 'Carried off by The Thunder-Roc, 1 turn left');
+  // no label (an older move) or no source: the status name, and no "by"
+  assert.deepEqual(holdInfo(hero({ statuses: [{ id: 'swallowed', stacks: 1, turns: null }] }), nameOf), { id: 'swallowed', label: 'Swallowed', by: '', turns: null, text: 'Swallowed' });
+  assert.equal(holdInfo(hero(), nameOf), null);
+  assert.equal(holdInfo(hero({ statuses: [{ id: 'frozen', stacks: 1, turns: 1 }] }), nameOf), null, 'frozen skips a turn but holds nobody');
+  // charmed, burrowed
+  assert.equal(isCharmed(hero({ statuses: [{ id: 'charmed', stacks: 1, turns: null }] })), true);
+  assert.equal(isCharmed(hero()), false);
+  const dug = foe({ statuses: [{ id: 'burrowed', stacks: 1, turns: null }] });
+  assert.equal(isSunk(dug), true);
+  assert.equal(untargetable(dug), true);
+  assert.equal(isSunk(foe({ statuses: [{ id: 'guarding', stacks: 1, turns: null }] })), false);
+  for (const junk of [null, undefined, {}, { statuses: null }]) {
+    assert.equal(heldStatus(junk), null);
+    assert.equal(untargetable(junk), false);
+    assert.equal(isCharmed(junk), false);
+    assert.equal(holdInfo(junk), null);
+  }
+});
+
+test('M5 battle UI: status events keep a hold\'s source and label, and a release takes it off', () => {
+  const u = hero();
+  applyStatus(u, { t: 'status', target: 'pip', status: 'swallowed', op: 'add', stacks: 1, turns: 2, source: 'f1', label: 'Held under' });
+  assert.deepEqual(u.statuses, [{ id: 'swallowed', stacks: 1, turns: 2, value: null, source: 'f1', label: 'Held under' }]);
+  // its lost turn (a trigger with stacks) keeps it, with the turns the event carries
+  applyStatus(u, { t: 'status', target: 'pip', status: 'swallowed', op: 'trigger', stacks: 1, turns: 1 });
+  assert.equal(u.statuses[0].turns, 1);
+  assert.equal(u.statuses[0].label, 'Held under');
+  applyStatus(u, { t: 'status', target: 'pip', status: 'swallowed', op: 'release', stacks: 0, turns: 0 });
+  assert.deepEqual(u.statuses, []);
+  // a charm clears on its trigger (stacks 0) and on a friend's blow (release)
+  const c = hero();
+  applyStatus(c, { t: 'status', target: 'pip', status: 'charmed', op: 'add', stacks: 1, turns: null });
+  applyStatus(c, { t: 'status', target: 'pip', status: 'charmed', op: 'trigger', stacks: 0, turns: 0 });
+  assert.deepEqual(c.statuses, []);
+  applyStatus(c, { t: 'status', target: 'pip', status: 'charmed', op: 'add', stacks: 1, turns: null });
+  applyStatus(c, { t: 'status', target: 'pip', status: 'charmed', op: 'release', stacks: 0, turns: 0 });
+  assert.deepEqual(c.statuses, []);
+  // the engine's add event names neither: they come from the state the events lead to
+  const state = { units: { pip: { statuses: [{ id: 'swallowed', stacks: 1, turns: 2, source: 'f1', label: 'Carried off' }] } } };
+  const ev = { t: 'status', target: 'pip', status: 'swallowed', op: 'add', stacks: 1, turns: 2 };
+  assert.deepEqual(withStatusSource(ev, state), { ...ev, source: 'f1', label: 'Carried off' });
+  assert.equal(withStatusSource(ev, { units: { pip: { statuses: [] } } }), ev, 'gone again by the end of the sequence: as it was');
+  const tick = { t: 'status', target: 'pip', status: 'swallowed', op: 'tick', stacks: 1, turns: 2 };
+  assert.equal(withStatusSource(tick, state), tick);
+  assert.equal(withStatusSource({ t: 'damage', target: 'pip' }, state).t, 'damage');
+});
+
+test('M5 battle UI: the log says a hold by its label and a charmed turn by the engine\'s own words', () => {
+  const disp = { units: { pip: hero(), f1: foe() } };
+  assert.equal(logLine({ t: 'status', target: 'pip', status: 'swallowed', op: 'add', stacks: 1, source: 'f1', label: 'Held under' }, disp).text, 'Pip is held under by The Rime-Abbot');
+  assert.equal(logLine({ t: 'status', target: 'pip', status: 'swallowed', op: 'add', stacks: 1 }, disp).text, 'Pip is Swallowed');
+  assert.equal(logLine({ t: 'status', target: 'pip', status: 'swallowed', op: 'remove' }, disp).text, 'Pip is back in the line');
+  assert.equal(logLine({ t: 'status', target: 'pip', status: 'swallowed', op: 'release' }, disp), null, 'the engine\'s text says why');
+  assert.equal(logLine({ t: 'status', target: 'pip', status: 'swallowed', op: 'trigger', stacks: 1 }, disp), null);
+  assert.equal(logLine({ t: 'status', target: 'pip', status: 'charmed', op: 'trigger', stacks: 0 }, disp), null);
+  assert.match(logLine({ t: 'status', target: 'pip', status: 'frozen', op: 'trigger', stacks: 1 }, disp).text, /Frozen takes hold of Pip/);
+  assert.equal(logLine({ t: 'move', actor: 'pip', name: 'Charmed', text: 'Pip is charmed and turns on Bryn!', charm: true, target: 'bryn' }, disp).text, 'Pip is charmed and turns on Bryn!');
+  assert.equal(logLine({ t: 'move', actor: 'f1', name: 'Drown', text: 'x' }, disp).text, 'The Rime-Abbot: Drown');
+});
+
+test('M5 battle UI: a real hold played through the display model shows what the engine holds', () => {
+  const g = newGame({ name: 'Tess', starter: 'hearthbrand', seed: 7 });
+  const heroes = g.party.active.map(id => g.party.roster[id]);
+  let s = createBattle({ heroes, foes: [{ family: 'oldsnag', level: 8 }], seed: 9, ctx: { inventory: g.inventory, bag: g.bag } });
+  const labels = new Labels();
+  const disp = makeDisp(s, labels);
+  const held = s.order.filter(id => s.units[id].side === 'hero')[2];
+  // the swallow, as a foe move's effect lands it (combat.addStatus), then the fight plays on
+  s = structuredClone(s);
+  const B = { s, rng: createRng(4), ev: [], touched: new Set(), relic: null };
+  assert.ok(addStatus(B, s.units[held], 'swallowed', { source: 'f1', label: 'Held under' }));
+  const events = [...B.ev];
+  for (let i = 0; i < 200 && current(s); i++) {
+    const id = current(s);
+    const r = s.units[id].side === 'hero' ? act(s, autoCommand(s, id)) : foeTurn(s);
+    events.push(...r.events);
+    s = r.state;
+    if (!s.units[held].statuses.some(x => x.id === 'swallowed')) break;
+  }
+  // replay the events on the display copy, as the Player does (filling in the source from the end state)
+  const shown = [];
+  for (const ev0 of events) {
+    const ev = withStatusSource(ev0, B.s);
+    if (ev.t !== 'status' || ev.target !== held) continue;
+    applyStatus(disp.units[held], ev);
+    const info = holdInfo(disp.units[held], id => disp.units[id]?.label);
+    shown.push(info ? `${info.label}|${info.by}|${info.turns}` : '-');
+  }
+  assert.equal(shown[0], 'Held under|Old Snag|2', `the plate as the hold lands (${shown.join(' ')})`);
+  assert.equal(shown[shown.length - 1], '-', 'and gone once the hero is back in the line');
+  assert.ok(targetable(s.units[held]));
+});
+
+test('M5: the second council opens the Ironspire: the Atlas, the Codex\'s road note, and the chapter cards', () => {
+  const g = newGame({ seed: 5 });
+  Object.assign(g.progress.flags.story, { 'act1-complete': true, 'council-done': true, 'sunscorch-complete': true });
+  // before the second council: sealed, and Page III says what opens its road
+  assert.equal(regionOpen(g, 'ironspire'), false);
+  assert.match(binderPage(g, 'ironspire').road, /east postern/);
+  assert.equal(binderPage(g, 'sunscorch').road, null, 'the Sunscorch road is open');
+  assert.equal(binderPage(g, 'gloomfen').sealed, true);
+  let V = chapterEnd(g, 'act2');
+  assert.deepEqual(V.chips.map(c => [c.id, c.open]), [['ironspire', false], ['gloomfen', false]]);
+  assert.deepEqual(V.lines, ['Ironspire and Gloomfen open in the next chapter.'], 'M4\'s words while the postern is shut');
+  // the second council sat: the postern stands open
+  const g2 = structuredClone(g);
+  g2.progress.flags.story['council-2-done'] = true;
+  assert.equal(regionOpen(g2, 'ironspire'), true);
+  assert.equal(regionOpen(g2, 'gloomfen'), false);
+  assert.equal(binderPage(g2, 'ironspire').road, null);
+  V = chapterEnd(g2, 'act2');
+  assert.equal(V.sub, 'End of Act II');
+  assert.deepEqual(V.chips.map(c => [c.id, c.open]), [['ironspire', true], ['gloomfen', false]]);
+  assert.deepEqual(V.lines, ['The Keep’s east postern stands open. The Rockslide Pass climbs to Peak’s Veil.', 'Gloomfen opens in the next chapter.']);
+  // the third council: the Ironspire is yours; the Blackwater still bars the Gloomfen Marsh, the next chapter
+  V = chapterEnd(g2, 'ironspire');
+  assert.equal(V.kick, 'The Ironspire is yours');
+  assert.match(V.cls, /tbc-ironspire/);
+  assert.deepEqual(V.chips.map(c => [c.id, c.open]), [['gloomfen', false]]);
+  assert.deepEqual(V.lines, ['The Blackwater still holds the causeway.', 'The Gloomfen Marsh opens in the next chapter.']);
+  assert.deepEqual(V.stats.map(r => r[0]), ['Day', 'Relics', 'Brands', 'Pages']);
+  assert.equal(V.stats[3][1], `0/${PAGES.filter(p => p.from != null).length}`);
+  // the first council's card is as it was
+  assert.deepEqual(chapterEnd(newGame({ seed: 5 }), 'act1').lines, ['The Keep’s south-east gate stands open. The Sunward Road runs to Sandspire.']);
+  // odd input never throws
+  assert.ok(chapterEnd(null, 'ironspire').lines.length >= 1);
+  assert.ok(chapterEnd({}, 'act2').chips.length >= 1);
 });

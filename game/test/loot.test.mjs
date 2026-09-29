@@ -152,3 +152,66 @@ test('Sunscorch holders drop their relic when pried loose; veterans drop the gea
   const worn = new Set(s.units.f2.gear.map(g => g.base));
   assert.ok(a.drops.some(i => worn.has(i.base) && i.provenance.from === s.units.f2.name), 'the wight drops a piece it wears');
 });
+
+// ---- M5 (spec §3.4, §3.5, §3.7; P4) ---------------------------------------------------------------------
+
+test('the Ironspire Champions: a piece pried loose is claimed, a piece still held shatters, and each pays two tempered-or-better items', async () => {
+  const { RELICS } = await import('../src/data/relics.js');
+  for (const [family, loose, held] of [['mother-anvil', 'worldforge-hammer', 'anvil-heart'], ['rime-abbot', 'hushweave-cowl', 'rime-crozier']]) {
+    const s = structuredClone(battleWith([{ family, level: 23 }], { seed: 9 }));
+    const f = s.units.f1;
+    f.held.find(p => p.relic === loose).held = false; // pried loose in the fight
+    f.ko = true;
+    f.hp = 0;
+    const { drops, claimed, consumables } = battleLoot(s, createRng(31));
+    assert.deepEqual(claimed.map(i => i.base), [loose], family);
+    assert.ok(!claimed[0].shattered && claimed[0].rarity === 'heirloom', family);
+    assert.ok(drops.find(i => i.base === held)?.shattered, `${family}: the piece it still held shatters`);
+    const random = drops.filter(i => !RELICS[i.base]);
+    assert.equal(random.length, 2, family);
+    for (const it of random) assert.ok(RARITY[it.rarity].rank >= RARITY.tempered.rank, it.rarity);
+    assert.ok(Object.values(consumables).reduce((a, n) => a + n, 0) >= 1, 'a Champion always leaves a consumable');
+  }
+});
+
+test('Ironspire holders drop their relic when pried loose; Tamsin\'s Ironvein Bracers drop when she falls, while her lent relic goes home', async () => {
+  const s = structuredClone(battleWith([
+    { family: 'thunder-roc', level: 22 },
+    { family: 'tallyman', variant: 'ice-cutter', relic: 'cutters-pick', level: 26, gearTier: 3 },
+    { family: 'rime-wraith', variant: 'choir', level: 25 },
+  ], { seed: 3 }));
+  s.units.f1.held[0].held = false;
+  s.units.f2.held[0].held = false;
+  for (const id of ['f1', 'f2', 'f3']) { s.units[id].ko = true; s.units[id].hp = 0; }
+  const a = battleLoot(s, createRng(8));
+  assert.deepEqual(a, battleLoot(s, createRng(8)), 'deterministic per seed');
+  assert.deepEqual(a.claimed.map(i => i.base).sort(), ['cutters-pick', 'roc-feather-cloak']);
+  // Tamsin at Ironhold: her lent starter is never claimed, the bracers she wears are yours
+  const t = structuredClone(battleWith([{ family: 'tamsin', variant: 'cairnmaul', level: 26, gearTier: 4, held: [{ relic: 'cairnmaul', lend: true }], wears: 'ironvein-bracers' }], { seed: 4 }));
+  t.units.f1.held[0].held = false;
+  t.units.f1.ko = true;
+  const r = battleLoot(t, createRng(1));
+  assert.ok(!r.claimed.some(i => i.base === 'cairnmaul'), 'her relic goes home with her');
+  assert.ok(r.drops.some(i => i.base === 'ironvein-bracers' && !i.shattered && i.rarity === 'heirloom'), 'the Ironvein Bracers drop');
+});
+
+test('Ironspire spoils: the Sunscorch\'s tiers, and Frost Opals only from the fights of Frostmere and the caves beneath it', async () => {
+  const { TUNING } = await import('../src/data/tuning.js');
+  const { ENCOUNTERS } = await import('../src/data/encounters.js');
+  const { GEMS } = await import('../src/data/gems.js');
+  const F = TUNING.forge;
+  assert.ok(GEMS['frost-opal'], 'the Frost Opal is a gem');
+  const opals = Object.entries(F.opals);
+  assert.ok(opals.length >= 3, 'several Frostmere fights pay one');
+  for (const [id, n] of opals) {
+    const e = ENCOUNTERS[id];
+    assert.ok(e && e.type === 'fight' && e.region === 'ironspire', id);
+    assert.ok(['Frostmere', 'Beneath Frostmere'].includes(e.place), `${id}: Frost Opals come only from Frostmere (${e.place})`);
+    assert.ok(Number.isInteger(n) && n >= 1 && n <= 2, `${id}: ${n}`);
+  }
+  assert.equal(F.opals['rime-abbot'], 2, 'the Rime-Abbot pays the most');
+  // nothing outside Frostmere pays opals, and the Ash Garnets stay Scorchgate's
+  for (const e of Object.values(ENCOUNTERS)) if (e.type === 'fight' && !['Frostmere', 'Beneath Frostmere'].includes(e.place)) assert.equal(F.opals[e.id], undefined, e.id);
+  for (const id of Object.keys(F.garnets)) assert.equal(ENCOUNTERS[id].region, 'sunscorch');
+  assert.deepEqual(F.spoils.champion, { silver: 2, embers: 2 }, 'the tiers the Sunscorch pays');
+});

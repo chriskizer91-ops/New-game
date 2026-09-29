@@ -13,6 +13,8 @@ export const GEMS = deepFreeze({
   'moss-agate': G('moss-agate', 'Moss Agate', 'verdant', '#6fbf5a', { vsHurt: 1 }, { regen: 1 }, 70),
   'glass-pearl': G('glass-pearl', 'Glass Pearl', 'sunscorch', '#cfe8ff', { hit: 1 }, { mp: 4 }, 110),
   'ash-garnet': G('ash-garnet', 'Ash Garnet', 'sunscorch', '#b3261e', { crit: 1 }, { hp: 6 }, null),
+  // M5 (spec §3.7): +1d4 frost in a weapon; frost resist and Guard in anything else
+  'frost-opal': G('frost-opal', 'Frost Opal', 'ironspire', '#bfe6ff', { extraDice: 2, aspect: 'frost' }, { resist: { frost: 10 }, guard: 1 }, 120),
 });
 
 export const GEM_IDS = Object.freeze(Object.keys(GEMS));

@@ -4,13 +4,19 @@
 // happens), Briarmaw (all three phases, plus a Legend Surge), for M3 a fight in the dark (the
 // Lamp Room) and the Tamsin duel's intro ("Losing is a yield."), and for M4 the Sunscorch's two
 // Champions: Kharzul through three phases with Cinderfang pried loose, and the Ashen Warden with
-// both the Aegis and the Crown snapped off (each piece shuts its moves down). Asserts no console errors or
-// uncaught exceptions, no horizontal scroll, 44px tap targets, and the aftermath hand-off.
-// Screenshots of the key moments go to tools/shots/battle-*.png.
+// both the Aegis and the Crown snapped off (each piece shuts its moves down). M5 (spec §8, P7): Mother
+// Anvil through three phases with the Worldforge Hammer and the Anvil Heart snapped off (anvil); the
+// Rime-Abbot holding a hero under the ice ("Held under", by him, the turns left, out of the line) and
+// letting go early (abbot); Kharzul's exact Burrow: sunk into the floor, out of reach, up again at its
+// turn with its forced blow (burrow); a charmed hero ("Charmed", then its turn played against a friend)
+// (charm). A scenario whose foes are still the scaffold's stand-ins reports BLOCKED, not a pass, and fails the run.
+// Asserts no console errors or uncaught exceptions, no horizontal scroll, 44px tap targets, and the
+// aftermath hand-off. Screenshots of the key moments go to tools/shots/battle-*.png.
 //
 //   node tools/e2e-battle.mjs                 # everything
 //   node tools/e2e-battle.mjs --only=snag,boss  # some scenarios (names below)
 //   node tools/e2e-battle.mjs --out=/tmp/x    # private harness page and screenshots (parallel runs)
+// Owner: WP8; M5 P7 (the Ironspire scenarios).
 import { createRequire } from 'node:module';
 import { execSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -19,6 +25,14 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { buildDevBattle } from './dev-battle.mjs';
 import { RELICS } from '../src/data/relics.js';
+import { ENCOUNTERS } from '../src/data/encounters.js';
+import { FOES } from '../src/data/foes.js';
+import { newGame, startBattle } from '../src/rules/gauntlet.js';
+import { grantXp, xpForLevel } from '../src/rules/progression.js';
+import { deriveHero } from '../src/rules/stats.js';
+import { createRng } from '../src/core/rng.js';
+import { current, act, foeTurn } from '../src/rules/battle.js';
+import { autoCommand } from '../src/rules/autoplay.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = Object.fromEntries(process.argv.slice(2).map(a => { const [k, v] = a.replace(/^--/, '').split('='); return [k, v ?? true]; }));
@@ -67,9 +81,11 @@ const page0 = await buildDevBattle(args.out ? path.join(shots, 'dev-battle.html'
 const url = hash => `${pathToFileURL(page0).href}#${hash}`;
 const browser = await pw.chromium.launch(exe ? { executablePath: exe } : {});
 const PHONE = { width: 390, height: 844 };
+const PHONE360 = { width: 360, height: 740 }; // M5: the narrowest phone the game is designed for
 const LAPTOP = { width: 1280, height: 800 };
 const results = [];
 const failures = [];
+const blockedList = [];
 
 function check(cond, msg) { if (!cond) throw new Error(msg); }
 
@@ -90,8 +106,89 @@ async function open(viewport, hash) {
   page.on('pageerror', e => errors.push(`pageerror: ${e.message}`));
   await page.goto(url(`hooks=1&${hash}`));
   await page.waitForSelector('.bt-stage canvas');
+  // every fight starts with Auto off (M4.5 A5): an &auto=1 run presses the button if the harness did not
+  if (/(^|&)auto=1(&|$)/.test(hash)) {
+    await page.waitForSelector('.bt-auto', { timeout: 10000 });
+    if ((await page.getAttribute('.bt-auto', 'aria-pressed')) !== 'true') await page.click('.bt-auto');
+  }
+  // M5: pause on the next event a predicate picks (a status of one id and op, a charmed move...), not
+  // only on the next of a type: the harness's peak pauses on __btPauseOn, so the predicate adds its type
+  await page.evaluate(() => {
+    const hooks = globalThis.__btHooks;
+    if (!hooks || hooks.__when) return;
+    const orig = hooks.peak.bind(hooks);
+    hooks.__when = true;
+    hooks.peak = ev => {
+      if (window.__btPauseWhen && window.__btPauseWhen(ev)) { window.__btPauseWhen = null; window.__btPauseOn.add(ev.t); }
+      return orig(ev);
+    };
+  });
   return { page, context, errors };
 }
+
+// M5: pause on the next event for which pred(ev, arg) holds (a function, run in the page); screenshot;
+// resume. Returns { path, ev, info } (info: what probe(ev) read in the page while paused) or null at the
+// end. armPause sets the predicate alone (the fight may reach it while the test does something else), and
+// waitPaused waits for it.
+async function armPause(page, pred, arg = null) {
+  await page.evaluate(([src, a]) => { const fn = (0, eval)(`(${src})`); window.__btPauseWhen = ev => fn(ev, a); }, [pred.toString(), arg]);
+}
+async function pauseWhen(page, pred, name, opts = {}) {
+  await armPause(page, pred, opts.arg ?? null);
+  return waitPaused(page, name, opts);
+}
+async function waitPaused(page, name, { timeout = 300000, hurry = false, probe = null } = {}) {
+  const stop = hurry ? await startHurry(page) : null;
+  try {
+    await page.waitForFunction(() => window.__btPaused || window.__aftermath, null, { timeout, polling: 50 });
+  } finally { if (stop) await stop(); }
+  if (!(await page.evaluate(() => window.__btPaused))) { await page.evaluate(() => { window.__btPauseWhen = null; }); return null; }
+  await page.waitForTimeout(80);
+  const p = name ? await shot(page, name) : null;
+  const ev = await page.evaluate(() => window.__btPausedEvent);
+  const info = probe ? await page.evaluate(probe, ev) : null;
+  await page.evaluate(() => window.__btResume());
+  return { path: p, ev, info };
+}
+
+// M5: the harness's fights are deterministic (its newGame, its levelling, then Auto), so a scenario that
+// needs a rare moment (a hold let go early) finds a starter, level and seed that has one by playing the
+// same fight through the rules first. levelParty is tools/dev-battle-entry.js's own; keep the two alike.
+function harnessFight(node, { starter, level, seed }) {
+  const game = newGame({ name: 'Wren', starter, seed });
+  const rng = createRng(`dev-level:${seed}`);
+  for (const id of game.party.active) {
+    let h = game.party.roster[id];
+    const need = xpForLevel(level) - (h.xp || 0);
+    if (need > 0) h = grantXp(h, need, rng).hero;
+    const d = deriveHero(h, game.inventory);
+    game.party.roster[id] = { ...h, hp: d.maxHp, mp: d.maxMp };
+  }
+  let { battle: st } = startBattle(game, { nodeId: node });
+  const events = [...(st.openingEvents || [])];
+  for (let i = 0; i < 3000 && current(st); i++) {
+    const id = current(st);
+    const r = st.units[id].side === 'hero' ? act(st, autoCommand(st, id)) : foeTurn(st);
+    events.push(...r.events);
+    st = r.state;
+  }
+  return { state: st, events };
+}
+function findFight(node, want, { starters = ['hearthbrand', 'stillwater-lance', 'cairnmaul'], levels = [8, 10, 12], seeds = 30 } = {}) {
+  for (const starter of starters) for (const level of levels) for (let seed = 1; seed <= seeds; seed++) {
+    try { if (want(harnessFight(node, { starter, level, seed }).events)) return { starter, level, seed }; } catch { /* a broken fight is the browser run's to report */ }
+  }
+  return null;
+}
+
+// M5: a scenario whose foes are still the scaffold's stand-ins cannot test the real thing yet
+function blocked(rec, msg) {
+  rec.blocked = msg;
+  blockedList.push(`${rec.name}: ${msg}`);
+}
+const stubbed = (...families) => families.filter(f => !FOES[f] || FOES[f].stub);
+// a party that can take a Champion through all three phases at Waking 0 (M4 used 12 against level-6 Kharzul)
+const levelFor = enc => Math.max(1, ...(ENCOUNTERS[enc]?.spawns || []).map(s => (typeof s.level === 'number' ? s.level : 6))) + 6;
 
 async function shot(page, name) {
   const p = path.join(shots, `battle-${name}.png`);
@@ -170,14 +267,14 @@ async function scenario(name, fn) {
   const rec = { name, ok: false, notes: [], shots: [] };
   try {
     await fn(rec);
-    rec.ok = true;
+    rec.ok = !rec.blocked;
   } catch (e) {
     rec.error = e.message;
     failures.push(`${name}: ${e.message}`);
   }
   rec.secs = ((Date.now() - t0) / 1000).toFixed(1);
   results.push(rec);
-  console.log(`${rec.ok ? 'PASS' : 'FAIL'} ${name} (${rec.secs}s)${rec.notes.length ? ' - ' + rec.notes.join('; ') : ''}${rec.error ? '\n     ' + rec.error : ''}`);
+  console.log(`${rec.blocked && !rec.error ? 'BLOCKED' : rec.ok ? 'PASS' : 'FAIL'} ${name} (${rec.secs}s)${rec.notes.length ? ' - ' + rec.notes.join('; ') : ''}${rec.blocked ? `\n     blocked: ${rec.blocked}` : ''}${rec.error ? '\n     ' + rec.error : ''}`);
 }
 
 async function finishCommon(rec, s, { expect = null } = {}) {
@@ -455,10 +552,10 @@ await scenario('duel', async rec => {
 // M4 (spec §8): a Champion taken through all three phases with every breakable piece snapped off, and
 // each piece's loss shutting its moves down ("... clatters loose! Kharzul loses Glasscutter."). The
 // Cairnmaul starter breaks grips; seeds are tried until one does it all (the fight is dice).
-async function championFight(rec, node, pieces, shotName) {
+async function championFight(rec, node, pieces, shotName, { level = 12 } = {}) {
   const names = pieces.map(id => RELICS[id].name);
   for (const seed of [3, 4, 5, 6, 7, 8, 9, 10, 11, 12]) {
-    const s = await open(PHONE, `node=${node}&level=12&speed=4&auto=1&starter=cairnmaul&seed=${seed}`);
+    const s = await open(PHONE, `node=${node}&level=${level}&speed=4&auto=1&starter=cairnmaul&seed=${seed}`);
     if (seed === 3) {
       const p2 = await pauseOn(s.page, 'phase', `phone-${shotName}-phase2`, { timeout: 400000, hurry: true });
       if (p2) { rec.shots.push(p2.path); await layoutChecks(s.page, `${node}/phase2`); }
@@ -490,6 +587,178 @@ await scenario('kharzul', async rec => {
 
 await scenario('warden', async rec => {
   await championFight(rec, 'ashen-warden', ['ashen-aegis', 'cinder-crown'], 'warden');
+});
+
+// ---- M5 (spec §8): the Ironspire's Champions, and the exact statuses ---------------------------------------
+
+await scenario('anvil', async rec => {
+  // Mother Anvil through three phases with the Worldforge Hammer and the Anvil Heart snapped off
+  if (stubbed('mother-anvil').length) { blocked(rec, 'Mother Anvil is still the scaffold stand-in (P4: data/foes.js)'); return; }
+  await championFight(rec, 'mother-anvil', ['worldforge-hammer', 'anvil-heart'], 'anvil', { level: levelFor('mother-anvil') });
+});
+
+// what a hero's card says while paused on an event about it (the M5 holds and charms)
+const heroProbe = ev => {
+  const id = ev.target || ev.actor;
+  const card = document.querySelector(`.bt-hero[data-id="${id}"]`);
+  const q = sel => card?.querySelector(sel)?.textContent || '';
+  return {
+    id, held: !!card?.classList.contains('held'), charmed: !!card?.classList.contains('charmed'),
+    k: q('.bt-hold-k'), by: q('.bt-hold-by'), t: q('.bt-hold-t'), tag: q('.bt-hero-tag'), aria: card?.getAttribute('aria-label') || '',
+    ribbonHeld: document.querySelectorAll('.bt-rib.held').length, ban: document.querySelector('.bt-move-ban:not([hidden])')?.textContent || '',
+    side: document.querySelector('.bt-move-ban')?.dataset.side || '', caption: document.querySelector('.bt-caption')?.textContent || '',
+  };
+};
+
+await scenario('abbot', async rec => {
+  // M5: the Rime-Abbot's Drown holds a hero under the ice: its card says "Held under", by him, with the turns
+  // left, and it is out of the line; a hard enough blow (or his fall) lets it go before the turns run out
+  if (stubbed('rime-abbot').length) { blocked(rec, 'the Rime-Abbot is still the scaffold stand-in (P4: data/foes.js)'); return; }
+  const base = Math.max(...ENCOUNTERS['rime-abbot'].spawns.map(sp => sp.level));
+  const pick = findFight('rime-abbot', ev => ev.some(e => e.t === 'status' && e.status === 'swallowed' && e.op === 'release'), { levels: [base + 2, base + 3, base + 4, base + 5, base + 6] });
+  check(pick, 'by the rules, no starter, level or seed has the Rime-Abbot hold a hero under and let go early');
+  rec.notes.push(`${pick.starter}, level ${pick.level}, seed ${pick.seed}`);
+  const s = await open(PHONE360, `node=rime-abbot&level=${pick.level}&speed=4&auto=1&starter=${pick.starter}&seed=${pick.seed}`);
+  let first = null, freed = null, holds = 0;
+  for (let n = 0; n < 8 && !freed; n++) {
+    const h = await pauseWhen(s.page, ev => ev.t === 'status' && ev.status === 'swallowed' && ev.op === 'add', first ? null : 'phone360-abbot-held', { hurry: true, probe: heroProbe });
+    if (!h) break;
+    holds++;
+    if (!first) {
+      first = h;
+      rec.shots.push(h.path);
+      check(h.info.held && /^held under$/i.test(h.info.k) && /Rime-Abbot/.test(h.info.by) && /^\d turns? left$/.test(h.info.t), `the held hero's card reads "${h.info.k} ${h.info.by} ${h.info.t}"`);
+      check(/out of the line/.test(h.info.aria) && h.info.ribbonHeld >= 0, `the card's label says the hero is out of the line ("${h.info.aria}")`);
+      await layoutChecks(s.page, 'abbot/held');
+    }
+    const out = await pauseWhen(s.page, (ev, id) => ev.t === 'status' && ev.target === id && ev.status === 'swallowed' && ['release', 'remove'].includes(ev.op), 'phone360-abbot-back', { hurry: true, arg: h.ev.target, probe: heroProbe });
+    if (!out) break;
+    check(!out.info.held, `back in the line, the card drops its hold (${out.ev.op})`);
+    if (out.ev.op === 'release') {
+      freed = out;
+      rec.shots.push(out.path);
+    }
+  }
+  s.aftermath = await toAftermath(s.page, { timeout: 400000, hurry: true });
+  const log = await logText(s.page);
+  await finishCommon(rec, s);
+  await s.context.close();
+  rec.notes.push(`${holds} hold${holds === 1 ? '' : 's'}${freed ? ', freed early' : ''}`);
+  check(first, 'the Rime-Abbot held nobody under (the rules said he would)');
+  check(log.some(l => /is held under by The Rime-Abbot/.test(l)), 'the log says who holds the hero');
+  check(freed, 'the held hero was not let go early (the rules said it would be)');
+  check(log.some(l => /is spat out as|is free: what held them has fallen/.test(l)), 'the log says why the hero is free');
+});
+
+await scenario('burrow', async rec => {
+  // M5: Kharzul's exact Burrow: it goes under the floor (sunk, "Burrowed · out of reach", no target),
+  // nothing can be aimed at it until it comes up at its own turn, and its forced blow follows
+  const dive = FOES.kharzul?.moves?.burrow;
+  if (!dive?.effects?.some(e => e.status === 'burrowed')) { blocked(rec, 'Kharzul\'s Burrow is still M4\'s approximation (P4: data/foes.js)'); return; }
+  const thenName = dive.then ? FOES.kharzul.moves[dive.then]?.name : null;
+  const foeProbe = ev => {
+    const box = document.querySelector(`.bt-foe[data-id="${ev.target || ev.actor}"]`);
+    return { sunk: !!box?.classList.contains('sunk'), state: box?.querySelector('.bt-foe-state')?.hidden ? '' : box?.querySelector('.bt-foe-state')?.textContent || '', aria: box?.querySelector('.bt-foe-hit')?.getAttribute('aria-label') || '' };
+  };
+  let done = false;
+  for (const seed of [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]) {
+    const s = await open(PHONE360, `node=kharzul-heart&level=12&speed=4&auto=1&starter=cairnmaul&seed=${seed}`);
+    const { page } = s;
+    const down = await pauseWhen(page, ev => ev.t === 'status' && ev.status === 'burrowed' && ev.op === 'add', 'phone360-burrowed', { hurry: true, probe: foeProbe });
+    if (!down) {
+      s.aftermath = await page.evaluate(() => window.__aftermath);
+      await finishCommon(rec, s);
+      rec.notes.push(`seed ${seed}: no Burrow`);
+      await s.context.close();
+      continue;
+    }
+    rec.shots.push(down.path);
+    const kid = down.ev.target;
+    check(down.info.sunk && /^Burrowed · out of reach$/.test(down.info.state) && /cannot be targeted/.test(down.info.aria), `seed ${seed}: the burrowed plate reads "${down.info.state}" (${down.info.aria})`);
+    await layoutChecks(page, 'burrow/sunk');
+    // Auto off: a hero's turn while it is under has nothing to aim at (if Kharzul's own turn comes first,
+    // the pause armed here catches it surfacing)
+    await armPause(page, (ev, id) => ev.t === 'status' && ev.target === id && ev.status === 'burrowed' && ev.op === 'remove', kid);
+    if ((await page.getAttribute('.bt-auto', 'aria-pressed')) === 'true') await page.click('.bt-auto');
+    await page.waitForFunction(() => document.querySelector('.bt-cmds:not([hidden]) .bt-cmd') || window.__btPaused || window.__aftermath, null, { timeout: 120000, polling: 50 });
+    const menu = await page.evaluate(() => !window.__btPaused && !!document.querySelector('.bt-cmds:not([hidden]) .bt-cmd'));
+    if (menu && (await page.$('.bt-foe.sunk'))) {
+      const others = await page.$$eval('.bt-foe:not(.down):not(.sunk)', xs => xs.length);
+      const attackOff = await page.$eval('.bt-cmd[data-cmd="attack"]', btn => btn.classList.contains('off'));
+      if (!others) check(attackOff, `seed ${seed}: with Kharzul under the floor and nobody else, Attack has no target`);
+      else {
+        await page.click('.bt-cmd[data-cmd="attack"]');
+        await page.waitForSelector('.bt-aim:not([hidden])', { timeout: 5000 });
+        const t = await page.evaluate(id => ({ valid: document.querySelector(`.bt-foe[data-id="${id}"]`).classList.contains('valid'), others: document.querySelectorAll('.bt-foe.valid').length }), kid);
+        check(!t.valid && t.others >= 1, `seed ${seed}: aiming, the burrowed foe is no target (${JSON.stringify(t)})`);
+        await page.click(`.bt-foe[data-id="${kid}"] .bt-plate`);
+        await page.waitForTimeout(120);
+        const cap = await page.textContent('.bt-caption');
+        check(/under the floor/.test(cap), `seed ${seed}: tapping it says why ("${cap}")`);
+        rec.shots.push(await shot(page, 'phone360-burrow-aim'));
+        await page.click('.bt-aim .bt-back');
+      }
+      rec.shots.push(await shot(page, 'phone360-burrow-menu'));
+      await layoutChecks(page, 'burrow/menu');
+    }
+    if ((await page.getAttribute('.bt-auto', 'aria-pressed')) !== 'true') await page.click('.bt-auto');
+    // it surfaces at its own turn: the plate and the sprite come back, and its forced blow follows
+    const up = await waitPaused(page, 'phone360-surfaced', { hurry: true, probe: foeProbe });
+    if (up) {
+      rec.shots.push(up.path);
+      check(!up.info.sunk && !up.info.state, `seed ${seed}: up again, the plate drops "Burrowed" (${JSON.stringify(up.info)})`);
+      if (thenName) {
+        const blow = await pauseWhen(page, (ev, id) => ev.t === 'move' && ev.actor === id, 'phone360-erupt', { hurry: true, arg: kid });
+        if (blow) check(blow.ev.name === thenName, `seed ${seed}: its forced blow follows (${blow.ev.name}, expected ${thenName})`);
+      }
+    }
+    s.aftermath = await toAftermath(page, { timeout: 400000, hurry: true });
+    const log = await logText(page);
+    await finishCommon(rec, s);
+    check(log.some(l => /Kharzul the Glass Scorpion: Burrow/.test(l)), `seed ${seed}: the log has the Burrow`);
+    await s.context.close();
+    rec.notes.push(`seed ${seed}: burrowed${menu ? ', a hero turn while under' : ''}`);
+    done = true;
+    break;
+  }
+  check(done, 'Kharzul never burrowed in any seed');
+});
+
+await scenario('charm', async rec => {
+  // M5: a mirage-wisp's Beguile charms a hero: its card says "Charmed", and its next turn is played for it,
+  // a plain attack on a friend (or a friend's blow wakes it first)
+  const charms = Object.values(FOES['mirage-wisp']?.moves || {}).some(m => (m.effects || []).some(e => e.status === 'charmed'));
+  if (!charms) { blocked(rec, 'the mirage-wisps\' charm is still M4\'s approximation (P4: data/foes.js)'); return; }
+  const level = Math.max(...ENCOUNTERS['wisp-queen'].spawns.map(sp => sp.level)) + 3;
+  let done = false;
+  for (const seed of [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]) {
+    const s = await open(LAPTOP, `node=wisp-queen&level=${level}&speed=4&auto=1&seed=${seed}`);
+    const c = await pauseWhen(s.page, ev => ev.t === 'status' && ev.status === 'charmed' && ev.op === 'add', 'laptop-charmed', { hurry: true, probe: heroProbe });
+    if (!c) {
+      s.aftermath = await s.page.evaluate(() => window.__aftermath);
+      await finishCommon(rec, s);
+      rec.notes.push(`seed ${seed}: nobody charmed`);
+      await s.context.close();
+      continue;
+    }
+    rec.shots.push(c.path);
+    check(c.info.charmed && c.info.tag === 'Charmed' && /charmed/.test(c.info.aria), `seed ${seed}: the charmed hero's card says so (${c.info.tag}; ${c.info.aria})`);
+    await layoutChecks(s.page, 'charm');
+    const t = await pauseWhen(s.page, (ev, id) => (ev.t === 'move' && ev.charm && ev.actor === id) || (ev.t === 'status' && ev.target === id && ev.status === 'charmed' && ev.op === 'release'), 'laptop-charm-turn', { hurry: true, arg: c.ev.target, probe: heroProbe });
+    if (t?.ev.t === 'move') {
+      check(t.info.side === 'charm' && /Charmed/i.test(t.info.ban) && /turns on/.test(t.info.caption), `seed ${seed}: its turn turns on a friend ("${t.info.ban}" / "${t.info.caption}")`);
+      rec.shots.push(t.path);
+    }
+    s.aftermath = await toAftermath(s.page, { timeout: 300000, hurry: true });
+    const log = await logText(s.page);
+    await finishCommon(rec, s);
+    check(log.some(l => /is charmed and turns on|snaps out of the charm|shakes off the charm/.test(l)), `seed ${seed}: the log tells the charm's end`);
+    await s.context.close();
+    rec.notes.push(`seed ${seed}: charmed, ${t?.ev.t === 'move' ? 'turned on a friend' : t ? 'woken by a friend' : 'the fight ended first'}`);
+    done = true;
+    break;
+  }
+  check(done, 'no seed had a wisp charm a hero');
 });
 
 // ---- laptop ------------------------------------------------------------------------------------------
@@ -548,6 +817,9 @@ await scenario('laptop-snag', async rec => {
 });
 
 await browser.close();
-console.log(`\n${results.filter(r => r.ok).length}/${results.length} scenarios passed`);
+console.log(`\n${results.filter(r => r.ok).length}/${results.length} scenarios passed${blockedList.length ? `, ${blockedList.length} blocked` : ''}`);
 for (const r of results) for (const p of r.shots) console.log('  ' + path.relative(root, p));
+if (blockedList.length) console.log('\nBlocked on other packages:\n  ' + blockedList.join('\n  '));
 if (failures.length) { console.log('\nFailures:\n  ' + failures.join('\n  ')); process.exit(1); }
+// M5 is whole (no stand-ins are left), so a blocked scenario is one that did not run: it fails the run
+if (blockedList.length) process.exit(1);

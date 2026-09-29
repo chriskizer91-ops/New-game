@@ -1,9 +1,13 @@
 // The event player: animates an engine event list one event at a time (timings scale with the
 // battle speed; a tap fast-forwards), mutating the display model as it goes. The caller renders
 // the engine's returned state afterwards.
+// M5 (spec §4.2, §5): a hold (swallowed) takes the hero out of the line with its label ("Held under"),
+// a release or the turns running out brings it back; a burrowed foe sinks into the floor and comes up
+// at its turn; a charmed hero's turn (a `move` with `charm`) flashes pink and turns on a friend.
 import { SKILLS } from '../../data/skills.js';
 import { RELICS } from '../../data/relics.js';
-import { applyStatus, addUnitFrom, pieceIndex, relicLabel, statusName, harmful, moveTargetKind } from './model.js';
+import { STATUSES } from '../../data/statuses.js';
+import { applyStatus, addUnitFrom, pieceIndex, relicLabel, statusName, harmful, moveTargetKind, withStatusSource } from './model.js';
 import { logLine } from './log.js';
 import { legendSlam } from './slam.js';
 import { aspectColor } from './stage.js';
@@ -32,7 +36,7 @@ export class Player {
     S.setPlaying(true);
     try {
       for (let i = 0; i < events.length; i++) {
-        const ev = events[i];
+        const ev = withStatusSource(events[i], next);
         if (ev.t === 'intent' && !ev.queued) {
           // consecutive intents roll together
           const batch = [ev];
@@ -128,6 +132,16 @@ export class Player {
     const S = this.S, u = this.U(ev.actor);
     if (!u) return;
     if (ev.mp) { u.mp = Math.max(0, u.mp - ev.mp); this.refresh(u.id); }
+    if (ev.charm) {
+      // M5: a charmed hero's turn, played by the engine: it turns on a friend (the roll and blow follow)
+      S.moveBanner(ev.name || 'Charmed', 'charm', ev.target ? `turns on ${this.name(ev.target)}` : '');
+      if (u.side === 'hero') S.party.flashColor(u.id, [255, 130, 200, 0.55], 420);
+      else S.stage.flashUnit?.(u.id, [255, 130, 200, 0.55], 420);
+      S.caption(ev.text || `${u.label} is charmed!`, 'charm');
+      S.sfx('status');
+      await this.wait(640);
+      return;
+    }
     S.moveBanner(ev.name, u.side);
     if (u.side === 'foe') {
       S.stage.attack(u.id, 620);
@@ -208,14 +222,49 @@ export class Player {
   async on_status(ev) {
     const S = this.S, t = this.U(ev.target);
     if (!t) return;
+    const def = STATUSES[ev.status] || {};
     applyStatus(t, ev);
     this.refresh(t.id);
+    // M5: a hold takes a hero out of the line, and brings it back; a dive takes a foe under the floor
+    if (def.held && ev.op === 'add') {
+      const label = ev.label || statusName(ev.status);
+      this.float(t.id, label, 'status bad held', ev.source ? `by ${this.name(ev.source)}` : '', 1300);
+      S.sfx('status');
+      S.caption(`${t.label} is ${label.toLowerCase()}${ev.source ? ` by ${this.name(ev.source)}` : ''}!`, 'held');
+      await this.wait(620);
+      return;
+    }
+    if (def.held && (ev.op === 'release' || ev.op === 'remove')) {
+      this.float(t.id, 'Free!', 'status good', '', 1100);
+      S.party.flashColor(t.id, [200, 240, 255, 0.5], 360);
+      S.sfx('heal');
+      await this.wait(420);
+      return;
+    }
+    if (def.untargetable && t.side === 'foe' && (ev.op === 'add' || ev.op === 'remove')) {
+      const down = ev.op === 'add';
+      S.stage.sink(t.id, down);
+      const [x, y] = S.stage.point(t.id, 'feet');
+      S.stage.sparks(x, y, '#c9a878', down ? 14 : 18, { spread: 1.4, up: 0.6 });
+      if (down) this.float(t.id, statusName(ev.status), 'status good', 'cannot be targeted', 1200);
+      S.sfx(down ? 'miss' : 'hit');
+      if (!down) S.shake(1);
+      await this.wait(down ? 520 : 380);
+      return;
+    }
     if (ev.op === 'add') {
       this.float(t.id, statusName(ev.status), `status ${harmful(ev.status) ? 'bad' : 'good'}`, ev.stacks > 1 ? `x${ev.stacks}` : '', 1000);
       S.sfx('status');
       await this.wait(300);
+    } else if (ev.op === 'release') {
+      // a charm broken by a friend's blow (the engine's text line says so)
+      this.float(t.id, `${statusName(ev.status)} ends`, 'status good', '', 900);
+      await this.wait(200);
     } else if (ev.op === 'trigger') {
-      this.float(t.id, statusName(ev.status), 'status bad', '', 1000);
+      // a held hero's lost turn reads by its hold; a charm's trigger is followed by its own move line
+      if (def.charm) { await this.wait(60); return; }
+      const held = def.held ? (t.statuses.find(s => s.id === ev.status)?.label || statusName(ev.status)) : statusName(ev.status);
+      this.float(t.id, held, 'status bad', '', 1000);
       await this.wait(320);
     } else if (ev.op === 'tick') {
       S.pulseStatus(t.id, ev.status, STATUS_COLOR[ev.status]);

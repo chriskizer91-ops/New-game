@@ -12,6 +12,8 @@
 // battle ctx can carry them as its backdrop; darkBackdrop(key) gives the listed dark key for a base key.
 // M4 adds the nine Sunscorch places; 'deep-shaft:dark' and 'scorchgate-vaults:dark' are their dark listings (the
 // lamps and braziers go out; the sunstone veins and the embers in the vault floor stay lit).
+// M5 adds the eleven Ironspire places; 'ironhold-deeps:dark' and 'frostmere-below:dark' are their dark listings (the
+// lamps and the ice's own light go out; the slag, the embers and Hush's light under the ice stay lit).
 import { hx, ramp, bayer, hash, vnoise, mix } from './forge.js';
 import { lru } from './cache.js';
 
@@ -40,6 +42,20 @@ export const BACKDROPS = Object.freeze({
   'scorchgate-vaults': { name: 'The Scorchgate Vaults', horizon: .56, floor: [.64, 1], fx: 'ash' },
   'deep-shaft:dark': { name: 'The Deep Shaft, below the lamp', horizon: .56, floor: [.64, 1], fx: 'grit', dark: true },
   'scorchgate-vaults:dark': { name: 'The Hall of the Watch', horizon: .56, floor: [.64, 1], fx: 'ash', dark: true },
+  // M5: the Ironspire Peaks
+  'rockslide-pass': { name: 'The Rockslide Pass', horizon: .58, floor: [.66, 1], fx: 'snow' },
+  'peaks-veil': { name: "Peak's Veil", horizon: .6, floor: [.68, 1], fx: 'snow' },
+  highfold: { name: 'The Highfold', horizon: .56, floor: [.64, 1], fx: 'snow' },
+  'iron-stair': { name: 'The Iron Stair', horizon: .6, floor: [.68, 1], fx: 'snow' },
+  ironhold: { name: 'Ironhold', horizon: .58, floor: [.66, 1], fx: 'sparks' },
+  'ironhold-deeps': { name: 'The Ironhold Deeps', horizon: .56, floor: [.64, 1], fx: 'sparks' },
+  'harrows-forge': { name: "Harrow's Forge", horizon: .56, floor: [.64, 1], fx: 'sparks' },
+  stormwatch: { name: 'Stormwatch', horizon: .6, floor: [.68, 1], fx: 'snow' },
+  'frost-road': { name: 'The Frost Road', horizon: .6, floor: [.68, 1], fx: 'snow' },
+  frostmere: { name: 'Frostmere', horizon: .58, floor: [.66, 1], fx: 'snow' },
+  'frostmere-below': { name: 'Beneath Frostmere', horizon: .56, floor: [.64, 1], fx: 'rime' },
+  'ironhold-deeps:dark': { name: 'The Deeps, the lamps out', horizon: .56, floor: [.64, 1], fx: 'sparks', dark: true },
+  'frostmere-below:dark': { name: 'Beneath Frostmere, where Hush sleeps', horizon: .56, floor: [.64, 1], fx: 'rime', dark: true },
 });
 export const BACKDROP_KEYS = Object.keys(BACKDROPS);
 // the listed dark variant of a backdrop key ('mosswatch' -> 'mosswatch:dark'), or the key itself when none is listed
@@ -199,6 +215,91 @@ function paving(L, gy, vy, cols, mortar, tw, rows, seed, shade) {
   }
 }
 const stars = (L, n, y1, seed) => { const D = hx('#a8b4d8'), B = hx('#fff4dc'); for (let k = 0; k < n; k++) { const x = hash(k, 1, seed) * L.w, y = hash(k, 2, seed) * y1, b = hash(k, 3, seed); L.set(x, y, b > .8 ? B : D, .35 + b * .65); if (b > .94) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) L.set(x + dx, y + dy, D, .4); } };
+
+/* ---------- M5: helpers for the Ironspire ---------- */
+// a range of peaks, back to front: each [cx, top, wl, wr] a crag with a jagged skyline; rock in strata, a lit
+// left face and a shadowed right; snow above a ragged snowline (lower on the shadow side), streaking down gullies.
+// cols: [shadow, rock, lit]; snow: [shadow, lit]
+function peaks(L, list, yBase, cols, snow, seed) {
+  const C = cols.map(hx), S = snow.map(hx);
+  list.forEach(([cx, top, wl, wr], k) => {
+    const hd = yBase - top, line = top + hd * (.34 + hash(k, 1, seed) * .16);
+    for (let x = Math.floor(cx - wl); x <= cx + wr; x++) {
+      const s = x < cx ? (cx - x) / wl : (x - cx) / wr, j = (vnoise(x * .3, k, seed) - .5) * 3 + (vnoise(x * .9, k + 5, seed) - .5) * 1.4;
+      const t = Math.round(top + hd * Math.pow(s, .9) + j * s);
+      for (let y = Math.max(0, t); y < yBase; y++) {
+        const lit = x < cx - (y - top) * .12, g = vnoise(x * .22 + y * .12, y * .12, seed + 3) > .6, sl = line + (x > cx ? 3 : 0) + (vnoise(x * .2, 0, seed + k) - .5) * 6 + (g ? 4 : 0);
+        if (y < sl) L.set(x, y, S[lit ? 1 : 0]);
+        else { const st = Math.sin((y + (x - cx) * (x < cx ? -.6 : .6)) * .5 + vnoise(x * .1, y * .05, seed) * 5) > .75 ? -1 : 0; L.set(x, y, C[clampI((lit ? 2 : 1) + st - (bayer(x, y) > .8 ? 1 : 0), 2)]); }
+      }
+      if (t >= 0) L.set(x, t, S[1], .8);
+    }
+  });
+}
+// snow from gy down: blue shadow toward the horizon, lighter toward the viewer, drifts in wind-carved lines and the
+// odd glitter. cols run dark to light
+function snowFloor(L, gy, cols, seed, drift = '#f4f8ff') {
+  const G = cols.map(hx), n = G.length - 1, D = hx(drift), H = L.h;
+  for (let y = gy; y < H; y++) for (let x = 0; x < L.w; x++) { const v = (y - gy) / (H - gy) * n * .8 + (vnoise(x * .04, y * .1, seed) - .5) * 1.8 + bayer(x, y) * .8 - .4 + 1; L.set(x, y, G[clampI(Math.round(v), n)]); if (hash(x, y, seed + 1) < .006) L.set(x, y, D); }
+  for (let k = 0; k < 12; k++) { const u = (k + hash(k, 1, seed) * .5) / 12, y0 = gy + 2 + u * u * (H - gy - 2); for (let x = 0; x < L.w; x++) if (vnoise(x * .06, k * 2, seed + 2) > .5) L.set(x, y0 + Math.sin(x * (.12 - u * .06) + k) * (1 + u * 2), D, .3 + u * .3); }
+}
+// a boulder at (x, y) (its foot), r across: a lit crown, a shadowed flank, snow on top when `snow`
+function boulder(L, x, y, r, cols, snow) {
+  const [D, M, Lt] = cols.map(hx);
+  L.disc(x, y - r * .7, r, D); L.disc(x - r * .22, y - r * .9, r * .78, M); L.disc(x - r * .42, y - r * 1.12, r * .4, Lt);
+  L.rect(x - r, y - r * .25, r * 2, r * .25 + .5, D);
+  if (snow) { const S = hx(snow); for (let k = -r * .8; k <= r * .5; k++) L.set(x + k, y - r * 1.6 + Math.abs(k + r * .15) * .5, S); }
+}
+// a snowy pine: tiers of boughs narrowing to the tip, snow along each tier's top
+function pine(L, x, y, h, cols, snow) {
+  const [D, M] = cols.map(hx), S = hx(snow);
+  L.rect(x - .5, y - h * .2, 1.5, h * .2, hx('#2a1e18'));
+  for (let k = 0; k < 4; k++) { const t0 = y - h * (.15 + k * .2), hw = h * (.32 - k * .065), top = t0 - h * .28; L.poly([[x - hw, t0], [x + .5, top], [x + hw + 1, t0]], D); L.poly([[x - hw * .7, t0 - .5], [x + .5, top + 1], [x + .5, t0 - .5]], M); for (let d = -hw * .6; d < hw * .3; d++) L.set(x + d, t0 - 1 - (hw - Math.abs(d)) * .25, S, .85); }
+}
+// a cairn of stacked stones, rimed on top
+function cairn(L, x, y, h, cols, snow) {
+  const C = cols.map(hx), S = hx(snow); let yy = y, w = h * .42;
+  for (let k = 0; yy > y - h; k++) { const sh = 2 + hash(k, 1, 211) * 2, ww = w * (1 - k * .14); L.disc(x + (hash(k, 2, 211) - .5) * 2, yy - sh * .5, Math.max(1, ww * .5), C[k % C.length]); L.set(x - ww * .3, yy - sh * .8, C[2 % C.length]); yy -= sh; }
+  L.disc(x, yy, Math.max(1, w * .28), S);
+}
+// prayer flags on a line sagging from (x0, y0) to (x1, y1): little squares in the five colours, faded by the weather
+function flags(L, x0, y0, x1, y1, sag, seed, alpha = 1) {
+  const cols = ['#c8423a', '#e8c050', '#4a8a5a', '#3a62a8', '#e8e4d8'].map(hx), n = Math.max(2, Math.round(Math.abs(x1 - x0) / 3.2));
+  for (let k = 0; k <= n * 3; k++) { const u = k / (n * 3); L.set(x0 + (x1 - x0) * u, y0 + (y1 - y0) * u + Math.sin(u * Math.PI) * sag, hx('#3a2e28'), alpha); }
+  for (let k = 1; k < n; k++) { const u = k / n, x = x0 + (x1 - x0) * u, y = y0 + (y1 - y0) * u + Math.sin(u * Math.PI) * sag, c = cols[(k + seed) % 5], fl = hash(k, seed, 212) < .5 ? 1 : 0; L.rect(x - .5, y + 1, 2, 2 + fl, mix(c, [120, 120, 130], .25), alpha); }
+}
+// rough stone in rough courses for hewn halls (shade(x, y) picks the step)
+function hewn(L, x0, y0, x1, y1, cols, seed, shade) {
+  const C = cols.map(hx), n = C.length - 1;
+  for (let y = Math.floor(y0); y < y1; y++) for (let x = Math.floor(x0); x < x1; x++) { const s = shade(x, y); if (s === null) continue; const n1 = vnoise(x * .09, y * .12, seed) * .7 + vnoise(x * .3, y * .35, seed + 1) * .3; L.set(x, y, C[clampI(Math.round(s + (n1 - .5) * 2.2 + bayer(x, y) * .6 - .3 - (hash(x >> 2, y >> 1, seed + 2) < .05 ? 1 : 0)), n)]); }
+}
+// a dwarf pillar: a square shaft with a lit left face, knotwork bands and a stepped capital and base
+function dwarfPillar(L, x, w, y0, y1, cols, band) {
+  const C = cols.map(hx), B = hx(band);
+  for (let y = y0; y < y1; y++) for (let xx = Math.floor(x - w / 2); xx < x + w / 2; xx++) { const u = (xx - x + w / 2) / w; L.set(xx, y, C[clampI(Math.round(u < .22 ? 3 : u > .82 ? 0 : 2 - u * .8 + bayer(xx, y) * .5), 3)]); }
+  for (const yb of [y0 + 3, y0 + (y1 - y0) * .45, y1 - 6]) { L.rect(x - w / 2, yb, w, 2, B); for (let xx = Math.floor(x - w / 2) + 1; xx < x + w / 2 - 1; xx += 2) L.set(xx, yb + ((xx >> 1) & 1), C[0]); }
+  L.rect(x - w / 2 - 1.5, y0, w + 3, 2, C[3]); L.rect(x - w / 2 - 1, y0 + 2, w + 2, 1, C[1]);
+  L.rect(x - w / 2 - 1.5, y1 - 2, w + 3, 2, C[1]); L.rect(x - w / 2 - 1.5, y1 - 2, w + 3, 1, C[3]);
+}
+// a forge furnace: a brick dome with an arched mouth; fire 'lit' glows (out: goes out in the dark), 'embers' keeps a
+// low red glow, anything else is cold
+function furnace(L, x, y, w, h, fire, lights, out) {
+  const B = ['#1a1214', '#2a1c1a', '#3a2620', '#4a3226'].map(hx);
+  for (let yy = Math.floor(y - h); yy < y; yy++) { const u = (y - yy) / h, hw = w * Math.sqrt(Math.max(0, 1 - Math.pow(Math.max(0, u - .35) / .65, 2))); for (let xx = Math.floor(x - hw); xx < x + hw; xx++) { const row = Math.floor(yy / 2), bk = (xx + (row & 1) * 2) % 4 === 0 || yy % 2 === 0; L.set(xx, yy, bk ? B[0] : B[clampI(Math.round(1 + (x - xx) / hw * .8 + bayer(xx, yy) * .5), 3)]); } }
+  const mw = w * .45, mh = h * .45;
+  L.poly(Array.from({ length: 11 }, (_, k) => { const a = Math.PI + k / 10 * Math.PI; return [x + Math.cos(a) * mw, y - mh + mw + Math.sin(a) * mw]; }).concat([[x + mw, y], [x - mw, y]]), hx(fire === 'lit' ? '#ffb04a' : fire === 'embers' ? '#3a0e08' : '#070506'));
+  if (fire === 'lit') { L.rect(x - mw + 1, y - 2, mw * 2 - 2, 2, hx('#fff0b0')); lights.push({ x, y: y - mh * .5, r: w * 1.8, c: '#ff9a3a', a: .5, flick: 2.3 + x * .01, out }); }
+  if (fire === 'embers') { for (let k = 0; k < mw * 1.6; k++) L.set(x - mw + 1 + hash(k, 1, 213) * (mw * 2 - 2), y - 1 - hash(k, 2, 213) * 2, hx(k % 3 ? '#c8401a' : '#ff8a3a')); lights.push({ x, y: y - 2, r: w * .9, c: '#ff5a1a', a: .3, pulse: 1, flick: .5 }); }
+  L.rect(x - w * .7, y - h - 5, w * 1.4, 2, B[1]); L.rect(x - w * .3, y - h - 20, w * .6, 16, B[1]); L.rect(x - w * .3, y - h - 20, 1, 16, B[3]);
+}
+// a hanging chain from (x, y) down len, links alternating
+function chainDown(L, x, y, len, c) { const C = hx(c), D = mix(C, [0, 0, 0], .5); for (let k = 0; k < len; k++) L.set(x + ((k >> 1) & 1 ? .5 : 0), y + k, k % 2 ? D : C); }
+// clear ice from gy down: dark water blue under a glassy skin, cracks, pale scratches and bright reflections
+function iceFloor(L, gy, cols, seed, crackCol) {
+  const G = cols.map(hx), n = G.length - 1, K = hx(crackCol), H = L.h;
+  for (let y = gy; y < H; y++) for (let x = 0; x < L.w; x++) { const v = (y - gy) / (H - gy) * n * .7 + vnoise(x * .05, y * .15, seed) * 1.6 - .3 + bayer(x, y) * .6 - .3; L.set(x, y, G[clampI(Math.round(v), n)]); }
+  for (let k = 0; k < 7; k++) { let x = hash(k, 1, seed) * L.w, y = gy + 2 + hash(k, 2, seed) * (H - gy - 4); for (let s = 0; s < 6; s++) { const nx = x + (hash(k, s, seed + 1) - .5) * 14, ny = y + (hash(k, s, seed + 2) - .3) * 5; L.line(x, y, nx, ny, K, .75); x = nx; y = Math.min(H - 1, ny); } }
+}
 
 /* ---------- the four places ---------- */
 const PAINT = {
@@ -981,6 +1082,333 @@ const PAINT = {
     lights.push({ cracks, c: '#ff6a2a' });
     return { layers: [sky, far, mid, gnd], lights, fx: 'ash', darkAmb: .14 };
   },
+
+  /* ---------- M5: the Ironspire Peaks ---------- */
+  // the Rockslide Pass on a cold morning: the road climbs east past the great slide the monks dug out, boulders heaped
+  // both sides; a way-shrine with its coal alight; the peaks ahead, snow in every hollow
+  'rockslide-pass'(W, H, gy) {
+    const sky = layer(W, H), far = layer(W, H), mid = layer(W, H), gnd = layer(W, H), lights = [];
+    skyFill(sky, ['#18203a', '#223050', '#30466a', '#486484', '#6e88a0', '#9cb0c0', '#c8d2d4'], 0, gy + 2);
+    sky.glow(W * .8, gy - 30, 38, hx('#fff0d4'), .32); sky.disc(W * .8, gy - 30, 3.5, hx('#fffaf0'), .9);
+    for (let k = 0; k < 4; k++) { const cy = 5 + k * 6 + hash(k, 1, 220) * 3, cx = hash(k, 2, 220) * W, len = 24 + hash(k, 3, 220) * 36; for (let x = Math.floor(cx - len / 2); x < cx + len / 2; x++) if ((x + k) & 1) sky.set(x, cy + Math.sin((x - cx) * .1 + k) * .8, hx('#dfe6ee'), .22 * Math.sin((x - cx + len / 2) / len * Math.PI)); }
+    // far: the peaks, and a nearer dark shoulder of the mountain
+    peaks(far, [[W * .1, gy - 26, 30, 24], [W * .34, gy - 38, 30, 28], [W * .6, gy - 30, 26, 30], [W * .86, gy - 42, 30, 30]], gy + 2, ['#1e2a3c', '#2e3e54', '#4a5e76'], ['#8a9cb4', '#e6eef6'], 221);
+    ridge(far, x => gy - 5 - vnoise(x * .05, 0, 222) * 7, gy + 2, '#1c2432', '#6a7a90', .5);
+    // mid: the slide coming down from the upper left, its boulders heaped along the road; more boulders to the right
+    const SC = ['#26282e', '#34363c', '#44464c', '#56585e'].map(hx);
+    for (let x = 0; x < W * .46; x++) { const top = gy - 30 + x / (W * .46) * 32 + (vnoise(x * .2, 0, 223) - .5) * 3; for (let y = Math.floor(top); y < gy + 4; y++) mid.set(x, y, SC[clampI(Math.round(1.6 + (vnoise(x * .3, y * .3, 224) - .5) * 3 - (y - top) * .02 + bayer(x, y) * .6), 3)]); mid.set(x, top, hx('#c8d0dc'), .6); }
+    for (let k = 0; k < 26; k++) { const u = hash(k, 1, 225), x = u * W * .5, top = gy - 30 + u * 32, y = top + 3 + hash(k, 2, 225) * (gy + 4 - top - 2), r = 1.6 + hash(k, 3, 225) * 3.2; boulder(mid, x, y, r, ['#24262c', '#3e4148', '#6a6e78'], hash(k, 4, 225) < .5 ? '#e4ecf4' : null); }
+    for (const [x, y, r] of [[W * .9, gy + 4, 7], [W * .98, gy + 2, 5], [W * .8, gy + 3, 3.4], [W * .56, gy + 3, 2.6]]) boulder(mid, x, y, r, ['#22242a', '#3a3d44', '#646872'], '#e8eef6');
+    for (const [x, h] of [[W * .74, 12], [W * .86, 17], [W * .52, 9]]) pine(mid, x, gy + 3, h, ['#16241e', '#2a4234'], '#e6eef6');
+    // the way-shrine: a stone hut under a snowy roof, the coal alight in its niche
+    const sx = Math.round(W * .66), sy = gy + 2, ST = hx('#4a4a52'), SL = hx('#7a7c86'), SD = hx('#2a2a30');
+    mid.rect(sx - 4, sy - 8, 8, 8, ST); mid.line(sx - 4, sy - 8, sx - 4, sy - 1, SL); mid.line(sx + 3, sy - 8, sx + 3, sy - 1, SD);
+    mid.poly([[sx - 6, sy - 8], [sx, sy - 13], [sx + 6, sy - 8]], hx('#34302e')); mid.line(sx - 6, sy - 8, sx, sy - 13, hx('#eef2f8')); mid.line(sx, sy - 13, sx + 6, sy - 8, hx('#c8d0dc'));
+    mid.rect(sx - 1.5, sy - 6, 3, 3, hx('#140c0a')); mid.rect(sx - 1, sy - 4, 2, 1, hx('#ff9a3a')); mid.set(sx, sy - 5, hx('#ffd27a'));
+    lights.push({ x: sx + .5, y: sy - 4.5, r: 6, c: '#ff9a3a', a: .35, flick: 1.7, pulse: 1 });
+    // ground: snow, the gravel road climbing away to the right, ruts and stones
+    snowFloor(gnd, gy, ['#56657c', '#6e7e96', '#8a9ab0', '#a6b4c8', '#c0ccdc'], 226, '#e6eef8');
+    const road = y => { const u = (y - gy) / (H - gy); return [W * (.7 - .22 * u), 2 + u * W * .22]; }, RC = ['#3a3634', '#4a4542', '#5c5650', '#6e6760'].map(hx);
+    for (let y = gy + 1; y < H; y++) { const [c, hw] = road(y); for (let x = Math.floor(c - hw); x <= c + hw; x++) { const e = Math.abs(x - c) / hw; if (e > .8 && bayer(x, y) < (e - .8) * 5) continue; gnd.set(x, y, RC[clampI(Math.round(1 + (y - gy) / (H - gy) * 1.4 - e * .8 + (vnoise(x * .3, y * .3, 227) - .5) * 1.2 + bayer(x, y) * .6), 3)]); } for (const f of [-.45, .45]) gnd.set(c + f * hw, y, hx('#2a2624'), .7); }
+    for (let k = 0; k < 18; k++) { const v = hash(k, 1, 228), y = gy + 2 + v * v * (H - gy - 3), [c, hw] = road(y), x = c + (hash(k, 2, 228) - .5) * hw * 2.6, s = .8 + v * 2.4; gnd.disc(x, y, s, hx('#3a3c42')); gnd.set(x - s * .4, y - s * .5, hx('#8a8e98')); }
+    return { layers: [sky, far, mid, gnd], lights, fx: 'snow' };
+  },
+  // Peak's Veil at dusk: the walled monastery on its shelf of rock, the bell tower with the great bronze bell in its
+  // belfry, the cloister roofs white with snow and windows warm, prayer flags strung from the tower, the cloister fire
+  // in the yard, and the peaks behind going pink
+  'peaks-veil'(W, H, gy) {
+    const sky = layer(W, H), far = layer(W, H), mid = layer(W, H), gnd = layer(W, H), lights = [];
+    skyFill(sky, ['#121830', '#1c2644', '#2a3860', '#44527a', '#6e7294', '#a48c9c', '#d0a49a'], 0, gy + 2);
+    stars(sky, 22, gy * .45, 230);
+    peaks(far, [[W * .08, gy - 30, 26, 28], [W * .3, gy - 40, 30, 30], [W * .58, gy - 34, 28, 30], [W * .84, gy - 44, 30, 34]], gy + 2, ['#1e2036', '#2c2e4a', '#4a4a6a'], ['#7c7c9e', '#f0d4cc'], 231);
+    // the monastery wall along its shelf, buildings behind it
+    const WS = ['#2a2a36', '#383846', '#4a4a58', '#5e5e6c', '#72727e'], RF = hx('#e8eef6'), RFD = hx('#a8b4c8');
+    masonry(mid, 0, gy - 6, W, gy + 4, WS, '#1a1a22', 7, 3, 232, (x, y) => 2 - (y - gy + 6) * .08 + (x < W * .5 ? .3 : 0));
+    for (let x = 0; x < W; x++) { mid.set(x, gy - 7, RF); if ((x >> 2) & 1) mid.set(x, gy - 8, RF, .8); }
+    const house = (x0, x1, top, roofH) => {
+      far.rect(x0, top, x1 - x0, gy - 6 - top, hx('#34343e')); far.line(x0, top, x0, gy - 6, hx('#56566a'));
+      far.poly([[x0 - 2, top], [(x0 + x1) / 2, top - roofH], [x1 + 2, top]], RFD); far.poly([[x0 - 2, top], [(x0 + x1) / 2, top - roofH], [(x0 + x1) / 2, top]], RF);
+      for (let x = x0 + 3; x < x1 - 3; x += 6) { far.rect(x, top + 3, 2, 3, hx('#ffc070')); lights.push({ x: x + 1, y: top + 4.5, r: 4, c: '#ffb04a', a: .22, flick: 1.3 + x * .03 }); }
+    };
+    house(W * .04, W * .3, gy - 20, 7); house(W * .34, W * .58, gy - 17, 6);
+    // the bell tower: a square tower, the belfry open on the bell, a pointed roof deep in snow
+    const tx = Math.round(W * .74), tw = 14, tt = gy - 50, TS = ['#2e2e3a', '#3c3c4a', '#50505e', '#64646e'].map(hx);
+    for (let y = tt; y < gy + 4; y++) for (let x = tx - tw / 2; x < tx + tw / 2; x++) { const u = (x - tx + tw / 2) / tw; far.set(x, y, TS[clampI(Math.round(u < .2 ? 3 : u > .8 ? 0 : 2 - u + bayer(x, y) * .5 - ((y - tt) % 5 === 0 ? 1 : 0)), 3)]); }
+    far.poly([[tx - tw / 2 - 2, tt], [tx, tt - 12], [tx + tw / 2 + 2, tt]], RFD); far.poly([[tx - tw / 2 - 2, tt], [tx, tt - 12], [tx, tt]], RF); far.line(tx, tt - 12, tx, tt - 15, hx('#8a7a5a'));
+    const by = tt + 5; far.poly(Array.from({ length: 9 }, (_, k) => { const a = Math.PI + k / 8 * Math.PI; return [tx + Math.cos(a) * 4.4, by + 2 + Math.sin(a) * 3]; }).concat([[tx + 4.4, by + 11], [tx - 4.4, by + 11]]), hx('#0c0c14'));
+    far.poly([[tx - 1.4, by + 1.6], [tx + 1.4, by + 1.6], [tx + 3, by + 8], [tx - 3, by + 8]], hx('#9a6a2a')); far.line(tx - 1.2, by + 2, tx - 2.6, by + 8, hx('#e8b85a')); far.rect(tx - 3.4, by + 8, 7, 1, hx('#6a4a1e')); far.set(tx, by + 9, hx('#6a4a1e'));
+    for (let y = tt + 18; y < gy - 8; y += 9) { far.rect(tx - 1, y, 2, 3, hx('#ffc070')); lights.push({ x: tx, y: y + 1.5, r: 4, c: '#ffb04a', a: .2, flick: 1.1 + y * .02 }); }
+    // prayer flags from the belfry down to the cloister roof and along the wall
+    flags(mid, tx - 7, tt + 2, W * .3, gy - 20, 5, 1); flags(mid, tx + 7, tt + 4, W + 2, gy - 14, 4, 3);
+    // the yard: paving with snow drifted at its edges, the cloister fire in its bowl
+    paving(gnd, gy, gy - (H - gy) * 1.3, ['#3a3844', '#4a4854', '#5a5864', '#6c6a74'], '#26242e', 10, 12, 233, (x, y) => (y - gy) / (H - gy) * 1.2 + .8 + Math.max(0, 1 - Math.hypot(x - W * .45, (y - gy - 8) * 2) / 30) * 1.2);
+    for (let y = gy; y < H; y++) for (let x = 0; x < W; x++) { const e = Math.min(x, W - x) / W, v = vnoise(x * .06, y * .2, 234) + (e < .12 ? (.12 - e) * 6 : 0) - (y - gy) / (H - gy) * .2; if (v > .72 && (v > .78 || (x + y) & 1)) gnd.set(x, y, hx(v > .86 ? '#c8d4e2' : '#9ca8ba')); }
+    const fx0 = Math.round(W * .45), fy = gy + 9; gnd.rect(fx0 - 4, fy - 2, 8, 3, hx('#4a4450')); gnd.rect(fx0 - 4, fy - 2, 8, 1, hx('#7a7484'));
+    fireBowl(gnd, fx0, fy - 3, 3.4, lights, 'lit');
+    return { layers: [sky, far, mid, gnd], lights, fx: 'snow' };
+  },
+  // the Highfold under a storm: a scree slope running down toward Fawnrest, and the Thunder-Roc's eyrie on a crag of
+  // its own, the great nest on top with bones in the sticks; cloud rolling over the peaks, lightning inside it
+  highfold(W, H, gy) {
+    const sky = layer(W, H), far = layer(W, H), mid = layer(W, H), gnd = layer(W, H), lights = [];
+    skyFill(sky, ['#0e1020', '#171a2e', '#212640', '#2e3552', '#404a66', '#58647c'], 0, gy + 2);
+    const CL = ['#1a1c2a', '#262a3c', '#34394e'].map(hx);
+    for (let k = 0; k < 9; k++) { const cx = hash(k, 1, 240) * W * 1.2 - W * .1, cy = 6 + hash(k, 2, 240) * gy * .5, r = 10 + hash(k, 3, 240) * 14; for (let y = Math.floor(cy - r * .6); y < cy + r * .5; y++) for (let x = Math.floor(cx - r * 1.6); x < cx + r * 1.6; x++) { const d = Math.hypot((x - cx) / 1.6, (y - cy) * 1.4) / r + (vnoise(x * .15, y * .2, 241 + k) - .5) * .4; if (d < 1) sky.set(x, y, CL[clampI(Math.round((1 - d) * 2 + (cy - y) / r - .3 + bayer(x, y) * .6), 2)]); } }
+    const bx0 = W * .28; let px = bx0, py = 8; for (let s = 0; s < 6; s++) { const nx = px + (hash(s, 1, 242) - .5) * 8, ny = py + 4 + hash(s, 2, 242) * 3; sky.line(px, py, nx, ny, hx('#e8f0ff')); sky.line(px + 1, py, nx + 1, ny, hx('#8aa8ff'), .5); px = nx; py = ny; }
+    lights.push({ x: bx0, y: 14, r: 16, c: '#a8c0ff', a: .28, pulse: 1, flick: 4.2 });
+    peaks(far, [[W * .16, gy - 30, 28, 26], [W * .46, gy - 36, 30, 26], [W * .7, gy - 26, 22, 26]], gy + 2, ['#181c2a', '#242a3a', '#384254'], ['#5a6478', '#c6d0de'], 243);
+    for (let y = gy - 14; y < gy + 2; y++) for (let x = 0; x < W; x++) if (vnoise(x * .05, y * .2, 244) > .45 && ((x + y) & 1)) far.set(x, y, hx('#5a6478'), .35);
+    // the eyrie: a crag standing alone on the right, the nest of torn branches on its top, bones white in it
+    const ex = W * .8, ET = gy - 42, EC = ['#1c1e26', '#2a2e38', '#3a404c', '#525a68'];
+    const CR = EC.map(hx);
+    for (let y = ET; y < gy + 4; y++) { const dy = y - ET, l = ex - 7 - dy * .22 - vnoise(y * .2, 0, 245) * 3, r = ex + 8 + dy * .18 + vnoise(y * .2, 1, 245) * 3; for (let x = Math.floor(l); x < r; x++) { const u = (x - l) / (r - l), b = Math.sin((y + vnoise(x * .1, y * .05, 246) * 6) * .6) > .7 ? -1 : 0; mid.set(x, y, CR[clampI(Math.round(u < .2 ? 3 : 2.4 - u * 2 + b + bayer(x, y) * .6), 3)]); } mid.set(l, y, hx('#b8c8e8'), .8); mid.set(l + 1, y, hx('#8a96aa'), .5); }
+    const NS = ['#2a2018', '#3a2c1e', '#5a4428', '#7a5e38'].map(hx);
+    mid.poly([[ex - 14, ET + 1], [ex - 11, ET - 4], [ex + 12, ET - 5], [ex + 15, ET + 1], [ex + 8, ET + 3], [ex - 8, ET + 3]], NS[0]);
+    for (let k = 0; k < 60; k++) { const a = (hash(k, 1, 247) - .5) * .9 + (k & 1 ? Math.PI : 0), l = 6 + hash(k, 2, 247) * 9, x = ex - 13 + hash(k, 3, 247) * 26, y = ET - 5 + hash(k, 4, 247) * 7; mid.line(x, y, x + Math.cos(a) * l * .5, y + Math.sin(a) * l * .25, NS[1 + k % 3]); }
+    for (const [dx, dy] of [[-7, -3], [2, -4], [9, -2]]) { mid.disc(ex + dx, ET + dy, 1.2, hx('#e8e0cc')); mid.set(ex + dx + 1.4, ET + dy + .6, hx('#e8e0cc')); mid.set(ex + dx - .4, ET + dy - .2, hx('#3a2c1e')); }
+    mid.line(ex - 12, ET - 1, ex - 16, ET + 1, hx('#e8e0cc')); mid.line(ex + 11, ET - 3, ex + 15, ET - 6, hx('#e8e0cc'));
+    // scree slopes and the path
+    const SS = ['#2a2c34', '#383a44', '#4a4c56', '#5e606a'].map(hx);
+    for (let x = 0; x < W; x++) { const top = gy - 6 + Math.sin(x * .04) * 3 + (x > W * .6 ? (x - W * .6) * -.05 : 0); for (let y = Math.floor(top); y < gy + 4; y++) mid.set(x, y, SS[clampI(Math.round(1.4 + (vnoise(x * .35, y * .35, 248) - .5) * 3 + bayer(x, y) * .6), 3)]); mid.set(x, top, hx('#b6c0d0'), .5); }
+    const GS = ['#22242c', '#30323c', '#40424c', '#52545e', '#666872'].map(hx);
+    for (let y = gy; y < H; y++) for (let x = 0; x < W; x++) { const v = (y - gy) / (H - gy) * 2.4 + (vnoise(x * .25, y * .3, 249) - .5) * 2.6 + bayer(x, y) * .7; gnd.set(x, y, GS[clampI(Math.round(v), 4)]); }
+    for (let k = 0; k < 30; k++) { const v = hash(k, 1, 250), x = hash(k, 2, 250) * W, y = gy + 1 + v * (H - gy - 2); boulder(gnd, x, y, .8 + v * 2.2, ['#1c1e24', '#40424c', '#7a7e88'], null); }
+    for (let y = gy; y < H; y++) for (let x = 0; x < W; x++) { const v = vnoise(x * .05, y * .12, 251) - (y - gy) / (H - gy) * .15; if (v > .66 && (v > .7 || (x + y) & 1)) gnd.set(x, y, hx(v > .76 ? '#c8d4e4' : '#9aa8bc')); }
+    return { layers: [sky, far, mid, gnd], lights, fx: 'snow' };
+  },
+  // the Iron Stair: switchbacks cut into a cliff face by the dwarves, iron chains strung along them for rails, the
+  // stair-head gate at the top with its runes alight; on the left the valley falls away into haze
+  'iron-stair'(W, H, gy) {
+    const sky = layer(W, H), far = layer(W, H), mid = layer(W, H), gnd = layer(W, H), lights = [];
+    skyFill(sky, ['#162644', '#203a62', '#305482', '#4e74a0', '#8aa8c4', '#c2d2de'], 0, gy + 2);
+    peaks(far, [[W * .06, gy - 18, 22, 20], [W * .24, gy - 12, 18, 20]], gy + 2, ['#3a4a64', '#4e6080', '#6a7c98'], ['#9aaec6', '#e6eef6'], 260);
+    for (let y = gy - 10; y < gy + 2; y++) for (let x = 0; x < W * .45; x++) if ((x + y) & 1) far.set(x, y, hx('#a8bccc'), .3 + (y - gy + 10) * .03);
+    // the cliff: strata in cold grey, the stair cut into it in zigzags, chains along the outer edge
+    const CE = y => W * .36 + (gy + 4 - y) * .06 + vnoise(y * .1, 0, 261) * 6;
+    rockWall(mid, CE, 1, 0, gy + 4, ['#1c2028', '#262b35', '#323844', '#40475a', '#525a6e'], '#9aa6ba', 262);
+    const legs = [[gy + 2, W * .42, W * .96], [gy - 13, W * .95, W * .5], [gy - 28, W * .52, W * .92], [gy - 43, W * .9, W * .62]];
+    const SL = hx('#6e7688'), SD = hx('#1a1e26'), CH = hx('#3a3a42'), CHL = hx('#8a8a96');
+    const SLL = hx('#aab4c4'), SM = hx('#4a5162');
+    legs.forEach(([y0, xa, xb]) => {
+      const n = Math.ceil(Math.abs(xb - xa)), posts = [];
+      for (let i = 0; i <= n; i++) { const u = i / n, x = xa + (xb - xa) * u, y = y0 - 13 * u; if (y < 3) break; mid.set(x, y - 1, SLL); mid.set(x, y, i % 3 === 0 ? SD : SL); mid.set(x, y + 1, SM); mid.set(x, y + 2, SD); if (i % 9 === 0) posts.push([x, y - 1]); }
+      for (const [x, y] of posts) mid.line(x, y - 4, x, y - 1, CH);
+      for (let k = 0; k < posts.length - 1; k++) { const [x0, y0p] = posts[k], [x1, y1p] = posts[k + 1]; for (let j = 0; j <= 12; j++) { const u = j / 12; mid.set(x0 + (x1 - x0) * u, y0p - 3.4 + (y1p - y0p) * u + Math.sin(u * Math.PI) * 1.4, j & 1 ? CH : CHL); } }
+    });
+    // the stair-head gate: a stone arch in the rock, iron doors, two runes alight
+    const gx = Math.round(W * .74), gt = 3, GS = hx('#3a3e4a'), GL = hx('#7a8294');
+    mid.rect(gx - 9, gt, 18, 13, GS); mid.line(gx - 9, gt, gx + 8, gt, GL); mid.rect(gx - 6, gt + 3, 12, 10, hx('#1c1e24'));
+    for (const d of [-3, 3]) { mid.rect(gx + d - 2.4, gt + 4, 5, 9, hx('#2a2c34')); mid.line(gx + d - 2.4, gt + 7, gx + d + 2, gt + 7, hx('#4a4c56')); mid.line(gx + d - 2.4, gt + 11, gx + d + 2, gt + 11, hx('#4a4c56')); }
+    for (const d of [-7.5, 7.5]) { mid.rect(gx + d, gt + 5, 1, 3, hx('#ffb04a')); lights.push({ x: gx + d + .5, y: gt + 6.5, r: 5, c: '#ffa040', a: .3, pulse: 1, flick: .8 }); }
+    // ground: the stair's foot, cut steps across the ledge, a chain post at the drop, snow in the angles
+    for (let y = gy; y < H; y++) for (let x = 0; x < W; x++) { const yo = (y - gy) % 5, e = x < W * .18 ? (W * .18 - x) / (W * .18) : 0; gnd.set(x, y, hx(yo === 0 ? '#8a92a2' : yo === 4 ? '#262a32' : ['#4a505e', '#555b6a', '#606676'][clampI(Math.round(1 + (vnoise(x * .2, y * .3, 263) - .5) * 1.6 + bayer(x, y) * .5 - e * 2), 2)])); }
+    for (let y = gy; y < H; y++) for (let x = 0; x < W; x++) { const v = vnoise(x * .08, y * .3, 264) + (x > W * .85 ? .2 : 0); if (v > .72 && (v > .78 || (x + y) & 1)) gnd.set(x, y, hx(v > .84 ? '#c6d2e2' : '#98a6ba')); }
+    for (const px of [W * .1, W * .26]) { gnd.rect(px - 1, gy - 6, 3, 14, hx('#2e3038')); gnd.set(px - 1, gy - 6, hx('#8a8c98')); }
+    for (let s = 0; s <= 24; s++) { const u = s / 24, x = W * .1 + W * .16 * u, y = gy - 3 + Math.sin(u * Math.PI) * 4; gnd.set(x, y, s & 1 ? CH : CHL); }
+    return { layers: [sky, far, mid, gnd], lights, fx: 'snow' };
+  },
+  // Ironhold: the Thane's hall carved out of the mountain: square pillars banded in knotwork, red banners with the
+  // hold's gold rune, the great hearth roaring in the far wall with the throne on its dais beside it, a rune-line of
+  // gold inlaid in the floor running to the fire
+  ironhold(W, H, gy) {
+    const sky = layer(W, H), far = layer(W, H), mid = layer(W, H), gnd = layer(W, H), lights = [];
+    const hxX = W * .5, hxY = gy - 4;
+    hewn(sky, 0, 0, W, gy + 3, ['#0e0c10', '#16131a', '#1e1a22', '#28222a', '#342c32', '#443a3e'], 270, (x, y) => 1.6 + Math.max(0, 1 - Math.hypot(x - hxX, (y - hxY) * 1.4) / 60) * 3 - (y < 10 ? .8 : 0));
+    // the vault: ribs of stone arching over
+    for (const x0 of [W * .18, W * .82]) for (let k = 0; k <= 30; k++) { const u = k / 30, x = x0 + (W * .5 - x0) * u, y = 18 - Math.sin(u * Math.PI / 2) * 14; sky.rect(x - 1, y, 2, 2, hx('#3a3238')); sky.set(x, y, hx('#5a4e52')); }
+    // the great hearth: a stone surround, a mantel with the rune, the fire
+    const HS = ['#2a2226', '#3a3034', '#4e4246', '#665a5a'];
+    masonry(far, hxX - 18, hxY - 20, hxX + 18, gy + 3, HS, '#140f12', 6, 3, 271, (x, y) => 2 + Math.max(0, 1 - Math.hypot(x - hxX, y - hxY) / 22) * 1.4);
+    far.rect(hxX - 21, hxY - 22, 42, 3, hx('#665a5a')); far.rect(hxX - 21, hxY - 22, 42, 1, hx('#9a8a84'));
+    far.poly([[hxX - 11, gy + 3], [hxX - 11, hxY - 8], [hxX - 8, hxY - 12], [hxX + 8, hxY - 12], [hxX + 11, hxY - 8], [hxX + 11, gy + 3]], hx('#0a0606'));
+    for (let k = 0; k < 7; k++) { const x = hxX - 8 + k * 2.6, h = 5 + hash(k, 1, 272) * 6; far.poly([[x - 1.6, gy + 2], [x + .4, gy + 2 - h], [x + 2, gy + 2]], hx(k % 2 ? '#ff8a2a' : '#ffb04a')); far.line(x + .3, gy + 1, x + .4, gy + 3 - h * .6, hx('#fff0b0')); }
+    far.rect(hxX - 9, gy + 1, 18, 2, hx('#2a1a14'));
+    const RN = hx('#e8b04a'); far.line(hxX - 3, hxY - 21, hxX - 3, hxY - 20, RN); far.line(hxX - 4, hxY - 21, hxX + 4, hxY - 21, RN); far.line(hxX + 3, hxY - 21, hxX + 3, hxY - 20, RN);
+    lights.push({ x: hxX, y: gy - 3, r: 24, c: '#ff9a3a', a: .55, flick: 2.4, core: [[hxX - 2, gy], [hxX + 2, gy - 1]] }, { x: hxX - 6, y: gy - 1, r: 4, c: '#ffd070', a: .2, torch: 1, flick: 3.1 });
+    // the throne on its dais, left of the hearth; banners either side
+    const tx = hxX - 32; far.rect(tx - 9, gy - 1, 18, 4, hx('#3a3034')); far.rect(tx - 9, gy - 1, 18, 1, hx('#7a6a66')); far.rect(tx - 6, gy - 4, 12, 3, hx('#4a3e40'));
+    far.rect(tx - 4, gy - 20, 8, 17, hx('#2e2628')); far.rect(tx - 5, gy - 22, 10, 3, hx('#4e4246')); far.rect(tx - 3, gy - 17, 6, 11, hx('#6a1e1a')); far.line(tx - 4, gy - 20, tx - 4, gy - 4, hx('#8a7a70')); far.set(tx, gy - 21, hx('#e8b04a'));
+    const banner = (x, top, len) => { const R = hx('#8a2a22'), RD = hx('#5a1a16'), G = hx('#e0a840'); far.rect(x - 4.5, top - 1, 9, 1, hx('#3a2e24')); for (let y = top; y < top + len; y++) for (let xx = x - 3.5; xx < x + 3.5; xx++) far.set(xx, y, xx > x + 1.5 ? RD : R); far.poly([[x - 3.5, top + len], [x, top + len + 3], [x + 3.5, top + len]], R); far.line(x - 1.5, top + 4, x + 1.5, top + 4, G); far.line(x, top + 4, x, top + 9, G); far.line(x - 1.5, top + 7, x + 1.5, top + 9, G); far.rect(x - 3.5, top + len - 1, 7, 1, G); };
+    banner(W * .2, 12, 22); banner(W * .8, 12, 22); banner(hxX + 30, 16, 18);
+    // near pillars framing the hall, with braziers
+    for (const x of [W * .06, W * .94]) dwarfPillar(mid, x, 12, 0, gy + 8, ['#0e0c10', '#18141a', '#241e24', '#342c32'], '#5a4a3a');
+    for (const x of [Math.round(W * .2), Math.round(W * .8)]) { mid.rect(x - .5, gy - 6, 1.5, 11, hx('#2a2226')); mid.line(x - 3, gy + 5, x, gy + 2, hx('#2a2226')); mid.line(x + 3, gy + 5, x, gy + 2, hx('#2a2226')); fireBowl(mid, x, gy - 7, 3, lights, 'lit'); }
+    // the floor: polished flags, warm toward the hearth, the rune-line of gold running to the fire
+    paving(gnd, gy, gy - (H - gy) * 1.4, ['#1a1618', '#241e20', '#2e2628', '#3a3032', '#4a3e3c'], '#0c0a0c', 11, 14, 273, (x, y) => (y - gy) / (H - gy) * 1.1 + .6 + Math.max(0, 1 - Math.hypot(x - hxX, (y - gy) * 2.2) / 40) * 1.8);
+    for (let y = gy + 1; y < H; y++) { const u = (y - gy) / (H - gy); gnd.set(hxX, y, hx('#c8903a'), .9); if (y % 4 === 0) { gnd.set(hxX - 1 - u * 2, y, hx('#c8903a'), .8); gnd.set(hxX + 1 + u * 2, y, hx('#c8903a'), .8); } }
+    return { layers: [sky, far, mid, gnd], lights, fx: 'sparks' };
+  },
+  // the Ironhold Deeps: Harrow's abandoned works: a hewn hall under iron beams, cold furnaces in a row (one with embers
+  // still in it), chains hanging, the ore rails running off into the dark, slag heaps with the heat still in their
+  // cracks. The lamps on the beams go out in the dark; the slag and the embers keep glowing
+  'ironhold-deeps'(W, H, gy) {
+    const sky = layer(W, H), far = layer(W, H), mid = layer(W, H), gnd = layer(W, H), lights = [];
+    hewn(sky, 0, 0, W, gy + 3, ['#0a0808', '#110d0c', '#181311', '#201915', '#2a2119', '#34291e'], 280, (x, y) => 1.4 + Math.max(0, 1 - Math.min(Math.hypot(x - W * .3, y - 20), Math.hypot(x - W * .7, y - 18)) / 38) * 1.8);
+    // iron beams across the roof, chains hanging from them
+    const IB = hx('#1e1c20'), IBL = hx('#4a464e'), IBD = hx('#0c0a0c');
+    for (const y of [4, 13]) { sky.rect(0, y, W, 4, IB); sky.rect(0, y, W, 1, IBL); sky.rect(0, y + 3, W, 1, IBD); for (let x = 3; x < W; x += 9) sky.set(x, y + 2, hx('#6a666e')); }
+    for (const [x, len] of [[W * .12, 18], [W * .45, 10], [W * .58, 24], [W * .9, 14]]) chainDown(far, x, 17, len, '#4a464e');
+    // cold furnaces in a row; the middle one still holds embers
+    furnace(far, W * .22, gy + 2, 11, 20, 'cold', lights); furnace(far, W * .5, gy + 1, 12, 22, 'embers', lights); furnace(far, W * .78, gy + 2, 11, 19, 'cold', lights);
+    // iron props and the lamps hung from them (out in the dark)
+    for (const x of [W * .06, W * .94]) { mid.rect(x - 2, 0, 5, gy + 8, hx('#1a181c')); mid.rect(x - 2, 0, 1, gy + 8, hx('#3e3a42')); for (let y = 8; y < gy; y += 10) mid.set(x, y, hx('#6a666e')); }
+    for (const [x, len] of [[W * .34, 8], [W * .66, 6]]) { mid.line(x, 17, x, 17 + len, hx('#3a383e')); mid.rect(x - 1, 18 + len, 3, 4, hx('#3a2e24')); mid.rect(x - .5, 19 + len, 2, 2, hx('#ffd27a')); lights.push({ x: x + .5, y: 20 + len, r: 12, c: '#ffb04a', a: .4, flick: 2 + x * .01, out: true }); }
+    // floor: slag and grit, the rails, slag heaps with live cracks
+    const GF = ['#0e0a0a', '#151010', '#1c1614', '#241c18', '#2e241e'].map(hx);
+    for (let y = gy; y < H; y++) for (let x = 0; x < W; x++) { gnd.set(x, y, GF[clampI(Math.round((y - gy) / (H - gy) * 2 + (vnoise(x * .12, y * .25, 281) - .5) * 1.6 + bayer(x, y) * .7 - .2), 4)]); if (hash(x, y, 282) < .04) gnd.set(x, y, hx('#3a2e26')); }
+    rails(gnd, W * .42, 12, W * .5, gy - 10, gy, ['#1e1612', '#2e2c30', '#6a6870']);
+    const cracks = [];
+    for (const [hx0, hy, hr] of [[W * .1, H - 8, 11], [W * .86, H - 5, 13], [W * .72, gy + 7, 6]]) {
+      for (let y = Math.floor(hy - hr * .7); y < hy + 2; y++) for (let x = Math.floor(hx0 - hr * 1.3); x < hx0 + hr * 1.3; x++) { const d = Math.hypot((x - hx0) / 1.3, (y - hy) * 1.3) / hr; if (d < 1) gnd.set(x, y, hx(['#1a1212', '#241816', '#30201a'][clampI(Math.round((1 - d) * 2 + bayer(x, y) * .6 - .3), 2)])); }
+      for (let k = 0; k < 2; k++) { let x = hx0 - hr * .6 + hash(k, 1, hx0 | 0) * hr * .5, y = hy - hr * .4 + k * 2; const pts = [[x, y]]; for (let s = 0; s < 4; s++) { x += 1.5 + hash(k, s, 283) * 3; y += (hash(k, s, 284) - .5) * 2.5; pts.push([x, y]); } cracks.push(pts); }
+      lights.push({ x: hx0, y: hy - hr * .3, r: hr * .8, c: '#ff5a1a', a: .22, pulse: 1, flick: .6 + hx0 * .01 });
+    }
+    lights.push({ cracks, c: '#ff6a2a' });
+    return { layers: [sky, far, mid, gnd], lights, fx: 'sparks', darkAmb: .12 };
+  },
+  // Harrow's Forge: a round hall under a great chimney hood, the ring of anvils round a pit of cold fire (one place in
+  // the ring is empty), tongs and hammers racked on the walls, Harrow's broken-ring mark cut above the hood
+  'harrows-forge'(W, H, gy) {
+    const sky = layer(W, H), far = layer(W, H), mid = layer(W, H), gnd = layer(W, H), lights = [];
+    masonry(sky, 0, 0, W, gy + 3, ['#0e0b0c', '#151012', '#1c1617', '#241c1c', '#2e2422'], '#070506', 9, 4, 290, (x, y) => 2.2 - Math.abs(x - W / 2) / (W / 2) * 1.4 - (y < 8 ? .8 : 0) + Math.max(0, 1 - Math.hypot(x - W / 2, y - gy) / 40) * .8);
+    // the hood: iron plates narrowing up into the chimney, rivets, a glow still in its throat
+    const HD = ['#1a1618', '#262022', '#342c2c', '#4a3e3a'].map(hx);
+    for (let y = 2; y < gy - 18; y++) { const u = (y - 2) / (gy - 20), hw = 6 + u * u * 26; for (let x = Math.floor(W / 2 - hw); x < W / 2 + hw; x++) { const e = (x - W / 2 + hw) / (2 * hw); far.set(x, y, HD[clampI(Math.round(e < .15 ? 3 : e > .85 ? 0 : 2 - e + bayer(x, y) * .5 - ((y % 8) === 0 ? 1 : 0)), 3)]); } }
+    for (let y = 10; y < gy - 18; y += 8) { const u = (y - 2) / (gy - 20), hw = 6 + u * u * 26; for (const s of [-1, 1]) far.set(W / 2 + s * (hw - 2), y + 1, hx('#8a7a6e')); }
+    far.rect(W / 2 - 33, gy - 19, 66, 3, hx('#4a3e3a')); far.rect(W / 2 - 33, gy - 19, 66, 1, hx('#8a7a6e'));
+    // Harrow's mark: the broken ring, cut into the hood and gilded
+    const my = gy - 30;
+    for (let k = 0; k < 24; k++) { const a = .5 + k / 24 * Math.PI * 1.7; far.set(W / 2 + Math.cos(a) * 5.4, my + Math.sin(a) * 5.4, hx('#e0a848')); far.set(W / 2 + Math.cos(a) * 4.4, my + Math.sin(a) * 4.4, hx('#6a4a1e'), .7); }
+    far.line(W / 2 + 5.8, my + 1.4, W / 2 + 3.6, my + 3.6, hx('#e0a848'));
+    lights.push({ x: W / 2, y: my, r: 7, c: '#e8a040', a: .16, pulse: 1, flick: .3 });
+    // racks of tongs and hammers on the walls, chains
+    const TL = hx('#2e2a2c'), TLL = hx('#6a646a');
+    for (const x0 of [W * .14, W * .86]) { far.rect(x0 - 10, gy - 30, 20, 2, hx('#3a2a1e')); for (let k = 0; k < 5; k++) { const x = x0 - 8 + k * 4; if (k % 2) { far.line(x, gy - 28, x, gy - 14, TL); far.rect(x - 1.5, gy - 16, 4, 3, TL); far.set(x - 1, gy - 16, TLL); } else { far.line(x - .6, gy - 28, x - 1.4, gy - 15, TL); far.line(x + .6, gy - 28, x + 1.4, gy - 15, TL); far.set(x, gy - 27, TLL); } } }
+    for (const [x, len] of [[W * .3, 20], [W * .7, 16]]) chainDown(far, x, 0, len, '#3e3a3e');
+    // the ring of anvils: the far ones small and dark, the near ones either side; the gap where Mother Anvil stood
+    const anvil = (L, x, y, s, cols) => { const [D, M, Lt] = cols.map(hx); L.poly([[x - 7 * s, y - 8 * s], [x + 5 * s, y - 8 * s], [x + 11 * s, y - 7.2 * s], [x + 5 * s, y - 5.6 * s], [x + 2.4 * s, y - 5.2 * s], [x + 2 * s, y - 2.4 * s], [x + 5 * s, y], [x - 5 * s, y], [x - 2 * s, y - 2.4 * s], [x - 2.4 * s, y - 5.2 * s], [x - 7 * s, y - 6 * s]], M); L.line(x - 7 * s, y - 8 * s, x + 5 * s, y - 8 * s, Lt); L.line(x + 5 * s, y - 8 * s, x + 11 * s, y - 7.2 * s, Lt); L.line(x - 7 * s, y - 8 * s, x - 7 * s, y - 6 * s, Lt); L.line(x + 2.4 * s, y - 5.2 * s, x + 2 * s, y - 2.4 * s, D); L.line(x + 5 * s, y - 5.6 * s, x + 11 * s, y - 7.2 * s, D); L.rect(x - 5 * s, y - 1, 10 * s, 1, D); };
+    for (const [x, s] of [[W * .26, 1.2], [W * .4, 1], [W * .74, 1.2]]) anvil(far, x, gy + 1, s, ['#1a1414', '#4a3e3c', '#9a8a7e']);
+    // the floor: flags round the pit; the pit of cold fire, a few embers still alive in it
+    paving(gnd, gy, gy - (H - gy) * 1.2, ['#141011', '#1c1617', '#241d1c', '#2e2522'], '#080606', 10, 12, 291, (x, y) => (y - gy) / (H - gy) * 1.2 + .6);
+    const px = W / 2, py = gy + 14, prx = 30, pry = 8;
+    for (let y = Math.floor(py - pry - 2); y < py + pry + 2; y++) for (let x = Math.floor(px - prx - 3); x < px + prx + 3; x++) { const d = Math.hypot((x - px) / (prx + 2.5), (y - py) / (pry + 2)); if (d < 1) gnd.set(x, y, hx(d > .86 ? (y < py ? '#5a4a44' : '#3a2e2a') : '#0a0707')); }
+    const cracks = [];
+    for (let k = 0; k < 16; k++) { const a = hash(k, 1, 292) * Math.PI * 2, r = Math.sqrt(hash(k, 2, 292)) * .8, x = px + Math.cos(a) * prx * r, y = py + Math.sin(a) * pry * r; gnd.disc(x, y, 1.4, hx(k % 3 ? '#1e1614' : '#2a1a14')); if (k % 5 === 0) cracks.push([[x - 1, y], [x + 1, y - .5]]); }
+    lights.push({ cracks, c: '#ff5a1a' }, { x: px, y: py, r: 12, c: '#ff5a1a', a: .12, pulse: 1, flick: .4 });
+    for (const [x, sc] of [[W * .08, 2], [W * .92, 2]]) anvil(gnd, x, gy + 22, sc, ['#141011', '#3e3434', '#b0a092']);
+    return { layers: [sky, far, mid, gnd], lights, fx: 'sparks', darkAmb: .14 };
+  },
+  // Stormwatch on its ridge at dusk, a storm coming over: the palisade on its stone footing, the watch tower with its
+  // beacon burning and the storm banner snapping, barracks roofs deep in snow, the great north gate, the watch fire
+  stormwatch(W, H, gy) {
+    const sky = layer(W, H), far = layer(W, H), mid = layer(W, H), gnd = layer(W, H), lights = [];
+    skyFill(sky, ['#10121e', '#181c2c', '#22283c', '#30384e', '#464e64', '#6a6e80', '#94907e'], 0, gy + 2);
+    const CL = ['#141624', '#1e2232', '#2a3042'].map(hx);
+    for (let k = 0; k < 7; k++) { const cx = hash(k, 1, 300) * W, cy = 4 + hash(k, 2, 300) * gy * .45, r = 12 + hash(k, 3, 300) * 12; for (let y = Math.floor(cy - r * .5); y < cy + r * .45; y++) for (let x = Math.floor(cx - r * 1.8); x < cx + r * 1.8; x++) { const d = Math.hypot((x - cx) / 1.8, (y - cy) * 1.6) / r + (vnoise(x * .12, y * .2, 301 + k) - .5) * .4; if (d < 1) sky.set(x, y, CL[clampI(Math.round((1 - d) * 2 - (y - cy) / r + bayer(x, y) * .6 - .3), 2)]); } }
+    ridge(far, x => gy - 8 - vnoise(x * .04, 0, 302) * 10 - Math.max(0, 30 - Math.abs(x - W * .15)) * .3, gy + 2, '#141824', '#6a7488', .45);
+    for (const [x, h] of [[W * .92, 18], [W * .98, 14], [W * .4, 12]]) pine(far, x, gy - 6, h, ['#141e1c', '#243630'], '#dde6f0');
+    // barracks behind the wall: long roofs under snow
+    for (const [x0, x1, top] of [[W * .36, W * .62, gy - 27], [W * .66, W * .9, gy - 24]]) { far.rect(x0, top + 4, x1 - x0, gy - top, hx('#2a2420')); far.poly([[x0 - 2, top + 4], [x0 + 3, top], [x1 - 3, top], [x1 + 2, top + 4]], hx('#dde6f0')); far.line(x0 - 2, top + 4, x1 + 2, top + 4, hx('#8a96aa')); for (let x = x0 + 4; x < x1 - 3; x += 7) { far.rect(x, top + 7, 2, 2, hx('#ffb860')); lights.push({ x: x + 1, y: top + 8, r: 3.5, c: '#ffb04a', a: .2, flick: 1.4 + x * .02 }); } }
+    // the palisade: sharpened logs on a stone footing, snow on the points; the north gate in it
+    const LG = ['#1e1612', '#2c2018', '#3c2c20', '#4e3a28'].map(hx), gx0 = W * .52, gx1 = W * .66;
+    for (let x = 0; x < W; x++) {
+      const log = Math.floor(x / 3), xo = x % 3, top = gy - 14 - (hash(log, 1, 303) * 2 | 0) + (xo === 1 ? -2 : xo === 0 ? -1 : 0), gate = x >= gx0 && x < gx1;
+      for (let y = top; y < gy - 1; y++) mid.set(x, y, gate ? hx('#241a14') : LG[clampI(Math.round(2 - (xo === 2 ? 1.4 : xo === 0 ? -.4 : 0) + bayer(x, y) * .5 - .3), 3)]);
+      if (!gate && xo === 1) mid.set(x, top, hx('#e8eef6'));
+      if (!gate) mid.set(x, gy - 10, hx('#14100c'), .8);
+    }
+    for (let y = gy - 14; y < gy - 1; y += 4) mid.line(gx0, y, gx1 - 1, y, hx('#4a4a52'));
+    mid.line((gx0 + gx1) / 2, gy - 14, (gx0 + gx1) / 2, gy - 2, hx('#0e0a08')); mid.rect(gx0 - 1, gy - 16, gx1 - gx0 + 2, 2, hx('#3a2e24'));
+    masonry(mid, 0, gy - 2, W, gy + 3, ['#2a2a30', '#36363e', '#44444c'], '#18181e', 6, 2, 304, () => 1.4);
+    // the watch tower on the left: a timber frame, the platform, the beacon burning on it; the banner on its pole
+    const tx = W * .16, T = hx('#3a2a1e'), TL = hx('#6a5038');
+    for (const d of [-6, 6]) mid.thick(tx + d, gy + 1, tx + d * .7, gy - 36, 1.2, 1, T);
+    for (let y = gy - 32; y < gy; y += 9) { mid.line(tx - 6, y + 9, tx + 5, y, T); mid.line(tx + 6, y + 9, tx - 5, y, T); }
+    mid.rect(tx - 8, gy - 38, 16, 3, T); mid.rect(tx - 8, gy - 38, 16, 1, TL); mid.poly([[tx - 9, gy - 44], [tx, gy - 50], [tx + 9, gy - 44]], hx('#2a2018')); mid.line(tx - 9, gy - 44, tx, gy - 50, hx('#dde6f0')); mid.line(tx, gy - 50, tx + 9, gy - 44, hx('#b0bccc'));
+    for (const d of [-7, 7]) mid.line(tx + d, gy - 44, tx + d, gy - 38, T);
+    fireBowl(mid, tx, gy - 39, 3.4, lights, 'lit');
+    const bpx = W * .3; mid.line(bpx, gy - 14, bpx, gy - 40, hx('#2a2420'));
+    for (let y = 0; y < 9; y++) for (let x = 0; x < 13; x++) { if (x > 10 && y > 2 && y < 6) continue; mid.set(bpx + 1 + x, gy - 40 + y + Math.sin(x * .6 + y * .2) * 1.2, hx(y === 0 || y === 8 ? '#2a3a54' : '#3a5078')); }
+    for (const [x, y] of [[5, 2], [6, 3], [5, 4], [6, 5], [7, 6]]) mid.set(bpx + 1 + x, gy - 40 + y + Math.sin(x * .6 + y * .2) * 1.2, hx('#e8eef6'));
+    // ground: trodden snow and mud to the gate, the watch fire
+    snowFloor(gnd, gy, ['#4a5264', '#626c80', '#7e8a9e', '#9eaabc', '#bcc6d4'], 305);
+    for (let y = gy + 1; y < H; y++) { const u = (y - gy) / (H - gy), c = W * (.59 - u * .08), hw = 4 + u * 26; for (let x = Math.floor(c - hw); x < c + hw; x++) { const e = Math.abs(x - c) / hw; if (e > .75 && bayer(x, y) < (e - .75) * 4) continue; gnd.set(x, y, hx(['#3a3230', '#4a3e38', '#5a4c44'][clampI(Math.round(1 + (vnoise(x * .2, y * .3, 306) - .5) * 2 + bayer(x, y) * .5 - e), 2)])); } }
+    const fx0 = Math.round(W * .84), fy = gy + 10; gnd.rect(fx0 - 5, fy - 2, 10, 3, hx('#3a3438')); fireBowl(gnd, fx0, fy - 3, 3.6, lights, 'lit');
+    return { layers: [sky, far, mid, gnd], lights, fx: 'snow' };
+  },
+  // the Frost Road: a windswept road across the tundra, cairns marking it over the snow, a leaning marker pole with a
+  // rag on it, the sun a pale disc in the blown haze, low mountains at the edge of the world
+  'frost-road'(W, H, gy) {
+    const sky = layer(W, H), far = layer(W, H), mid = layer(W, H), gnd = layer(W, H), lights = [];
+    skyFill(sky, ['#2e3a50', '#3e4c64', '#52627a', '#6a7a92', '#8494aa', '#9eacbe', '#b4c0cc'], 0, gy + 2);
+    sky.glow(W * .28, gy - 20, 30, hx('#f0e8d8'), .3); sky.disc(W * .28, gy - 20, 5, hx('#e8e4dc'), .7);
+    for (let k = 0; k < 6; k++) { const y0 = 8 + k * 6 + hash(k, 1, 310) * 4; for (let x = 0; x < W; x++) if (vnoise(x * .03, k * 3, 311) > .5 && ((x + k) & 1)) sky.set(x, y0 + Math.sin(x * .05 + k) * 2, hx('#c8d2dc'), .2); }
+    peaks(far, [[W * .12, gy - 12, 26, 30], [W * .5, gy - 16, 34, 34], [W * .86, gy - 11, 26, 30]], gy + 2, ['#3e4a60', '#4e5c74', '#62708a'], ['#8290a6', '#c8d2de'], 312);
+    for (let y = gy - 8; y < gy + 2; y++) for (let x = 0; x < W; x++) if ((x + y) & 1) far.set(x, y, hx('#aab6c6'), .2 + (y - gy + 8) * .03);
+    // the road runs off to the vanishing point; cairns along it, getting smaller
+    const vx = W * .56, road = y => { const u = (y - gy) / (H - gy); return [vx + (W * .42 - vx) * u, 1 + u * W * .2]; };
+    for (const [u, sd] of [[.08, -1], [.16, 1], [.3, -1], [.5, 1], [.8, -1]]) { const y = gy + 1 + u * (H - gy - 4), [c, hw] = road(y), h = 3 + u * 16; cairn(u < .4 ? mid : gnd, c + sd * (hw + 4 + u * 10), y, h, ['#3a3e48', '#4e525c', '#6a6e78'], '#eef4fa'); }
+    const px = W * .16, py = gy + 12; gnd.thick(px, py, px + 4, py - 24, 1, .8, hx('#3a2e24')); for (let k = 0; k < 6; k++) gnd.line(px + 4, py - 23 + k, px + 9 + k * .6, py - 22 + k * 1.4, hx(k % 2 ? '#8a3a2e' : '#a84a3a'), .9);
+    for (let k = 0; k < 20; k++) { const x = hash(k, 1, 313) * W, y = gy + 2 + hash(k, 2, 313) * 8; for (let b = -1; b <= 1; b++) mid.line(x + b, y, x + b * 1.6, y - 1.6 - hash(k, b + 2, 313) * 2, hx(b ? '#6e6a52' : '#8a8466'), .8); }
+    // ground: snow in drifts, the road a trodden track with ruts
+    snowFloor(gnd, gy, ['#56627a', '#6a778e', '#8290a6', '#9aa8bc', '#b2bece'], 314, '#dfe8f2');
+    for (let y = gy + 1; y < H; y++) { const [c, hw] = road(y); for (let x = Math.floor(c - hw); x <= c + hw; x++) { const e = Math.abs(x - c) / hw; if (e > .7 && bayer(x, y) < (e - .7) * 3.3) continue; gnd.set(x, y, hx(['#646e84', '#76819a', '#8894aa'][clampI(Math.round(1 + (vnoise(x * .2, y * .4, 315) - .5) * 1.6 + bayer(x, y) * .5 - .2), 2)])); } for (const f of [-.4, .4]) gnd.set(c + f * hw, y, hx('#4a5468'), .8); }
+    return { layers: [sky, far, mid, gnd], lights, fx: 'snow' };
+  },
+  // Frostmere: the great lake frozen from shore to shore under a clear cold sky, the ring of peaks round it, the
+  // drowned shrine leaning on its island, prayer flags on poles in the wind, and the black hole the Tallymen cut in
+  // the ice, frost smoking off the water in it
+  frostmere(W, H, gy) {
+    const sky = layer(W, H), far = layer(W, H), mid = layer(W, H), gnd = layer(W, H), lights = [];
+    skyFill(sky, ['#182848', '#223a60', '#34547c', '#52769a', '#86a4bc', '#bccfdc', '#dce6ec'], 0, gy + 2);
+    peaks(far, [[W * .04, gy - 22, 24, 26], [W * .26, gy - 30, 28, 26], [W * .52, gy - 20, 24, 26], [W * .74, gy - 34, 28, 30], [W * .98, gy - 24, 24, 24]], gy + 2, ['#24324a', '#34465e', '#50627c'], ['#8ea2bc', '#eef4fa'], 320);
+    ridge(far, x => gy - 2 - vnoise(x * .06, 0, 321) * 3, gy + 2, '#2a3850', '#9aaec4', .4);
+    // the drowned shrine on its island: a small chapel leaning into the ice, its bell-cote empty
+    const ix = W * .3, iy = gy + 3; mid.poly([[ix - 16, iy + 1], [ix - 10, iy - 3], [ix + 10, iy - 3], [ix + 17, iy + 1]], hx('#3a4250')); mid.line(ix - 10, iy - 3, ix + 10, iy - 3, hx('#e8eef6'));
+    const lean = .14, sp = (x, y) => [ix + (x - ix) + (iy - y) * lean, y];
+    mid.poly([sp(ix - 7, iy - 3), sp(ix - 7, iy - 14), sp(ix + 6, iy - 14), sp(ix + 6, iy - 3)], hx('#4a4a56'));
+    mid.poly([sp(ix - 9, iy - 14), sp(ix - .5, iy - 21), sp(ix + 8, iy - 14)], hx('#2e2a30')); mid.line(...sp(ix - 9, iy - 14), ...sp(ix - .5, iy - 21), hx('#eef4fa'));
+    mid.poly([sp(ix - 2.5, iy - 21), sp(ix - 2.5, iy - 27), sp(ix + 1.5, iy - 27), sp(ix + 1.5, iy - 21)], hx('#4a4a56')); mid.poly([sp(ix - 1.5, iy - 22), sp(ix - 1.5, iy - 25), sp(ix + .5, iy - 25), sp(ix + .5, iy - 22)], hx('#0e1018'));
+    mid.poly([sp(ix - 2, iy - 4), sp(ix - 2, iy - 9), sp(ix + 1, iy - 9), sp(ix + 1, iy - 4)], hx('#0e1018'));
+    for (const [x, y] of [[ix - 5, iy - 11], [ix + 3, iy - 11]]) mid.rect(...sp(x, y), 1, 2, hx('#0e1018'));
+    // prayer flags on their poles, strung across to the island
+    for (const [x, h] of [[W * .5, 22], [W * .62, 16], [W * .08, 18]]) mid.line(x, gy + 4, x, gy + 4 - h, hx('#2a2420'));
+    flags(mid, W * .5, gy - 17, W * .62, gy - 11, 3, 2); flags(mid, W * .08, gy - 13, ix - 5, gy - 8, 3, 4);
+    // ground: the lake: ice blue under a skin of snow, cracks, and the hole cut in it, black water and frost smoke
+    iceFloor(gnd, gy, ['#26405a', '#34566e', '#467088', '#6a90a8', '#98b6c8', '#c6d8e2'], 322, '#e8f2f8');
+    for (let y = gy; y < H; y++) for (let x = 0; x < W; x++) { const v = vnoise(x * .04, y * .14, 323); if (v > .6 && (v > .66 || (x + y) & 1)) gnd.set(x, y, hx(v > .74 ? '#b8cad8' : '#94acc0')); }
+    const hx0 = W * .66, hy0 = gy + 18, hr = 16;
+    for (let y = Math.floor(hy0 - hr * .4); y < hy0 + hr * .4; y++) for (let x = Math.floor(hx0 - hr - 2); x < hx0 + hr + 2; x++) { const d = Math.hypot((x - hx0) / hr, (y - hy0) / (hr * .32)) + (vnoise(x * .4, y * .4, 324) - .5) * .18; if (d < 1) gnd.set(x, y, hx(d > .88 ? '#e8f2f8' : d > .8 ? '#6a8aa4' : ['#04080e', '#081018', '#0c1822'][clampI(Math.round((1 - d) * 3 + bayer(x, y) * .5 - .5), 2)])); }
+    for (let k = 0; k < 5; k++) { const x = hx0 - 9 + k * 4.4, y = hy0 - 2; gnd.line(x, y, x + Math.sin(k) * 2, y - 5 - k % 2 * 2, hx('#c8d8e6'), .35); }
+    return { layers: [sky, far, mid, gnd], lights, fx: 'snow' };
+  },
+  // Beneath Frostmere: a cave of blue ice under the lake, icicles hanging from its roof, the drowned monks frozen into
+  // its walls with the bubbles of their last breath, and under the clear floor Hush asleep: a shape too big to see
+  // the whole of, lit violet from within. In the dark only Hush's light is left
+  'frostmere-below'(W, H, gy) {
+    const sky = layer(W, H), far = layer(W, H), mid = layer(W, H), gnd = layer(W, H), lights = [];
+    const IC = ['#060c16', '#0a1422', '#102036', '#18304c', '#244664', '#34607e', '#4a7c98'].map(hx), n = IC.length - 1;
+    for (let y = 0; y < gy + 3; y++) for (let x = 0; x < W; x++) { const st = Math.sin(x * .35 + vnoise(x * .05, y * .04, 330) * 8) * .5 + vnoise(x * .1, y * .06, 331) - .5, glow = Math.max(0, 1 - Math.hypot(x - W * .5, (y - gy) * 1.3) / 70); sky.set(x, y, IC[clampI(Math.round(2 + st * 1.6 + glow * 2.4 - (y < 8 ? 1 : 0) + bayer(x, y) * .7 - .35), n)]); }
+    // the drowned, frozen into the walls: hooded shapes deep in the ice, their breath caught in bubbles above them
+    const monk = (x, y, s) => { const M = hx('#07101c'), ML = hx('#16283c'); far.poly([[x - 4 * s, y], [x - 3 * s, y - 9 * s], [x - 2 * s, y - 13 * s], [x, y - 15 * s], [x + 2 * s, y - 13 * s], [x + 3 * s, y - 9 * s], [x + 4 * s, y]], M); far.disc(x + .6 * s, y - 12.4 * s, 1.4 * s, ML); for (let k = 0; k < 4; k++) far.disc(x + (hash(k, x | 0, 332) - .5) * 4, y - 17 * s - k * 3.2, .5 + hash(k, 2, 332) * .9, hx('#8ab8d8'), .7); };
+    monk(W * .14, gy - 6, 1); monk(W * .3, gy - 12, .7); monk(W * .74, gy - 10, .8); monk(W * .88, gy - 4, 1.05);
+    // icicles hanging from the roof, and ice columns framing the cave
+    for (let k = 0; k < 30; k++) { const x = hash(k, 1, 333) * W, l = 4 + hash(k, 2, 333) * 12, w = .8 + hash(k, 3, 333) * 1.4; mid.poly([[x - w, 0], [x + w, 0], [x, l]], hx(k % 3 ? '#5a8aa8' : '#8ab8d4')); mid.line(x - w * .4, 0, x, l - 1, hx('#cfe6f4'), .7); }
+    for (const [x, w] of [[W * .04, 9], [W * .96, 10]]) for (let y = 0; y < gy + 6; y++) for (let xx = Math.floor(x - w / 2); xx < x + w / 2; xx++) { const u = (xx - x + w / 2) / w; mid.set(xx, y, hx(['#0e1c2e', '#1c3450', '#2e5272', '#5a88a8'][clampI(Math.round(u < .25 ? 3 : u > .75 ? 0 : 2 - u + bayer(xx, y) * .6), 3)])); }
+    // the floor: clear ice over the deep, and Hush under it: a vast curled shape, veins of violet light in it, one eye
+    for (let y = gy; y < H; y++) for (let x = 0; x < W; x++) { const v = (y - gy) / (H - gy); gnd.set(x, y, IC[clampI(Math.round(1 + (vnoise(x * .06, y * .2, 334) - .5) * 1.4 + v + bayer(x, y) * .6 - .3), 3)]); }
+    const cx = W * .52, cy = H + 6, HR = 58;
+    for (let y = gy + 2; y < H; y++) for (let x = 0; x < W; x++) { const a = Math.atan2(y - cy, x - cx), d = Math.hypot((x - cx) / 1.7, y - cy), band = Math.abs(d - HR * .62 - Math.sin(a * 3) * 4) < 7 + Math.sin(a * 5) * 2; if (band && d < HR) gnd.set(x, y, hx(['#0e0826', '#1a1040', '#261858'][clampI(Math.round((1 - Math.abs(d - HR * .62) / 9) * 2 + bayer(x, y) * .5 - .3), 2)]), .9); }
+    const veins = [];
+    for (let k = 0; k < 6; k++) { let a = -2.7 + k * .5, d = HR * .62; const pts = []; for (let s = 0; s < 6; s++) { const x = cx + Math.cos(a) * d * 1.7, y = cy + Math.sin(a) * d; if (y > gy + 1) pts.push([x, y]); a += .07 + hash(k, s, 335) * .05; d += (hash(k, s, 336) - .5) * 5; } if (pts.length > 1) veins.push(pts); }
+    lights.push({ cracks: veins, c: '#a4acff' });
+    const ex = cx + 22, ey = gy + 16;
+    gnd.poly([[ex - 7, ey], [ex - 2, ey - 2.4], [ex + 5, ey - 1.4], [ex + 8, ey + .6], [ex + 2, ey + 2.2], [ex - 4, ey + 1.8]], hx('#6660d4')); gnd.poly([[ex - 1, ey - 1.6], [ex + 1.4, ey - 1.6], [ex + 1, ey + 1.4], [ex - .6, ey + 1.4]], hx('#eceeff'));
+    lights.push({ x: ex, y: ey, r: 16, c: '#8a80ff', a: .45, pulse: 1, flick: .35 }, { x: cx - 30, y: gy + 20, r: 18, c: '#6660d4', a: .3, pulse: 1, flick: .25 }, { x: cx + 40, y: H - 4, r: 14, c: '#6660d4', a: .28, pulse: 1, flick: .3 });
+    // the cave's own cold light off the ice (it goes in the dark)
+    lights.push({ x: W * .5, y: gy - 20, r: 30, c: '#6ab0e0', a: .22, out: true, flick: .2 });
+    return { layers: [sky, far, mid, gnd], lights, fx: 'rime', darkAmb: .1 };
+  },
 };
 
 // the dark treatment: everything falls toward a violet-black, except around the lights that stay lit
@@ -1045,6 +1473,10 @@ export function ambient(key, t, o = {}) {
       case 'glint': { const s = Math.sin(t * 1.9 * sp + k * 2.7); out.push({ x: r1 * w, y: k % 2 ? gy + r3 * (h - gy) : r3 * h, c: k % 3 ? [255, 250, 232] : [255, 196, 120], a: s > .8 ? (s - .8) * 5 : 0 }); break; }
       case 'mirage': { const ph = (t * .03 * sp + r3) % 1; out.push({ x: r1 * w + Math.sin(t * .6 + k * 1.3) * 5, y: h - ph * (h - 6), c: k % 3 ? [150, 236, 226] : [224, 250, 255], a: Math.min(1, (1 - ph) * 2, ph * 5) * (.35 + .5 * Math.max(0, Math.sin(t * 2.1 + k * 2.3))) }); break; }
       case 'ash': { const ph = (t * .035 * sp + r3) % 1; out.push(k % 6 === 0 ? { x: r1 * w + Math.sin(t * .9 + k) * 4, y: h - ph * h, c: [255, 150, 70], a: Math.min(1, (1 - ph) * 2) * .8 } : { x: (r1 * w + Math.sin(t * .7 + k * 1.3) * 6 + t * 2.5) % w, y: ph * h, c: r2 > .5 ? [150, 144, 140] : [96, 90, 90], a: .75 }); break; }
+      // M5: snow on the wind, sparks off the forges and the hearth, glitter in the ice caves (and violet motes up from Hush)
+      case 'snow': { const ph = (t * .05 * sp + r3) % 1; out.push({ x: (r1 * w + ph * 30 + Math.sin(t * 1.1 + k) * 3) % w, y: ph * h, c: k % 4 === 0 ? [255, 255, 255] : [214, 228, 244], a: k % 4 === 0 ? .95 : .7 }); break; }
+      case 'sparks': { const ph = (t * .1 * sp + r3) % 1; out.push({ x: r1 * w + Math.sin(t * 2.2 + k * 1.3) * 3 + ph * 6, y: h - ph * h * .9, c: r2 > .6 ? [255, 236, 170] : [255, 150, 60], a: Math.min(1, (1 - ph) * 2.5) * (ph < .7 ? .95 : .5) }); break; }
+      case 'rime': { const s = Math.sin(t * 1.3 * sp + k * 2.3), ph = (t * .02 * sp + r3) % 1; out.push(k % 3 === 0 ? { x: r1 * w + Math.sin(t * .4 + k) * 4, y: gy + r2 * (h - gy) - ph * 12, c: [180, 170, 255], a: Math.min(1, (1 - ph) * 3) * .7 } : { x: r1 * w + Math.sin(t * .4 + k) * 4, y: ph * h, c: [200, 232, 255], a: s > .5 ? (s - .5) * 1.6 : .15 }); break; }
     }
   }
   if (S.dark) for (const p of out) p.a *= .55;

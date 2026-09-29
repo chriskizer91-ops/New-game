@@ -8,16 +8,16 @@
 //   node tools/e2e-flow.mjs --out=/tmp/x     # write screenshots somewhere else
 //
 // Per viewport, a fresh profile:
-//   A. title (no Continue, the M4.5 tag) -> new game (name, look, 4d6, starter, prologue or "Skip to
-//      the Keep") -> world; this milestone's own save (aethermoor.save.m4.5) is written, and the M2,
-//      Milestone 3 and Milestone 4 keys never are; every sound and track plays
+//   A. title (no Continue, the M5 · Ironspire tag) -> new game (name, look, 4d6, starter, prologue or
+//      "Skip to the Keep") -> world; this milestone's own save (aethermoor.save.m5) is written, and the M2,
+//      Milestone 3, Milestone 4 and Milestone 4.5 keys never are; every sound and track plays
 //   B. the pause menu (WP7's, or go() until the world has one) to Party (equip from the bag), Codex
 //      (cards, out of 24), Journal (all four tabs) and Settings, each back to the world
 //   C. the first real fight (keep-vault) on Auto -> aftermath -> every chest -> back to the world
 //   D. a forced wipe -> aftermath -> the party wakes at the Hearthfire stand; a Tamsin duel lost is a yield
 //   E. the Atlas: both views, 44 px markers that do not overlap, travel to a kindled Hearthfire,
 //      view only underground, the parchment when the painting fails
-//   F. settings: export gives AETH3.; importing it round-trips through the card (.bak kept); the
+//   F. settings: export gives AETH4.; importing it round-trips through the card (.bak kept); the
 //      new world settings; reduced motion
 //   G. Briarmaw forced: the Brand, then an Echo rematch
 //   K. (M4) Idris sells a gem (rules/forge.js buyGem); Hilda's forge from her dialogue: temper the
@@ -47,10 +47,17 @@
 //      backup is the M4 save byte for byte; Carry over my M4 save, "Not yet" changes nothing, then
 //      carries it over again with a backup; after a reload the title continues it. All three old
 //      saves stay byte-identical throughout.
+// And a Milestone 4.5 profile (the M2, M3, M4 and M4.5 saves seeded, with M4.5's started marker;
+// aethermoor.save.m4.5 is the newest):
+//   M. "Continue from Milestone 4.5" (offered first) -> the Milestone 4.5 card -> Walk on (nothing written)
+//      -> the first step writes this milestone's own save; Settings lists all four old saves; Export M4.5
+//      backup is the M4.5 save byte for byte; Carry over my M4.5 save, "Not yet" changes nothing, then
+//      carries it over again with a backup; after a reload the title continues it. All four old saves,
+//      and M4.5's marker, stay byte-identical throughout; nothing of Milestone 4.5's is written.
 // Fails on any console error, page exception or [audio] warning. The world screen is WP7's: this
 // test drives it only through go() and the window.__world seam, and checks the shell's own screens.
 // Playwright is not a project dependency: it comes from the global npm root.
-// Owner: WP8 (M3); the M4 counts and section K: P7a.
+// Owner: WP8 (M3); the M4 counts and section K: P7a; M5's keys and section M: the lead.
 import { execSync } from 'node:child_process';
 import { existsSync, mkdirSync, rmSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -67,7 +74,7 @@ import { SHOPS } from '../src/data/shops.js';
 import { GEMS } from '../src/data/gems.js';
 import { PAGES } from '../src/data/codex.js';
 import { ENCOUNTERS } from '../src/data/encounters.js';
-import { SAVE_VERSION, toV2, migrate } from '../src/rules/migrate.js';
+import { SAVE_VERSION, toV2, toV3 } from '../src/rules/migrate.js';
 import { heroStats } from '../src/rules/stats.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -86,14 +93,23 @@ const V2_SAVE = (() => {
   g.progress.flags.kindled[h[0]] = true;
   return JSON.stringify(g);
 })();
-// a Milestone 4 save (aethermoor.save.m4): the Milestone 3 one as M4 carried it over, then played on to
-// Sandspire with the Spire Hearth kindled
+// a Milestone 4 save (aethermoor.save.m4, version 3): the Milestone 3 one as M4 carried it over, then played
+// on to Sandspire with the Spire Hearth kindled
 const M4_SAVE = (() => {
-  const g = migrate(JSON.parse(V2_SAVE)), h = HEARTHS['spire-hearth'];
+  const g = toV3(JSON.parse(V2_SAVE)), h = HEARTHS['spire-hearth'];
   g.gold = 888;
   g.progress.pos = { map: h.map, x: h.x, y: h.y, face: h.face };
   g.progress.flags.kindled['spire-hearth'] = true;
   g.progress.flags.story = { ...g.progress.flags.story, 'act1-complete': true };
+  return JSON.stringify(g);
+})();
+// a Milestone 4.5 save (aethermoor.save.m4.5, version 3 like M4's): the Milestone 4 one as Milestone 4.5
+// carried it over, then played on to Dusthaven with the Pithead Hearthfire kindled
+const M45_SAVE = (() => {
+  const g = toV3(JSON.parse(M4_SAVE)), h = HEARTHS.pithead;
+  g.gold = 999;
+  g.progress.pos = { map: h.map, x: h.x, y: h.y, face: h.face };
+  g.progress.flags.kindled.pithead = true;
   return JSON.stringify(g);
 })();
 const V1_CODE = readFileSync(path.join(root, 'test/fixtures/v1/v1-grudges.code.txt'), 'utf8').trim();
@@ -150,9 +166,9 @@ const note = msg => console.log('  note', msg);
 
 const SFX = ['select', 'confirm', 'back', 'dice', 'hit', 'graze', 'miss', 'crit', 'heal', 'status', 'disarm', 'ko', 'surge', 'legend', 'victory', 'defeat', 'phase', 'chest', 'reveal', 'equip', 'levelup', 'hearth', 'beam', 'tick', 'stamp', 'coin', 'page', 'identify', 'slam', 'error',
   'bump', 'alert', 'door', 'blip', 'unlock', 'chime'];
-const TRACKS = ['road', 'wilds', 'town', 'dungeon', 'battle', 'boss', 'hearth', 'victory', 'title'];
+const TRACKS = ['road', 'wilds', 'town', 'dungeon', 'battle', 'boss', 'hearth', 'victory', 'title', 'desert', 'peaks'];
 
-async function openPage(V, { seedV1 = null, seedV2 = null, seedM4 = null } = {}) {
+async function openPage(V, { seedV1 = null, seedV2 = null, seedM4 = null, seedM45 = null } = {}) {
   const context = await browser.newContext({ viewport: V.viewport, deviceScaleFactor: V.deviceScaleFactor, isMobile: !!V.isMobile, hasTouch: !!V.hasTouch, ignoreHTTPSErrors: true });
   if (fonts) {
     await context.route('https://fonts.googleapis.com/**', r => r.fulfill({ status: 200, contentType: 'text/css', body: fonts.css }));
@@ -184,10 +200,12 @@ async function openPage(V, { seedV1 = null, seedV2 = null, seedM4 = null } = {})
         return go(name, p);
       };
     };
-    for (const [key, raw] of [['aethermoor.save.v1', seed?.v1], ['aethermoor.save.v2', seed?.v2], ['aethermoor.save.m4', seed?.m4]]) {
+    // an M4.5 save comes with its own started marker (the M4.5 file set it): it must not stop M5 offering it
+    for (const [key, raw] of [['aethermoor.save.v1', seed?.v1], ['aethermoor.save.v2', seed?.v2], ['aethermoor.save.m4', seed?.m4],
+      ['aethermoor.save.m4.5', seed?.m45], ['aethermoor.m4.5.started', seed?.m45 ? '1' : null]]) {
       if (raw) { try { if (!localStorage.getItem(key)) localStorage.setItem(key, raw); } catch { /* storage blocked */ } }
     }
-  }, { v1: seedV1, v2: seedV2, m4: seedM4 });
+  }, { v1: seedV1, v2: seedV2, m4: seedM4, m45: seedM45 });
   const page = await context.newPage();
   const errors = [], failed = [];
   page.on('console', m => { if (m.type() === 'error' || /^\[audio\]/.test(m.text())) errors.push(`console: ${m.text()}`); });
@@ -217,9 +235,9 @@ async function run(V) {
   const game = () => page.evaluate(() => window.__app.game);
   const store = () => page.evaluate(() => ({
     v1: localStorage.getItem('aethermoor.save.v1'), m3: localStorage.getItem('aethermoor.save.v2'),
-    m4: localStorage.getItem('aethermoor.save.m4'),
-    live: localStorage.getItem('aethermoor.save.m4.5'), bak: localStorage.getItem('aethermoor.save.m4.5.bak'),
-    mark: localStorage.getItem('aethermoor.m4.5.started'),
+    m4: localStorage.getItem('aethermoor.save.m4'), m45: localStorage.getItem('aethermoor.save.m4.5'),
+    live: localStorage.getItem('aethermoor.save.m5'), bak: localStorage.getItem('aethermoor.save.m5.bak'),
+    mark: localStorage.getItem('aethermoor.m5.started'),
   }));
   const setGame = fn => page.evaluate(src => { const g = structuredClone(window.__app.game); (0, eval)(src)(g); window.__app.setGame(g); }, `(${fn})`);
   // the world's pause menu when WP7 has built it, else go() straight to the screen
@@ -286,7 +304,7 @@ async function run(V) {
   await shot('title-new', false);
   await noHScroll('title');
   check(await page.locator('.title-continue, .title-carry').count() === 0, `${V.name}: no Continue without a save`);
-  check(/M4\.5/.test(await page.locator('.title-ver').innerText()) && /The Road/i.test(await page.locator('.title-ver').innerText()), `${V.name}: the title shows the M4.5 · The Road tag`);
+  check(/M5/.test(await page.locator('.title-ver').innerText()) && /Ironspire/i.test(await page.locator('.title-ver').innerText()), `${V.name}: the title shows the M5 · Ironspire tag`);
   await click('.title-menu >> text=New game');
   await waitScreen('newgame');
   const audio = await page.evaluate(async ([sfx, tracks]) => {
@@ -311,7 +329,7 @@ async function run(V) {
   await click('button:has-text("Begin with")');
   await page.waitForSelector('.prologue');
   let s0 = await store();
-  check(!!s0.live && JSON.parse(s0.live).version === SAVE_VERSION && s0.v1 === null && s0.m3 === null && s0.m4 === null, `${V.name}: Begin writes this milestone's own save at version ${SAVE_VERSION} (and no M2, Milestone 3 or Milestone 4 key)`);
+  check(!!s0.live && JSON.parse(s0.live).version === SAVE_VERSION && s0.v1 === null && s0.m3 === null && s0.m4 === null && s0.m45 === null, `${V.name}: Begin writes this milestone's own save at version ${SAVE_VERSION} (and no M2, Milestone 3, 4 or 4.5 key)`);
   if (V.name === 'phone') {
     for (let i = 0; i < 4; i++) { await click('.prologue button:has-text("Continue")'); await page.waitForTimeout(120); }
     await shot('prologue', false);
@@ -792,12 +810,12 @@ async function runM2(V) {
   const click = async sel => { const l = page.locator(sel).first(); await l.scrollIntoViewIfNeeded(); await l.click(); };
   const store = () => page.evaluate(() => ({
     v1: localStorage.getItem('aethermoor.save.v1'), m3: localStorage.getItem('aethermoor.save.v2'),
-    m4: localStorage.getItem('aethermoor.save.m4'),
-    live: localStorage.getItem('aethermoor.save.m4.5'), bak: localStorage.getItem('aethermoor.save.m4.5.bak'),
-    mark: localStorage.getItem('aethermoor.m4.5.started'),
+    m4: localStorage.getItem('aethermoor.save.m4'), m45: localStorage.getItem('aethermoor.save.m4.5'),
+    live: localStorage.getItem('aethermoor.save.m5'), bak: localStorage.getItem('aethermoor.save.m5.bak'),
+    mark: localStorage.getItem('aethermoor.m5.started'),
   }));
   const settings = async () => { await page.evaluate(() => window.__app.go('settings', { from: 'world' })); await waitScreen('settings'); };
-  const v1Same = async label => { const st = await store(); check(st.v1 === V1_SAVE && st.m3 === null && st.m4 === null, `${V.name}: aethermoor.save.v1 is byte-identical and no Milestone 3 or 4 save is written (${label})`); };
+  const v1Same = async label => { const st = await store(); check(st.v1 === V1_SAVE && st.m3 === null && st.m4 === null && st.m45 === null, `${V.name}: aethermoor.save.v1 is byte-identical and no Milestone 3, 4 or 4.5 save is written (${label})`); };
 
   await page.goto(pathToFileURL(file).href);
   await page.waitForSelector('.title-menu');
@@ -909,11 +927,11 @@ async function runM3(V) {
   const click = async sel => { const l = page.locator(sel).first(); await l.scrollIntoViewIfNeeded(); await l.click(); };
   const store = () => page.evaluate(() => ({
     v1: localStorage.getItem('aethermoor.save.v1'), m3: localStorage.getItem('aethermoor.save.v2'),
-    m4: localStorage.getItem('aethermoor.save.m4'),
-    live: localStorage.getItem('aethermoor.save.m4.5'), bak: localStorage.getItem('aethermoor.save.m4.5.bak'),
-    mark: localStorage.getItem('aethermoor.m4.5.started'),
+    m4: localStorage.getItem('aethermoor.save.m4'), m45: localStorage.getItem('aethermoor.save.m4.5'),
+    live: localStorage.getItem('aethermoor.save.m5'), bak: localStorage.getItem('aethermoor.save.m5.bak'),
+    mark: localStorage.getItem('aethermoor.m5.started'),
   }));
-  const untouched = async label => { const st = await store(); check(st.v1 === V1_SAVE && st.m3 === V2_SAVE && st.m4 === null, `${V.name}: the M2 and Milestone 3 saves are byte-identical, and no Milestone 4 save is written (${label})`); };
+  const untouched = async label => { const st = await store(); check(st.v1 === V1_SAVE && st.m3 === V2_SAVE && st.m4 === null && st.m45 === null, `${V.name}: the M2 and Milestone 3 saves are byte-identical, and no Milestone 4 or 4.5 save is written (${label})`); };
   const shot = async name => { await page.waitForTimeout(250); await page.screenshot({ path: path.join(outDir, `${V.name}-m3-${name}.png`) }); };
 
   await page.goto(pathToFileURL(file).href);
@@ -968,7 +986,7 @@ async function runM3(V) {
   await page.waitForTimeout(400);
   const seen = await page.evaluate(() => ({
     cont: document.querySelectorAll('.title-continue').length, carry: document.querySelectorAll('.title-carry').length,
-    live: !!localStorage.getItem('aethermoor.save.m4.5'), mark: localStorage.getItem('aethermoor.m4.5.started'), screen: document.getElementById('app').dataset.screen,
+    live: !!localStorage.getItem('aethermoor.save.m5'), mark: localStorage.getItem('aethermoor.m5.started'), screen: document.getElementById('app').dataset.screen,
   }));
   check(seen.cont === 1 && seen.carry === 0, `${V.name}: after a reload the title continues this milestone's save (${JSON.stringify(seen)})`);
 
@@ -987,12 +1005,14 @@ async function runM4(V) {
   const store = () => page.evaluate(() => ({
     v1: localStorage.getItem('aethermoor.save.v1'), m3: localStorage.getItem('aethermoor.save.v2'), m4: localStorage.getItem('aethermoor.save.m4'),
     m4mark: localStorage.getItem('aethermoor.m4.started'), m4bak: localStorage.getItem('aethermoor.save.m4.bak'),
-    live: localStorage.getItem('aethermoor.save.m4.5'), bak: localStorage.getItem('aethermoor.save.m4.5.bak'),
-    mark: localStorage.getItem('aethermoor.m4.5.started'),
+    m45: localStorage.getItem('aethermoor.save.m4.5'), m45mark: localStorage.getItem('aethermoor.m4.5.started'), m45bak: localStorage.getItem('aethermoor.save.m4.5.bak'),
+    live: localStorage.getItem('aethermoor.save.m5'), bak: localStorage.getItem('aethermoor.save.m5.bak'),
+    mark: localStorage.getItem('aethermoor.m5.started'),
   }));
   const untouched = async label => {
     const st = await store();
-    check(st.v1 === V1_SAVE && st.m3 === V2_SAVE && st.m4 === M4_SAVE && st.m4mark === null && st.m4bak === null, `${V.name}: the M2, Milestone 3 and Milestone 4 saves are byte-identical, and nothing of Milestone 4's is written (${label})`);
+    check(st.v1 === V1_SAVE && st.m3 === V2_SAVE && st.m4 === M4_SAVE && st.m4mark === null && st.m4bak === null && st.m45 === null && st.m45mark === null && st.m45bak === null,
+      `${V.name}: the M2, Milestone 3 and Milestone 4 saves are byte-identical, and nothing of Milestone 4's or 4.5's is written (${label})`);
   };
   const shot = async name => { await page.waitForTimeout(250); await page.screenshot({ path: path.join(outDir, `${V.name}-m4-${name}.png`) }); };
 
@@ -1000,7 +1020,7 @@ async function runM4(V) {
   await page.waitForSelector('.title-menu');
   await page.waitForTimeout(600);
   check(await page.locator('.title-carry').count() === 1 && /Continue from Milestone 4/.test(await page.locator('.title-carry').innerText()), `${V.name}: the Milestone 4 save is offered first ("Continue from Milestone 4")`);
-  check(/M4\.5/.test(await page.locator('.title-ver').innerText()), `${V.name}: the title carries the M4.5 tag`);
+  check(/M5/.test(await page.locator('.title-ver').innerText()), `${V.name}: the title carries the M5 tag`);
   await shot('title');
   await click('.title-carry');
   await page.waitForSelector('.carry-card');
@@ -1044,7 +1064,7 @@ async function runM4(V) {
   await page.waitForTimeout(400);
   const seen = await page.evaluate(() => ({
     cont: document.querySelectorAll('.title-continue').length, carry: document.querySelectorAll('.title-carry').length,
-    live: !!localStorage.getItem('aethermoor.save.m4.5'), mark: localStorage.getItem('aethermoor.m4.5.started'), screen: document.getElementById('app').dataset.screen,
+    live: !!localStorage.getItem('aethermoor.save.m5'), mark: localStorage.getItem('aethermoor.m5.started'), screen: document.getElementById('app').dataset.screen,
   }));
   check(seen.cont === 1 && seen.carry === 0, `${V.name}: after a reload the title continues this milestone's save (${JSON.stringify(seen)})`);
   await untouched('after a reload');
@@ -1055,8 +1075,87 @@ async function runM4(V) {
   await context.close();
 }
 
+// ======== M. a Milestone 4.5 profile: the M4.5 save (and the M4, M3 and M2 saves before it) on the device ========
+async function runM45(V) {
+  console.log(`\n== ${V.name} Milestone 4.5 profile`);
+  const { context, page, errors, failed } = await openPage(V, { seedV1: V1_SAVE, seedV2: V2_SAVE, seedM4: M4_SAVE, seedM45: M45_SAVE });
+  const waitScreen = async (name, timeout = 15000) => { await page.waitForFunction(x => document.getElementById('app').dataset.screen === x, name, { timeout }); await page.waitForTimeout(200); };
+  const click = async sel => { const l = page.locator(sel).first(); await l.scrollIntoViewIfNeeded(); await l.click(); };
+  const store = () => page.evaluate(() => ({
+    v1: localStorage.getItem('aethermoor.save.v1'), m3: localStorage.getItem('aethermoor.save.v2'), m4: localStorage.getItem('aethermoor.save.m4'),
+    m4mark: localStorage.getItem('aethermoor.m4.started'), m4bak: localStorage.getItem('aethermoor.save.m4.bak'),
+    m45: localStorage.getItem('aethermoor.save.m4.5'), m45mark: localStorage.getItem('aethermoor.m4.5.started'), m45bak: localStorage.getItem('aethermoor.save.m4.5.bak'),
+    live: localStorage.getItem('aethermoor.save.m5'), bak: localStorage.getItem('aethermoor.save.m5.bak'),
+    mark: localStorage.getItem('aethermoor.m5.started'),
+  }));
+  const untouched = async label => {
+    const st = await store();
+    check(st.v1 === V1_SAVE && st.m3 === V2_SAVE && st.m4 === M4_SAVE && st.m4mark === null && st.m4bak === null && st.m45 === M45_SAVE && st.m45mark === '1' && st.m45bak === null,
+      `${V.name}: the M2, Milestone 3, 4 and 4.5 saves (and M4.5's marker) are byte-identical, and nothing of Milestone 4's or 4.5's is written (${label})`);
+  };
+  const shot = async name => { await page.waitForTimeout(250); await page.screenshot({ path: path.join(outDir, `${V.name}-m45-${name}.png`) }); };
+
+  await page.goto(pathToFileURL(file).href);
+  await page.waitForSelector('.title-menu');
+  await page.waitForTimeout(600);
+  check(await page.locator('.title-carry').count() === 1 && /Continue from Milestone 4\.5/.test(await page.locator('.title-carry').innerText()), `${V.name}: the Milestone 4.5 save is offered first ("Continue from Milestone 4.5"), though the M4.5 file marked it started`);
+  check(/M5/.test(await page.locator('.title-ver').innerText()), `${V.name}: the title carries the M5 tag`);
+  await shot('title');
+  await click('.title-carry');
+  await page.waitForSelector('.carry-card');
+  const card = await page.locator('.carry-card').innerText();
+  check(/Milestone 4\.5 journey carries over/i.test(card) && /East, to the mountains/.test(card) && /\b999\b/.test(card) && /Dusthaven/.test(card), `${V.name}: the card is the Milestone 4.5 one, with its gold and where you wake`);
+  await shot('carry-card');
+  await click('.carry-go');
+  await waitScreen('world');
+  let s = await store();
+  check(s.live === null && s.mark === null && await page.evaluate(() => window.__app.adopting), `${V.name}: "Walk on" holds the carried game in memory (nothing written)`);
+  await page.evaluate(() => { for (const d of ['s', 'n', 'e', 'w']) { const ev = window.__world.step(d, 1); if (ev.some(e => e.t === 'step')) break; } });
+  await page.waitForTimeout(400);
+  s = await store();
+  const live = s.live && JSON.parse(s.live);
+  check(!!live && live.version === SAVE_VERSION && live.gold === 999 && s.mark === '1', `${V.name}: the first step writes this milestone's own save from the Milestone 4.5 one`);
+  await untouched('after the carry-over');
+
+  await page.evaluate(() => window.__app.go('settings', { from: 'world' }));
+  await waitScreen('settings');
+  check(await page.locator('.set-m45').count() === 1 && await page.locator('.set-m4').count() === 1 && await page.locator('.set-m3').count() === 1 && await page.locator('.set-m2').count() === 1, `${V.name}: Settings lists the Milestone 4.5, Milestone 4, Milestone 3 and M2 saves`);
+  await click('.set-m45 button:has-text("Export M4.5 backup (AETH3)")');
+  const m45code = await page.locator('.code-m45 textarea').inputValue();
+  const decoded = await page.evaluate(c => new TextDecoder().decode(Uint8Array.from(atob(c.slice(6)), ch => ch.charCodeAt(0))), m45code);
+  check(/^AETH3\./.test(m45code) && decoded === M45_SAVE, `${V.name}: "Export M4.5 backup" gives the Milestone 4.5 save byte for byte`);
+  const kept = await store();
+  await click('.set-m45 button:has-text("Carry over my M4.5 save")');
+  await page.waitForSelector('.carry-card');
+  await click('.carry-no');
+  await page.waitForTimeout(300);
+  const still = await store();
+  check(still.live === kept.live && still.bak === kept.bak, `${V.name}: "Not yet" on "Carry over my M4.5 save" changes nothing`);
+  await click('.set-m45 button:has-text("Carry over my M4.5 save")');
+  await page.waitForSelector('.carry-card');
+  await click('.carry-go');
+  await waitScreen('world');
+  s = await store();
+  check(s.bak === kept.live && JSON.parse(s.live).gold === 999, `${V.name}: carrying it over again backs the live save up first`);
+  await untouched('after carrying it over again');
+  await page.reload(); // a reload, not a second goto (see the Milestone 3 profile)
+  await page.waitForSelector('.title-menu');
+  await page.waitForTimeout(400);
+  const seen = await page.evaluate(() => ({
+    cont: document.querySelectorAll('.title-continue').length, carry: document.querySelectorAll('.title-carry').length,
+    live: !!localStorage.getItem('aethermoor.save.m5'), mark: localStorage.getItem('aethermoor.m5.started'), screen: document.getElementById('app').dataset.screen,
+  }));
+  check(seen.cont === 1 && seen.carry === 0, `${V.name}: after a reload the title continues this milestone's save (${JSON.stringify(seen)})`);
+  await untouched('after a reload');
+
+  const fontOnly = failed.length && failed.every(u => /fonts\.(googleapis|gstatic)\.com/.test(u));
+  const real = errors.filter(e => !/favicon/i.test(e) && !(fontOnly && /Failed to load resource/.test(e)));
+  check(real.length === 0, `${V.name}: no console errors in the Milestone 4.5 profile (${real.join(' | ')})`);
+  await context.close();
+}
+
 for (const V of VIEWPORTS) {
-  for (const fn of [run, runM2, runM3, runM4]) {
+  for (const fn of [run, runM2, runM3, runM4, runM45]) {
     try { await fn(V); } catch (e) { fails.push(`${V.name}: ${e.message.split('\n')[0]}`); console.log('  ERROR', e.message.split('\n').slice(0, 6).join('\n')); }
   }
 }

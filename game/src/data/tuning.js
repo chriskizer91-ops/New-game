@@ -28,6 +28,9 @@ export const TUNING = deepFreeze({
     takenPct: 50,        // taking 100% of max HP in damage would add this much
     healGiven: 3,
   },
+  swallow: {             // M5 (spec §4.2): a swallower lets go when a single hit takes this share of its max HP
+    releasePct: 0.15,
+  },
   grip: {
     crushMult: 0.6,      // crush damage wears grip by 60% of the damage dealt
     critPct: 0.25,       // a Legend Strike on a holder jars 25% of max grip loose
@@ -106,8 +109,11 @@ export const TUNING = deepFreeze({
     socket: 20,                            // gold per ceil(ilvl / 2) to set a gem
     awaken: { embers: 2, gold: 150 },      // Hilda's rite: the embers plus gold * ceil(ilvl / 2)
     kindled: { hit: 1, guard: 1, hp: 5 },  // a Kindled relic: +1 hit (weapons), +1 Guard (armour, shields), +5 max HP (the rest)
-    // Won Sunscorch fights pay materials per foe beaten, by tier; Ash Garnets only come from Scorchgate
+    // Won Sunscorch fights pay materials per foe beaten, by tier; Ash Garnets only come from Scorchgate.
+    // M5 (spec §3.7; P4): won Ironspire fights pay the same spoils, and Frost Opals only come from the
+    // Frostmere maps' fights (the lake and the caves beneath it) and chests.
     spoils: { veteran: { scrap: 1 }, 'relic-bearer': { silver: 1 }, champion: { silver: 2, embers: 2 } },
     garnets: { 'sg-captain': 1, 'vault-guard': 1, 'ashen-warden': 2 },
+    opals: { 'fm-wraiths': 1, 'fm-shrine': 1, 'fb-choir': 1, 'rime-abbot': 2 },
   },
 });

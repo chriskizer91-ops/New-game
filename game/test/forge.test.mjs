@@ -323,10 +323,11 @@ test('every relic has three deeds and both branches, and an awakened Surge resol
 
 const claimAll = (game, ids) => ({ ...game, codex: { ...game.codex, ...Object.fromEntries(ids.map(id => [id, { sighted: true, claimed: true, awakened: false }])) } });
 
-test('Codex pages: I holds Nos. 1-24, II Nos. 25-38; the starters you did not choose are not needed', () => {
+test('Codex pages: I holds Nos. 1-24, II Nos. 25-38, III Nos. 39-52; the starters you did not choose are not needed', () => {
   assert.deepEqual(relicsOn('verdant').map(id => RELICS[id].codex), Array.from({ length: 24 }, (_, i) => i + 1));
   assert.deepEqual(relicsOn('sunscorch').map(id => RELICS[id].codex), Array.from({ length: 14 }, (_, i) => i + 25));
-  assert.deepEqual(relicsOn('ironspire'), []);
+  assert.deepEqual(relicsOn('ironspire').map(id => RELICS[id].codex), Array.from({ length: 14 }, (_, i) => i + 39));
+  assert.deepEqual(relicsOn('gloomfen'), []);
   const g = start();
   const p = pageProgress(g, 'verdant');
   assert.deepEqual([p.total, p.needed, p.claimed, p.done], [24, 22, 1, false], 'your starter and the other 21');
@@ -336,6 +337,7 @@ test('Codex pages: I holds Nos. 1-24, II Nos. 25-38; the starters you did not ch
   assert.deepEqual(pagesDone(done), ['verdant']);
   assert.equal(pageProgress(claimAll(g, others.slice(1)), 'verdant').done, false, 'one missing');
   assert.deepEqual(pagesDone(claimAll(g, relicsOn('sunscorch'))), ['sunscorch']);
+  assert.deepEqual(pagesDone(claimAll(g, relicsOn('ironspire'))), ['ironspire']);
   assert.equal(PAGES.find(x => x.id === 'gloomfen').reward, null, 'sealed');
 });
 

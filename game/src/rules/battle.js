@@ -10,6 +10,10 @@
 // (burn/poison ticks, regen, frozen skips) happens when a turn begins, at the end of the
 // previous act/foeTurn, so `current()` is a plain getter. A foe rolls its next intent at the
 // end of its own turn and announces it with an `intent` event.
+// M5 (spec §4.2): a burrowed or swallowed unit cannot be targeted and area moves pass over it (ai.js
+// targetable); a swallowed unit loses its turns and takes its swallower's tick until it is spat out; a
+// charmed unit's next turn is played for it (a plain attack on one of its own side); a move's `then`
+// forces the foe's next intent (a Burrow, then its eruption).
 
 import { createRng } from '../core/rng.js';
 import { rollD20 } from '../core/dice.js';
@@ -19,12 +23,13 @@ import { CONSUMABLES } from '../data/items.js';
 import { TUNING } from '../data/tuning.js';
 import { deriveHero, heroSkills, POWERS } from './stats.js';
 import { buildFoe } from './foe.js';
-import { alive, unitsOf, familyData, rollIntent, refreshIntent, intentEvent } from './ai.js';
+import { alive, targetable, unitsOf, familyData, rollIntent, refreshIntent, intentEvent, intentFor } from './ai.js';
 import { runEffects, dealDamage, applyHeal, addStatus, removeStatus, addSurge, damageMult, effLabel, statusOf } from './combat.js';
 import { battleLoot } from './loot.js';
 import { rngFrom, rollExpr, indexItems, clamp } from './util.js';
 import { ASPECT_IDS, PHYSICAL_KINDS } from '../data/aspects.js';
 import { OMENS } from '../data/omens.js';
+import { RELICS } from '../data/relics.js';
 
 const R = TUNING.ribbon;
 
@@ -88,6 +93,7 @@ export function createBattle({ heroes = [], foes = [], seed = 1, waking = 0, ctx
   if (ctx.ambush) ambush(B, items, heroes);
   if (ctx.firstStrike) firstStrike(B);
   if (ctx.warded) ward(B, ctx.warded);
+  ironStance(B, heroes, items);
   for (const f of unitsOf(s, 'foe')) {
     f.intent = rollIntent(s, f, rng);
     B.ev.push(intentEvent(f));
@@ -123,6 +129,19 @@ function firstStrike(B) {
   B.s.ctx.firstStrike = true;
   for (const f of unitsOf(B.s, 'foe')) f.next += R.firstStrikeDelay;
   B.ev.push({ t: 'text', text: 'First strike! You caught them with their backs turned.' });
+}
+
+// M5 (spec §3.4): Ironwall's Iron Stance. Whoever carries it starts every fight braced: Guarding until
+// its own first turn.
+function ironStance(B, heroes, items) {
+  const byId = indexItems(items);
+  for (const h of heroes) {
+    const u = B.s.units[h.id];
+    const braced = Object.values(h.gear || {}).some(uid => byId[uid] && !byId[uid].shattered && RELICS[byId[uid].base]?.mapPower?.id === 'iron-stance');
+    if (!braced || !alive(u)) continue;
+    addStatus(B, u, 'guarding', { source: u.id });
+    B.ev.push({ t: 'text', text: `${u.name} starts the fight braced behind Ironwall.` });
+  }
 }
 
 // M3 (Forewarned): every hero starts the fight Warded for the rolled amount.
@@ -190,14 +209,44 @@ function startTurn(B, u) {
     dealDamage(B, null, u, m === 0 ? 0 : Math.max(1, Math.round(raw * m)), { dice: r.dice, kind: tick.kind, aspect: tick.aspect, eff: effLabel(m) });
   }
   if (!alive(u)) return false;
+  heldTick(B, u);
+  if (!alive(u)) return false;
   upkeepHeal(B, u);
   const skip = u.statuses.find(st => STATUSES[st.id]?.skipTurn);
   if (skip) {
     B.ev.push({ t: 'status', target: u.id, status: skip.id, op: 'trigger', stacks: skip.stacks, turns: skip.turns });
-    B.ev.push({ t: 'text', text: `${u.name} is frozen solid and loses the turn.` });
+    const by = skip.source && B.s.units[skip.source];
+    B.ev.push({ t: 'text', text: STATUSES[skip.id].held ? `${u.name} is ${(skip.label || 'swallowed').toLowerCase()}${by ? ` by ${by.name}` : ''} and loses the turn.` : `${u.name} is frozen solid and loses the turn.` });
     return false;
   }
   return true;
+}
+
+// M5: a swallowed unit takes 1d6 of its swallower's aspect at the start of each of its turns.
+function heldTick(B, u) {
+  for (const st of u.statuses) {
+    if (!STATUSES[st.id]?.held) continue;
+    const src = B.s.units[st.source];
+    if (!alive(src)) continue;
+    const r = rollExpr(B.rng, '1d6');
+    const kind = src.aspect || 'crush', m = damageMult(u, kind, src.aspect || null);
+    B.ev.push({ t: 'status', target: u.id, status: st.id, op: 'tick', stacks: st.stacks, turns: st.turns });
+    dealDamage(B, src, u, m === 0 ? 0 : Math.max(1, Math.round(r.total * m)), { dice: r.dice, kind, aspect: src.aspect || null, eff: effLabel(m) });
+    return;
+  }
+}
+
+// M5: a charmed unit's turn is played for it: a plain attack on one of its own side (never itself), then
+// the charm clears. With nobody to turn on, it shakes the charm off.
+function charmTurn(B, u) {
+  removeStatus(B, u, 'charmed', 'trigger');
+  const others = unitsOf(B.s, u.side).filter(x => x.id !== u.id && targetable(x));
+  if (!others.length) { B.ev.push({ t: 'text', text: `${u.name} shakes off the charm.` }); return; }
+  const t = others[B.rng.int(0, others.length - 1)];
+  B.ev.push({ t: 'move', actor: u.id, name: 'Charmed', text: `${u.name} is charmed and turns on ${t.name}!`, charm: true, target: t.id });
+  const plain = u.side === 'hero' ? { type: 'attack', weapon: true }
+    : Object.values(familyData(u).moves).flatMap(m => m.effects).find(e => e.type === 'attack') || { type: 'attack', dice: '1d6', kind: 'crush' };
+  runEffects(B, u, [{ ...plain, riders: [] }], [t.id]);
 }
 
 function upkeepHeal(B, u) {
@@ -237,7 +286,11 @@ function advance(B) {
     B.s.actor = u.id;
     B.s.turn += 1;
     B.ev.push({ t: 'turn', actor: u.id, time: u.next });
-    if (startTurn(B, u)) return;
+    if (startTurn(B, u)) {
+      if (!u.statuses.some(st => STATUSES[st.id]?.charm)) return;
+      charmTurn(B, u);
+      if (checkEnd(B)) return;
+    }
     if (alive(u)) finishTurn(B, u, 1);
   }
 }
@@ -296,8 +349,8 @@ export function inspect(state, id) {
 
 // ---- commands -------------------------------------------------------------------------------------
 
-function enemiesOf(s, u) { return unitsOf(s, u.side === 'hero' ? 'foe' : 'hero').filter(alive); }
-function alliesOf(s, u) { return unitsOf(s, u.side).filter(alive); }
+function enemiesOf(s, u) { return unitsOf(s, u.side === 'hero' ? 'foe' : 'hero').filter(targetable); }
+function alliesOf(s, u) { return unitsOf(s, u.side).filter(targetable); }
 
 export function targets(state, command) {
   const u = state.units[command.actor ?? state.actor];
@@ -475,9 +528,9 @@ export function act(state, command) {
 function foeTargets(s, f, move) {
   switch (move.target) {
     case 'self': return [f.id];
-    case 'all-enemies': return unitsOf(s, 'hero').filter(alive).map(h => h.id);
-    case 'all-allies': return unitsOf(s, 'foe').filter(alive).map(x => x.id);
-    default: return [f.intent.target].filter(id => alive(s.units[id]));
+    case 'all-enemies': return unitsOf(s, 'hero').filter(targetable).map(h => h.id);
+    case 'all-allies': return unitsOf(s, 'foe').filter(targetable).map(x => x.id);
+    default: return [f.intent.target].filter(id => targetable(s.units[id]));
   }
 }
 
@@ -493,10 +546,12 @@ export function foeTurn(state) {
     f.intent = refreshIntent(B.s, f, f.intent || rollIntent(B.s, f, B.rng), B.rng);
     const move = familyData(f).moves[f.intent.move];
     const prov = f.statuses.find(st => st.id === 'provoked');
-    if (prov && move.target === 'enemy' && alive(B.s.units[prov.source])) f.intent.target = prov.source;
+    if (prov && move.target === 'enemy' && targetable(B.s.units[prov.source])) f.intent.target = prov.source; // a held provoker cannot be hit
     B.ev.push({ t: 'move', actor: f.id, name: move.name, text: move.text, move: f.intent.move });
     runEffects(B, f, move.effects, foeTargets(B.s, f, move));
     mult = move.delay || 1;
+    // M5: a move's `then` is what the foe does next (a Burrow, then the eruption under someone)
+    if (move.then && alive(f)) f.queue.unshift(intentFor(B.s, f, move.then, B.rng, f.intent.face));
   }
   if (!checkEnd(B)) {
     finishTurn(B, f, mult);

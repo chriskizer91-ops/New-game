@@ -75,7 +75,7 @@ test('findPath walks around solid things; chests open once', () => {
   assert.equal(r.ok, true);
   assert.equal(r.game.gold, game.gold + 5);
   assert.equal(openChest(r.game, 'mini-chest').ok, false);
-  assert.equal(lockStatus(game, 'stream').keys.length, 3, 'two power keys and a Domain key');
+  assert.equal(lockStatus(game, 'stream').keys.length, 4, 'three power keys (M5: the Cutter\'s Pick) and a Domain key');
 });
 
 // ---- roamers (spec §4.5 "Roamer rules") -------------------------------------------------------------------
@@ -259,6 +259,18 @@ test('Trackless: all-rabble packs never alert; Stillness makes the pause 6 ticks
   assert.equal(a.walk.roamers[0].wait, 6);
 });
 
+test('Hymn of Rest (the Drowned Censer, M5): roaming undead never notice you; the living still do (review)', () => {
+  const game = fresh();
+  const wights = g => pack(g, { spawns: [{ family: 'ash-wight', level: 6 }], trackless: false, x: 17, y: 10 });
+  assert.ok(tick(game, onField(game, [wights(game)], 15, 10, 'e')).events.some(e => e.t === 'alert'), 'without it the wights see you');
+  const censer = deepFreeze({ ...game, inventory: [...game.inventory, relicItem('drowned-censer', createRng(4))] });
+  const quiet = idle(censer, onField(censer, [wights(censer)], 15, 10, 'e'), 6);
+  assert.equal(quiet.all.some(e => e.t === 'alert'), false, 'the undead never notice you pass');
+  assert.ok(!['alert', 'chase'].includes(quiet.walk.roamers[0].mood));
+  const hounds = tick(censer, onField(censer, [pack(censer, { x: 17, y: 10 })], 15, 10, 'e'));
+  assert.ok(hounds.events.some(e => e.t === 'alert'), 'the living still do');
+});
+
 test('afterBattle: grace, a beaten roamer is gone, one you fled from is stunned for 12 ticks', () => {
   const game = fresh();
   const w = onField(game, [pack(game, { x: 17, y: 10, mood: 'chase' })], 15, 10, 'e');
@@ -317,6 +329,20 @@ test('two keys: each key alone opens a lock; soft darkness and ichor', () => {
   let g = hurt.game, w = hurt.walk;
   for (let i = 0; i < 60; i++) { const m = move(g, w, i % 2 ? 'e' : 'w'); g = m.game; w = m.walk; }
   for (const id of g.party.active) assert.ok(g.party.roster[id].hp >= 1, `${id} never below 1`);
+});
+
+test('M5: a snowdrift is soft like the ichor: 3% of max HP a step, named in the hazard; the Trollhide Mantle walks it', () => {
+  const game = fresh();
+  registerMap(deepFreeze({ ...MINI, id: 'mini-drift', entities: MINI.entities.map(e => (e.lock === 'ichor' ? { ...e, id: 'mini-drift-lock', lock: 'drift' } : e)) }));
+  const onDrift = { ...at(8, 5), map: 'mini-drift' };
+  const hz = move(game, onDrift, 's').events.find(e => e.t === 'hazard');
+  assert.ok(hz, 'the drift bites');
+  assert.equal(hz.lock, 'drift');
+  assert.equal(hz.pct, 0.03);
+  assert.equal(move(game, at(8, 5), 's').events.find(e => e.t === 'hazard').lock, 'ichor', 'the ichor still names itself');
+  const shod = { ...game, inventory: [...game.inventory, relicItem('trollhide-mantle', createRng(12))] };
+  assert.equal(lockStatus(shod, 'drift').by, 'trollhide-mantle', 'Snowshoe');
+  assert.ok(!move(shod, onDrift, 's').events.some(e => e.t === 'hazard'), 'no bite with the key');
 });
 
 test('sealed exits say whether the next chapter has opened them', () => {

@@ -27,7 +27,10 @@
 // Lint: entities, anchors and exits under a tree canopy (the tile just above a 'T'), 1-wide
 // corridors (roamers never enter them), pack homes outside the roam rects, walkable tiles no key
 // can reach. M4: the fill walks through a gated exit (the Keep's south-east gate) once its gate holds, the
-// four Sunscorch locks have short names, and the Sunscorch biomes draw as sand, ash or stone. Owner: WP3; M4 P2.
+// four Sunscorch locks have short names, and the Sunscorch biomes draw as sand, ash or stone. M5: the 'all'
+// state holds every Brand and the Ironspire's story flags (the second council, the Highfold, the third duel's
+// yield), the four Ironspire locks have short names, and the Ironspire biomes draw as snow, rock or ice.
+// Owner: WP3; M4 P2; M5 P2.
 import { createRequire } from 'node:module';
 import { execSync } from 'node:child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -92,10 +95,13 @@ async function reachGame(mode) {
   const rng = createRng('map-draft');
   for (const id of g.party.active) { let h = g.party.roster[id]; while (h.level < 20) h = levelUp(h, rng).hero; g.party.roster[id] = h; }
   for (const r of Object.keys(RELICS)) if (!g.inventory.some(i => i.base === r)) g.inventory.push({ uid: `draft-${r}`, base: r, kind: RELICS[r].kind });
-  g.progress.brands = ['brand-of-briars', 'brand-of-the-heartroot', 'brand-of-glass', 'brand-of-ash']; // M4.5: the Glass Flats open with the Brand of Glass
+  // M4.5: the Glass Flats open with the Brand of Glass; M5: Stormwatch's north gate with the Brand of Iron
+  g.progress.brands = ['brand-of-briars', 'brand-of-the-heartroot', 'brand-of-glass', 'brand-of-ash', 'brand-of-iron', 'brand-of-frost'];
   const f = g.progress.flags;
   for (const [id, e] of Object.entries(ENCOUNTERS)) if (e.type === 'fight') { f.beaten[id] = 1; f.cleared[id] = true; if (e.once) f.done[id] = true; if (e.opens) f.unlocked[e.opens] = true; }
   Object.assign(f.story, { 'tamsin-yielded': true, 'tamsin-yielded-2': true, 'act1-complete': true, 'intro-done': true });
+  // M5: the second council opens the Keep's east postern, the monks the Highfold, a yield the Deeps stair
+  Object.assign(f.story, { 'sunscorch-complete': true, 'council-2-done': true, 'highfold-open': true, 'tamsin-yielded-3': true });
   for (const m of Object.values(MAPS)) for (const e of m.entities) if (e.kind === 'lock' || e.kind === 'gate') f.unlocked[e.id] = true;
   return g;
 }
@@ -177,9 +183,12 @@ function paint(d) {
   const fill = (c, x, y, w = 1, h = 1) => { g.fillStyle = c; g.fillRect(X(x), Y(y), w * S, h * S); };
   const dot = (c, px, py, r) => { g.fillStyle = c; g.beginPath(); g.arc(px, py, r, 0, Math.PI * 2); g.fill(); };
   // M4: the Sunscorch biomes read as sand, ash or stone instead of grass (the draft only; --art paints the real tiles)
-  const SUN = { desert: '#d6bb83', 'desert-town': '#d9c08c', canyon: '#c9a46e', 'mine-camp': '#bfa27a', dunes: '#dcc18a', oasis: '#cdb887', ash: '#8a8580', mine: '#4a4038', crystal: '#3b4a57', vault: '#46403c' }[d.biome];
+  const SUN = { desert: '#d6bb83', 'desert-town': '#d9c08c', canyon: '#c9a46e', 'mine-camp': '#bfa27a', dunes: '#dcc18a', oasis: '#cdb887', ash: '#8a8580', mine: '#4a4038', crystal: '#3b4a57', vault: '#46403c',
+    // M5: the Ironspire (snow and scree outside, worked stone and ice below)
+    mountain: '#a7aea9', monastery: '#c3c6c2', scree: '#9d9a93', 'dwarf-hall': '#6c6660', forge: '#4a3c36', outpost: '#b9bcb6', tundra: '#dfe6ea', 'frozen-lake': '#d6e2e8', 'ice-cave': '#3f5a6e' }[d.biome];
   const GRASS = SUN || '#5b8c3a';
-  const ground = { '.': GRASS, ',': GRASS, '"': SUN ? '#b9a35e' : '#4d7d31', '=': SUN ? '#a88a58' : '#c9a96c', ':': '#9c968b', _: '#8c6b49', m: SUN ? '#e4cc98' : '#6d5333', f: '#2f4a3d', r: '#5e4731', k: '#2c2931',
+  const ICY = ['mountain', 'monastery', 'scree', 'outpost', 'tundra', 'frozen-lake'].includes(d.biome); // M5: 'm' is a snowdrift there
+  const ground = { '.': GRASS, ',': GRASS, '"': SUN ? '#b9a35e' : '#4d7d31', '=': SUN ? '#a88a58' : '#c9a96c', ':': '#9c968b', _: '#8c6b49', m: ICY ? '#f6f9fb' : SUN ? '#e4cc98' : '#6d5333', f: '#2f4a3d', r: '#5e4731', k: '#2c2931',
     T: GRASS, t: GRASS, Y: '#5b3f25', R: '#3d2b1d', o: GRASS, '#': '#6b6771', H: '#9b4531', '|': GRASS, '*': '#6b6771', '~': '#2f69a9', w: '#5b99c9',
     b: '#a27d51', '^': '#7b6551', v: GRASS, '+': '#5b3b1f', s: '#9b9b9b', i: '#1d1519', x: '#000000' };
   // pass 1: ground
@@ -239,7 +248,7 @@ function paint(d) {
   for (const [x, y] of d.dead) { g.fillStyle = 'rgba(255,0,0,0.35)'; g.fillRect(X(x), Y(y), S, S); g.strokeStyle = 'rgba(255,60,60,0.9)'; g.beginPath(); g.moveTo(X(x), Y(y)); g.lineTo(X(x) + S, Y(y) + S); g.stroke(); }
   for (const [x, y] of d.corr) dot('rgba(255,140,0,0.95)', X(x) + S / 2, Y(y) + S / 2, S * 0.12);
   const LOCK = { thornwall: 'Th', bramble: 'Br', stream: 'St', boulder: 'Bo', 'cold-hearth': 'Co', 'tally-seal': 'Ta', 'barred-gate': 'Ba', darkness: 'Dk', 'rot-knot': 'Rk', 'rope-ledge': 'Ro', ichor: 'Ic',
-    'dune-glass': 'Dg', mirage: 'Mi', quicksand: 'Qs', 'vault-seal': 'Vs' };
+    'dune-glass': 'Dg', mirage: 'Mi', quicksand: 'Qs', 'vault-seal': 'Vs', chasm: 'Ch', ice: 'Iw', 'rune-seal': 'Rs', drift: 'Dr' };
   const big = [];
   for (const e of d.m.entities) {
     const [x0, y0] = e.area ? e.area : e.at;

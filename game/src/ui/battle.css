@@ -508,3 +508,48 @@
 @keyframes bt-fade { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
 .bt.reduced .bt-float { animation-name: bt-fade; }
 .bt.reduced .bt-stage { animation: none !important; }
+
+/* ---------- M5 (spec §4.2, §5): held, charmed, burrowed ---------- */
+/* a held hero (swallowed): out of the line; its card says how it is held, by whom, and for how long */
+.bt-hero-hold {
+  position: absolute; left: 3px; right: 3px; bottom: 3px; z-index: 1;
+  display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 3px 2px 4px;
+  text-align: center; pointer-events: none;
+  background: rgba(8, 20, 30, .86); box-shadow: 0 0 0 1px var(--ink), inset 0 0 0 1px #4f7f99;
+}
+.bt-hero-hold[hidden] { display: none; }
+.bt-hold-k { font-family: var(--f-pixel); font-weight: 400; font-size: 10px; line-height: 1.1; letter-spacing: .06em; text-transform: uppercase; color: #bfe8ff; }
+.bt-hold-by { font-size: 12px; line-height: 1.15; color: var(--parchment-2); overflow-wrap: anywhere; }
+.bt-hold-t { font-family: var(--f-pixel); font-size: 9px; line-height: 1.1; color: #8fd3f4; }
+.bt-hold-by:empty, .bt-hold-t:empty { display: none; }
+.bt-hero[data-hold^="Carried"] .bt-hero-hold { background: rgba(26, 22, 12, .86); box-shadow: 0 0 0 1px var(--ink), inset 0 0 0 1px #9a8a5a; }
+.bt-hero[data-hold^="Carried"] .bt-hold-k { color: #f4e6b8; }
+.bt-hero[data-hold^="Carried"] .bt-hold-t { color: #e8d49a; }
+.bt-hero.held .bt-hero-info { filter: saturate(.45) brightness(.82); box-shadow: 0 0 0 1px var(--ink), inset 0 0 0 1px #4f7f99; }
+/* a charmed hero: its next turn is an attack on a friend */
+.bt-hero.charmed .bt-hero-info { box-shadow: 0 0 0 1px var(--ink), inset 0 0 0 1px #e07ab8, 0 0 10px rgba(224, 122, 184, .45); }
+.bt-hero.charmed .bt-hero-tag { color: #ff9ad2; text-shadow: 0 1px 0 var(--ink); }
+.bt-hero.charmed .bt-hero-name { color: #ffc8e6; }
+.bt-move-ban[data-side="charm"] b { color: #ff9ad2; }
+.bt-caption[data-kind="charm"] { color: #ffc8e6; }
+.bt-caption[data-kind="held"] { color: #bfe8ff; }
+.bt-float.held b { color: #bfe8ff; }
+.bt-float.held small { color: var(--parchment-2); font-size: 12px; }
+/* a burrowed foe: sunk into the floor, never a valid target until it comes up */
+.bt-foe-state { font-family: var(--f-pixel); font-size: 9px; letter-spacing: .04em; color: #d8c49a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bt-foe-state[hidden] { display: none; }
+.bt-foe.sunk .bt-plate { background: rgba(20, 15, 10, .9); box-shadow: 0 0 0 1px var(--ink), inset 0 0 0 1px #6a5438; }
+.bt-foe.sunk .bt-plate-bar, .bt-foe.sunk .bt-plate-top { opacity: .7; }
+.bt-foe.sunk .bt-foe-hit { cursor: not-allowed; }
+.bt.aiming .bt-foe.sunk .bt-plate { opacity: .5; }
+/* the ribbon: a held hero's turn is iced over (it will be lost), a charmed one's ringed in pink */
+.bt-rib.held canvas { opacity: .4; filter: grayscale(.6); }
+.bt-rib.held::after { content: ""; position: absolute; inset: 2px; background: repeating-linear-gradient(135deg, rgba(143, 211, 244, .3) 0 3px, rgba(143, 211, 244, 0) 3px 6px); pointer-events: none; }
+.bt-rib.charmed:not(.now) { box-shadow: 0 0 0 1px var(--ink), inset 0 0 0 2px #e07ab8; }
+@media (min-width: 900px) and (min-height: 600px) {
+  .bt-hero-hold { left: 12px; right: 12px; padding: 5px 4px 6px; }
+  .bt-hold-k { font-size: 12px; }
+  .bt-hold-by { font-size: 15px; }
+  .bt-hold-t { font-size: 10px; }
+  .bt-foe-state { font-size: 10px; }
+}

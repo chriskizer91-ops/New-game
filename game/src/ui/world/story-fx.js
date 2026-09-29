@@ -4,10 +4,12 @@
 // and falls back to a procedural parchment when the image is a placeholder or fails to load.
 // Exports (each returns a Promise that settles when it is dismissed):
 //   playBrandBanner(ctx, brand, game), playCrownwalls(ctx), showLetter(ctx, brandId),
-//   playCouncil(ctx, { second }) (M4: the second council), showToBeContinued(ctx, game, { act })
-//   (act 'act1' | 'act2': M4's end of Act II names the next chapter's regions),
+//   playCouncil(ctx, { second, third }) (M4: the second council; M5: the third),
+//   showToBeContinued(ctx, game, { act }) (act 'act1' | 'act2' | 'ironspire': the end of a chapter,
+//   naming the roads that open now and the regions of the next chapter; M5's 'ironspire' is the third
+//   council's card, "The Ironspire is yours"), chapterEnd(game, act) (its pure view model),
 //   crownSeals() -> [{ id, x, y, to }], loreAt(map, tx, ty) -> [x, y], ATLAS_SRC
-// Owner: WP7; M4 P7b (the second council, the end of Act II).
+// Owner: WP7; M4 P7b (the second council, the end of Act II); M5 P7 (the Ironspire card, the third council).
 
 import * as atlasImage from '../assets/atlas-image.js';
 import { MAPS } from '../../data/maps/index.js';
@@ -18,7 +20,7 @@ import { RELICS } from '../../data/relics.js';
 import { CROWNWALL } from '../../data/locks.js';
 import { uniqueBrands } from '../../rules/gauntlet.js';
 import { pageProgress } from '../../rules/codex.js';
-import { loreAt as geoLoreAt } from '../lib/atlas-geo.js';
+import { loreAt as geoLoreAt, regionOpen } from '../lib/atlas-geo.js';
 import { openOverlay } from '../lib/overlay.js';
 import { el } from '../lib/dom.js';
 
@@ -144,48 +146,87 @@ export function showLetter(ctx, brandId) {
 // ---- the Council ---------------------------------------------------------------------------------------
 
 // { second: true } is the second council (M4, the Sunscorch won): four coals, and Sandspire's chair.
-export function playCouncil(ctx, { second = false } = {}) {
-  const C = card(ctx, { cls: `council${second ? ' council-2' : ''}`, label: 'The Council', button: 'Take your seat' });
-  C.panel.append(text('p', 'kick', 'Hearthstone Keep'), text('h2', 'title-display', second ? 'The Council sits again' : 'The Council sits'),
-    text('p', 'council-text', second
-      ? 'Four coals burn in the Eternal Hearth. The long table has a new chair at it, and every face turns to the door when you walk in.'
-      : 'Two coals burn in the Eternal Hearth. The long table is full for the first time in years, and every face turns to the door when you walk in.'), C.go);
+// { third: true } is the third (M5, the Ironspire won): six coals, and the Thane of Ironhold at the table.
+export function playCouncil(ctx, { second = false, third = false } = {}) {
+  const C = card(ctx, { cls: `council${third ? ' council-3' : second ? ' council-2' : ''}`, label: 'The Council', button: 'Take your seat' });
+  C.panel.append(text('p', 'kick', 'Hearthstone Keep'), text('h2', 'title-display', third ? 'The Council sits a third time' : second ? 'The Council sits again' : 'The Council sits'),
+    text('p', 'council-text', third
+      ? 'Six coals burn in the Eternal Hearth. One chair at the long table is still empty, and every face turns to the door when you walk in.'
+      : second
+        ? 'Four coals burn in the Eternal Hearth. The long table has a new chair at it, and every face turns to the door when you walk in.'
+        : 'Two coals burn in the Eternal Hearth. The long table is full for the first time in years, and every face turns to the door when you walk in.'), C.go);
   ctx.audio.sfx('hearth');
   return C.wait();
 }
 
 // ---- to be continued -----------------------------------------------------------------------------------
 
-// The end of an act (story.js { t: 'end', act }): 'act1' after the first council (M3), 'act2' after the
-// second (M4): it names the regions of the next chapter (the ones still sealed in data/world.js).
-export function showToBeContinued(ctx, game, { act = 'act1' } = {}) {
-  const two = act === 'act2';
-  const C = card(ctx, { cls: `tbc${two ? ' tbc-act2' : ''}`, label: two ? 'End of Act II' : 'To be continued', button: 'Keep exploring' });
-  const P = C.panel;
+// The roads a chapter's end opens at once (a region whose entry gate the council itself unbars), and how
+// the card says so; a region with no line here opens "in the next chapter".
+const ROAD_OPEN = {
+  sunscorch: 'The Keep’s south-east gate stands open. The Sunward Road runs to Sandspire.',
+  ironspire: 'The Keep’s east postern stands open. The Rockslide Pass climbs to Peak’s Veil.',
+};
+const shortName = r => r.name.replace(/^The /, '').split(' ')[0];
+const andList = names => (names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : names[0] || '');
+
+// The end of a chapter (story.js { t: 'end', act }), pure (node tests use it):
+//   'act1'       after the first council (M3): Act I is done; the Sunscorch road opens (M4)
+//   'act2'       after the second (M4): the Sunscorch is yours; the Ironspire road opens with it (M5),
+//                and every region still sealed opens in the next chapter
+//   'ironspire'  after the third (M5): the Ironspire is yours; the Blackwater still holds the causeway,
+//                and the Gloomfen Marsh is the next chapter
+// -> { act, cls, label, kick, title, sub, stats: [[k, v]], chips: [{ id, name, open }], lines: [text] }
+export function chapterEnd(game, act = 'act1') {
   const relics = Object.keys(RELICS).filter(id => game?.codex?.[id]?.claimed).length;
-  const stats = el('dl', 'tbc-stats');
-  const rows = [['Day', game?.progress?.flags?.day || 1], ['Relics', `${relics}/${Object.keys(RELICS).length}`], ['Brands', `${game ? uniqueBrands(game) : 0}/${BRAND_TOTAL}`]];
-  if (two) {
+  const stats = [['Day', game?.progress?.flags?.day || 1], ['Relics', `${relics}/${Object.keys(RELICS).length}`], ['Brands', `${game ? uniqueBrands(game) : 0}/${BRAND_TOTAL}`]];
+  const pages = () => {
     const open = PAGES.filter(p => p.from != null);
     const done = open.filter(p => game?.progress?.flags?.pages?.[p.id] || pageProgress(game, p.id).done).length;
-    rows.push(['Pages', `${done}/${open.length}`]);
+    return ['Pages', `${done}/${open.length}`];
+  };
+  const open = r => { try { return !!game && regionOpen(game, r.id); } catch { return false; } };
+  // what comes next: the regions of the act still ahead, open now (their road stands open) or later
+  const ahead = (done = []) => Object.values(REGIONS).filter(r => r.act >= 2 && !done.includes(r.id));
+  const say = (regions, { full = false } = {}) => {
+    const now = regions.filter(r => r.open && open(r) && ROAD_OPEN[r.id]);
+    const later = regions.filter(r => !now.includes(r));
+    const lines = now.map(r => ROAD_OPEN[r.id]);
+    if (later.length) lines.push(`${andList(later.map(full ? r => r.name : shortName))} ${later.length > 1 ? 'open' : 'opens'} in the next chapter.`);
+    return { chips: regions.map(r => ({ id: r.id, name: r.name, open: now.includes(r) })), lines };
+  };
+  if (act === 'ironspire') {
+    const next = say(ahead(['sunscorch', 'ironspire']), { full: true });
+    // while the Gloomfen is still sealed, the story's word on what bars it comes just before it is named
+    if (next.chips.some(c => c.id === 'gloomfen' && !c.open)) next.lines.splice(next.lines.length - 1, 0, 'The Blackwater still holds the causeway.');
+    return { act, cls: 'tbc tbc-act2 tbc-ironspire', label: 'The Ironspire is yours', kick: 'The Ironspire is yours', title: 'To be continued', sub: 'Six coals in the Eternal Hearth', stats: [...stats, pages()], ...next };
   }
-  for (const [k, v] of rows) stats.append(text('dt', '', k), text('dd', '', String(v)));
-  if (two) {
-    // the next chapter: every region still sealed ("Ironspire and Gloomfen")
-    const next = Object.values(REGIONS).filter(r => !r.open);
-    const names = next.map(r => r.name.replace(/^The /, '').split(' ')[0]);
-    const list = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : names[0] || 'The rest of the Realm';
+  if (act === 'act2') {
+    const next = say(ahead(['sunscorch']));
+    return { act, cls: 'tbc tbc-act2', label: 'End of Act II', kick: 'The Sunscorch is yours', title: 'To be continued', sub: 'End of Act II', stats: [...stats, pages()], ...next };
+  }
+  // M4: once Act I is done the Keep's south-east gate stands open, so the next chapter starts here
+  const onward = Object.values(REGIONS).some(r => r.open && r.act === 2);
+  return { act: 'act1', cls: 'tbc', label: 'To be continued', kick: 'End of Act I', title: 'To be continued', sub: null, stats, chips: [], lines: [onward ? ROAD_OPEN.sunscorch : 'The way opens in the next chapter.'] };
+}
+
+export function showToBeContinued(ctx, game, { act = 'act1' } = {}) {
+  const V = chapterEnd(game, act);
+  const C = card(ctx, { cls: V.cls, label: V.label, button: 'Keep exploring' });
+  const P = C.panel;
+  const stats = el('dl', 'tbc-stats');
+  for (const [k, v] of V.stats) stats.append(text('dt', '', k), text('dd', '', String(v)));
+  P.append(text('p', 'kick', V.kick), text('h2', 'title-display', V.title));
+  if (V.sub) P.append(text('p', 'tbc-act', V.sub));
+  P.append(stats);
+  if (V.chips.length) {
+    // the regions ahead: open now (their road stands open), or sealed until the next chapter
     const chips = el('p', { class: 'tbc-next', 'aria-hidden': 'true' });
-    for (const r of next) chips.append(text('span', `tbc-rg rg-${r.id}`, r.name));
-    P.append(text('p', 'kick', 'The Sunscorch is yours'), text('h2', 'title-display', 'To be continued'), text('p', 'tbc-act', 'End of Act II'), stats, chips,
-      text('p', 'tbc-text', `${list} open in the next chapter.`), C.go);
-  } else {
-    // M4: once Act I is done the Keep's south-east gate stands open, so the next chapter starts here
-    const onward = Object.values(REGIONS).some(r => r.open && r.act === 2);
-    P.append(text('p', 'kick', 'End of Act I'), text('h2', 'title-display', 'To be continued'), stats,
-      text('p', 'tbc-text', onward ? 'The Keep’s south-east gate stands open. The Sunward Road runs to Sandspire.' : 'The way opens in the next chapter.'), C.go);
+    for (const r of V.chips) chips.append(text('span', `tbc-rg rg-${r.id}${r.open ? ' is-open' : ''}`, r.name));
+    P.append(chips);
   }
+  for (const line of V.lines) P.append(text('p', 'tbc-text', line));
+  P.append(C.go);
   ctx.audio.sfx('victory');
   return C.wait();
 }

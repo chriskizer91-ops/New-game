@@ -16,7 +16,8 @@
 // (rules/migrate.js) is injected into core/save.js here, so core/ imports nothing game-specific.
 //   ctx.carry                   an earlier milestone's save migrated in memory, waiting on the title's
 //                               carry-over button (null when there is none, or once it is adopted)
-//   ctx.carryFrom               where ctx.carry came from: 'm4' (Milestone 4), 'v2' (Milestone 3) or 'v1' (M2)
+//   ctx.carryFrom               where ctx.carry came from: 'm45' (Milestone 4.5), 'm4' (Milestone 4), 'v2' (Milestone 3)
+//                               or 'v1' (M2)
 //   ctx.adopt(game)             holds a migrated game in memory only: it becomes ctx.game, and every
 //                               setGame stays in memory until commitAdopted()
 //   ctx.adopting                true while an adopted game has not been written yet

@@ -1,7 +1,10 @@
 // Conditions and the story runner (rules/cond.js, rules/story.js; M3 spec §4.3, §4.4), and the
 // Sunscorch's story played through them (M4 spec §3.1, §3.6): each quest's happy path and its
 // out-of-order path, the second council, Tamsin at Scorchgate and the lines after the Champions.
-// Owner: WP1 (M3), P3 story (M4 tests).
+// M5 (spec §3.1, §3.5, §3.6): the Ironspire's the same way: the bell, the ledger, the oath and the
+// Rune-Key, the hammer, Tamsin at Ironhold, the third council, Hush's scene, Kesh, the Stormwatch
+// board and the notices.
+// Owner: WP1 (M3), P3 story (M4, M5 tests).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { newGame } from '../src/rules/gauntlet.js';
@@ -68,7 +71,7 @@ test('quests are derived from conditions; the Ladder starts in silhouette', () =
   const done = withProgress(g, { flags: { done: { 'keep-vault': true } } });
   assert.equal(nextObjective(done).entity, 'dael');
   const lad = ladder(g);
-  assert.equal(lad.length, 27, '17 Act I posters, 8 Sunscorch posters (M4) and 2 rumours');
+  assert.equal(lad.length, 35, '17 Act I posters, 8 Sunscorch posters (M4), 8 Ironspire posters (M5) and 2 rumours');
   assert.ok(lad.every(p => p.state === 'silhouette'));
   assert.equal(ladder(done)[0].state, 'settled');
 });
@@ -410,4 +413,325 @@ test('Zara takes the Sandspire bounties in, and the people of the Sunscorch noti
   ]) assert.equal(talkTo(story(wear(a, relic), { 'heard-south': true }), npc), d, `${npc} notices ${relic}`);
   assert.equal(talkTo(brand(a, 'brand-of-glass'), 'fenwick'), 'fenwick-three');
   assert.equal(talkTo(brand(a, 'brand-of-glass'), 'miner'), 'miner-glass');
+});
+
+// ---- M5: the Ironspire's story (P3) -----------------------------------------------------------------
+
+// A save that has won the Sunscorch and sat the second council (and heard Isolde's line after it): the
+// Keep's east postern is open.
+const sunscorch = () => deepFreeze(story(both(act1()), { 'council-2-done': true, 'heard-next': true }));
+const HAMMER_LINE = 'That\'s my brother\'s hammer. He never put it down in his life. Where is he?';
+const TAMSIN_LINE = 'He was here. He left the fire burning so we\'d think he\'d be back.';
+const said = (g, id) => dialogueView(g, id).lines.map(l => l.text).join(' ');
+
+test('the Bell of Peak\'s Veil: Wynn opens the Highfold, the Abbess finds her rest, the bell rings with Wynn or from its rope', () => {
+  let g = sunscorch();
+  assert.equal(questState(g, 'bell-of-veil'), 'hidden');
+  let t = talk(g, 'wynn');
+  assert.equal(t.id, 'wynn');
+  g = t.game;
+  assert.ok(flag(g, 'met-wynn') && flag(g, 'highfold-open'), 'meeting Wynn opens the Highfold gate');
+  assert.equal(questState(g, 'bell-of-veil'), 'active');
+  assert.equal(stepAt(g, 'bell-of-veil'), 'fm-shrine');
+  assert.equal(talkTo(g, 'wynn'), 'wynn-again', 'no second first meeting');
+  assert.equal(pick(g, 'wynn', /ice broke/).next, 'wynn-ice');
+  assert.ok(!dialogueView(g, 'pv-bell-rope').choices.some(c => /Ring/.test(c.text)), 'no ringing while the drowned still walk');
+  g = beat(g, 'fm-shrine');
+  assert.equal(afterDialogue(g, 'fm-shrine', 'victory'), 'abbess-rest');
+  assert.equal(stepAt(g, 'bell-of-veil'), 'wynn');
+  t = talk(g, 'wynn');
+  assert.equal(t.id, 'wynn-ring');
+  assert.deepEqual(pick(t.game, 'wynn-ring', /Not yet/).events, []);
+  assert.equal(talkTo(pick(t.game, 'wynn-ring', /Not yet/).game, 'wynn'), 'wynn-ring', 'she asks again');
+  const rung = pick(t.game, 'wynn-ring', /Ring the bell/);
+  assert.equal(rung.next, 'wynn-bell');
+  const thanked = enterDialogue(rung.game, 'wynn-bell');
+  assert.ok(thanked.events.some(e => e.t === 'item' && e.item.base === 'veilbell'));
+  g = thanked.game;
+  assert.equal(questState(g, 'bell-of-veil'), 'done');
+  assert.ok(owns(g, 'veilbell'));
+  assert.equal(g.codex.veilbell.claimed, true);
+  assert.equal(afterDialogue(g, 'fm-shrine', 'victory'), null, 'the Abbess finds her rest once');
+  assert.equal(talkTo(g, 'wynn'), 'wynn-after');
+  assert.equal(talkTo(g, 'novice'), 'novice-bell');
+  assert.equal(talkTo(wear(g, 'veilbell'), 'wynn'), 'notice-wynn-bell', 'the world notices');
+  assert.equal(talkTo(brand(g, 'brand-of-iron', 'brand-of-frost'), 'wynn'), 'wynn-frost', 'she rings for Aurel too');
+  // the bell says goodnight at the Cloister Fire, once
+  assert.equal(restDialogue(g, 'veil-hearth'), 'veil-night');
+  assert.equal(restDialogue(enterDialogue(g, 'veil-night').game, 'veil-hearth'), null);
+  // from the rope in the tower, without ever stopping to meet Wynn: her thank-you is the first meeting
+  const r = pick(beat(sunscorch(), 'fm-shrine'), 'pv-bell-rope', /Ring the bell/);
+  assert.equal(r.next, 'veil-bell-rung');
+  assert.ok(flag(r.game, 'bell-rung-veil'));
+  assert.equal(questState(r.game, 'bell-of-veil'), 'hidden', 'Wynn has not been met yet');
+  t = talk(r.game, 'wynn');
+  assert.equal(t.id, 'wynn-thanks');
+  assert.ok(flag(t.game, 'met-wynn') && flag(t.game, 'highfold-open'));
+  assert.equal(questState(t.game, 'bell-of-veil'), 'done');
+  assert.ok(owns(t.game, 'veilbell'));
+  assert.equal(talkTo(t.game, 'wynn'), 'wynn-after');
+  // out of order: the Abbess at rest before Wynn was ever met: the bell is the first thing she speaks of
+  const o = talk(beat(sunscorch(), 'fm-shrine'), 'wynn');
+  assert.equal(o.id, 'wynn-ring');
+  assert.ok(flag(o.game, 'met-wynn') && flag(o.game, 'highfold-open'));
+  assert.equal(questState(o.game, 'bell-of-veil'), 'active');
+});
+
+test('Rook\'s Ledger: Rook lays out the Tallymen\'s plan, the Cutter-Chief\'s ledger reads "heart", a frost opal; and the ledger taken first', () => {
+  let g = brand(sunscorch(), 'brand-of-iron');
+  let t = talk(g, 'rook');
+  assert.equal(t.id, 'rook');
+  assert.match(said(g, 'rook'), /Smith/);
+  assert.match(said(g, 'rook'), /Frostmere/);
+  g = t.game;
+  assert.equal(questState(g, 'rooks-ledger'), 'active');
+  assert.equal(stepAt(g, 'rooks-ledger'), 'fr-cutters');
+  assert.equal(talkTo(g, 'rook'), 'rook-again');
+  g = beat(g, 'fr-cutters');
+  assert.equal(afterDialogue(g, 'fr-cutters', 'victory'), 'cutters-ledger');
+  assert.equal(stepAt(g, 'rooks-ledger'), 'rook');
+  const gold = g.gold, opals = g.gems?.['frost-opal'] || 0;
+  t = talk(g, 'rook');
+  assert.equal(t.id, 'rook-ledger');
+  assert.match(said(g, 'rook-ledger'), /heart/);
+  g = t.game;
+  assert.equal(questState(g, 'rooks-ledger'), 'done');
+  assert.equal(g.gold, gold + 250);
+  assert.equal(g.gems['frost-opal'], opals + 1);
+  assert.equal(talkTo(g, 'rook'), 'rook-after');
+  assert.equal(afterDialogue(g, 'fr-cutters', 'victory'), null, 'a re-armed camp has no second ledger');
+  assert.equal(talkTo(wear(g, 'cutters-pick'), 'rook'), 'notice-rook-pick');
+  assert.equal(talkTo(brand(g, 'brand-of-frost'), 'rook'), 'rook-frost');
+  // out of order: the Cutter-Chief beaten before Rook was met: the thank-you is the first meeting
+  const o = talk(beat(brand(sunscorch(), 'brand-of-iron'), 'fr-cutters'), 'rook');
+  assert.equal(o.id, 'rook-ledger');
+  assert.ok(flag(o.game, 'met-rook'));
+  assert.equal(questState(o.game, 'rooks-ledger'), 'done');
+  assert.equal(talkTo(wear(sunscorch(), 'cutters-pick'), 'rook'), 'rook', 'he notices nothing before you have met');
+  // a claim still needs every step: thanks for a ledger nobody took pays nothing
+  const early = enterDialogue(story(sunscorch(), { 'met-rook': true }), 'rook-ledger').game;
+  assert.notEqual(questState(early, 'rooks-ledger'), 'done');
+});
+
+test('the Sentinel\'s Oath and the Rune-Key: the Thane\'s leave once Tamsin\'s duel is won or yielded; his sister\'s boy at rest', () => {
+  let g = sunscorch();
+  let t = talk(g, 'brundar');
+  assert.equal(t.id, 'brundar');
+  g = t.game;
+  assert.equal(questState(g, 'sentinel-oath'), 'active');
+  assert.equal(stepAt(g, 'sentinel-oath'), 'id-smith');
+  assert.equal(talkTo(g, 'brundar'), 'brundar-stair', 'no key while Tamsin holds the stair');
+  assert.equal(pick(g, 'brundar-stair', /Harrow/).next, 'brundar-harrow');
+  assert.equal(stepAt(story(g, { 'met-wynn': true }), 'ironspire-waking'), 'tamsin-ironhold');
+  // won: the Thane's leave and his Rune-Key, whose rune the Deeps' seals know
+  const won = beat(g, 'tamsin-ironhold');
+  assert.equal(stepAt(story(won, { 'met-wynn': true }), 'ironspire-waking'), 'brundar');
+  t = talk(won, 'brundar');
+  assert.equal(t.id, 'brundar-rune');
+  assert.ok(enterDialogue(won, 'brundar-rune').events.some(e => e.t === 'item' && e.item.base === 'thanes-rune'));
+  assert.ok(owns(t.game, 'thanes-rune') && flag(t.game, 'rune-given'));
+  assert.ok(check(t.game, { power: 'thanes-rune' }), 'the Rune-Key opens the rune-seals');
+  assert.equal(talkTo(t.game, 'brundar'), 'brundar-again');
+  assert.equal(talkTo(t.game, 'ih-guard'), 'ih-guard-rune');
+  // yielded: the same leave
+  const y = talk(story(g, { 'tamsin-yielded-3': true }), 'brundar');
+  assert.equal(y.id, 'brundar-rune');
+  assert.ok(owns(y.game, 'thanes-rune'));
+  // straight to the stair without meeting him: the key is also the first meeting, and starts his oath
+  const straight = talk(beat(sunscorch(), 'tamsin-ironhold'), 'brundar');
+  assert.equal(straight.id, 'brundar-rune');
+  assert.ok(flag(straight.game, 'met-brundar'));
+  assert.equal(questState(straight.game, 'sentinel-oath'), 'active');
+  // the journeyman at rest, and the Thane told
+  g = beat(t.game, 'id-smith');
+  assert.equal(afterDialogue(g, 'id-smith', 'victory'), 'journeyman-rest');
+  const gold = g.gold, silver = g.materials.silver;
+  t = talk(g, 'brundar');
+  assert.equal(t.id, 'brundar-smith');
+  g = t.game;
+  assert.equal(questState(g, 'sentinel-oath'), 'done');
+  assert.equal(g.gold, gold + 200);
+  assert.equal(g.materials.silver, silver + 2);
+  assert.equal(afterDialogue(g, 'id-smith', 'victory'), null);
+  assert.equal(talkTo(g, 'brundar'), 'brundar-again');
+  // a party that read the seals itself and never spoke to him: the key comes first, then the thanks
+  let k = beat(sunscorch(), 'tamsin-ironhold', 'id-smith');
+  assert.equal(talkTo(k, 'brundar'), 'brundar-rune');
+  k = enterDialogue(k, 'brundar-rune').game;
+  assert.equal(talkTo(k, 'brundar'), 'brundar-smith');
+});
+
+test('Harrow\'s Hammer: Hilda knows it on sight, before any notice; a shattered hammer is not the hammer; his letter after the third council', () => {
+  let g = sunscorch();
+  assert.equal(questState(g, 'harrows-hammer'), 'hidden');
+  assert.equal(talkTo(g, 'hilda'), 'hilda-ironspire', 'after the second council she points east');
+  assert.match(said(g, 'hilda-ironspire'), /east postern/);
+  assert.equal(talkTo(own(g, 'worldforge-hammer', { shattered: true }), 'hilda'), 'hilda-ironspire', 'a shattered hammer');
+  g = own(g, 'worldforge-hammer');
+  assert.equal(questState(g, 'harrows-hammer'), 'active');
+  assert.equal(stepAt(g, 'harrows-hammer'), 'hilda');
+  assert.equal(talkTo(wear(g, 'cinderfang'), 'hilda'), 'hilda-hammer', 'the thank-you comes before any notice');
+  assert.ok(dialogueView(g, 'hilda-hammer').lines.some(l => l.text === HAMMER_LINE));
+  const gold = g.gold, embers = g.materials.embers;
+  const t = talk(g, 'hilda');
+  assert.equal(t.id, 'hilda-hammer');
+  g = t.game;
+  assert.equal(questState(g, 'harrows-hammer'), 'done');
+  assert.equal(g.gold, gold + 300);
+  assert.equal(g.materials.embers, embers + 2);
+  assert.ok(dialogueView(g, 'hilda-hammer').choices.some(c => /Temper/.test(c.text)), 'she still tempers');
+  assert.equal(talkTo(g, 'hilda'), 'hilda-harrow');
+  assert.equal(talkTo(wear(g, 'worldforge-hammer'), 'hilda'), 'notice-hilda-hammer');
+  // after the third council: a letter from her brother, once; then she waits (not up, she says)
+  const c = story(g, { 'council-3-done': true });
+  assert.equal(talkTo(c, 'hilda'), 'hilda-letter');
+  assert.match(said(c, 'hilda-letter'), /Don't wait up, Hild/);
+  assert.equal(talkTo(enterDialogue(c, 'hilda-letter').game, 'hilda'), 'hilda-waits');
+});
+
+test('Tamsin at Ironhold: her talk starts the duel; a win leaves the bracers and the spec\'s line, a yield sets tamsin-yielded-3', () => {
+  const g = sunscorch();
+  assert.deepEqual(pick(g, 'tamsin-ironhold', /^Try/).events, [{ t: 'fight', enc: 'tamsin-ironhold' }]);
+  assert.deepEqual(pick(g, 'tamsin-ironhold', /Not yet/).events, []);
+  assert.match(said(g, 'tamsin-ironhold'), /broken ring/);
+  const won = beat(g, 'tamsin-ironhold');
+  assert.equal(afterDialogue(won, 'tamsin-ironhold', 'victory'), 'tamsin-ih-win');
+  assert.ok(dialogueView(won, 'tamsin-ih-win').lines.some(l => l.name === 'Tamsin' && l.text === TAMSIN_LINE));
+  assert.equal(afterDialogue(g, 'tamsin-ironhold', 'yield'), 'tamsin-ih-yield');
+  const y = enterDialogue(g, 'tamsin-ih-yield').game;
+  assert.ok(flag(y, 'tamsin-yielded-3'));
+  assert.equal(talkTo(y, 'brundar'), 'brundar-rune', 'a yield wins the Thane\'s leave too');
+});
+
+test('the Ironspire Waking: Isolde and the gate guard point east, the talk steps close with their Brands, and the third council closes it', () => {
+  let g = both(act1());
+  assert.equal(questState(g, 'ironspire-waking'), 'active', 'it shows the moment the Sunscorch is won');
+  assert.equal(stepAt(g, 'ironspire-waking'), 'isolde', 'first, the second council');
+  assert.equal(talkTo(g, 'gate-guard-e'), 'guard-e', 'the postern is shut until the council');
+  g = enterDialogue(g, 'council-2').game;
+  assert.equal(questState(g, 'sunscorch-waking'), 'done');
+  assert.equal(nextObjective(g).entity, 'wynn');
+  assert.equal(talkTo(g, 'isolde'), 'isolde-next');
+  assert.match(said(g, 'isolde-next'), /east postern/);
+  assert.equal(talkTo(g, 'gate-guard-e'), 'guard-e-open');
+  // down the road, one step at a time
+  let s = g;
+  for (const [f, next] of [
+    [x => story(x, { 'met-wynn': true }), 'brundar'],
+    [x => story(x, { 'met-brundar': true }), 'tamsin-ironhold'],
+    [x => beat(x, 'tamsin-ironhold'), 'brundar'],
+    [x => story(x, { 'rune-given': true }), 'mother-anvil'],
+    [x => brand(x, 'brand-of-iron'), 'rook'],
+    [x => story(x, { 'met-rook': true }), 'rime-abbot'],
+  ]) { s = f(s); assert.equal(stepAt(s, 'ironspire-waking'), next); }
+  // straight down: both Brands, and not a word to Wynn, the Thane or Rook
+  const done = story(brand(g, 'brand-of-iron', 'brand-of-frost'), { 'ironspire-complete': true });
+  assert.equal(questState(done, 'ironspire-waking'), 'active');
+  assert.equal(nextObjective(done).entity, 'isolde', 'the talk steps close with their Brands');
+  assert.equal(talkTo(done, 'gate-guard-e'), 'guard-e-writ');
+  assert.equal(talkTo(story(done, { 'met-brundar': true }), 'brundar'), 'brundar-summons', 'the Thane rides for the Keep');
+  const hall = enterMap(done, { map: 'keep-hall', at: [12, 6], face: 'n' });
+  assert.deepEqual(hall.events.filter(e => e.t === 'trigger').map(e => e.id), ['council-3']);
+  const c = enterDialogue(hall.game, 'council-3').game;
+  assert.equal(questState(c, 'ironspire-waking'), 'done');
+  assert.ok(dialogueView(c, 'council-3').lines.some(l => l.name === 'Thane Brundar'), 'the Thane takes Ironspire\'s chair');
+  assert.deepEqual(pick(c, 'council-3', /Let the Council/).events.filter(e => e.t === 'end'), [{ t: 'end', act: 'ironspire' }]);
+  const forge = pick(c, 'council-3', /Worldforge/);
+  assert.equal(forge.next, 'council-3-forge');
+  assert.deepEqual(enterDialogue(forge.game, 'council-3-forge').events.filter(e => e.t === 'end'), [{ t: 'end', act: 'ironspire' }]);
+  assert.match(said(c, 'council-3-forge'), /Gloomfen/);
+  // guarded by the flag its scene sets: a reload mid-scene plays it again; once it has played, never
+  assert.ok(enterMap(hall.game, { map: 'keep-hall', at: [12, 6], face: 'n' }).events.some(e => e.id === 'council-3'));
+  assert.ok(!enterMap(c, { map: 'keep-hall', at: [12, 6], face: 'n' }).events.some(e => e.id === 'council-3'));
+  assert.equal(talkTo(c, 'isolde'), 'isolde-gloomfen');
+  assert.equal(talkTo(enterDialogue(c, 'isolde-gloomfen').game, 'isolde'), 'isolde-gloomfen', 'then it repeats');
+  assert.equal(talkTo(c, 'fenwick'), 'fenwick-six');
+  assert.equal(talkTo(story(c, { 'met-brundar': true }), 'brundar'), 'brundar-council');
+  // a Warden who never sat the second council hears both, the second one first
+  const skipped = story(done, { 'council-2-done': false });
+  assert.deepEqual(enterMap(skipped, { map: 'keep-hall', at: [12, 6], face: 'n' }).events.filter(e => e.t === 'trigger').map(e => e.id), ['council-2', 'council-3']);
+});
+
+test('after the Champions: Mother Anvil (the hammer claimed or shattered), the Rime-Abbot\'s last words, then Hush\'s scene; rematches', () => {
+  const g = brand(sunscorch(), 'brand-of-iron');
+  assert.equal(afterDialogue(own(g, 'worldforge-hammer'), 'mother-anvil', 'victory'), 'anvil-after-hammer');
+  assert.equal(afterDialogue(own(g, 'worldforge-hammer', { shattered: true }), 'mother-anvil', 'victory'), 'anvil-after', 'a shattered hammer');
+  assert.equal(afterDialogue(enterDialogue(g, 'anvil-after').game, 'mother-anvil', 'victory'), 'anvil-again', 'a rematch is not a first win');
+  const f = story(brand(g, 'brand-of-frost'), { 'ironspire-complete': true });
+  assert.equal(afterDialogue(f, 'rime-abbot', 'victory'), 'abbot-after');
+  assert.ok(dialogueView(f, 'abbot-after').lines.some(l => l.name === 'Brother Aurel'), 'Brother Aurel speaks');
+  assert.equal(afterDialogue(enterDialogue(f, 'abbot-after').game, 'rime-abbot', 'victory'), 'abbot-again');
+  // one way on, down to Hush: Brother Kesh names it if you have met him, else the narrator does
+  const down = x => { const v = dialogueView(x, 'abbot-after').choices; assert.equal(v.length, 1); return choose(x, 'abbot-after', v[0].i).next; };
+  assert.equal(down(f), 'hush');
+  assert.equal(down(story(f, { 'met-kesh': true })), 'hush-kesh');
+  const by = (id, who) => dialogueView(f, id).lines.filter(l => l.speaker === who).map(l => l.text).join(' ');
+  assert.match(by('hush-kesh', 'kesh'), /Hush/);
+  assert.match(by('hush', 'narrator'), /Hush/);
+  for (const id of ['hush', 'hush-kesh']) assert.match(said(f, id), /slowing/);
+  // the Ladder: Mother Anvil's poster is settled once she falls; Harrow himself is still a rumour
+  const poster = (x, id) => ladder(x).find(p => p.id === id).state;
+  assert.equal(poster(beat(g, 'mother-anvil'), 'mother-anvil'), 'settled');
+  assert.equal(poster(beat(f, 'mother-anvil', 'rime-abbot'), 'missing-smith'), 'silhouette', 'Harrow is still missing');
+});
+
+test('Brother Kesh: Frostmere\'s history, and advice for each Champion in turn', () => {
+  let g = sunscorch();
+  assert.equal(talkTo(wear(g, 'windstep-boots'), 'kesh'), 'kesh', 'he notices nothing before you have met');
+  const t = talk(g, 'kesh');
+  assert.equal(t.id, 'kesh');
+  g = t.game;
+  assert.equal(talkTo(g, 'kesh'), 'kesh-again');
+  assert.equal(pick(g, 'kesh-again', /Frostmere/).next, 'kesh-lake');
+  const told = ['kesh-lake', 'kesh-aurel', 'kesh-spring'].map(id => said(g, id)).join(' ');
+  assert.match(told, /Hush/);
+  assert.match(told, /Aurel/);
+  assert.match(told, /Tallymen/);
+  const advice = x => dialogueView(x, 'kesh-again').choices.filter(c => /advice/.test(c.text));
+  assert.equal(advice(g).length, 1);
+  assert.equal(pick(g, 'kesh-again', /advice/).next, 'kesh-anvil');
+  const iron = brand(g, 'brand-of-iron');
+  assert.equal(advice(iron).length, 1);
+  assert.equal(pick(iron, 'kesh-again', /advice/).next, 'kesh-abbot');
+  const frost = brand(iron, 'brand-of-frost');
+  assert.equal(advice(frost).length, 0, 'nothing left to advise');
+  assert.equal(talkTo(frost, 'kesh'), 'kesh-frost');
+  assert.equal(talkTo(wear(g, 'windstep-boots'), 'kesh'), 'notice-kesh-boots');
+  assert.equal(talkTo(frost, 'novice'), 'novice-frost');
+});
+
+test('Captain Ysolde takes the Stormwatch bounties in; Durra and Quill sell; the Ironspire notices what you wear', () => {
+  const g = story(beat(sunscorch(), 'rp-wolves', 'roc-eyrie'), { 'met-ysolde': true });
+  assert.deepEqual(bounties(g).filter(b => b.giver === 'ysolde').map(b => b.state), ['ready', 'active', 'active', 'ready']);
+  const r = pick(g, talkTo(g, 'ysolde'), /Turn in bounties/);
+  assert.equal(r.next, 'ysolde-paid');
+  assert.equal(r.game.gold, g.gold + 90 + 160);
+  assert.deepEqual(bounties(r.game).filter(b => b.state === 'done').map(b => b.id), ['b-wolves', 'b-roc']);
+  assert.ok(!dialogueView(r.game, 'ysolde-again').choices.some(c => /Turn in/.test(c.text)), 'nothing left to turn in');
+  assert.equal(talkTo(sunscorch(), 'ysolde'), 'ysolde', 'the first meeting');
+  assert.equal(talkTo(g, 'ysolde'), 'ysolde-again');
+  assert.equal(talkTo(brand(g, 'brand-of-iron'), 'ysolde'), 'ysolde-gate', 'the north gate opens for the Brand of Iron');
+  assert.equal(talkTo(brand(g, 'brand-of-iron', 'brand-of-frost'), 'ysolde'), 'ysolde-home');
+  const a = sunscorch();
+  for (const [npc, d] of [['durra', 'durra'], ['quill', 'quill'], ['ih-guard', 'ih-guard'], ['novice', 'novice']]) assert.equal(talkTo(a, npc), d, npc);
+  assert.deepEqual(pick(a, 'durra', /Buy/).events, [{ t: 'open', screen: 'shop:durra' }]);
+  assert.deepEqual(pick(a, 'quill', /Buy/).events, [{ t: 'open', screen: 'shop:quill' }]);
+  const met = story(a, { 'met-wynn': true, 'met-kesh': true, 'met-brundar': true, 'met-rook': true, 'met-ysolde': true });
+  for (const [npc, relic, d] of [
+    ['wynn', 'drowned-censer', 'notice-wynn-censer'], ['wynn', 'rime-crozier', 'notice-wynn-crozier'], ['kesh', 'hushweave-cowl', 'notice-kesh-cowl'],
+    ['novice', 'veilbell', 'notice-novice-bell'], ['brundar', 'thanes-rune', 'notice-brundar-rune'], ['brundar', 'worldforge-hammer', 'notice-brundar-hammer'],
+    ['brundar', 'ironwall', 'notice-brundar-wall'], ['durra', 'worldforge-hammer', 'notice-durra-hammer'], ['durra', 'ironvein-bracers', 'notice-durra-bracers'],
+    ['durra', 'runestaff', 'notice-durra-staff'], ['ih-guard', 'ironwall', 'notice-ih-guard-wall'], ['rook', 'tallyknife', 'notice-rook-knife'],
+    ['ysolde', 'windstep-boots', 'notice-ysolde-boots'], ['ysolde', 'roc-feather-cloak', 'notice-ysolde-cloak'], ['quill', 'trollhide-mantle', 'notice-quill-mantle'],
+    ['hilda', 'anvil-heart', 'notice-hilda-heart'], ['hilda', 'runestaff', 'notice-hilda-runestaff'], ['hilda', 'ironvein-bracers', 'notice-hilda-bracers'],
+    ['isolde', 'thanes-rune', 'notice-isolde-rune'], ['fenwick', 'hushweave-cowl', 'notice-fenwick-cowl'],
+  ]) assert.equal(talkTo(wear(met, relic), npc), d, `${npc} notices ${relic}`);
+  // the Brands move the world on
+  assert.equal(talkTo(brand(a, 'brand-of-iron'), 'fenwick'), 'fenwick-five');
+  assert.equal(talkTo(brand(a, 'brand-of-iron'), 'durra'), 'durra-iron');
+  assert.equal(talkTo(brand(a, 'brand-of-iron'), 'ih-guard'), 'ih-guard-iron');
+  assert.equal(talkTo(brand(a, 'brand-of-iron', 'brand-of-frost'), 'quill'), 'quill-frost');
+  // Fawnrest's Brother Ivo, once the Highfold path is open (and only after he has told you of his bell)
+  assert.equal(talkTo(story(a, { 'highfold-open': true }), 'ivo'), 'ivo', 'Ivo\'s first meeting still comes first');
+  assert.equal(talkTo(story(a, { 'highfold-open': true, 'met-ivo': true }), 'ivo'), 'ivo-highfold');
 });

@@ -79,21 +79,59 @@ export function addUnitFrom(disp, state, id, labels) {
   return disp.units[id];
 }
 
+// A status event on a display unit. M5: `release` (a swallower lets go, a charm is broken by a friend's
+// hit) takes the status off like `remove`; an `add` keeps who applied it (`source`) and how a hold reads
+// (`label`) when the event carries them (the Player fills them in from the engine state).
 export function applyStatus(u, ev) {
   if (!u) return;
   const i = u.statuses.findIndex(s => s.id === ev.status);
   if (ev.op === 'add') {
     const st = { id: ev.status, stacks: ev.stacks || 1, turns: ev.turns ?? null, value: ev.value ?? null };
+    if (ev.source) st.source = ev.source;
+    if (ev.label) st.label = ev.label;
     if (i >= 0) u.statuses[i] = { ...u.statuses[i], ...st }; else u.statuses.push(st);
-  } else if (ev.op === 'remove' || (ev.op === 'trigger' && ev.stacks === 0)) {
+  } else if (ev.op === 'remove' || ev.op === 'release' || (ev.op === 'trigger' && ev.stacks === 0)) {
     if (i >= 0) u.statuses.splice(i, 1);
-  } else if (ev.op === 'tick' && i >= 0) {
+  } else if ((ev.op === 'tick' || ev.op === 'trigger') && i >= 0) {
     u.statuses[i] = { ...u.statuses[i], stacks: ev.stacks || u.statuses[i].stacks, turns: ev.turns ?? u.statuses[i].turns };
   }
 }
 
 export const statusName = id => STATUSES[id]?.name || id;
 export const harmful = id => !!STATUSES[id]?.harmful;
+
+// ---- M5 (spec §4.2, §5): holds, charms and burrows, read from a unit's statuses ------------------------
+// Pure, for the plates, the stage and the ribbon (node tests use them).
+
+// The status that holds a unit out of the line (swallowed), or null.
+export const heldStatus = u => (u?.statuses || []).find(s => STATUSES[s.id]?.held) || null;
+// A unit nothing can target (burrowed, swallowed): rules/ai.js targetable, from the display copy.
+export const untargetable = u => (u?.statuses || []).some(s => STATUSES[s.id]?.untargetable);
+export const isCharmed = u => (u?.statuses || []).some(s => STATUSES[s.id]?.charm);
+// A foe under the floor: untargetable, and not held by anyone (a foe that dives).
+export const isSunk = u => u?.side === 'foe' && untargetable(u) && !heldStatus(u);
+
+// How a hold reads on the hero's plate: { label: 'Held under', by: 'The Rime-Abbot', turns: 2, text }.
+// `label` is the status's own ("Held under", "Carried off", "Swallowed"; else the status name), `by` the
+// swallower's display name (nameOf(sourceId)), `turns` the turns left (null when unknown).
+export function holdInfo(u, nameOf = () => '') {
+  const st = heldStatus(u);
+  if (!st) return null;
+  const label = String(st.label || statusName(st.id));
+  const by = (st.source && nameOf(st.source)) || '';
+  const turns = Number.isFinite(st.turns) && st.turns > 0 ? st.turns : null;
+  const left = turns ? `${turns} ${turns === 1 ? 'turn' : 'turns'} left` : '';
+  return { id: st.id, label, by, turns, text: [by ? `${label} by ${by}` : label, left].filter(Boolean).join(', ') };
+}
+
+// What a status event lacks for the plate (the engine's `add` event names neither the source nor the
+// label): filled in from the unit's entry in the engine state the events lead to, when it is still there.
+export function withStatusSource(ev, state) {
+  if (ev?.t !== 'status' || ev.op !== 'add' || (ev.source && ev.label)) return ev;
+  const st = state?.units?.[ev.target]?.statuses?.find(s => s.id === ev.status);
+  if (!st || (!st.source && !st.label)) return ev;
+  return { ...ev, source: ev.source || st.source || null, label: ev.label || st.label || null };
+}
 
 export function pieceIndex(u, relic) {
   return (u?.held || []).findIndex(p => p.relic === relic || p.item?.base === relic);

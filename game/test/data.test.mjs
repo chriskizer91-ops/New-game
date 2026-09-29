@@ -58,10 +58,10 @@ test('every shared item kind has at least one base item', () => {
   for (const c of ['hearth-tonic', 'ember-salts', 'frost-draught']) assert.ok(CONSUMABLES[c]);
 });
 
-test('the twelve M2 relics match the shared vocabulary; M3 adds twelve heirlooms (codex 13-24), M4 fourteen more (25-38)', () => {
+test('the twelve M2 relics match the shared vocabulary; M3 adds twelve heirlooms (codex 13-24), M4 fourteen more (25-38), M5 fourteen more (39-52)', () => {
   for (const id of Object.keys(RELIC_TABLE)) assert.ok(RELICS[id], id);
-  assert.equal(Object.keys(RELICS).length, 38);
-  assert.deepEqual(Object.values(RELICS).map(r => r.codex).sort((a, b) => a - b), Array.from({ length: 38 }, (_, i) => i + 1));
+  assert.equal(Object.keys(RELICS).length, 52);
+  assert.deepEqual(Object.values(RELICS).map(r => r.codex).sort((a, b) => a - b), Array.from({ length: 52 }, (_, i) => i + 1));
   for (const r of Object.values(RELICS).filter(r => r.codex > 12 && r.codex <= 24)) {
     assert.equal(r.rarity, 'heirloom', r.id);
     assert.ok(r.power && r.mapPower, `${r.id} has a power and a map power`);
@@ -148,17 +148,17 @@ test('data tables are frozen', () => {
 
 // ---- M3 data (spec §3.2-§3.5, §6.1 WP4) ----------------------------------------------------------------
 
-test('M3 and M4 encounters: every one has a region, a valid backdrop, real families and real relics', async () => {
+test('M3, M4 and M5 encounters: every one has a region, a valid backdrop, real families and real relics', async () => {
   const { BRANDS, PATROLS } = await import('../src/data/encounters.js');
   const { REGIONS } = await import('../src/data/world.js');
   const { familyOf } = await import('../src/rules/foe.js');
   for (const [id, n] of Object.entries(ENCOUNTERS)) {
     assert.ok(BACKDROPS.includes(n.backdrop), `${id} backdrop`);
-    if (!GAUNTLET.includes(id)) assert.ok(n.region === 'verdant' || n.region === 'sunscorch', `${id} region`);
+    if (!GAUNTLET.includes(id)) assert.ok(['verdant', 'sunscorch', 'ironspire'].includes(n.region), `${id} region`);
     for (const s of n.spawns || []) {
-      if (s.variant && s.variant !== '$rival') assert.ok(FOES[s.family].variants?.[s.variant], `${id}: ${s.family}/${s.variant}`);
+      if (s.variant && !s.variant.startsWith('$rival')) assert.ok(FOES[s.family].variants?.[s.variant], `${id}: ${s.family}/${s.variant}`); // '$rival' or '$rival:<duel>' (M5)
       for (const r of [s.relic, s.wears]) if (r && r !== '$rival') assert.ok(RELICS[r], `${id}: relic ${r}`);
-      if (s.variant !== '$rival') assert.ok(familyOf(s).tier, `${id}: tier`);
+      if (!String(s.variant).startsWith('$rival')) assert.ok(familyOf(s).tier, `${id}: tier`);
     }
     if (n.brand) assert.ok(BRANDS[n.brand], `${id} brand`);
   }
@@ -339,11 +339,12 @@ test('M4 relics: Codex Nos. 25-38 follow the spec table, each with a signature p
   assert.equal(c.lore, 'Forged in Scorchgate to kill the dragon that burned it. It failed. It has been warm ever since.');
 });
 
-test('M4 relics: all 38 carry sockets (0-2), three deeds from DEED_IDS and two awakening branches with names and stats', async () => {
+test('M4 and M5 relics: all 52 carry sockets (0-2), three deeds from DEED_IDS and two awakening branches with names and stats', async () => {
   const { DEED_IDS } = await import('../src/data/deeds.js');
   const { POWERS, branchPowerId } = await import('../src/rules/stats.js');
   const STAT_KEYS = new Set([...Object.values(AFFIXES).map(a => a.stat), 'resist', 'STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA']);
-  const HAND_NAMED = ['hearthbrand', 'stillwater-lance', 'cairnmaul', 'cinderfang', 'thornwreath', 'briarfang', 'ichor-mask', 'first-seed', 'glass-carapace', 'ashen-aegis', 'cinder-crown'];
+  const HAND_NAMED = ['hearthbrand', 'stillwater-lance', 'cairnmaul', 'cinderfang', 'thornwreath', 'briarfang', 'ichor-mask', 'first-seed', 'glass-carapace', 'ashen-aegis', 'cinder-crown',
+    'anvil-heart', 'worldforge-hammer', 'rime-crozier', 'hushweave-cowl']; // M5: the Ironspire Champions' pieces
   const names = new Set();
   const statusRefs = [];
   const walk = effs => { for (const e of effs || []) { if (e.status) statusRefs.push(e.status); walk(e.riders); } };
@@ -377,7 +378,7 @@ test('M4 relics: all 38 carry sockets (0-2), three deeds from DEED_IDS and two a
     }
   }
   for (const s of statusRefs) assert.ok(STATUSES[s], s);
-  assert.equal(names.size, 76);
+  assert.equal(names.size, 104); // two named branches for each of the 52 relics
   // starters and Champion pieces carry two sockets; a key ring with no key has none
   for (const id of HAND_NAMED) assert.equal(RELICS[id].sockets, 2, id);
   assert.equal(RELICS['scorchgate-key'].sockets, 0);
@@ -432,5 +433,249 @@ test('M4 zones: the five Sunscorch patrol zones pick rabble-only sets, and a pat
     for (const set of PATROLS[z.sets]) for (const s of set) assert.equal(FOES[s.family].tier, 'rabble');
     const lvl = escalateSpawn({ ...PATROLS[z.sets][0][0], level: z.level }, 2, id).level;
     assert.ok(lvl >= 10 && lvl <= 17, `${id}: patrols at level ${lvl} on arrival`);
+  }
+});
+
+// ---- M5 data (spec §2.4, §2.6, §3.2-§3.5; P4) -----------------------------------------------------------
+
+// family -> [tier, kind, aspect]
+const IRON_FAMILIES = {
+  'rime-wolf': ['rabble', 'beast', 'frost'], brigand: ['rabble', undefined, null], rockling: ['rabble', 'construct', 'stone'],
+  'forge-spark': ['rabble', 'construct', 'ember'], 'iron-sentinel': ['veteran', 'construct', 'stone'], forgeborn: ['veteran', 'construct', 'ember'],
+  'peak-troll': ['veteran', 'beast', 'stone'], 'rime-wraith': ['veteran', 'undead', 'frost'], 'thunder-roc': ['relic-bearer', 'beast', 'storm'],
+  'mother-anvil': ['champion', 'construct', 'ember'], 'rime-abbot': ['champion', 'undead', 'frost'],
+};
+// variant -> [tier, its own art key, the relic its Art needs (null: none)]
+const IRON_VARIANTS = {
+  'brigand/warden': ['relic-bearer', 'rhune', 'windstep-boots'], 'iron-sentinel/captain': ['relic-bearer', 'sentinel-captain', 'ironwall'],
+  'forgeborn/bellows': ['veteran', 'bellows', null], 'forgeborn/journeyman': ['relic-bearer', 'journeyman', 'runestaff'],
+  'peak-troll/old-horn': ['relic-bearer', 'old-horn', 'trollhide-mantle'], 'rime-wraith/abbess': ['relic-bearer', 'drowned-abbess', 'drowned-censer'],
+  'rime-wraith/choir': ['veteran', 'choir-wraith', null], 'tallyman/ice-cutter': ['relic-bearer', 'cutter-chief', 'cutters-pick'],
+  'smuggler/sawyer': ['rabble', 'sawyer', null], 'brigand/sergeant': ['veteran', undefined, null], // the East Road's sergeant draws as a brigand
+};
+const movesWith = (moves, pred) => Object.values(moves).filter(m => m.effects.some(e => pred(e) || (e.riders || []).some(pred)));
+
+test('M5 foes: the Ironspire families are real (no scaffold stubs left), with the spec\'s tiers, kinds, aspects and their own art', async () => {
+  const { damageMult } = await import('../src/rules/combat.js');
+  assert.ok(Object.values(FOES).every(f => !f.stub), 'no stub family is left (spec §8)');
+  for (const [id, [tier, kind, aspect]] of Object.entries(IRON_FAMILIES)) {
+    const f = FOES[id];
+    assert.ok(f, id);
+    assert.equal(f.id, id);
+    assert.deepEqual([f.tier, f.kind, f.aspect], [tier, kind, aspect], `${id}: tier, kind, aspect`);
+    assert.equal(f.art, id, `${id} draws as itself`);
+    for (const k of ['hp', 'guard', 'atk', 'dmg', 'speed']) assert.ok(Number.isFinite(f[k]) && f[k] > 0, `${id}.${k}`);
+    for (const k of ['STR', 'DEX', 'CON', 'WIS']) assert.ok(Number.isFinite(f.saves[k]), `${id} saves ${k}`);
+    assert.ok(f.name && f.text.length > 30, `${id} has a name and flavour`);
+    for (const [mid, m] of Object.entries(f.moves)) assert.ok(m.name && m.text && m.effects.length, `${id}/${mid}`);
+    if (f.humanoid) {
+      assert.equal(f.gear.length, 4, `${id}: a gear row per gear tier`);
+      for (const row of f.gear) assert.ok(row.some(g => ITEMS[g.base].slot === 'weapon') && row.every(g => ITEMS[g.base]), `${id} gear`);
+    }
+  }
+  // what §3.2 says each one does
+  const unit = f => ({ side: 'foe', armor: f.armor, aspect: f.aspect, weak: f.weak || [], resist: f.resist || [], immune: [] });
+  assert.ok(movesWith(FOES['rime-wolf'].moves, e => e.status === 'chilled').length && FOES['rime-wolf'].speed >= 14, 'rime wolves are fast and their bite Chills');
+  assert.ok(Object.values(FOES.brigand.moves).some(m => m.when?.hpBelow && m.effects.some(e => e.type === 'escape')), 'brigands desert');
+  assert.equal(FOES.brigand.humanoid, true);
+  assert.ok(movesWith(FOES.rockling.moves, e => e.status === 'staggered').length, 'a rockling rolls into you (Staggered)');
+  for (const id of ['rockling', 'iron-sentinel']) assert.ok(damageMult(unit(FOES[id]), 'crush', null) > 1, `${id} is weak to crush`);
+  assert.ok(FOES['iron-sentinel'].guard >= 17, 'Iron Sentinels have a high Guard');
+  assert.ok(movesWith(FOES.forgeborn.moves, e => e.status === 'burning').length, 'the forgeborn set you Burning');
+  assert.ok(movesWith(FOES['peak-troll'].moves, e => e.status === 'regenerating').length, 'peak-trolls regenerate');
+  assert.ok(movesWith(FOES['rime-wraith'].moves, e => e.status === 'chilled').length, 'the drowned Chill');
+  assert.ok(movesWith(FOES['thunder-roc'].moves, e => e.status === 'swallowed' && e.label === 'Carried off').length, 'the Thunder-Roc carries a hero off');
+  for (const id of ['thunder-roc', 'mother-anvil', 'rime-abbot']) assert.equal(FOES[id].unique, true, id);
+  assert.deepEqual(FOES['thunder-roc'].relics, ['roc-feather-cloak']);
+});
+
+test('M5 variants: every Ironspire holder and Tallyman variant has its own look and uses its relic through requires/fallback', () => {
+  for (const [key, [tier, art, relic]] of Object.entries(IRON_VARIANTS)) {
+    const [fam, name] = key.split('/');
+    const v = FOES[fam].variants?.[name];
+    assert.ok(v && v.name && v.moves && v.table, `${key}: name, moves, table`);
+    assert.equal(v.tier || FOES[fam].tier, tier, `${key} tier`);
+    assert.equal(v.art, art, `${key} art`);
+    const arts = Object.values(v.moves).filter(m => m.requires);
+    if (!relic) { assert.equal(arts.length, 0, `${key} needs no relic`); continue; }
+    assert.ok(RELICS[relic], relic);
+    const own = arts.filter(m => m.requires === relic);
+    assert.ok(own.length, `${key} has an Art that needs ${relic}`);
+    for (const m of own) assert.ok(v.moves[m.fallback] && !v.moves[m.fallback].requires, `${key}: ${m.name} falls back to a plain move`);
+    // the Art sits on the d12's high faces, which the disarmed d8 cannot roll
+    const faces = v.table.filter(([, , mid]) => v.moves[mid].requires === relic).flatMap(([lo, hi]) => Array.from({ length: hi - lo + 1 }, (_, i) => lo + i));
+    assert.ok(faces.length && faces.every(n => n > 8), `${key}: the Art is on faces 9-12`);
+  }
+  // the Bellows blows sparks (at most two); the choir sings the note that Chills everyone
+  const blow = Object.values(FOES.forgeborn.variants.bellows.moves).flatMap(m => m.effects).find(e => e.type === 'summon');
+  assert.deepEqual([blow.family, blow.max], ['forge-spark', 2]);
+  assert.equal(FOES['forge-spark'].tier, 'rabble');
+  assert.ok(Object.values(FOES['rime-wraith'].variants.choir.moves).some(m => m.target === 'all-enemies' && m.effects.some(e => e.riders?.some(r => r.status === 'chilled'))));
+  // the earlier variants are untouched by M5's additions
+  for (const k of ['thief', 'signalmaster', 'counter', 'apothecary', 'foreman', 'quartermaster']) assert.ok(FOES.tallyman.variants[k], `tallyman/${k}`);
+  for (const k of ['queen', 'sharpshooter']) assert.ok(FOES.smuggler.variants[k], `smuggler/${k}`);
+});
+
+test('M5 Champions: Mother Anvil and the Rime-Abbot fight in the spec\'s three phases, and their Arts need their breakable pieces', () => {
+  const PIECES = { 'mother-anvil': ['worldforge-hammer', 'anvil-heart'], 'rime-abbot': ['rime-crozier', 'hushweave-cowl'] };
+  const NEEDS = {
+    'mother-anvil': { temper: 'anvil-heart', 'anvil-strike': 'worldforge-hammer', 'heart-flare': 'anvil-heart', 'worldforge-blow': 'worldforge-hammer' },
+    'rime-abbot': { 'rime-ward': 'rime-crozier', hushing: 'hushweave-cowl' },
+  };
+  // spec §3.5, phase by phase (each phase may also keep a plain blow on its low faces)
+  const PHASES = {
+    'mother-anvil': [['hammerfall', 'sparks', 'temper'], ['steam-burst', 'anvil-strike', 'bellows'], ['heart-flare', 'worldforge-blow']],
+    'rime-abbot': [['crozier-strike', 'toll', 'rime-ward'], ['drown', 'call-the-choir', 'hushing'], ['heartbeat', 'rime-nova', 'crozier-strike']],
+  };
+  for (const [id, pieces] of Object.entries(PIECES)) {
+    const f = FOES[id];
+    assert.deepEqual(f.relics, pieces);
+    assert.equal(f.noFlee, true);
+    assert.deepEqual(f.phases.map(p => p.at), [1, 0.66, 0.33]);
+    f.phases.forEach((ph, i) => {
+      assert.ok(ph.text.length > 10);
+      const faces = new Set();
+      for (const [lo, hi, mid] of ph.table) { assert.ok(f.moves[mid], mid); for (let n = lo; n <= hi; n++) faces.add(n); }
+      assert.equal(faces.size, 20, `${id}: every d20 face`);
+      const moves = ph.table.map(([, , m]) => m);
+      for (const m of PHASES[id][i]) assert.ok(moves.includes(m), `${id} phase ${i + 1} rolls ${m}`);
+    });
+    for (const [mid, relic] of Object.entries(NEEDS[id])) {
+      assert.equal(f.moves[mid].requires, relic, `${id}/${mid}`);
+      assert.ok(f.moves[f.moves[mid].fallback] && !f.moves[f.moves[mid].fallback].requires, `${id}/${mid} falls back`);
+    }
+    for (const r of pieces) assert.ok(Object.values(f.moves).some(m => m.requires === r), `${id}: ${r} powers something`);
+  }
+  const a = FOES['mother-anvil'];
+  assert.equal(a.moves['worldforge-blow'].charge, true);
+  assert.equal(a.moves['worldforge-blow'].target, 'enemy');
+  assert.deepEqual([a.armor, a.resist, a.weak], ['plate', ['crush'], ['frost']], 'crush-resistant plate, weak to frost');
+  const bellows = a.moves.bellows.effects.find(e => e.type === 'summon');
+  assert.deepEqual([bellows.family, bellows.max], ['forgeborn', 2]);
+  const r = FOES['rime-abbot'];
+  assert.equal(r.moves.drown.charge, true);
+  assert.ok(r.moves.drown.effects.some(e => e.riders?.some(x => x.status === 'swallowed' && x.label === 'Held under')), 'Drown holds a hero under the ice');
+  assert.ok(r.moves.hushing.effects.some(e => e.status === 'charmed' && e.save === 'WIS'), 'Hushing charms one hero');
+  const choir = r.moves['call-the-choir'].effects.find(e => e.type === 'summon');
+  assert.deepEqual([choir.family, choir.variant, choir.max], ['rime-wraith', 'choir', 2]);
+  assert.ok(r.moves.heartbeat.effects.some(e => e.type === 'heal' && e.self) && r.moves.heartbeat.effects.some(e => e.status === 'chilled'), 'Heartbeat heals the Abbot and Chills every hero');
+});
+
+test('M5 makes M4\'s approximations exact (spec §2.4): Kharzul burrows, the Sand Wyrm swallows, the wisps charm', () => {
+  const k = FOES.kharzul.moves;
+  assert.ok(k.burrow.effects.some(e => e.status === 'burrowed' && e.self), 'Kharzul goes under the floor');
+  assert.equal(k.burrow.then, 'erupt');
+  assert.ok(k.erupt && k.erupt.target !== 'self' && k.erupt.effects.some(e => e.type === 'attack'), 'and comes up under someone');
+  assert.ok(FOES.kharzul.phases[1].table.some(([, , m]) => m === 'burrow'), 'It Burrows in its second phase');
+  const swallow = FOES['sand-wyrm'].moves.swallow;
+  assert.equal(swallow.charge, true);
+  assert.ok(swallow.effects.some(e => e.riders?.some(x => x.status === 'swallowed')), 'the Sand Wyrm swallows you whole');
+  assert.ok(!swallow.effects.some(e => e.riders?.some(x => x.status === 'rooted')), 'no longer the Rooted stand-in');
+  for (const moves of [FOES['mirage-wisp'].moves, FOES['mirage-wisp'].variants.queen.moves]) {
+    assert.ok(moves.beguile.effects.some(e => e.status === 'charmed' && e.save === 'WIS'), 'Beguile charms (WIS save)');
+    assert.ok(!moves.beguile.effects.some(e => e.status === 'rooted'), 'no longer the Rooted stand-in');
+  }
+});
+
+// No. -> [id, slot, kind, aspect, map power]
+const IRON_RELICS = {
+  39: ['windstep-boots', 'feet', 'boots', 'storm', 'windstep'], 40: ['veilbell', 'amulet', 'amulet', 'frost', 'crack-the-ice'],
+  41: ['ironwall', 'offhand', 'shield', 'stone', 'iron-stance'], 42: ['drowned-censer', 'offhand', 'focus', 'frost', 'hymn-of-rest'],
+  43: ['ironvein-bracers', 'hands', 'gauntlets', 'ember', 'iron-grip'], 44: ['roc-feather-cloak', 'body', 'leather', 'storm', 'roc-glide'],
+  45: ['thanes-rune', 'ring', 'ring', 'stone', 'thanes-rune'], 46: ['trollhide-mantle', 'body', 'leather', 'stone', 'snowshoe'],
+  47: ['runestaff', 'weapon', 'staff', 'ember', 'rune-reading'], 48: ['anvil-heart', 'amulet', 'amulet', 'ember', 'forge-heat'],
+  49: ['worldforge-hammer', 'weapon', 'hammer', 'ember', 'anvil-strike'], 50: ['cutters-pick', 'weapon', 'axe', 'frost', 'ice-bridge'],
+  51: ['rime-crozier', 'weapon', 'staff', 'frost', 'rime-light'], 52: ['hushweave-cowl', 'head', 'hood', 'frost', 'hushwalk'],
+};
+// who holds each (spec §3.4): an encounter's spawn relic, a family's pieces, a worn relic, or a quest
+const IRON_HOLDERS = {
+  'windstep-boots': 'rp-brigands', ironwall: 'is-sentinels', 'drowned-censer': 'fm-shrine', 'ironvein-bracers': 'tamsin-ironhold',
+  'roc-feather-cloak': 'roc-eyrie', 'trollhide-mantle': 'troll-cave', runestaff: 'id-smith', 'anvil-heart': 'mother-anvil',
+  'worldforge-hammer': 'mother-anvil', 'cutters-pick': 'fr-cutters', 'rime-crozier': 'rime-abbot', 'hushweave-cowl': 'rime-abbot',
+};
+
+test('M5 relics: Codex Nos. 39-52 follow the spec table, each with a Legend Surge, lore, and a holder that carries it or a quest', async () => {
+  const { POWERS } = await import('../src/rules/stats.js');
+  const { LOCKS } = await import('../src/data/locks.js');
+  for (const [no, [id, slot, kind, aspect, power]] of Object.entries(IRON_RELICS)) {
+    const r = RELICS[id];
+    assert.ok(r, id);
+    assert.equal(r.codex, +no, id);
+    assert.deepEqual([r.slot, r.kind, r.aspect, r.rarity, r.mapPower.id], [slot, kind, aspect, 'heirloom', power], id);
+    assert.ok(r.power && POWERS[r.power.id] === r.power, `${id} has a Legend Surge the engine can fire`);
+    assert.ok(r.power.text && r.power.effects.length, id);
+    assert.ok(r.lore.length > 40 && r.holder, id);
+    assert.ok(Object.keys(r.stats).length, `${id} has stats`);
+    if (slot === 'weapon') assert.match(r.weapon.dice, /^\d+d\d+$/);
+    if (slot === 'body') assert.ok(r.armor?.base >= 12, `${id} is armour`);
+    // held ones have a grip meter and are held; the Veilbell and the Rune-Key are quest gifts; the bracers are worn
+    const enc = IRON_HOLDERS[id];
+    if (!enc) { assert.equal(r.grip, undefined, `${id} is a quest reward`); continue; }
+    const spawns = ENCOUNTERS[enc].spawns;
+    if (id === 'ironvein-bracers') { assert.ok(spawns.some(s => s.wears === id) && r.grip === undefined, 'Tamsin wears the Ironvein Bracers'); continue; }
+    assert.ok(r.grip >= 24, `${id} is held with a grip meter`);
+    assert.ok(spawns.some(s => s.relic === id || (!s.relic && FOES[s.family].relics?.includes(id))), `${enc} holds ${id}`);
+  }
+  // Nos. 39-52 hold the spec's lock keys (§2.7), where a map power opens a lock
+  for (const [lock, keys] of Object.entries({ chasm: ['windstep', 'roc-glide'], ice: ['forge-heat', 'crack-the-ice'], 'rune-seal': ['thanes-rune', 'rune-reading'], drift: ['snowshoe', 'hushwalk'], boulder: ['anvil-strike', 'iron-grip'], darkness: ['rime-light'], 'cold-hearth': ['forge-heat'], stream: ['ice-bridge'] })) {
+    for (const k of keys) assert.ok(LOCKS[lock]?.powers.includes(k), `${lock} opens with ${k}`);
+  }
+  // the Champions' pieces are hand-named, with two sockets (the all-relics test checks the names)
+  for (const id of ['anvil-heart', 'worldforge-hammer', 'rime-crozier', 'hushweave-cowl']) assert.equal(RELICS[id].sockets, 2, id);
+  assert.match(RELICS['worldforge-hammer'].lore, /Harrow/, 'the Worldforge Hammer is Harrow\'s');
+});
+
+test('M5 encounters: the nineteen Ironspire fights (and the East Road\'s three) hold the spec\'s spawns and holders, and the Waking climbs them from Waking 4', async () => {
+  const { BRANDS, PATROLS } = await import('../src/data/encounters.js');
+  const { escalateSpawn, familyOf } = await import('../src/rules/foe.js');
+  const SPEC = {
+    'er-wolves': ['rime-wolf', 'rime-wolf', 'rime-wolf'], 'er-toll': ['brigand', 'brigand', 'brigand'], 'er-camp': ['brigand/sergeant', 'brigand', 'brigand'], // the East Road
+    'rp-brigands': ['brigand/warden:windstep-boots', 'brigand', 'brigand'], 'rp-rocklings': ['rockling', 'rockling', 'rockling', 'rockling'],
+    'rp-wolves': ['rime-wolf', 'rime-wolf', 'rime-wolf'], 'hf-trolls': ['peak-troll', 'peak-troll'], 'roc-eyrie': ['thunder-roc'],
+    'is-sentinels': ['iron-sentinel/captain:ironwall', 'iron-sentinel', 'iron-sentinel'], 'is-trolls': ['peak-troll', 'rockling', 'rockling'],
+    'troll-cave': ['peak-troll/old-horn:trollhide-mantle', 'peak-troll'], 'tamsin-ironhold': ['tamsin/$rival:ironhold:$rival'],
+    'id-forgeborn': ['forgeborn', 'forgeborn', 'forgeborn'], 'id-bellows': ['forgeborn/bellows', 'forgeborn', 'forgeborn'],
+    'id-smith': ['forgeborn/journeyman:runestaff', 'forgeborn'], 'mother-anvil': ['mother-anvil'],
+    'fr-cutters': ['tallyman/ice-cutter:cutters-pick', 'smuggler/sawyer', 'smuggler/sawyer'], 'fr-wolves': ['rime-wolf', 'rime-wolf', 'rime-wolf', 'rime-wolf'],
+    'fm-wraiths': ['rime-wraith', 'rime-wraith', 'rime-wraith'], 'fm-shrine': ['rime-wraith/abbess:drowned-censer', 'rime-wraith/choir', 'rime-wraith/choir'],
+    'fb-choir': ['rime-wraith/choir', 'rime-wraith/choir', 'rime-wraith/choir'], 'rime-abbot': ['rime-abbot'],
+  };
+  // the Frost half is met after the Brand of Iron (Waking 5), the rest on arrival (Waking 4)
+  const FROST = new Set(['fr-cutters', 'fr-wolves', 'fm-wraiths', 'fm-shrine', 'fb-choir', 'rime-abbot']);
+  const iron = Object.values(ENCOUNTERS).filter(e => e.region === 'ironspire' && e.type === 'fight').map(e => e.id).sort();
+  assert.deepEqual(iron, Object.keys(SPEC).sort());
+  for (const [id, want] of Object.entries(SPEC)) {
+    const got = ENCOUNTERS[id].spawns.map(s => `${s.family}${s.variant ? `/${s.variant}` : ''}${s.relic ? `:${s.relic}` : ''}`);
+    assert.deepEqual(got, want, id);
+    for (const s of ENCOUNTERS[id].spawns) {
+      if (s.level === 'party') continue;
+      assert.ok(Number.isInteger(s.level) && s.level >= 1, `${id}: a Waking-0 level of at least 1`);
+      const w = FROST.has(id) ? 5 : 4;
+      const lvl = escalateSpawn(s, w, id).level;
+      if (familyOf(s).tier === 'rabble') {
+        assert.equal(s.wakeLevels, undefined, `${id}: rabble climb the usual 2 a Waking`);
+        assert.ok(lvl >= 18 && lvl <= 28, `${id}: rabble at level ${lvl} at Waking ${w}`);
+        continue;
+      }
+      // every Ironspire foe that is not rabble climbs 4 levels a Waking (IRON), and is met near the party's level
+      assert.equal(s.wakeLevels, 4, `${id}: an IRON spawn`);
+      assert.ok(lvl >= 18 && lvl <= 30 && escalateSpawn(s, w + 1, id).level === lvl + 4, `${id}: level ${lvl} at Waking ${w}`);
+    }
+  }
+  assert.equal(ENCOUNTERS['mother-anvil'].brand, 'brand-of-iron');
+  assert.equal(ENCOUNTERS['rime-abbot'].brand, 'brand-of-frost');
+  assert.ok(BRANDS['brand-of-iron'] && BRANDS['brand-of-frost']);
+  for (const id of ['id-forgeborn', 'id-bellows', 'id-smith', 'fb-choir', 'rime-abbot']) assert.equal(ENCOUNTERS[id].dark, true, `${id} is fought in the dark`);
+  for (const id of ['mother-anvil', 'fm-wraiths', 'fm-shrine', 'rp-brigands']) assert.ok(!ENCOUNTERS[id].dark, `${id} is not dark`);
+  const t = ENCOUNTERS['tamsin-ironhold'];
+  assert.deepEqual([t.once, t.duel, t.yields, t.talk], [true, true, 'tamsin-yielded-3', 'tamsin-ironhold']);
+  assert.deepEqual(Object.fromEntries(['partyDelta', 'gearTier', 'lend', 'noWaking', 'wears', 'variant', 'relic'].map(k => [k, t.spawns[0][k]])),
+    { partyDelta: 4, gearTier: 4, lend: true, noWaking: true, wears: 'ironvein-bracers', variant: '$rival:ironhold', relic: '$rival' });
+  // the Ironspire patrol sets (spec §2.6): rabble only, of the families the spec names
+  const SETS = { 'rockslide-pass': ['rime-wolf', 'brigand'], highfold: ['rime-wolf', 'rockling'], 'iron-stair': ['rockling', 'brigand'], deeps: ['rockling', 'forge-spark'], 'frost-road': ['rime-wolf', 'brigand'], frostmere: ['rime-wolf', 'rockling'] };
+  for (const [k, fams] of Object.entries(SETS)) {
+    const got = new Set(PATROLS[k].flat().map(s => s.family));
+    assert.deepEqual([...got].sort(), [...fams].sort(), `${k} patrols`);
+    for (const s of PATROLS[k].flat()) assert.equal(FOES[s.family].tier, 'rabble');
   }
 });

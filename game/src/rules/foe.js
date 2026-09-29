@@ -6,6 +6,7 @@ import { RELICS } from '../data/relics.js';
 import { OMENS, OMEN_IDS } from '../data/omens.js';
 import { TUNING } from '../data/tuning.js';
 import { RARITY_ORDER } from '../data/rarity.js';
+import { withKit } from '../data/rivals.js';
 import { createRng } from '../core/rng.js';
 
 // Visible gear rarity by gear tier: rags, then wrought, tempered, runed.
@@ -15,7 +16,7 @@ export function familyOf(spawn) {
   const fam = FOES[spawn.family];
   if (!fam) throw new Error(`Unknown foe family: ${spawn.family}`);
   const v = spawn.variant && fam.variants?.[spawn.variant];
-  return v ? { ...fam, ...v } : fam;
+  return withKit(v ? { ...fam, ...v } : fam, spawn.variant, spawn.kit); // M5: Tamsin's kit for the duel
 }
 
 // Deterministically add `n` Omens the spawn does not already have (some Omens are not
@@ -126,7 +127,7 @@ export function buildFoe(spawn, { id, seq = 0, name } = {}) {
     weapon: weaponBase ? { dice: ITEMS[weaponBase.base].dice, dmg: ITEMS[weaponBase.base].dmg } : null,
     xp: Math.round(TUNING.xp.tier[fam.tier] * L * rewards),
     gold: Math.round(TUNING.gold.tier[fam.tier] * L * rewards),
-    grudge: spawn.grudge || null, wears: spawn.wears || null,
+    grudge: spawn.grudge || null, wears: spawn.wears || null, ...(spawn.kit ? { kit: spawn.kit } : {}),
     summonedBy: spawn.summonedBy || null, noLoot: !!spawn.noLoot, spawnIndex: spawn.spawnIndex ?? null,
   };
 }

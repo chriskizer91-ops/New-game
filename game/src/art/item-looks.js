@@ -1,6 +1,7 @@
 // Item looks for the battle layer.
 //  - RARITY_LOOK / ASPECT_LOOK: shared styling tables (colours, frame materials, glow materials).
-//  - RELIC_ART: hand-made recipe params for the 24 named relics (RELIC_IDS in codex order).
+//  - RELIC_ART: hand-made recipe params for every named relic (RELIC_IDS in codex order: the 24 of M2-M3, the 14 of
+//    the Sunscorch and the 14 of the Ironspire, M5's through new recipe styles that older relics never reach).
 //  - itemArt(item): deterministic recipe params for ANY rolled item from { kind, rarity, aspect, seed }.
 //  - itemPortrait / itemIcon / cardCorner: the card portrait (prototype treatment) and bag icon.
 //  - lookFor / gearLooks: turn item art into the layer "looks" the hero sprite draws, so the
@@ -12,6 +13,8 @@
 //    faint ember rim, an Awakened one (item.awakened 'a' | 'b') a repaint in its branch's palette and ember
 //    motes. All of it is material variants and recipe params, so the card, the bag icon, the hero sprite and
 //    the walkers agree. An item with temper 0-3, no gems set and no deeds renders exactly as in M3.
+//  - M5: the Frost Opal's gem ramp (gem.frost-opal), and the Ironspire relics' textures (rime on the bell, tarnish on
+//    the censer, an iron haft, forge scale).
 import { MAT, hx, hsl, bayer, hash, vnoise, compose, Forge, Xf, mix, ramp } from './forge.js';
 import { RECIPE, renderItem, TX, TX2, mailTex, scaleTex } from './recipes.js';
 import { rimeTex } from './item-art.js';
@@ -55,7 +58,7 @@ export const ASPECT_LOOK = Object.freeze({
 const TIER_GLOW = [null, null, null, 'frost', 'arcane', 'radiant', 'water', 'primal'];
 
 /* ==== M4 gems (data/gems.js): a material per gem, cut from its colour. GEM_MAT[gemId] -> MAT name ==== */
-const GEM_RAMP = { sunstone: '#2a0e02 #6e2a06 #b8560e #f08c1c #ffc45a #fff2c4', 'moss-agate': '#08140a #16301a #2a5230 #4a8a48 #8cc47a #dcf4c8', 'glass-pearl': '#1e2632 #465468 #7c90aa #b4cce4 #dcecfc #ffffff', 'ash-garnet': '#1a0406 #420a0e #7a1416 #b3261e #e0604a #ffc8b0' };
+const GEM_RAMP = { 'frost-opal': '#0c1a38 #1e4a7c #3c8cbc #86cce2 #dcd4f4 #fff6fe', sunstone: '#2a0e02 #6e2a06 #b8560e #f08c1c #ffc45a #fff2c4', 'moss-agate': '#08140a #16301a #2a5230 #4a8a48 #8cc47a #dcf4c8', 'glass-pearl': '#1e2632 #465468 #7c90aa #b4cce4 #dcecfc #ffffff', 'ash-garnet': '#1a0406 #420a0e #7a1416 #b3261e #e0604a #ffc8b0' };
 export const GEM_MAT = {};
 for (const id of Object.keys(GEMS)) {
   const key = 'gem.' + id;
@@ -110,6 +113,11 @@ const cinderVeins = TX2.cracks(131, 'ember', .026);
 const glassFused = q => TX2.cracks(53, 'amber', .03)(q) || TX2.granite(19)(q);
 const saltCrust = ({ x, y }) => (hash(x, y, 71) < .14 ? { m: 'clothWhite', dd: 1 } : vnoise(x * .4, y * .4, 73) > .72 ? -1 : 0);
 const ashFlecks = ({ x, y }) => (hash(x, y, 29) < .14 ? { m: 'ash', dd: 0 } : 0);
+// textures for the M5 relics
+const bellRime = q => rimeTex(q) || bellPatina(q);
+const censerTarnish = ({ x, y, nx, ny }) => (vnoise(x * .45, y * .45, 143) > .64 && (nx + ny) > -.1 ? { m: 'verdigris', dd: 0 } : hash(x, y, 144) < .05 ? -1 : 0);
+const ironHaft = ({ u }) => (Math.floor(u / 3.2) % 2 ? -.5 : 0);
+const forgeScale = ({ x, y }) => (hash(x, y, 141) < .07 ? -1 : vnoise(x * .4, y * .4, 142) > .76 ? { m: 'char', dd: 1 } : 0);
 export const RELIC_ART = Object.freeze({
   hearthbrand: { r: 'sword', relic: true, fx: 'rise', aspect: 'ember', p: { heat: 1, gripEnd: 15.5, guardT: 4.2, bladeW: 4.2, bladeL: 50, tipL: 9, taper: .86, blade: 'steel', bladeTex: emberVeins, fuller: 'ember', fullerR: 1.15, guard: 'flame', guardMat: 'gold', gem: 'ruby', grip: 'leatherRed', gripR: 2.15, pommel: 'gold', pommelR: 3.6, pommelGem: 'ember' } },
   'stillwater-lance': { r: 'spear', relic: true, fx: 'fall', aspect: 'frost', p: { headT: 58, headL: 24, headW: 4.6, wings: 2.6, haft: 'bone', butt: 'silver', wrap: 'clothBlue', wrapA: 25, wrapB: 37, bands: [21, 40, 51], bandMat: 'silver', socket: 'silver', head: 'steel', headTex: rimeTex, fuller: 'frost', gem: 'sapphire', ribbon: 'clothBlue', haftR: 1.8 } },
@@ -165,6 +173,38 @@ export const RELIC_ART = Object.freeze({
   'cinder-crown': { r: 'crown', relic: true, fx: 'rise', aspect: 'ember', p: { style: 'regal', metal: 'blackiron', tines: 7, tall: true, gem: 'ember', gem2: 'ruby', embers: 'ember', tex: ashFlecks } },
   // cut from a glassed dune, crusted with salt, strung to sing
   saltglass: { r: 'bow', relic: true, fx: 'spark', aspect: 'storm', p: { len: 62, bulge: 10, limbR: 3.1, tipR: 1.4, limb: 'glass', limbTex: saltCrust, nock: 'silver', grip: 'clothIndigo', bindings: [.3, .7], bindMat: 'silver', gem: 'stormglass', gemMat: 'silver', tassel: 'clothWhite', spark: 'storm' } },
+  // ---- M5: Codex Page III, the Ironspire Peaks (codex 39-52) ----
+  // a monk's felt boots, bound in white wraps, little silver wings at the ankle and the wind stitched up the shaft
+  'windstep-boots': { r: 'boots', relic: true, fx: 'spark', aspect: 'storm', p: { mat: 'clothSlate', tex: TX2.folds(17), trim: 'clothBlue', fold: true, wraps: 'clothWhite', sole: 'leatherDark', buckle: 'silver', gem: 'stormglass', wings: 'clothWhite', wingRoot: 'silver', swirl: 'storm' } },
+  // a hand-bell cast from the metal of the great bell's first crack: the crack glows with cold, rime on its shoulders
+  veilbell: { r: 'amulet', relic: true, fx: 'fall', aspect: 'frost', p: { style: 'bell', chain: 'silver', metal: 'bronze', tex: bellRime, trim: 'silver', clapper: 'silver', glow: 'frost', crack: 'frost', gem: 'sapphire' } },
+  // a dwarf door-shield cut down to carry: black iron planks, bronze strap hinges, runes round the arch, a door-ring
+  ironwall: { r: 'shield', relic: true, fx: 'dust', aspect: 'stone', p: { style: 'door', shape: 'tower', face: 'blackiron', rim: 'iron', hinge: 'bronze', rivets: 'iron', boss: 'bronze', ringMat: 'iron', runes: 'amber', gem: 'topaz' } },
+  // a thurible on three chains, tarnished silver pierced for the smoke; a cold light inside, and the smoke always wet
+  'drowned-censer': { r: 'focus', relic: true, fx: 'fall', aspect: 'frost', p: { style: 'censer', metal: 'silver', tex: censerTarnish, trim: 'bronze', glow: 'frost', smoke: 'mist', drips: 'water', gem: 'sapphire' } },
+  // black iron bracers with live fire in the veins of the metal, bronze at the knuckles; small at the wrist
+  'ironvein-bracers': { r: 'gauntlets', relic: true, fx: 'rise', aspect: 'ember', p: { mat: 'blackiron', plate: 1, cuffMat: 'blackiron', veins: 'ember', trim: 'bronze', cuffBand: 'bronze', knuckles: 'bronze', cuffGem: 'ruby', cuffSet: 'bronze' } },
+  // three feathers of the Thunder-Roc for a cloak, their edges lit with storm, clasped in silver at the throat
+  'roc-feather-cloak': { r: 'leather', relic: true, fx: 'spark', aspect: 'storm', p: { style: 'feathers', feather: 'rocFeather', quill: 'pearl', edge: 'storm', mat: 'leatherDark', shirt: 'clothSlate', pauldrons: 'rocFeather', trim: 'silver', belt: 'leather', buckle: 'silver', clasp: 'silver', gem: 'stormglass' } },
+  // a ring of black iron with a key's bit standing off it, the Thane's rune cut in its bezel
+  'thanes-rune': { r: 'ring', relic: true, fx: 'dust', aspect: 'stone', p: { style: 'key', metal: 'blackiron', face: 'granite', runes: 'amber', gem: 'topaz' } },
+  // the hides of the trolls who argued with Old Horn, stitched into a mantle; lichen still grows on it; a horn clasp
+  'trollhide-mantle': { r: 'leather', relic: true, fx: 'dust', aspect: 'stone', p: { style: 'mantle', mat: 'trollHide', mat2: 'grizzle', stitch: 'leatherDark', moss: 'lichen', horn: 'bone', clasp: 'iron', shirt: 'leatherDark', belt: 'leather', pauldrons: 'trollHide', trim: 'bone', gem: 'topaz' } },
+  // Harrow cut the runes in the black iron haft; the rune-stone at its head burns in a forged cradle
+  runestaff: { r: 'staff', relic: true, fx: 'rise', aspect: 'ember', p: { style: 'rune', headT: 58, haft: 'blackiron', haftR: 2.2, wobble: 0, haftTex: ironHaft, foot: 'bronze', bands: [24.2, 39.8], bandMat: 'bronze', metal: 'blackiron', stone: 'granite', glow: 'ember', runes: 'ember', gem: 'ruby' } },
+  // Harrow set it in her ribs so she would never go cold: a heart of forge-coal in a cage of black iron ribs
+  'anvil-heart': { r: 'amulet', relic: true, fx: 'rise', aspect: 'ember', p: { style: 'ribs', chain: 'blackiron', metal: 'blackiron', tex: forgeScale, stone: 'ruby', core: 'ember', gem: 'ember' } },
+  // Harrow Ironvein's own hammer: a smith's head in black iron with a cross-peen, a seam of forge-heat in it that never
+  // cooled, his broken ring on the cheek, bronze bands on a bog-oak haft
+  'worldforge-hammer': { r: 'hammer', relic: true, fx: 'rise', aspect: 'ember', k: .4, p: { headT: 52, headH: 14, headW: 16.5, peen: 1, haft: 'bogwood', haftR: 2.6, wrap: 'leatherDark', wrapEnd: 18, bands: [24, 34], bandMat: 'bronze', headMat: 'blackiron', headTex: forgeScale, pommelMat: 'bronze', pommelR: 3.3, faces: 1, langets: 1, seam: 'ember', mark: 'gold', spike: 0 } },
+  // a Tallyman ice-pick: a long curved pick and a chisel-adze, rime on the steel, a tally cut into the haft
+  'cutters-pick': { r: 'axe', relic: true, fx: 'fall', aspect: 'frost', p: { pick: 1, headT: 47, pickL: 23, haft: 'wood', haftR: 2.2, wrap: 'clothGrey', wrapEnd: 15, bands: [], blade: 'steel', bladeTex: rimeTex, edge: 'frost', socket: 'blackiron', tally: 'frost', rime: 'rime', gem: 'sapphire', pommel: 'blackiron' } },
+  // Brother Aurel's crozier, frozen to his hand for thirty years: a silver crook curled into a volute and cased in old
+  // ice, a cold light hanging in the curl
+  'rime-crozier': { r: 'staff', relic: true, fx: 'fall', aspect: 'frost', p: { style: 'crozier', headT: 56, haft: 'silver', haftR: 2, wobble: 0, haftTex: rimeTex, foot: 'silver', bands: [], metal: 'silver', tex: rimeTex, ice: 'ice', orb: 'frost', gem: 'sapphire' } },
+  // a deep cowl woven from something that was not wool, under the ice, by someone who was listening: threads of cold
+  // light in the weave, a spiral stitched on the brow
+  'hushweave-cowl': { r: 'hood', relic: true, fx: 'fall', aspect: 'frost', p: { look: 'hood', mat: 'hushweave', tex: TX2.folds(29), weave: 'frost', spiral: 'silver', trim: 'silver', clasp: 'silver', gem: 'pearl', tip: 0 } },
 });
 export const RELIC_IDS = Object.keys(RELIC_ART);
 

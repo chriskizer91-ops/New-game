@@ -8,6 +8,9 @@
 // Modules in ../battle/: stage (canvas), party (hero strip + cards), hud (plates, intents, ribbon,
 // floating numbers), tray (dice), menu (commands, targeting, Analyze), player (event animation),
 // model (display state), log, slam (Legend Surge and HELD BY fallbacks), sprites (art caching).
+// M5 (spec §4.2, §5): the engine keeps a held (swallowed) hero and a burrowed foe out of every target
+// list; the screen shows why a tap on one does nothing, keeps a burrowed foe sunk into the floor after
+// every sync, and gives the hero cards the swallower's name for their "Held under" badge.
 import '../battle.css';
 import { current, act, foeTurn, outcome, commands, targets, timeline, inspect } from '../../rules/battle.js';
 import { autoCommand } from '../../rules/autoplay.js';
@@ -19,7 +22,7 @@ import { Hud } from '../battle/hud.js';
 import { Tray } from '../battle/tray.js';
 import { CommandInput, inspectSheet } from '../battle/menu.js';
 import { Player, intentTarget } from '../battle/player.js';
-import { Labels, makeDisp, syncDisp } from '../battle/model.js';
+import { Labels, makeDisp, syncDisp, isSunk, holdInfo, untargetable } from '../battle/model.js';
 import { runJobs, foeLook } from '../battle/sprites.js';
 import { familyData } from '../../rules/ai.js';
 import { heldByPreview, pieceItem } from '../battle/slam.js';
@@ -97,7 +100,7 @@ export function mount(root, ctx, { battle, returnTo = 'world', auto: startAuto =
   const hud = new Hud({ stageHost, ribbonHost, onFoe: id => tapUnit(id), onGrip: (id, i) => tapGrip(id, i) });
   hud.targetText = (u, it) => intentTarget(u, it, nameOf);
   const heroes = disp.order.map(id => disp.units[id]).filter(u => u.side === 'hero');
-  const party = new Party(partyHost, heroes, { game: ctx.game, reduced, onTap: id => tapUnit(id) });
+  const party = new Party(partyHost, heroes, { game: ctx.game, reduced, onTap: id => tapUnit(id), nameOf });
   const tray = new Tray(body);
   const input = new CommandInput({ root: dock, cmds: cmdsEl, sub: subEl, aim: aimEl }, {
     sfx,
@@ -147,6 +150,7 @@ export function mount(root, ctx, { battle, returnTo = 'world', auto: startAuto =
     else {
       hud.update(u);
       stage.setLook(id, u);
+      stage.sink(id, isSunk(u) && !u.ko && !u.gone); // M5: a burrowed foe stays under the floor
       prewarmNext(u);
       const v = stage.foes.get(id);
       if (v && !v.removed) hud.place(id, stage.geom(id));
@@ -364,7 +368,18 @@ export function mount(root, ctx, { battle, returnTo = 'world', auto: startAuto =
 
   function tapUnit(id) {
     if (playing) return;
-    if (input.mode === 'target') { input.pick(id); return; }
+    if (input.mode === 'target') {
+      // M5: a burrowed foe or a held hero is out of reach; say so rather than only buzz
+      const u = disp.units[id];
+      if (u && !u.ko && untargetable(u)) {
+        const held = holdInfo(u, nameOf);
+        sfx('back');
+        caption(held ? `${u.label} is ${held.label.toLowerCase()}${held.by ? ` by ${held.by}` : ''}: out of reach until freed.` : `${u.label} is under the floor: it cannot be targeted until it comes up.`, 'warn');
+        return;
+      }
+      input.pick(id);
+      return;
+    }
     openInspect(id);
   }
   function tapGrip(id, i) {

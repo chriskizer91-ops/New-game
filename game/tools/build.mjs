@@ -10,8 +10,10 @@
 //
 // The bundle is an IIFE, whitespace-minified (esbuild minifyWhitespace: identifiers and structure
 // are kept), so the delivered file's format never changes between builds.
-// Size rule (M4 spec A3, raised from M3's A8 for a second region), on the full document: warn above
-// 1.8 MB, fail above 2.2 MB.
+// Size rule (M5 spec A6, raised from M4's A3 for a third region): the game (the full document without
+// the player's paintings) warns above 2.5 MB and fails above 3.2 MB; the paintings (src/ui/assets/paint/
+// and cuts/, M5 spec A10) fail above 8 MB of their own, which keeps the file well under the 16 MB a page
+// holds.
 // Owner: WP8.
 import { build } from 'esbuild';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
@@ -23,8 +25,8 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const argv = process.argv.slice(2);
 const outArg = argv.find(a => a.startsWith('--out='))?.slice(6) ?? (argv.includes('--out') ? argv[argv.indexOf('--out') + 1] : null);
 const out = outArg ? path.resolve(outArg) : path.join(root, 'dist');
-const DELIVERY = 'aethermoor-m4.5.html';
-const FROZEN = ['aethermoor-m2.html', 'aethermoor-m3.html', 'aethermoor-m4.html'];
+const DELIVERY = 'aethermoor-m5.html';
+const FROZEN = ['aethermoor-m2.html', 'aethermoor-m3.html', 'aethermoor-m4.html', 'aethermoor-m4.5.html'];
 if (FROZEN.includes(DELIVERY)) throw new Error(`${DELIVERY} is an earlier milestone's frozen file`);
 
 const tpl = await readFile(path.join(root, 'src/index.html'), 'utf8');
@@ -43,7 +45,13 @@ async function bundle(minifyAll) {
     minifyWhitespace: true,
     legalComments: 'none',
     loader: { '.png': 'dataurl', '.webp': 'dataurl' },
+    metafile: true,
   });
+  // what the player's paintings add to the output
+  let painted = 0;
+  for (const o of Object.values(result.metafile.outputs)) {
+    for (const [file, v] of Object.entries(o.inputs)) if (/src\/ui\/assets\/(paint|cuts)\//.test(file.split(path.sep).join('/'))) painted += v.bytesInOutput;
+  }
   let js = '', css = '';
   for (const f of result.outputFiles) {
     if (f.path.endsWith('.js')) js += f.text;
@@ -56,15 +64,20 @@ async function bundle(minifyAll) {
   const full = '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
     + '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'
     + fill(head) + '</head>\n<body>\n' + fill(body) + '</body>\n</html>\n';
-  return { full, fragment, bytes: Buffer.byteLength(full) };
+  return { full, fragment, bytes: Buffer.byteLength(full), painted };
 }
 
-const WARN = 1.8 * 1024 * 1024, FAIL = 2.2 * 1024 * 1024;
+const WARN = 2.5 * 1024 * 1024, FAIL = 3.2 * 1024 * 1024, PAINT_FAIL = 8 * 1024 * 1024;
 const kb = n => (n / 1024).toFixed(0) + ' KB';
 const fullMinify = argv.includes('--minify');
-const { full, fragment, bytes } = await bundle(fullMinify);
-if (bytes > FAIL) {
-  console.error(`build FAILED: ${kb(bytes)} is over the 2.2 MB limit (M4 spec A3)`);
+const { full, fragment, bytes, painted } = await bundle(fullMinify);
+const game = bytes - painted;
+if (game > FAIL) {
+  console.error(`build FAILED: the game is ${kb(game)} (${kb(bytes)} with the paintings), over the 3.2 MB limit (M5 spec A6)`);
+  process.exit(1);
+}
+if (painted > PAINT_FAIL) {
+  console.error(`build FAILED: the paintings are ${kb(painted)}, over their 8 MB limit (M5 spec A6)`);
   process.exit(1);
 }
 await mkdir(out, { recursive: true });
@@ -72,5 +85,5 @@ const rel = f => path.relative(process.cwd(), path.join(out, f)) || f;
 await writeFile(path.join(out, 'aethermoor.html'), full);
 await writeFile(path.join(out, 'aethermoor.artifact.html'), fragment);
 await writeFile(path.join(out, DELIVERY), full);
-console.log(`built ${rel('aethermoor.html')} (${kb(bytes)}${fullMinify ? ', fully minified' : ''}), ${rel('aethermoor.artifact.html')} (${kb(Buffer.byteLength(fragment))}), ${rel(DELIVERY)}`);
-if (bytes > WARN) console.warn(`build WARNING: ${kb(bytes)} is over 1.8 MB (M4 spec A3 warns here; fails above 2.2 MB)`);
+console.log(`built ${rel('aethermoor.html')} (${kb(bytes)}: the game ${kb(game)}, the paintings ${kb(painted)}${fullMinify ? ', fully minified' : ''}), ${rel('aethermoor.artifact.html')} (${kb(Buffer.byteLength(fragment))}), ${rel(DELIVERY)}`);
+if (game > WARN) console.warn(`build WARNING: the game is ${kb(game)}, over 2.5 MB (M5 spec A6 warns here; fails above 3.2 MB)`);

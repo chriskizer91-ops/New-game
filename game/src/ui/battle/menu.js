@@ -294,8 +294,10 @@ export function inspectSheet(root, info, extra, { sfx, onRelic }) {
       parts.push(sec('Intent', ...rows));
     }
     if (info.statuses.length) {
+      // M5: a hold reads by its label and names its holder ("Held under by the Rime-Abbot")
+      const stName = s => `${s.label && STATUSES[s.id]?.held ? s.label : STATUSES[s.id]?.name || s.id}${STATUSES[s.id]?.held && s.source && extra.names(s.source) ? ` by ${extra.names(s.source)}` : ''}`;
       parts.push(sec('Statuses', ...info.statuses.map(s => el('p.bt-ins-st', null, pixelIcon(statusIcon(s.id, { size: 12 }), 2),
-        el('span', null, el('b', { text: `${STATUSES[s.id]?.name || s.id}${s.stacks > 1 ? ` x${s.stacks}` : ''}` }), el('small', { text: ` ${s.turns ? `${s.turns} turn${s.turns === 1 ? '' : 's'}. ` : ''}${STATUSES[s.id]?.text || ''}` }))))));
+        el('span', null, el('b', { text: `${stName(s)}${s.stacks > 1 ? ` x${s.stacks}` : ''}` }), el('small', { text: ` ${s.turns ? `${s.turns} turn${s.turns === 1 ? '' : 's'}. ` : ''}${STATUSES[s.id]?.text || ''}` }))))));
     }
     if (info.omens.length) {
       parts.push(sec('Omens', ...info.omens.map(o => el('p.bt-ins-omen', { style: `--oc:${OMENS[o]?.color || '#b9a6ff'}` }, el('b', { text: OMENS[o]?.name || o }), el('small', { text: ` ${OMENS[o]?.text || ''}` })))));

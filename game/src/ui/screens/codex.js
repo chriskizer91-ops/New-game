@@ -2,9 +2,10 @@
 // mount(root, ctx, { from = 'world', page? }): Back returns to `from`. The binder opens on `page`, else
 // on the page of the region the party stands in (Page I in the Wilds).
 //
-//   - page tabs: I and II show their region and a claimed count (a tick once the page is finished);
-//     sealed pages (III Ironspire, IV Gloomfen) show a padlock and the region's name, and open a
-//     sealed panel with the region's closed roads instead of pockets
+//   - page tabs: I, II and III (M5) show their region and a claimed count (a tick once the page is
+//     finished); a sealed page (IV Gloomfen) shows a padlock and the region's name, and opens a sealed
+//     panel with the region's closed roads instead of pockets. An open page whose road is still shut
+//     (the Ironspire before the second council) says what opens it (ROAD_NOTE)
 //   - each open page: its progress ("9 of 14 claimed, 12 sighted", rules/codex.js pageProgress), a
 //     bar, and its reward line (data/codex.js PAGES: greyed until earned, then gold with the day)
 //   - its pockets, in Codex order: the portrait, the name (a riddle while unsighted), who holds it,
@@ -12,10 +13,11 @@
 //     not choose stay in the Keep (Tamsin only ever lends hers): their pockets say so, and the page
 //     does not count them. Tap a pocket for its card (a silhouette, the grey held card, or yours)
 //   - the footer keeps M3's stamp legend
-// Pure helpers for tests (node): binderPage(game, pageId), defaultPage(game), RIDDLES, HOLDER.
+// Pure helpers for tests (node): binderPage(game, pageId) (M5: with its road note), defaultPage(game),
+// RIDDLES, HOLDER, ROAD_NOTE.
 // Test hooks: .cx-tab[data-page][aria-selected]; .cx-head[data-page]; .cx-prog; .cx-reward[data-earned];
 //   .cx-sealed; .pocket[data-relic][data-state] (+ .is-awakened, .is-spare).
-// Owner: WP8; M4 P7b (the binder).
+// Owner: WP8; M4 P7b (the binder); M5 P7 (Page III: its riddles and holders, the road notes).
 import { RELICS } from '../../data/relics.js';
 import { PAGES } from '../../data/codex.js';
 import { STARTERS } from '../../data/heroes.js';
@@ -27,6 +29,7 @@ import { el, esc, button } from '../lib/dom.js';
 import { portraitCanvas, rarityColor, rarityName } from '../lib/art.js';
 import { codexNo } from '../lib/items.js';
 import { screenNav } from '../lib/keys.js';
+import { regionOpen } from '../lib/atlas-geo.js';
 
 export const RIDDLES = Object.freeze({
   hearthbrand: 'It has never once gone cold. Ask Fenwick where the Keep keeps its coals.',
@@ -68,6 +71,21 @@ export const RIDDLES = Object.freeze({
   'ashen-aegis': 'Scorchgate’s last shield, carried out of the fire and never put down. It still stands watch below.',
   'cinder-crown': 'Every ember in it was a soldier. Whoever wears it in the Vault of Ash still gives them orders.',
   saltglass: 'It sings when it is drawn. A sharpshooter rides with the Tallyman caravan across the Flats.',
+  // Page III: the Ironspire Peaks (M5)
+  'windstep-boots': 'A monk crossed the great slide in them without touching a stone. A deserter wears them now, at his toll chain on the Rockslide Pass.',
+  veilbell: 'Cast from the great bell’s first crack. The abbess of Peak’s Veil rings it for the drowned every evening, and will give it to whoever quiets them.',
+  ironwall: 'A dwarf door, cut down to carry. Iron hands hold it at the foot of the Iron Stair, for a Thane who has sealed his own halls.',
+  'drowned-censer': 'It swings by itself, and its smoke is always wet. An abbess who drowned still carries it on the island in Frostmere.',
+  'ironvein-bracers': 'Ironhold work, small at the wrist. Someone else is hunting Harrow, and she waits on the Deeps stair with them on.',
+  'roc-feather-cloak': 'Three feathers make a cloak that sheds rain, snow and arrows. The bird that grew them nests on the Highfold crags.',
+  'thanes-rune': 'A ring of black iron the Deeps’ doors were cut to know. Only the Thane of Ironhold can give it, and he gives nothing for free.',
+  'trollhide-mantle': 'Hides that still grow back a little. An old troll wears them in a cave on the Iron Stair, behind a wall of blue ice.',
+  runestaff: 'Runes cut by a smith who went missing. His journeyman still works it in a side forge, down in the dark under Ironhold.',
+  'anvil-heart': 'It glows through iron ribs like coals through a grate, and beats like a bellows. It waits in the forge below the Ironhold Deeps.',
+  'worldforge-hammer': 'A smith who never once put his hammer down. Something he built still swings it, in his forge under Ironhold.',
+  'cutters-pick': 'A notch in the haft for every block of lake it took. The Tallymen’s Cutter-Chief keeps it at the saw camp on the Frost Road.',
+  'rime-crozier': 'Frozen to its bearer’s hand for thirty years. He went down under Frostmere to listen, and never came back up.',
+  'hushweave-cowl': 'Woven from something that was not wool, by someone who was listening. The Abbot under the ice wears it pulled low.',
 });
 
 // Who holds each relic, short enough for a pocket ("Held by ...") and the grey card's stamp.
@@ -82,9 +100,18 @@ export const HOLDER = Object.freeze({
   'glass-carapace': 'Kharzul the Glass Scorpion', dunebreaker: 'Gnash the Raider-King', cinderfang: 'Kharzul the Glass Scorpion',
   'mirage-glass': 'the Wisp-Queen', 'qasims-signet': 'Cistern Lord Qasim', 'sunstone-heart': 'Luma of Dusthaven',
   'scorchgate-key': 'the Ash-Captain', 'ashen-aegis': 'the Ashen Warden', 'cinder-crown': 'the Ashen Warden', saltglass: 'Vell Saltglass',
+  'windstep-boots': 'Rhune the Pass-Warden', veilbell: 'Mother Wynn', ironwall: 'the Sentinel-Captain', 'drowned-censer': 'the Drowned Abbess',
+  'ironvein-bracers': 'Tamsin', 'roc-feather-cloak': 'the Thunder-Roc', 'thanes-rune': 'Thane Brundar', 'trollhide-mantle': 'Old Horn',
+  runestaff: 'Harrow’s Journeyman', 'anvil-heart': 'Mother Anvil', 'worldforge-hammer': 'Mother Anvil', 'cutters-pick': 'the Cutter-Chief',
+  'rime-crozier': 'the Rime-Abbot', 'hushweave-cowl': 'the Rime-Abbot',
 });
 
 const PAGE_IDS = PAGES.map(p => p.id);
+// What opens the road to a region whose page is open but whose road is not (yet).
+export const ROAD_NOTE = Object.freeze({
+  sunscorch: 'The road to the Sunscorch opens once both Brands of the Wilds are yours.',
+  ironspire: 'The road to the Ironspire opens once the Council has sat a second time: the Keep’s east postern.',
+});
 const isSealed = P => !P || P.from == null;
 const shortRegion = P => String(P?.name || '').replace(/^The /, '').split(' ')[0];
 
@@ -129,6 +156,8 @@ export function binderPage(game, pageId) {
   });
   return {
     id: P.id, no: P.no, name: P.name, region: P.region, sealed: false, texts: [], relics, progress,
+    // what opens the region's road while it is still shut (ROAD_NOTE), else null
+    road: ROAD_NOTE[P.region] && !regionOpen(game, P.region) ? ROAD_NOTE[P.region] : null,
     reward: P.reward ? { name: P.reward.name, text: P.reward.text, earned, day: typeof day === 'number' ? day : null } : null,
   };
 }
@@ -143,7 +172,6 @@ export function mount(root, ctx, params = {}) {
   const region = MAPS[game.progress?.pos?.map]?.region || 'verdant';
   const pick0 = PAGE_IDS.includes(params.page) ? params.page : lastPage && lastPage.region === region ? lastPage.id : defaultPage(game);
   let page = pick0;
-  const act1 = !!game.progress?.flags?.story?.['act1-complete'];
 
   const top = el('header', 'topbar');
   top.append(button('‹ Back', 'btn ghost back', () => { ctx.audio.sfx('back'); leave(); }), el('div', 'tb-title', '<span class="realm">The Hearth Codex</span><h1 class="title-display">Every legend has a holder</h1>'));
@@ -197,7 +225,7 @@ export function mount(root, ctx, params = {}) {
     // the page's small print: the starters on Page I, the road to Page II
     const spare = V.relics.filter(x => x.spare).length;
     if (spare) head.append(el('p', { class: 'cx-note', text: `The page counts your starter and every relic held out in the world. The ${spare === 1 ? 'starter' : `${['', 'one', 'two', 'three'][spare] || spare} starters`} you passed over stay${spare === 1 ? 's' : ''} in the Keep, or with Tamsin.` }));
-    if (V.region === 'sunscorch' && !act1 && !p.sighted) head.append(el('p', { class: 'cx-note', text: 'The road to the Sunscorch opens once both Brands of the Wilds are yours.' }));
+    if (V.road && !p.sighted) head.append(el('p', { class: 'cx-note cx-road', text: V.road }));
   }
 
   function renderSealed(V) {

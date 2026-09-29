@@ -302,6 +302,16 @@ const SCENES = {
   oasis: ['#####*#######*#########', '#,,.T..,,.T...,,.T..,,#', '#..HHHH.......~~~~~...#', '#..HHHH..T...~~~~~~~..#', '#..#+##......~~~ww~~..#', '#.........T...~~~~~.,,#', '#::::::::::::::.......#', '#,,.t.."""..f..::.t...#', '#...T..""".....::.....#', '#..mmm.....,,,.::..T..#', '#.............f::.....#', '#######+###############'],
   ash: ['#####*#####..#####*####', '#HHHHH#.....,,..HHHH..#', '#HHHHH#..T.,,,..HHHH..#', '#*#+###.........#+##..#', '#......o..mmm.......t.#', '#..""....mmmmm..f.....#', '#::::::::::::::::::::::', '#..t..f...,,,..T..o...#', '#.......iii.....,,....#', '#..T...iiiii......||||#', '#.......iii....___....#', '#####....#########....#'],
   vault: ['#######################', '#*###*#####s####*###*##', '#::::::::::::::::::::##', '#:T:::T:::::::T:::T::##', '#::::::::mm:::::::::::#', '#:::t::::mmm::f::o::::#', '#.......______........#', '#..f....______..mm....#', '#..YY...______...t....#', '#..YY.....,,.........##', '#RRRRRR...+....RRRRRR##', '#######################'],
+  // M5: the Ironspire biomes (the characters P2's maps use, biome by biome: notes/M5-P2-maps.md)
+  mountain: ['^^^^^^^^^^^^^^^^^^^^^^^', '^^^^^^^^^vvvv^^^^^^^^^^', 'T.,,..T...==....mmmm.T.', '..o...,..==...mmmmmmm..', '.t...""..==....mmmm..o.', '||||||||=s=||||||||||||', 'xxxxxxx.==.......###...', 'xxxxxxx.==..T....#+#..T', '......==..........,,...', '.....==..t.."""..~~~ww~', '.o..==.......""..~bb~w~', '...:::::...T.....~~~~~~'],
+  monastery: ['.HHHHHHHH.....T........', '.HHHHHHHH......HHHHH...', '.###*+*##......HHHHH...', '..............##+##....', '..:::::::::::::::::::..', '..:Y..Y..Y..Y..Y..Y.:..', '..:::::::::~~::::::::..', '..,,,,,,,..~~....""""..', '..,,,,,,,......t.""""..', '..........mmm.....t....', '#####___####....mmm...T', '#__________#..........o'],
+  scree: ['^^^^^^^^^^^^^^^^^^^^^^^', '^^^^^^vvvv^^^^^^^^^^^^^', '...,,....==....mmmmm..T', '.o.....,.==...mmmmmmm..', '...t.."".==...mmmmm..o.', '.,.....""==...........,', '..T.....==...o...,,....', '.....o.==.....t........', 'xxxxxx.bb.xxxxxxxxxx...', 'xxxxxx.bb.xxxxxxxxxx.T.', '..,,...==....~~~~......', '.t....==..o..~~~~...o..'],
+  'dwarf-hall': ['RRRRRRRRRRRRRRRRRRRRRRR', 'RR####*####*####*####RR', 'RR#:::::::::::::::::#RR', 'RR#:Y:::Y:::::Y:::Y:#RR', 'RR#::::::_____::::::#RR', 'RR#:t:::::___:::::t:#RR', 'RR#::::::_____::::f:#RR', 'RR#:Y:::Y:___:Y:::Y:#RR', 'RR#::o:::::_:::::::::+R', 'RR#::::f::___::::t::#RR', 'RR######s#####+######RR', 'RRRRRRRRRRRRRRRRRRRRRRR'],
+  forge: ['RRRRRRRRRRRRRRRRRRRRRRR', 'RR###*#HHH#*###HHH#*#RR', 'RRkkkkkHHHkkkkkHHHkkkRR', 'RRk:::::::::::::::::kRR', 'RRk:Y:rrrrrrrrr::Y::kRR', 'RRk:::r:mmm:::r:f:::kRR', 'RRk:o:r:mmmm::r:::o:kRR', 'RRk:::r::mm:::r::::kkRR', 'RRk~~~r~~~~~~~r~~~~kRR', 'RRk::xxx::f::::Y:::kRR', 'RRkk:xxx::::::::::skRR', 'RRRRRRRRRRRRRRRRRRRRRRR'],
+  outpost: ['|||||||||||==||||||||||', '|.HHHHH....==...HHHHH.|', '|.HHHHH....==...HHHHH.|', '|.##*+#....==...#+*##.|', '|..........==......t..|', '|..:::::::::::::::::..|', '|..:::::::::::::::t:..|', '|..,,,..T..==...mmm...|', '|..,,,.....==..mmmm.o.|', '|.t##+##...==.........|', '|..#___#...==...T.....|', '||||||||||=||||||||||||'],
+  tundra: ['.......,,,,..=.....T...', '..T..,,,,,,..==....""..', '......,,,....==.o..""..', '..mmmmm.......==.......', '.mmmmmmm..t....==..,,,.', '..mmmmm........==.,,,,.', '.....o....~~~...==.....', '..""..T..~~~~~..==..t..', '..""......~~~.....==...', '....:::::.....#####==..', '.t..:::::.....#...#.==.', '^^^^^^^^^^vv^^^^^^^^^^^'],
+  'frozen-lake': ['TT....""""......TT.....', '.T...".,,,......T......', '......,,,.............o', '::::::::::::::::::::...', ':::::::::=========::::.', '::::~~~:::::::::::=::::', ':::~~~~~::::www::::=:::', '::::~~~::::wwww::::=:::', '::::::::::::ww:::::bbb:', '::o:::::::mmm::::::::::', '.....::::mmmmm::::#####', '^^^^^......mm.....##+##'],
+  'ice-cave': ['RRRRRRRRRRRRRRRRRRRRRRR', 'RRkkkkkkkkkkkkkkkkkkkRR', 'RkkkYkkkkkkkfkkkkkYkkkR', 'Rkkkkkkkkkkkkkkkkkkkkkk', 'Rkkkkk~~~~kkkkkokkkkkkR', 'Rkkkk~~~~~~kkkkkkkkfkkR', 'Rkfkkk~~~~kkkk#####kkkR', 'Rkkkkkkkkkkkkk#:::#kkkR', 'RkkokkkxxxxkkkY:::YkkkR', 'Rkkkkkkxxxxkkk::::+kkkR', 'RRkkkkkkkkkkkkkkkkkkkRR', 'RRRRRRRRRRRRRRRRRRRRRRR'],
 };
 function sceneCanvas(biome, rows, sprites = [], frame = 0) {
   const A = tileAtlas(biome), src = document.createElement('canvas');
@@ -349,7 +359,9 @@ if (want('world-npcs')) {
   for (const k of keys) fig(r2, crop(npcSheet(k).img, 0, 0, 16, 24), 6, k, GROUND_BG);
 }
 const MAP_FOE_KEYS = ['cutpurse', 'bandit', 'tallyman', 'smuggler', 'feral-druid', 'hollowed-ranger', 'tamsin', 'mags', 'haskett', 'hollis', 'dun', 'vesper', 'oda', 'corra',
-  'scavenger', 'dune-raider', 'ash-wight', 'rasa', 'ash-captain', 'brask', 'quartermaster', 'vell'];
+  'scavenger', 'dune-raider', 'ash-wight', 'rasa', 'ash-captain', 'brask', 'quartermaster', 'vell',
+  // M5: the Ironspire's walker-rig foes (the brigands and ice-cutters through foeLooks, the rest kitted in art/map-sprites.js)
+  'brigand', 'rhune', 'cutter-chief', 'sawyer', 'iron-sentinel', 'sentinel-captain', 'forgeborn', 'bellows', 'journeyman', 'rime-wraith', 'drowned-abbess', 'choir-wraith'];
 if (want('world-foes')) {
   const s = section('world-foes', 'World: map foes', 'mapFoeSheet(artKey, { gearTier, variant, relic }): 2 gait frames x rows s, n, e, w. Humanoids reuse the walker rig via foeLooks (gearTier 0-3 shown); named holders carry their relic; beasts are dedicated 16-32 px sprites.');
   const r = row(s, 'humanoids at gearTier 0 and 3 (3x)');
@@ -437,6 +449,7 @@ if (want('world-perf')) {
   sheet('npcSheet cold', k => npcSheet('villager-' + k), 8);
   sheet('mapFoeSheet humanoid cold', k => mapFoeSheet(['cutpurse', 'bandit', 'tallyman', 'smuggler'][k % 4], { gearTier: (k >> 2) % 4, relic: k === 7 ? 'tallyknife' : undefined }), 8);
   sheet('mapFoeSheet beast cold (32x32)', k => mapFoeSheet(['rotstag', 'gloamwing', 'mirelord', 'rotwarden'][k % 4], { gearTier: 1 + (k >> 2) }), 8);
+  sheet('mapFoeSheet lair cold (M5, 32-48 px)', k => mapFoeSheet(['thunder-roc', 'mother-anvil', 'rime-abbot', 'old-horn'][k % 4], { gearTier: 1 + (k >> 2) }), 8);
   sheet('objectSprite cold', k => objectSprite(OBJECT_KINDS[k % OBJECT_KINDS.length], 'closed', { frame: 1 }), OBJECT_KINDS.length);
   pre.textContent = lines.join('\n');
 }

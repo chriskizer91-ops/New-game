@@ -3,7 +3,9 @@
 // Browser-only: returns ImageData.
 //
 // tileAtlas(biome) -> atlas
-//   biome   keep | wilds | town | grove | fen | tower | roots | den (unknown biomes read as wilds)
+//   biome   keep | wilds | town | grove | fen | tower | roots | den; the Sunscorch's ten (M4) and the
+//           Ironspire's nine (M5): mountain | monastery | scree | dwarf-hall | forge | outpost | tundra |
+//           frozen-lake | ice-cave (unknown biomes read as wilds)
 //   atlas.img                         ImageData holding every cell (turn it into a canvas once)
 //   atlas.at(tileId, variant, frame)  -> [sx, sy] of a 16x16 base cell
 //   atlas.variants(tileId)            -> hash variants of the base cell (2-4 for ground)
@@ -29,7 +31,8 @@ import { TILES, TILE_IDS, TILE_FRAMES, tileOf } from '../data/tiles.js';
 
 export const TILE_PX = 16;
 export const BIOMES = Object.freeze(['keep', 'wilds', 'town', 'grove', 'fen', 'tower', 'roots', 'den',
-  'desert', 'desert-town', 'canyon', 'mine-camp', 'mine', 'crystal', 'dunes', 'oasis', 'ash', 'vault']);
+  'desert', 'desert-town', 'canyon', 'mine-camp', 'mine', 'crystal', 'dunes', 'oasis', 'ash', 'vault',
+  'mountain', 'monastery', 'scree', 'dwarf-hall', 'forge', 'outpost', 'tundra', 'frozen-lake', 'ice-cave']);
 export const EDGE_BITS = Object.freeze({ n: 1, e: 2, s: 4, w: 8 });
 
 const T = TILE_PX;
@@ -61,7 +64,8 @@ const PAL = {
   roots: { rootFloor: 'robeBark', puddle: 'sap', fungusGround: 'robeBark', grass: 'moss', soil: 'robeBark', soilDark: 'rotwood', stone: 'rotwood', wall: 'bark', cap: 'rotwood', floor: 'bark', darkFloor: 'rotwood', root: 'bark', rootDark: 'rotwood', fungus: 'water', water: 'water', bank: 'rotwood', leaf: 'moss', cliff: 'rotwood', cliffDark: 'rot', canopy: 'elder', bush: 'moss', doorFrame: 'bark' },
   den: { puddle: 'sap', fungusGround: 'rot', grass: 'rotwood', grassDark: 'rot', clover: 'bramble', soil: 'rotwood', soilDark: 'rot', mud: 'rot', stone: 'rotwood', wall: 'rotwood', cap: 'rot', floor: 'rotwood', darkFloor: 'rot', root: 'rotwood', rootDark: 'rot', leaf: 'bramble', leafDark: 'rot', bush: 'bramble', cliff: 'rotwood', cliffDark: 'rot', fungus: 'blight', canopy: 'dead', doorFrame: 'rotwood' },
 };
-const palOf = biome => Object.assign({}, BASE_PAL, SUN_PAL[biome] ? Object.assign({}, SUN_BASE, SUN_PAL[biome]) : PAL[biome] || PAL.wilds);
+const palOf = biome => Object.assign({}, BASE_PAL, SUN_PAL[biome] ? Object.assign({}, SUN_BASE, SUN_PAL[biome])
+  : IRON_PAL[biome] ? Object.assign({}, SUN_BASE, IRON_BASE, IRON_PAL[biome]) : PAL[biome] || PAL.wilds);
 
 /* ---------- noise helpers (periodic over one tile so every variant tiles seamlessly) ---------- */
 function pnoise(x, y, period, seed, periodY = period) {
@@ -420,7 +424,7 @@ function paintEdge(F, fam, mask, Pl, f) {
   if (fam === 'road') {
     const shapes = on.map(s => band(s, t => 1.4 + Math.max(0, wob(t, s.charCodeAt(0) * 3, 1.1)) + (Math.floor(t + s.length) % 5 === 2 ? 1.1 : 0)));
     for (const c of outerCorners(mask)) shapes.push(O(CORNER_AT[c], 5.2));
-    F.add({ mat: Pl.grass, prof: 'flat', grp: 'verge', noOutline: true, noShadow: true, lo: 1, hi: 3, shapes, tex: q => gField(Pl)[(q.y & 15) * T + (q.x & 15)] });
+    F.add({ mat: Pl.grass, prof: 'flat', grp: 'verge', noOutline: true, noShadow: true, lo: 1, hi: 3, shapes, tex: q => (Pl.iron ? groundAt(Pl, q.x, q.y) : gField(Pl)[(q.y & 15) * T + (q.x & 15)]) });
     F.add({ mat: Pl.soilDark, prof: 'flat', grp: 'rut', noOutline: true, noShadow: true, lo: 1, hi: 2, shapes: on.map(s => band(s, t => 2.3 + Math.max(0, wob(t, s.charCodeAt(0) * 3, 1.1)))).concat(outerCorners(mask).map(c => O(CORNER_AT[c], 6.2))), tex: q => -1.4 + bayer(q.x, q.y) * .6 });
     F.parts.push(F.parts.splice(F.parts.length - 2, 1)[0]); // the dark rut line goes under the verge
     return;
@@ -444,8 +448,43 @@ function paintEdge(F, fam, mask, Pl, f) {
   }
   if (fam === 'ichor') {
     for (const s of on) F.add({ mat: Pl.soilDark, prof: 'flat', grp: 'rim' + s, lo: 1, hi: 3, shapes: [band(s, t => 2 + wob(t, s.charCodeAt(0), .9))], tex: q => (q.d < 1 ? -1.2 : -.4) });
+    return;
+  }
+  // M5 (the Ironspire): a snowdrift, cooled slag or black ice meets other ground, which laps over its edge in a
+  // wind-cut line; a drift shows a lit crest on its north and west and a shadow on its south and east
+  if (fam === 'drift' || fam === 'patch') {
+    const th = (s, t, k) => k + Math.max(0, wob(t, s.charCodeAt(0) * 5, 1.2)) + (Math.floor(t + s.length) % 5 === 1 ? .9 : 0);
+    const verge = on.map(s => band(s, t => th(s, t, 1.5))), rim = on.map(s => band(s, t => th(s, t, 2.5)));
+    for (const c of outerCorners(mask)) { verge.push(O(CORNER_AT[c], 5.4)); rim.push(O(CORNER_AT[c], 6.4)); }
+    const V = vergeOf(Pl, fam);
+    F.add({ mat: fam === 'drift' ? Pl.snow : Pl.patchMat, prof: 'flat', grp: 'rim', noOutline: true, noShadow: true, lo: 1, hi: 4, shapes: rim, tex: q => (fam === 'drift' && (q.y < 6 || q.x < 6) ? .8 : -1.3) });
+    F.add({ mat: V.m, prof: 'flat', grp: 'verge', noOutline: true, noShadow: true, lo: 1, hi: 3, shapes: verge, tex: q => V.at(q.x, q.y) });
+    return;
+  }
+  if (fam === 'scree') { // a scree slope thins out into the turf round it: the turf laps over its edge in a ragged line
+    const verge = on.map(s => band(s, t => 1.3 + Math.max(0, wob(t, s.charCodeAt(0) * 7, 1.7)) + (Math.floor(t + s.length) % 4 === 1 ? .8 : 0)));
+    for (const c of outerCorners(mask)) verge.push(O(CORNER_AT[c], 4.4));
+    F.add({ mat: Pl.grass, prof: 'flat', grp: 'verge', noOutline: true, noShadow: true, lo: 1, hi: 3, shapes: verge, tex: q => groundAt(Pl, q.x, q.y) });
+    return;
+  }
+  if (fam === 'carpet') { // the runner's border: a gold stripe, a dark line, then the floor it lies on
+    for (const [th, m, dd] of [[3.6, 'gold', -.8], [2.6, 'dark', -1], [1.6, Pl.paver, -1]]) F.add({ mat: m, prof: 'flat', grp: 'b' + th, noOutline: true, noShadow: true, lo: 1, hi: 3, shapes: on.map(s => band(s, () => th)), tex: q => dd + bayer(q.x, q.y) * .2 });
+    return;
+  }
+  if (fam === 'drop') { // the far wall of a drop shows as a face going down into the dark; the near lip is the ground's edge
+    const m = Pl.dropK === 'ice' ? Pl.glass : Pl.dropK === 'pit' ? Pl.wall : Pl.cliff;
+    if (mask & 1) F.add({ mat: m, prof: 'flat', grp: 'face', noOutline: true, noShadow: true, lo: 1, hi: 4, shapes: [band('n', t => 5.6 + wob(t, 9, .8))], tex: q => (q.y < 1 ? 1 : .2 - q.y * .3) + pnoise(q.x / 2, q.y / 4, 8, 230, 4) * .7 + bayer(q.x, q.y) * .3 });
+    if (mask & 8) F.add({ mat: m, prof: 'flat', grp: 'fw', noOutline: true, noShadow: true, lo: 1, hi: 3, shapes: [band('w', t => 1.6 + wob(t, 4, .4))], tex: q => -1 - q.y * .04 });
+    if (mask & 2) F.add({ mat: m, prof: 'flat', grp: 'fe', noOutline: true, noShadow: true, lo: 1, hi: 3, shapes: [band('e', t => 1.8 + wob(t, 5, .4))], tex: q => .2 - q.y * .06 });
+    if (mask & 4) F.add({ mat: Pl.grass, prof: 'flat', grp: 'lip', noOutline: true, noShadow: true, lo: 1, hi: 3, shapes: [band('s', t => 1.2 + wob(t, 6, .3))], tex: q => groundAt(Pl, q.x, q.y) - 1 });
   }
 }
+// the ground that laps over an Ironspire patch's edge: the '.' ground, or the soot floor round the forge's slag
+const vergeOf = (Pl, fam) => {
+  if (fam !== 'patch' || Pl.patchK !== 'slag') return { m: Pl.grass, at: (x, y) => groundAt(Pl, x, y) };
+  const kf = field(SEEDS['dark-floor'] + (Pl.seed || 0), -1.55, -.65, .3);
+  return { m: Pl.darkFloor, at: (x, y) => kf[(y & 15) * T + (x & 15)] };
+};
 // inner corners: the diagonal neighbour differs while both sides match; c = 0 NE, 1 SE, 2 SW, 3 NW
 const CORNER_AT = [[16, 0], [16, 16], [0, 16], [0, 0]];
 function paintCorner(F, fam, c, Pl) {
@@ -455,8 +494,10 @@ function paintCorner(F, fam, c, Pl) {
   else if (fam === 'cliff') { if (c === 0 || c === 3) F.add({ mat: Pl.grass, prof: 'flat', grp: 'cl', lo: 1, hi: 3, shapes: [O(at, 3)], tex: q => gDD(Pl, q) }); }
   else if (fam === 'wall') F.add({ mat: 'dark', prof: 'flat', grp: 'cr', noShadow: true, noOutline: true, lo: 1, hi: 1, shapes: [RECT(at[0] - 1.05, at[1] - 1.05, at[0] + 1.05, at[1] + 1.05)] });
   else if (fam === 'ichor') F.add({ mat: Pl.soilDark, prof: 'flat', grp: 'ci', lo: 1, hi: 3, shapes: [O(at, 2.4)], tex: () => -.6 });
+  else if (fam === 'drift' || fam === 'patch') { const V = vergeOf(Pl, fam); F.add({ mat: V.m, prof: 'flat', grp: 'cv', noOutline: true, lo: 1, hi: 3, shapes: [O(at, 2.8)], tex: q => V.at(q.x, q.y) }); }
+  else if (fam === 'scree') F.add({ mat: Pl.grass, prof: 'flat', grp: 'cs', noOutline: true, lo: 1, hi: 3, shapes: [O(at, 2.3)], tex: q => groundAt(Pl, q.x, q.y) });
 }
-const CORNER_FAMS = new Set(['water', 'ford', 'road', 'cliff', 'wall', 'ichor']);
+const CORNER_FAMS = new Set(['water', 'ford', 'road', 'cliff', 'wall', 'ichor', 'drift', 'patch', 'scree']);
 
 /* ---------- per tile: how many variants, and how to paint one ---------- */
 // kind 'ground' clamps to ramp steps 1-3 (part lo/hi decide); returns the painter for (tileId)
@@ -536,6 +577,40 @@ const WMAT = {
   mirage: ['#10102a #262a5c #4452a0 #78a0dc #bce0f8 #f6fcff', { emit: 1, eBase: 3.1 }],
   skink: ['#1e0e06 #54280e #86441a #b0662a #d4904a #f0bc7c', { ks: .5, shin: 10 }],
   wyrm: ['#1a120a #4a3420 #6e5030 #927044 #b6925c #d8b884', { ks: .4, shin: 10 }],
+  // M5: the Ironspire Peaks
+  snow: '#1e2638 #66748e #a2b0c6 #bccadc #dfe8f3 #fbfdff',
+  packed: '#1e1c1c #4e4a48 #75706a #9a948c #bcb6ac #dcd6cc',
+  ice: '#0c1a2a #2a5272 #4a7ea2 #78aac8 #aad2e6 #e4f6fe',
+  blackice: '#04080e #0a1622 #122436 #1c364e #2c4c68 #466888',
+  glacier: ['#081828 #14365a #22609a #3c92cc #86c8ee #e6f8ff', { gem: 1 }],
+  cavice: '#060e1a #142a44 #20426a #2e5a8a #4a7eac #82b0d2',
+  alpine: '#0e140e #25301f #3a4a2c #52643a #6f7f4c #939f68',
+  drygrass: '#1a150c #423824 #665634 #8a7646 #ae9860 #d0bc84',
+  earth: '#171410 #3d372f #595146 #766d5f #978d7c #bdb4a2',
+  gravel: '#1d1812 #4a4032 #6c5e4a #8e7e64 #b0a084 #d4c6a8',
+  crag: ['#101218 #2a2e38 #444a56 #626a78 #8a92a0 #b8bec8', { ks: .2, shin: 6 }],
+  scree: '#15161a #3a3c42 #56585e #74767b #95969a #bbbbbd',
+  pine: ['#040c0b #0a1c18 #123026 #1b4636 #2a5e48 #467a5e', { ks: .3, shin: 8 }],
+  slate: ['#0d0f15 #1e222c #313746 #48505f #646e7e #8a94a4', { ks: .5, shin: 12 }],
+  limestone: '#2a2722 #5d584f #888276 #b0aa9c #d2cdbf #efebe0',
+  whitewash: '#262830 #5c5f68 #8e919a #bcbfc6 #dfe1e5 #f7f8fa',
+  hewn: ['#161110 #382c29 #564440 #755e57 #987d74 #bda298', { ks: .2, shin: 8 }],
+  slag: ['#060505 #131110 #201c1a #2e2825 #403834 #574b45', { ks: .8, shin: 18 }],
+  brick: ['#140a08 #321a14 #50291e #6e3a2a #8e4e38 #b0684c', { ks: .1, shin: 6 }],
+  timber: '#15110e #30271f #4b3d30 #685642 #887259 #ab9476',
+  frostwater: ['#030a14 #0a1e34 #133454 #1f5076 #3c7a9e #86b6cc', { emit: 1, eBase: 2.6 }],
+  heather: '#140c14 #34203a #52325a #704878 #946496 #b888b4',
+  rimebark: '#1c2028 #48505e #747e8e #a2acba #cdd4de #f0f4f8',
+  habit: '#17171a #36363c #56565e #78787f #9c9ca2 #c4c4c8',
+  army: '#0b0e14 #1a212c #2b3544 #3f4c60 #57677e #7a8aa2',
+  hush: '#020308 #060a16 #0b1226 #111b36 #1a2848 #263a60',
+  hushglow: ['#0a0a1e #1a1a44 #2c3474 #4a5ea8 #8aa4d8 #d8e6ff', { emit: 1, eBase: 2.2 }],
+  rimeskin: '#1c2430 #4a5a6e #7890a8 #a4bccc #cadae4 #eef6fa',
+  drowned: '#0a0e14 #18222e #26364a #36506a #4c6c88 #6e90aa',
+  rimefur: ['#171a22 #3a404e #636a7a #9098a8 #c0c8d4 #edf1f7', { ks: .2, shin: 6 }],
+  troll: ['#0d110e #1f2820 #344237 #4a5c4a #647862 #869a80', { ks: .3, shin: 8 }],
+  stormfeather: ['#0c0e18 #1e2436 #343e58 #4e5c7c #7282a2 #a0b0c8', { ks: .3, shin: 8 }],
+  hide: '#1a140e #3e3224 #5e4c36 #7e684c #a08a68 #c2ae8c',
 };
 // worldMats(): registers the 'w.' materials in MAT once (idempotent; tiles.js and map-sprites.js call it)
 export function worldMats() {
@@ -565,7 +640,7 @@ const SUN_PAL = {
   vault: { paver: null, ballast: 'w.basalt', ties: 'bogwood', grass: 'w.basalt', seed: 8, gLo: -1.4, gHi: -.9, gDith: .26, stone: 'w.basalt', wall: 'w.basalt', cap: 'w.basalt', cliff: 'w.basalt', cliffDark: 'dark', stair: 'w.basalt', doorFrame: 'w.basalt', wallK: 'vault', caveK: 'masonry', tree: 'column', bushK: 'urn', rockK: 'block', glowK: 'ember', ridgeK: 'ashy', decK: 'vault', mudK: 'ash', mud: 'w.ash', lampK: 'brazier', torch: 'ember', roofK: 'slab', roof: 'w.basalt', roofEdge: 'bronze', floor: 'w.basalt', darkFloor: 'w.basalt', rockTop: 'dark', doorK: 'vault', water: 'w.cistern', bank: 'w.basalt', soil: 'w.basalt', soilDark: 'dark', blade: 'w.ash', bridge: 'w.basalt', rail: 'bronze', palisade: 'blackiron', palisadeBand: 'bronze' },
 };
 const SUN_BIOMES = new Set(Object.keys(SUN_PAL));
-const specOf = (biome, id) => (SUN_BIOMES.has(biome) && SUN_SPEC[id]) || SPEC[id];
+const specOf = (biome, id) => (SUN_BIOMES.has(biome) && SUN_SPEC[id]) || (IRON_BIOMES.has(biome) && IRON_SPEC[id]) || SPEC[id];
 
 // the biome's '.' ground: the same periodic field the road verges and cliff lips copy
 function sunGround(F, Pl, D, fn) { ground(F, Pl.grass, SEEDS.grass + (Pl.seed || 0), D, { lo: Pl.gLo, hi: Pl.gHi, dith: Pl.gDith, fn }); }
@@ -849,6 +924,10 @@ function sunPalisade(F, Pl, v, top) {
 }
 function sunTorch(F, Pl, v, f) {
   sunWall(F, Pl, 0, true);
+  lampOn(F, Pl, f);
+}
+// the light on a '*' wall face (its warm pool, then the lamp): shared with the Ironspire walls
+function lampOn(F, Pl, f) {
   const k = Pl.lampK;
   F.add({ mat: Pl.torch, prof: 'flat', grp: 'warm', noShadow: true, noOutline: true, lo: 1, hi: 2, shapes: [E([8, 7], 5.6, 5.2)], tex: q => (bayer(q.x, q.y) + (Math.hypot(q.x - 7.5, q.y - 7) / 5.6) * .9 > .55 ? -9 : -2.4 + (f ? .3 : 0)) });
   if (k === 'crystal') {
@@ -872,8 +951,12 @@ function sunTorch(F, Pl, v, f) {
   part(F, Pl.sconce, [C([8, 5.8], [8, 10.6], .4)], { prof: 'flat', grp: 'mullion', noShadow: true, hi: 3, tex: () => -1 });
 }
 function sunDoor(F, Pl, v) {
-  const k = Pl.doorK;
   sunWall(F, Pl, v, true);
+  doorOn(F, Pl);
+}
+// the doorway on a '+' wall face: shared with the Ironspire walls
+function doorOn(F, Pl) {
+  const k = Pl.doorK;
   if (k === 'adit') {
     part(F, 'dark', [RECT(3.6, 4, 12.4, 17)], { prof: 'flat', grp: 'opening', lo: 0, hi: 1, tex: q => (q.y > 12 ? -1 : 0) });
     part(F, 'wood', [RECT(2, 4, 4.4, 16.6), RECT(11.6, 4, 14, 16.6)], { prof: 'bevel', bw: .8, grp: 'posts', tex: q => (q.y % 5 === 0 ? -1 : 0) });
@@ -1073,6 +1156,566 @@ const SUN_SPEC = {
   flagstone: { n: 3, paint: (F, Pl, v) => paintFlagstone(F, Object.assign({}, Pl, { stone: Pl.paver || Pl.stone }), v) },
 };
 
+/* =====================================================================
+   The Ironspire Peaks (M5 spec §6.1): nine more biomes on the same tile characters, drawn to the map
+   package's table (notes/M5-P2-maps.md; each map's header comment says the same).
+   - An IRON_PAL row sits over IRON_BASE, and SUN_BASE under that, so a reused Sunscorch painter always finds
+     its style keys. The materials are more 'w.' names in WMAT.
+   - IRON_SPEC is SUN_SPEC with the Ironspire painters over it. A style key per character picks the look:
+     groundK, scatK, tallK, patchK, roadK, flagK, tree, bushK, massK, rockK, wallK, roofK, fenceK, lampK, fordK,
+     doorK, glowK, floorK, caveK, darkK, dropK.
+   - Snow is bright with blue shadows, and walkable ground still keeps to steps 1-3 of its ramp.
+   - 'm' is a snowdrift (the drift lock sits on these; 'i' draws one too) or cooled slag in the forge, and ':'
+     is clear black ice on Frostmere. They meet the ground round them softly (edge families 'drift' and
+     'patch'). The Thane's runner ('_' in the dwarf hall) has a straight gold border ('carpet'), and 'x' is a
+     drop whose far wall shows as a rock or ice face ('drop').
+   - '=' knows its way (pickV): wheel ruts or a trodden line run along it, so it reads as the road on turf,
+     scree, snow and ice alike.
+   ===================================================================== */
+const IRON_BASE = {
+  iron: 1, grass: 'w.snow', seed: 10, gLo: -.6, gHi: -.1, gDith: .18, blade: 'w.drygrass', clover: 'w.sage', snow: 'w.snow', bed: 'robeBark',
+  soil: 'w.gravel', soilDark: 'w.earth', mud: 'w.snow', puddle: 'w.frostwater', stone: 'w.crag', wall: 'w.crag', cap: 'w.crag', cliff: 'w.crag', cliffDark: 'dark',
+  stair: 'w.crag', doorFrame: 'w.crag', door: 'wood', water: 'w.frostwater', bank: 'w.crag', leaf: 'w.pine', leafDark: 'dark', trunk: 'bark', bush: 'w.pine',
+  glass: 'w.glacier', glow: 'frost', roof: 'w.slate', roofEdge: 'w.slate', flowers: ['clothWhite', 'clothBlue', 'w.heather'], torch: 'ember', sconce: 'iron',
+  palisade: 'w.timber', palisadeBand: 'iron', ichor: 'w.snow', ichorGlow: 'frost', darkFloor: 'w.crag', floor: 'wood', bridge: 'wood', rail: 'bogwood',
+  ballast: 'w.crag', ties: 'wood', paver: 'w.scree', stoneDim: .35, rockTop: 'dark', curtain: 'w.army', stoneMoss: 'w.snow', patchMat: 'w.snow',
+  groundK: 'snow', scatK: 'ripple', ridgeK: 'ripple', tallK: 'tussock', patchK: 'drift', roadK: 'ruts', flagK: 'flags', tree: 'pine', treeSnow: 1, bushK: 'juniper',
+  massK: 'rock', rockK: 'snowcap', wallK: 'drystone', wallSnow: 1, roofK: 'slate', roofSnow: 1, fenceK: 'logs', lampK: 'lantern', fordK: null, cliffK: 'crag',
+  cliffSnow: 1, doorK: 'wood', glowK: 'frost', floorK: 'planks', caveK: 'rock', darkK: 'rock', dropK: 'rock',
+};
+const IRON_PAL = {
+  mountain: { grass: 'w.alpine', gLo: -1.5, gHi: -.55, gDith: .34, groundK: 'turf', scatK: 'scree', fenceK: 'chain', rail: 'string' },
+  monastery: { seed: 12, blade: 'w.sage', scatK: 'beds', tallK: 'herb', bushK: 'herb', stone: 'w.limestone', wall: 'w.whitewash', cap: 'w.slate', stair: 'w.limestone',
+    doorFrame: 'w.limestone', paver: 'w.limestone', stoneDim: 0, stoneMoss: null, bridge: 'w.limestone', rail: 'w.limestone', bank: 'w.limestone', bankK: 'stone', wallK: 'whitewash',
+    roofSnow: 0, massK: 'pillar', glowK: 'candle', fenceK: 'wattle', palisade: 'wood' },
+  scree: { grass: 'w.scree', seed: 14, gLo: -1.3, gHi: -.55, groundK: 'scree', scatK: 'stones', roadK: 'path', soil: 'w.earth', soilDark: 'w.scree', rockK: 'scree', wallSnow: 0 },
+  'dwarf-hall': { grass: 'w.hewn', seed: 16, gLo: -1.5, gHi: -.85, gDith: .26, groundK: 'hewn', stone: 'w.hewn', wall: 'w.hewn', cap: 'w.hewn', stair: 'w.hewn',
+    doorFrame: 'w.hewn', paver: 'w.hewn', stoneDim: 0, stoneMoss: null, floor: 'robeRed', darkFloor: 'w.hewn', bridge: 'w.hewn', rail: 'iron', bank: 'w.hewn', bankK: 'stone',
+    scatK: 'chips', tree: 'column', bushK: 'barrels', massK: 'carved', rockK: 'rubble', wallK: 'dwarf', wallSnow: 0, roofK: 'slab', roof: 'w.hewn', roofEdge: 'iron',
+    roofSnow: 0, fenceK: 'rail', palisade: 'iron', lampK: 'torch', doorK: 'dwarf', glowK: 'runestone', floorK: 'runner', cliffSnow: 0, treeSnow: 0, darkK: 'hewn' },
+  forge: { grass: 'w.slag', seed: 18, gLo: -1.4, gHi: -.75, gDith: .3, groundK: 'slag', stone: 'w.slag', wall: 'w.brick', cap: 'w.brick', doorFrame: 'w.brick',
+    paver: 'w.hewn', stoneDim: -.45, stoneMoss: null, floor: 'blackiron', darkFloor: 'w.slag', bridge: 'blackiron', rail: 'iron', bankK: 'stone', soil: 'w.char',
+    soilDark: 'dark', ballast: 'w.slag', scatK: 'cinder', patchK: 'slag', patchMat: 'w.slag', tree: 'column', bushK: 'barrels', massK: 'anvil', rockK: 'slag',
+    wallK: 'brick', wallSnow: 0, roofK: 'hood', roof: 'blackiron', roofEdge: 'iron', roofSnow: 0, fenceK: 'rail', palisade: 'iron', lampK: 'brazier', doorK: 'iron',
+    glowK: 'coals', cliffSnow: 0, treeSnow: 0, darkK: 'soot', dropK: 'pit' },
+  outpost: { seed: 20, groundK: 'trodden', scatK: 'gravel', wall: 'w.crag', cap: 'w.crag', wallK: 'ashlar', floor: 'w.timber', roofK: 'planks', roof: 'w.timber',
+    roofEdge: 'bogwood', lampK: 'torch', doorK: 'plank', doorFrame: 'w.timber', bushK: 'crates', glowK: 'coals' },
+  tundra: { seed: 22, tallK: 'reed', soil: 'w.packed', roadK: 'ruts', tree: 'bent', bushK: 'frozen', cliffIce: 1, wallK: 'cairn', bank: 'w.ice' },
+  'frozen-lake': { seed: 24, scatK: 'cracks', tallK: 'reed', soil: 'w.grit', roadK: 'path', flagK: 'blackice', patchMat: 'w.blackice', bushK: 'frozen', rockK: 'iceblock',
+    stone: 'granite', wall: 'granite', cap: 'granite', stair: 'granite', doorFrame: 'granite', wallK: 'ashlar', bank: 'w.snow', floes: 1, fordK: 'thin' },
+  'ice-cave': { grass: 'w.cavice', seed: 26, gLo: -1.3, gHi: -.6, gDith: .28, groundK: 'cavice', blade: 'w.glacier', stone: 'granite', paver: 'w.crag', stoneDim: -.5, stoneMoss: 'w.ice',
+    wall: 'granite', cap: 'granite', wallK: 'frozen', wallSnow: 0, cliff: 'w.glacier', stair: 'w.glacier', doorFrame: 'granite', darkFloor: 'w.cavice', floor: 'w.cavice',
+    bridge: 'w.glacier', rail: 'w.glacier', bank: 'w.cavice', torch: 'frost', rockTop: 'w.cavice', scatK: 'frost', tallK: 'fern', tree: 'column', bushK: 'monk',
+    massK: 'icepillar', rockK: 'ice', roofK: 'slab', roof: 'w.glacier', roofEdge: 'w.cavice', roofSnow: 0, fenceK: 'rail', palisade: 'w.glacier', lampK: 'crystal',
+    fordK: 'thin', cliffSnow: 0, doorK: 'icearch', glowK: 'pocket', caveK: 'ice', darkK: 'ice', treeSnow: 0, dropK: 'ice' },
+};
+const IRON_BIOMES = new Set(Object.keys(IRON_PAL));
+
+/* ---- '.' alpine turf with snow patches, snow, trodden snow, grey scree, hewn granite, slag, cave ice ---- */
+// scree: one field of loose stones (the same in every variant, so the tiles meet stone to stone), each stone its own value
+const SCREE = facetSeeds(9, 0, 120);
+let SCREE_DD = null; // the field is fixed, so it is worked out once (256 values) and looked up after
+const screeDD = (x, y) => {
+  if (!SCREE_DD) {
+    SCREE_DD = new Float64Array(T * T);
+    for (let j = 0; j < T; j++) for (let i = 0; i < T; i++) { const f = facet(i, j, SCREE); SCREE_DD[j * T + i] = f.d2 - f.d1 < .85 ? -1.95 : -.75 - (f.dx + f.dy) * .09 + (hash(f.i, 0, 121) - .5) * .8 + bayer(i, j) * .2; }
+  }
+  return SCREE_DD[(y & 15) * T + (x & 15)];
+};
+// the '.' value at a pixel (what edges copy so they meet the ground without a seam)
+const groundAt = (Pl, x, y) => (Pl.groundK === 'scree' ? screeDD(x & 15, y & 15) : gField(Pl)[(y & 15) * T + (x & 15)]);
+function ironGround(F, Pl, v, extra) {
+  const D = decals(), g = Pl.grass, k = Pl.groundK, [x, y] = spots(1, 6300 + v, 4)[0];
+  if (k === 'turf') {
+    for (const [a, b] of spots(4 + (v & 1), 6100 + v * 7)) tuft(D, a - 1, b - 1, g);
+    for (const [a, b] of spots(3, 6150 + v * 11)) D.set(a, b, g, -2);
+    if (v === 1) for (const [a, b] of spots(2, 6250)) pebble(D, a, b, Pl.stone);
+    if (v === 4) for (let b = -3; b <= 3; b++) for (let a = -5; a <= 5; a++) { // a patch of old snow lying in the grass
+      const d = Math.min(Math.hypot(a / 3.4, b / 2.2), Math.hypot((a - 2.6) / 2.4, (b - 1) / 1.8), Math.hypot((a + 2.4) / 2, (b - .8) / 1.6));
+      if (d < 1 && (d < .8 || (a + b) & 1)) D.set(x + a, y + b, Pl.snow, d > .8 ? -1.2 : b > .8 ? -.8 : -.3);
+    }
+    if (v === 3) for (const [a, b, d] of [[0, 0, -.4], [1, 0, -.6], [0, 1, -1.2], [1, 1, -1], [2, 1, -1.4]]) D.set(x + a, y + b, Pl.snow, d);
+  } else if (k === 'snow' || k === 'trodden') {
+    // wind-cut snow: short lit crests with a shadow under each; trodden snow has boot prints and grey trampled patches
+    if (v === 1 || v === 3) { const [a, b] = spots(1, 6400 + v * 5, 3)[0]; for (let i = 0; i < 4; i++) D.set(a + i, b, g, i === 3 ? -.4 : 0); for (let i = 1; i < 5; i++) D.set(a + i, b + 1, g, -1.3); }
+    if (v === 2) D.set(x, y, g, -1.6);
+    if (k === 'trodden' && v & 1) for (let i = 0; i < 2; i++) { const px = x - 2 + i * 3, py = y - 1 + i * 3; D.set(px, py, g, -1.5); D.set(px, py + 1, g, -1.2); }
+    if (v === 3) pebble(D, x, y, Pl.stone);
+  } else if (k === 'cavice') {
+    for (const [a, b] of spots(3, 6400 + v * 5, 3)) { D.set(a, b, Pl.snow, -.6); D.set(a + 1, b + 1, Pl.snow, -1.4); }
+    for (const [a, b] of spots(2, 6450 + v)) D.set(a, b, g, -2);
+  } else if (k === 'hewn') {
+    for (const [a, b] of spots(4, 6600 + v * 3, 2)) { D.set(a, b, g, -1.8); D.set(a + 1, b + 1, g, -1.8); D.set(a + 1, b, g, -.1); }
+    if (v === 2) for (let i = 0; i < 5; i++) D.set(x - 2 + i, y + (i >> 1), 'dark', -1);
+  } else if (k === 'slag') {
+    for (const [a, b] of spots(4, 6700 + v)) D.set(a, b, g, 0);
+    for (const [a, b] of spots(3, 6750 + v)) D.set(a, b, 'dark', -1);
+  } else if (k === 'scree' && v >= 2) tuft(D, x - 1, y - 1, Pl.blade);
+  if (extra) extra(D);
+  sunGround(F, Pl, D, Pl.groundK === 'scree' ? screeDD : null);
+}
+/* ---- ',' gravel and alpine flowers, herb-garden beds, loose stones, chips, cinders, gravel through snow, snow ripples, cracks in the snow, frost ---- */
+function ironScatter(F, Pl, v) {
+  const k = Pl.scatK, g = Pl.grass, S = spots(6, 6800 + v * 13, 2);
+  if (k === 'ripple') return sunRidges(F, Pl, v);
+  if (k === 'beds') return ironBed(F, Pl, v);
+  ironGround(F, Pl, v & 1 ? 1 : 0, D => {
+    if (k === 'heather') S.forEach(([x, y], i) => { if (i % 3 === 2) { pebble(D, x, y, Pl.stone); return; } const m = i % 3 ? 'w.heather' : 'clothWhite'; D.set(x, y, m, 0); D.set(x + 1, y, m, -.8); D.set(x, y + 1, g, -1.4); if (i === 1) { D.set(x + 3, y + 1, 'clothBlue', 0); D.set(x + 3, y + 2, g, -1.4); } });
+    else if (k === 'scree') { // a carpet of grey gravel over the turf, the turf showing through (the same speckle along the tile's
+      // edges in every variant, so a scree slope joins up), a clump of turf in each variant's middle, a few stones, and an
+      // alpine flower in one variant
+      for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+        const mid = Math.min(x, y, 15 - x, 15 - y) > 2, sd = mid ? 6874 + v * 3 : 6874;
+        if (hash(x, y, sd) > .76 || (mid && pnoise(x / 4, y / 4, 4, 6873 + v * 5) > .64)) continue;
+        const h = hash(x, y, sd + 1); D.set(x, y, 'w.scree', h < .22 ? .1 : h < .6 ? -.6 : -1.3);
+      }
+      S.slice(0, 3).forEach(([x, y]) => pebble(D, x, y, Pl.stone));
+      if (v === 0) { const [x, y] = S[4]; D.set(x, y, 'w.heather', 0); D.set(x + 1, y, 'w.heather', -.8); D.set(x, y + 1, g, -1.4); }
+    }
+    else if (k === 'stones') S.slice(0, 4).forEach(([x, y], i) => { for (const [a, b, d] of [[0, 0, .1], [1, 0, -.2], [2, 0, -.5], [0, 1, -.4], [1, 1, -.7], [2, 1, -1.1], [3, 1, -1.9], [1, 2, -1.9], [2, 2, -1.9]]) D.set(x + a + (i & 1), y + b, Pl.stone, d); });
+    else if (k === 'chips') S.forEach(([x, y], i) => (i & 1 ? pebble(D, x, y, Pl.stone) : D.set(x, y, g, .2)));
+    else if (k === 'cinder') S.forEach(([x, y], i) => { D.set(x, y, i % 3 ? 'dark' : 'ember', i % 3 ? -1 : -1.5); if (!(i % 3)) D.set(x + 1, y, 'w.char', -1); });
+    else if (k === 'gravel') { for (let b = -3; b <= 3; b++) for (let a = -4; a <= 4; a++) if (Math.hypot(a / 4.2, b / 2.6) < 1 && hash(a, b, 6850 + v) < .8) D.set(8 + a, 8 + b, Pl.soil, -.5 - hash(a, b, 6860) * 1.2); S.slice(0, 3).forEach(([x, y]) => pebble(D, x, y, Pl.stone)); }
+    else if (k === 'cracks') { const pts = [[1, 3 + v], [6, 6], [9, 5 + (v & 1)], [14, 9]]; for (let i = 0; i < pts.length - 1; i++) { const [a, b] = pts[i], [c, d] = pts[i + 1]; for (let t = 0; t <= 8; t++) { const px = a + (c - a) * t / 8, py = b + (d - b) * t / 8; D.set(px, py, 'w.ice', -1.6); D.set(px, py + 1, g, -.1); } } }
+    else if (k === 'frost') S.slice(0, 4).forEach(([x, y], i) => { const m = Pl.snow; D.set(x, y, m, i & 1 ? -.3 : 0); D.set(x - 1, y, m, -1.2); D.set(x + 1, y, m, -1.2); D.set(x, y - 1, m, -1.2); D.set(x, y + 1, m, -1.2); });
+  });
+}
+// ',' in the monastery garden: a tilled bed in rows, herb seedlings along the ridges (square-edged, as beds are)
+function ironBed(F, Pl, v) {
+  F.add({ mat: Pl.bed, prof: 'flat', grp: 'bed', noShadow: true, lo: 1, hi: 3, shapes: [FULL], tex: q => { const r = (q.y + 1) & 3; if (r === 0 && (q.x + (q.y >> 2) * 3 + v) % 3 !== 0) return { m: Pl.blade, dd: (q.x & 1) ? -.2 : -1 }; return (r === 0 ? -.3 : r === 3 ? -2 : -1.1) + bayer(q.x, q.y) * .3; } });
+}
+/* ---- '"' tussock grass, herbs (on bed soil), frozen reeds, ice ferns: their tops drawn overhead ---- */
+function ironTall(F, Pl, v) {
+  if (Pl.tallK === 'herb') return ironBed(F, Pl, v + 1);
+  ironGround(F, Pl, 0, D => {
+    for (let k = 0; k < 14; k++) blade(D, Math.floor(rnd(k, 3, 70 + v) * 16), Math.floor(rnd(k, 4, 70 + v) * 14) + 1, Pl.blade);
+    for (const [x, y] of spots(5, 6900 + v)) D.set(x, y, Pl.grass, -2);
+  });
+}
+function ironTallTops(F, Pl, v) {
+  const k = Pl.tallK, n = k === 'reed' ? 6 : 8, sh = [];
+  for (let j = 0; j < n; j++) { const x = 1.5 + j * (15 / n) + (rnd(j, v, 5) - .5), top = (k === 'reed' ? 5 : 7) + rnd(j, 1 + v, 5) * 4, lean = k === 'tussock' ? (j % 2 ? 1.4 : -1.4) : 0; sh.push(P([[x - .75, 16.5], [x + lean + (j % 2 ? .9 : -.8), top], [x + .75, 16.5]])); }
+  if (k === 'fern') { part(F, Pl.blade, sh, { prof: 'ridge', grp: 'tops', noOutline: true, hi: 5, tex: q => (q.y < 10 ? .4 : -.4) }); return; }
+  F.add({ mat: k === 'herb' ? 'w.sage' : Pl.blade, prof: 'ridge', grp: 'tops', noOutline: true, lo: 1, hi: k === 'tussock' ? 4 : 3, shapes: sh, tex: q => (q.y < 10 ? (k === 'tussock' ? .7 : .2) : q.y > 13 ? -1.3 : -.5) });
+  const tips = sh.map(s => s.pts[1]);
+  if (k === 'herb') part(F, 'w.heather', tips.map(([x, y], i) => E([x, y + 1.4], .8, i % 3 ? 1.6 : 1)), { prof: 'flat', grp: 'bloom', noShadow: true, noOutline: true, hi: 4, tex: q => (q.y % 2 ? -.4 : .3) });
+  else if (k === 'reed') { part(F, 'leather', tips.map(([x, y]) => E([x, y + 1.4], .8, 1.6)), { prof: 'round', bw: .6, grp: 'heads', noOutline: true }); part(F, Pl.snow, tips.map(([x, y]) => O([x, y + .2], .6)), { prof: 'flat', grp: 'caps', noShadow: true, noOutline: true, hi: 5, tex: () => 1 }); }
+  else if (k === 'tussock') part(F, Pl.snow, [E([4, 16.4], 3, 1.2), E([12.4, 16.2], 2.6, 1)], { prof: 'flat', grp: 'snowfoot', noShadow: true, noOutline: true, hi: 3, tex: () => -.2 });
+}
+/* ---- 'm' a snowdrift (the drift lock's ground) or, in the forge, cooled slag; 'i' a drift too, spindrift blowing (2 frames) ---- */
+const DRIFT_RIDGES = [[3.4, 1.6, 2, .6, 1.1], [9.2, 1.2, 7, .5, 2.9], [14.1, 1.4, 11, .4, 4.4]];
+function ironDrift(F, Pl, v, f = -1) {
+  if (Pl.patchK === 'slag' && f < 0) { // a black, glassy crust of slag run out and cooled, cracked across
+    const S = facetSeeds(5, v, 130);
+    F.add({ mat: Pl.patchMat, prof: 'flat', grp: 'slag', noShadow: true, lo: 1, hi: 3, shapes: [FULL], tex: q => { const c = facet(q.x, q.y, S); if (c.d2 - c.d1 < .8) return { m: 'dark', dd: -1.2 }; return -.9 - (c.dx + c.dy) * .08 + (c.d1 < 1.6 ? .5 : 0) + bayer(q.x, q.y) * .2; } });
+    return;
+  }
+  const m = Pl.snow;
+  F.add({ mat: m, prof: 'flat', grp: 'drift', noShadow: true, lo: 1, hi: 4, shapes: [FULL], tex: q => {
+    for (const [c, a, p, b, s] of DRIFT_RIDGES) {
+      const d = (((q.y + .5 - c - a * Math.sin(((q.x + .5 + p) / 16) * Math.PI * 2) - b * Math.sin(((q.x + .5) / 8) * Math.PI * 2 + s)) % 16) + 16) % 16;
+      if (d < 1) return 1.05;
+      if (d < 2.4) return -1.5 + (d - 1) * .35;
+    }
+    return .05 + pnoise(q.x / 8, q.y / 8, 2, 140 + v) * .35 + bayer(q.x, q.y) * .25;
+  } });
+  if (f < 0) return;
+  const sp = f ? [[2, 4], [9, 10], [12, 2]] : [[5, 6], [12, 12], [1, 13]];
+  part(F, m, sp.map(([x, y]) => C([x + .5, y + .5], [x + 2.5 + v % 2, y + .5], .45)), { prof: 'flat', grp: 'spindrift', noShadow: true, noOutline: true, hi: 5, tex: () => 1.6 });
+}
+/* ---- '=' the road: wheel ruts (or a trodden line on a path) along its way: 0 north-south, 1 east-west, 2-5 the bends
+   north-east, east-south, south-west, west-north (the ruts curve round them), 6 a junction ---- */
+const roadLink = n => n === 'road' || n === 'bridge' || n === 'stair' || n === 'door' || n === 'flagstone';
+function ironRoadPick(v, nb) {
+  const [n, e, s, w] = nb.map(roadLink);
+  const k = (n || s) && !e && !w ? 0 : (e || w) && !n && !s ? 1 : n + e + s + w !== 2 ? 6 : n && e ? 2 : e && s ? 3 : s && w ? 4 : 5;
+  return k * 3 + v;
+}
+const BEND_AT = [[16, 0], [16, 16], [0, 16], [0, 0]];
+function ironRoad(F, Pl, v) {
+  const dir = Math.floor(v / 3), w = v % 3, path = Pl.roadK === 'path', D = decals();
+  for (const [x, y] of spots(2 + w, 2000 + w * 7)) pebble(D, x, y, Pl.stone);
+  for (const [x, y] of spots(4, 2100 + w * 5)) D.set(x, y, Pl.soilDark, -1.2);
+  const rut = dir === 6 ? null : (x, y) => {
+    if (dir > 1) { // a bend: the ruts (or the trodden line) are arcs round the inside corner
+      const [cx, cy] = BEND_AT[dir - 2], d = Math.hypot(x + .5 - cx, y + .5 - cy);
+      if (path) return Math.abs(d - 8) < 2 ? -1.3 + (Math.abs(d - 8) < 1 ? -.35 : 0) + bayer(x, y) * .2 : undefined;
+      if (Math.abs(d - 4.5) < .62 || Math.abs(d - 11.5) < .62) return -1.95 + bayer(x, y) * .2;
+      return Math.abs(d - 5.6) < .5 || Math.abs(d - 10.4) < .5 ? -.25 : undefined;
+    }
+    const a = dir === 0 ? x : y, b = dir === 0 ? y : x, j = hash(b >> 2, a > 7 ? 1 : 0, 150 + w) < .2 ? 1 : 0;
+    if (path) return a >= 6 && a <= 9 ? -1.3 + (a === 7 || a === 8 ? -.35 : 0) + ((b + a) % 3 === 0 ? -.3 : 0) + bayer(x, y) * .2 : undefined;
+    if (a === 4 + j || a === 11 - j) return -1.95 + bayer(x, y) * .2;
+    return a === 5 + j || a === 10 - j ? -.25 : undefined;
+  };
+  ground(F, Pl.soil, SEEDS.road, D, { lo: -1.25, hi: -.55, dith: .22, fn: rut });
+}
+/* ---- ':' flagstones (snow in the joints outdoors); on Frostmere, clear black ice with white cracks and trapped bubbles ---- */
+function ironFlags(F, Pl, v) {
+  if (Pl.flagK !== 'blackice') return paintFlagstone(F, Object.assign({}, Pl, { stone: Pl.paver }), v);
+  const D = decals();
+  if (v === 1) for (const [[a, b], [c, d]] of [[[2, 5], [7, 7]], [[7, 7], [10, 12]], [[7, 7], [13, 4]]]) for (let t = 0; t <= 10; t++) D.set(a + (c - a) * t / 10, b + (d - b) * t / 10, 'w.ice', t % 5 ? -2.2 : -1.4);
+  if (v === 2) for (const [x, y] of spots(3, 7700, 4)) { D.set(x, y, 'w.ice', -1.2); D.set(x + 1, y + 1, 'w.ice', -2.4); }
+  ground(F, Pl.patchMat, 7710, D, { lo: -1.25, hi: -.6, dith: .12, fn: (x, y) => -1.05 + pnoise(x / 8, y / 8, 2, 7720 + (v & 1)) * .6 + bayer(x, y) * .12 });
+}
+/* ---- 'w' thin ice / broken floes over black water: a white crack web, the sheen shifting (2 frames) ---- */
+function ironThin(F, Pl, v, f) {
+  F.add({ mat: 'w.ice', prof: 'flat', grp: 'thin', noShadow: true, lo: 1, hi: 3, shapes: [FULL], tex: q => { const s = ((q.x + q.y + (f ? 5 : 0) + 32) % 16); return -2.1 + (s < 3 ? .5 : 0) + pnoise(q.x / 4, q.y / 4, 4, 170 + v) * .6 + bayer(q.x, q.y) * .3; } });
+  const web = v ? [[[2, 3], [7, 7]], [[7, 7], [13, 5]], [[7, 7], [8, 13]], [[8, 13], [3, 14]]] : [[[3, 12], [8, 8]], [[8, 8], [14, 11]], [[8, 8], [6, 2]], [[6, 2], [12, 3]]];
+  part(F, Pl.snow, web.map(([a, b]) => C(a, b, .42)), { prof: 'flat', grp: 'web', noShadow: true, noOutline: true, hi: 3, tex: () => -.2 });
+}
+/* ---- 'T' snowy pines, frost-dead trees (a stone column where no tree grows) ---- */
+const snowOn = (F, Pl, shapes, grp = 'snow') => part(F, Pl.snow, shapes, { prof: 'round', bw: .9, grp, hi: 5, tex: q => (q.y % 3 === 0 ? -.3 : .3) });
+const shade = (Pl, x, y, rx, ry) => D => blot(D, Pl, x, y, rx, ry);
+function ironTreeBase(F, Pl, v) {
+  const t = Pl.tree;
+  if (t === 'column') return sunTreeBase(F, Pl, v);
+  ironGround(F, Pl, 0, shade(Pl, 8.6 + (v ? .6 : 0), 14.2, 6.6, 2.4));
+  if (t === 'pine') part(F, Pl.trunk, [C([8, 15.4], [8, -2], 1.6, 1.1)], { bw: 1.2, grp: 'trunk', tex: q => (q.y % 3 === 0 ? -1 : 0) });
+  else part(F, 'bogwood', [C([8, 15], [9.4, -2], 1.8, 1.2), C([8, 14.6], [4.4, 15.8], 1, .5), C([8, 14.6], [11.8, 15.6], 1, .5)], { bw: 1.2, grp: 'trunk', tex: q => (q.x % 3 === 0 ? -1 : 0) });
+}
+// the overhead part, 24 x 26 drawn at (-4, -16): the tree tile's column is x = 12 here, its top row y = 16
+function ironTreeTop(F, Pl, v) {
+  const t = Pl.tree;
+  if (t === 'column') return sunTreeTop(F, Pl, v);
+  if (t === 'pine') { // four tiers of boughs, snow along the top of each
+    const cx = 12 + (v === 1 ? -.6 : v === 2 ? .6 : 0), base = 26.5, H = 24.5 + (v === 2 ? .8 : 0), sh = [];
+    part(F, Pl.trunk, [C([12, 28], [cx, base - 4], 1.4, 1.1)], { bw: 1, grp: 'trunk' });
+    for (let i = 0; i < 4; i++) { const u = i / 4, y0 = base - u * H * .82, w = 9.6 - u * 6.4, top = y0 - H * .42; sh.push(P([[cx - w, y0], [cx - w * .5, y0 - 1.6], [cx + (i % 2 ? .4 : -.4), top], [cx + w * .5, y0 - 1.4], [cx + w, y0], [cx + w * .3, y0 + 1.2], [cx - w * .3, y0 + 1.1]])); }
+    part(F, Pl.leaf, sh.slice().reverse(), { prof: 'round', bw: 2.2, grp: 'boughs', tex: q => (((q.x * 3 + q.y * 5) % 7) === 0 ? -1 : 0) + (q.y % 5 === 0 ? -.4 : 0) });
+    if (Pl.treeSnow) snowOn(F, Pl, sh.map((p, i) => { const [[x0, y0], , [xt, yt], , [x1]] = p.pts; return P([[x0 + 1.4, y0 - .6], [xt, yt + .4], [x1 - 1.4, y0 - .6], [xt + 1, yt + 3.4 + i * .3], [xt - 1.2, yt + 3.2]]); }));
+    return;
+  }
+  // frost-dead: bare, bent east by the wind, rime and snow along every branch
+  const br = [[[12, 28], [13.4, 12]], [[13, 18], [20, 12]], [[13.2, 15], [21, 9.4]], [[13.4, 12], [19.4, 4.6]], [[12.6, 20], [7.4, 16]], [[16, 13.6], [22.4, 14.4]]];
+  br.forEach(([a, b], k) => part(F, 'bogwood', [C(a, [b[0] + (v === 1 ? -1 : 0) * (k ? 1 : 0), b[1] + (v === 2 ? 1 : 0)], k ? .85 : 1.7, k ? .45 : 1.3)], { bw: .8, grp: 'br' + k }));
+  snowOn(F, Pl, br.slice(1).map(([a, b]) => C([a[0], a[1] - 1], [b[0], b[1] - 1], .5)), 'snowline');
+}
+/* ---- 't' junipers, herb bushes, barrels, crates, frozen shrubs, a monk frozen in the ice ---- */
+function ironBush(F, Pl, v) {
+  const k = Pl.bushK;
+  ironGround(F, Pl, 0, shade(Pl, 8.5, 13.8, 6.4, 2.2));
+  if (k === 'juniper' || k === 'herb') {
+    const m = k === 'herb' ? 'w.sage' : Pl.bush;
+    part(F, m, [[[5, 10.6, 4], [11, 10.4, 4.2], [8, 7.4, 4]], [[4.6, 11, 3.8], [11.4, 11, 3.6], [8.2, 7.8, 4.2]]][v].map(([x, y, r]) => O([x, y], r)), { bw: 3, grp: 'bush', tex: q => ((q.x * 3 + q.y * 5) % 7 === 0 ? -1 : 0) + (k === 'herb' && (q.x * 5 + q.y * 3) % 11 === 0 ? { m: 'w.heather', dd: .2 } : 0) });
+    if (k === 'juniper' && Pl.treeSnow) snowOn(F, Pl, [E([7.6, 4.8], 3, 1.2), E([12.4, 7.6], 2, .9)]);
+  } else if (k === 'barrels' || k === 'crates') { // iron-bound barrels and a crate (snow on them outdoors)
+    part(F, 'wood', [RECT(1.4, 6.4, 9.6, 14.8)], { prof: 'bevel', bw: 1, grp: 'crate', tex: q => (q.y === 10 || q.x === 5 ? -1 : 0) });
+    part(F, 'wood', [RECT(9.4, v ? 3.4 : 7.2, 14.8, 15)], { bw: 2, grp: 'barrel', tex: q => (q.y % 4 === 0 ? { m: 'iron', dd: 0 } : q.x === 11 ? -.8 : 0) });
+    if (v) part(F, 'wood', [RECT(3, 1.6, 8.6, 6.8)], { prof: 'bevel', bw: .8, grp: 'crate2', tex: q => (q.x === 5 ? -1 : 0) });
+    if (k === 'crates') snowOn(F, Pl, [RECT(1.6, v ? 1.2 : 5.6, 9.4, v ? 2.6 : 7), E([12.1, v ? 3.4 : 7.2], 2.6, .9)]);
+  } else if (k === 'frozen') { // a bare shrub under rime
+    part(F, 'bogwood', [[8, 14, 3, 4], [8, 14, 7, 5.6], [8, 14, 12.4, 5], [8, 14, 13.6, 9.6], [8, 14, 2.4, 9], [6, 9, 4.4, 6.4], [10.4, 8.6, 11, 6]].map(([a, b, c, d]) => C([a, b], [c, d], .7, .4)), { bw: .6, grp: 'twigs' });
+    snowOn(F, Pl, [E([8, 13.4], 5.4, 1.6), O([7, 5.6], .9), O([12.4, 5.2], .8), O([3, 9], .8)]);
+  } else if (k === 'monk') { // a monk frozen upright in a block of ice
+    part(F, 'w.habit', [P([[5.4, 14.6], [6, 7], [8, 4.6], [10, 7], [10.6, 14.6]]), O([8, 4.8], 1.9)], { bw: 1.2, grp: 'monk', tex: q => (q.y > 12 ? -.6 : 0) });
+    part(F, Pl.glass, [P([[2.6, 15], [3, 3.4], [6.4, .8], [11.6, 1.4], [13.4, 4.4], [13.4, 15]])], { prof: 'flat', grp: 'block', noShadow: true, hi: 5, tex: q => ((q.x + q.y) % 5 === 0 ? .3 : q.x > 5 && q.x < 11 && q.y > 2 ? { m: 'w.habit', dd: -.8 } : -.6) });
+  }
+}
+/* ---- 'Y' rock masses, cloister columns, carved dwarf columns, anvils on iron plinths, ice columns ---- */
+function ironMass(F, Pl, v) {
+  const k = Pl.massK;
+  ironGround(F, Pl, 0, null);
+  if (k === 'rock') {
+    const S = facetSeeds(5, v, 97);
+    part(F, Pl.cliff, [E([8, 8.6], 8.6, 8.4), C([2, 14], [-2, 16.5], 3), C([14, 3], [18, 1], 3)], { bw: 3.4, grp: 'mass', tex: q => { const f = facet(q.x, q.y, S); return f.d2 - f.d1 < .8 ? -1.4 : -(f.dx + f.dy) * .12 + (hash(f.i, v, 98) - .5) * .5; } });
+    if (Pl.cliffSnow) snowOn(F, Pl, [E([6.6, 2.6], 4.6, 1.6), E([12, 4.2], 2.4, 1)]);
+    return;
+  }
+  if (k === 'pillar' || k === 'carved') { // a round column on a square base; its upper shaft and capital are the overhead part
+    part(F, Pl.stone, [RECT(3.2, 12.4, 12.8, 15.8)], { prof: 'bevel', bw: .9, grp: 'base' });
+    part(F, Pl.stone, [RECT(4.8, -6, 11.2, 13)], { bw: 2.4, grp: 'shaft', tex: colTex });
+    if (k === 'carved') part(F, 'iron', [RECT(4.6, 10.4, 11.4, 11.6)], { prof: 'bevel', bw: .5, grp: 'bands', noShadow: true });
+    return;
+  }
+  if (k === 'icepillar') { part(F, Pl.glass, [P([[4, 15.6], [5.2, 10], [5.4, -6], [10.6, -6], [10.8, 10], [12, 15.6]])], { prof: 'bevel', bw: 2, grp: 'col', hi: 5, tex: q => (q.x === 7 ? .5 : q.x === 10 ? -.6 : 0) }); return; }
+  if (k === 'anvil') { // an anvil on a squat iron plinth (reads as an iron pillar from above)
+    part(F, 'blackiron', [RECT(4.2, 8.6, 11.8, 15.6)], { prof: 'bevel', bw: 1, grp: 'plinth', tex: q => (q.y % 3 === 0 ? -.6 : 0) });
+    part(F, 'iron', [P([[.8, 3.4], [12, 3.4], [15, 4.4], [12.4, 6.2], [10.2, 6.4], [10.6, 9], [5.4, 9], [5.8, 6.4], [3, 5.8]])], { prof: 'bevel', bw: 1, grp: 'anvil' });
+  }
+}
+// a column's flutes: the same in its base tile and its overhead part, so the two meet without a seam
+const colTex = q => (q.x === 7 ? .4 : q.x === 10 ? -.6 : 0);
+// the overhead part of a column, 16 x 26 drawn at (0, -16): its capital a tile up, the shaft down into its own tile
+function ironMassTop(F, Pl, v) {
+  const k = Pl.massK;
+  if (k === 'pillar' || k === 'carved') {
+    part(F, Pl.stone, [RECT(4.8, 5, 11.2, 30)], { bw: 2.4, grp: 'shaft', tex: colTex });
+    part(F, Pl.stone, [RECT(3.4, 2.6, 12.6, 5.8)], { prof: 'bevel', bw: 1, grp: 'capital' });
+    part(F, Pl.stone, [RECT(2.4, .6, 13.6, 3)], { prof: 'bevel', bw: .8, grp: 'abacus' });
+    if (k === 'carved') { part(F, 'iron', [RECT(4.6, 7.4, 11.4, 8.6), RECT(4.6, 19.4, 11.4, 20.6)], { prof: 'bevel', bw: .5, grp: 'bands', noShadow: true }); part(F, 'amber', runeShapes(8, 14, v, .42), { prof: 'flat', grp: 'rune', noShadow: true, noOutline: true, hi: 4, tex: () => -1.1 }); }
+  } else if (k === 'icepillar') { // the ice column widens into the cave roof
+    part(F, Pl.glass, [P([[5.2, 30], [5.4, 12], [3.6, 5], [2, 0], [14, 0], [12.4, 5], [10.6, 12], [10.8, 30]])], { prof: 'bevel', bw: 2, grp: 'col', hi: 5, tex: q => (q.x === 7 ? .5 : q.x === 10 ? -.6 : 0) + (q.y < 5 ? -.4 : 0) });
+    part(F, 'frost', [C([8, 24], [7.6, 9 + v], .45)], { prof: 'flat', grp: 'core', noShadow: true, noOutline: true, hi: 5, tex: () => -.8 });
+  }
+}
+// a dwarf rune: a stave with two or three strokes off it (iron-filled grooves, or glowing)
+function runeShapes(cx, cy, v, s = 1) {
+  const r = (a, b) => C([cx + a[0] * s, cy + a[1] * s], [cx + b[0] * s, cy + b[1] * s], Math.max(.42, .55 * s));
+  return [[r([0, -4.5], [0, 4.5]), r([0, -1.5], [3, -4]), r([0, 1], [-3, 3.4])], [r([-1.5, -4.5], [-1.5, 4.5]), r([-1.5, -2], [2.5, 0]), r([2.5, 0], [-1.5, 2.5])], [r([0, -4.5], [0, 4.5]), r([-3, -3], [3, 3]), r([3, -3], [-3, 3])]][v % 3];
+}
+/* ---- 'o' snow-capped boulders, scree boulders, rubble, slag heaps with ore, heaved ice blocks, ice boulders ---- */
+function ironRock(F, Pl, v) {
+  const k = Pl.rockK;
+  ironGround(F, Pl, 0, shade(Pl, 8.6, 13.6, 6.6, 2.3));
+  if (k === 'rubble') {
+    [[1.6, 9, 8.4, 14.8], [7.6, 8.6, 14.6, 14.6], [4.6, 4.2, 11.4, 9.6]].forEach(([a, b, c, d], i) => part(F, Pl.stone, [RECT(a, b + (v && i === 2 ? .8 : 0), c, d)], { prof: 'bevel', bw: 1.2, grp: 'blk' + i, tex: q => (rnd(q.x >> 1, q.y >> 1, 20 + i) < .12 ? -1 : 0) }));
+    return;
+  }
+  if (k === 'slag') { // glassy lumps of slag, a vein of ore in one
+    part(F, Pl.stone, (v ? [[5.4, 10.6, 4.2, 3.6], [11, 11.4, 3.6, 3], [8.6, 6.6, 3.2, 2.8]] : [[7.6, 9.6, 5.6, 4.6], [12.4, 12.4, 2.4, 2]]).map(([x, y, rx, ry]) => E([x, y], rx, ry)), { bw: 2.6, grp: 'slag', tex: q => ((q.x * 5 + q.y * 3) % 11 === 0 ? { m: 'w.char', dd: 0 } : 0) });
+    part(F, 'amber', (v ? [[4.4, 10], [9, 6.2]] : [[6, 9], [8.4, 11]]).map(([x, y]) => O([x, y], .55)), { prof: 'flat', grp: 'ore', noShadow: true, hi: 4, tex: () => -1 });
+    return;
+  }
+  if (k === 'iceblock') { // slabs of lake ice heaved up, snow in their lee
+    part(F, Pl.glass, [P([[1, 15], [2.4, 6], [7.4, 2.4 + v], [9, 15]]), P([[7.6, 15.4], [9.6, 4.6], [14.6, 7.4 - v], [15.2, 15.4]])], { prof: 'bevel', bw: 1.8, grp: 'slabs', hi: 5, tex: q => ((q.x - q.y + 16) % 7 === 0 ? .6 : 0) });
+    snowOn(F, Pl, [E([4.4, 14.2], 3.6, 1.2), E([12, 14.6], 3, 1)]);
+    return;
+  }
+  if (k === 'ice') { part(F, Pl.glass, [P([[2.6, 14.2], [3.6, 8], [7, 3.4 + v], [11.6, 4.4], [14, 9], [13.6, 14.2], [8, 15.2]])], { prof: 'bevel', bw: 2.2, grp: 'lump', hi: 5 }); part(F, 'frost', [C([6, 11], [8, 6.6], .4)], { prof: 'flat', grp: 'core', noShadow: true, noOutline: true, hi: 5, tex: () => -1 }); return; }
+  const pts = k === 'scree' ? [[[2.4, 14], [3, 8.4], [6.6, 4.4], [12.4, 5.6], [14.2, 10], [12.4, 14.6]], [[1.8, 13.4], [4.4, 6.4], [9, 3.6], [13.4, 6.8], [14.2, 13.6], [8, 15]]][v % 2]
+    : [[[2.4, 13.6], [3.2, 7], [6.6, 3.6], [11.4, 3.8], [14, 7.4], [14, 13.6], [8.4, 15]], [[2, 13.8], [2.6, 8.6], [5.4, 4.4], [10.6, 3.2], [13.8, 6], [14.6, 13.2], [9, 15]]][v % 2];
+  const S = facetSeeds(4, v, 124);
+  part(F, Pl.stone, [P(pts)], { bw: 3.2, grp: 'rock', tex: k === 'scree' ? q => { const f = facet(q.x, q.y, S); return f.d2 - f.d1 < .7 ? -1.2 : -(f.dx + f.dy) * .1; } : q => (((q.y + (q.x >> 3) + v) % 3) === 0 ? -.9 : 0) + bayer(q.x, q.y) * .25 });
+  if (k === 'snowcap') snowOn(F, Pl, [P(v ? [[3.4, 7.6], [5.6, 4.4], [10.6, 3.4], [13.6, 6.2], [11, 7.2], [7.4, 6.6], [5, 8.4]] : [[3.6, 6.8], [6.6, 3.6], [11.4, 3.8], [13.6, 6.8], [10.6, 6.2], [7, 7.4]])]);
+}
+/* ---- '#' drystone, whitewash under slate, dwarf blocks with an iron band, furnace brick, coursed stone, cairn stones, frozen masonry ---- */
+function ironWall(F, Pl, v, face) {
+  const k = Pl.wallK, w = Pl.wall, cap = Pl.cap;
+  if (k === 'ashlar' || k === 'frozen' || k === 'dwarf' && !face) sunWall(F, Pl, v, face);
+  else if (k === 'drystone' || k === 'cairn') { // unshaped stones fitted dry (rounder in a cairn wall), dark gaps between
+    const S = facetSeeds(k === 'cairn' ? 5 : 6, v, 126 + (face ? 0 : 3));
+    F.add({ mat: w, prof: 'flat', grp: face ? 'face' : 'top', noShadow: true, lo: 1, hi: face ? 4 : 3, shapes: [FULL], tex: q => {
+      if (face && q.y < 3) return { m: cap, dd: q.y === 0 ? .6 : q.y === 2 ? -1.6 : 0 };
+      const f = facet(q.x, q.y, S), gap = k === 'cairn' ? 1.4 : .9;
+      return f.d2 - f.d1 < gap ? { m: 'dark', dd: -1.6 } : -.5 - (f.dx + f.dy) * (k === 'cairn' ? .16 : .1) + (hash(f.i, v, 127) - .5) * .7 + (face && q.y === 15 ? -.8 : 0) - (face ? 0 : .5);
+    } });
+  } else if (k === 'whitewash') { // lime-washed stone, a stone plinth at the foot, flaking in places; slate coping
+    F.add({ mat: w, prof: 'flat', grp: face ? 'face' : 'top', noShadow: true, lo: 1, hi: face ? 4 : 3, shapes: [FULL], tex: q => {
+      if (!face) return { m: cap, dd: -.6 + ((q.y & 3) === 0 ? -.9 : 0) + bayer(q.x, q.y) * .2 };
+      if (q.y < 3) return { m: cap, dd: q.y === 0 ? .5 : q.y === 2 ? -1.6 : -.2 };
+      if (q.y >= 13) return { m: Pl.stone, dd: q.y === 13 ? -1.4 : q.y === 15 ? -1 : -.4 + ((q.x + v * 3) % 6 === 0 ? -1 : 0) };
+      return -.55 + (q.y === 3 ? -.8 : q.y === 8 && (q.x + v * 5) % 16 < 9 ? -.35 : 0) + pnoise(q.x / 2, q.y / 8, 8, 211, 2) * .35 + bayer(q.x, q.y) * .15;
+    } });
+  } else if (k === 'dwarf') { // dressed granite: an iron band with rivets under the coping, two courses of big blocks, a rune cut in some
+    F.add({ mat: w, prof: 'flat', grp: 'face', noShadow: true, lo: 1, hi: 4, shapes: [FULL], tex: q => {
+      const x = q.x, y = q.y;
+      if (y < 3) return { m: cap, dd: y === 0 ? .7 : y === 2 ? -1.6 : -.1 };
+      if (y < 5) return { m: 'iron', dd: y === 3 ? .1 : -1.1 };
+      const r = y < 10 ? 0 : 1, ly = y - (r ? 10 : 5), lx = (x + ((r + v) & 1 ? 8 : 0)) & 15;
+      if (ly === 0 || lx === 0) return { m: 'dark', dd: -1.7 };
+      return -.4 + (ly === 1 ? .5 : 0) + (lx === 1 ? .3 : 0) + (lx === 15 ? -.7 : 0) + (y === 15 ? -.7 : 0) + (rnd(x, y, 41) < .06 ? -.8 : 0);
+    } });
+    part(F, 'steel', [O([3.5, 3.8], .6), O([11.5, 3.8], .6)], { prof: 'round', bw: .5, grp: 'rivets', noShadow: true });
+    if (v) part(F, 'iron', runeShapes(8, 10.5, v + 1, .7), { prof: 'round', bw: .4, grp: 'rune', noShadow: true });
+  } else if (k === 'brick') { // furnace brick, soot-black toward the top
+    F.add({ mat: w, prof: 'flat', grp: face ? 'face' : 'top', noShadow: true, lo: 1, hi: face ? 4 : 3, shapes: [FULL], tex: q => {
+      if (face && q.y < 3) return { m: 'w.char', dd: q.y === 0 ? .4 : q.y === 2 ? -1.4 : -.3 };
+      const d = brickTex(q);
+      return typeof d === 'object' ? d : d - (face ? (q.y < 7 ? .6 : 0) : .6) + (face && q.y === 15 ? -.6 : 0);
+    } });
+  }
+  if (k === 'frozen') { // glazed with ice, icicles hanging from the coping
+    if (face) { part(F, 'w.ice', [C([3, 4], [2.6, 12], .8), C([10, 3.6], [10.6, 9], .7)], { prof: 'flat', grp: 'glaze', noShadow: true, noOutline: true, hi: 4, tex: () => -.6 }); part(F, 'w.glacier', [[2.6, 6 + v], [7, 4.6], [12.4, 5.4 - v]].map(([x, b]) => P([[x - 1, 2.6], [x + 1, 2.6], [x, b]])), { prof: 'bevel', bw: .5, grp: 'icicles', hi: 5 }); }
+    else part(F, Pl.snow, [E([5, 6], 3, 1.6), E([11, 11], 2.6, 1.4)], { prof: 'flat', grp: 'frost', noShadow: true, noOutline: true, hi: 3, tex: () => -.8 });
+    return;
+  }
+  if (!Pl.wallSnow) return;
+  if (face) part(F, Pl.snow, [P([[-1, -1], [17, -1], [17, 2.2], [13, 2.8 + (v & 1) * .6], [9.4, 2.2], [5.6, 3], [2, 2.4], [-1, 2.8]])], { prof: 'flat', grp: 'snowcap', noShadow: true, hi: 5, tex: q => (q.y === 0 ? .9 : q.y >= 2 ? -.6 : .4) });
+  else part(F, Pl.snow, [E([4 + v * 2, 5], 4.4, 2.8), E([11.4, 10.6 - v], 4.2, 2.6), E([3, 13.4], 2.4, 1.6)], { prof: 'round', bw: 1, grp: 'snowtop', hi: 5, tex: q => (q.y % 4 === 0 ? -.3 : .2) });
+}
+const brickTex = q => ((q.y & 1) === 0 || ((q.x + ((q.y >> 1) & 1) * 2) & 3) === 0 ? { m: 'dark', dd: -1.4 } : (q.y < 6 ? -.8 : 0) + (rnd(q.x >> 2, q.y >> 1, 190) < .15 ? -.6 : 0));
+/* ---- 'H' slate (snow along its courses in the peaks), snowed plank roofs with icicles, riveted furnace hoods, stone slabs ---- */
+function ironRoof(F, Pl, v, mask) {
+  const k = Pl.roofK, e = Pl.roofEdge;
+  if (k === 'slab') return sunRoof(F, Pl, v, mask);
+  const S = Pl.roofSnow;
+  F.add({ mat: Pl.roof, prof: 'flat', grp: 'roof', noShadow: true, lo: 1, hi: 4, shapes: [FULL], tex: q => {
+    const x = q.x, y = q.y;
+    if (k === 'planks') { // snow heaped on the boards; the plank ends show at the eave, icicles under it
+      if (mask & 4 && y >= 12) { if (y === 15) return x % 3 === 1 ? { m: 'w.ice', dd: .2 } : { m: 'dark', dd: -2 }; return (x % 4 === 0 ? -1.6 : y === 12 ? .2 : -.5) + bayer(x, y) * .2; }
+      if (mask & 8 && x <= 1 || mask & 2 && x >= 14) return { m: e, dd: x === 0 || x === 15 ? -.3 : -1 };
+      return { m: Pl.snow, dd: (mask & 1 && y <= 1 ? .5 : 0) - .15 + pnoise(x / 4, y / 4, 4, 180 + v) * .5 + (y === 11 && mask & 4 ? -1.2 : 0) + bayer(x, y) * .25 };
+    }
+    if (mask & 4 && y >= 13) return { m: e, dd: y === 13 ? .3 : y === 15 ? -1.6 : -.5 };
+    if (mask & 1 && y <= 2) return S ? { m: Pl.snow, dd: y === 2 ? -.8 : .5 } : { m: e, dd: y === 0 ? .6 : y === 2 ? -1.3 : 0 };
+    if (mask & 8 && x <= 1) return { m: e, dd: x === 0 ? .3 : -.7 };
+    if (mask & 2 && x >= 14) return { m: e, dd: x === 15 ? -1.5 : -.7 };
+    if (k === 'hood') return ((x & 7) === 0 ? -1.4 : (x & 7) === 1 ? .5 : -.3) + ((y & 7) === 3 && (x & 3) === 2 ? { m: 'steel', dd: 0 } : 0) + (y < 5 ? -.7 : 0) + (rnd(x >> 1, y >> 1, 220 + v) < .1 ? -.6 : 0);
+    // slate: small staggered slates, snow lying along each course
+    const r = Math.floor(y / 3), ly = y % 3, lx = (x + (r & 1) * 2) & 3;
+    if (S && ly === 0 && (x + r) % 5 !== 0) return { m: Pl.snow, dd: -.2 };
+    if (lx === 0) return -1.8;
+    return (ly === 0 ? .6 : ly === 1 ? -.1 : -.9) + (rnd(x >> 2, r, 7 + v) < .12 ? -.5 : 0);
+  } });
+}
+/* ---- '|' chain rails (the Iron Stair), a snowy timber stockade, iron railings, wattle ---- */
+// 0 an east-west run (or a lone post), 1 inside a north-south run, 2 the north end of one
+function fencePick(v, nb) { const f = n => n === 'palisade', ns = f(nb[0]) || f(nb[2]); return (ns && !(f(nb[1]) || f(nb[3])) ? (f(nb[0]) ? 1 : 2) : 0) * 2 + v; }
+function ironFence(F, Pl, v) {
+  const k = Pl.fenceK, dir = v >> 1, w = v & 1, ns = dir > 0;
+  if (k === 'logs') { sunPalisade(F, Pl, w, dir !== 1); if (dir !== 1) snowOn(F, Pl, [0, 1, 2, 3].map(j => { const x = j * 4 + 2, t = 1 + ((j + w) % 2) * 1.3; return P([[x - 1.7, t + 2.6], [x, t - .2], [x + 1.7, t + 2.6], [x, t + 3.4]]); })); return; }
+  ironGround(F, Pl, 0, null);
+  if (k === 'chain') { // iron posts, the chain swagged between them
+    part(F, 'blackiron', [RECT(6.6, 4.4, 9.4, 15.4), E([8, 4.4], 1.8, 1.1)], { prof: 'bevel', bw: .8, grp: 'post' });
+    const links = [];
+    if (ns) for (let j = 0; j < 7; j++) { const y = j * 2.4 - 1; links.push(j % 2 ? E([8, y], .7, 1.2) : E([8, y], 1.1, .7)); }
+    else for (let j = 0; j < 7; j++) { const x = j * 2.6 - .4, y = 5.2 + (1 - Math.cos(((x - 8) / 8) * Math.PI)) * 1.6; links.push(j % 2 ? E([x, y], 1.3, .7) : E([x, y], .8, 1.1)); }
+    part(F, 'iron', links, { prof: 'round', bw: .5, grp: 'links', cuts: links.map(l => E(l.c, l.rx * .45, l.ry * .45)) });
+    return;
+  }
+  if (k === 'rail') { // posts and two bars
+    if (ns) { part(F, Pl.palisade, [C([8, -1], [8, 17], .6)], { bw: .5, grp: 'bar' }); part(F, Pl.palisade, [RECT(6.6, 5, 9.4, 14.6)], { prof: 'bevel', bw: .7, grp: 'post' }); return; }
+    part(F, Pl.palisade, [RECT(2.2, 5, 4.2, 15), RECT(10.2, 5, 12.2, 15)], { prof: 'bevel', bw: .6, grp: 'posts' });
+    part(F, Pl.palisade, [C([-1, 6.4], [17, 6.4], .55), C([-1, 11], [17, 11], .55)], { bw: .5, grp: 'bars' });
+    return;
+  }
+  // wattle: stakes with withies woven between
+  part(F, Pl.palisade, [2, 8, 14].map(x => RECT(x - .8, 3.6, x + .8, 15.4)), { prof: 'round', bw: .6, grp: 'stakes' });
+  part(F, 'thorn', [6, 8.4, 10.8, 13.2].map(y => C([-1, y], [17, y + (w ? .3 : -.3)], 1.1)), { prof: 'round', bw: .8, grp: 'weave', tex: q => (((q.x >> 1) + Math.floor(q.y / 2.4)) & 1 ? -.9 : 0) });
+}
+/* ---- '*' wall lamps, wall torches, braziers, glowing crystals ---- */
+function ironTorch(F, Pl, v, f) {
+  ironWall(F, Pl, 0, true);
+  if (Pl.lampK === 'lantern') {
+    part(F, 'iron', [C([8, 2.6], [8, 4.8], .5), C([5.2, 3], [10.8, 3], .45)], { bw: .6, grp: 'bracket' });
+    part(F, Pl.sconce, [RECT(5.8, 4.6, 10.2, 11.4), P([[5.2, 5], [8, 3.4], [10.8, 5]]), RECT(6.6, 11.2, 9.4, 12.4)], { prof: 'bevel', bw: .8, grp: 'lantern' });
+    part(F, Pl.torch, [RECT(6.8, 6, 9.2, 10.4)], { prof: 'flat', grp: 'glass', noShadow: true, hi: 5, tex: q => (q.y > 8 ? .8 : .2) + (f ? .3 : -.1) });
+    part(F, Pl.sconce, [C([8, 5.8], [8, 10.6], .4)], { prof: 'flat', grp: 'mullion', noShadow: true, hi: 3, tex: () => -1 });
+    return;
+  }
+  if (Pl.lampK !== 'torch') return lampOn(F, Pl, f);
+  F.add({ mat: Pl.torch, prof: 'flat', grp: 'warm', noShadow: true, noOutline: true, lo: 1, hi: 2, shapes: [E([8, 6], 5.4, 5)], tex: q => (bayer(q.x, q.y) + (Math.hypot(q.x - 7.5, q.y - 6) / 5.4) * .9 > .55 ? -9 : -2.4 + (f ? .3 : 0)) });
+  part(F, Pl.sconce, [RECT(6, 9.5, 10, 11.4), C([8, 11.4], [8, 13.6], .8)], { bw: .8, grp: 'sconce' });
+  part(F, 'wood', [C([8, 6.5], [8, 9.8], .9)], { bw: .6, grp: 'brand' });
+  part(F, Pl.torch, [P(f ? [[8.3, .6], [10.2, 3.6], [10, 6.4], [8, 7.4], [6, 6.4], [6.2, 4]] : [[7.4, .4], [9.8, 3.4], [10, 6.4], [8, 7.4], [6, 6.2], [6, 3.2]])], { bw: 1.6, grp: 'flame', noShadow: true, glow: true, hi: 5, tex: q => (q.y > 4 ? .9 : .1) + (f ? .3 : 0) });
+}
+/* ---- '+' planked doors (round-headed in stone, square in timber), dwarf portals, iron doors, ice arches ---- */
+function ironDoor(F, Pl, v) {
+  const k = Pl.doorK;
+  ironWall(F, Pl, v, true);
+  if (k === 'dwarf') { // a square portal under a rune lintel, two iron-bound leaves
+    part(F, Pl.doorFrame, [RECT(1.2, 2.4, 14.8, 17)], { prof: 'bevel', bw: 1.2, grp: 'portal' });
+    part(F, 'blackiron', [RECT(3.2, 5.6, 7.9, 16.6), RECT(8.1, 5.6, 12.8, 16.6)], { prof: 'bevel', bw: .7, grp: 'leaves', tex: q => (q.y % 4 === 1 ? { m: 'iron', dd: .2 } : 0) });
+    part(F, 'iron', [RECT(2.6, 3, 13.4, 5.4)], { prof: 'bevel', bw: .6, grp: 'lintel' });
+    part(F, 'amber', [C([6, 4.2], [10, 4.2], .35), C([8, 3.4], [8, 5], .35)], { prof: 'flat', grp: 'runes', noShadow: true, noOutline: true, hi: 4, tex: () => -1 });
+    part(F, 'steel', [O([7, 11], .55), O([9, 11], .55)], { prof: 'round', bw: .4, grp: 'rings', noShadow: true });
+    return;
+  }
+  if (k === 'icearch') {
+    part(F, Pl.glass, [P([[1.4, 16.6], [1.6, 6], [4, 2.4], [8, 1.2], [12, 2.4], [14.4, 6], [14.6, 16.6]])], { prof: 'bevel', bw: 1.6, grp: 'arch', hi: 5 });
+    part(F, 'dark', [P([[4.2, 16.6], [4.2, 8], [6, 5.4], [8, 4.8], [10, 5.4], [11.8, 8], [11.8, 16.6]])], { prof: 'flat', grp: 'opening', lo: 0, hi: 1, tex: q => (q.y > 12 ? -1 : 0) });
+    return;
+  }
+  const round = k === 'wood', frame = round ? [[2.5, 16.6], [2.5, 7], [4.2, 3.6], [8, 2.2], [11.8, 3.6], [13.5, 7], [13.5, 16.6]] : [[2.2, 16.6], [2.2, 3.2], [13.8, 3.2], [13.8, 16.6]];
+  const leaf = round ? [[4.4, 16.6], [4.4, 7.4], [5.6, 5.2], [8, 4.4], [10.4, 5.2], [11.6, 7.4], [11.6, 16.6]] : [[4, 16.6], [4, 5], [12, 5], [12, 16.6]];
+  part(F, k === 'iron' ? 'w.char' : Pl.doorFrame, [P(frame)], { prof: 'bevel', bw: 1, grp: 'frame' });
+  part(F, k === 'iron' ? 'blackiron' : Pl.door, [P(leaf)], { prof: 'bevel', bw: .8, grp: 'leaf', tex: k === 'iron' ? q => (q.y % 5 === 0 ? { m: 'iron', dd: 0 } : 0) : q => ((q.x - 4) % 3 === 0 ? -1.1 : 0) });
+  part(F, 'iron', k === 'iron' ? [O([10.4, 11], .8)] : [C([4.4, 8], [9, 8], .45), C([4.4, 13.6], [9, 13.6], .45), O([10.4, 11.4], .7)], { prof: 'round', bw: .4, grp: 'fittings', noShadow: true });
+}
+/* ---- '^' granite crags, snow on their ledges; ice-crusted on the Frost Road ---- */
+function ironCliff(F, Pl, v) {
+  sunCliff(F, Pl, v);
+  if (Pl.cliffIce) part(F, 'w.ice', [C([3 + v, 1.6], [2, 9], .9), C([11, 6], [12.4, 13.4], .8)], { prof: 'flat', grp: 'glaze', noShadow: true, noOutline: true, hi: 4, tex: q => (q.x % 2 ? -.2 : -.8) });
+  if (Pl.cliffSnow) snowOn(F, Pl, [C([2.6 + v, 4.4], [7.4 + v, 4], .75), C([9, 10.6 - v], [13.4, 10.2 - v], .7)], 'ledges');
+}
+/* ---- 'R' raw rock, and walls of blue ice: striated, icicles hanging from the top ---- */
+function ironCave(F, Pl, v, face) {
+  if (Pl.caveK !== 'ice' && !face) return sunCave(F, Pl, v, face);
+  if (Pl.caveK !== 'ice') { // raw rock: angular faces lit from the top-left, a lit lip at the foot
+    const S = facetSeeds(6, v, 240);
+    F.add({ mat: Pl.cliff, prof: 'flat', grp: 'face', noShadow: true, lo: 1, hi: 4, shapes: [FULL], tex: q => { if (q.y >= 14) return q.y === 14 ? .3 : -1.8; const c = facet(q.x, q.y, S); return c.d2 - c.d1 < .85 ? { m: 'dark', dd: -1.4 } : -.8 - (c.dx + c.dy) * .15 + (hash(c.i, v, 241) - .5) * .5 - (q.y < 3 ? .6 : 0) + bayer(q.x, q.y) * .2; } });
+    return;
+  }
+  if (!face) { F.add({ mat: Pl.rockTop, prof: 'flat', grp: 'top', noShadow: true, lo: 1, hi: 2, shapes: [FULL], tex: q => -1.6 + pnoise(q.x / 8, q.y / 8, 2, 190 + v) * .9 + (rnd(q.x, q.y, 191 + v) < .05 ? .8 : 0) + bayer(q.x, q.y) * .35 }); return; }
+  F.add({ mat: Pl.cliff, prof: 'flat', grp: 'face', noShadow: true, lo: 1, hi: 4, shapes: [FULL], tex: q => (q.y >= 14 ? (q.y === 14 ? .6 : -1.6) : -1.4 + pnoise(q.x / 2, q.y / 8, 8, 192 + v, 2) * 1.6 - (q.y < 3 ? .8 : 0) + bayer(q.x, q.y) * .3) });
+  part(F, 'w.ice', [[2.4, 5 + v], [6.2, 3.4], [9.6, 6 - v], [13.2, 4.2]].map(([x, b]) => P([[x - 1, -1], [x + 1, -1], [x, b]])), { prof: 'bevel', bw: .6, grp: 'icicles', hi: 5 });
+}
+/* ---- '_' planks; the Thane's runner (its gold border is the 'carpet' edge) ---- */
+function ironFloor(F, Pl, v) {
+  if (Pl.floorK !== 'runner') return SPEC.floor.paint(F, Pl, v);
+  F.add({ mat: Pl.floor, prof: 'flat', grp: 'runner', noShadow: true, lo: 1, hi: 3, shapes: [FULL], tex: q => { const d = Math.abs(((q.x + 16) % 8) - 3.5) + Math.abs(((q.y + 16) % 8) - 3.5); return d < 1.2 ? { m: 'gold', dd: -1.5 } : d > 5.6 ? -1.6 : -.7 + (q.y & 1 ? -.2 : 0) + bayer(q.x, q.y) * .2; } });
+}
+/* ---- 'k' soot-black floor, the ice floor under Frostmere, rock and hewn stone ---- */
+function ironDarkFloor(F, Pl, v) {
+  const D = decals(), k = Pl.darkK, [x, y] = spots(1, 3150 + v, 4)[0];
+  if (k !== 'ice') for (const [px, py] of spots(2, 3100 + v * 5)) pebble(D, px, py, Pl.stone);
+  if (k === 'ice') { // dark blue ice: a few frost specks, a pale hairline crack
+    for (const [a, b] of spots(2, 3160 + v)) { D.set(a, b, Pl.snow, -1); D.set(a + 1, b + 1, Pl.snow, -1.8); }
+    if (v === 1) for (let i = 0; i < 6; i++) D.set(x - 3 + i, y + Math.round(Math.sin(i + v) * 1.1), 'w.ice', -.9);
+  } else if (k === 'soot') { for (const [a, b] of spots(4, 3170 + v)) D.set(a, b, 'dark', -1); if (v === 2) { D.set(x, y, 'ember', -1.8); D.set(x + 1, y, 'w.char', -.8); } }
+  else if (v) for (let i = 0; i < 6; i++) D.set(x + i - 2, y + (i >> 1), 'dark', -1.2);
+  ground(F, Pl.darkFloor, SEEDS['dark-floor'] + (Pl.seed || 0), D, { lo: -1.55, hi: -.65, dith: .3 });
+}
+/* ---- 'f' (2 frames) glitter on snow, votive candles, glowing rune-stones, warm coals, air pockets under the ice ---- */
+function ironGlow(F, Pl, v, f) {
+  const k = Pl.glowK;
+  if (k === 'coals') return sunGlow(F, Object.assign({}, Pl, { glowK: 'ember' }), v, f);
+  ironGround(F, Pl, v & 1, null);
+  if (k === 'frost') { // points of light that trade places
+    const S = spots(4, 7600 + v, 3);
+    part(F, Pl.snow, S.map(([x, y], i) => ((i + f) % 2 ? C([x - 1, y + .5], [x + 2, y + .5], .45) : O([x + .5, y + .5], .5))).concat(S.filter((s, i) => (i + f) % 2).map(([x, y]) => C([x + .5, y - 1], [x + .5, y + 2], .45))), { prof: 'flat', grp: 'glitter', noShadow: true, noOutline: true, hi: 5, tex: () => 2 });
+  } else if (k === 'candle') { // votive candles set on the ground
+    const C3 = [[4, 11], [9, 9], [12, 12]].slice(0, 2 + (v & 1));
+    part(F, 'clothWhite', C3.map(([x, y]) => RECT(x - .8, y - 2.6, x + .8, y + .4)), { prof: 'round', bw: .6, grp: 'wax' });
+    part(F, 'ember', C3.map(([x, y], i) => P((i + f) % 2 ? [[x, y - 5.4], [x + .9, y - 3.2], [x, y - 2.6], [x - .9, y - 3.2]] : [[x + .4, y - 5], [x + 1, y - 3.2], [x, y - 2.6], [x - .8, y - 3.4]])), { prof: 'round', bw: .6, grp: 'flames', noShadow: true, hi: 5, tex: q => (q.y % 2 ? .6 : 0) });
+  } else if (k === 'runestone') { // a flat stone set in the floor, its rune filled with light that breathes
+    part(F, Pl.stone, [P([[2.4, 12.6], [2, 4.4], [5, 2], [11.4, 2.2], [14, 5], [13.6, 12.4], [10, 14.2], [5.6, 14]])], { prof: 'bevel', bw: 1, grp: 'slab', hi: 3 });
+    part(F, 'amber', runeShapes(8, 8, v, .95), { prof: 'flat', grp: 'rune', noShadow: true, noOutline: true, hi: 5, tex: () => (f ? .2 : -.6) });
+  } else if (k === 'pocket') { // air caught under the ice, lit from within
+    const B = [[5, 6, 2.2], [10.6, 10.4, 1.6], [4.4, 12, 1.1]].slice(0, 2 + (v & 1));
+    part(F, 'w.ice', B.map(([x, y, r]) => O([x, y], r + .9)), { prof: 'flat', grp: 'rim', noShadow: true, noOutline: true, hi: 3, tex: () => -.8 });
+    part(F, 'frost', B.map(([x, y, r], i) => O([x, y], r * ((i + f) % 2 ? 1 : .8))), { prof: 'flat', grp: 'light', noShadow: true, noOutline: true, hi: 5, tex: () => (f ? 0 : -.5) });
+  }
+}
+/* ---- '~' tarns, the font, quench channels, open water with floes drifting on the lake; 'w' fords, thin ice ---- */
+function ironWater(F, Pl, v, f) {
+  paintWater(F, Pl, v, f, false);
+  if (Pl.floes && v < 2) { const [x, y] = spots(1, 7400 + v, 4)[0], fx = Math.min(x, 9) + (f ? .6 : 0); part(F, Pl.snow, [E([fx, y], 2.2, 1.2), O([fx + 3.4, y + 2.6], .9)], { prof: 'round', bw: .8, grp: 'floe', hi: 4 }); }
+}
+function ironFord(F, Pl, v, f) { if (Pl.fordK === 'thin') return ironThin(F, Pl, v, f); paintWater(F, Pl, v, f, true); }
+
+const IRON_SPEC = Object.assign({}, SUN_SPEC, {
+  grass: { n: 5, paint: ironGround },
+  flowers: { n: 3, paint: ironScatter },
+  'tall-grass': { n: 2, paint: ironTall, over: { n: 2, w: 16, h: 16, dx: 0, dy: 0, paint: ironTallTops } },
+  road: { n: 3, shapes: 7, pickV: ironRoadPick, paint: ironRoad },
+  flagstone: { n: 3, paint: ironFlags },
+  mud: { n: 2, paint: (F, Pl, v) => ironDrift(F, Pl, v) },
+  ichor: { n: 2, anim: true, paint: (F, Pl, v, f) => ironDrift(F, Object.assign({}, Pl, { patchK: 'drift' }), v, f) },
+  tree: { n: 2, paint: ironTreeBase, over: { n: 3, w: 24, h: 26, dx: -4, dy: -16, paint: ironTreeTop } },
+  bush: { n: 2, paint: ironBush },
+  rock: { n: 2, paint: ironRock },
+  'first-root': { n: 2, paint: ironMass, over: { n: 1, w: 16, h: 26, dx: 0, dy: -16, paint: ironMassTop } },
+  wall: { n: 2, faces: true, paint: (F, Pl, v) => ironWall(F, Pl, v >> 1, !(v & 1)) },
+  roof: { n: 1, paint: paintRoofBase, roof: true, roofPaint: ironRoof },
+  palisade: { n: 2, shapes: 3, pickV: fencePick, paint: ironFence },
+  'torch-wall': { n: 1, anim: true, paint: ironTorch },
+  water: { n: 4, anim: true, paint: ironWater },
+  ford: { n: 2, anim: true, paint: ironFord },
+  cliff: { n: 2, paint: ironCliff },
+  door: { n: 1, paint: ironDoor },
+  fungus: { n: 2, anim: true, paint: ironGlow },
+  'root-wall': { n: 2, faces: true, paint: (F, Pl, v) => ironCave(F, Pl, v >> 1, !(v & 1)) },
+  floor: { n: 3, paint: ironFloor },
+  'dark-floor': { n: 3, paint: ironDarkFloor },
+  void: { n: 1, paint: paintVoid },
+});
+// which tiles meet which softly in an Ironspire place (cell() reads these instead of EDGED there)
+const IRON_COVER = id => famOf(id) === 'wall' || famOf(id) === 'water' || id === 'cliff';
+const IRON_EDGED = Object.assign({}, EDGED, {
+  mud: { same: id => id === 'mud' || IRON_COVER(id) },
+  ichor: { same: id => id === 'ichor' || IRON_COVER(id) },
+  flagstone: { same: id => id === 'flagstone' || IRON_COVER(id) },
+  floor: { same: id => id === 'floor' || famOf(id) === 'wall' },
+  void: { same: id => IRON_COVER(id) },
+  // the mountain's scree (',') thins into turf, not into a road, a drift or the dark, which draw their own edges
+  flowers: { same: id => id === 'flowers' || id === 'road' || id === 'bridge' || id === 'mud' || id === 'ichor' || id === 'void' || IRON_COVER(id) },
+});
+// the edge families an Ironspire palette bakes, over the usual ones
+const ironEdgeFams = Pl => Object.assign({ ichor: 'drift', void: 'drop' }, Pl.patchK === 'drift' ? { mud: 'drift' } : { mud: 'patch' },
+  Pl.flagK === 'blackice' ? { flagstone: 'patch' } : {}, Pl.floorK === 'runner' ? { floor: 'carpet' } : {}, Pl.scatK === 'scree' ? { flowers: 'scree' } : {});
+
 /* ---------- rendering a cell ---------- */
 // Most tile parts are flat: their normal is straight up, so the Forge's per-pixel gradient (four extra
 // height samples) always comes out zero. rasterFlat() computes the same lit value for a flat normal
@@ -1147,7 +1790,8 @@ function* buildSteps(biome) {
     if (s.roof) { roofs[id] = []; for (let m = 0; m < 16; m++) roofs[id][m] = add(`r|${id}|${m}`, T, T, F => (s.roofPaint || paintRoof)(F, Pl, m & 1 ? 1 : 0, m)); }
   }
   const EDGE_FAMS = { water: 'water', ford: 'water', road: 'road', cliff: 'cliff', wall: 'wall', 'torch-wall': 'wall', 'root-wall': 'wall', bridge: 'bridge', ichor: 'ichor' };
-  const famFrames = { water: 1, road: 1, cliff: 1, wall: 1, bridge: 1, ichor: 1 };
+  if (Pl.iron) Object.assign(EDGE_FAMS, ironEdgeFams(Pl));
+  const famFrames = { water: 1, road: 1, cliff: 1, wall: 1, bridge: 1, ichor: 1, drift: 1, patch: 1, carpet: 1, drop: 1, scree: 1 };
   for (const fam of new Set(Object.values(EDGE_FAMS))) {
     edges[fam] = []; corners[fam] = [];
     for (let m = 1; m < 16; m++) { edges[fam][m] = []; for (let f = 0; f < famFrames[fam]; f++) edges[fam][m][f] = add(`e|${fam}|${m}|${f}`, T, T, F => paintEdge(F, fam, m, Pl, f)); }
@@ -1216,7 +1860,7 @@ export function tileAtlas(biome = 'wilds') {
   for (;;) { const r = gen.next(); if (r.done) return r.value; }
 }
 function makeAtlas(key, B) {
-  const idOfCh = ch => tileOf(ch).id;
+  const idOfCh = ch => tileOf(ch).id, edged = IRON_BIOMES.has(key) ? IRON_EDGED : EDGED;
   const pick = (id, x, y) => { const s = specOf(key, id); const n = s ? s.n : 1; return Math.floor(hash(x, y, 97 + TILE_IDS.indexOf(id)) * n) % n; };
   const rect = key => B.at[key];
   const atlas = {
@@ -1269,8 +1913,8 @@ function makeAtlas(key, B) {
       const bk = B.base[id][Math.min(B.base[id].length - 1, v)][f];
       const br = rect(bk); out.ground.push([br[0], br[1], T, T, 0, 0]);
       const fam = B.EDGE_FAMS[id];
-      if (fam && EDGED[id === 'torch-wall' ? 'wall' : id]) {
-        const same = EDGED[id === 'torch-wall' ? 'wall' : id].same;
+      if (fam && edged[id === 'torch-wall' ? 'wall' : id]) {
+        const same = edged[id === 'torch-wall' ? 'wall' : id].same;
         let mask = 0; nb.forEach((n, i) => { if (!same(n)) mask |= 1 << i; });
         const raw = mask;
         if (fam === 'wall' && (id === 'torch-wall' || !(v & 1))) mask &= ~4; // a face shows its own foot

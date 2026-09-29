@@ -46,14 +46,16 @@ parseDice('2d8+6') -> { terms:[{n,sides}], flat }
 
 ## Game state (plain JSON, saved as-is)
 
-Version 2 (M3). A version 1 (M2) save is migrated on load by `rules/migrate.js` (see Save v2).
+Version 4 (M5; version 2 was M3's, 3 M4's and Milestone 4.5's). Any earlier save is migrated on load by
+`rules/migrate.js` (see Saves).
 
 ```js
 {
-  version: 2, migratedFrom?: 1,
+  version: 4, migratedFrom?: 1,
   seed, rngState,
   party: { active: ['warden','pip','bryn','alondra'], roster: { [heroId]: HeroState } },
   inventory: [ItemInstance], bag: { [consumableId]: count }, gold,
+  materials: { scrap, silver, embers }, gems: { [gemId]: count },   // M4: the forge's purse and the gem pouch
   codex: { [relicId]: { sighted, claimed, awakened } },
   progress: {
     waking: 0, brands: [],            // brands only ever grows; count them with new Set(brands).size
@@ -68,6 +70,7 @@ Version 2 (M3). A version 1 (M2) save is migrated on load by `rules/migrate.js` 
       opened: { [chestId]: true }, kindled: { [hearthfireId]: true }, visits: { [mapId]: n },
       quests: { [questId | 'bounty:<id>']: 'claimed' }, scouted: { [encId]: true },
       seen: { [triggerId | 'arrive:<map>']: true }, worn: { [heroId]: gearSignature }, beaten: { [encId]: n },
+      pages: { [regionId]: day }, settled: { [grudgeKey]: { day, name } },   // M4: finished Codex pages, settled Grudges
     },
   },
   settings: { sound, battleSpeed, reducedMotion, touchControls, alwaysRun, mapZoom }
@@ -127,18 +130,18 @@ The UI animates events one by one and then renders the returned state.
 | `t` | Fields | Meaning |
 |---|---|---|
 | `turn` | `actor` | a combatant's turn begins |
-| `intent` | `foe, die, face, move, text` | foe rolled its intent die (d6/d8/d12/d20) and shows its next move |
+| `intent` | `foe, die, face, move, text` | foe rolled its intent die (d6/d8/d12/d20) and shows its next move; a move's `then` forces the next intent (`forced`, M5) |
 | `roll` | `actor, target, purpose, die, rolls, kept, bonus, total, vs, result, adv, dis` | a visible d20 roll; `result` is `crit`/`hit`/`graze`/`miss`/`fumble`/`save`/`fail` |
 | `damage` | `target, amount, dice:[{sides,value}], flat, aspect, kind, eff, crit` | `eff` is `weak`/`resist`/`immune`/`normal`; `kind` is `slash`/`pierce`/`crush`/aspect |
 | `heal` | `target, amount` | |
-| `status` | `target, status, op, stacks, turns` | `op` is `add`/`remove`/`tick`/`trigger` |
+| `status` | `target, status, op, stacks, turns, source?, label?` | `op` is `add`/`remove`/`tick`/`trigger`/`release` (a hold let go early, M5); an `add` names its `source` and a hold's `label` ("Held under") |
 | `grip` | `target, relic, from, to, max` | the holder's grip on its relic changed |
 | `disarm` | `target, relic` | relic clatters loose; the holder loses its Art |
 | `surge` | `actor, from, to` | Legend Surge gauge changed (0-100) |
 | `legend` | `actor, item, power` | a Legend Surge fires: the UI slams the item card across the screen |
 | `ko` / `revive` | `target` | |
 | `phase` | `foe, phase, text` | boss changes phase |
-| `move` | `actor, name, text` | a named skill or Art is used |
+| `move` | `actor, name, text` | a named skill or Art is used; `charm: true, target` is a charmed hero's turn played for it (M5) |
 | `text` | `text` | narration line |
 | `spawn` | `foe, family, from, name, text` | a summon or a Twinned split joins the fight |
 | `escape` | `foe, text` | a foe bolts, or summons wither when their Champion dies |
@@ -162,6 +165,23 @@ The UI animates events one by one and then renders the returned state.
 - **Legend Surge**: per-hero gauge filled by dealing/taking damage and crits; when full, the
   hero's best relic power fires.
 - **Party wipe**: wake at the last Hearthfire, keep all gear, lose 10% of gold.
+
+### M5 statuses (`data/statuses.js`; M5 spec §4.2)
+
+- `targetable(u)` (`rules/ai.js`) is the one test for "can be aimed at": alive, not gone, not `burrowed`
+  and not `swallowed`. `targets()`, area moves, the foes' own aim and Auto all go through it.
+- **burrowed**: under the floor until the unit's own next turn starts; nothing can target it and area
+  moves pass over it.
+- **swallowed** (`held`): the unit leaves the line for 2 of its own turns; each one is lost to a tick of
+  the swallower's aspect (1d6). It comes back when the turns run out, when the swallower is KO'd or
+  escapes, or when one hit takes at least `TUNING.swallow.releasePct` of the swallower's max HP (op
+  `release`). The last unit standing on a side is never swallowed ("spat straight back out").
+- **charmed**: no turn count; the unit's next turn plays itself as a plain attack on a random friend,
+  then the charm clears. A friend's hit wakes it; with no friend to turn on it shakes the charm off.
+- **Tamsin's kits**: a spawn's `variant: '$rival:<duel>'` resolves to the rival starter's variant plus
+  `kit: '<duel>'`, and `data/rivals.js` `withKit` adds that duel's moves and replaces her table
+  (`$rival` alone is unchanged). Summon effects may name a `variant`. An explicit `weak` aspect beats
+  the aspect wheel's halving (Mother Anvil: ember, weak to frost).
 
 ## Flow (`rules/gauntlet.js`, M3 spec §4.6)
 
@@ -217,7 +237,7 @@ canWalk, findPath (A*, 4-way), threat, keys, lockStatus, openLock, openChest, si
 **Events** (the UI stops at the first one that starts a battle: `encounter`, `contact`):
 `turn`, `step`, `bump`, `exit {id, to, anchor, unlock?}`, `sealed {id, region, text, nextChapter}`,
 `encounter {id}`, `gate {id, text, guard}`, `lock {id, lock, status}`, `trigger {id, dialogue}`,
-`sighted {relic, enc}`, `hazard {pct, hurt}`, `talk {npc, dialogue, enc?}`, `sign {text}`,
+`sighted {relic, enc}`, `hazard {pct, hurt, lock}` (ichor, and M5's snowdrift: `lock` names which), `talk {npc, dialogue, enc?}`, `sign {text}`,
 `use {kind, id}`, `chest {id, lock?}`, `hearthfire {id}`, `enter {map}`, `alert {id}`,
 `roam {moves: [[id, x, y, face]]}`, `contact {id, enc, by, firstStrike, ambush, weak?}` (a weak pack you ran down is
 `weak: true`, a full battle with `caught`; M4.5 has no Routs).
@@ -242,23 +262,50 @@ canWalk, findPath (A*, 4-way), threat, keys, lockStatus, openLock, openChest, si
 Import direction inside `rules/`: `world -> story -> cond -> gauntlet`; `gauntlet` never imports
 the other three, and `migrate` imports data only.
 
-## Save v2 (`core/save.js`, `rules/migrate.js`; M3 spec §4.8, §4.9)
+## Saves (`core/save.js`, `rules/migrate.js`; M3 spec §4.8, M4 spec §4.1, M5 spec §4.1)
+
+Every milestone keeps its own save and its own file (the player's rule): this one writes only its own
+keys and reads the earlier ones, newest first, without ever writing or removing them.
 
 | Key | Use |
 |---|---|
-| `aethermoor.save.v2` | the live save |
+| `aethermoor.save.m5` | the live save (version 4) |
+| `aethermoor.save.m5.bak` | the previous live save (before a New Game, an import or a restore) |
+| `aethermoor.m5.started` | `'1'` once this milestone has a journey of its own: the older saves are then no longer offered |
+| `aethermoor.save.m4.5` | the Milestone 4.5 save (version 3): read only; the M4.5 file still plays from it |
+| `aethermoor.save.m4` | the Milestone 4 save (version 3): read only |
+| `aethermoor.save.v2` | the Milestone 3 save (version 2): read only |
 | `aethermoor.save.v1` | the M2 save: read only, never written or removed (the M2 page still plays from it) |
-| `aethermoor.save.v2.bak` | the previous v2 save (before a New Game, an import or a restore) |
-| `aethermoor.v1.migrated` | `'1'` once the M2 save has been carried over or declined |
 
-- `loadGame(migrate) -> { game, from: 'v2'|'v1' } | null`: v2 if present, else the M2 save
-  migrated in memory (nothing is written until the world's first step: `ctx.commitAdopted()`).
-- `saveGame` writes v2 only (and the marker for a carried-over save); `clearGame` removes v2 only.
-- Codes: `exportCode` gives `AETH2.` + base64 JSON; `importCode(code, migrate)` takes `AETH1.` or
-  `AETH2.`, strips angle brackets from every string (`scrub`), then migrates.
-- `migrate(save)` is pure and idempotent: it keeps every M2 field verbatim, adds the v2 flags,
-  sets `story.starter`, opens what an M2 run had passed (the Toll chain, the thornwall, kindled
-  Hearthfires, `beaten`), and places the party on the map anchor `v1:<node>`.
+- `loadGame(migrate) -> { game, from: 'live'|'m45'|'m4'|'v2'|'v1' } | null`: the live save if present;
+  else, until the started marker, the newest earlier save migrated in memory (nothing is written until
+  the world's first step: `ctx.commitAdopted()`).
+- `saveGame` writes the live key (and the marker); `clearGame` removes the live key only.
+- Codes: `exportCode` gives `AETH<version>.` + base64 JSON (`AETH4.` now); `importCode(code, migrate)`
+  takes AETH1 to AETH4, names a newer code as newer, scrubs every string (`scrub`), then migrates.
+  `exportV1Code`, `exportV2Code`, `exportM4Code`, `exportM45Code` give the earlier saves byte for byte.
+- `migrate(save)` = `toV4(toV3(toV2(save)))`, pure and idempotent: `toV2` keeps every M2 field verbatim
+  and places the party on the map anchor `v1:<node>`; `toV3` adds M4's purse, pouch, pages and settled
+  Grudges and counts every won fight as beaten (M4.5's road gates); `toV4` only marks the save as M5's.
+
+## Painted maps and stills (`ui/world/view.js`, `ui/assets/paint/`, `ui/assets/cuts/`; M5 spec A10)
+
+- A map listed in `ui/assets/paint/index.js` (`PAINTINGS[mapId] = { w, h, src }`, a WebP at 32 px per
+  tile) draws its painting as its ground, at `PAINT_DENSITY` (2) canvas px per art px, so its detail
+  shows; the objects draw on top as usual, and the overhead layer takes the painting's pixels wherever
+  the tiles' own overhead layer would draw (canopies, roofs, grass tops), and over a map's `overhang`
+  rects. A painting decodes when its map is first baked (at most `PAINT_KEEP` decoded at once); until
+  then, and on every other map, the tiles draw.
+- A map traced from its painting (the East Road, M5 spec A11) sets `overTiles: false`: its tiles only
+  say what is solid, and nothing but the painting draws its ground and canopies. A thing the painting
+  shows is an entity with `look: 'painted'` (a `sign` with a `name`: no sprite, A reads "A · <name>");
+  a Hearthfire in a painted ring uses the hearth look `painted` (the flame alone, a tile above its foot).
+- `ui/assets/cuts/index.js` (`CUTS[name]`) holds cut-scene stills; the prologue shows `hearth-gold`
+  then `hearth-blue`, and draws its own scene without them.
+- Tools: `tools/paint-refs.mjs` renders a batch's layout references (long roads as overlapping panels,
+  `refs.json`); `tools/paint-prompts.mjs` writes its prompt sheet; `tools/paint-import.mjs` fits the
+  returned paintings to their maps (joining panels) and writes the asset modules; `test/paint.test.mjs`
+  checks them. The build counts the paintings apart from the game (M5 spec A6).
 
 ## Art contract (`src/art/`)
 

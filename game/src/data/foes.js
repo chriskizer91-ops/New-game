@@ -1,4 +1,4 @@
-// Foe families of the Verdant Wilds (M2, M3) and the Sunscorch Wastes (M4). Art keys match the shared vocabulary.
+// Foe families of the Verdant Wilds (M2, M3), the Sunscorch Wastes (M4) and the Ironspire Peaks (M5). Art keys match the shared vocabulary.
 //
 // Stats are for level 1; rules/foe.js scales them by level, gear tier, Omens and the Waking.
 // Each family has a MOVE TABLE read like a D&D random table: the foe rolls its intent die
@@ -11,6 +11,9 @@
 // effect format), charge (announced as "charging"; Stagger cancels it), requires (a relic id
 // that must still be held), when ({ hpBelow }), fallback (move used if unavailable),
 // weapon:true on an attack uses the dice of the weapon the foe visibly carries.
+// M5: then (a move id: the foe's next intent is forced to it, e.g. Kharzul's Burrow, then Erupt); a
+// `swallowed` status effect may carry a `label` for the hero's plate ("Held under", "Carried off");
+// a summon may name a `variant` of its family (the Rime-Abbot's choir).
 
 import { deepFreeze } from '../core/freeze.js';
 
@@ -422,10 +425,10 @@ const VERDANT = {
 };
 
 // ---- M4: the Sunscorch Wastes (spec §3.2; owner P4). Stats are for level 1, like everything above; the
-// Waking adds the rest (a player meets these at Waking 2 or 3). Moves the spec asks for that the engine
-// has no status for are built from the nearest ones (docs/RULES.md §5): Sand in the Eyes blinds with
-// Frightened, a wisp's charm roots you where you stand, the Wyrm's swallow Staggers and Roots, and
-// Kharzul's burrow is a charging strike from under the floor after which it lies half-buried (Guarding).
+// Waking adds the rest (a player meets these at Waking 2 or 3). Sand in the Eyes blinds with Frightened
+// (docs/RULES.md §5). M5 (spec §2.4) made three M4 approximations exact with the new statuses: a wisp's
+// Beguile charms (`charmed`), the Wyrm swallows you whole (`swallowed`), and Kharzul's Burrow takes it under
+// the floor (`burrowed`), then `then: 'erupt'` brings it up under someone, after which it lies half-buried.
 const RAIDER_MOVES = {
   'scimitar-cut': { name: 'Scimitar Cut', target: 'enemy', text: 'A curved blade, drawn and swung in the same breath.', effects: [atk('1d6', 'slash', { weapon: true })] },
   'sand-in-the-eyes': { name: 'Sand in the Eyes', target: 'enemy', text: 'A fistful of hot sand flung from the saddle. DEX save or you fight half-blind (Frightened).', effects: [status('frightened', { save: 'DEX' })] },
@@ -440,7 +443,7 @@ const SCORPION_MOVES = {
 const WISP_MOVES = {
   'cold-touch': { name: 'Cold Touch', target: 'enemy', text: 'A touch like well-water at midnight: Chilled.', effects: [atk('1d8', 'frost', { aspect: 'frost', riders: [status('chilled')] })] },
   blink: { name: 'Blink', target: 'self', text: 'It blinks out and back a step to the left, and your blow finds shimmer: Guarding.', effects: [status('guarding')] },
-  beguile: { name: 'Beguile', target: 'enemy', text: 'It shows you water where there is none. WIS save or you stand and stare (Rooted).', effects: [status('rooted', { save: 'WIS' })] },
+  beguile: { name: 'Beguile', target: 'enemy', text: 'It shows you water where there is none, and a friend where the mirage is. WIS save or Charmed.', effects: [status('charmed', { save: 'WIS' })] },
 };
 const WIGHT_MOVES = {
   'ash-blade': { name: 'Ash Blade', target: 'enemy', text: 'A blade still hot from the fire that killed the hand holding it.', effects: [atk('1d6', 'slash', { weapon: true })] },
@@ -570,7 +573,7 @@ const SUNSCORCH = {
       maw: { name: 'Maw', target: 'enemy', text: 'A mouth like a well, lined with glass teeth.', effects: [atk('2d10', 'pierce')] },
       thrash: { name: 'Thrash', target: 'all-enemies', text: 'It thrashes, and the sinkhole walls come down on everyone.', effects: [atk('1d8', 'crush')] },
       'sand-dive': { name: 'Sand-Dive', target: 'self', text: 'It pours itself back into the sand, and blows glance off: Guarding.', effects: [status('guarding')] },
-      swallow: { name: 'Swallow', target: 'enemy', charge: true, text: 'The sand opens underneath you. It is charging to swallow you whole: spat out Staggered and stuck fast (Rooted).', effects: [atk('3d10', 'crush', { riders: [status('staggered'), status('rooted')] })] },
+      swallow: { name: 'Swallow', target: 'enemy', charge: true, text: 'The sand opens underneath you. It is charging to swallow you whole, until it has had enough of you or you hit it hard enough to make it spit.', effects: [atk('3d10', 'crush', { riders: [status('swallowed', { label: 'Swallowed' })] })] },
       'scale-grind': { name: 'Scale-Grind', target: 'all-enemies', requires: 'wyrmscale', fallback: 'maw', text: 'It grinds the great scale in its hide against the sinkhole wall: 2d8 stone to every hero, STR save for half, and the sand has you to the knees (Rooted).', effects: [{ type: 'damage', dice: '2d8', kind: 'crush', aspect: 'stone', save: 'STR', riders: [status('rooted')] }] },
     },
     table: [[1, 3, 'maw'], [4, 6, 'thrash'], [7, 7, 'sand-dive'], [8, 9, 'swallow'], [10, 12, 'scale-grind']],
@@ -587,7 +590,8 @@ const SUNSCORCH = {
       'tail-lash': { name: 'Tail Lash', target: 'enemy', text: 'The tail comes over like a thrown spear.', effects: [atk('2d10', 'pierce')] },
       'glass-sting': { name: 'Glass Sting', target: 'enemy', text: 'The stinger punches through plate and snaps off in the wound: 2 stacks of Bleeding.', effects: [atk('1d10', 'pierce', { riders: [status('bleeding', { stacks: 2 })] })] },
       glasscutter: { name: 'Glasscutter', target: 'all-enemies', requires: 'cinderfang', fallback: 'tail-lash', charge: true, text: 'Cinderfang comes round in one long arc, charging: a cut at every hero, and every cut Burns.', effects: [atk('2d8', 'slash', { aspect: 'ember', riders: [status('burning')] })] },
-      burrow: { name: 'Burrow', target: 'enemy', charge: true, text: 'It goes down into the glass floor as if it were water, charging: it will come up under you. Then it lies half-buried (Guarding).', effects: [atk('3d8', 'pierce', { riders: [status('staggered')] }), status('guarding', { self: true })] },
+      burrow: { name: 'Burrow', target: 'self', then: 'erupt', text: 'It goes down into the glass floor as if it were water. Nothing can reach it until it comes up.', effects: [status('burrowed', { self: true })] },
+      erupt: { name: 'Erupt', target: 'enemy', charge: true, text: 'The glass floor bursts under you, charging: 4d10 piercing, a spray of glass that Bleeds (two stacks), and you Stagger. Then it lies half-buried (Guarding).', effects: [atk('4d10', 'pierce', { riders: [status('staggered'), status('bleeding', { stacks: 2 })] }), status('guarding', { self: true })] },
       'carapace-brace': { name: 'Carapace Brace', target: 'self', requires: 'glass-carapace', fallback: 'tail-lash', text: 'The Glass Carapace locks plate over plate: Guarding, and Warded until the glass gives.', effects: [status('guarding'), status('warded', { value: { dice: '3d6', diceEvery: 3 } })] },
       'glass-rain': { name: 'Glass Rain', target: 'all-enemies', text: 'The ceiling of the Glass Heart comes down in needles: 2d6 piercing to every hero, DEX save for half, and you Bleed.', effects: [{ type: 'damage', dice: '2d6', kind: 'pierce', save: 'DEX', riders: [status('bleeding')] }] },
       'molten-tail': { name: 'Molten Tail', target: 'enemy', requires: 'cinderfang', fallback: 'glass-sting', text: 'Cinderfang glows white in the tail: 3d8 ember, and you Burn.', effects: [atk('3d8', 'slash', { aspect: 'ember', riders: [status('burning')] })] },
@@ -655,6 +659,278 @@ const TALLY_SUN = {
   },
 };
 
-export const FOES = deepFreeze({ ...VERDANT, ...TALLY_SUN, ...SUNSCORCH });
+// ---- M5: the Ironspire Peaks (spec §3.2, §3.5; owner P4). Stats are for level 1, like everything above; the
+// Waking adds the rest (a player arrives at Waking 4, and meets the Frost half at Waking 5). The new statuses
+// (spec §4.2) are used where the spec asks: the Thunder-Roc carries a hero off and the Rime-Abbot's Drown holds
+// one under the ice (`swallowed`), and the Abbot's Hushing charms (`charmed`). Tuned with tools/sim.mjs
+// (docs/RULES.md §12, M5).
+const WOLF_MOVES = {
+  'rime-bite': { name: 'Rime Bite', target: 'enemy', text: 'Teeth rimed with frost: the cold goes in with them (Chilled).', effects: [atk('1d6', 'pierce', { riders: [status('chilled')] })] },
+  lunge: { name: 'Lunge', target: 'enemy', charge: true, text: 'It drops low in the snow, charging a lunge for the throat.', effects: [atk('1d10', 'pierce')] },
+  circle: { name: 'Circle', target: 'self', text: 'It circles you on the crust, quick and light: Hasted.', effects: [status('hasted')] },
+};
+const BRIGAND_MOVES = {
+  hack: { name: 'Hack', target: 'enemy', text: 'An army blade, swung by someone who stopped drilling with it.', effects: [atk('1d6', 'slash', { weapon: true })] },
+  crossbow: { name: 'Crossbow', target: 'enemy', text: 'A Stormwatch crossbow, stolen along with the deserter: 1d8 piercing.', effects: [atk('1d8', 'pierce')] },
+  desert: { name: 'Desert', target: 'self', when: { hpBelow: 0.5 }, fallback: 'hack', text: 'He deserted once already. He does it again, down the scree.', effects: [{ type: 'escape' }] },
+};
+const SENTINEL_MOVES = {
+  'iron-fist': { name: 'Iron Fist', target: 'enemy', text: 'A riveted fist, swung like a smith\'s hammer.', effects: [atk('1d8', 'crush')] },
+  'gate-slam': { name: 'Gate Slam', target: 'enemy', charge: true, text: 'It sets its feet and shoulders the gate shut on you, charging: you Stagger.', effects: [atk('2d6', 'crush', { riders: [status('staggered')] })] },
+  'lock-shields': { name: 'Lock Shields', target: 'all-allies', text: 'The Sentinels lock their shields across the stair: every one of them Guards.', effects: [status('guarding')] },
+};
+const FORGE_MOVES = {
+  'molten-fist': { name: 'Molten Fist', target: 'enemy', text: 'A fist of half-cooled slag: it Burns where it lands.', effects: [atk('1d6', 'crush', { aspect: 'ember', riders: [status('burning')] })] },
+  'slag-spit': { name: 'Slag Spit', target: 'enemy', text: 'It spits a gob of molten slag: 1d8 ember, DEX save for half.', effects: [{ type: 'damage', dice: '1d8', kind: 'ember', aspect: 'ember', save: 'DEX' }] },
+  stoke: { name: 'Stoke', target: 'self', text: 'It rakes its own furnace hotter and the cracks in it glow white: Hasted.', effects: [status('hasted')] },
+};
+const TROLL_MOVES = {
+  club: { name: 'Club', target: 'enemy', text: 'A pine trunk with the branches knocked off.', effects: [atk('1d10', 'crush')] },
+  pummel: { name: 'Pummel', target: 'enemy', text: 'Both fists, one after the other.', effects: [atk('1d6', 'crush'), atk('1d6', 'crush')] },
+  'hurl-boulder': { name: 'Hurl Boulder', target: 'enemy', charge: true, text: 'It prises a boulder out of the scree and heaves it overhead, charging: you Stagger.', effects: [atk('2d8', 'crush', { riders: [status('staggered')] })] },
+  regrow: { name: 'Regrow', target: 'self', when: { hpBelow: 0.8 }, fallback: 'club', text: 'The wound closes while you watch: Regenerating.', effects: [status('regenerating', { value: { dice: '1d6', diceEvery: 3 } })] },
+};
+const WRAITH_MOVES = {
+  'drowned-grasp': { name: 'Drowned Grasp', target: 'enemy', text: 'A hand as cold as the lake-bed closes on yours: Chilled.', effects: [atk('1d6', 'frost', { aspect: 'frost', riders: [status('chilled')] })] },
+  dirge: { name: 'Dirge', target: 'all-enemies', text: 'It sings the office for the drowned. WIS save or Frightened.', effects: [status('frightened', { save: 'WIS' })] },
+  'pull-under': { name: 'Pull Under', target: 'enemy', charge: true, text: 'It reaches up out of the ice for your ankles, charging: 2d8 frost and two stacks of Chilled.', effects: [atk('2d8', 'frost', { aspect: 'frost', riders: [status('chilled', { stacks: 2 })] })] },
+};
+
+const IRONSPIRE = {
+  'rime-wolf': {
+    id: 'rime-wolf', name: 'Rime Wolf', art: 'rime-wolf', tier: 'rabble', kind: 'beast',
+    hp: 15, guard: 14, atk: 4, dmg: 1, speed: 14, armor: 'hide', aspect: 'frost',
+    saves: { STR: 1, DEX: 3, CON: 1, WIS: 0 },
+    moves: WOLF_MOVES,
+    table: [[1, 3, 'rime-bite'], [4, 5, 'lunge'], [6, 6, 'circle']],
+    text: 'Grey wolves of the high passes with frost in their ruffs. They run the snow crust faster than you can wade it, and the bite stays cold.',
+  },
+  brigand: {
+    id: 'brigand', name: 'Pass Brigand', art: 'brigand', tier: 'rabble', humanoid: true,
+    hp: 18, guard: 14, atk: 3, dmg: 2, speed: 11, armor: 'hide', aspect: null,
+    saves: { STR: 1, DEX: 1, CON: 1, WIS: 0 },
+    moves: BRIGAND_MOVES,
+    table: [[1, 3, 'hack'], [4, 5, 'crossbow'], [6, 6, 'desert']],
+    variants: {
+      warden: holder('Rhune the Pass-Warden', 'rhune', 52, {
+        ...BRIGAND_MOVES,
+        'toll-chain': { name: 'Toll Chain', target: 'enemy', text: 'He cracks the toll-chain across your shins: 1d8 crushing, and you Stagger.', effects: [atk('1d8', 'crush', { riders: [status('staggered')] })] },
+        'gale-step': { name: 'Gale Step', target: 'all-enemies', requires: 'windstep-boots', fallback: 'hack', text: 'The Windstep Boots take him up onto the wind and along the whole line: a cut at every hero, and he is Hasted.', effects: [atk('1d8', 'slash'), status('hasted', { self: true })] },
+      }, [[1, 4, 'hack'], [5, 6, 'crossbow'], [7, 8, 'toll-chain'], [9, 12, 'gale-step']], { speed: 13 }),
+      // the East Road's camp (the lead's six-map road before the pass): a sergeant who still drills the men who ran with him; no relic
+      sergeant: {
+        name: 'Deserter Sergeant', tier: 'veteran', hp: 28,
+        moves: {
+          ...BRIGAND_MOVES,
+          'drill-lunge': { name: 'Drill Lunge', target: 'enemy', charge: true, text: 'The lunge the drill-yard taught him, charging: his blade and 1d8 more.', effects: [atk('1d6', 'slash', { weapon: true, bonusDice: [{ dice: '1d8' }] })] },
+          'close-up': { name: 'Close Up!', target: 'all-allies', text: 'He bawls the old Stormwatch drill and his deserters close up: every one of them Guards.', effects: [status('guarding')] },
+        },
+        table: [[1, 4, 'hack'], [5, 6, 'crossbow'], [7, 7, 'drill-lunge'], [8, 8, 'close-up']],
+      },
+    },
+    gear: [
+      [{ base: 'hand-axe' }, { base: 'hood' }, { base: 'jerkin' }],
+      [{ base: 'arming-sword' }, { base: 'kettle-helm' }, { base: 'jerkin' }],
+      [{ base: 'arming-sword' }, { base: 'kettle-helm' }, { base: 'chain-shirt' }, { base: 'buckler' }],
+      [{ base: 'longsword' }, { base: 'great-helm' }, { base: 'hauberk' }, { base: 'heater-shield' }],
+    ],
+    text: 'Stormwatch deserters working the pass for tolls. They still wear the army\'s coats, with the storm badge picked off.',
+  },
+  rockling: {
+    id: 'rockling', name: 'Rockling', art: 'rockling', tier: 'rabble', kind: 'construct',
+    hp: 17, guard: 15, atk: 3, dmg: 2, speed: 9, armor: 'none', aspect: 'stone', weak: ['crush'],
+    saves: { STR: 2, DEX: 0, CON: 3, WIS: 0 },
+    moves: {
+      slam: { name: 'Slam', target: 'enemy', text: 'A fist of scree.', effects: [atk('1d6', 'crush')] },
+      'roll-in': { name: 'Roll In', target: 'enemy', text: 'It tucks into a boulder and rolls into you: you Stagger.', effects: [atk('1d8', 'crush', { riders: [status('staggered')] })] },
+      hunker: { name: 'Hunker', target: 'self', text: 'It settles into the scree and looks like any other rock: Guarding.', effects: [status('guarding')] },
+    },
+    table: [[1, 3, 'slam'], [4, 5, 'roll-in'], [6, 6, 'hunker']],
+    text: 'A heap of scree that stood up. A hammer breaks it; a sword just gets blunt.',
+  },
+  'forge-spark': {
+    id: 'forge-spark', name: 'Forge-Spark', art: 'forge-spark', tier: 'rabble', kind: 'construct',
+    hp: 10, guard: 14, atk: 4, dmg: 1, speed: 15, armor: 'none', aspect: 'ember',
+    saves: { STR: 0, DEX: 3, CON: 0, WIS: 0 },
+    moves: {
+      singe: { name: 'Singe', target: 'enemy', text: 'It darts in and touches you: Burning.', effects: [atk('1d4', 'ember', { aspect: 'ember', riders: [status('burning')] })] },
+      flare: { name: 'Flare', target: 'all-enemies', text: 'It flares white-hot: 1d6 ember to every hero, DEX save for half.', effects: [{ type: 'damage', dice: '1d6', kind: 'ember', aspect: 'ember', save: 'DEX' }] },
+      gutter: { name: 'Gutter', target: 'self', when: { hpBelow: 0.5 }, fallback: 'singe', text: 'It gutters, and goes out.', effects: [{ type: 'escape' }] },
+    },
+    table: [[1, 4, 'singe'], [5, 5, 'flare'], [6, 6, 'gutter']],
+    text: 'A living cinder the size of a fist, in a cage of slag. Harrow\'s bellows still breathe them out, down in the Deeps.',
+  },
+  'iron-sentinel': {
+    id: 'iron-sentinel', name: 'Iron Sentinel', art: 'iron-sentinel', tier: 'veteran', kind: 'construct',
+    hp: 30, guard: 17, atk: 4, dmg: 2, speed: 8, armor: 'plate', aspect: 'stone',
+    saves: { STR: 3, DEX: 0, CON: 3, WIS: 1 },
+    moves: SENTINEL_MOVES,
+    table: [[1, 4, 'iron-fist'], [5, 6, 'gate-slam'], [7, 8, 'lock-shields']],
+    variants: {
+      captain: holder('The Sentinel-Captain', 'sentinel-captain', 70, {
+        ...SENTINEL_MOVES,
+        ironwall: { name: 'Ironwall', target: 'all-allies', requires: 'ironwall', fallback: 'iron-fist', text: 'The Captain brings Ironwall down like a portcullis, and the stair is shut: every Sentinel is Warded.', effects: [status('warded', { value: { dice: '2d6', diceEvery: 3 } })] },
+        'shield-rush': { name: 'Shield Rush', target: 'enemy', requires: 'ironwall', fallback: 'iron-fist', charge: true, text: 'Ironwall first and the Captain behind it, charging: 3d8 crushing, and you Stagger.', effects: [atk('3d8', 'crush', { riders: [status('staggered')] })] },
+      }, [[1, 4, 'iron-fist'], [5, 6, 'gate-slam'], [7, 8, 'lock-shields'], [9, 10, 'ironwall'], [11, 12, 'shield-rush']]),
+    },
+    text: 'A dwarven automaton of riveted iron, still keeping the stair against whoever the Thane told it to keep out. A sword skids off it; a hammer rings it like a bell.',
+  },
+  forgeborn: {
+    id: 'forgeborn', name: 'Forgeborn', art: 'forgeborn', tier: 'veteran', kind: 'construct',
+    hp: 26, guard: 15, atk: 4, dmg: 2, speed: 10, armor: 'none', aspect: 'ember',
+    saves: { STR: 2, DEX: 0, CON: 3, WIS: 0 },
+    moves: FORGE_MOVES,
+    table: [[1, 4, 'molten-fist'], [5, 6, 'slag-spit'], [7, 8, 'stoke']],
+    variants: {
+      bellows: {
+        name: 'The Bellows', hp: 34, art: 'bellows',
+        moves: {
+          ...FORGE_MOVES,
+          'bellows-blast': { name: 'Bellows Blast', target: 'all-enemies', text: 'It opens its bellows on the whole line: 1d6 ember to every hero, CON save for half.', effects: [{ type: 'damage', dice: '1d6', kind: 'ember', aspect: 'ember', save: 'CON' }] },
+          'blow-sparks': { name: 'Blow Sparks', target: 'self', fallback: 'bellows-blast', text: 'It pumps its bellows, and a spark the size of a fist comes tumbling out, alive.', effects: [{ type: 'summon', family: 'forge-spark', count: 1, max: 2, levelDelta: -2 }] },
+        },
+        table: [[1, 3, 'molten-fist'], [4, 5, 'bellows-blast'], [6, 8, 'blow-sparks']],
+      },
+      journeyman: holder('Harrow\'s Journeyman', 'journeyman', 130, {
+        ...FORGE_MOVES,
+        'smiths-hammer': { name: 'Smith\'s Hammer', target: 'enemy', text: 'A smith\'s hammer, swung by a smith: 1d10 crushing.', effects: [atk('1d10', 'crush')] },
+        'temper-kin': { name: 'Temper the Kin', target: 'all-allies', text: 'He runs a hand over his forgeborn the way a smith checks a blade: every one of them is Warded.', effects: [status('warded', { value: { dice: '1d8', diceEvery: 3 } })] },
+        'rune-fire': { name: 'Rune-Fire', target: 'all-enemies', requires: 'runestaff', fallback: 'smiths-hammer', text: 'Harrow\'s runes flare down the Runestaff: 2d8 ember to every hero, CON save for half, and you Burn.', effects: [{ type: 'damage', dice: '2d8', kind: 'ember', aspect: 'ember', save: 'CON', riders: [status('burning')] }] },
+        'white-heat': { name: 'White Heat', target: 'enemy', charge: true, text: 'He thrusts his hammer into the forge-coals until it glows white, charging: 2d10 crushing, and you Burn.', effects: [atk('2d10', 'crush', { aspect: 'ember', riders: [status('burning')] })] },
+      }, [[1, 3, 'smiths-hammer'], [4, 5, 'slag-spit'], [6, 6, 'temper-kin'], [7, 8, 'white-heat'], [9, 12, 'rune-fire']], { atk: 7, dmg: 5 }),
+    },
+    text: 'One of Harrow\'s molten servants: a man-shape of black slag with the heat showing through the cracks, still tending forges nobody lights.',
+  },
+  'peak-troll': {
+    id: 'peak-troll', name: 'Peak-Troll', art: 'peak-troll', tier: 'veteran', kind: 'beast',
+    hp: 36, guard: 13, atk: 4, dmg: 3, speed: 8, armor: 'hide', aspect: 'stone',
+    saves: { STR: 4, DEX: 0, CON: 4, WIS: 0 },
+    moves: TROLL_MOVES,
+    table: [[1, 3, 'club'], [4, 4, 'pummel'], [5, 6, 'hurl-boulder'], [7, 8, 'regrow']],
+    variants: {
+      'old-horn': holder('Old Horn', 'old-horn', 110, {
+        ...TROLL_MOVES,
+        'horn-toss': { name: 'Horn Toss', target: 'enemy', text: 'He gets his one horn under you and throws: 2d8 piercing, and you Stagger.', effects: [atk('2d8', 'pierce', { riders: [status('staggered')] })] },
+        'mantle-of-trolls': { name: 'Mantle of Trolls', target: 'self', requires: 'trollhide-mantle', fallback: 'club', text: 'The hides of every troll he ever beat knit over his wounds: he heals 2d8, and they Regenerate.', effects: [{ type: 'heal', dice: '2d8', diceEvery: 3 }, status('regenerating', { value: { dice: '1d6', diceEvery: 3 } })] },
+      }, [[1, 4, 'club'], [5, 5, 'pummel'], [6, 7, 'hurl-boulder'], [8, 8, 'horn-toss'], [9, 12, 'mantle-of-trolls']]),
+    },
+    text: 'A troll of the high passes, grey-green and mossed like a boulder. Cut it and it grows back; the old ones wear the hides of the young.',
+  },
+  'rime-wraith': {
+    id: 'rime-wraith', name: 'Rime-Wraith', art: 'rime-wraith', tier: 'veteran', kind: 'undead',
+    hp: 24, guard: 15, atk: 4, dmg: 2, speed: 11, armor: 'none', aspect: 'frost',
+    saves: { STR: 1, DEX: 1, CON: 2, WIS: 2 },
+    moves: WRAITH_MOVES,
+    table: [[1, 4, 'drowned-grasp'], [5, 6, 'dirge'], [7, 8, 'pull-under']],
+    variants: {
+      abbess: holder('The Drowned Abbess', 'drowned-abbess', 72, {
+        ...WRAITH_MOVES,
+        'last-rites': { name: 'Last Rites', target: 'all-allies', text: 'She says the last rites over her choir, as she did every night for thirty years: every drowned monk heals 2d6.', effects: [{ type: 'heal', dice: '2d6', diceEvery: 3 }] },
+        'censer-swing': { name: 'Censer Swing', target: 'all-enemies', requires: 'drowned-censer', fallback: 'drowned-grasp', text: 'The Drowned Censer swings, and the smoke smells of lake-water: 2d6 frost to every hero, WIS save for half, and you are Chilled.', effects: [{ type: 'damage', dice: '2d6', kind: 'frost', aspect: 'frost', save: 'WIS', riders: [status('chilled')] }] },
+      }, [[1, 4, 'drowned-grasp'], [5, 6, 'dirge'], [7, 7, 'pull-under'], [8, 8, 'last-rites'], [9, 12, 'censer-swing']]),
+      choir: {
+        name: 'Choir-Wraith', hp: 22, art: 'choir-wraith',
+        moves: {
+          ...WRAITH_MOVES,
+          'the-note': { name: 'The Note', target: 'all-enemies', text: 'It sings one long note under the ice, and the cold gets into you: 1d6 frost, CON save for half, and you are Chilled.', effects: [{ type: 'damage', dice: '1d6', kind: 'frost', aspect: 'frost', save: 'CON', riders: [status('chilled')] }] },
+        },
+        table: [[1, 3, 'drowned-grasp'], [4, 6, 'the-note'], [7, 8, 'dirge']],
+      },
+    },
+    text: 'A drowned monk of Frostmere, still wet under the frost and still singing. It remembers the office, and nothing else.',
+  },
+  'thunder-roc': {
+    id: 'thunder-roc', name: 'The Thunder-Roc', art: 'thunder-roc', tier: 'relic-bearer', kind: 'beast', unique: true,
+    hp: 140, guard: 15, atk: 6, dmg: 4, speed: 14, armor: 'hide', aspect: 'storm',
+    saves: { STR: 3, DEX: 4, CON: 3, WIS: 2 },
+    relics: ['roc-feather-cloak'],
+    moves: {
+      talons: { name: 'Talons', target: 'enemy', text: 'Talons like a harrow\'s tines.', effects: [atk('2d8', 'slash')] },
+      'wing-gale': { name: 'Wing Gale', target: 'all-enemies', text: 'It beats its wings and the eyrie\'s snow comes off the crag in a wall: 1d8 crushing to every hero, DEX save for half, and you Stagger.', effects: [{ type: 'damage', dice: '1d8', kind: 'crush', save: 'DEX', riders: [status('staggered')] }] },
+      'carry-off': { name: 'Carry Off', target: 'enemy', charge: true, text: 'It drops on you out of the sun, charging: it means to carry you off the crag.', effects: [atk('2d6', 'slash', { riders: [status('swallowed', { label: 'Carried off' })] })] },
+      'storm-mantle': { name: 'Storm Mantle', target: 'all-enemies', requires: 'roc-feather-cloak', fallback: 'talons', text: 'The cloak of its own feathers crackles on its talon, and lightning runs down the crag: 2d8 storm to every hero, CON save for half, and you Stagger.', effects: [{ type: 'damage', dice: '2d8', kind: 'storm', aspect: 'storm', save: 'CON', riders: [status('staggered')] }] },
+    },
+    table: [[1, 4, 'talons'], [5, 6, 'wing-gale'], [7, 8, 'carry-off'], [9, 12, 'storm-mantle']],
+    text: 'A bird the size of a barn, nesting on the Highfold crags. It carries off goats, and sometimes shepherds; one shepherd\'s cloak of its own feathers is still caught on its talon.',
+  },
+  // Champions (spec §3.5): each piece is a relic with its own grip meter; snapping one off shuts its moves down.
+  'mother-anvil': {
+    id: 'mother-anvil', name: 'Mother Anvil', art: 'mother-anvil', tier: 'champion', kind: 'construct', unique: true,
+    hp: 170, guard: 18, atk: 9, dmg: 6, speed: 10, armor: 'plate', aspect: 'ember', resist: ['crush'], weak: ['frost'],
+    saves: { STR: 5, DEX: 0, CON: 5, WIS: 2 },
+    relics: ['worldforge-hammer', 'anvil-heart'],
+    noFlee: true,
+    moves: {
+      hammerfall: { name: 'Hammerfall', target: 'enemy', text: 'The anvil rears up on its iron legs and comes down on you: 2d10 crushing.', effects: [atk('2d10', 'crush')] },
+      sparks: { name: 'Sparks', target: 'all-enemies', text: 'She strikes her own back with the hammer, and the sparks go everywhere: 1d6 ember to every hero, and you Burn.', effects: [{ type: 'damage', dice: '1d6', kind: 'ember', aspect: 'ember', riders: [status('burning')] }] },
+      temper: { name: 'Temper', target: 'self', requires: 'anvil-heart', fallback: 'hammerfall', text: 'The Anvil Heart glows white and the iron of her plates goes blue with temper: Guarding, and Warded.', effects: [status('guarding'), status('warded', { value: { dice: '3d6', diceEvery: 3 } })] },
+      'steam-burst': { name: 'Steam Burst', target: 'all-enemies', text: 'She plunges her hammer-arm into the quench-trough and the forge fills with steam: 2d6 ember to every hero, DEX save for half.', effects: [{ type: 'damage', dice: '2d6', kind: 'ember', aspect: 'ember', save: 'DEX' }] },
+      'anvil-strike': { name: 'Anvil Strike', target: 'enemy', requires: 'worldforge-hammer', fallback: 'hammerfall', text: 'The Worldforge Hammer comes down on you as if you were iron on the anvil: 3d8 crushing, and you Stagger.', effects: [atk('3d8', 'crush', { riders: [status('staggered')] })] },
+      bellows: { name: 'Bellows', target: 'self', fallback: 'hammerfall', text: 'Harrow\'s great bellows breathe once, and a forgeborn climbs out of the fire-pit to stand at her side.', effects: [{ type: 'summon', family: 'forgeborn', count: 1, max: 2, levelDelta: -4 }] },
+      'heart-flare': { name: 'Heart Flare', target: 'all-enemies', requires: 'anvil-heart', fallback: 'sparks', text: 'The Anvil Heart flares through her ribs like a furnace door flung open: 3d6 ember to every hero, and you Burn.', effects: [{ type: 'damage', dice: '3d6', kind: 'ember', aspect: 'ember', riders: [status('burning')] }] },
+      'worldforge-blow': { name: 'Worldforge Blow', target: 'enemy', requires: 'worldforge-hammer', fallback: 'hammerfall', charge: true, text: 'She lifts the Worldforge Hammer as high as the forge roof, charging: 4d10 crushing, for one of you.', effects: [atk('4d10', 'crush')] },
+    },
+    phases: [
+      { at: 1, text: 'The Anvil Wakes. The ring of anvils rings once, and the biggest of them stands up on four iron legs.', table: [[1, 8, 'hammerfall'], [9, 14, 'sparks'], [15, 20, 'temper']] },
+      { at: 0.66, text: 'Quench. She wades into the quench-trough and comes out wreathed in steam.', table: [[1, 5, 'hammerfall'], [6, 10, 'steam-burst'], [11, 15, 'anvil-strike'], [16, 20, 'bellows']] },
+      { at: 0.33, text: 'The Last Strike. The Heart burns white through her ribs, and she lifts the Hammer one last time.', table: [[1, 5, 'hammerfall'], [6, 12, 'heart-flare'], [13, 20, 'worldforge-blow']] },
+    ],
+    text: 'Harrow\'s first forge-golem: an anvil the size of a cart on four iron legs, with his hammer in one arm and a heart of fire in her ribs. Her plate turns a hammer; cold water finds the flaws in it.',
+  },
+  'rime-abbot': {
+    id: 'rime-abbot', name: 'The Rime-Abbot', art: 'rime-abbot', tier: 'champion', kind: 'undead', unique: true,
+    hp: 160, guard: 21, atk: 8, dmg: 7, speed: 8, armor: 'none', aspect: 'frost',
+    saves: { STR: 3, DEX: 1, CON: 4, WIS: 5 },
+    relics: ['rime-crozier', 'hushweave-cowl'],
+    noFlee: true,
+    moves: {
+      'crozier-strike': { name: 'Crozier Strike', target: 'enemy', text: 'The Rime Crozier comes down like a bell-clapper: 2d8 frost, and you are Chilled.', effects: [atk('2d8', 'frost', { aspect: 'frost', riders: [status('chilled')] })] },
+      toll: { name: 'Toll', target: 'all-enemies', text: 'He tolls the drowned bell under the ice. Every hero: WIS save or Frightened.', effects: [status('frightened', { save: 'WIS' })] },
+      'rime-ward': { name: 'Rime Ward', target: 'self', requires: 'rime-crozier', fallback: 'crozier-strike', text: 'He plants the Crozier, and the rime grows over him like a second habit: Warded.', effects: [status('warded', { value: { dice: '3d6', diceEvery: 3 } })] },
+      drown: { name: 'Drown', target: 'enemy', charge: true, text: 'He takes one of you by the collar and walks you down under the ice, charging: held under, for two turns.', effects: [atk('1d8', 'frost', { aspect: 'frost', riders: [status('swallowed', { label: 'Held under' })] })] },
+      'call-the-choir': { name: 'Call the Choir', target: 'self', fallback: 'crozier-strike', text: 'He lifts the Crozier, and one of his drowned choir rises through the ice, singing.', effects: [{ type: 'summon', family: 'rime-wraith', variant: 'choir', count: 1, max: 2, levelDelta: -4 }] },
+      hushing: { name: 'Hushing', target: 'enemy', requires: 'hushweave-cowl', fallback: 'toll', text: 'The Hushweave Cowl breathes out a silence, and one of you hears nothing but Hush. WIS save or Charmed.', effects: [status('charmed', { save: 'WIS' })] },
+      heartbeat: { name: 'Heartbeat', target: 'all-enemies', text: 'Under the floor, Hush\'s heart beats once. The Abbot heals 2d8, and every hero is Chilled.', effects: [{ type: 'heal', dice: '2d8', diceEvery: 3, self: true }, status('chilled')] },
+      'rime-nova': { name: 'Rime Nova', target: 'all-enemies', text: 'The whole cave of ice answers him at once: 3d8 frost to every hero, DEX save for half, and you are Chilled.', effects: [{ type: 'damage', dice: '3d8', kind: 'frost', aspect: 'frost', save: 'DEX', riders: [status('chilled')] }] },
+    },
+    phases: [
+      { at: 1, text: 'Vespers. Brother Aurel lifts his head from the ice, and the Crozier lights the cave blue.', table: [[1, 8, 'crozier-strike'], [9, 14, 'toll'], [15, 20, 'rime-ward']] },
+      { at: 0.66, text: 'Compline. He sings the last office of the day, and the drowned sing it with him.', table: [[1, 5, 'crozier-strike'], [6, 10, 'drown'], [11, 15, 'call-the-choir'], [16, 20, 'hushing']] },
+      { at: 0.33, text: 'Hush. Under the ice something vast turns over in its sleep, and its heart beats.', table: [[1, 8, 'crozier-strike'], [9, 14, 'heartbeat'], [15, 20, 'rime-nova']] },
+    ],
+    text: 'Brother Aurel of Peak\'s Veil, who went down to listen to Hush and did not come up. The Crozier froze to his hand; the Cowl was woven down there, by someone who was listening.',
+  },
+};
+
+// The Tallymen of the Ironspire: new variants of the M3 families (spec §3.2). The Cutter-Chief is a holder.
+const TALLY_IRON = {
+  tallyman: {
+    ...TALLY_SUN.tallyman,
+    variants: {
+      ...TALLY_SUN.tallyman.variants,
+      'ice-cutter': holder('The Cutter-Chief', 'cutter-chief', 66, {
+        ...TALLY_MOVES,
+        'ice-pick': { name: 'Ice-Pick', target: 'enemy', text: 'A Tallyman ice-pick, for cutting blocks and bargains: 1d8 piercing.', effects: [atk('1d8', 'pierce')] },
+        'split-the-ice': { name: 'Split the Ice', target: 'all-enemies', requires: 'cutters-pick', fallback: 'ice-pick', text: 'The Cutter\'s Pick bites into the road-ice and the floe splits under the whole line: 2d6 frost to every hero, DEX save for half, and you are Chilled.', effects: [{ type: 'damage', dice: '2d6', kind: 'frost', aspect: 'frost', save: 'DEX', riders: [status('chilled')] }] },
+      }, [[1, 4, 'ice-pick'], [5, 6, 'tally-mark'], [7, 8, 'smoke-pot'], [9, 12, 'split-the-ice']]),
+    },
+  },
+  smuggler: {
+    ...TALLY_SUN.smuggler,
+    variants: {
+      ...TALLY_SUN.smuggler.variants,
+      sawyer: {
+        name: 'Sawyer', hp: 20, art: 'sawyer',
+        moves: {
+          ...SMUGGLER_MOVES,
+          'ice-saw': { name: 'Ice-Saw', target: 'enemy', text: 'One end of a two-man ice saw, swung like a scythe: 1d8 slashing.', effects: [atk('1d8', 'slash')] },
+        },
+        table: [[1, 4, 'ice-saw'], [5, 5, 'caltrops'], [6, 6, 'bolt']],
+      },
+    },
+  },
+};
+
+export const FOES = deepFreeze({ ...VERDANT, ...TALLY_SUN, ...SUNSCORCH, ...TALLY_IRON, ...IRONSPIRE });
 
 export const FOE_IDS = Object.freeze(Object.keys(FOES));

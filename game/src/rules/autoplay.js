@@ -3,7 +3,7 @@
 
 import { SKILLS } from '../data/skills.js';
 import { commands } from './battle.js';
-import { alive, unitsOf, hasStatus } from './ai.js';
+import { targetable, unitsOf, hasStatus } from './ai.js';
 import { damageMult } from './combat.js';
 
 const frac = u => u.hp / u.maxHp;
@@ -18,7 +18,7 @@ function usable(cmds, id) {
 // Hit the foe we can hurt most, finishing the wounded first; leave relic holders for last
 // (a dead holder shatters its relic) unless nothing else is standing.
 function priorityTarget(s, hero) {
-  const foes = unitsOf(s, 'foe').filter(alive);
+  const foes = unitsOf(s, 'foe').filter(targetable);
   const others = foes.filter(f => !holding(f));
   const pool = others.length ? others : foes;
   const w = hero.stats.weapon;
@@ -27,13 +27,13 @@ function priorityTarget(s, hero) {
 }
 
 function bossOf(s) {
-  return unitsOf(s, 'foe').filter(alive).sort((a, b) => b.maxHp - a.maxHp)[0];
+  return unitsOf(s, 'foe').filter(targetable).sort((a, b) => b.maxHp - a.maxHp)[0];
 }
 
 function healPlan(s, cmds, opts) {
   const heroes = unitsOf(s, 'hero');
   const down = heroes.filter(h => h.ko && !h.gone);
-  const hurt = heroes.filter(alive).sort((a, b) => frac(a) - frac(b));
+  const hurt = heroes.filter(targetable).sort((a, b) => frac(a) - frac(b));
   const revive = usable(cmds, 'revive');
   if (down.length && revive) return { ...revive, target: down[0].id };
   const dawn = usable(cmds, 'dawnsong');
@@ -45,19 +45,20 @@ function healPlan(s, cmds, opts) {
 
 function itemPlan(s, hero, cmds) {
   const heroes = unitsOf(s, 'hero');
-  const healerUp = heroes.some(h => alive(h) && h.skills.includes('mend') && h.mp >= SKILLS.mend.mp);
+  // M5: a held healer or reviver (swallowed, carried off) loses its turns, so it does not count
+  const healerUp = heroes.some(h => targetable(h) && h.skills.includes('mend') && h.mp >= SKILLS.mend.mp);
   const down = heroes.filter(h => h.ko && !h.gone);
-  const reviverUp = heroes.some(h => alive(h) && h.skills.includes('revive') && h.mp >= SKILLS.revive.mp);
+  const reviverUp = heroes.some(h => targetable(h) && h.skills.includes('revive') && h.mp >= SKILLS.revive.mp);
   const salts = usable(cmds, 'ember-salts');
   if (down.length && salts && !reviverUp) return { ...salts, target: down[0].id };
   const tonic = usable(cmds, 'hearth-tonic');
-  const worst = heroes.filter(alive).sort((a, b) => frac(a) - frac(b))[0];
+  const worst = heroes.filter(targetable).sort((a, b) => frac(a) - frac(b))[0];
   if (tonic && worst && frac(worst) < (healerUp ? 0.2 : 0.35)) return { ...tonic, target: worst.id };
   return null;
 }
 
 function gripPlan(s, cmds) {
-  const holder = unitsOf(s, 'foe').filter(f => alive(f) && holding(f)).sort((a, b) => gripLeft(a) - gripLeft(b))[0];
+  const holder = unitsOf(s, 'foe').filter(f => targetable(f) && holding(f)).sort((a, b) => gripLeft(a) - gripLeft(b))[0];
   if (!holder) return null;
   for (const id of ['disarm', 'sunder', 'wrench']) {
     const c = usable(cmds, id);
@@ -68,7 +69,7 @@ function gripPlan(s, cmds) {
 
 function controlPlan(s, hero, cmds) {
   const boss = bossOf(s);
-  const foes = unitsOf(s, 'foe').filter(alive);
+  const foes = unitsOf(s, 'foe').filter(targetable);
   if (!boss) return null;
   const splinters = usable(cmds, 'heartwood-splinters');
   if (splinters && foes.length >= 3) return splinters;
@@ -93,7 +94,7 @@ function artPlan(s, hero, cmds) {
     if (c && hero.mp >= c.mp + 2 && (elite(t) || t.hp > 12)) return { ...c, target: t.id };
   }
   const hew = usable(cmds, 'hew');
-  if (hew && unitsOf(s, 'foe').filter(alive).length >= 2) return hew;
+  if (hew && unitsOf(s, 'foe').filter(targetable).length >= 2) return hew;
   const lance = usable(cmds, 'radiant-lance');
   if (lance && damageMult(t, 'radiant', 'radiant') > 1 && hero.mp >= 8) return { ...lance, target: t.id };
   return null;
@@ -119,5 +120,7 @@ export function autoCommand(state, heroId, opts = {}) {
     || artPlan(state, hero, cmds);
   if (plan) return plan;
   const t = priorityTarget(state, hero);
-  return { ...usable(cmds, 'attack'), target: t?.id };
+  // M5: nothing to hit (a lone foe burrowed under the floor): brace for what comes up
+  if (!t) return usable(cmds, 'defend') || { ...usable(cmds, 'attack'), target: null };
+  return { ...usable(cmds, 'attack'), target: t.id };
 }

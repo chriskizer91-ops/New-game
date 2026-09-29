@@ -1,10 +1,11 @@
-// The Ladder (M3 spec §3.6, M4 spec §3.6): one poster per villain, in order: Act I, then the
-// Sunscorch's Act II posters, then the rumours of the regions still sealed (Gloomfen, Ironspire).
+// The Ladder (M3 spec §3.6, M4 spec §3.6, M5 spec §3.6): one poster per villain, in order: Act I, then
+// the Act II posters of the Sunscorch and the Ironspire, then the rumours: the Gloomfen, still sealed,
+// and Harrow himself, still missing (the Ironspire finds his forge, his hammer and his journeyman, not him).
 // LADDER = [{ id, enc?, spawn?, name, silhouette?, act }]
 //   enc/spawn  the encounter and spawn index whose foe the poster shows (renderFoe silhouette)
 //   silhouette a rumour: no encounter yet, only a name
 //   state      silhouette -> scouted (flags.scouted[id], sighted or fought) -> settled ({ beaten: enc })
-// Owner: WP3S (M3), P3 story (M4).
+// Owner: WP3S (M3), P3 story (M4, M5).
 
 import { deepFreeze } from '../core/freeze.js';
 
@@ -38,7 +39,16 @@ export const LADDER = deepFreeze([
   P2('wisp-queen', 'wisp-queen', 'The Wisp-Queen'),
   P2('ash-captain', 'sg-captain', 'The Ash-Captain'),
   P2('ashen-warden', 'ashen-warden', 'The Ashen Warden'),
-  // Act II rumours: Gloomfen and Ironspire stay sealed until a later chapter
+  // M5: the Ironspire Peaks (spec §3.6). Harrow himself is still missing: his rumour stays below.
+  P2('rhune', 'rp-brigands', 'Rhune the Pass-Warden'),
+  P2('thunder-roc', 'roc-eyrie', 'The Thunder-Roc'),
+  P2('old-horn', 'troll-cave', 'Old Horn'),
+  P2('sentinel-captain', 'is-sentinels', 'The Sentinel-Captain'),
+  P2('journeyman', 'id-smith', 'Harrow\'s Journeyman'),
+  P2('mother-anvil', 'mother-anvil', 'Mother Anvil'),
+  P2('drowned-abbess', 'fm-shrine', 'The Drowned Abbess'),
+  P2('rime-abbot', 'rime-abbot', 'The Rime-Abbot'),
+  // Act II rumours: Gloomfen stays sealed until a later chapter, and Harrow is still missing
   { id: 'lantern-mother', name: 'the Lantern Mother', silhouette: true, act: 2 },
   { id: 'missing-smith', name: 'the missing smith', silhouette: true, act: 2 },
 ]);
