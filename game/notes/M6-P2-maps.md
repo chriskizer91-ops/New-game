@@ -242,8 +242,9 @@ All answered (kept for the record):
 - Final numbers (23:20): `npm test` 498/498; `npm run lint` clean; the Gloomfen walk 975 steps, the road held 13
   times (each starter). Private build `scratchpad/m6-builds/p2/aethermoor.html` (the game 2575 KB, paintings
   20303 KB): e2e-world 28-39 on the phone, 81 checks ok, 0 failed, no console errors; PERF phone 39: the Lanternfen
-  in thick fog p95 3.20 ms, 11 drawImage; the long boardwalk p95 2.30 ms, 12 drawImage. Shots in
-  `scratchpad/m6-builds/p2/shots/`.
+  in thick fog p95 3.20 ms, 11 drawImage; the long boardwalk p95 2.30 ms, 12 drawImage. On the laptop, 85 checks ok,
+  0 failed, no console errors; PERF laptop 39: the Lanternfen p95 2.30 ms, 12 drawImage; the long boardwalk p95
+  1.70 ms, 15 drawImage. Shots in `scratchpad/m6-builds/p2/shots/` and `shots-laptop/`.
 - Decided: travel is false only on the Mother's Hollow and the Drowned Belfry (the dungeons), as in M5.
 - Decided (Hodge): an NPC entity `rb-hodge` (`npc: 'hodge'`) sits on his stool beside the bar; the `hodge`
   encounter is placed on his tile but never stands on the map on its own (`if: { any: [] }`), because his fight

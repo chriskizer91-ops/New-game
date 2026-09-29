@@ -1303,3 +1303,13 @@ test('Gloomfen chests: a little silver, gems and materials by real ids, bog ambe
   assert.ok(chests.filter(({ e }) => e.loot.materials?.silver).length * 2 >= chests.length, 'most hold a little silver');
   assert.ok(chests.filter(({ e }) => e.loot.gems?.['bog-amber']).length >= 3, 'the fen pays in bog amber');
 });
+
+test('every gated exit carries its sealed text: the rules shut only a sealed exit, so a gate alone would stand open', () => {
+  for (const map of Object.values(MAPS)) {
+    for (const x of map.exits) {
+      if (!x.gate) continue;
+      assert.ok(x.to, `${map.id} ${x.id}: a gated exit leads somewhere`);
+      assert.ok(x.sealed?.text && x.sealed?.region, `${map.id} ${x.id}: gated, so sealed (text and region) until the gate opens`);
+    }
+  }
+});

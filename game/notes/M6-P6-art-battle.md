@@ -86,7 +86,7 @@ Status: **done** (all of §6.2; see "Needs from others" for the three small hook
    about 190 KB of source (foes ~106 KB, scenes ~47 KB, recipes ~37 KB).
 
 ## Where I am
-- Done. `npm test` 498/498, lint clean; my private hash check of every M2-M5 render: 0 changes outside the M6 scaffold
+- Done. `npm test` 501/501, lint clean; my private hash check of every M2-M5 render: 0 changes outside the M6 scaffold
   drafts (its "icons status/aspect/dice/misc" bundle holds rotting and hexed; with the old drafts put back it hashes
   as the baseline). Private build `scratchpad/m6-builds/p6/aethermoor.html`; the dev battle harness shows the Lantern
   Mother, the Leviathan, Hodge, Mother Grue, the Cantor and the Salvage-Master in their fights at 1280 and 360 wide,
