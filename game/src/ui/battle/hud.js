@@ -1,9 +1,12 @@
 // DOM overlays for the battle: foe plates (name, HP, statuses, grip meters), intent-die bubbles,
 // the Initiative Ribbon, floating numbers and banners. Positions come from Stage.geom().
+// M5: a burrowed foe's plate says so (.bt-foe.sunk: "Burrowed · out of reach"), and its box is never a
+// valid target; on the ribbon a held hero's turn is iced over (.held) and a charmed one's pink (.charmed).
 import { statusIcon, diceIcon, gripIcon, INTENT_DIE } from '../../art/icons.js';
 import { STATUSES } from '../../data/statuses.js';
 import { RELICS } from '../../data/relics.js';
 import { el, pixelIcon, toCanvas, clamp } from './util.js';
+import { heldStatus, isCharmed, isSunk, untargetable } from './model.js';
 
 // ---- small shared pieces ----------------------------------------------------------------------------
 
@@ -61,13 +64,14 @@ export class Hud {
     const hpNum = el('span.bt-foe-hpnum');
     const st = el('span.bt-foe-st');
     const grips = el('span.bt-grips');
+    const state = el('span.bt-foe-state', { hidden: true });
     st.hidden = true;
     grips.hidden = true;
-    const plate = el('div.bt-plate', null, el('span.bt-plate-top', null, name, lv), el('span.bt-plate-bar', null, bar, hpNum), st, grips);
+    const plate = el('div.bt-plate', null, el('span.bt-plate-top', null, name, lv), el('span.bt-plate-bar', null, bar, hpNum), state, st, grips);
     plate.addEventListener('click', e => { if (!e.target.closest('.bt-grip')) this.onFoe(u.id); });
     const box = el('div.bt-foe', { 'data-id': u.id }, hit, intent, plate);
     this.layer.append(box);
-    const f = { id: u.id, box, hit, intent, die, iname, itgt, charge, queue, plate, name, bar, hpNum, st, grips, statusKey: '', gripKey: '', intentKey: '', dieTimer: 0 };
+    const f = { id: u.id, box, hit, intent, die, iname, itgt, charge, queue, plate, name, bar, hpNum, st, state, grips, statusKey: '', gripKey: '', intentKey: '', dieTimer: 0 };
     this.foes.set(u.id, f);
     return f;
   }
@@ -102,6 +106,11 @@ export class Hud {
     f.name.textContent = u.label || u.name;
     f.box.classList.toggle('down', !!(u.ko || u.gone));
     f.box.dataset.tier = u.tier || '';
+    // M5: under the floor (burrowed): out of reach until its own turn comes round
+    const sunk = isSunk(u) && !u.ko && !u.gone;
+    f.box.classList.toggle('sunk', sunk);
+    f.state.hidden = !sunk;
+    if (sunk) f.state.textContent = `${STATUSES[u.statuses.find(s => STATUSES[s.id]?.untargetable)?.id]?.name || 'Out of reach'} · out of reach`;
     // statuses
     const key = u.statuses.map(s => `${s.id}${s.stacks}`).join(',');
     const room = Math.max(2, Math.floor(((f.plateW || 120) - 12) / 26));
@@ -125,7 +134,7 @@ export class Hud {
     // intent bubble
     this.setIntent(u, u.intent, analyzedQueue ?? (u.analyzed ? u.queue : []));
     const intentTxt = u.intent ? `, intends ${u.intent.name}${u.intent.charging ? ' (charging)' : ''}` : '';
-    f.hit.setAttribute('aria-label', `${u.label || u.name}, level ${u.level}, HP ${u.hp} of ${u.maxHp}${u.statuses.length ? ', ' + u.statuses.map(s => s.id).join(', ') : ''}${intentTxt}`);
+    f.hit.setAttribute('aria-label', `${u.label || u.name}, level ${u.level}, HP ${u.hp} of ${u.maxHp}${u.statuses.length ? ', ' + u.statuses.map(s => s.id).join(', ') : ''}${untargetable(u) ? ', cannot be targeted' : ''}${intentTxt}`);
   }
 
   gripChip(u, p, i) {
@@ -213,6 +222,9 @@ export class Hud {
     const n = el(`div.bt-float${cls ? '.' + cls.split(' ').join('.') : ''}`, { style: `left:${Math.round(x + (k % 2 ? 10 : 0))}px;top:${Math.round(y - dy)}px;--dur:${dur}ms` }, el('b', { text }));
     if (sub) n.append(el('small', { text: sub }));
     host.append(n);
+    // a long label on the edge hero ("Carried off by the Thunder-Roc") stays inside its row (M5)
+    const hw = host.clientWidth, nw = n.offsetWidth;
+    if (hw && nw) n.style.left = `${Math.round(clamp(x + (k % 2 ? 10 : 0), nw / 2 + 2, Math.max(nw / 2 + 2, hw - nw / 2 - 2)))}px`;
     setTimeout(() => n.remove(), dur + 60);
     return n;
   }
@@ -220,9 +232,11 @@ export class Hud {
   // ---- ribbon ---------------------------------------------------------------------------------------
   // ids: next turns; units: display units; portrait(id) -> ImageData
   ribbon(ids, units, portrait, animate) {
-    const key = ids.join(',');
+    // M5: a hold or a charm changes how a turn looks, not only the order
+    const marks = ids.map(id => (heldStatus(units[id]) ? 'h' : isCharmed(units[id]) ? 'c' : '')).join('');
+    const key = `${ids.join(',')}|${marks}`;
     if (key === this.ribbonKey) return;
-    const shifted = this.ribbonKey && this.ribbonKey.split(',').slice(1).join(',').startsWith(ids.slice(0, 3).join(','));
+    const shifted = this.ribbonKey && this.ribbonKey.split('|')[0].split(',').slice(1).join(',').startsWith(ids.slice(0, 3).join(','));
     this.ribbonKey = key;
     const list = el('ol.bt-rib-list');
     ids.forEach((id, i) => {
@@ -242,7 +256,9 @@ export class Hud {
 }
 
 function li(list, u, canvas, i) {
-  const item = el(`li.bt-rib.${u.side}${i === 0 ? '.now' : ''}`, { title: `${i === 0 ? 'Now' : `Turn ${i + 1}`}: ${u.label || u.name}` }, canvas);
+  const held = heldStatus(u), charmed = isCharmed(u);
+  const how = held ? `, ${String(held.label || STATUSES[held.id]?.name || 'held').toLowerCase()}: the turn is lost` : charmed ? ', charmed' : '';
+  const item = el(`li.bt-rib.${u.side}${i === 0 ? '.now' : ''}${held ? '.held' : ''}${charmed ? '.charmed' : ''}`, { title: `${i === 0 ? 'Now' : `Turn ${i + 1}`}: ${u.label || u.name}${how}` }, canvas);
   if (i === 0) item.append(el('span.bt-rib-now', { text: 'now' }));
   list.append(item);
 }

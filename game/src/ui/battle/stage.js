@@ -1,6 +1,8 @@
 // The battle stage: one pixel canvas at an integer scale holding the backdrop (with its ambient
 // animation), the foe formation, and the hit/relic/phase effects. DOM overlays (plates, intent
 // dice, grip meters, numbers) are positioned from geom(), in CSS px relative to the stage box.
+// M5: sink(id, down) takes a burrowed foe under the floor (all but the top of it, over a mound of
+// rubble) and brings it back up; no target marker is ever drawn on it (it is never a valid target).
 import { renderBackdrop, BACKDROPS } from '../../art/scenes.js';
 import { itemIcon, RELIC_ART, ASPECT_LOOK } from '../../art/item-looks.js';
 import { FoeSprite } from './sprites.js';
@@ -10,6 +12,7 @@ import { clamp, lerp, easeOut, hexRgb } from './util.js';
 export const TOP_CSS = 50;
 const BOT_PLAIN = 62, BOT_HELD = 92; // CSS px under the feet: plate (plus a row of grip meters)
 const MIN_SLOT = 44; // logical px per foe, so plates stay readable
+const SINK = 0.78; // how much of a burrowed foe's figure goes under the floor
 
 const HIT_TINT = [255, 255, 255, 0.75];
 
@@ -122,7 +125,8 @@ export class Stage {
     });
   }
 
-  // where a foe sits, in CSS px relative to the stage box
+  // where a foe sits, in CSS px relative to the stage box (a sunk foe's top is where it shows above the
+  // floor, so its intent bubble follows it down)
   geom(id) {
     const v = this.foes.get(id);
     if (!v || v.x == null) return null;
@@ -130,18 +134,20 @@ export class Stage {
     const foot = sp.def.foot;
     const drawX = Math.round(v.tx - (b.x0 + b.x1) / 2);
     const drawY = this.floorY - foot[1] + v.depth;
+    const top = v.sinkTo ? drawY + b.y1 - Math.max(1, Math.round((b.y1 - b.y0) * (1 - SINK))) : drawY + b.y0;
     return {
       cx: this.ox + v.tx * s,
       left: this.ox + (drawX + b.x0) * s, right: this.ox + (drawX + b.x1) * s,
-      top: this.oy + (drawY + b.y0) * s, bottom: this.oy + (drawY + b.y1) * s,
+      top: this.oy + top * s, bottom: this.oy + (drawY + b.y1) * s,
       floor: this.oy + (this.floorY + 1) * s,
-      slotW: v.slotW * s, s, stageH: this.cssH,
+      slotW: v.slotW * s, s, stageH: this.cssH, sunk: !!v.sinkTo,
     };
   }
-  // a point on the sprite (anchor name) in logical stage px
+  // a point on the sprite (anchor name) in logical stage px; 'feet' is where it meets the floor
   point(id, name = 'center') {
     const v = this.foes.get(id);
     if (!v || v.x == null) return [this.lw / 2, this.lh / 2];
+    if (name === 'feet') return [Math.round(v.x), this.floorY + v.depth - 1];
     const sp = v.sprite, b = sp.box, foot = sp.def.foot;
     const drawX = Math.round(v.x - (b.x0 + b.x1) / 2), drawY = this.floorY - foot[1] + v.depth;
     const a = (sp.poseAnchors && sp.poseAnchors[name]) || sp.anchors[name] || sp.anchors.center || [(b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2];
@@ -194,6 +200,31 @@ export class Stage {
     if (!v) return;
     v.removed = false; v.fade = null; v.alpha = 1; v.base = 'idle'; v.pose = 'idle';
     this.formation();
+  }
+  // M5: a burrowed foe goes down into the floor (down) or comes back up; animated over ~0.4 s
+  sink(id, down = true) {
+    const v = this.foes.get(id);
+    if (!v) return;
+    const want = down ? 1 : 0;
+    if ((v.sinkTo || 0) === want) return;
+    const t = this.now();
+    v.sinkFrom = this.sinkOf(v, t);
+    v.sinkTo = want;
+    v.sinkAt = t;
+    v.sinkDur = (this.reduced ? 1 : 420) / this.speed;
+    this.version = (this.version || 0) + 1; // the plate and the intent bubble follow it
+    this.dirty = true;
+  }
+  sinkOf(v, t) {
+    if (!v.sinkAt) return v.sinkTo || 0;
+    const u = clamp((t - v.sinkAt) / Math.max(1, v.sinkDur), 0, 1);
+    return lerp(v.sinkFrom || 0, v.sinkTo || 0, easeOut(u));
+  }
+  // M5: a flash of colour on one foe (a charm)
+  flashUnit(id, tint, ms = 300) {
+    const v = this.foes.get(id);
+    if (!v || this.reduced) return;
+    v.tint = tint; v.flashUntil = this.now() + ms / this.speed;
   }
   // true while any foe is still fading out (the player waits for reflow before the next beat)
   finishFades(t) {
@@ -328,6 +359,7 @@ export class Stage {
     if (this.effects.length) return true;
     for (const v of this.foes.values()) {
       if (v.fade || (v.poseUntil && t < v.poseUntil) || t < v.shakeUntil || Math.abs(v.x - v.tx) > 0.3) return true;
+      if (v.sinkAt && t < v.sinkAt + v.sinkDur) return true;
     }
     return false;
   }
@@ -402,14 +434,23 @@ export class Stage {
     const frame = sp.frame(pose, at, v.tint);
     const drawX = Math.round(v.x - (b.x0 + b.x1) / 2) + dx;
     const drawY = this.floorY - foot[1] + v.depth + dy;
+    const sunk = this.sinkOf(v, t);
     // shadow
-    if (pose !== 'ko' || alpha > 0.3) {
+    if ((pose !== 'ko' || alpha > 0.3) && sunk < 0.5) {
       const sw = Math.round((b.x1 - b.x0) * 0.42), fy = this.floorY + v.depth;
       ctx.fillStyle = `rgba(0,0,0,${0.32 * alpha})`;
       ctx.fillRect(Math.round(v.x - sw), fy - 1, sw * 2, 2);
       ctx.fillRect(Math.round(v.x - sw * 0.7), fy + 1, Math.round(sw * 1.4), 1);
     }
     ctx.globalAlpha = alpha;
+    if (sunk > 0.001) {
+      // M5: under the floor: only the top of the figure shows, over the rubble it went down through
+      const fh = b.y1 - b.y0, visH = Math.max(1, Math.round(fh * (1 - sunk * SINK)));
+      ctx.drawImage(frame, 0, b.y0, frame.width, visH, drawX, drawY + b.y1 - visH, frame.width, visH);
+      ctx.globalAlpha = 1;
+      this.mound(ctx, v, sunk, clockT);
+      return;
+    }
     if (clipBottom > 0) {
       // rising out of (or sinking into) the floor: draw only the part above ground
       const visH = Math.round((b.y1) * (1 - clipBottom));
@@ -419,6 +460,30 @@ export class Stage {
       ctx.drawImage(frame, drawX, drawY);
     }
     ctx.globalAlpha = 1;
+  }
+
+  // the broken floor a burrowed foe went down through: a low heap of rubble with a lit rim, and a few
+  // grains trickling off it
+  mound(ctx, v, k, clockT) {
+    const b = v.sprite.box, fy = this.floorY + v.depth;
+    const hw = Math.max(6, Math.round((b.x1 - b.x0) * 0.46 * Math.min(1, k * 1.4)));
+    const cx = Math.round(v.x);
+    for (let x = -hw; x <= hw; x++) {
+      const h = Math.max(1, Math.round(Math.sqrt(Math.max(0, 1 - (x / (hw + 0.5)) ** 2)) * 4 * k));
+      const n = (x * 7 + 13) % 5;
+      ctx.fillStyle = n === 0 ? '#5a4632' : n < 3 ? '#3b2d22' : '#2a2019';
+      ctx.fillRect(cx + x, fy - h + 1, 1, h + 1);
+      ctx.fillStyle = n === 1 ? '#c9a878' : '#8a7058';
+      ctx.fillRect(cx + x, fy - h, 1, 1);
+    }
+    if (!this.reduced) {
+      const ph = Math.floor(clockT * 6);
+      ctx.fillStyle = '#b89a70';
+      for (let i = 0; i < 3; i++) {
+        const gx = cx + ((ph * 5 + i * 11) % (hw * 2)) - hw, gy = fy - 3 + ((ph + i * 2) % 4);
+        ctx.fillRect(gx, gy, 1, 1);
+      }
+    }
   }
 
   marker(ctx, v, clockT, focused) {

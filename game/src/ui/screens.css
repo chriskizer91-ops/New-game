@@ -473,6 +473,12 @@ textarea.code:focus { outline: none; border-color: var(--hearth); }
 .mk-sealed .mk-ico { color: #f5ecd0; background: #5a1a14; box-shadow: 0 0 0 2px #120c08, 0 0 0 3px #d8a878, 0 2px 6px rgba(0, 0, 0, .55); }
 .mk-region .mk-ico { width: 34px; height: 34px; color: #b4f0a4; background: #1f4a1a; }
 .mk-region.rg-sunscorch .mk-ico { color: #ffd27a; background: #7a4212; }
+.mk-region.rg-ironspire .mk-ico { color: #c8d6e4; background: #34465a; }
+/* M5: four views (Wilds, Sunscorch, Ironspire, Realm) go two by two on a phone */
+@media (max-width: 520px) {
+  .atlas-views[data-n="4"], .atlas-views[data-n="5"] { grid-template-columns: repeat(2, minmax(0, 1fr)); flex: 1 1 100%; }
+  .atlas-views[data-n="4"] .atlas-view, .atlas-views[data-n="5"] .atlas-view { padding: 0 6px; }
+}
 .mk-here { z-index: 3; }
 .mk-here .mk-ico { width: 32px; height: 32px; color: #e8402c; background: none; box-shadow: none; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .75)); }
 .mk-here svg { width: 30px; height: 30px; animation: hereBob 1.6s ease-in-out infinite; }

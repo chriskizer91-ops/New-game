@@ -1,16 +1,23 @@
 // The party row: one pixel canvas with the four heroes in the pose of the moment, and a card
 // per hero (a real button, for ally targeting) with HP, MP, the Legend Surge gauge and statuses.
+// M5 (spec §5): a held hero (swallowed) is out of the line: its figure leaves the row (a hole where it
+// stood) and its card shows how it is held ("Held under", "Carried off"), by whom and the turns left
+// (.bt-hero.held, .bt-hero-hold). A charmed hero's card says "Charmed" (.bt-hero.charmed).
 import { HeroSprite, heroGear, heroCustom } from './sprites.js';
 import { el, clamp } from './util.js';
 import { statusChip } from './hud.js';
+import { holdInfo, isCharmed } from './model.js';
 
 const STRIP_H = 54; // logical px
 const FEET = 51;
+const OUT_MS = 360; // a held hero's figure fades out of the row (and back in) over this long
+const shortFoe = n => String(n || '').replace(/^The /, '');
 
 export class Party {
-  constructor(host, heroes, { game, reduced, onTap }) {
+  constructor(host, heroes, { game, reduced, onTap, nameOf = () => '' }) {
     this.host = host;
     this.reduced = reduced;
+    this.nameOf = nameOf;
     this.speed = 1;
     this.ids = heroes.map(h => h.id);
     this.v = new Map();
@@ -31,8 +38,10 @@ export class Party {
       const surge = el('span.bt-surge', { title: 'Legend Surge' }, el('i.fill'));
       const st = el('span.bt-hero-st');
       const tag = el('span.bt-hero-tag');
+      const holdK = el('b.bt-hold-k'), holdBy = el('span.bt-hold-by'), holdT = el('span.bt-hold-t');
+      const hold = el('span.bt-hero-hold', { hidden: true }, holdK, holdBy, holdT);
       card.append(
-        el('span.bt-hero-space', null, st, tag),
+        el('span.bt-hero-space', null, st, tag, hold),
         el('span.bt-hero-info', null,
           el('span.bt-hero-line', null, name),
           el('span.bt-hero-line.sub', null, hp, hpNum),
@@ -42,9 +51,9 @@ export class Party {
       card.addEventListener('click', () => onTap && onTap(h.id));
       this.row.append(card);
       this.v.set(h.id, {
-        id: h.id, sprite, card, hp, hpCur, hpMax, mp, mpNum, surge, st, tag, name,
+        id: h.id, sprite, card, hp, hpCur, hpMax, mp, mpNum, surge, st, tag, name, hold, holdK, holdBy, holdT,
         pose: h.ko ? 'ko' : 'idle', base: h.ko ? 'ko' : 'idle', poseUntil: 0, hopAt: 0, hopDur: 0,
-        shakeUntil: 0, tint: null, flashUntil: 0, attackAt: 0, statusKey: '',
+        shakeUntil: 0, tint: null, flashUntil: 0, attackAt: 0, statusKey: '', out: false, outAt: 0,
       });
     }
     this.s = 2;
@@ -116,8 +125,21 @@ export class Party {
     v.surge.classList.toggle('full', u.surge >= 100);
     v.card.classList.toggle('ko', !!u.ko);
     v.card.classList.toggle('surge-ready', u.surge >= 100 && !u.ko);
-    v.tag.textContent = u.ko ? 'KO' : '';
-    v.card.setAttribute('aria-label', `${u.name}: ${u.ko ? 'knocked out' : `HP ${u.hp} of ${u.maxHp}, MP ${u.mp} of ${u.maxMp}`}, Legend Surge ${Math.round(u.surge)}%${u.statuses.length ? ', ' + u.statuses.map(s => s.id).join(', ') : ''}`);
+    // M5: held out of the line, or charmed
+    const held = u.ko ? null : holdInfo(u, id => shortFoe(this.nameOf(id)));
+    const charmed = !u.ko && isCharmed(u);
+    v.card.classList.toggle('held', !!held);
+    v.card.classList.toggle('charmed', charmed);
+    v.hold.hidden = !held;
+    if (held) {
+      v.holdK.textContent = held.label;
+      v.holdBy.textContent = held.by ? `by ${held.by}` : '';
+      v.holdT.textContent = held.turns ? `${held.turns} ${held.turns === 1 ? 'turn' : 'turns'} left` : '';
+      v.card.dataset.hold = held.label;
+    } else delete v.card.dataset.hold;
+    if (!!held !== v.out) { v.out = !!held; v.outAt = this.now(); }
+    v.tag.textContent = u.ko ? 'KO' : charmed ? 'Charmed' : '';
+    v.card.setAttribute('aria-label', `${u.name}: ${u.ko ? 'knocked out' : `HP ${u.hp} of ${u.maxHp}, MP ${u.mp} of ${u.maxMp}`}${held ? `, ${held.text}: out of the line` : ''}${charmed ? ', charmed: its next turn is an attack on a friend' : ''}, Legend Surge ${Math.round(u.surge)}%${u.statuses.length ? ', ' + u.statuses.map(s => s.id).join(', ') : ''}`);
     const key = u.statuses.map(s => `${s.id}${s.stacks}`).join(',');
     if (key !== v.statusKey) {
       const before = new Set(v.statusKey.split(',').map(k => k.replace(/\d+$/, '')));
@@ -167,8 +189,14 @@ export class Party {
     v.tint = tint; v.flashUntil = this.now() + ms / this.speed;
   }
   busy(t) {
-    for (const v of this.v.values()) if ((v.poseUntil && t < v.poseUntil) || t < v.shakeUntil || t < v.flashUntil) return true;
+    for (const v of this.v.values()) if ((v.poseUntil && t < v.poseUntil) || t < v.shakeUntil || t < v.flashUntil || (v.outAt && t < v.outAt + OUT_MS / this.speed)) return true;
     return false;
+  }
+  // how far a hero's figure has left the row: 0 in the line, 1 gone (held)
+  outOf(v, t) {
+    if (!v.outAt) return v.out ? 1 : 0;
+    const u = this.reduced ? 1 : clamp((t - v.outAt) / (OUT_MS / this.speed), 0, 1);
+    return v.out ? u : 1 - u;
   }
 
   draw(t, clockT) {
@@ -189,6 +217,10 @@ export class Party {
         const u = (t - v.hopAt) / v.hopDur;
         dy = -Math.round(Math.sin(Math.min(1, u * 1.4) * Math.PI) * 4);
       }
+      // M5: a held hero is out of the line: its figure sinks away and a hole marks where it stood
+      const out = this.outOf(v, t);
+      if (out > 0) this.hole(ctx, cx, out, clockT, v.card.dataset.hold || '');
+      if (out >= 1) return;
       // the active hero stands on an ember ring
       if (id === this.actorId && pose !== 'ko') {
         const pulse = this.reduced ? 0 : Math.floor(clockT * 3) % 2;
@@ -203,7 +235,41 @@ export class Party {
         ctx.fillRect(cx - 10, FEET - 1, 20, 2);
       }
       const frame = v.sprite.frame(pose, at, v.tint);
+      if (out > 0) {
+        // going (or coming back): the figure drops below the floor line as it fades
+        ctx.globalAlpha = 1 - out;
+        const y0 = FEET - v.sprite.foot[1] + dy + Math.round(out * 14);
+        const h = Math.max(0, Math.min(frame.height, FEET + 1 - y0));
+        if (h > 0) ctx.drawImage(frame, 0, 0, frame.width, h, cx - v.sprite.foot[0] + dx, y0, frame.width, h);
+        ctx.globalAlpha = 1;
+        return;
+      }
       ctx.drawImage(frame, cx - v.sprite.foot[0] + dx, FEET - v.sprite.foot[1] + dy);
     });
+  }
+
+  // where a held hero stood: a dark hole with a pale rim (ice for "Held under"; open air, a scatter of
+  // feathers, for "Carried off"), swelling in as the figure goes
+  hole(ctx, cx, k, clockT, how) {
+    const rw = Math.max(2, Math.round(11 * k));
+    const up = /carried/i.test(how);
+    const rim = up ? '#e8e0c8' : /under/i.test(how) ? '#8fd3f4' : '#c9b8a0';
+    for (let x = -rw; x <= rw; x++) {
+      const yy = Math.round(Math.sqrt(Math.max(0, 1 - (x / (rw + 0.5)) ** 2)) * 2);
+      ctx.fillStyle = up ? 'rgba(0,0,0,0.25)' : '#0b0910';
+      ctx.fillRect(cx + x, FEET - yy, 1, yy * 2 + 1);
+      ctx.fillStyle = rim;
+      ctx.fillRect(cx + x, FEET + yy, 1, 1);
+      if (Math.abs(x) < rw - 2) ctx.fillRect(cx + x, FEET - yy - 1, 1, 1);
+    }
+    if (up && k >= 1) {
+      // a few feathers drifting down where it was taken
+      const ph = this.reduced ? 0 : clockT * 0.9;
+      ctx.fillStyle = rim;
+      for (let i = 0; i < 3; i++) {
+        const fy = FEET - 30 + Math.round(((ph + i * 0.37) % 1) * 26), fx = cx - 6 + i * 6 + Math.round(Math.sin(ph * 3 + i) * 2);
+        ctx.fillRect(fx, fy, 2, 1);
+      }
+    }
   }
 }

@@ -14,8 +14,8 @@
 //      pre-fight card opens, a forced win, the card reveal, back in the world, the north gate open
 //   2  walking: WASD / arrows, holding to run, no page scroll (the phone uses the d-pad and B)
 //   3  a roaming pack contact starts a battle; fleeing stuns the roamer; a weak pack you catch is a full
-//      battle (M4.5: no Routs): it starts with Auto off, the dice tray shows, and the pack is gone after
-//      with the spoils strip
+//      battle (M4.5: no Routs): it starts with Auto off (even with an old Auto setting saved), the dice
+//      tray shows, and after the win the pack is gone and the fight has paid
 //   4  the thornwall lock prompt shows ✓/✗ and opens with a key
 //   5  holding 450 ms on Old Snag opens the grey card (.ov .card.grey) and the codex is sighted
 //   6  rest at the Milestone Fire; travel to Thornhollow from the fire (and through the Atlas when
@@ -51,9 +51,23 @@
 // Milestone 4.5 (docs/M45-SPEC.md §5):
 //   20 a road gate: the first gate on the Hearth Road is shut; walking into it opens its guard's
 //      pre-fight card; after the win it is open, no longer solid, and the party walks through
+// M5 (docs/M5-SPEC.md §8, P7; counts come from the data):
+//   21 the Keep's east postern: sealed until the second council (its text and what opens it; the Atlas
+//      keeps a padlock on the Ironspire), then open onto the Rockslide Pass (its own track); the Atlas's
+//      Ironspire view with every Ironspire Hearthfire and the Gloomfen's padlock alone
+//   22 Peak's Veil: rest at the Cloister Fire (kindled); Mother Wynn opens the Highfold; with the Abbess at
+//      rest the bell rings and the Veilbell is yours (its card)
+//   23 a chasm (A reads Cross): ✗ without a key, crossed with the Windstep Boots; an ice wall (A reads Melt)
+//      melted with the Anvil Heart
+//   24 Mother Anvil's pre-fight card: the Champion, the Worldforge Hammer and the Anvil Heart glinting, and
+//      the Brand of Iron
+//   25 the Ironhold Deeps are dark without a light key (a Stillwater party), and lit by the Rime Crozier
+//   26 performance on the Frost Road, measured like 11 (the M5 gate: p95 frame JS 16 ms, 40 drawImage)
+//   27 the Stormwatch board in the Journal (Captain Ysolde's bounties); the third council's title card and end
+//      card, "The Ironspire is yours", the Blackwater line, naming the Gloomfen Marsh (360 and 1280 wide)
 // Screenshots use the real fonts when tools/e2e-flow.mjs has cached them (<tmp>/aethermoor-font-cache).
 // Playwright is not a project dependency: it comes from the global npm root.
-// Owner: WP7; M4 P7b (12-19).
+// Owner: WP7; M4 P7b (12-19); M5 P7 (21-27, and 18/19's Page III and Act II checks for M5).
 import { execSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -62,7 +76,12 @@ import os from 'node:os';
 import path from 'node:path';
 import { MAPS } from '../src/data/maps/index.js';
 import { tileOf } from '../src/data/tiles.js';
-import { ENCOUNTERS } from '../src/data/encounters.js';
+import { ENCOUNTERS, BRANDS } from '../src/data/encounters.js';
+import { HEARTHS, REGIONS, LORE, BRAND_TOTAL } from '../src/data/world.js';
+import { LOCKS } from '../src/data/locks.js';
+import { RELICS } from '../src/data/relics.js';
+import { PAGES } from '../src/data/codex.js';
+import { BOUNTIES } from '../src/data/quests.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = Object.fromEntries(process.argv.slice(2).map(a => { const [k, v] = a.replace(/^--/, '').split('='); return [k, v ?? true]; }));
@@ -415,13 +434,15 @@ async function run(V) {
         window.__world.roam([{ id: 'e2e-weak', enc: null, zone: 'hearth-road', spawns: [{ family: 'cutpurse', level: 1, gearTier: 0, omens: [] }, { family: 'cutpurse', level: 1, gearTier: 0, omens: [] }], lead: { family: 'cutpurse', variant: null, art: 'cutpurse', gearTier: 0, count: 2 }, x: s.x, y: s.y - 1, home: [s.x, s.y - 1], leash: 4, face: 's', mood: 'flee', wait: 0, weak: true, trackless: true }]);
       });
       const gold0 = await W(() => window.__world.game().gold);
+      // a tester who switched Auto on in an earlier milestone (every file shares the settings key)
+      await W(() => window.__app.setSettings({ battleAuto: true }));
       await W(() => window.__world.face('n'));
       await W(() => window.__world.press('n'));
       await page.waitForFunction(() => document.getElementById('app').dataset.screen === 'battle', null, { timeout: 5000 });
       check(!(await page.$('.ov-spoils')), `${P} 3: walking into a weak pack starts a full battle, not a Rout`);
       const lb2 = await W(() => window.__lastBattle && window.__lastBattle.ctx);
       check(lb2 && lb2.caught === true, `${P} 3: the battle knows the pack was run down (ctx.caught, for the Rout deed)`);
-      check((await page.getAttribute('.bt-auto', 'aria-pressed')) === 'false', `${P} 3: the fight starts with Auto off`);
+      check((await page.getAttribute('.bt-auto', 'aria-pressed')) === 'false', `${P} 3: the fight starts with Auto off, even with an old Auto setting saved`);
       await shot('caught-battle');
       await page.click('.bt-auto');
       await page.waitForFunction(() => { const t = document.querySelector('.bt-tray'); return (t && !t.hidden) || document.getElementById('app').dataset.screen !== 'battle'; }, null, { timeout: 20000 });
@@ -429,7 +450,8 @@ async function run(V) {
       await shot('caught-dice');
       await page.waitForFunction(() => document.getElementById('app').dataset.screen === 'aftermath', null, { timeout: 90000 });
       for (let i = 0; i < 12 && (await screen()) !== 'world'; i++) {
-        if (await page.$('.ov-reveal .cont')) await page.click('.ov-reveal .cont');
+        // a chest's reveal plays first; its Continue arrives with the card
+        if (await page.$('.ov-reveal')) { await page.waitForSelector('.ov-reveal .cont', { timeout: 8000 }); await page.click('.ov-reveal .cont'); }
         else if (await page.$('.af-foot .btn.primary')) await page.click('.af-foot .btn.primary');
         await page.waitForTimeout(350);
       }
@@ -1100,11 +1122,26 @@ async function run(V) {
       check(true, `${P} 18: an unsighted Page II pocket opens its silhouette card`);
       await page.keyboard.press('Escape');
       await page.waitForSelector('.ov', { state: 'detached', timeout: 3000 });
+      // M5: Page III is open (its pockets, progress and reward), and says what opens its road; Page IV is the
+      // sealed one now
+      const III = PAGES.find(p => p.id === 'ironspire'), nIII = Object.values(RELICS).filter(r => r.codex >= III.from && r.codex <= III.to).length;
       await page.click('.cx-tab[data-page="ironspire"]');
       await page.waitForTimeout(200);
       c = await cx();
-      check(c.sealed && c.pockets === 0 && /Sealed/i.test(c.sealedText), `${P} 18: Page III is sealed, with a padlock and its region's road ("${c.sealedText.replace(/\s+/g, ' ').slice(0, 60)}…")`);
+      const road = await W(() => document.querySelector('.cx-road')?.textContent || '');
+      check(!c.sealed && c.pockets === nIII && new RegExp(`0 of ${nIII} claimed`).test(c.prog) && c.earned === '0' && c.reward.includes(III.reward.name), `${P} 18: Page III is open: ${nIII} pockets, "${c.prog}", ${c.reward.replace(/\s+/g, ' ').slice(0, 44)}…`);
+      check(/east postern/.test(road), `${P} 18: before the second council Page III says what opens its road ("${road}")`);
       await shot('codex-III');
+      await page.click('.pocket[data-relic="worldforge-hammer"]');
+      await page.waitForSelector('.ov .card', { timeout: 5000 });
+      check(true, `${P} 18: an unsighted Page III pocket opens its silhouette card`);
+      await page.keyboard.press('Escape');
+      await page.waitForSelector('.ov', { state: 'detached', timeout: 3000 });
+      await page.click('.cx-tab[data-page="gloomfen"]');
+      await page.waitForTimeout(200);
+      c = await cx();
+      check(c.sealed && c.pockets === 0 && /Sealed/i.test(c.sealedText), `${P} 18: Page IV is sealed, with a padlock and its region's road ("${c.sealedText.replace(/\s+/g, ' ').slice(0, 60)}…")`);
+      await shot('codex-IV');
       // a forced full claim of every relic Page I needs: its reward shows, in gold; an Awakened pocket glows
       await page.click('.cx-tab[data-page="verdant"]');
       const need = await page.$$eval('.pocket[data-relic]:not(.is-spare)', ps => ps.map(p => p.dataset.relic));
@@ -1212,7 +1249,8 @@ async function run(V) {
       await page.waitForSelector('.ov-story.tbc-act2', { timeout: 4000 });
       await page.waitForTimeout(300);
       const card = (await page.innerText('.ov-story')).replace(/\s+/g, ' ');
-      check(/End of Act II/i.test(card) && /Ironspire and Gloomfen open in the next chapter/.test(card), `${P} 19: the end-of-Act-II card names the next chapter ("${card.slice(0, 110)}…")`);
+      // M5: the second council opens the Keep's east postern, so the card says so, and names the chapter after
+      check(/End of Act II/i.test(card) && /east postern stands open/.test(card) && /Gloomfen opens in the next chapter/.test(card), `${P} 19: the end-of-Act-II card opens the Ironspire and names the next chapter ("${card.slice(0, 160)}…")`);
       await noScroll('19 act II card');
       await shot('act2');
       await page.click('.ov-story .story-go');
@@ -1235,6 +1273,9 @@ async function run(V) {
       await W(() => window.__world.roam([]));
       const g0 = await W(id => window.__world.entity('hearth-road', id), gateId);
       check(g0 && g0.state === 'closed' && g0.solid, `${P} 20: the road gate ${gateId} is shut before its fight`);
+      await page.waitForTimeout(250);
+      const facing = await W(() => window.__world.state().prompt);
+      check(/^A · .+ · Lv \d+ · \S/.test(facing) && !/The way is shut/.test(facing), `${P} 20: facing the gate, the prompt is its guard's fight: name, level and threat ("${facing}")`);
       await shot('road-gate');
       await W(d => window.__world.press(d), ap.face);
       await page.waitForSelector('.ov-prefight', { timeout: 3000 });
@@ -1245,7 +1286,8 @@ async function run(V) {
       await page.click('.pf-fight');
       await page.waitForFunction(() => document.getElementById('app').dataset.screen === 'aftermath');
       for (let i = 0; i < 8 && (await screen()) !== 'world'; i++) {
-        if (await page.$('.ov-reveal .cont')) await page.click('.ov-reveal .cont');
+        // a chest's reveal plays first; its Continue arrives with the card
+        if (await page.$('.ov-reveal')) { await page.waitForSelector('.ov-reveal .cont', { timeout: 8000 }); await page.click('.ov-reveal .cont'); }
         else if (await page.$('.af-foot .btn.primary')) await page.click('.af-foot .btn.primary');
         await page.waitForTimeout(300);
       }
@@ -1259,6 +1301,450 @@ async function run(V) {
       check(Math.abs(s1.x - s0.x) + Math.abs(s1.y - s0.y) === 2, `${P} 20: the party walks through the open gate (${s0.x},${s0.y} -> ${s1.x},${s1.y})`);
       await shot('road-gate-open');
     } catch (e) { check(false, `${P} 20: ${e.message.split('\n')[0]}`); }
+  }
+
+
+  // ================= M5 (P7): the Ironspire Peaks =====================================================
+  // the second council sat (the Keep's east postern open), with Act I's and the Sunscorch's flags before it
+  const council2 = `(g) => { Object.assign(g.progress.flags.story, { 'act1-complete': true, 'council-done': true, 'sunscorch-complete': true, 'council-2-done': true }); return g; }`;
+  const ironFires = Object.keys(HEARTHS).filter(id => MAPS[HEARTHS[id].map]?.region === 'ironspire');
+  // a tile next to an entity that its map's road (or first anchor) reaches with the entity shut, and the way
+  // to face it: so a chasm is approached from the road's side, not from the ledge it leads to
+  const reachBy = (mapId, entityId) => {
+    const map = MAPS[mapId];
+    const areaOf = e => e.area || [e.at[0], e.at[1], e.at[0], e.at[1]];
+    const target = map?.entities.find(e => e.id === entityId);
+    if (!target) return null;
+    const wall = new Uint8Array(map.w * map.h);
+    const put = a => { for (let y = Math.max(0, a[1]); y <= Math.min(map.h - 1, a[3]); y++) for (let x = Math.max(0, a[0]); x <= Math.min(map.w - 1, a[2]); x++) wall[y * map.w + x] = 1; };
+    for (let y = 0; y < map.h; y++) for (let x = 0; x < map.w; x++) if (tileOf(map.rows[y][x]).solid) wall[y * map.w + x] = 1;
+    // fixed things are walls; gates stand open (their fights won) and fights are fought where they stand
+    for (const e of map.entities) if (!['trigger', 'light', 'encounter', 'gate'].includes(e.kind) && !(e.kind === 'prop' && !e.solid)) put(areaOf(e));
+    put(areaOf(target));
+    const road = (map.roads || [])[0];
+    const start = (road && map.anchors[road.from]) || Object.values(map.anchors)[0];
+    const seen = new Uint8Array(map.w * map.h), q = [start];
+    seen[start[1] * map.w + start[0]] = 1;
+    for (let i = 0; i < q.length; i++) {
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = q[i][0] + dx, ny = q[i][1] + dy, k = ny * map.w + nx;
+        if (nx < 0 || ny < 0 || nx >= map.w || ny >= map.h || seen[k] || wall[k]) continue;
+        seen[k] = 1; q.push([nx, ny]);
+      }
+    }
+    const [x0, y0, x1, y1] = areaOf(target);
+    const mx = Math.round((x0 + x1) / 2), my = Math.round((y0 + y1) / 2);
+    for (const [x, y, face] of [[mx, y1 + 1, 'n'], [mx, y0 - 1, 's'], [x0 - 1, my, 'e'], [x1 + 1, my, 'w']]) {
+      if (x >= 0 && y >= 0 && x < map.w && y < map.h && seen[y * map.w + x]) return { x, y, face };
+    }
+    return null;
+  };
+  const toWorld = async () => {
+    if ((await screen()) === 'world') return;
+    await W(() => window.__app.go('world'));
+    await page.waitForSelector('.screen-world .world-canvas');
+    await page.waitForTimeout(250);
+    await closeOverlays();
+  };
+
+  // ================= 21. the Keep's east postern; the Ironspire on the Atlas ===========================
+  if (want(21)) {
+    console.log(' -- 21 the Keep\'s east postern');
+    try {
+      const X = MAPS.keep.exits.find(x => x.id === 'keep-e');
+      const inside = { x: X.area[0] - 1, y: X.area[1], face: 'e' };
+      await setup({ patch: combine(noIntro, act1) });
+      await teleport('keep', inside.x, inside.y, inside.face);
+      await W(() => window.__world.roam([]));
+      await W(() => window.__world.press('e'));
+      await page.waitForSelector('.ov-dialogue .dlg-text', { timeout: 3000 });
+      await page.waitForTimeout(700);
+      const msg = (await page.innerText('.ov-dialogue')).replace(/\s+/g, ' ');
+      check(msg.includes(X.sealed.text.slice(0, 24)) && (!X.sealed.hint || msg.includes(X.sealed.hint.slice(0, 24))), `${P} 21: before the second council the east postern is sealed and says what opens it ("${msg.slice(0, 120)}…")`);
+      await shot('east-postern-sealed');
+      await playDialogue();
+      check((await state()).map === 'keep', `${P} 21: the party stays in the Keep`);
+      // the Atlas keeps a padlock on the Ironspire, and no view of it; the padlock says what opens the road
+      await W(() => window.__app.go('atlas', { mode: 'view', from: 'world', view: 'realm' }));
+      await page.waitForSelector('.atlas-mk');
+      await page.waitForTimeout(300);
+      const a0 = await W(() => ({ views: [...document.querySelectorAll('.atlas-view')].map(b => b.dataset.view), lock: !!document.querySelector('.atlas-mk[data-key="sealed:ironspire"]') }));
+      check(!a0.views.includes('ironspire') && a0.lock, `${P} 21: the Atlas keeps the Ironspire sealed (views ${a0.views.join(', ')}; padlock ${a0.lock})`);
+      if (a0.lock) {
+        await page.click('.atlas-mk[data-key="sealed:ironspire"]');
+        await page.waitForTimeout(150);
+        const note = (await page.innerText('.atlas-info')).replace(/\s+/g, ' ');
+        check(/east postern/i.test(note) && /Council/.test(note), `${P} 21: the Ironspire's padlock says what opens its road ("${note.slice(0, 140)}")`);
+      }
+      await shot('atlas-ironspire-sealed');
+      await toWorld();
+      // the second council sat: the postern opens onto the Rockslide Pass, and its own track plays
+      await regame(council2);
+      await teleport('keep', inside.x, inside.y, inside.face);
+      await W(() => window.__world.roam([]));
+      await W(() => window.__world.press('e'));
+      await page.waitForFunction(to => window.__world && window.__world.state().map === to && !window.__world.state().transition, X.to, { timeout: 6000 });
+      await closeOverlays();
+      const s1 = await state();
+      const an = MAPS[X.to].anchors[X.anchor];
+      check(s1.map === X.to && Math.abs(s1.x - an[0]) + Math.abs(s1.y - an[1]) <= 1, `${P} 21: after the second council the postern opens onto ${MAPS[X.to].name} (${s1.map} ${s1.x},${s1.y})`);
+      const track = await W(() => window.__app.audio.track);
+      check(track === MAPS[X.to].music, `${P} 21: ${MAPS[X.to].name} plays its own track (${track})`);
+      if (MAPS[X.to].music !== 'peaks') block(`${P} 21: ${MAPS[X.to].name} does not name the peaks track yet (P2: music: 'peaks')`);
+      else check(track === 'peaks', `${P} 21: the mountain road plays the peaks track`);
+      await shot('rockslide-pass');
+      // the Atlas: the padlock is off, and the Ironspire view has every Ironspire Hearthfire
+      await W(() => window.__app.go('atlas', { mode: 'view', from: 'world' }));
+      await page.waitForSelector('.atlas-mk');
+      const views = await page.$$eval('.atlas-view', bs => bs.map(b => b.dataset.view));
+      check(views.includes('ironspire'), `${P} 21: the Atlas has an Ironspire view once the postern is open (${views.join(', ')})`);
+      await page.click('.atlas-view[data-view="ironspire"]');
+      await page.waitForTimeout(400);
+      const stillSealed = Object.values(REGIONS).filter(r => !r.open).map(r => `sealed:${r.id}`);
+      const mk = await W(() => ({
+        fires: document.querySelectorAll('.atlas-mk.mk-hearth').length, sealed: [...document.querySelectorAll('.atlas-mk.mk-sealed')].map(e => e.dataset.key),
+        small: [...document.querySelectorAll('.atlas-mk')].filter(e => e.getBoundingClientRect().width < 44).length, view: document.querySelector('.atlas-frame').dataset.view,
+        labels: [...document.querySelectorAll('.atlas-frame.labels .mk-lbl:not(.crowded)')].map(e => e.textContent), title: document.querySelector('.topbar h1')?.textContent || '',
+      }));
+      check(mk.view === 'ironspire' && /Ironspire/.test(mk.title) && mk.fires === ironFires.length && mk.small === 0, `${P} 21: the Ironspire view shows its ${ironFires.length} Hearthfires, all 44 px (${JSON.stringify({ view: mk.view, title: mk.title, fires: mk.fires, small: mk.small })})`);
+      check(!mk.sealed.includes('sealed:ironspire') && mk.sealed.join() === stillSealed.join(), `${P} 21: the Ironspire's padlock is off; the regions still to come keep theirs (${mk.sealed.join(', ') || 'none'})`);
+      if (!phone) {
+        const places = Object.values(LORE).filter(p => p.region === 'ironspire' && p.map).map(p => p.name);
+        check(mk.labels.some(l => places.some(n => l.startsWith(n))), `${P} 21: the laptop's markers name the Ironspire's places (${mk.labels.join(' · ')})`);
+      }
+      const bar = await W(() => { const b = document.querySelector('.atlas-views'); const r = b.getBoundingClientRect(); return { right: Math.round(r.right), w: innerWidth, rows: new Set([...b.children].map(c => Math.round(c.getBoundingClientRect().top))).size, min: Math.min(...[...b.children].map(c => c.getBoundingClientRect().height)) }; });
+      check(bar.right <= bar.w && bar.min >= 44, `${P} 21: the ${views.length} view buttons fit the screen, 44 px tall (${JSON.stringify(bar)})`);
+      await shot('atlas-ironspire');
+      await noScroll('21 atlas');
+    } catch (e) { check(false, `${P} 21: ${e.message.split('\n')[0]}`); }
+  }
+
+  // ================= 22. Peak's Veil: the Cloister Fire, Mother Wynn, the bell ==========================
+  if (want(22)) {
+    console.log(' -- 22 Peak\'s Veil');
+    try {
+      await setup({ patch: combine(noIntro, council2) });
+      const hf = await W(() => window.__worldTools.hearth('veil-hearth'));
+      await teleport(hf.map, hf.x, hf.y, hf.face);
+      await closeOverlays();
+      await W(() => window.__world.roam([]));
+      await pressA();
+      await page.waitForSelector('.ov-hearth', { timeout: 3000 });
+      check((await page.innerText('.ov-hearth')).includes(HEARTHS['veil-hearth'].name), `${P} 22: ${HEARTHS['veil-hearth'].name}'s menu opens`);
+      await shot('veil-hearth');
+      await page.click('.ov-hearth [data-primary]');
+      await page.waitForTimeout(500);
+      await closeOverlays();
+      const k = await W(() => { const g = window.__world.game(); return { kindled: !!g.progress.flags.kindled['veil-hearth'], last: g.progress.lastHearthfire }; });
+      check(k.kindled && k.last === 'veil-hearth', `${P} 22: resting kindles the Cloister Fire (${JSON.stringify(k)})`);
+      // Mother Wynn: the first meeting gives the Highfold gate's key (a night's scene after the rest may
+      // still be on its way: it is played out first)
+      let who = '';
+      for (let i = 0; i < 3 && !/Wynn/i.test(who); i++) {
+        await page.waitForTimeout(400);
+        await closeOverlays();
+        await standBy('peaks-veil', 'wynn', ['s', 'w', 'e', 'n']);
+        await W(() => window.__world.roam([]));
+        await pressA();
+        await page.waitForSelector('.ov-dialogue .dlg-name', { timeout: 3000 });
+        await page.waitForTimeout(150);
+        who = await page.innerText('.ov-dialogue .dlg-name');
+        if (!/Wynn/i.test(who)) await playDialogue();
+      }
+      check(/Wynn/i.test(who), `${P} 22: A talks to Mother Wynn (${who})`);
+      await shot('wynn');
+      await playDialogue();
+      const st1 = await W(() => window.__world.game().progress.flags.story);
+      check(!!st1['met-wynn'] && !!st1['highfold-open'], `${P} 22: meeting Wynn opens the Highfold gate (met-wynn, highfold-open)`);
+      // her Abbess at rest (the Drowned Abbess's fight won): the bell rings, and the Veilbell is yours
+      await regame(`(g) => { g.progress.flags.beaten['fm-shrine'] = 1; g.progress.flags.cleared['fm-shrine'] = true; return g; }`);
+      await standBy('peaks-veil', 'wynn', ['s', 'w', 'e', 'n']);
+      await W(() => window.__world.roam([]));
+      await pressA();
+      await page.waitForSelector('.ov-dialogue', { timeout: 3000 });
+      let revealed = false;
+      for (let i = 0; i < 10; i++) {
+        if (await page.$('.ov-dialogue')) { await playDialogue(/Ring the bell/); continue; }
+        if (await page.$('.ov-reveal')) {
+          await page.waitForSelector('.ov-reveal .cont', { timeout: 8000 });
+          if (!revealed) await shot('veilbell');
+          revealed = true;
+          await page.click('.ov-reveal .cont');
+          await page.waitForTimeout(300);
+          continue;
+        }
+        if (await page.$('.ov')) { await closeOverlays(); continue; }
+        break;
+      }
+      const g2 = await W(() => { const g = window.__world.game(); return { rung: !!g.progress.flags.story['bell-rung-veil'], bell: g.inventory.some(i => i.base === 'veilbell'), claimed: !!g.codex.veilbell?.claimed, quest: g.progress.flags.quests?.['bell-of-veil'] || null }; });
+      check(g2.rung && g2.bell && g2.claimed && g2.quest === 'claimed', `${P} 22: the bell rings and the Veilbell is yours (${JSON.stringify(g2)})`);
+      check(revealed, `${P} 22: the Veilbell's card is revealed`);
+      // the Journal: the Bell of Peak's Veil reads as done
+      await W(() => window.__app.go('journal', { tab: 'quests', from: 'world' }));
+      await page.waitForSelector('.jr-quest', { timeout: 3000 });
+      const q = await W(() => document.querySelector('.jr-quest[data-id="bell-of-veil"]')?.className || '');
+      check(/is-done/.test(q), `${P} 22: the Journal has the Bell of Peak's Veil done (${q})`);
+      await noScroll('22 journal');
+      await toWorld();
+    } catch (e) { check(false, `${P} 22: ${e.message.split('\n')[0]}`); }
+  }
+
+  // ================= 23. a chasm crossed with the Windstep Boots; an ice wall with the Anvil Heart ============
+  if (want(23)) {
+    console.log(' -- 23 a chasm and an ice wall');
+    try {
+      const lockOn = type => {
+        for (const m of Object.values(MAPS)) {
+          if (m.region !== 'ironspire') continue;
+          const e = m.entities.find(x => x.kind === 'lock' && x.lock === type);
+          if (e) return { map: m.id, e };
+        }
+        return null;
+      };
+      await setup({ patch: combine(noIntro, council2) });
+      for (const [type, relic, from] of [['chasm', 'windstep-boots', 'Rhune the Pass-Warden'], ['ice', 'anvil-heart', 'Mother Anvil']]) {
+        const L = lockOn(type);
+        if (!L) { block(`${P} 23: no ${type} lock on an Ironspire map yet (P2)`); continue; }
+        const spot = reachBy(L.map, L.e.id);
+        if (!spot) throw new Error(`no way up to the ${type} lock ${L.e.id} on ${L.map}`);
+        await regame(roadsWon(L.map));
+        await teleport(L.map, spot.x, spot.y, spot.face);
+        await closeOverlays();
+        await W(() => window.__world.roam([]));
+        await W(d => window.__world.face(d), spot.face);
+        const power = RELICS[relic].mapPower;
+        // the A button says what the lock asks of you (ui/screens/world.js LOCK_VERB)
+        const verb = { chasm: 'Cross', ice: 'Melt' }[type];
+        const aNow = await page.$eval('.w-a-label', e => e.textContent).catch(() => '');
+        check(aNow === verb, `${P} 23: facing the ${LOCKS[type].name}, A reads "${verb}" ("${aNow}")`);
+        await pressA();
+        await page.waitForSelector('.ov-lock', { timeout: 3000 });
+        const t1 = (await page.innerText('.ov-lock')).replace(/\s+/g, ' ');
+        check(t1.includes(LOCKS[type].name) && /✗/.test(t1) && !/✓/.test(t1) && t1.includes(RELICS[relic].name), `${P} 23: the ${LOCKS[type].name} (${L.e.id}) lists its keys, none held ("${t1.slice(0, 120)}…")`);
+        await shot(`${type}-shut`);
+        await page.click('.ov-lock [data-primary]');
+        await page.waitForTimeout(200);
+        await regame(`(g, T) => { g.inventory.push(T.relicItem('${relic}', '${from}')); g.codex['${relic}'] = { sighted: true, claimed: true, awakened: false }; return g; }`);
+        await W(() => window.__world.roam([]));
+        await W(d => window.__world.face(d), spot.face);
+        await pressA();
+        await page.waitForSelector('.ov-lock', { timeout: 3000 });
+        const t2 = (await page.innerText('.ov-lock')).replace(/\s+/g, ' ');
+        const use = await page.$('.ov-lock .lock-use');
+        check(/✓/.test(t2) && !!use && (await use.innerText()).includes(RELICS[relic].name), `${P} 23: with ${RELICS[relic].name} (${power.name}) the ${LOCKS[type].name} opens ("${use ? await use.innerText() : 'no Use button'}")`);
+        await shot(`${type}-key`);
+        if (use) await use.click();
+        await page.waitForTimeout(350);
+        await closeOverlays();
+        check(await W(id => !!window.__world.game().progress.flags.unlocked?.[id], L.e.id), `${P} 23: the ${LOCKS[type].name} is open for good (${L.e.id})`);
+        const e1 = await W(([m, id]) => window.__world.entity(m, id), [L.map, L.e.id]);
+        check(e1 && !e1.solid, `${P} 23: the ${LOCKS[type].name} no longer blocks the way (${JSON.stringify(e1)})`);
+        const s0 = await state();
+        await W(d => window.__world.step(d, 1), spot.face);
+        const s1 = await state();
+        check(Math.abs(s1.x - s0.x) + Math.abs(s1.y - s0.y) === 1, `${P} 23: the party steps onto the ${LOCKS[type].name} (${s0.x},${s0.y} -> ${s1.x},${s1.y})`);
+      }
+    } catch (e) { check(false, `${P} 23: ${e.message.split('\n')[0]}`); }
+  }
+
+  // ================= 24. Mother Anvil's pre-fight card =============================================
+  if (want(24)) {
+    console.log(' -- 24 Mother Anvil');
+    try {
+      const E = ENCOUNTERS['mother-anvil'];
+      const where = Object.values(MAPS).find(m => m.entities.some(e => e.kind === 'encounter' && e.enc === 'mother-anvil'));
+      const ent = where.entities.find(e => e.kind === 'encounter' && e.enc === 'mother-anvil');
+      await setup({ patch: combine(noIntro, council2) });
+      await standBy(where.id, ent.id, ['s', 'n', 'w', 'e']);
+      await closeOverlays();
+      await W(() => window.__world.roam([]));
+      await pressA();
+      await page.waitForSelector('.ov-prefight', { timeout: 3000 });
+      await page.waitForTimeout(300);
+      const pf = (await page.innerText('.ov-prefight')).replace(/\s+/g, ' ');
+      check(pf.includes(E.name) && /Champion/.test(pf), `${P} 24: Mother Anvil's pre-fight card: the Champion ("${pf.slice(0, 90)}…")`);
+      const pieces = ['worldforge-hammer', 'anvil-heart'].map(id => RELICS[id].name.replace(/^The /, ''));
+      check(pieces.every(n => pf.includes(n)) && /Glinting/i.test(pf), `${P} 24: its pieces glint on the card: ${pieces.join(' and ')}`);
+      check(pf.includes(BRANDS[E.brand].name.replace(/^The /, '')), `${P} 24: the card names ${BRANDS[E.brand].name}`);
+      const worn = await W(() => [...document.querySelectorAll('.pf-relic')].map(b => b.innerText.replace(/\s+/g, ' ')));
+      check(worn.some(t => /Anvil Heart/.test(t) && /Worn/.test(t)) && worn.some(t => /Worldforge Hammer/.test(t) && /Held by/.test(t)), `${P} 24: the hammer is held and the heart worn (${worn.join(' | ')})`);
+      await shot('mother-anvil-prefight');
+      await noScroll('24 prefight');
+      await page.click('.ov-prefight .pf-not-yet');
+      await page.waitForTimeout(200);
+    } catch (e) { check(false, `${P} 24: ${e.message.split('\n')[0]}`); }
+  }
+
+  // ================= 25. the Ironhold Deeps' darkness, lit by the Rime Crozier ==========================
+  if (want(25)) {
+    console.log(' -- 25 the Ironhold Deeps');
+    try {
+      // a Stillwater party carries no flame (no Kindle, no Lamplight), and nobody has Attunement 5
+      await setup({ starter: 'stillwater-lance', patch: combine(noIntro, council2) });
+      const D = MAPS['ironhold-deeps'];
+      const hf = await W(() => window.__worldTools.hearth('deeps-forge'));
+      const at = hf && hf.map === D.id ? [hf.x, hf.y] : Object.values(D.anchors)[0];
+      await teleport(D.id, at[0], at[1], 's');
+      await closeOverlays();
+      await W(() => window.__world.roam([]));
+      await page.waitForTimeout(300);
+      const d0 = await state();
+      check(d0.map === D.id && d0.dark, `${P} 25: the Deeps are dark without a light key (${d0.map}, dark ${d0.dark})`);
+      await shot('deeps-dark');
+      await regame(`(g, T) => { g.inventory.push(T.relicItem('rime-crozier', 'the Rime-Abbot')); g.codex['rime-crozier'] = { sighted: true, claimed: true, awakened: false }; return g; }`);
+      await W(() => window.__world.roam([]));
+      await page.waitForTimeout(300);
+      const d1 = await state();
+      check(d1.map === D.id && !d1.dark, `${P} 25: the Rime Crozier's light lifts the dark (${d1.dark})`);
+      await shot('deeps-lit');
+    } catch (e) { check(false, `${P} 25: ${e.message.split('\n')[0]}`); }
+  }
+
+  // ================= 26. performance on the Frost Road ===============================================
+  if (want(26)) {
+    console.log(' -- 26 the Frost Road performance');
+    try {
+      const FR = MAPS['frost-road'];
+      // the longest open east-west stretch of the map (the road across the plain): walkable tiles, no fixed
+      // thing in the way (its gates stand open, its fights won), so the walk crosses the view back and forth
+      const areaOf = e => e.area || [e.at[0], e.at[1], e.at[0], e.at[1]];
+      const fixed = new Set();
+      for (const e of FR.entities) {
+        if (['trigger', 'light', 'encounter', 'gate'].includes(e.kind) || (e.kind === 'prop' && !e.solid) || (e.kind === 'lock' && LOCKS[e.lock]?.soft)) continue;
+        const [x0, y0, x1, y1] = areaOf(e);
+        for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) fixed.add(`${x},${y}`);
+      }
+      let best = { y: 0, x0: 0, len: 0 };
+      for (let y = 0; y < FR.h; y++) {
+        let run = 0;
+        for (let x = 0; x <= FR.w; x++) {
+          const open = x < FR.w && !tileOf(FR.rows[y][x]).solid && !fixed.has(`${x},${y}`);
+          if (open) { run++; continue; }
+          if (run > best.len) best = { y, x0: x - run, len: run };
+          run = 0;
+        }
+      }
+      const start = [best.x0 + 1, best.y];
+      await setup({ patch: combine(noIntro, council2, levelUp.replace(/LVL/g, '16'), roadsWon('frost-road')) });
+      await teleport(FR.id, start[0], start[1], 'e');
+      await closeOverlays();
+      await W(() => window.__world.grace(100000));
+      const cdp = await context.newCDPSession(page);
+      await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+      await page.waitForTimeout(400);
+      await W(() => { window.__world.resetPerf(); window.__drawSamples = []; window.__sampling = true; });
+      await W(() => { window.__forceResult = { result: 'fled', sticky: true }; });
+      const work = [], draws = [];
+      let frames = 0, battles = 0, maxRoamers = 0, farthest = 0;
+      const collect = async () => {
+        const p = await W(() => (window.__world ? window.__world.perf() : null));
+        if (!p) return;
+        work.push(...p.work.filter(v => v > 0)); draws.push(...p.draws); frames += p.frames;
+        await W(() => window.__world.resetPerf());
+      };
+      const t0 = Date.now();
+      let legs = 0;
+      while (Date.now() - t0 < 10000) {
+        await hold(legs % 6 < 3 ? 'e' : 'w', 1150);
+        legs++;
+        if ((await screen()) !== 'world') {
+          battles++;
+          for (let i = 0; i < 6 && (await screen()) !== 'world'; i++) { await page.click('.af-foot .btn.primary').catch(() => {}); await page.waitForTimeout(300); }
+          await page.waitForSelector('.screen-world .world-canvas', { timeout: 4000 }).catch(() => {});
+          await W(() => window.__world && window.__world.grace(100000));
+          continue;
+        }
+        if (await page.$('.ov')) await closeOverlays();
+        await collect();
+        const s = await state();
+        if (s) { maxRoamers = Math.max(maxRoamers, s.roamers.length); farthest = Math.max(farthest, s.x); }
+      }
+      await W(() => { window.__sampling = false; window.__forceResult = null; });
+      await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+      const samples = await W(() => window.__drawSamples);
+      const pct = (arr, p) => { if (!arr.length) return 0; const a = [...arr].sort((x, y) => x - y); return a[Math.min(a.length - 1, Math.floor(a.length * p))]; };
+      const p95 = pct(work, 0.95), p50 = pct(work, 0.5);
+      const dMax = Math.max(0, ...draws), sMax = Math.max(0, ...samples), dP95 = pct(draws, 0.95);
+      const line = `${P} 26: Frost Road, 4x throttle, ${frames} frames in 10 s, ${maxRoamers} roamers, walked out to x=${farthest}: frame JS p50 ${p50.toFixed(2)} ms, p95 ${p95.toFixed(2)} ms; drawImage per frame p95 ${dP95}, max ${Math.max(dMax, sMax)}${battles ? `; ${battles} fights interrupted the walk` : ''}`;
+      check(frames >= 100 && farthest >= start[0] + 8, `${P} 26: the walk crossed the Frost Road (${frames} frames measured, out to x=${farthest})`);
+      perfLines.push(line);
+      console.log('  PERF', line);
+      // the M5 gate (spec §8): p95 frame JS 16 ms and 40 drawImage a frame at 4x throttle
+      check(p95 <= 16, `${P} 26: p95 frame time ${p95.toFixed(2)} ms <= 16 ms`);
+      check(Math.max(dMax, sMax) <= 40, `${P} 26: drawImage per frame ${Math.max(dMax, sMax)} <= 40`);
+      await shot('frost-road');
+    } catch (e) { check(false, `${P} 26: ${e.message.split('\n')[0]}`); }
+  }
+
+  // ================= 27. the Stormwatch board; the third council's card ===========================
+  if (want(27)) {
+    console.log(' -- 27 the Stormwatch board, the third council');
+    try {
+      // the Stormwatch board (walked up to in Stormwatch): Captain Ysolde's bounties, her board first
+      const mine = Object.values(BOUNTIES).filter(b => b.giver === 'ysolde');
+      const swBoard = MAPS.stormwatch.entities.find(e => e.kind === 'board');
+      await setup({ patch: combine(noIntro, council2) });
+      if (swBoard) {
+        await standBy('stormwatch', swBoard.id, ['s', 'e', 'w', 'n']);
+        await closeOverlays();
+        await W(() => window.__world.roam([]));
+        await pressA();
+        await page.waitForFunction(() => document.getElementById('app').dataset.screen === 'journal', null, { timeout: 4000 });
+      } else {
+        block(`${P} 27: no board on the Stormwatch map yet (P2)`);
+        await W(() => window.__app.go('journal', { tab: 'bounties', from: 'world' }));
+      }
+      await page.waitForSelector('.jr-board', { timeout: 3000 });
+      await page.waitForTimeout(200);
+      const board = await W(() => { const b = document.querySelector('.jr-board[data-giver="ysolde"]'); return b ? { lede: b.querySelector('.jr-lede').textContent, rows: [...b.querySelectorAll('.jr-bounty')].map(r => r.dataset.id), text: b.innerText, first: document.querySelector('.jr-board').dataset.giver, tab: document.querySelector('.jr-panel')?.dataset.tab } : null; });
+      check(board && board.tab === 'bounties' && board.rows.length === mine.length && mine.every(b => board.rows.includes(b.id)) && /Stormwatch/.test(board.lede), `${P} 27: the Stormwatch board opens the Journal on Captain Ysolde's ${mine.length} bounties (${board ? board.rows.join(', ') : 'none'})`);
+      check(board?.first === 'ysolde', `${P} 27: in the Ironspire, the Stormwatch board comes first (${board?.first})`);
+      check(!board || mine.every(b => board.text.includes(b.name)), `${P} 27: each Stormwatch bounty reads by name`);
+      await shot('stormwatch-board');
+      await noScroll('27 bounties');
+      await W(() => window.__app.go('journal', { tab: 'keys', from: 'world' }));
+      await page.waitForSelector('.jr-seals', { timeout: 3000 });
+      const seals = (await page.innerText('.jr-seals')).replace(/\s+/g, ' ');
+      check(/road to the Ironspire Peaks/.test(seals) && /east postern stands open/.test(seals), `${P} 27: the Keys tab opens the Ironspire's road ("${seals.slice(0, 160)}…")`);
+      await toWorld();
+      // the third council: its scene, then "The Ironspire is yours", naming the next chapter
+      await W(() => {
+        const g = structuredClone(window.__world.game());
+        const st = g.progress.flags.story;
+        Object.assign(st, { 'act1-complete': true, 'council-done': true, 'sunscorch-complete': true, 'council-2-done': true, 'ironspire-complete': true });
+        g.progress.brands = ['brand-of-briars', 'brand-of-the-heartroot', 'brand-of-glass', 'brand-of-ash', 'brand-of-iron', 'brand-of-frost'];
+        for (const b of g.progress.brands) st[`letter:${b}`] = true;
+        window.__app.setGame(g); window.__app.go('world');
+      });
+      await page.waitForSelector('.screen-world .world-canvas');
+      await closeOverlays();
+      await teleport('keep', 15, 5, 'n');
+      await W(() => window.__world.roam([]));
+      await W(() => window.__world.press('n'));
+      await page.waitForSelector('.ov-story.council-3, .ov-dialogue', { timeout: 6000 });
+      if (await page.$('.ov-story.council-3')) {
+        check(/Council sits a third time/.test(await page.innerText('.ov-story')), `${P} 27: the third council's title card`);
+        await shot('council-3');
+        await page.click('.ov-story .story-go');
+        await page.waitForSelector('.ov-dialogue', { timeout: 3000 });
+      } else block(`${P} 27: the third council plays no title card yet (ui/screens/world.js: playCouncil(ctx, { third: true }) for council-3)`);
+      await playDialogue(/Let the Council talk/);
+      await page.waitForSelector('.ov-story.tbc-ironspire', { timeout: 4000 });
+      await page.waitForTimeout(300);
+      const card = (await page.innerText('.ov-story')).replace(/\s+/g, ' ');
+      const next = Object.values(REGIONS).filter(r => r.act >= 2 && !['sunscorch', 'ironspire'].includes(r.id)).map(r => r.name);
+      check(/The Ironspire is yours/i.test(card) && /To be continued/i.test(card) && next.every(n => card.includes(n)) && /opens in the next chapter/.test(card), `${P} 27: the third council ends on "The Ironspire is yours", naming ${next.join(', ')} ("${card.slice(0, 160)}…")`);
+      check(card.includes(`6/${BRAND_TOTAL}`), `${P} 27: the card counts six Brands of ${BRAND_TOTAL}`);
+      const bw = card.indexOf('The Blackwater still holds the causeway.');
+      check(bw >= 0 && bw < card.lastIndexOf('opens in the next chapter'), `${P} 27: "The Blackwater still holds the causeway." comes just before the next chapter's line`);
+      const fit = await W(() => { const c = document.querySelector('.ov-story .story-card'); const r = c.getBoundingClientRect(); const go = document.querySelector('.ov-story .story-go').getBoundingClientRect(); return { left: Math.round(r.left), right: Math.round(r.right), w: innerWidth, goH: Math.round(go.height), goW: Math.round(go.width) }; });
+      check(fit.left >= 0 && fit.right <= fit.w && fit.goH >= 44, `${P} 27: the card fits the screen, its button 44 px (${JSON.stringify(fit)})`);
+      await noScroll('27 ironspire card');
+      await shot('ironspire-card');
+      await page.click('.ov-story .story-go');
+      await page.waitForTimeout(300);
+      check(await W(() => !!window.__world.game().progress.flags.story['council-3-done']), `${P} 27: the third council is done (council-3-done)`);
+    } catch (e) { check(false, `${P} 27: ${e.message.split('\n')[0]}`); }
   }
 
   const fontOnly = failed.length && failed.every(u => /fonts\.(googleapis|gstatic)\.com/.test(u));

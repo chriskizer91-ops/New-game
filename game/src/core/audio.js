@@ -9,8 +9,8 @@
 //   opts: { tier } for rarity-scaled sounds (reveal, equip, beam: 0 worn .. 7 primal)
 //         { voice } 0-7 (or { pitch } in Hz) for blip, the dialogue typewriter: one voice per speaker
 // music tracks: title road battle boss victory hearth, and for the world's maps (MAPS[id].music):
-//               wilds town dungeon, and (M4) desert (null stops music; victory does not loop). A change
-//               of track crossfades (the old one fades out over 0.9 s while the new one fades in).
+//               wilds town dungeon, (M4) desert and (M5) peaks (null stops music; victory does not loop).
+//               A change of track crossfades (the old one fades out over 0.9 s while the new one fades in).
 //
 // API: unlock() setEnabled(on) setMusicEnabled(on) enabled musicEnabled sfx(name, opts)
 //      music(track) track duck(amount, seconds)
@@ -26,9 +26,36 @@ const freqOf = name => {
 // ---- the tracks ------------------------------------------------------------------------------
 // Each part is a string of step tokens: a note ("D5"), a chord ("D4+F#4"), "-" to hold the
 // previous note one more step, "." for a rest. Drum parts use k (kick) s (snare) h (hat)
-// c (ember crackle), and for the hand drum (M4) d (doum, the low stroke) t (tek) a (ka, the soft
-// tek). Parts loop independently over their own length.
+// c (ember crackle), for the hand drum (M4) d (doum, the low stroke) t (tek) a (ka, the soft
+// tek), and (M5) w, a gust of wind over the peaks. Parts loop independently over their own length.
+// Long parts are spelled with hold(note, steps) and rest(steps).
+const hold = (tok, n) => [tok, ...Array(Math.max(0, n - 1)).fill('-')].join(' ');
+const rest = n => Array(n).fill('.').join(' ');
 const TRACKS = {
+  // the Ironspire (M5): a slow horn call in D minor over a low drone, its echo coming back off the
+  // peaks a bar later, a far monastery bell in the quiet bar, and the wind (a looped gust part whose odd
+  // length drifts against the call, so no two passes blow the same)
+  peaks: {
+    bpm: 56, sub: 2, loop: true, gain: .85,
+    parts: [
+      // the call and its answer: 8 bars of 16 steps
+      { v: 'horn', g: .07, s: [
+        'A3 - D4 - - - A4 - - - - - - - . .', rest(16),
+        'G4 - A4 - C5 - A4 - - - G4 - F4 - - -', 'D4 - - - - - - - - - - - . . . .',
+        rest(16),
+        'A3 - D4 - F4 - A4 - - - C5 - D5 - - -', '- - - - C5 - A4 - - - G4 - A4 - - -', 'D4 - - - - - - - - - - - . . . .',
+      ].join(' ') },
+      // the echo: the first call, two steps late and softer, in the bar the horn leaves quiet
+      { v: 'horn', g: .026, s: [rest(18), 'A3 - D4 - - - A4 - - - - - . .', rest(96)].join(' ') },
+      // the drone under it all: D, a lift to Bb and C in the second half, home to D
+      { v: 'pad', g: .018, s: [hold('D2+A2', 64), hold('Bb1+F2', 16), hold('C2+G2', 16), hold('D2+A2', 32)].join(' ') },
+      { v: 'tri', g: .1, s: [hold('D2', 16), hold('D2', 16), hold('D2', 16), hold('A1', 16), hold('Bb1', 16), hold('C2', 16), hold('D2', 16), hold('D2', 16)].join(' ') },
+      // Peak's Veil's bell, far off, in the quiet bar before the second call
+      { v: 'bell', g: .022, s: [rest(64), 'D5 . . . A4 . . .', rest(56)].join(' ') },
+      { v: 'drum', g: .5, s: ['w', rest(10), 'w', rest(14), 'w', rest(8), 'w', rest(2)].join(' ') },
+    ],
+  },
+  // the Sunscorch (M4): a slow reed melody in the Hijaz mode on D (D Eb F# G A Bb C) over a held
   // the Sunscorch (M4): a slow reed melody in the Hijaz mode on D (D Eb F# G A Bb C) over a held
   // drone, a walking low string, an oud-like pluck and a maqsum on the hand drum
   desert: {
@@ -291,10 +318,39 @@ export function createAudio() {
   }
 
   // ---- the step sequencer ----
+  // a horn (M5 peaks): a sawtooth that scoops up into the note through a lowpass that blooms open as the
+  // breath comes, over a sine for body; a slow vibrato comes in on the long notes
+  function horn(f, t, dur, g, out) {
+    const o = AC.createOscillator(), s = AC.createOscillator(), sg = AC.createGain(), lp = AC.createBiquadFilter(), a = AC.createGain();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(f * .97, t); o.frequency.exponentialRampToValueAtTime(f, t + .09);
+    s.frequency.setValueAtTime(f, t); sg.gain.value = .7;
+    lp.type = 'lowpass'; lp.Q.value = .7;
+    lp.frequency.setValueAtTime(f * 1.3, t); lp.frequency.linearRampToValueAtTime(f * 3.6, t + .2); lp.frequency.linearRampToValueAtTime(f * 2.4, t + Math.max(.35, dur * .6));
+    if (dur > .8) {
+      const l = AC.createOscillator(), lg = AC.createGain();
+      l.frequency.value = 4.6; lg.gain.setValueAtTime(0, t); lg.gain.linearRampToValueAtTime(f * .007, t + .7);
+      l.connect(lg); lg.connect(o.frequency); lg.connect(s.frequency); l.start(t); l.stop(t + dur + .05);
+    }
+    env(a, t, g, .11, dur, .85);
+    o.connect(lp); s.connect(sg); sg.connect(lp); lp.connect(a); a.connect(out);
+    o.start(t); s.start(t); o.stop(t + dur + .05); s.stop(t + dur + .05);
+  }
+  // a gust of wind (M5 peaks): looped noise through a band that rises and falls, swelling in and out
+  function wind(t, dur, g, out) {
+    const src = AC.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
+    const f = AC.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 1.3;
+    f.frequency.setValueAtTime(300, t); f.frequency.linearRampToValueAtTime(rnd(760, 1100), t + dur * .45); f.frequency.linearRampToValueAtTime(360, t + dur);
+    const a = AC.createGain();
+    a.gain.setValueAtTime(0, t); a.gain.linearRampToValueAtTime(g, t + dur * .4); a.gain.linearRampToValueAtTime(g * .45, t + dur * .7); a.gain.linearRampToValueAtTime(0, t + dur);
+    src.connect(f); f.connect(a); a.connect(out);
+    src.start(t, Math.random() * 1.2); src.stop(t + dur + .05);
+  }
   function musicVoice(p, freqs, t, dur, out) {
     const g = p.g;
     for (const f of freqs) {
       switch (p.v) {
+        case 'horn': horn(f, t, dur * .97, g, out); break;
         case 'bell': bell(f, t, Math.max(.6, dur * 1.4), g, 3200, out); break;
         case 'tri': tone(f, t, dur * .95, { type: 'triangle', g, a: .01, sus: .8 }, out); break;
         case 'pulse': tone(f, t, dur * .92, { type: 'pulse', g, a: .006, sus: .7, lp: p.lp || 2400 }, out); break;
@@ -314,6 +370,8 @@ export function createAudio() {
     else if (kind === 'd') { tone(104, t, .3, { to: 62, g: g * .42, type: 'sine', a: .003 }, out); noise(t, .06, { type: 'lowpass', f: 380, g: g * .16, a: .002 }, out); }
     else if (kind === 't') { noise(t, .07, { type: 'bandpass', f: 2600, q: 1.6, g: g * .26, a: .001 }, out); tone(540, t, .05, { type: 'triangle', g: g * .05, a: .002 }, out); }
     else if (kind === 'a') noise(t, .05, { type: 'bandpass', f: 3400, q: 2.2, g: g * .13, a: .001 }, out);
+    // the wind over the peaks (M5): a gust that swells and falls away over three seconds
+    else if (kind === 'w') wind(t, 3.2, g * .16, out);
   }
 
   function startTrack(name) {
