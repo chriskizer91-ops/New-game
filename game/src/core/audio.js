@@ -127,6 +127,15 @@ const TRACKS = {
       { v: 'drum', g: .4, s: 'k . h . . . h . k . h . . . h h' },
     ],
   },
+  // the Gloomfen (M6). STUB from the M6 scaffold: the Wilds' tune, slowed, until P7 writes the fen's own
+  // (a slow, low reed drone with a lullaby turn in it, and frogs; M6 spec §5)
+  fen: {
+    bpm: 80, sub: 2, loop: true, gain: .8,
+    parts: [
+      { v: 'flute', g: .06, s: 'B4 - E5 - G5 - F#5 E5 G5 - - - E5 - C5 - D5 - G5 - B5 - A5 G5 F#5 - - - D5 - . . E5 - G5 - B5 - C6 B5 A5 - G5 - E5 - G5 - A5 - C6 - B5 - A5 G5 F#5 - - - D#5 - . .' },
+      { v: 'tri', g: .15, s: 'E2 . B2 . E2 . B2 . C2 . G2 . C2 . G2 . G2 . D3 . G2 . D3 . D2 . A2 . D2 . A2 . E2 . B2 . E2 . B2 . C2 . G2 . C2 . G2 . A2 . E3 . A2 . E3 . B1 . F#2 . B1 . D#2 .' },
+    ],
+  },
   // a town: music-box bells over a bouncing bass (C major)
   town: {
     bpm: 96, sub: 2, loop: true, gain: .85,
