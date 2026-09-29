@@ -25,8 +25,8 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const argv = process.argv.slice(2);
 const outArg = argv.find(a => a.startsWith('--out='))?.slice(6) ?? (argv.includes('--out') ? argv[argv.indexOf('--out') + 1] : null);
 const out = outArg ? path.resolve(outArg) : path.join(root, 'dist');
-const DELIVERY = 'aethermoor-m5.html';
-const FROZEN = ['aethermoor-m2.html', 'aethermoor-m3.html', 'aethermoor-m4.html', 'aethermoor-m4.5.html'];
+const DELIVERY = 'aethermoor-m6.html';
+const FROZEN = ['aethermoor-m2.html', 'aethermoor-m3.html', 'aethermoor-m4.html', 'aethermoor-m4.5.html', 'aethermoor-m5.html'];
 if (FROZEN.includes(DELIVERY)) throw new Error(`${DELIVERY} is an earlier milestone's frozen file`);
 
 const tpl = await readFile(path.join(root, 'src/index.html'), 'utf8');

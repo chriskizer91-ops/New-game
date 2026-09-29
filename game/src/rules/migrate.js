@@ -4,6 +4,7 @@
 //   toV2(save)   v1 (M2) -> v2 (M3), M3 spec §4.9, exact
 //   toV3(save)   v2 (M3) -> v3 (M4, and Milestone 4.5)
 //   toV4(save)   v3 -> v4 (M5)
+//   toV5(save)   v4 -> v5 (M6)
 // Imports data only (A6): encounters, heroes, world, relics, maps/index.
 // Owner: WP2.
 
@@ -24,7 +25,7 @@ export function starterOf(g) {
   return STARTERS[it?.base] ? it.base : (claimed[0] || 'hearthbrand');
 }
 
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 
 export function toV2(save) {
   if (!save || typeof save !== 'object' || !save.version) throw new Error('Not an Aethermoor save');
@@ -92,8 +93,17 @@ export function toV4(save) {
   return v;
 }
 
+// M6 (spec §4.1): M6 adds no new state either (the Gloomfen's quests, flags, relics and maps live in the shapes
+// version 4 already has), so version 5 only marks a save as this milestone's: the M5 file stops at AETH4 and names
+// an AETH5 code as newer instead of loading a save it cannot read. Idempotent.
+export function toV5(save) {
+  const v = toV4(save);
+  if (v.version < 5) v.version = 5;
+  return v;
+}
+
 // Any save, of any version so far, as the current version.
-export const migrate = save => toV4(save);
+export const migrate = save => toV5(save);
 
 // A pasted code is untrusted: before it replaces the journey on this device, check that the migrated
 // save has the shape the game walks on (not its balance). Returns what is wrong, [] when it is sound.

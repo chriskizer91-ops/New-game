@@ -37,11 +37,14 @@ test('save codes round-trip and a pasted code cannot carry markup', async () => 
   assert.deepEqual(Object.keys(back.bag), ['btonic/b']);
   assert.throws(() => importCode('AETH1.bm90IGpzb24='), /damaged/);
   assert.throws(() => importCode('hello'), /not an Aethermoor save code/);
-  // a later milestone's code (a newer save shape) is named as such, not called a stranger; M5's own
-  // codes are AETH4 (save version 4)
+  // a later milestone's code (a newer save shape) is named as such, not called a stranger; M5's codes are
+  // AETH4 (save version 4) and still load; M6's own codes are AETH5 (save version 5)
   const v4 = { ...game, version: 4 };
   assert.ok(exportCode(v4).startsWith('AETH4.'));
   assert.deepEqual(importCode(exportCode(v4)), v4);
-  assert.throws(() => importCode('AETH5.eyJ2ZXJzaW9uIjo1fQ=='), /newer Aethermoor \(AETH5\)/);
+  const v5 = { ...game, version: 5 };
+  assert.ok(exportCode(v5).startsWith('AETH5.'));
+  assert.deepEqual(importCode(exportCode(v5)), v5);
+  assert.throws(() => importCode('AETH6.eyJ2ZXJzaW9uIjo2fQ=='), /newer Aethermoor \(AETH6\)/);
   assert.throws(() => importCode('AETH12.eyJ2ZXJzaW9uIjo0fQ=='), /newer Aethermoor \(AETH12\)/);
 });

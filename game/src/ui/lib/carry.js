@@ -7,7 +7,7 @@
 //
 //   openCarryCard(ctx, game, { kind = 'm2', note, primary = 'Walk on', cancel = 'Not yet' }) -> Promise<boolean>
 //     kind 'm2' (an M2 save), 'm3' (a Milestone 3 save), 'm4' (a Milestone 4 save), 'm45' (a Milestone 4.5
-//     save) or 'code' (a code of any milestone); note is an
+//     save), 'm5' (a Milestone 5 save) or 'code' (a code of any milestone); note is an
 //     optional last line (what gets written, and when); resolves true for the primary button.
 //   carryFacts(game), inSentence(name)   re-exported from ./carry-facts.js (pure; node-tested)
 // Every save string goes through esc() or textContent.
@@ -28,6 +28,7 @@ export function openCarryCard(ctx, game, { kind = 'm2', note = null, primary = '
       m2: ['Your journey carries over', 'The road has become a land', 'The Gauntlet was only ever one road through the Verdant Wilds. Everything you won on it comes with you.'],
       m3: ['Your Milestone 3 journey carries over', 'The Wilds go with you', 'Everything you won in the Verdant Wilds comes with you: the party, the gear, the Codex and the purse.'],
       m4: ['Your Milestone 4 journey carries over', 'Back on the road', 'Everything you won, forged and awakened comes with you. The road now holds: every fight on it must be won to pass, and every fight is fought in full.'],
+      m5: ['Your Milestone 5 journey carries over', 'Down into the fen', 'Everything you won, forged and awakened in the mountains comes with you. Once the Council has sat a third time, the fen stair below Mossfall opens onto the Gloomfen.'],
       m45: ['Your Milestone 4.5 journey carries over', 'East, to the mountains', 'Everything you won, forged and awakened on the road comes with you. Once the Council has sat a second time, the Keep\'s east postern opens onto the Ironspire.'],
       code: ['A saved journey', 'The road has become a land', 'Everything in this save comes with it: the party, the gear, the Codex and the purse.'],
     }[kind] || [];

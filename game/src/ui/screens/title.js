@@ -1,6 +1,6 @@
 // Title: the Keep at dusk with the party on the road, the name, and the way in (M3 spec §5.7).
 //   - a live save: "Continue", sub-line "Wren · Thornhollow · Day 4 · Lv 5 · 9/24 relics"
-//   - no live save yet, but an earlier milestone's: "Continue from Milestone 4.5" (or 4, or 3; with only an M2
+//   - no live save yet, but an earlier milestone's: "Continue from Milestone 5" (or 4.5, 4 or 3; with only an M2
 //     save, "Continue from the Gauntlet") -> the carry-over card -> "Walk on" -> ctx.adopt(game) (held
 //     in memory; the world writes it, to this milestone's own key, on the first step)
 //   - "New game" over any journey asks first; newgame's Begin backs the old save up (ctx.replaceGame)
@@ -14,9 +14,10 @@ import { screenNav } from '../lib/keys.js';
 import { openCarryCard } from '../lib/carry.js';
 import { saveLine } from '../lib/carry-facts.js';
 
-const TAG = '<span>M5</span> · Ironspire';
+const TAG = '<span>M6</span> · Gloomfen';
 // where a carried-over save comes from (ctx.carryFrom): the button, the card's kind, the old home
 const FROM = {
+  m5: { label: 'Continue from Milestone 5', kind: 'm5', who: 'Milestone 5', home: 'file' },
   m45: { label: 'Continue from Milestone 4.5', kind: 'm45', who: 'Milestone 4.5', home: 'file' },
   m4: { label: 'Continue from Milestone 4', kind: 'm4', who: 'Milestone 4', home: 'file' },
   v2: { label: 'Continue from Milestone 3', kind: 'm3', who: 'Milestone 3', home: 'file' },

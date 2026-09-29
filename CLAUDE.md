@@ -7,6 +7,7 @@ This is a browser JRPG built into **one self-contained HTML file** that plays on
 - Milestone 4 contract: `game/docs/M4-SPEC.md` (its Part A overrides Part B); what shipped: `game/docs/M4-STATUS.md`.
 - Milestone 4.5 ("the Road") contract: `game/docs/M45-SPEC.md` (its Part A overrides Part B); what shipped: `game/docs/M45-STATUS.md`.
 - Milestone 5 ("the Ironspire Peaks") contract: `game/docs/M5-SPEC.md` (its Part A overrides Part B); what shipped: `game/docs/M5-STATUS.md`.
+- Milestone 6 ("the Gloomfen Marsh": Hodge, Tamsin's fall, the end of Act II) contract: `game/docs/M6-SPEC.md` (its Part A overrides Part B); in progress.
 - Design intent: `docs/DESIGN-BRIEF.md`.
 
 ## Commands (run in `game/`)
@@ -29,7 +30,7 @@ This is a browser JRPG built into **one self-contained HTML file** that plays on
 - **Saves:**
   - Existing saves must keep working.
   - Never write or delete the `aethermoor.save.v1` key.
-  - Every milestone keeps its own save and file (the player's rule): Milestone 5 writes only `aethermoor.save.m5`, never the earlier keys (M4.5's `aethermoor.save.m4.5`, M4's `aethermoor.save.m4`, M3's `aethermoor.save.v2`); `dist/aethermoor-m2.html`, `-m3.html`, `-m4.html` and `-m4.5.html` are frozen (a test pins their bytes).
+  - Every milestone keeps its own save and file (the player's rule): Milestone 6 writes only `aethermoor.save.m6`, never the earlier keys (M5's `aethermoor.save.m5`, M4.5's `aethermoor.save.m4.5`, M4's `aethermoor.save.m4`, M3's `aethermoor.save.v2`); `dist/aethermoor-m2.html`, `-m3.html`, `-m4.html`, `-m4.5.html` and `-m5.html` are frozen (a test pins their bytes).
   - Migrations are pure functions in `rules/migrate.js`, injected into `core/save.js`.
   - Pasted codes are scrubbed.
 - **Frozen:**

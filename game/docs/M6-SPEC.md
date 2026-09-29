@@ -265,6 +265,11 @@ The Tallymen reuse `tallyman`/`smuggler` with new variants: `tallyman` `salvage-
 `bargemaster` (the Bargemaster); `smuggler` `reedcutter`, `diver` and `bargehand`. The Murkway's pack reuses M3's
 `boglurcher`. Tamsin reuses `tamsin` (§3.5, §4.3).
 
+**Art keys** (fixed here, so P4's data and P6's drawings meet without waiting on each other): each new family draws
+as its own id (`art: '<family id>'`); the variants draw as `old-jaws`, `mother-grue`, `grandfather-willow`,
+`bell-ringer`, `drowned-choir`, `drowned-cantor`, `salvage-master`, `bargemaster`, `reedcutter`, `salvage-diver` and
+`bargehand`. Humanoid families (`bog-hag`, `hodge`, the Tallyman variants) show gear tiers 0–3 on the sprite.
+
 ### 3.3 Encounters (25 new; region `gloomfen`)
 
 | id | Map | Mode | Spawns (lead first) | Holds |
