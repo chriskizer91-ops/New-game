@@ -14,19 +14,20 @@ and every fight is fought in full. Part A overrides Part B.
 | A2 | **Save version 4.** `rules/migrate.js` chains `toV2`, `toV3` and a new `toV4`, which fills what M5 adds (§4.1) and only that. Codes are `AETH4.`; AETH1 to AETH3 still load. The version bump keeps the older files, whose code check stops at AETH3, from loading an M5 save they cannot read. |
 | A3 | **Road-first.** Every M5 map declares its `roads`; every fight on `IRON_PATH` holds a gate (or a Brand); lead fights guard their side roads; no route or lead fight is a roaming pack. `test/road.test.mjs` covers the new maps with no new code (its map list grows). Zone patrols roam as before, and a caught weak pack is a full battle. |
 | A4 | **One order.** The Brand of Iron (Ironhold) comes first; Stormwatch's north gate, onto the Frost Road, opens with it. Then the Brand of Frost under Frostmere. |
-| A5 | **The way in.** The Keep's east postern (`keep-e`) opens once the second council is sat (`council-2-done`), onto the Rockslide Pass. Fawnrest's scree path (`fr-highfold`) opens from Peak's Veil's side once you reach it (`flag: 'highfold-open'`, set by the monks), as a second way home. Gloomfen stays sealed ("the way opens in the next chapter"). |
+| A5 | **The way in.** The Keep's east postern (`keep-e`) opens once the second council is sat (`council-2-done`), onto the East Road (A11), which climbs to the Rockslide Pass. Fawnrest's scree path (`fr-highfold`) opens from Peak's Veil's side once you reach it (`flag: 'highfold-open'`, set by the monks), as a second way home. Gloomfen stays sealed ("the way opens in the next chapter"). |
 | A6 | **Size.** A third region needs room: the build warns above **2.5 MB** and fails above **3.2 MB** (M4's 1.8/2.2 were set for two regions). `--minify` stays in reserve. These limits count the game without the player's paintings (A10), which have their own limit of **8 MB**, so the file stays well under the 16 MB a page holds. |
 | A7 | **Building** as in M4: the lead builds the rules (P1) and integrates; agents build maps, story, foes and relics, art and UI in parallel with disjoint files (§7), never run git, build into private folders and write `game/notes/M5-<pkg>.md`. |
 | A8 | **Ids are fixed by this spec.** A package may add ids only inside its own files; a missing id is asked for in its notes. |
 | A9 | **Frozen, as before:** `art/heroes.js`, `art/hero-looks.js`, the card reveal, the M2 encounter and spawn arrays, and every delivered file (M2, M3, M4, M4.5). Earlier content changes only where §2.4 says. |
 | A10 | **Painted art.** The player's art pilot (`art-requests/pilot.md`) came back and looks right in the game, so package P8 (§7) is in: the paintings of Hearthstone Keep and Thornhollow draw as those maps' ground, and the prologue shows the Council hall gold, then blue. Each is its own data entry (`ui/assets/paint/`, `ui/assets/cuts/`), so a map with no painting draws its tiles as before. Hilda's portrait did not come; there is no portrait frame yet. The next batch (`art-requests/batch-2/`, every Verdant and Sunscorch map, long roads in two overlapping panels) lands as it comes back. |
+| A11 | **The East Road** (from the player's six wilderness paintings, `art-in/extra/path-*.png`). Six painted maps lie between the Keep's east postern and the Rockslide Pass, in this order: `old-bridge`, `drystone-lea`, `plankford`, `shrinewood`, `silverfall`, `last-camp`. Each is 48×32 tiles, biome `wilds`, music `road`, level 12, backdrop `hearth-road`, region `ironspire`. Its tiles are traced from its painting (`overTiles: false`), and it draws from the painting at `PAINT_DENSITY` 2 (32 painting px a tile). `keep-e` leads to `old-bridge` (the Keep's anchor is `from-east-road`); the pass's west end (`rp-camp`) leads to `last-camp`. Three road-gate fights hold the road (A3): `er-wolves` (Drystone Lea's brambles), `er-toll` (the deserters' chain at the Plankford bridge) and `er-camp` (their sergeant at the Last Camp's palisade). The Last Camp's fire is an eighth Ironspire Hearthfire, `camp-fire`. `IRON_PATH` begins `er-wolves`, `er-toll`, `camp-fire`, `er-camp`. A thing the painting shows (Shrinewood's carved stone, Silverfall's pool) is a `sign` with `look: 'painted'` and a `name`: it draws no sprite, and A reads "A · <name>". The Last Camp's fire draws only its flame (hearth look `painted`) in the painted ring. |
 
 ## Part B. Build spec
 
 ## 1. Scope
 
 **In:**
-- **The Ironspire Peaks:** 11 maps (§2.1) and a third reliquary room; 7 Hearthfires (3 cold); 4 new lock types and new keys for four older locks; 9 foe families (2 of them Champions); 19 encounters; Tamsin's third duel; 14 relics (Codex Nos. 39–52) and Codex Page III's reward; 5 quests, 4 bounties, 8 Ladder posters, 2 Unsmith letters, 2 shops and a new gem; Hush's scene; the third council.
+- **The Ironspire Peaks:** 11 maps (§2.1), the six painted maps of the East Road (A11) and a third reliquary room; 8 Hearthfires (3 cold); 4 new lock types and new keys for four older locks; 9 foe families (2 of them Champions); 22 encounters (with the East Road's three); Tamsin's third duel; 14 relics (Codex Nos. 39–52) and Codex Page III's reward; 5 quests, 4 bounties, 8 Ladder posters, 2 Unsmith letters, 2 shops and a new gem; Hush's scene; the third council.
 - **Exact Champion moves:** three new statuses (`burrowed`, `swallowed`, `charmed`, §4.2). M4's approximations become exact (Kharzul's Burrow, the Sand Wyrm's Swallow, the mirage-wisps' Charm), and the new Champions use them.
 - **Tamsin's own kits:** `$rival:<duel>` resolves a per-duel kit (§4.3), so each duel is her own fight.
 - **Hilda and Harrow:** bring Hilda Harrow's hammer (a quest and her scene).
@@ -41,7 +42,8 @@ and every fight is fought in full. Part A overrides Part B.
 
 | id | Name | Biome | Size | Zone | Music | Role |
 |---|---|---|---|---|---|---|
-| `rockslide-pass` | The Rockslide Pass | mountain | 26×60 | `rockslide-pass` | peaks | Keep east postern → Peak's Veil; the slide the monks dug out |
+| `old-bridge` … `last-camp` | The East Road (A11) | wilds | 48×32 each | — | road | six painted maps: Keep east postern → the Rockslide Pass |
+| `rockslide-pass` | The Rockslide Pass | mountain | 26×60 | `rockslide-pass` | peaks | the Last Camp → Peak's Veil; the slide the monks dug out |
 | `peaks-veil` | Peak's Veil | monastery | 28×24 | — | town | the monastery; the bell tower; hub 1 |
 | `highfold` | The Highfold | scree | 30×40 | `highfold` | peaks | Peak's Veil ↔ Fawnrest (a side road); the Thunder-Roc's eyrie |
 | `iron-stair` | The Iron Stair | mountain | 24×56 | `iron-stair` | peaks | Peak's Veil → Ironhold; switchbacks cut by dwarves |
@@ -61,13 +63,14 @@ Gallery; Codex Page III's 14 pedestals stand on its rows 2 and 5 in codex order.
 ### 2.2 Connections
 
 ```
-keep (keep-e, gated on council-2-done) ── rockslide-pass ── peaks-veil ─┬─ iron-stair ── ironhold ─┬─ ironhold-deeps ── harrows-forge
+keep (keep-e, gated on council-2-done) ── the East Road (old-bridge ── drystone-lea ── plankford ── shrinewood ── silverfall ── last-camp)
+                                          ── rockslide-pass ── peaks-veil ─┬─ iron-stair ── ironhold ─┬─ ironhold-deeps ── harrows-forge
                                                                          │                         └─ stormwatch (east; its north gate on the Brand of Iron) ── frost-road ── frostmere ── frostmere-below
                                                                          └─ highfold ── fawnrest (fr-highfold, opens from above: highfold-open)
 ```
 
 **The critical path** (`IRON_PATH` in `data/world.js`; the sim and the walk test follow it):
-`pass-shrine`, `rp-brigands`, `rp-rocklings`, `veil-hearth`, `is-sentinels`, `stair-cairn`, `thanes-hearth`,
+`er-wolves`, `er-toll`, `camp-fire`, `er-camp`, `pass-shrine`, `rp-brigands`, `rp-rocklings`, `veil-hearth`, `is-sentinels`, `stair-cairn`, `thanes-hearth`,
 `tamsin-ironhold`, `id-forgeborn`, `deeps-forge`, `id-bellows`, `mother-anvil`, `stormwatch-fire`,
 `fr-cutters`, `frost-cairn`, `fm-wraiths`, `fb-choir`, `rime-abbot`.
 **Leads** (`IRON_LEADS`): `roc: ['hf-trolls', 'roc-eyrie']`, `horn: ['troll-cave']`, `smith: ['id-smith']`,
@@ -81,7 +84,10 @@ quest step); the Deeps and Beneath Frostmere are dark but soft.
 
 | Map | Road | Gates (guard) |
 |---|---|---|
-| `rockslide-pass` | `from-keep` → the exit to Peak's Veil | `rp-brigands` (Rhune's toll chain across the cleared slide), `rp-rocklings` (a scree field where the rocklings nest) |
+| `drystone-lea` | `from-bridge` → the exit to Plankford | `er-wolves` (brambles across the gap in the pines) |
+| `plankford` | `from-lea` → the exit to Shrinewood | `er-toll` (the deserters' chain at the foot of the plank bridge) |
+| `last-camp` | `from-falls` → the exit to the pass | `er-camp` (the palisade gate, barred) |
+| `rockslide-pass` | `from-camp` → the exit to Peak's Veil | `rp-brigands` (Rhune's toll chain across the cleared slide), `rp-rocklings` (a scree field where the rocklings nest) |
 | `iron-stair` | from Peak's Veil → the exit to Ironhold | `is-sentinels` (the dwarf gate at the stair's head) |
 | `ironhold` | from the Iron Stair → the Deeps door | `tamsin-ironhold` (she waits on the Deeps stair; a yield opens it too) |
 | `ironhold-deeps` | from Ironhold → the stair to Harrow's Forge | `id-forgeborn`, `id-bellows` |
@@ -95,7 +101,12 @@ north exit (`sw-n`) gets `gate: { brand: 'brand-of-iron' }` with a `sealed` text
 
 ### 2.3 Layout of each map (what must be there; P2 draws the tiles)
 
-- **rockslide-pass:** a mountain road climbing east from the Keep's causeway pier, past the great slide
+- **The East Road (A11):** traced from the paintings, so the paintings are the layout. The Old Bridge (a stone
+  bridge off the Keep's lake, a willow, a signpost); Drystone Lea (meadow, an old oak on a side path, a fallen
+  drystone wall; the wolves in the brambles); Plankford (a plank bridge over a stream, a fork to a gravel
+  beach; the deserters' toll); Shrinewood (a broken arch and a carved standing stone in a clearing); Silverfall
+  (a waterfall and its clear pool); the Last Camp (a fire ring and a log bench before a palisade gate).
+- **rockslide-pass:** a mountain road climbing east from the Last Camp (a causeway over a tarn at its foot), past the great slide
   the monks dug out (boulders heaped both sides). `pass-shrine` (a way-shrine with a coal) a third of the
   way up. `rp-brigands`: Rhune the Pass-Warden's toll (Stormwatch deserters) with a chain; `rp-rocklings`
   a scree field higher up; `rp-wolves` (pack) in a side hollow. A `chasm` with a chest across it. A sign:
@@ -135,7 +146,7 @@ north exit (`sw-n`) gets `gate: { brand: 'brand-of-iron' }` with a `sealed` text
 
 ### 2.4 The earlier maps and data this spec changes
 
-- `keep.js`: `keep-e` becomes `{ id: 'keep-e', area, to: 'rockslide-pass', anchor: 'from-keep', gate: { flag: 'council-2-done' }, sealed: { region: 'ironspire', text, hint } }`.
+- `keep.js`: `keep-e` becomes `{ id: 'keep-e', area, to: 'old-bridge', anchor: 'from-keep', gate: { flag: 'council-2-done' }, sealed: { region: 'ironspire', text, hint } }` (A11: first to `rockslide-pass`; the East Road came between).
 - `fawnrest.js`: `fr-highfold` becomes `{ ..., to: 'highfold', anchor: 'from-fawnrest', gate: { flag: 'highfold-open' }, sealed: { region: 'ironspire', text, hint } }`.
 - `keep-gallery.js`: a door on its east wall to `keep-gallery-2`.
 - `world.js`: `REGIONS.ironspire` gets `brands: ['brand-of-iron', 'brand-of-frost']`, `open: true`; `HEARTHS`, `ZONES`, `LORE.ironhold|peaksveil|stormwatch|frostmere` get their `map`; `IRON_PATH`, `IRON_LEADS`.
@@ -144,10 +155,11 @@ north exit (`sw-n`) gets `gate: { brand: 'brand-of-iron' }` with a `sealed` text
 - `encounters.js`: `BRANDS` gains `brand-of-iron` { from: 'mother-anvil', region: 'ironspire' } and `brand-of-frost` { from: 'rime-abbot', region: 'ironspire' }. After both, `earnBrand` sets `ironspire-complete`.
 - M4's approximated moves become exact with §4.2's statuses: Kharzul's Burrow, the Sand Wyrm's Swallow, the mirage-wisps' and the Wisp-Queen's Charm. The M4 balance targets must still hold (§8).
 
-### 2.5 Hearthfires (7 new; 24 in all)
+### 2.5 Hearthfires (8 new; 25 in all)
 
 | id | Map | Name | Cold | Lore (1200×800) |
 |---|---|---|---|---|
+| `camp-fire` | last-camp | The Last Camp Fire | no | [616, 338] |
 | `pass-shrine` | rockslide-pass | The Pass Shrine | no | [650, 330] |
 | `veil-hearth` | peaks-veil | The Cloister Fire | no | [750, 240] |
 | `stair-cairn` | iron-stair | The Stair Cairn | yes | [800, 200] |
@@ -221,10 +233,13 @@ colder underneath." / "You find the crust that holds."
 Tallymen reuse `tallyman`/`smuggler` with new variants `ice-cutter` (the Cutter-Chief) and `sawyer`.
 Tamsin reuses `tamsin` (§3.5, §4.3).
 
-### 3.3 Encounters (19 new; region `ironspire`)
+### 3.3 Encounters (22 new; region `ironspire`)
 
 | id | Map | Mode | Spawns (lead first) | Holds |
 |---|---|---|---|---|
+| `er-wolves` | drystone-lea | block (road) | rime-wolf ×3 | — |
+| `er-toll` | plankford | block (road) | brigand ×3 | — |
+| `er-camp` | last-camp | block (road) | brigand `sergeant` "The Deserter Sergeant", brigand ×2 | — |
 | `rp-brigands` | rockslide-pass | block (road) | brigand `warden` "Rhune the Pass-Warden", brigand ×2 | `windstep-boots` |
 | `rp-rocklings` | rockslide-pass | block (road) | rockling ×4 | — |
 | `rp-wolves` | rockslide-pass | pack | rime-wolf ×3 | — |
@@ -385,7 +400,7 @@ gets a new one (she fights like someone who has been to the Ironspire before).
 ### 6.2 Battle (P6)
 - Foe art for the new families with their variants and gear tiers; Mother Anvil with the hammer and the
   glowing heart (each gone when snapped off); the Rime-Abbot with the crozier and the cowl.
-- Backdrops: `rockslide-pass`, `peaks-veil`, `highfold`, `iron-stair`, `ironhold`, `ironhold-deeps`,
+- Backdrops (the East Road fights on the Hearth Road's, A11): `rockslide-pass`, `peaks-veil`, `highfold`, `iron-stair`, `ironhold`, `ironhold-deeps`,
   `harrows-forge`, `stormwatch`, `frost-road`, `frostmere`, `frostmere-below`.
 - Card and sprite art for the 14 relics; the frost opal's icon.
 
@@ -420,7 +435,7 @@ new key until both halves have landed; that is expected in a package's private t
   the walk bot down `IRON_PATH` from a Sunscorch-complete save; story data (conditions parse, every flag
   read is set, the council-3 trigger is flag-guarded); relics (holders, powers, deeds, awakenings).
 - **e2e-world** new scenarios: the Keep's east postern (sealed until the second council, then open onto
-  the pass); Peak's Veil (the fire, the bell); a chasm crossed with the Windstep Boots and an ice wall
+  the East Road, drawn from its painting and playing the road; the pass beyond it plays the peaks); Peak's Veil (the fire, the bell); a chasm crossed with the Windstep Boots and an ice wall
   with the Anvil Heart; Mother Anvil's pre-fight card; the Deeps' darkness; the Frost Road's performance.
 - **e2e-battle:** Mother Anvil through three phases with both pieces snapped; the Rime-Abbot with a hero
   held under and freed early; Kharzul's exact Burrow; a charmed hero.
@@ -429,7 +444,8 @@ new key until both halves have landed; that is expected in a package's private t
 - **Balance** (`tools/sim.mjs`, from the `sunscorch` run's end state, Waking 4): Mother Anvil first-try
   wipe 30–40%; the Rime-Abbot 30–40%; Tamsin at Ironhold party win 55–70%; each lead's lair taken first
   15–25%; a forged party ≤ 20% against each Champion; every M3, M4 and M4.5 target unchanged; zero stuck.
-- **Performance:** the Frost Road at 4× throttle: p95 frame JS ≤ 16 ms, ≤ 40 `drawImage` per frame.
+- **Performance:** the Frost Road at 4× throttle: p95 frame JS ≤ 16 ms, ≤ 40 `drawImage` per frame; a
+  painted East Road map the same.
 - **Size:** the game under 3.2 MB and the paintings under 8 MB (A6).
 - **No stand-in is left:** no `stub: true` in `data/foes.js` or `art/item-looks.js`, no "STUB from the M5
   scaffold" comment in `src/`, every M5 backdrop in `BACKDROPS`, and every mountain map on the `peaks` track.

@@ -290,10 +290,16 @@ keys and reads the earlier ones, newest first, without ever writing or removing 
 
 ## Painted maps and stills (`ui/world/view.js`, `ui/assets/paint/`, `ui/assets/cuts/`; M5 spec A10)
 
-- A map listed in `ui/assets/paint/index.js` (`PAINTINGS[mapId] = { w, h, src }`, a WebP at 16 px per
-  tile) draws its painting as its ground; the objects draw on top as usual, and the overhead layer takes
-  the painting's pixels wherever the tiles' own overhead layer would draw (canopies, roofs, grass tops).
-  A painting decodes when its map is first baked; until then, and on every other map, the tiles draw.
+- A map listed in `ui/assets/paint/index.js` (`PAINTINGS[mapId] = { w, h, src }`, a WebP at 32 px per
+  tile) draws its painting as its ground, at `PAINT_DENSITY` (2) canvas px per art px, so its detail
+  shows; the objects draw on top as usual, and the overhead layer takes the painting's pixels wherever
+  the tiles' own overhead layer would draw (canopies, roofs, grass tops), and over a map's `overhang`
+  rects. A painting decodes when its map is first baked (at most `PAINT_KEEP` decoded at once); until
+  then, and on every other map, the tiles draw.
+- A map traced from its painting (the East Road, M5 spec A11) sets `overTiles: false`: its tiles only
+  say what is solid, and nothing but the painting draws its ground and canopies. A thing the painting
+  shows is an entity with `look: 'painted'` (a `sign` with a `name`: no sprite, A reads "A · <name>");
+  a Hearthfire in a painted ring uses the hearth look `painted` (the flame alone, a tile above its foot).
 - `ui/assets/cuts/index.js` (`CUTS[name]`) holds cut-scene stills; the prologue shows `hearth-gold`
   then `hearth-blue`, and draws its own scene without them.
 - Tools: `tools/paint-refs.mjs` renders a batch's layout references (long roads as overlapping panels,

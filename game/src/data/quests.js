@@ -122,7 +122,7 @@ export const QUESTS = deepFreeze({
     id: 'ironspire-waking', name: 'The Ironspire Waking', kind: 'main', giver: 'isolde', start: { flag: 'sunscorch-complete' },
     steps: [
       step('Come home to the Keep and sit the second council.', { flag: 'council-2-done' }, 'keep-hall', 'isolde'),
-      step('Take the east postern up to Peak\'s Veil, and find Mother Wynn.', { any: [{ flag: 'met-wynn' }, { brand: 'brand-of-iron' }] }, 'peaks-veil', 'wynn'),
+      step('Take the East Road from the postern up to Peak\'s Veil, and find Mother Wynn.', { any: [{ flag: 'met-wynn' }, { brand: 'brand-of-iron' }] }, 'peaks-veil', 'wynn'),
       step('Climb the Iron Stair to Ironhold and speak with Thane Brundar.', { any: [{ flag: 'met-brundar' }, { brand: 'brand-of-iron' }] }, 'ironhold', 'brundar'),
       step('Face Tamsin on the Deeps stair.', { any: [{ beaten: 'tamsin-ironhold' }, { flag: 'tamsin-yielded-3' }, { flag: 'rune-given' }, { brand: 'brand-of-iron' }] }, 'ironhold', 'tamsin-ironhold'),
       step('Win the Thane\'s leave to go down into the Deeps: his rune-key.', { any: [{ flag: 'rune-given' }, { brand: 'brand-of-iron' }] }, 'ironhold', 'brundar'),

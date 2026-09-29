@@ -62,7 +62,8 @@
 //   24 Mother Anvil's pre-fight card: the Champion, the Worldforge Hammer and the Anvil Heart glinting, and
 //      the Brand of Iron
 //   25 the Ironhold Deeps are dark without a light key (a Stillwater party), and lit by the Rime Crozier
-//   26 performance on the Frost Road, measured like 11 (the M5 gate: p95 frame JS 16 ms, 40 drawImage)
+//   26 performance on the Frost Road, measured like 11 (the M5 gate: p95 frame JS 16 ms, 40 drawImage), and the same
+//      gate on a painted map (the Old Bridge, drawn at twice the canvas density)
 //   27 the Stormwatch board in the Journal (Captain Ysolde's bounties); the third council's title card and end
 //      card, "The Ironspire is yours", the Blackwater line, naming the Gloomfen Marsh (360 and 1280 wide)
 // Screenshots use the real fonts when tools/e2e-flow.mjs has cached them (<tmp>/aethermoor-font-cache).
@@ -1681,6 +1682,43 @@ async function run(V) {
       check(Math.max(dMax, sMax) <= 40, `${P} 26: drawImage per frame ${Math.max(dMax, sMax)} <= 40`);
       await shot('frost-road');
     } catch (e) { check(false, `${P} 26: ${e.message.split('\n')[0]}`); }
+    // a painted map (M5 spec A11) draws its chunks at twice the canvas density: the same gate, walking the Old
+    // Bridge's road north and south across the view
+    try {
+      const OB = MAPS['old-bridge'], from = OB.anchors['from-keep'];
+      await setup({ patch: combine(noIntro, council2, levelUp.replace(/LVL/g, '16')) });
+      await teleport(OB.id, from[0], from[1], 'n');
+      await closeOverlays();
+      await page.waitForFunction(() => window.__world.state().painted, null, { timeout: 8000 });
+      await W(() => window.__world.grace(100000));
+      const cdp = await context.newCDPSession(page);
+      await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+      await page.waitForTimeout(400);
+      await W(() => { window.__world.resetPerf(); window.__drawSamples = []; window.__sampling = true; });
+      const work = [], draws = [];
+      let frames = 0, nearest = from[1], legs = 0;
+      const t0 = Date.now();
+      while (Date.now() - t0 < 10000) {
+        await hold(legs % 6 < 3 ? 'n' : 's', 1150);
+        legs++;
+        if (await page.$('.ov')) await closeOverlays();
+        const p = await W(() => (window.__world ? window.__world.perf() : null));
+        if (p) { work.push(...p.work.filter(v => v > 0)); draws.push(...p.draws); frames += p.frames; await W(() => window.__world.resetPerf()); }
+        const s = await state();
+        if (s) nearest = Math.min(nearest, s.y);
+      }
+      await W(() => { window.__sampling = false; });
+      await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+      const samples = await W(() => window.__drawSamples);
+      const pct = (arr, q) => { if (!arr.length) return 0; const a = [...arr].sort((x, y) => x - y); return a[Math.min(a.length - 1, Math.floor(a.length * q))]; };
+      const p95 = pct(work, 0.95), p50 = pct(work, 0.5), dMax = Math.max(0, ...draws, ...samples);
+      const line = `${P} 26: the Old Bridge (painted), 4x throttle, ${frames} frames in 10 s, walked up to y=${nearest}: frame JS p50 ${p50.toFixed(2)} ms, p95 ${p95.toFixed(2)} ms; drawImage per frame p95 ${pct(draws, 0.95)}, max ${dMax}`;
+      check(frames >= 100 && nearest <= from[1] - 8, `${P} 26: the walk crossed the Old Bridge (${frames} frames measured, up to y=${nearest})`);
+      perfLines.push(line);
+      console.log('  PERF', line);
+      check(p95 <= 16, `${P} 26: painted map p95 frame time ${p95.toFixed(2)} ms <= 16 ms`);
+      check(dMax <= 40, `${P} 26: painted map drawImage per frame ${dMax} <= 40`);
+    } catch (e) { check(false, `${P} 26 (painted): ${e.message.split('\n')[0]}`); }
   }
 
   // ================= 27. the Stormwatch board; the third council's card ===========================

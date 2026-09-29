@@ -280,7 +280,8 @@ export const DIALOGUE = deepFreeze({
   // M5: after the second council the east postern is open, and Isolde points the way through it
   'isolde-next': {
     lines: [
-      ['isolde', 'The east postern is open. The monks of Peak\'s Veil dug the pass out, and they know the road to Ironhold.'],
+      ['isolde', 'The east postern is open. The old East Road runs from it through the woods to the Rockslide Pass.'],
+      ['isolde', 'The monks of Peak\'s Veil dug the pass out, and they know the road to Ironhold.'],
       ['isolde', 'Harrow\'s smoke is on those peaks, {warden}. Bring me the Ironspire. And bring me Harrow, if he\'ll come.'],
     ],
     do: [{ set: 'heard-next' }],
