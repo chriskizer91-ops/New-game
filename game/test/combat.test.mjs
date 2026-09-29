@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveAttack, dealDamage, addStatus, applyGrip, damageMult, aspectMult, statusOf } from '../src/rules/combat.js';
+import { resolveAttack, dealDamage, addStatus, applyGrip, damageMult, aspectMult, statusOf, applyEffect } from '../src/rules/combat.js';
+import { FOES } from '../src/data/foes.js';
+import { createRng } from '../src/core/rng.js';
 import { resolveMoveId } from '../src/rules/ai.js';
 import { unitDelay } from '../src/rules/battle.js';
 import { battleWith, scriptedRng, B } from './helpers.mjs';
@@ -92,6 +94,39 @@ test('aspect wheel and armour chart multiply together', () => {
   assert.equal(damageMult(stag, 'blight', 'blight'), 0.5);
   // Hearthbrand gives its bearer 20% ember resistance.
   assert.equal(damageMult(s.units.warden, 'ember', 'ember'), 0.8);
+});
+
+test('a foe named weak to an aspect is weak to it even where the wheel would halve it (M5 spec §3.5); no earlier foe moves', () => {
+  const anvil = { side: 'foe', aspect: 'ember', weak: ['frost'], armor: 'none' };
+  assert.equal(aspectMult('frost', 'ember'), 0.5, 'the wheel halves frost against ember');
+  assert.equal(damageMult(anvil, 'frost', 'frost'), 1.5, 'a frost spell');
+  assert.equal(damageMult(anvil, 'slash', 'frost'), 1.5, 'a frost-edged blade');
+  assert.equal(damageMult({ ...anvil, weak: [] }, 'frost', 'frost'), 0.5, 'without the entry, the wheel as before');
+  assert.equal(damageMult({ ...anvil, weak: ['frost'], resist: ['frost'] }, 'frost', 'frost'), 0.75, 'a resist still halves it');
+  // the rule moves no foe of M2-M4: none is named weak to an aspect the wheel halves against it
+  const moved = [];
+  for (const [id, fam] of Object.entries(FOES)) {
+    for (const v of [fam, ...Object.values(fam.variants || {}).map(x => ({ ...fam, ...x }))]) {
+      for (const a of v.weak || []) if (aspectMult(a, v.aspect) < 1) moved.push(`${id}:${a}`);
+    }
+  }
+  assert.deepEqual([...new Set(moved)], ['mother-anvil:frost']);
+});
+
+test('a summon that names a variant brings that variant (M5 spec §3.5: the Rime-Abbot calls the choir)', () => {
+  const s = structuredClone(battleWith([{ family: 'rime-wraith', level: 9 }], { seed: 3 }));
+  const b = B(s, createRng(5));
+  const caller = s.units.f1;
+  applyEffect(b, caller, null, { type: 'summon', family: 'rime-wraith', variant: 'choir', count: 1, max: 2, levelDelta: -4 });
+  const called = Object.values(s.units).find(u => u.summonedBy === caller.id);
+  assert.ok(called, 'one is called');
+  assert.equal(called.variant, 'choir');
+  assert.equal(called.level, 5);
+  assert.equal(called.name, FOES['rime-wraith'].variants.choir.name || called.name);
+  // a summon without a variant is as it was
+  applyEffect(b, caller, null, { type: 'summon', family: 'rime-wraith', count: 1, max: 2 });
+  const plain = Object.values(s.units).filter(u => u.summonedBy === caller.id).find(u => u.id !== called.id);
+  assert.equal(plain.variant, null);
 });
 
 test('statuses: guarding halves, warded absorbs, chilled x3 freezes, stagger breaks a charge', () => {

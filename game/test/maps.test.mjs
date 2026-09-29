@@ -39,12 +39,12 @@ const cellsOf = e => { const [x0, y0, x1, y1] = areaOf(e), out = []; for (let y 
 const DIRS = { n: [0, -1], e: [1, 0], s: [0, 1], w: [-1, 0] };
 const entities = () => Object.values(MAPS).flatMap(m => m.entities.map(e => ({ map: m.id, e })));
 
-test('37 maps (14 in the Wilds, 10 in the Sunscorch, 11 in the Ironspire, and the reliquary\'s two Galleries); every row is w characters from the legend; entities and exits are in bounds', () => {
-  assert.equal(MAP_IDS.length, 37);
+test('43 maps (14 in the Wilds, 10 in the Sunscorch, 17 in the Ironspire with the East Road, and the reliquary\'s two Galleries); every row is w characters from the legend; entities and exits are in bounds', () => {
+  assert.equal(MAP_IDS.length, 43);
   assert.ok(MAPS['keep-gallery'], 'the Sunscorch Gallery');
   assert.ok(MAPS['keep-gallery-2'], 'the Ironspire Gallery');
   assert.equal(MAP_IDS.filter(id => MAPS[id].region === 'sunscorch').length, 10);
-  assert.equal(MAP_IDS.filter(id => MAPS[id].region === 'ironspire').length, 11);
+  assert.equal(MAP_IDS.filter(id => MAPS[id].region === 'ironspire').length, 17);
   for (const m of Object.values(MAPS)) {
     assert.equal(m.rows.length, m.h, `${m.id} height`);
     m.rows.forEach((r, y) => {
@@ -169,13 +169,13 @@ test('world tables: the critical path, leads and zones name real things', () => 
   for (const m of Object.values(MAPS)) if (m.zone) assert.ok(ZONES[m.zone], `${m.id} zone`);
 });
 
-test('world tables agree with the maps: the 24 Hearthfires, the 17 places, the regions and their sealed entries', () => {
+test('world tables agree with the maps: the 25 Hearthfires, the 17 places, the regions and their sealed entries', () => {
   const inView = ([x, y]) => x >= 0 && x <= 1200 && y >= 0 && y <= 800;
   const fires = Object.keys(ENCOUNTERS).filter(id => ENCOUNTERS[id].type === 'hearthfire');
   assert.deepEqual(Object.keys(HEARTHS).sort(), fires.sort(), 'HEARTHS covers every Hearthfire');
-  assert.equal(fires.length, 24);
+  assert.equal(fires.length, 25);
   assert.equal(fires.filter(id => ENCOUNTERS[id].region === 'sunscorch').length, 7, 'seven in the Sunscorch (M4 spec §2.5)');
-  assert.equal(fires.filter(id => ENCOUNTERS[id].region === 'ironspire').length, 7, 'seven in the Ironspire (M5 spec §2.5)');
+  assert.equal(fires.filter(id => ENCOUNTERS[id].region === 'ironspire').length, 8, 'eight in the Ironspire (M5 spec §2.5: seven, and the East Road\'s Last Camp)');
   for (const [id, h] of Object.entries(HEARTHS)) {
     const e = ENTITY_OF[id].entity;
     assert.equal(h.name, ENCOUNTERS[id].name, `${id} name`);
@@ -659,6 +659,7 @@ test('Sunscorch chests: a little silver, gems and materials by real ids, embers 
 
 const IP = IRON_PATH;
 const IRON = MAP_IDS.filter(id => MAPS[id].region === 'ironspire');
+const EAST_ROAD = ['old-bridge', 'drystone-lea', 'plankford', 'shrinewood', 'silverfall', 'last-camp'];
 const relicItem = id => ({ uid: `map-${id}`, base: id, kind: RELICS[id].kind, slot: RELICS[id].slot });
 // Thane Brundar gives his Rune-Key once Tamsin's duel is done or yielded (spec §2.2; the main quest's step)
 const giveRuneKey = g => {
@@ -686,9 +687,15 @@ function ironStage(starter, i, { keys = true } = {}) {
 test('the Ironspire opens through the Keep\'s east postern once the second council is sat, and not before', () => {
   const east = MAPS.keep.exits.find(x => x.id === 'keep-e');
   assert.deepEqual(east.gate, { flag: 'council-2-done' });
-  assert.equal(east.to, 'rockslide-pass');
+  assert.equal(east.to, 'old-bridge', 'the postern opens on the East Road');
   assert.equal(east.sealed.region, 'ironspire');
-  assert.equal(IRON.length, 11);
+  assert.equal(IRON.length, 17);
+  // the East Road: six painted maps, one after another, from the Old Bridge to the Rockslide Pass
+  for (let i = 0; i < EAST_ROAD.length; i++) {
+    const next = EAST_ROAD[i + 1] || 'rockslide-pass';
+    assert.ok(MAPS[EAST_ROAD[i]].exits.some(x => x.to === next), `${EAST_ROAD[i]} leads on to ${next}`);
+    assert.ok(MAPS[next].exits.some(x => x.to === EAST_ROAD[i]), `${next} leads back to ${EAST_ROAD[i]}`);
+  }
   const open = openHeldLocks(allKeys({ brand: true }));
   // before anyone has met Mother Wynn the Highfold is barred at both ends, so the postern is the way in
   const first = structuredClone(open);
@@ -712,10 +719,10 @@ test('the Ironspire opens through the Keep\'s east postern once the second counc
   for (const id of IRON) {
     for (const x of MAPS[id].exits) {
       assert.ok(x.to && (!x.sealed || x.gate), `${id}/${x.id} is a way through`);
-      if (MAPS[x.to].region !== 'ironspire') assert.ok((id === 'rockslide-pass' && x.to === 'keep') || (id === 'highfold' && x.to === 'fawnrest'), `${id}/${x.id} leaves the Ironspire only for the Keep or Fawnrest`);
+      if (MAPS[x.to].region !== 'ironspire') assert.ok((id === 'old-bridge' && x.to === 'keep') || (id === 'highfold' && x.to === 'fawnrest'), `${id}/${x.id} leaves the Ironspire only for the Keep or Fawnrest`);
     }
   }
-  const home = anchor('keep', 'from-rockslide');
+  const home = anchor('keep', 'from-east-road');
   assert.ok(cellsOf({ area: east.area }).some(([x, y]) => Math.abs(x - home.x) + Math.abs(y - home.y) === 1), 'the road home lands beside keep-e');
 });
 
@@ -781,7 +788,7 @@ test('after each Ironspire Brand, the re-armed fights never shut the way home fr
 });
 
 test('world tables: IRON_PATH is spec §2.2\'s route and IRON_LEADS its leads, each placed once in the Ironspire and reachable', () => {
-  assert.deepEqual([...IP], ['pass-shrine', 'rp-brigands', 'rp-rocklings', 'veil-hearth', 'is-sentinels', 'stair-cairn', 'thanes-hearth',
+  assert.deepEqual([...IP], ['er-wolves', 'er-toll', 'camp-fire', 'er-camp', 'pass-shrine', 'rp-brigands', 'rp-rocklings', 'veil-hearth', 'is-sentinels', 'stair-cairn', 'thanes-hearth',
     'tamsin-ironhold', 'id-forgeborn', 'deeps-forge', 'id-bellows', 'mother-anvil', 'stormwatch-fire',
     'fr-cutters', 'frost-cairn', 'fm-wraiths', 'fb-choir', 'rime-abbot']);
   assert.deepEqual(JSON.parse(JSON.stringify(IRON_LEADS)), { roc: ['hf-trolls', 'roc-eyrie'], horn: ['troll-cave'], smith: ['id-smith'], shrine: ['fm-shrine'] });
@@ -805,6 +812,13 @@ test('world tables: IRON_PATH is spec §2.2\'s route and IRON_LEADS its leads, e
 // fights and their modes, at least this many locks of each type, and its people. Road-first (A3): every route
 // and lead fight stands still (a block or a lair); only the zone packs roam.
 const IRON_SPEC = {
+  // the East Road (the player's six wilderness paintings): green lowland roads, so the Hearth Road's backdrop
+  'old-bridge': { biome: 'wilds', backdrop: 'hearth-road', fires: {}, fights: {}, locks: {}, npcs: [] },
+  'drystone-lea': { biome: 'wilds', backdrop: 'hearth-road', fires: {}, fights: { 'er-wolves': 'block' }, locks: {}, npcs: [] },
+  plankford: { biome: 'wilds', backdrop: 'hearth-road', fires: {}, fights: { 'er-toll': 'block' }, locks: {}, npcs: [] },
+  shrinewood: { biome: 'wilds', backdrop: 'hearth-road', fires: {}, fights: {}, locks: {}, npcs: [] },
+  silverfall: { biome: 'wilds', backdrop: 'hearth-road', fires: {}, fights: {}, locks: {}, npcs: [] },
+  'last-camp': { biome: 'wilds', backdrop: 'hearth-road', fires: { 'camp-fire': false }, fights: { 'er-camp': 'block' }, locks: {}, npcs: [] },
   'rockslide-pass': { biome: 'mountain', fires: { 'pass-shrine': false }, fights: { 'rp-brigands': 'block', 'rp-rocklings': 'block', 'rp-wolves': 'pack' }, locks: { chasm: 1 }, npcs: [] },
   'peaks-veil': { biome: 'monastery', fires: { 'veil-hearth': false }, fights: {}, locks: {}, npcs: ['wynn', 'kesh', 'novice'] },
   highfold: { biome: 'scree', fires: {}, fights: { 'hf-trolls': 'block', 'roc-eyrie': 'lair' }, locks: { chasm: 1, drift: 1 }, npcs: [] },
@@ -825,7 +839,7 @@ test('the Ironspire maps hold what spec §2.3 puts on them', () => {
     assert.equal(m.biome, want.biome, `${id} biome`);
     assert.ok(m.lore.length >= 1, `${id} has lore for the Atlas`);
     assert.ok(m.roads?.length, `${id} declares its roads (spec A3)`);
-    assert.equal(m.backdrop, id, `${id} fights on its own backdrop (spec §6.2)`);
+    assert.equal(m.backdrop, want.backdrop || id, `${id} fights on ${want.backdrop ? `the ${want.backdrop} backdrop` : 'its own backdrop'} (spec §6.2)`);
     assert.deepEqual(Object.fromEntries(of('hearthfire').map(e => [e.id, !!e.cold])), want.fires, `${id} Hearthfires`);
     assert.deepEqual(Object.fromEntries(of('encounter').map(e => [e.id, e.mode])), want.fights, `${id} fights`);
     for (const [type, n] of Object.entries(want.locks)) assert.ok(of('lock').filter(e => e.lock === type).length >= n, `${id}: ${n} ${type}`);
@@ -834,6 +848,12 @@ test('the Ironspire maps hold what spec §2.3 puts on them', () => {
   const on = (map, id) => MAPS[map].entities.find(e => e.id === id);
   // the mountain maps play the peaks track; the towns and dungeons keep theirs
   assert.deepEqual(IRON.filter(id => MAPS[id].music === 'peaks').sort(), ['frost-road', 'frostmere', 'highfold', 'iron-stair', 'rockslide-pass']);
+  assert.deepEqual(IRON.filter(id => MAPS[id].music === 'road').sort(), [...EAST_ROAD].sort(), 'the East Road plays the road');
+  // the East Road is painted: every map of it has its painting, and a painted stone or pool draws no sprite
+  for (const id of EAST_ROAD) {
+    assert.equal(MAPS[id].overTiles, false, `${id} is traced from its painting`);
+    for (const e of MAPS[id].entities) if (e.look === 'painted') assert.ok(e.kind === 'sign' && e.name && e.text, `${id}/${e.id}: a painted thing to look at has a name and words`);
+  }
   // the dark places (M3's soft darkness): the Deeps and Beneath Frostmere; underground, no Hearthfire travel
   assert.deepEqual(IRON.filter(id => MAPS[id].dark).sort(), ['frostmere-below', 'ironhold-deeps']);
   assert.deepEqual(IRON.filter(id => !MAPS[id].travel).sort(), ['frostmere-below', 'harrows-forge', 'ironhold-deeps']);

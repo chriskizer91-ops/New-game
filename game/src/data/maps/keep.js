@@ -3,8 +3,8 @@
 // (torches on both towers) opens onto the causeway to the Hearth Road; the Great Hall's facade runs
 // along the top, so you walk round it to reach the gate. Three posterns open onto piers and causeway
 // ends on the island's edge, each with a gate guard: south-east is the way into the Sunscorch, gated
-// on act1-complete (M4 spec §2.4); east is the way up the Rockslide Pass into the Ironspire, gated on
-// council-2-done (M5 spec §2.4); south-west (Gloomfen) stays sealed. The yard: the old well (NW), the
+// on act1-complete (M4 spec §2.4); east is the way into the Ironspire (the East Road's Old Bridge, then the Rockslide
+// Pass), gated on council-2-done (M5 spec §2.4); south-west (Gloomfen) stays sealed. The yard: the old well (NW), the
 // barred armory (NE), the refugee tents along the west wall with the Keep's forge among them (Hilda
 // works it after the second Brand), the courtyard tree and its flower bed, Marta's stall (E), and the
 // barracks (SE).
@@ -60,12 +60,12 @@ export default deepFreeze({
     { id: 'keep-hall-door', area: [15, 4, 15, 4], to: 'keep-hall', anchor: 'from-court' },
     { id: 'keep-n', area: [14, 0, 16, 0], to: 'hearth-road', anchor: 'from-keep' },
     // M5: the way into the Ironspire, once the second council has sat (spec §2.4)
-    { id: 'keep-e', area: [29, 11, 29, 12], to: 'rockslide-pass', anchor: 'from-keep', gate: { flag: 'council-2-done' }, sealed: { region: 'ironspire', text: 'Rockslide on the pass. Stormwatch hasn\'t sent a writ since spring.', hint: 'The postern opens once the Council has sat a second time.' } },
+    { id: 'keep-e', area: [29, 11, 29, 12], to: 'old-bridge', anchor: 'from-keep', gate: { flag: 'council-2-done' }, sealed: { region: 'ironspire', text: 'Rockslide on the pass. Stormwatch hasn\'t sent a writ since spring.', hint: 'The postern opens once the Council has sat a second time.' } },
     // M4: the way into the Sunscorch, once Act I is done (spec §2.4)
     { id: 'keep-se', area: [22, 23, 23, 23], to: 'sun-road', anchor: 'from-keep', gate: { flag: 'act1-complete' }, sealed: { region: 'sunscorch', text: 'The Sandspire caravans stopped a month ago, and the dune-glass walls are still too hot to cross.', hint: 'The gate opens once both Brands of the Wilds are yours.' } },
     { id: 'keep-sw', area: [6, 23, 7, 23], sealed: { region: 'gloomfen', text: 'Blackwater\'s up over the causeway. Nobody\'s ferrying.' } },
   ],
-  anchors: { 'from-hall': [15, 6, 's'], 'from-road': [15, 2, 's'], 'from-sun-road': [22, 22, 'n'], 'from-rockslide': [28, 11, 'w'] },
+  anchors: { 'from-hall': [15, 6, 's'], 'from-road': [15, 2, 's'], 'from-sun-road': [22, 22, 'n'], 'from-east-road': [28, 11, 'w'] },
   roads: [{ from: 'from-hall', to: 'keep-n', gates: ['keep-n-gate'] }],
   roam: null,
 });

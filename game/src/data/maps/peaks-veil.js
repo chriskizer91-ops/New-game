@@ -51,7 +51,9 @@ export default deepFreeze({
     { id: 'novice', kind: 'npc', npc: 'novice', at: [5, 6], face: 's' },
     // the bell rope in the tower's arch: the quest's `use` entity (it opens DIALOGUE['pv-bell-rope'], where the
     // bell is rung once the Drowned Abbess is quiet); `look` and `flag` say how the view should draw it
-    { id: 'pv-bell-rope', kind: 'bellframe', at: [3, 6], look: 'bell-rope', flag: 'bell-rung-veil' },
+    { id: 'pv-bell-rope', kind: 'bellframe', at: [3, 6], look: 'bell-rope', flag: 'bell-rung-veil', if: { not: { flag: 'bell-rung-veil' } } },
+    // once rung, the same rope hangs loose (its own node: DIALOGUE['pv-bell-rope-rung'])
+    { id: 'pv-bell-rope-rung', kind: 'bellframe', at: [3, 6], look: 'bell-rope', flag: 'bell-rung-veil', if: { flag: 'bell-rung-veil' } },
     { id: 'pv-gate-plaque', kind: 'sign', at: [15, 20], look: 'plaque', text: 'PEAK\'S VEIL. Leave your weapons at the gate, and your voices. (Nobody has ever left a weapon.)' },
     { id: 'pv-lookout', kind: 'lookout', at: [24, 20] },
   ],

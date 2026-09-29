@@ -66,6 +66,8 @@ export const HEARTHS = deepFreeze({
   'well-fire': H('miragewell', 10, 13, [1010, 540], 'The Well Fire'),
   'last-watchfire': H('scorchgate', 20, 13, [930, 660], 'The Last Watchfire', { cold: true, face: 's' }),
   // M5 (spec §2.5): the stands of the laid-out Ironspire maps (M5 P2). Each fire faces north from its stand.
+  // the East Road (the lead's painted maps before the pass): the Last Camp Fire in the deserters' stone ring
+  'camp-fire': H('last-camp', 13, 18, [616, 338], 'The Last Camp Fire'),
   'pass-shrine': H('rockslide-pass', 19, 41, [650, 330], 'The Pass Shrine'),
   'veil-hearth': H('peaks-veil', 14, 12, [750, 240], 'The Cloister Fire'),
   'stair-cairn': H('iron-stair', 7, 25, [800, 200], 'The Stair Cairn', { cold: true }),
@@ -115,7 +117,7 @@ export const SUN_LEADS = deepFreeze({
 });
 
 // M5: the Ironspire critical path (spec §2.2), road-first: the Brand of Iron, then the Brand of Frost.
-export const IRON_PATH = Object.freeze(['pass-shrine', 'rp-brigands', 'rp-rocklings', 'veil-hearth', 'is-sentinels', 'stair-cairn', 'thanes-hearth',
+export const IRON_PATH = Object.freeze(['er-wolves', 'er-toll', 'camp-fire', 'er-camp', 'pass-shrine', 'rp-brigands', 'rp-rocklings', 'veil-hearth', 'is-sentinels', 'stair-cairn', 'thanes-hearth',
   'tamsin-ironhold', 'id-forgeborn', 'deeps-forge', 'id-bellows', 'mother-anvil', 'stormwatch-fire',
   'fr-cutters', 'frost-cairn', 'fm-wraiths', 'fb-choir', 'rime-abbot']);
 export const IRON_LEADS = deepFreeze({

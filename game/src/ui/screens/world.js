@@ -368,7 +368,10 @@ export function mount(root, ctx, params = {}) {
         if (e.lock) return { a: 'Open', p: keyLine(e.lock), label: 'A locked chest', sub: LOCKS[e.lock]?.name };
         return { a: 'Open', p: 'A · Open the chest', label: 'Open the chest' };
       }
-      case 'sign': return { a: 'Read', p: 'A · Read the sign', label: 'Read the sign' };
+      case 'sign':
+        // M5: a thing the painting shows (a carved stone, a pool) is looked at, not read
+        if (e.look === 'painted') return { a: 'Look', p: `A · ${e.name || 'Look'}`, label: e.name || 'Look' };
+        return { a: 'Read', p: 'A · Read the sign', label: 'Read the sign' };
       case 'board': return { a: 'Read', p: e.opens === 'ladder' ? 'A · Read the Ladder' : 'A · Read the bounty board', label: e.opens === 'ladder' ? 'The Ladder' : 'The bounty board' };
       case 'table': return { a: 'Look', p: 'A · The war table: the Atlas', label: 'The war table' };
       case 'pedestal': {
@@ -376,7 +379,9 @@ export function mount(root, ctx, params = {}) {
         return { a: 'Look', p: `A · ${seen ? r?.name : 'An empty pedestal'}`, label: seen ? `Pedestal: ${r?.name}` : 'An empty pedestal' };
       }
       case 'lookout': return { a: 'Look', p: 'A · Look out', label: 'The lookout' };
-      case 'bellframe': return { a: check(game, { power: 'dawnbell' }) ? 'Ring' : 'Look', p: 'A · The bell-frame', label: 'The bell-frame' };
+      case 'bellframe':
+        if (e.look === 'bell-rope') return { a: 'Look', p: 'A · The bell rope', label: 'The bell rope' }; // M5: Peak's Veil
+        return { a: check(game, { power: 'dawnbell' }) ? 'Ring' : 'Look', p: 'A · The bell-frame', label: 'The bell-frame' };
       case 'hearthfire': {
         const H = HEARTHS[e.id];
         if (e.state === 'cold') return { a: 'Light', p: keyLine('cold-hearth'), label: `${H?.name || 'Hearthfire'} (cold)` };
@@ -1060,7 +1065,7 @@ export function mount(root, ctx, params = {}) {
       state: () => ({
         map: walk.map, x: walk.x, y: walk.y, face: walk.face, tick: walk.tick, grace: walk.grace, visit: walk.visit,
         moving: M.moving, lock, transition: M.transition, steps: M.steps, stepMs: M.dur, roamers: (walk.roamers || []).map(r => ({ id: r.id, x: r.x, y: r.y, mood: r.mood, enc: r.enc || null })),
-        scale: view.size.s, view: [view.size.w, view.size.h], camera: [view.camera.x, view.camera.y], dark: !!view.map?.darkKey,
+        scale: view.size.s, view: [view.size.w, view.size.h], camera: [view.camera.x, view.camera.y], dark: !!view.map?.darkKey, painted: !!view.map?.painted,
         a: controls.btnA.getAttribute('aria-label'), prompt: controls.prompt.textContent, deck: root.classList.contains('deck-on'),
       }),
       teleport(map, x, y, face = 's') {

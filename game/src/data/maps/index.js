@@ -51,6 +51,13 @@ import scorchgateVaults from './scorchgate-vaults.js';
 import keepGallery from './keep-gallery.js';
 // M5: the Ironspire Peaks (spec §2.1) and the reliquary's third room
 import rockslidePass from './rockslide-pass.js';
+// M5, the East Road (the lead's six painted maps between the Keep's east postern and the Rockslide Pass)
+import oldBridge from './old-bridge.js';
+import drystoneLea from './drystone-lea.js';
+import plankford from './plankford.js';
+import shrinewood from './shrinewood.js';
+import silverfall from './silverfall.js';
+import lastCamp from './last-camp.js';
 import peaksVeil from './peaks-veil.js';
 import highfold from './highfold.js';
 import ironStair from './iron-stair.js';
@@ -65,7 +72,7 @@ import keepGallery2 from './keep-gallery-2.js';
 
 const LIST = [keep, keepHall, hearthRoad, thornhollow, thornway, briarmawDen, mossfall, mosswatch1, mosswatch2, hindwood, fawnrest, eldergrove, heartroot1, heartroot2,
   sunRoad, sandspire, dustTrail, dusthaven, deepShaft1, deepShaft2, glassFlats, miragewell, scorchgate, scorchgateVaults, keepGallery,
-  rockslidePass, peaksVeil, highfold, ironStair, ironhold, ironholdDeeps, harrowsForge, stormwatch, frostRoad, frostmere, frostmereBelow, keepGallery2];
+  oldBridge, drystoneLea, plankford, shrinewood, silverfall, lastCamp, rockslidePass, peaksVeil, highfold, ironStair, ironhold, ironholdDeeps, harrowsForge, stormwatch, frostRoad, frostmere, frostmereBelow, keepGallery2];
 
 export const MAPS = Object.freeze(Object.fromEntries(LIST.map(m => [m.id, m])));
 export const MAP_IDS = Object.freeze(LIST.map(m => m.id));

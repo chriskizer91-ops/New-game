@@ -12,10 +12,11 @@
 // is exact. --batch takes every map in refs.json whose paintings are all in the folder (named as
 // refs.json says: map-<id>.png, or map-<id>-a.png, -b.png for a long road's overlapping panels); panels
 // are joined across the middle of their overlap, blended over at most three tiles.
-// Each crop is resampled to 16 px per tile (the game's pixel grid) by area averaging in linear light,
-// sharpened a little (--sharpen, default 0.6) so it reads as pixel art, and stored as WebP (--quality,
-// default 0.85). --grid also writes tools/shots/paint/<map>-grid.png: the fitted painting at 3x with the
-// solid tiles tinted red, to check that the painting's walls, trees and water sit on the map's.
+// Each crop is resampled to --density x 16 px per tile (default 2: 32 px per tile, the density the world
+// view draws a painted map at, ui/world/view.js PAINT_DENSITY) by area averaging in linear light,
+// sharpened a little (--sharpen, default 0.35) and stored as WebP (--quality, default 0.8). --grid also
+// writes tools/shots/paint/<map>-grid.png: the fitted painting with the solid tiles tinted red and the
+// overhang tiles blue, to check that the painting's walls, trees and water sit on the map's.
 // --cut takes a cut-scene still instead: the whole picture, resampled the same way to --width px across
 // (default 768), written as src/ui/assets/cuts/<name>.js for the screens that show it.
 // Playwright and Chromium as in tools/gallery.mjs.
@@ -33,8 +34,10 @@ const TILE = 16;
 const USAGE = 'usage: node tools/paint-import.mjs (--map=<id> --src=<painting>[,<panel b>...] | --batch=<dir> --refs=<refs.json> | --cut=<name> --src=<still>) [--refs=<refs.json>] [--sharpen=0.6] [--quality=0.85] [--grid] [--width=768]';
 const { MAPS } = await import(pathToFileURL(path.join(root, 'src/data/maps/index.js')).href);
 const { tileOf } = await import(pathToFileURL(path.join(root, 'src/data/tiles.js')).href);
-const sharpen = args.sharpen === undefined ? 0.6 : +args.sharpen;
-const quality = args.quality === undefined ? 0.85 : +args.quality;
+const sharpen = args.sharpen === undefined ? 0.35 : +args.sharpen;
+const quality = args.quality === undefined ? 0.8 : +args.quality;
+const density = args.density === undefined ? 2 : +args.density;
+if (!(density >= 1 && density <= 4 && Number.isInteger(density))) { console.error('--density is 1 to 4'); process.exit(2); }
 const MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp' };
 const dataUrl = async file => {
   const mime = MIME[path.extname(file).slice(1).toLowerCase()];
@@ -80,7 +83,7 @@ page.on('pageerror', e => console.log('page exception:', e.message));
 await page.setContent('<!doctype html><html><body></body></html>');
 
 // In the page: fit one job's panels to the map (or a still to its width) and encode it.
-async function fit({ panels, mw, mh, sharpen, quality, TILE, solid, grid, width }) {
+async function fit({ panels, mw, mh, sharpen, quality, TILE, solid, over, grid, width }) {
   const toLin = new Float32Array(256);
   for (let i = 0; i < 256; i++) { const v = i / 255; toLin[i] = v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
   const toS = v => { v = Math.max(0, Math.min(1, v)); return Math.round(255 * (v <= 0.0031308 ? v * 12.92 : 1.055 * Math.pow(v, 1 / 2.4) - 0.055)); };
@@ -208,13 +211,15 @@ async function fit({ panels, mw, mh, sharpen, quality, TILE, solid, grid, width 
   const webp = oc.toDataURL('image/webp', quality);
   let gridPng = null;
   if (grid) {
-    const k = 3, gc = document.createElement('canvas');
+    const k = Math.max(1, Math.round(48 / TILE)), gc = document.createElement('canvas');
     gc.width = OW * k; gc.height = OH * k;
     const gg = gc.getContext('2d');
     gg.imageSmoothingEnabled = false;
     gg.drawImage(oc, 0, 0, OW * k, OH * k);
     gg.fillStyle = 'rgba(255, 30, 30, 0.33)';
     for (let y = 0; y < mh; y++) for (let x = 0; x < mw; x++) if (solid[y][x]) gg.fillRect(x * TILE * k, y * TILE * k, TILE * k, TILE * k);
+    gg.fillStyle = 'rgba(40, 90, 255, 0.35)';
+    for (const [x0, y0, x1, y1] of over) gg.fillRect(x0 * TILE * k, y0 * TILE * k, (x1 - x0 + 1) * TILE * k, (y1 - y0 + 1) * TILE * k);
     gg.strokeStyle = 'rgba(255, 255, 255, 0.18)';
     gg.lineWidth = 1;
     for (let x = 0; x <= mw; x++) { gg.beginPath(); gg.moveTo(x * TILE * k + 0.5, 0); gg.lineTo(x * TILE * k + 0.5, OH * k); gg.stroke(); }
@@ -243,7 +248,8 @@ for (const job of jobs) {
   const panels = [];
   for (const p of job.panels) panels.push({ data: await dataUrl(p.file), rect: p.rect || null, pad: p.pad || null });
   const solid = map ? map.rows.map(r => [...r].map(ch => (tileOf(ch).solid ? 1 : 0))) : [];
-  const res = await page.evaluate(fit, { panels, mw: map?.w || 0, mh: map?.h || 0, sharpen, quality, TILE, solid, grid: !!args.grid && !job.cut, width: job.cut ? +(args.width || 768) : 0 });
+  const res = await page.evaluate(fit, { panels, mw: map?.w || 0, mh: map?.h || 0, sharpen, quality, TILE: TILE * density, solid, over: map?.overhang || [],
+    grid: !!args.grid && !job.cut, width: job.cut ? +(args.width || 768) : 0 });
   const bytes = Buffer.from(res.webp.split(',')[1], 'base64').length;
   const from = job.panels.map(p => rel(p.file)).join(' + ');
   if (job.cut) {
@@ -261,7 +267,7 @@ for (const job of jobs) {
   const how = res.info.map(i => `${i.IW}x${i.IH}, ${i.rect[2]}x${i.rect[3]} tiles from ${i.rect[0]},${i.rect[1]} padded [${i.pad.join(', ')}]`).join('; ');
   await writeFile(path.join(paintDir, `${job.id}.js`), [
     `// ${map.name}, painted (M5 spec A10). GENERATED by tools/paint-import.mjs from ${from}`,
-    `// (${how}), fitted to ${map.w}x${map.h} tiles at ${TILE} px per tile: ${kb(bytes)} of WebP at quality ${quality},`,
+    `// (${how}), fitted to ${map.w}x${map.h} tiles at ${TILE * density} px per tile: ${kb(bytes)} of WebP at quality ${quality},`,
     `// sharpen ${sharpen}. Do not edit.`,
     `export default Object.freeze({ w: ${res.OW}, h: ${res.OH}, src: '${res.webp}' });`,
     '',
@@ -277,9 +283,9 @@ await browser.close();
 // each index lists every file in its folder
 if (existsSync(paintDir)) {
   await listed(paintDir, [
-    '// The painted maps (M5 spec A10): map id -> { w, h, src }, where src is a WebP data URL at 16 px per',
-    '// tile. GENERATED by tools/paint-import.mjs (it rewrites this list); ui/world/view.js draws a map listed',
-    '// here from its painting and every other map from its tiles.',
+    '// The painted maps (M5 spec A10): map id -> { w, h, src }, where src is a WebP data URL covering the map',
+    '// at a whole number of px per art px (32 per tile). GENERATED by tools/paint-import.mjs (it rewrites this',
+    '// list); ui/world/view.js draws a map listed here from its painting and every other map from its tiles.',
   ], 'PAINTINGS');
 }
 if (existsSync(cutDir)) {

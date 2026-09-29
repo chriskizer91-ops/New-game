@@ -1,5 +1,6 @@
-// The Rockslide Pass (M5 spec §2.1, §2.3). From the Keep's east postern a causeway crosses the lake
-// (rows 55-56) to a paved landing at the foot of the mountains, where a signpost points up the pass.
+// The Rockslide Pass (M5 spec §2.1, §2.3). From the Last Camp at the end of the East Road (the Keep's east
+// postern's six painted maps) a causeway crosses a mountain tarn (rows 55-56) to a paved landing at the foot
+// of the mountains, where a signpost points up the pass.
 // The road climbs north through pines and juniper to the Pass Shrine, a way-shrine cut into the crag
 // east of the road with a coal the monks keep lit (19,40), a third of the way up. Above it lies the
 // great slide: a band of boulders heaped right across the valley (rows 27-35), through which the monks
@@ -14,14 +15,14 @@
 // they stand beside open gates and never shut the road home. The crevasse is the only way to the shelf.
 // Tiles (mountain): '.' alpine turf, ',' gravel and scree, '"' tussock grass, '=' the road, ':' the
 // landing's and the shrine's paving, 'T' pines, 't' juniper, 'o' boulders, '^' crags and cliffs,
-// 'x' the crevasse, '#' the shrine's drystone, '~' the lake, 'b' the causeway, 'H' the deserters' tent.
+// 'x' the crevasse, '#' the shrine's drystone, '~' the tarn, 'b' the causeway, 'H' the deserters' tent.
 // Format: src/data/maps/index.js. Owner: M5 P2.
 import { deepFreeze } from '../../core/freeze.js';
 
 export default deepFreeze({
   id: 'rockslide-pass', name: 'The Rockslide Pass', region: 'ironspire', biome: 'mountain', music: 'peaks',
   backdrop: 'rockslide-pass', zone: 'rockslide-pass', level: 13, travel: true, dark: false,
-  lore: [[560, 382, 0, 55], [650, 330, 19, 40], [744, 246, 12, 0]],
+  lore: [[626, 332, 0, 55], [650, 330, 19, 40], [744, 246, 12, 0]],
   w: 26, h: 60,
   rows: [
     '^^^^^^^^^^^^==^^^^^^^^^^^^', //  0
@@ -100,10 +101,10 @@ export default deepFreeze({
     { id: 'rp-rocklings', kind: 'encounter', enc: 'rp-rocklings', mode: 'block', at: [14, 14], face: 's' },
   ],
   exits: [
-    { id: 'rp-keep', area: [0, 55, 0, 56], to: 'keep', anchor: 'from-rockslide' },
+    { id: 'rp-camp', area: [0, 55, 0, 56], to: 'last-camp', anchor: 'from-pass' },
     { id: 'rp-veil', area: [12, 0, 13, 0], to: 'peaks-veil', anchor: 'from-pass' },
   ],
-  anchors: { 'from-keep': [1, 55, 'e'], 'from-veil': [12, 1, 's'] },
-  roads: [{ from: 'from-keep', to: 'rp-veil', gates: ['rp-toll-chain', 'rp-scree'] }],
+  anchors: { 'from-camp': [1, 55, 'e'], 'from-veil': [12, 1, 's'] },
+  roads: [{ from: 'from-camp', to: 'rp-veil', gates: ['rp-toll-chain', 'rp-scree'] }],
   roam: { max: 3, rects: [[3, 41, 22, 51], [3, 20, 12, 26], [3, 9, 22, 12], [3, 16, 22, 19]] },
 });

@@ -73,7 +73,8 @@ const ROADS = Object.values(MAPS).flatMap(map => (map.roads || []).map((road, i)
 
 test('the road maps of the spec each have a road', () => {
   for (const id of ['hearth-road', 'thornway', 'heartroot-1', 'dust-trail', 'deep-shaft-1', 'glass-flats', 'scorchgate', 'mossfall', 'hindwood',
-    // M5: every Ironspire map (spec A3)
+    // M5: every Ironspire map (spec A3), the painted East Road first
+    'old-bridge', 'drystone-lea', 'plankford', 'shrinewood', 'silverfall', 'last-camp',
     'rockslide-pass', 'peaks-veil', 'highfold', 'iron-stair', 'ironhold', 'ironhold-deeps', 'harrows-forge', 'stormwatch', 'frost-road', 'frostmere', 'frostmere-below']) {
     assert.ok(MAPS[id].roads?.length, `${id} has no roads`);
   }

@@ -53,7 +53,7 @@ export default deepFreeze({
   entities: [
     { id: 'fr-cairn-west', kind: 'sign', at: [10, 11], look: 'stone', text: 'A road-cairn of ice-glazed stones, taller than a man. Frozen into its top, a Stormwatch pennant, torn to the staff.' },
     // M4.5 road gate (spec A3, §2.2): the Tallymen's sledges across the road in the Saw-Cut, the gang in the notch beside them
-    { id: 'fr-saw-barricade', kind: 'gate', area: [20, 12, 20, 13], look: 'barred-gate', open: { beaten: 'fr-cutters' }, guard: 'fr-cutters', text: 'Sledges lashed together across the road where it goes through the ridge, stacked with blocks of lake-ice. A Tallyman sign nailed to them: ICE ROAD. TOLL IN IRON.' },
+    { id: 'fr-saw-barricade', kind: 'gate', area: [20, 12, 20, 13], look: 'ice-blocks', open: { beaten: 'fr-cutters' }, guard: 'fr-cutters', text: 'Sledges lashed together across the road where it goes through the ridge, stacked with blocks of lake-ice. A Tallyman sign nailed to them: ICE ROAD. TOLL IN IRON.' },
     { id: 'fr-cutters', kind: 'encounter', enc: 'fr-cutters', mode: 'block', at: [20, 14], face: 'w' },
     { id: 'frost-cairn', kind: 'hearthfire', at: [28, 11], stand: [28, 12, 'n'], cold: true },
     { id: 'fr-drift', kind: 'lock', lock: 'drift', area: [31, 3, 42, 6] },

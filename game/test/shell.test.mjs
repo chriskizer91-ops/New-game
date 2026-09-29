@@ -121,7 +121,7 @@ test('Atlas markers never overlap: each region\'s Hearthfires in its own view (M
   const inRegion = region => Object.values(HEARTHS).filter(h => MAPS[h.map].region === region);
   const VIEW_FIRES = { wilds: inRegion('verdant'), sunscorch: inRegion('sunscorch'), ironspire: inRegion('ironspire'), realm: Object.values(HEARTHS) };
   assert.equal(VIEW_FIRES.sunscorch.length, 7, 'the Sunscorch view has the seven Sunscorch fires');
-  assert.equal(VIEW_FIRES.ironspire.length, 7, 'M5: the Ironspire view has the seven Ironspire fires');
+  assert.equal(VIEW_FIRES.ironspire.length, 8, 'M5: the Ironspire view has the eight Ironspire fires (the East Road\'s Last Camp among them)');
   for (const [W, H] of [[318, 212], [866, 577]]) {
     for (const view of ['wilds', 'sunscorch', 'ironspire', 'realm']) {
       const run = () => relax(VIEW_FIRES[view].map(h => { const [x0, y0] = toFrame(VIEWS[view], h.lore, W, H); return { x0, y0 }; }), { W, H, r: 22 });

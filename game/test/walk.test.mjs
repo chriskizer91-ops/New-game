@@ -164,7 +164,8 @@ function makeBot(starter, { game = null, path = CRITICAL_PATH, start = null } = 
   }
 
   function goToMap(target) {
-    for (let hops = 0; hops < 12 && s.walk.map !== target; hops++) {
+    // a loop guard, not a limit on the world: M5's way home from under Frostmere crosses 15 maps
+    for (let hops = 0; hops < 24 && s.walk.map !== target; hops++) {
       const ex = nextExit(s.walk.map, target);
       const tiles = [];
       for (let y = ex.area[1]; y <= ex.area[3]; y++) for (let x = ex.area[0]; x <= ex.area[2]; x++) tiles.push([x, y]);

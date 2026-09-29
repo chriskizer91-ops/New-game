@@ -1085,6 +1085,7 @@ export const HEARTH_LOOKS = Object.freeze({
   'hindwood-cairn': 'cairn', 'fawnrest-stone': 'stone', 'eldergrove-hearth': 'ring', 'last-green-coal': 'coal',
   waystone: 'sandring', 'spire-hearth': 'sunbrazier', 'dust-cairn': 'sandcairn', pithead: 'brazier', 'shaft-lamp': 'lamp', 'well-fire': 'sandring', 'last-watchfire': 'watch',
   'pass-shrine': 'shrine', 'veil-hearth': 'cloister', 'stair-cairn': 'snowcairn', 'thanes-hearth': 'dwarfhall', 'deeps-forge': 'furnace', 'stormwatch-fire': 'beacon', 'frost-cairn': 'snowcairn',
+  'camp-fire': 'painted', // M5: the Last Camp's ring of stones is in the map's painting; the sprite is only its fire
 });
 const OBJ_SIZE = { gate: [16, 24], crownwall: [16, 24], thornwall: [16, 24], pedestal: [16, 24], board: [16, 24], bellframe: [16, 24], lookout: [16, 32], door: [16, 24], 'barred-gate': [16, 24] };
 Object.assign(OBJ_SIZE, { 'dune-glass': [16, 24], 'vault-seal': [16, 24], 'glass-spire': [16, 24], 'vault-door': [16, 24] });
@@ -1101,6 +1102,11 @@ const flame = (F, cx, base, f, s = 1, mat = 'ember') => {
 };
 const logs = (F, cx, y, charred) => F.add({ mat: charred ? 'rot' : 'wood', prof: 'round', bw: .8, grp: 'logs', shapes: [C([cx - 4, y + .6], [cx + 3.6, y - 1], .95), C([cx - 3.6, y - 1], [cx + 4, y + .6], .95)] });
 function hearthParts(F, look, lit, f) {
+  if (look === 'painted') { // M5: the fire alone, in the middle of a painted ring a tile above the entity (16 x 32)
+    logs(F, 8, 10.4, !lit);
+    if (lit) flame(F, 8, 9.8, f, 1.1, 'ember'); else F.add({ mat: 'clothGrey', prof: 'round', bw: .8, grp: 'ash', shapes: [E([8, 11], 3.8, 1.3)] });
+    return;
+  }
   if (look === 'hall') {
     F.add({ mat: 'granite', prof: 'bevel', bw: 1.2, grp: 'mantel', shapes: [P([[.5, 23.5], [.5, 6], [2.5, 3.2], [8, 1.8], [13.5, 3.2], [15.5, 6], [15.5, 23.5]])], cuts: [P([[3.4, 23.8], [3.4, 11], [5, 8.4], [8, 7.6], [11, 8.4], [12.6, 11], [12.6, 23.8]])], tex: q => (q.y % 4 === 0 ? -1 : 0) });
     F.add({ mat: 'dark', prof: 'flat', grp: 'back', shapes: [P([[3.4, 23.5], [3.4, 11], [5, 8.4], [8, 7.6], [11, 8.4], [12.6, 11], [12.6, 23.5]])] });
@@ -1629,7 +1635,7 @@ export function objectSprite(kind, state = null, { frame = 0, relic = null, id =
   const rk = relic && typeof relic === 'object' ? `${relic.uid || relic.base || relic.id || '?'}:${relic.temper || 0}` : relic || '';
   return objCache.get(`${kind}|${st}|${f}|${hl}|${rk}`, () => {
     const deep = kind === 'chasm' && hl !== 'floes'; // the rock chasm reaches over the void's lip above and its far face below
-    const [W, Hh] = kind === 'hearth' && TALL_HEARTH.has(hl) ? [16, 24] : deep ? [16, 25] : OBJ_STATE_SIZE[kind + ':' + st] || OBJ_SIZE[kind] || [16, 16];
+    const [W, Hh] = kind === 'hearth' && TALL_HEARTH.has(hl) ? [16, 24] : kind === 'hearth' && hl === 'painted' ? [16, 32] : deep ? [16, 25] : OBJ_STATE_SIZE[kind + ':' + st] || OBJ_SIZE[kind] || [16, 16];
     const F = new Forge(W, Hh);
     const r = objectParts(F, kind, st, f, { look: hl, id }, W, Hh);
     const R = F.raster();

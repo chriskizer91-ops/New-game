@@ -357,3 +357,192 @@ test('Sunscorch holders: each Art needs its relic; pried loose, the Art falls ba
     for (const id of arts) assert.equal(resolveMoveId(s, f, id), moves[id].fallback, `${variant}: ${id} falls back`);
   }
 });
+
+// ---- M5: the Ironspire's Champions and holders, and M4's moves made exact (spec §2.4, §3.2, §3.5; P4) ----------
+
+// Keep every hero standing (the helpers' party is level 1): tests of what a foe does, not of who survives it.
+const sturdy = s => { for (const id of s.order) if (s.units[id].side === 'hero') { s.units[id].hp = s.units[id].maxHp = 999; } return s; };
+// Resolve one effect of a foe's move at a hero with a scripted RNG: `face` for the first d20, then every other roll `rest`.
+async function strike(s, foeId, heroId, eff, face, rest) {
+  const { applyEffect } = await import('../src/rules/combat.js');
+  const { scriptedRng, B } = await import('./helpers.mjs');
+  const b = B(s, scriptedRng([face], rest));
+  applyEffect(b, s.units[foeId], s.units[heroId], eff);
+  return b.ev;
+}
+
+test('Kharzul\'s Burrow is exact (spec §2.4): it goes under the floor where nothing can reach it, then erupts at its next turn', async () => {
+  const { statusOf } = await import('../src/rules/combat.js');
+  let s = sturdy(structuredClone(battleWith([{ family: 'kharzul', level: 14 }], { seed: 12 })));
+  s.units.f1.intent = { ...s.units.f1.intent, move: 'burrow', name: 'Burrow', target: 'f1', charging: false };
+  for (let i = 0; i < 40 && current(s) !== 'f1'; i++) s = act(s, autoCommand(s, current(s))).state;
+  const r = foeTurn(s);
+  s = r.state;
+  assert.ok(statusOf(s.units.f1, 'burrowed'), 'under the floor');
+  assert.equal(s.units.f1.intent.move, 'erupt', 'its next intent is forced: the eruption');
+  assert.equal(s.units.f1.intent.charging, true);
+  const hero = current(s);
+  assert.equal(s.units[hero].side, 'hero');
+  assert.deepEqual(targets(s, { actor: hero, targeting: 'enemy' }), [], 'nothing can target it');
+  assert.equal(autoCommand(s, hero).type, 'defend', 'Auto braces for what comes up');
+  const events = [];
+  for (let i = 0; i < 40 && current(s); i++) {
+    const id = current(s);
+    const step = s.units[id].side === 'hero' ? act(s, autoCommand(s, id)) : foeTurn(s);
+    events.push(...step.events);
+    s = step.state;
+    if (events.some(e => e.t === 'move' && e.actor === 'f1')) break;
+  }
+  const up = events.findIndex(e => e.t === 'status' && e.target === 'f1' && e.status === 'burrowed' && e.op === 'remove');
+  const erupt = events.findIndex(e => e.t === 'move' && e.actor === 'f1' && e.move === 'erupt');
+  assert.ok(up >= 0 && erupt > up, 'it surfaces as its turn starts, and the eruption lands');
+  assert.ok(!events.slice(0, up).some(e => e.t === 'damage' && e.target === 'f1'), 'no blow landed while it was under');
+});
+
+test('the Sand Wyrm swallows you whole, the Thunder-Roc carries you off, and the Rime-Abbot holds you under the ice', async () => {
+  const { FOES } = await import('../src/data/foes.js');
+  const { statusOf } = await import('../src/rules/combat.js');
+  const CASES = [['sand-wyrm', 'swallow', 'Swallowed'], ['thunder-roc', 'carry-off', 'Carried off'], ['rime-abbot', 'drown', 'Held under']];
+  for (const [family, move, label] of CASES) {
+    const s = sturdy(structuredClone(battleWith([{ family, level: 6 }], { seed: 7 })));
+    const eff = FOES[family].moves[move].effects.find(e => e.riders?.some(x => x.status === 'swallowed'));
+    assert.ok(eff, `${family}/${move} swallows`);
+    await strike(s, 'f1', 'pip', eff, 19, 1); // a hit, the least damage
+    const st = statusOf(s.units.pip, 'swallowed');
+    assert.ok(st, `${family}: Pip is out of the line`);
+    assert.equal(st.label, label, `${family}: the plate reads "${label}"`);
+    assert.equal(st.source, 'f1');
+  }
+});
+
+test('a mirage-wisp\'s Beguile and the Rime-Abbot\'s Hushing charm a hero who fails the WIS save (spec §2.4, §3.5)', async () => {
+  const { FOES } = await import('../src/data/foes.js');
+  const { statusOf } = await import('../src/rules/combat.js');
+  for (const [family, variant, move] of [['mirage-wisp', null, 'beguile'], ['mirage-wisp', 'queen', 'beguile'], ['rime-abbot', null, 'hushing']]) {
+    const spawn = { family, level: 6, ...(variant ? { variant, relic: 'mirage-glass' } : {}) };
+    const fail = sturdy(structuredClone(battleWith([spawn], { seed: 5 })));
+    const moves = variant ? FOES[family].variants[variant].moves : FOES[family].moves;
+    for (const eff of moves[move].effects) await strike(fail, 'f1', 'bryn', eff, 1, 1); // a natural 1 always fails
+    assert.ok(statusOf(fail.units.bryn, 'charmed'), `${family}${variant ? `/${variant}` : ''}: charmed`);
+    const save = sturdy(structuredClone(battleWith([spawn], { seed: 5 })));
+    for (const eff of moves[move].effects) await strike(save, 'f1', 'bryn', eff, 20, 20); // a natural 20 always saves
+    assert.ok(!statusOf(save.units.bryn, 'charmed'), `${family}: saved`);
+  }
+});
+
+test('Mother Anvil: the Hammer powers Anvil Strike and the Worldforge Blow, the Heart powers Temper and Heart Flare; her phases at 66% and 33%', async () => {
+  const { resolveMoveId, foeTable } = await import('../src/rules/ai.js');
+  const { dealDamage } = await import('../src/rules/combat.js');
+  const { FOES } = await import('../src/data/foes.js');
+  const { createRng } = await import('../src/core/rng.js');
+  const { B } = await import('./helpers.mjs');
+  const s = structuredClone(battleWith([{ family: 'mother-anvil', level: 20 }], { seed: 14 }));
+  const a = s.units.f1;
+  assert.equal(a.die, 20);
+  assert.deepEqual(a.held.map(p => p.relic), ['worldforge-hammer', 'anvil-heart']);
+  for (const m of ['anvil-strike', 'worldforge-blow', 'temper', 'heart-flare']) assert.equal(resolveMoveId(s, a, m), m);
+  let ev = await pry(s, 'f1', 'worldforge-hammer');
+  assert.match(ev.find(e => e.t === 'text' && /clatters loose/.test(e.text)).text, /The Worldforge Hammer clatters loose!.*Anvil Strike.*Worldforge Blow/);
+  assert.equal(resolveMoveId(s, a, 'anvil-strike'), 'hammerfall');
+  assert.equal(resolveMoveId(s, a, 'worldforge-blow'), 'hammerfall');
+  assert.equal(resolveMoveId(s, a, 'temper'), 'temper', 'the Heart still beats');
+  ev = await pry(s, 'f1', 'anvil-heart');
+  assert.match(ev.find(e => e.t === 'text' && /clatters loose/.test(e.text)).text, /The Anvil Heart clatters loose!.*Temper.*Heart Flare/);
+  assert.equal(resolveMoveId(s, a, 'temper'), 'hammerfall');
+  assert.equal(resolveMoveId(s, a, 'heart-flare'), 'sparks');
+  for (const m of ['hammerfall', 'sparks', 'steam-burst', 'bellows']) assert.equal(resolveMoveId(s, a, m), m, `${m} needs no piece`);
+  assert.equal(a.die, 20, 'a Champion keeps its d20');
+  // the phases
+  const s2 = structuredClone(battleWith([{ family: 'mother-anvil', level: 20 }], { seed: 14 }));
+  const m = s2.units.f1;
+  const b = B(s2, createRng(3));
+  const hitTo = (frac, round = Math.floor) => dealDamage(b, s2.units.warden, m, m.hp - round(m.maxHp * frac), { kind: 'slash' });
+  hitTo(0.67, Math.ceil);
+  assert.equal(m.phase, 1);
+  hitTo(0.66);
+  assert.equal(m.phase, 2);
+  assert.deepEqual(foeTable(m), FOES['mother-anvil'].phases[1].table);
+  hitTo(0.33);
+  assert.equal(m.phase, 3);
+  assert.deepEqual(b.ev.filter(e => e.t === 'phase').map(e => e.text), [FOES['mother-anvil'].phases[1].text, FOES['mother-anvil'].phases[2].text]);
+});
+
+test('Mother Anvil\'s Bellows and the Bellows blow at most two helpers each, and they are worth nothing', async () => {
+  const { applyEffect } = await import('../src/rules/combat.js');
+  const { resolveMoveId } = await import('../src/rules/ai.js');
+  const { FOES } = await import('../src/data/foes.js');
+  const { createRng } = await import('../src/core/rng.js');
+  const { B } = await import('./helpers.mjs');
+  const CASES = [[{ family: 'mother-anvil', level: 20 }, FOES['mother-anvil'].moves.bellows, 'bellows', 'forgeborn', 4], [{ family: 'forgeborn', variant: 'bellows', level: 20 }, FOES.forgeborn.variants.bellows.moves['blow-sparks'], 'blow-sparks', 'forge-spark', 2]];
+  for (const [spawn, move, id, family, below] of CASES) {
+    const s = structuredClone(battleWith([spawn], { seed: 2 }));
+    const f = s.units.f1;
+    const b = B(s, createRng(6));
+    for (let i = 0; i < 3; i++) applyEffect(b, f, f, move.effects[0]);
+    const called = Object.values(s.units).filter(u => u.summonedBy === 'f1');
+    assert.equal(called.length, 2, `${id}: two at most`);
+    assert.ok(called.every(u => u.family === family && u.level === f.level - below && u.xp === 0 && u.noLoot), `${id}: ${family}s, ${below} levels down, worth nothing`);
+    assert.notEqual(resolveMoveId(s, f, id), id, `${id} falls back once two stand`);
+  }
+});
+
+test('the Rime-Abbot: the Crozier powers Rime Ward, the Cowl powers Hushing; Call the Choir raises at most two of his drowned choir', async () => {
+  const { resolveMoveId, foeTable } = await import('../src/rules/ai.js');
+  const { applyEffect, dealDamage } = await import('../src/rules/combat.js');
+  const { FOES } = await import('../src/data/foes.js');
+  const { createRng } = await import('../src/core/rng.js');
+  const { B } = await import('./helpers.mjs');
+  const s = structuredClone(battleWith([{ family: 'rime-abbot', level: 20 }], { seed: 16 }));
+  const r = s.units.f1;
+  assert.deepEqual(r.held.map(p => p.relic), ['rime-crozier', 'hushweave-cowl']);
+  let ev = await pry(s, 'f1', 'rime-crozier');
+  assert.match(ev.find(e => e.t === 'text' && /clatters loose/.test(e.text)).text, /The Rime Crozier clatters loose!.*Rime Ward/);
+  assert.equal(resolveMoveId(s, r, 'rime-ward'), 'crozier-strike');
+  assert.equal(resolveMoveId(s, r, 'hushing'), 'hushing', 'the Cowl still hushes');
+  ev = await pry(s, 'f1', 'hushweave-cowl');
+  assert.match(ev.find(e => e.t === 'text' && /clatters loose/.test(e.text)).text, /The Hushweave Cowl clatters loose!.*Hushing/);
+  assert.equal(resolveMoveId(s, r, 'hushing'), 'toll');
+  for (const m of ['crozier-strike', 'toll', 'drown', 'call-the-choir', 'heartbeat', 'rime-nova']) assert.equal(resolveMoveId(s, r, m), m, `${m} needs no piece`);
+  // the choir answers him, two at most, four levels down
+  const b = B(s, createRng(4));
+  for (let i = 0; i < 3; i++) applyEffect(b, r, r, FOES['rime-abbot'].moves['call-the-choir'].effects[0]);
+  const choir = Object.values(s.units).filter(u => u.summonedBy === 'f1');
+  assert.equal(choir.length, 2);
+  assert.ok(choir.every(u => u.family === 'rime-wraith' && u.variant === 'choir' && u.name === 'Choir-Wraith' && u.level === r.level - 4 && u.xp === 0), 'his own choir');
+  assert.equal(resolveMoveId(s, r, 'call-the-choir'), 'crozier-strike', 'no third');
+  // Vespers, Compline, Hush
+  const s2 = structuredClone(battleWith([{ family: 'rime-abbot', level: 20 }], { seed: 16 }));
+  const x = s2.units.f1;
+  const b2 = B(s2, createRng(3));
+  dealDamage(b2, s2.units.warden, x, x.hp - Math.floor(x.maxHp * 0.66), { kind: 'slash' });
+  assert.deepEqual([x.phase, foeTable(x)], [2, FOES['rime-abbot'].phases[1].table]);
+  dealDamage(b2, s2.units.warden, x, x.hp - Math.floor(x.maxHp * 0.33), { kind: 'slash' });
+  assert.deepEqual([x.phase, foeTable(x)], [3, FOES['rime-abbot'].phases[2].table]);
+});
+
+test('Ironspire holders: each Art needs its relic; pried loose, the Art falls back and the d12 drops to a d8', async () => {
+  const { resolveMoveId } = await import('../src/rules/ai.js');
+  const { FOES } = await import('../src/data/foes.js');
+  const HOLDERS = [
+    ['brigand', 'warden', 'windstep-boots'], ['iron-sentinel', 'captain', 'ironwall'], ['forgeborn', 'journeyman', 'runestaff'],
+    ['peak-troll', 'old-horn', 'trollhide-mantle'], ['rime-wraith', 'abbess', 'drowned-censer'], ['tallyman', 'ice-cutter', 'cutters-pick'],
+  ];
+  for (const [family, variant, relic] of HOLDERS) {
+    const s = structuredClone(battleWith([{ family, variant, relic, level: 20, gearTier: 3 }], { seed: 6 }));
+    const f = s.units.f1;
+    const moves = FOES[family].variants[variant].moves;
+    const arts = Object.entries(moves).filter(([, m]) => m.requires === relic).map(([id]) => id);
+    assert.ok(arts.length, `${variant} has an Art`);
+    assert.equal(f.die, 12, `${variant} rolls a d12`);
+    for (const id of arts) assert.equal(resolveMoveId(s, f, id), id);
+    await pry(s, 'f1', relic);
+    assert.equal(f.die, 8, `${variant}: the disarmed die`);
+    for (const id of arts) assert.equal(resolveMoveId(s, f, id), moves[id].fallback, `${variant}: ${id} falls back`);
+  }
+  // the Thunder-Roc holds its cloak the same way (a family relic)
+  const s = structuredClone(battleWith([{ family: 'thunder-roc', level: 20 }], { seed: 6 }));
+  assert.equal(resolveMoveId(s, s.units.f1, 'storm-mantle'), 'storm-mantle');
+  await pry(s, 'f1', 'roc-feather-cloak');
+  assert.equal(resolveMoveId(s, s.units.f1, 'storm-mantle'), 'talons');
+  assert.equal(s.units.f1.die, 8);
+});

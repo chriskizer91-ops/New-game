@@ -465,6 +465,27 @@ test('Sunscorch fights pay forge materials by tier; Scorchgate\'s pay Ash Garnet
   assert.deepEqual(wilds.game.materials, g0.materials);
 });
 
+test('Ironspire fights pay forge materials by tier like the Sunscorch; the Frostmere fights pay Frost Opals (M5 spec §3.7)', () => {
+  const g0 = newGame({ seed: 16 });
+  const { played, report, game } = wonFight(g0, 'is-sentinels');
+  let want = {};
+  for (const u of Object.values(played.units)) {
+    if (u.side !== 'foe' || !u.ko || u.summonedBy) continue;
+    for (const [k, n] of Object.entries(TUNING.forge.spoils[u.tier] || {})) want[k] = (want[k] || 0) + n;
+  }
+  assert.ok(Object.keys(want).length, 'the sentinels are veterans: they pay');
+  assert.deepEqual(report.materials, want);
+  for (const k of ['scrap', 'silver', 'embers']) assert.equal(game.materials[k], g0.materials[k] + (want[k] || 0), k);
+  assert.deepEqual(report.gems, {}, 'no gems outside Frostmere');
+  assert.ok(Object.keys(TUNING.forge.opals).length >= 4);
+  for (const [id, n] of Object.entries(TUNING.forge.opals)) {
+    assert.equal(ENCOUNTERS[id]?.region, 'ironspire', `${id} is an Ironspire fight`);
+    const r = wonFight(g0, id);
+    assert.deepEqual(r.report.gems, { 'frost-opal': n }, id);
+    assert.equal(r.game.gems['frost-opal'], n, id);
+  }
+});
+
 test('the fight that finishes a Codex page records it once (the aftermath banner)', () => {
   const g0 = newGame({ seed: 15 });
   const need = relicsOn('verdant').filter(id => !RELICS[id].starter);

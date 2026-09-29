@@ -1378,7 +1378,8 @@ async function run(V) {
       }
       await shot('atlas-ironspire-sealed');
       await toWorld();
-      // the second council sat: the postern opens onto the Rockslide Pass, and its own track plays
+      // the second council sat: the postern opens onto the East Road (the Old Bridge, a painted map), which plays
+      // the road; the Rockslide Pass at its end plays the peaks
       await regame(council2);
       await teleport('keep', inside.x, inside.y, inside.face);
       await W(() => window.__world.roam([]));
@@ -1389,9 +1390,15 @@ async function run(V) {
       const an = MAPS[X.to].anchors[X.anchor];
       check(s1.map === X.to && Math.abs(s1.x - an[0]) + Math.abs(s1.y - an[1]) <= 1, `${P} 21: after the second council the postern opens onto ${MAPS[X.to].name} (${s1.map} ${s1.x},${s1.y})`);
       const track = await W(() => window.__app.audio.track);
-      check(track === MAPS[X.to].music, `${P} 21: ${MAPS[X.to].name} plays its own track (${track})`);
-      if (MAPS[X.to].music !== 'peaks') block(`${P} 21: ${MAPS[X.to].name} does not name the peaks track yet (P2: music: 'peaks')`);
-      else check(track === 'peaks', `${P} 21: the mountain road plays the peaks track`);
+      check(track === MAPS[X.to].music && track === 'road', `${P} 21: ${MAPS[X.to].name} plays the road (${track})`);
+      const painted = await page.waitForFunction(() => window.__world.state().painted, null, { timeout: 8000 }).then(() => true, () => false);
+      check(painted, `${P} 21: ${MAPS[X.to].name} is drawn from its painting`);
+      await shot('east-road');
+      const rp = MAPS['rockslide-pass'].anchors['from-camp'];
+      await teleport('rockslide-pass', rp[0], rp[1], rp[2]);
+      await page.waitForTimeout(400);
+      const track2 = await W(() => window.__app.audio.track);
+      check(track2 === 'peaks', `${P} 21: up the East Road, the Rockslide Pass plays the peaks track (${track2})`);
       await shot('rockslide-pass');
       // the Atlas: the padlock is off, and the Ironspire view has every Ironspire Hearthfire
       await W(() => window.__app.go('atlas', { mode: 'view', from: 'world' }));

@@ -734,6 +734,11 @@ export const DIALOGUE = deepFreeze({
     lines: [['narrator', 'The bell rope of Peak\'s Veil, knotted up out of reach. The bell has not rung since Brother Aurel went down to the lake.']],
     choices: [{ text: 'Ring the bell.', if: RING, do: [{ set: 'bell-rung-veil' }], next: 'veil-bell-rung' }, LEAVE],
   },
+  // the same rope once the bell has rung (the map swaps the entity on bell-rung-veil)
+  'pv-bell-rope-rung': {
+    lines: [['narrator', 'The bell rope hangs loose now, down from the rafters. High above, the great bell still hums when the wind finds it.']],
+    choices: [LEAVE],
+  },
   'veil-bell-rung': {
     lines: [
       ['narrator', 'You climb and unknot the rope. You pull, and pull, and after thirty years the great bell swings out and speaks.'],

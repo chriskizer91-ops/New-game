@@ -49,7 +49,7 @@ export default deepFreeze({
     { id: 'fb-monk-1', kind: 'sign', at: [3, 6], look: 'frozen-monk', text: 'A monk of Peak\'s Veil, frozen upright in the ice wall with his hands folded. His eyes are open, and his lips are still moving.' },
     { id: 'fb-monk-2', kind: 'sign', at: [18, 6], look: 'frozen-monk', text: 'Another of them, younger, a novice\'s rope still knotted round his waist. He came down after his abbot.' },
     // M4.5 road gate (spec A3, §2.2): the drowned chapel's door, frozen shut, the choir in the doorway beside it
-    { id: 'fb-chapel-door', kind: 'gate', area: [9, 9, 11, 9], look: 'door', open: { beaten: 'fb-choir' }, guard: 'fb-choir', text: 'The drowned chapel\'s door, frozen shut. The choir stands in the doorway beside it singing one note, over and over, and the ice sings it back.' },
+    { id: 'fb-chapel-door', kind: 'gate', area: [9, 9, 11, 9], look: 'frozen-door', open: { beaten: 'fb-choir' }, guard: 'fb-choir', text: 'The drowned chapel\'s door, frozen shut. The choir stands in the doorway beside it singing one note, over and over, and the ice sings it back.' },
     { id: 'fb-choir', kind: 'encounter', enc: 'fb-choir', mode: 'block', at: [12, 9], face: 'n' },
     { id: 'hush', kind: 'prop', prop: 'hush', at: [10, 13] },
     { id: 'fb-hush-glow', kind: 'light', at: [10, 13], radius: 4 },
