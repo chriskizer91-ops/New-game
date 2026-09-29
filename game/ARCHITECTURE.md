@@ -292,8 +292,8 @@ keys and reads the earlier ones, newest first, without ever writing or removing 
 
 ## Painted maps and stills (`ui/world/view.js`, `ui/assets/paint/`, `ui/assets/cuts/`; M5 spec A10)
 
-- A map listed in `ui/assets/paint/index.js` (`PAINTINGS[mapId] = { w, h, src }`, a WebP at 32 px per
-  tile) draws its painting as its ground, at `PAINT_DENSITY` (2) canvas px per art px, so its detail
+- A map listed in `ui/assets/paint/index.js` (`PAINTINGS[mapId] = { w, h, rowsSha, src }`, a WebP at 32 px
+  per tile, stamped with the rows it was fitted to) draws its painting as its ground, at `PAINT_DENSITY` (2) canvas px per art px, so its detail
   shows; the objects draw on top as usual, and the overhead layer takes the painting's pixels wherever
   the tiles' own overhead layer would draw (canopies, roofs, grass tops), and over a map's `overhang`
   rects. A painting decodes when its map is first baked (at most `PAINT_KEEP` decoded at once); until
@@ -307,7 +307,10 @@ keys and reads the earlier ones, newest first, without ever writing or removing 
 - Tools: `tools/paint-refs.mjs` renders a batch's layout references (long roads as overlapping panels,
   `refs.json`); `tools/paint-prompts.mjs` writes its prompt sheet; `tools/paint-import.mjs` fits the
   returned paintings to their maps (joining panels) and writes the asset modules; `test/paint.test.mjs`
-  checks them. The build counts the paintings apart from the game (M5 spec A6).
+  checks them, and fails when a painted map's rows no longer match its stamp (check the grid overlay,
+  then `paint-import.mjs --stamp=<id>` keeps the picture and restamps it). Since M6 every map up to the
+  Ironspire is painted (`art-in/maps/`). The build counts the paintings apart from the game and fails
+  above 24 MB of them (M6 spec A6).
 
 ## Art contract (`src/art/`)
 

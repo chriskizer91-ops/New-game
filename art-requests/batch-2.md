@@ -1,5 +1,8 @@
 # Batch 2: the Verdant Wilds and the Sunscorch
 
+**Done (Milestone 6).** Every map on this page came back painted whole, with the Ironspire's maps too, and is
+in the game from `art-in/maps/`. The page stays as the record of what was asked.
+
 26 paintings: every map of the Verdant Wilds and the Sunscorch that is not painted yet. The loop, the
 style and the naming are as in `README.md`. For each one: attach its reference from `batch-2/refs/`, paste
 its prompt, generate, and keep the best try under the file name given. A long road comes as two panels

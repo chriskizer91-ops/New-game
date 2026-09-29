@@ -6,6 +6,7 @@
 //   node tools/paint-import.mjs --map=thornhollow --src=../art-in/pilot/map-thornhollow.png --grid
 //   node tools/paint-import.mjs --batch=../art-in/batch-2 --refs=../art-requests/batch-2/refs/refs.json --grid
 //   node tools/paint-import.mjs --cut=hearth-blue --src=../art-in/pilot/cut-blue-hearth.png [--width=768]
+//   node tools/paint-import.mjs --stamp=keep,mossfall
 //
 // One painting per map: the reference was the map padded to the painting's aspect (extra tiles split
 // evenly, odd ones right and bottom), so the painting's own aspect gives the padding back and the crop
@@ -19,6 +20,11 @@
 // overhang tiles blue, to check that the painting's walls, trees and water sit on the map's.
 // --cut takes a cut-scene still instead: the whole picture, resampled the same way to --width px across
 // (default 768), written as src/ui/assets/cuts/<name>.js for the screens that show it.
+// Each painting keeps a stamp of the rows it was fitted to (rowsSha); test/paint.test.mjs fails when a
+// painted map's rows change after it. --stamp takes the paintings already in the game whose maps changed:
+// it writes each one's grid overlay (look at it: the walls must still sit on the painting's) and restamps
+// it with the rows as they are now, keeping the picture byte for byte. A painting that no longer fits is
+// imported again from its source instead.
 // Playwright and Chromium as in tools/gallery.mjs.
 import { readFile, writeFile, mkdir, readdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -27,17 +33,20 @@ import { createRequire } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { Buffer } from 'node:buffer';
+import { createHash } from 'node:crypto';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = Object.fromEntries(process.argv.slice(2).map(a => { const [k, ...v] = a.replace(/^--/, '').split('='); return [k, v.length ? v.join('=') : true]; }));
 const TILE = 16;
-const USAGE = 'usage: node tools/paint-import.mjs (--map=<id> --src=<painting>[,<panel b>...] | --batch=<dir> --refs=<refs.json> | --cut=<name> --src=<still>) [--refs=<refs.json>] [--sharpen=0.6] [--quality=0.85] [--grid] [--width=768]';
+const USAGE = 'usage: node tools/paint-import.mjs (--map=<id> --src=<painting>[,<panel b>...] | --batch=<dir> --refs=<refs.json> | --cut=<name> --src=<still> | --stamp=<id>[,<id>...]) [--refs=<refs.json>] [--sharpen=0.6] [--quality=0.85] [--grid] [--width=768]';
 const { MAPS } = await import(pathToFileURL(path.join(root, 'src/data/maps/index.js')).href);
 const { tileOf } = await import(pathToFileURL(path.join(root, 'src/data/tiles.js')).href);
 const sharpen = args.sharpen === undefined ? 0.35 : +args.sharpen;
 const quality = args.quality === undefined ? 0.8 : +args.quality;
 const density = args.density === undefined ? 2 : +args.density;
 if (!(density >= 1 && density <= 4 && Number.isInteger(density))) { console.error('--density is 1 to 4'); process.exit(2); }
+// the rows a painting was fitted to, as test/paint.test.mjs computes them
+const rowsSha = map => createHash('sha256').update(map.rows.join('\n')).digest('hex').slice(0, 12);
 const MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp' };
 const dataUrl = async file => {
   const mime = MIME[path.extname(file).slice(1).toLowerCase()];
@@ -64,6 +73,8 @@ if (args.cut) {
     if (have.length < files.length) { console.log(`${id}: waiting for ${files.filter(f => !existsSync(f)).map(f => path.basename(f)).join(', ')}`); continue; }
     jobs.push({ id, panels: r.panels.map((p, i) => ({ file: files[i], rect: p.rect, pad: p.pad })) });
   }
+} else if (args.stamp) {
+  for (const id of String(args.stamp).split(',')) jobs.push({ id, stamp: true, panels: [] });
 } else if (args.map && args.src) {
   const id = String(args.map), files = String(args.src).split(',').map(f => path.resolve(f));
   const r = refs?.[id];
@@ -245,6 +256,23 @@ const listed = async (dir, head, exp) => {
 const paintDir = path.join(root, 'src/ui/assets/paint'), cutDir = path.join(root, 'src/ui/assets/cuts');
 for (const job of jobs) {
   const map = job.cut ? null : MAPS[job.id];
+  if (job.stamp) {
+    // the painting as it is, over the map's rows as they are now, then the new stamp
+    const file = path.join(paintDir, `${job.id}.js`);
+    if (!existsSync(file)) { console.error(`${job.id}: no painting to restamp (import it with --map)`); process.exitCode = 2; continue; }
+    const text = await readFile(file, 'utf8');
+    const m = /export default Object\.freeze\(\{ w: (\d+), h: (\d+), (?:rowsSha: '([0-9a-f]+)', )?src: '(data:image\/webp;base64,[A-Za-z0-9+/=]+)' \}\);/.exec(text);
+    if (!m || +m[1] !== map.w * TILE * density || +m[2] !== map.h * TILE * density) { console.error(`${job.id}: its painting is not ${map.w}x${map.h} tiles at ${TILE * density} px per tile (import it again with --map)`); process.exitCode = 2; continue; }
+    const solid = map.rows.map(r => [...r].map(ch => (tileOf(ch).solid ? 1 : 0)));
+    const res = await page.evaluate(fit, { panels: [{ data: m[4], rect: [0, 0, map.w, map.h], pad: [0, 0, 0, 0] }], mw: map.w, mh: map.h, sharpen: 0, quality, TILE: TILE * density, solid, over: map.overhang || [], grid: true, width: 0 });
+    const shots = path.join(root, 'tools/shots/paint');
+    await mkdir(shots, { recursive: true });
+    await writeFile(path.join(shots, `${job.id}-grid.png`), Buffer.from(res.gridPng.split(',')[1], 'base64'));
+    const now = rowsSha(map);
+    await writeFile(file, text.slice(0, m.index) + `export default Object.freeze({ w: ${m[1]}, h: ${m[2]}, rowsSha: '${now}', src: '${m[4]}' });` + text.slice(m.index + m[0].length));
+    console.log(`${job.id}: ${m[3] ? (m[3] === now ? `already stamped ${now}` : `restamped ${m[3]} -> ${now}`) : `stamped ${now}`}; grid: tools/shots/paint/${job.id}-grid.png`);
+    continue;
+  }
   const panels = [];
   for (const p of job.panels) panels.push({ data: await dataUrl(p.file), rect: p.rect || null, pad: p.pad || null });
   const solid = map ? map.rows.map(r => [...r].map(ch => (tileOf(ch).solid ? 1 : 0))) : [];
@@ -269,7 +297,7 @@ for (const job of jobs) {
     `// ${map.name}, painted (M5 spec A10). GENERATED by tools/paint-import.mjs from ${from}`,
     `// (${how}), fitted to ${map.w}x${map.h} tiles at ${TILE * density} px per tile: ${kb(bytes)} of WebP at quality ${quality},`,
     `// sharpen ${sharpen}. Do not edit.`,
-    `export default Object.freeze({ w: ${res.OW}, h: ${res.OH}, src: '${res.webp}' });`,
+    `export default Object.freeze({ w: ${res.OW}, h: ${res.OH}, rowsSha: '${rowsSha(map)}', src: '${res.webp}' });`,
     '',
   ].join('\n'));
   if (res.gridPng) {
@@ -283,9 +311,10 @@ await browser.close();
 // each index lists every file in its folder
 if (existsSync(paintDir)) {
   await listed(paintDir, [
-    '// The painted maps (M5 spec A10): map id -> { w, h, src }, where src is a WebP data URL covering the map',
-    '// at a whole number of px per art px (32 per tile). GENERATED by tools/paint-import.mjs (it rewrites this',
-    '// list); ui/world/view.js draws a map listed here from its painting and every other map from its tiles.',
+    '// The painted maps (M5 spec A10): map id -> { w, h, rowsSha, src }, where src is a WebP data URL covering',
+    '// the map at a whole number of px per art px (32 per tile) and rowsSha stamps the rows it was fitted to.',
+    '// GENERATED by tools/paint-import.mjs (it rewrites this list); ui/world/view.js draws a map listed here',
+    '// from its painting and every other map from its tiles.',
   ], 'PAINTINGS');
 }
 if (existsSync(cutDir)) {

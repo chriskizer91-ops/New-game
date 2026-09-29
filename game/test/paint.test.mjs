@@ -6,6 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { Buffer } from 'node:buffer';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { PAINTINGS } from '../src/ui/assets/paint/index.js';
@@ -42,6 +43,14 @@ test('every painting is a real map, covered exactly at the painted density, and 
     const s = webpSize(p.src);
     assert.deepEqual([s.w, s.h], [p.w, p.h], `${id}: the image is the size its entry says`);
     assert.ok(s.bytes <= MAX_BPP * p.w * p.h, `${id}: ${(s.bytes / 1024).toFixed(0)} KB (at most ${MAX_BPP} bytes a pixel)`);
+  }
+});
+
+test('each painting was fitted to its map\'s rows as they are now', () => {
+  // a wall moved under a painting would stand where the painting shows floor (or the other way round)
+  const rowsSha = map => createHash('sha256').update(map.rows.join('\n')).digest('hex').slice(0, 12); // as tools/paint-import.mjs
+  for (const [id, p] of Object.entries(PAINTINGS)) {
+    assert.equal(p.rowsSha, rowsSha(MAPS[id]), `${id}: its rows changed after it was painted: check its grid overlay and restamp it (node tools/paint-import.mjs --stamp=${id}), or import it again`);
   }
 });
 

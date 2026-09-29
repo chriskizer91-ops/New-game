@@ -16,7 +16,7 @@ This is a browser JRPG built into **one self-contained HTML file** that plays on
 - `npm test`, `npm run lint`.
 - E2E tests: set `NODE_PATH=$(npm root -g)`, then run `node tools/e2e-flow.mjs`, `e2e-battle.mjs`, `e2e-world.mjs` or `e2e-codes.mjs` (every real M2 save code, and M3, M4 and Milestone 4.5 codes). Playwright is global, and Chromium is at `/opt/pw-browsers`.
 - Every map on the route is built road-first (`game/docs/M45-SPEC.md`): its fights hold gates across the road, and `test/road.test.mjs` checks each map's `roads`.
-- The player's paintings become map ground with `node tools/paint-import.mjs` (`game/docs/M5-SPEC.md` A10, A11; `game/ARCHITECTURE.md` "Painted maps"). The build counts them apart from the game and fails above 8 MB of paintings.
+- The player's paintings become map ground with `node tools/paint-import.mjs` (`game/docs/M5-SPEC.md` A10, A11; `game/ARCHITECTURE.md` "Painted maps"). The build counts them apart from the game and fails above 24 MB of paintings (the player chose full detail, `game/docs/M6-SPEC.md` A6). Each painting is stamped with the rows it was fitted to: after changing a painted map's rows, check its grid overlay and restamp it (`--stamp=<id>`).
 
 ## Rules
 

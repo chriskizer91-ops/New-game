@@ -19,11 +19,11 @@ M6 is built **road-first** on the Milestone 4.5 contract (`docs/M45-SPEC.md`), a
 | A3 | **Road-first.** Every M6 map declares its `roads`; every fight on `GLOOM_PATH` holds a gate (or a Brand); lead fights guard their side roads; no route or lead fight is a roaming pack. `test/road.test.mjs` covers the new maps with no new code (its map list grows). Zone patrols roam as before, and a caught weak pack is a full battle. Every fight is a full battle with the dice, and Auto starts off, as in M4.5 and M5. |
 | A4 | **One order.** The Brand of Lanterns (the Lantern Mother, in the eastern bogs) comes first; the long boardwalk's east end, onto the Misthollow Ruins, opens with it. Then the Brand of the Deep (the Blackwater Leviathan, on the Tidal Flats). |
 | A5 | **The ways in.** Mossfall's fen stair (`mf-fen-stair`) opens once the third council is sat (`council-3-done`), onto the Murkway: Willowmurk's safe paths. The Keep's south-west gate (`keep-sw`) opens onto the Blackwater Causeway once the Blackwater falls (`{ brand: 'brand-of-the-deep' }`): the way home, as the Highfold was M5's. Nothing past the fourth council opens: Act III is the next chapter. |
-| A6 | **Size.** The game keeps M5's limits (warns above 2.5 MB, fails above 3.2 MB; `--minify` in reserve). The player's paintings have their own limit, set by the player's answer on batch 2 (§6.3): it is not raised or lowered by any package. |
+| A6 | **Size.** The game keeps M5's limits (warns above 2.5 MB, fails above 3.2 MB; `--minify` in reserve). The player's paintings have their own limit, set by the player's answer on batch 2 (§6.3): raise the budget and keep full detail. It is 24 MB (the 43 painted maps take about 19.5 MB), and no package raises or lowers it. The download is then about 22 MB; a claude.ai page holds 16 MB, so a page for the phone, if the player asks for one, is a separate build with lighter paintings (the download keeps full detail). |
 | A7 | **Building** as in M5: the lead builds the rules (P1) and integrates; agents build maps, story, foes and relics, art and UI in parallel with disjoint files (§7), never run git, build into private folders and write `game/notes/M6-<pkg>.md`. Before a package is committed, the lead lists the assertions its test files lost against the base (the M5 lesson). |
 | A8 | **Ids are fixed by this spec.** A package may add ids only inside its own files; a missing id is asked for in its notes. |
 | A9 | **Frozen, as before:** `art/heroes.js`, `art/hero-looks.js`, the card reveal, the M2 encounter and spawn arrays, and every delivered file (M2, M3, M4, M4.5, M5). Earlier content changes only where §2.4 says. |
-| A10 | **The player's own art, at full detail.** Batch 2 (`art-requests/batch-2.md`, 26 paintings of the Verdant and Sunscorch maps) lands as it comes back, under the budget the player chooses (§6.3). The player's world painting (`art-in/extra/world-aethermoor.jpg`) becomes the title screen's backdrop, and the regional painting (`art-in/extra/region-gloomfen.jpg`) is the still on the card that opens the Gloomfen (the first time the fen stair is taken). Both are `CUTS` stills; a screen draws its own scene when one is missing. |
+| A10 | **The player's own art, at full detail.** Batch 2 (`art-requests/batch-2.md`, 26 paintings of the Verdant and Sunscorch maps) came back as whole-map paintings of every unpainted map, the Ironspire's too, and is in, under the budget the player chose (§6.3). The player's world painting (`art-in/extra/world-aethermoor.jpg`) becomes the title screen's backdrop, and the regional painting (`art-in/extra/region-gloomfen.jpg`) is the still on the card that opens the Gloomfen (the first time the fen stair is taken). Both are `CUTS` stills; a screen draws its own scene when one is missing. |
 | A11 | **Hodge's toll** (the brief's No. 077, the player's "Bridge Troll"). Hodge keeps a toll-bar across Rotbridge. Talking to him offers three ways past: pay today's price (it changes daily, §4.4; it is always something a party can come by), play his best-of-three toll game (a contest: Persuasion, Deception and Intimidation; once a day; winning gives passage for good and Hodge's Unfair Toll), or fight him ("a terrible idea": `hodge` is a full battle tuned to go badly, §8). The bar opens on `{ any: [{ flag: 'toll-paid' }, { beaten: 'hodge' }] }`. |
 | A12 | **Tamsin's fall.** Her fourth duel waits on Rotbridge past Hodge's bar (`tamsin-rotbridge`, road block; a yield opens the way too). She fights with her starter one last time, with a Gloomfen kit (§4.3), wearing the Bogstriders (they drop when you win). Win or yield, the scene after it is her fall: a black barge comes out of the fog, and she trades her starter to the Unsmith for a relic that bleeds violet-black, and goes with him (`tamsin-fallen`). That relic is not in M6's data: it enters the Codex with Act III. |
 | A13 | **The end of Act II.** The Brand of the Deep is the eighth coal. With both Gloomfen Brands `earnBrand` sets `gloomfen-complete`; the fourth council (Mayor Gretch takes the Gloomfen's chair; four soot-sealed boxes on the table) ends on the end-of-Act-II card, which names Act III and opens nothing. |
@@ -37,7 +37,7 @@ M6 is built **road-first** on the Milestone 4.5 contract (`docs/M45-SPEC.md`), a
 - **Hodge** (A11): the toll game, the daily price, the terrible fight, and the ferry his relic calls.
 - **Two statuses from the brief** (§4.2): `rotting` and `hexed`, used by the fen's hags and drowned and by the Lantern Mother.
 - **The fog** (§4.4): a soft lock that closes in the sight on a foggy map, as darkness does on a dark one.
-- **The player's paintings** (A10): batch 2 as it lands; the title backdrop; the Gloomfen's opening still.
+- **The player's paintings** (A10): batch 2 and the Ironspire (every Milestone 5 map painted); the title backdrop; the Gloomfen's opening still.
 
 **Out (later milestones):** Act III (the Hollow Council, the Unsmith, the endings: M7); Tamsin's corrupted relic as an item; companion recruitment (Nettie, like Luma and Kesh, stays a hint); the Signature Masterpiece; Table Mode; card PNG export; the Hearthteller; new Omens (the six stay: a bigger pool would change every earlier region's balance).
 
@@ -478,12 +478,22 @@ starter's Art keeps faces 8–11, as in her earlier duels. `$rival:rotbridge` re
 - Card and sprite art for the 14 relics; the bog amber's icon.
 
 ### 6.3 The player's paintings (P8, the lead)
-- **Batch 2** (26 paintings, 23 maps): imported with `tools/paint-import.mjs --batch` as they land, each checked on
-  its grid overlay. The budget is the player's choice: at M5's density and quality batch 2 needs about 9.3 MB more
-  paint than the 2.1 MB left under the 8 MB limit. Measured on the eight paintings in the game: WebP quality 0.7 is
-  18% smaller and looks the same at the game's zoom; 0.6 is 25% smaller and a little softer; half density is 71%
-  smaller and visibly blocky (ruled out by the player's "full detail"). The player's choice sets the paint limit in
-  `tools/build.mjs` and the import settings; this spec is updated with it.
+- **Batch 2, done.** The player sent every map of batch 2 painted whole (the map's own shape, no padding), and the
+  Ironspire's twelve maps too: 35 maps, so every map of Milestone 5 is painted. The sources are in `art-in/maps/`
+  (its README lists each picture, where it came from and the import commands; duplicates of the eight maps
+  already painted were left out, and a PNG was kept over the pack's WebP of the same map). Each was checked on its
+  grid overlay. The player's budget answer: raise the limit and keep full detail (A6). So every painting is at
+  M5's density and quality (32 px per tile, WebP 0.8, sharpen 0.35), except Fawnrest at quality 0.75 to stay
+  under half a byte a pixel (`test/paint.test.mjs`). The Ironspire Gallery's painting shows M6's new east door
+  (its west door mirrored; `art-in/maps/README.md`).
+- **The rows guard.** Each painting carries `rowsSha`, a stamp of the rows it was fitted to, and
+  `test/paint.test.mjs` fails when a painted map's rows change after it. P2 edits three painted maps (§2.4: the
+  Keep, Mossfall, the Ironspire Gallery) and keeps their rows as they are; any row change there is checked on the
+  grid overlay and restamped by the lead (`tools/paint-import.mjs --stamp=<id>`).
+- **Batch 3** (after P2): the 13 new maps (the Gloomfen's twelve and the Gloomfen Gallery) draw from their tiles
+  until the player paints them. Their layout references and prompts (`tools/paint-refs.mjs`,
+  `tools/paint-prompts.mjs`) go in `art-requests/batch-3.md` once P2's maps are final, and the player is asked
+  about the budget again if they would pass the 24 MB limit.
 - The title backdrop and the Gloomfen card's still (A10), as `CUTS`.
 
 ## 7. Work packages
@@ -500,8 +510,8 @@ starter's Art keeps faces 8–11, as in her earlier duels. `$rival:rotbridge` re
 | P8 painted art | lead | `tools/paint-import.mjs`, `tools/build.mjs` (the paint limit), `ui/assets/{paint,cuts}/*`, `test/paint.test.mjs` |
 
 Order: spec and scaffold (every id stubbed, every test green), then step 0 (the lead); P1 with P2–P5 in parallel; P6–P7
-when the foe and relic data land; then integrate, tune, two independent reviews, and deliver. Batch 2 lands whenever
-it comes, after the player's budget answer.
+when the foe and relic data land; then integrate, tune, two independent reviews, and deliver. Batch 2 landed before
+the packages (§6.3); batch 3's request is written once P2's maps are final.
 
 **Stand-ins in the scaffold** (so every test is green before the art exists): a stub foe family borrows its source
 family's numbers, moves and `art`; stub encounters, maps and zones use Ironspire backdrops; stub relics have stand-in
@@ -535,7 +545,7 @@ is expected in a package's private tree, and nothing else may fail.
   the region beats him); a forged party ≤ 20% against each Champion; every M3, M4, M4.5 and M5 target unchanged; zero
   stuck.
 - **Performance:** the Lanternfen (fog) and the long boardwalk at 4× throttle: p95 frame JS ≤ 16 ms, ≤ 40
-  `drawImage` per frame; a painted batch-2 map the same.
+  `drawImage` per frame; the painted Hearth Road, Glass Flats and Frost Road the same (e2e-world 11, 17, 26).
 - **Size:** the game under 3.2 MB and the paintings under the player's limit (A6, §6.3).
 - **No stand-in is left:** no `stub: true` in `data/foes.js` or `art/item-looks.js`, no "STUB from the M6 scaffold"
   comment in `src/`, every M6 backdrop in `BACKDROPS`, and every fen map on the `fen` track.
@@ -545,7 +555,7 @@ is expected in a package's private tree, and nothing else may fail.
 | Risk | Plan |
 |---|---|
 | New statuses change earlier balance | Only Gloomfen foes use them; re-run every mode; tune the moves, not the statuses |
-| The paintings' size (batch 2) | The player's budget choice (§6.3); nothing is imported before it |
+| The paintings' size (batch 2) | Settled: the player raised the budget for full detail (A6, §6.3); the page for a phone is a lighter build |
 | Hodge's fight too easy or a wall | Tuned by the sim to 60–80% on arrival; the toll and the game always open the bar |
 | Agents run out of usage mid-package | Small packages, notes files, stubs that keep the tests green |
 
