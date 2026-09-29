@@ -55,8 +55,9 @@ function heroUnit(hero, items, seq, bonus = null) {
 // Spawns are used as given: apply rules/foe.js escalateSpawn for the Waking beforehand
 // (rules/gauntlet.js does). `waking` here only raises loot luck.
 // ctx = { inventory, bag, nodeId, where, day, gentle, noFlee, backdrop, patrol, ambush,
-//         firstStrike, warded, dark, duel, bonus }   (M3: spec §4.7; warded is a dice expression, e.g. '2d6+4';
-//         M4: bonus is the party-wide stats block, rules/codex.js pageBonus)
+//         firstStrike, warded, dark, duel, bonus, caught }   (M3: spec §4.7; warded is a dice expression, e.g. '2d6+4';
+//         M4: bonus is the party-wide stats block, rules/codex.js pageBonus; M4.5: caught, a weak pack you
+//         ran down, is kept on the state (only when set) for the Rout deed)
 export function createBattle({ heroes = [], foes = [], seed = 1, waking = 0, ctx = {} } = {}) {
   const rng = createRng(seed);
   const items = ctx.inventory || ctx.items || [];
@@ -68,6 +69,7 @@ export function createBattle({ heroes = [], foes = [], seed = 1, waking = 0, ctx
       nodeId: ctx.nodeId || null, where: ctx.where || null, day: ctx.day || 1, gentle: !!ctx.gentle,
       noFlee: !!ctx.noFlee || foes.some(f => familyData(f).noFlee), backdrop: ctx.backdrop || null, patrol: !!ctx.patrol,
       ambush: false, firstStrike: false, warded: ctx.warded || null, dark: !!ctx.dark, duel: !!ctx.duel,
+      ...(ctx.caught ? { caught: true } : {}),
     },
   };
   for (const h of heroes) {

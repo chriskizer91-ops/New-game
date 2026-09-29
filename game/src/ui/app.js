@@ -31,7 +31,8 @@
 //                               resurrects
 //   ctx.migrate                 the injected migration (for importCode / restoreBackup)
 //
-// Settings (DEFAULT_SETTINGS): sound, music, battleSpeed 1|2|4, battleAuto, reducedMotion, and for
+// Settings (DEFAULT_SETTINGS): sound, music, battleSpeed 1|2|4, reducedMotion (battleAuto is no longer
+// read: M4.5 starts every fight with Auto off), and for
 // the world (M3 §5.2, §5.4): touchControls 'auto'|'on'|'off', alwaysRun bool,
 // mapZoom 'near'|'normal'|'far' (ui/world/constants.js MAP_ZOOM keys).
 // Owner: WP8.

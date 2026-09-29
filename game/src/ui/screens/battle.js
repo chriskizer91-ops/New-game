@@ -38,7 +38,8 @@ export function mount(root, ctx, { battle, returnTo = 'world' } = {}) {
   let state = battle;
   const disp = makeDisp(state, labels);
   let dead = false;
-  let auto = !!ctx.settings.battleAuto;
+  // every fight starts with Auto off (M4.5, docs/M45-SPEC.md A5): the button works for this fight only
+  let auto = false;
   let speed = SPEEDS.includes(ctx.settings.battleSpeed) ? ctx.settings.battleSpeed : 1;
   const node = ENCOUNTERS[state.ctx.nodeId] || null;
   const backdrop = state.ctx.backdrop || node?.backdrop || 'hearth-road';
@@ -411,7 +412,6 @@ export function mount(root, ctx, { battle, returnTo = 'world' } = {}) {
   autoBtn.addEventListener('click', () => {
     auto = !auto;
     autoBtn.setAttribute('aria-pressed', String(auto));
-    try { ctx.setSettings({ battleAuto: auto }); } catch { /* settings optional */ }
     sfx(auto ? 'confirm' : 'back');
     if (auto && input.active) input.cancel();
     caption(auto ? 'Auto battle on: the party fights on its own.' : 'Auto battle off.', 'info');

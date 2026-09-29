@@ -1,15 +1,17 @@
-// Game flow (no DOM): new game, Hearthfire rests and travel, battles in and out, Routs, party
-// wipes and the duel yield, Grudges, Brands and the Waking.
+// Game flow (no DOM): new game, Hearthfire rests and travel, battles in and out, party wipes and the
+// duel yield, Grudges, Brands and the Waking.
 //
 // M3 (spec §4.6; owner WP2) keeps this file name for import stability. newGame makes version 3
 // games that start in the Great Hall (START_AT); where you are is progress.pos, and the world
 // (rules/world.js) decides what you can reach. progress.node is only kept on migrated M2 saves,
 // verbatim, and never read.
 //   newGame, spawnsFor, startBattle(game, { nodeId } | { patrol: { spawns, where, backdrop, dark } },
-//   { ambush, firstStrike }), resolveBattle, routPack, rest(game, hfId), travel, partyLevel, uniqueBrands
+//   { ambush, firstStrike, caught }), resolveBattle, rest(game, hfId), travel, partyLevel, uniqueBrands
 // M4 (spec §4.3-§4.6): resolveBattle also marks relic deeds (report.deeds, .kindled, .ready), writes
 // the Chronicle, settles Grudges for good (flags.settled, provenance.grudge), pays Sunscorch spoils
-// (report.materials, .gems) and records finished Codex pages (report.pages); a Rout marks `rout`.
+// (report.materials, .gems) and records finished Codex pages (report.pages).
+// Milestone 4.5 (docs/M45-SPEC.md A4): there are no Routs. A weak pack you run down is a full battle
+// (`caught`), and winning it marks the `rout` deed.
 // The M2 road helpers (route, currentNode, canAdvance, advance, isCleared, road patrols) are gone
 // with the road screen (spec §4.6).
 // Import direction (A6): never import rules/world.js, story.js or cond.js here.
@@ -23,10 +25,10 @@ import { FOES } from '../data/foes.js';
 import { TUNING } from '../data/tuning.js';
 import { SLOTS } from '../data/items.js';
 import { createBattle, outcome } from './battle.js';
-import { escalateSpawn, addOmens, buildFoe, familyOf } from './foe.js';
+import { escalateSpawn, addOmens, familyOf } from './foe.js';
 import { deriveHero } from './stats.js';
 import { grantXp } from './progression.js';
-import { generateItem, relicItem, routSpoils } from './loot.js';
+import { generateItem, relicItem } from './loot.js';
 import { pageBonus, markPages, relicDeeds, deedsOf, stageOf } from './codex.js';
 import { rngFrom, indexItems, addCounts } from './util.js';
 
@@ -118,34 +120,6 @@ export function travel(game, hfId) {
   return { ...game, progress: { ...game.progress, pos: { map: h.map, x: h.x, y: h.y, face: h.face } } };
 }
 
-// A Rout (spec D4): a weak pack scatters when you walk into it. Full gold, TUNING.rout.xp of the XP,
-// the normal rabble drop roll (loot.routSpoils), and never a Grudge.
-// report: { result: 'rout', xp, gold, drops, consumables, levelUps }.
-export function routPack(game, { nodeId = null, spawns = null, where = null } = {}) {
-  const list = spawns || (nodeId ? spawnsFor(game, nodeId) : []);
-  const foes = list.map((sp, i) => buildFoe(sp, { id: `r${i}`, seq: i }));
-  const g = structuredClone(game);
-  const rng = rngFrom(g.rngState);
-  const gold = foes.reduce((a, f) => a + f.gold, 0);
-  const xp = Math.round(foes.reduce((a, f) => a + f.xp, 0) * TUNING.rout.xp);
-  const place = where || (nodeId && ENCOUNTERS[nodeId]?.place) || null;
-  const { drops, consumables } = routSpoils(rng, foes, g.progress.waking, { where: place, day: g.progress.flags.day });
-  const report = { result: 'rout', xp, gold, drops, consumables, levelUps: {}, deeds: [], kindled: [], ready: [] };
-  g.gold += gold;
-  g.inventory.push(...drops);
-  for (const [id, n] of Object.entries(consumables)) g.bag[id] = (g.bag[id] || 0) + n;
-  awardXp(g, xp, rng, report);
-  for (const { item } of wornBy(g, g.party.active)) markDeed(g, item, 'rout', report); // M4: the Rout deed
-  if (nodeId) {
-    const f = g.progress.flags;
-    f.beaten = { ...(f.beaten || {}), [nodeId]: (f.beaten?.[nodeId] || 0) + 1 };
-    f.cleared[nodeId] = true;
-    if (ENCOUNTERS[nodeId]?.once) f.done[nodeId] = true;
-  }
-  g.rngState = rng.getState();
-  return { game: g, report };
-}
-
 function healAll(game) {
   const roster = {};
   const bonus = pageBonus(game);
@@ -215,8 +189,8 @@ export function spawnsFor(game, nodeId) {
 // third argument comes from the world: { ambush } when a pack walked into your back, { firstStrike }
 // when you walked into its back. A Forewarned party (story.forewarned) starts a `forewarned`
 // encounter Warded.
-export function startBattle(game, { nodeId = null, patrol = null } = {}, { ambush = false, firstStrike = false } = {}) {
-  if (patrol) return startPatrol(game, patrol, { ambush, firstStrike });
+export function startBattle(game, { nodeId = null, patrol = null } = {}, { ambush = false, firstStrike = false, caught = false } = {}) {
+  if (patrol) return startPatrol(game, patrol, { ambush, firstStrike, caught });
   const node = ENCOUNTERS[nodeId];
   if (!node) throw new Error(`Unknown encounter ${nodeId}`);
   const rng = rngFrom(game.rngState);
@@ -236,7 +210,7 @@ export function startBattle(game, { nodeId = null, patrol = null } = {}, { ambus
     ctx: {
       inventory: game.inventory, bag: game.bag, nodeId, where: node.place, day: flags.day, bonus: pageBonus(game),
       gentle: !!node.gentle, backdrop: node.backdrop, patrol: false, ambush,
-      ...(firstStrike ? { firstStrike } : {}),
+      ...(firstStrike ? { firstStrike } : {}), ...(caught ? { caught } : {}),
       ...(node.forewarned && story.forewarned ? { warded: TUNING.forewarned.ward } : {}),
       ...(node.dark ? { dark: true } : {}), ...(node.duel ? { duel: true } : {}),
     },
@@ -249,7 +223,7 @@ export function startBattle(game, { nodeId = null, patrol = null } = {}, { ambus
 
 // A roaming zone pack's battle (M3): nodeId is null, so resolveBattle sets no cleared flags and
 // records no Grudges.
-function startPatrol(game, { spawns, where = 'The Wilds', backdrop = 'verdant-wood', dark = false }, { ambush = false, firstStrike = false } = {}) {
+function startPatrol(game, { spawns, where = 'The Wilds', backdrop = 'verdant-wood', dark = false }, { ambush = false, firstStrike = false, caught = false } = {}) {
   const rng = rngFrom(game.rngState);
   const seed = rng.int(1, 2 ** 31 - 1);
   const battle = createBattle({
@@ -257,7 +231,7 @@ function startPatrol(game, { spawns, where = 'The Wilds', backdrop = 'verdant-wo
     foes: spawns.map((s, i) => ({ ...s, spawnIndex: s.spawnIndex ?? i })), seed, waking: game.progress.waking,
     ctx: {
       inventory: game.inventory, bag: game.bag, nodeId: null, where, day: game.progress.flags.day, bonus: pageBonus(game),
-      gentle: false, backdrop, patrol: true, ambush, ...(firstStrike ? { firstStrike } : {}), ...(dark ? { dark: true } : {}),
+      gentle: false, backdrop, patrol: true, ambush, ...(firstStrike ? { firstStrike } : {}), ...(caught ? { caught } : {}), ...(dark ? { dark: true } : {}),
     },
   });
   return { game: { ...game, rngState: rng.getState() }, battle };
@@ -436,6 +410,7 @@ export function fightDeedIds(battle, out, report, heroId, item) {
   if (report.grudgeSettled) done.push('settle');
   if (report.brand) done.push('brand');
   if (won && (battle.waking || 0) >= 2 && log.downs === 0) done.push('untouched');
+  if (won && battle.ctx?.caught) done.push('rout'); // M4.5: a pack that ran from you, run down and beaten
   if ((item.chronicle?.kills || 0) >= 50) done.push('hundred');
   return done;
 }

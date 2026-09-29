@@ -1,14 +1,14 @@
 /* Hilda's forge and the M4 loot UI (spec §5.1, §5.3; owner P7a). Imported by ui/world/sheets.js.
    The forge sheet (tabs, the purse and pouch, the pieces, the card preview with its before and after),
-   Idris's gem shop, the Rout strip's news, the aftermath's deeds, forge spoils and Codex page banner,
+   Idris's gem shop, the aftermath's deeds, forge spoils and Codex page banner,
    and the Party screen's Codex bonus. Phone first (360 px); the forge goes two columns from 860 px.
    Selectors carry .forge / .ov-forge (or their own names) so they win over the M3 rules in world.css. */
 
 /* ---------- sheets that can grow past the screen stay scrollable from the top ---------- */
-.ov.ov-sheet.ov-forge, .ov.ov-sheet.ov-shop, .ov.ov-sheet.ov-spoils { justify-content: flex-start; }
-.ov.ov-sheet.ov-forge .ov-inner, .ov.ov-sheet.ov-shop .ov-inner, .ov.ov-sheet.ov-spoils .ov-inner { margin: auto auto 0; }
+.ov.ov-sheet.ov-forge, .ov.ov-sheet.ov-shop { justify-content: flex-start; }
+.ov.ov-sheet.ov-forge .ov-inner, .ov.ov-sheet.ov-shop .ov-inner { margin: auto auto 0; }
 @media (min-width: 700px) {
-  .ov.ov-sheet.ov-forge .ov-inner, .ov.ov-sheet.ov-shop .ov-inner, .ov.ov-sheet.ov-spoils .ov-inner { margin: auto; }
+  .ov.ov-sheet.ov-forge .ov-inner, .ov.ov-sheet.ov-shop .ov-inner { margin: auto; }
 }
 @media (min-width: 860px) { .ov.ov-sheet.ov-forge .ov-inner { max-width: 960px; } }
 
@@ -205,16 +205,6 @@ canvas.gem-i, canvas.mat-i, canvas.flame { display: block; flex: none; image-ren
 .shop-pouch { margin: 0 0 8px; }
 .shop-line { margin: 0 0 10px; font-size: 14px; color: var(--parchment-2); }
 .shop-empty { color: var(--ash); }
-
-/* ---------- the Rout strip ---------- */
-.spoils-mats { display: flex; flex-wrap: wrap; gap: 6px 12px; margin: 10px 0 0; }
-.sm-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 15px; color: var(--parchment); }
-.spoils-deeds { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 4px; font-size: 15px; }
-.sd-deed { display: flex; align-items: center; gap: 8px; color: var(--parchment-2); }
-.sd-deed i { width: 9px; height: 9px; flex: none; background: radial-gradient(circle at 40% 35%, #fff1b0, #ee8e31 55%, #7a3a12); box-shadow: 0 0 0 2px var(--ink); }
-.sd-deed b { color: var(--parchment); }
-.sd-kindled { color: var(--hearth-hot); } .sd-ready { color: #ffe890; }
-.spoils-page { margin: 10px 0 0; padding: 8px 10px; font-size: 15px; color: #fff3c4; background: rgba(255, 203, 102, .1); box-shadow: inset 3px 0 0 #ffcb66; }
 
 /* ---------- the aftermath: a finished Codex page, deeds, forge spoils ---------- */
 .af-page {

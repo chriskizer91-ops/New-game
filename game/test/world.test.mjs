@@ -207,7 +207,7 @@ test('walking into a pack: First Strike from behind, a plain fight from the fron
   assert.equal(interact(game, onField(game, [facingAway], 15, 10, 'n')).events[0].firstStrike, true, 'A does the same');
 });
 
-test('weak packs flee on 4 of every 5 ticks, a flee you can catch; walking into one is a Rout', () => {
+test('weak packs flee on 4 of every 5 ticks, a flee you can catch; catching one is a full battle (M4.5, no Routs)', () => {
   const game = withLevel(fresh(), 6);
   const weak = pack(game, { x: 17, y: 10 });
   assert.equal(isWeak(game, weak.spawns), true, 'all rabble, top level 2 <= 6 - 3');
@@ -218,16 +218,22 @@ test('weak packs flee on 4 of every 5 ticks, a flee you can catch; walking into 
   assert.ok(t.walk.roamers[0].x > 17, 'it runs away from you');
   // chase it into the east wall and catch it
   w = t.walk;
-  let rout = null;
-  for (let i = 0; i < 60 && !rout; i++) {
+  let caught = null;
+  const seen = [];
+  for (let i = 0; i < 60 && !caught; i++) {
     const r = w.roamers[0];
     const dir = r.x > w.x ? 'e' : r.x < w.x ? 'w' : r.y > w.y ? 's' : 'n';
     const m = move(game, w, dir);
-    rout = m.events.find(e => e.t === 'rout');
+    seen.push(...m.events.map(e => e.t));
+    caught = m.events.find(e => e.t === 'contact');
     w = m.walk;
   }
-  assert.ok(rout, 'caught');
-  assert.equal(rout.enc, 'waymarker-stones');
+  assert.ok(caught, 'caught');
+  assert.deepEqual([caught.enc, caught.by, caught.weak], ['waymarker-stones', 'player', true], 'a full battle with the pack, marked as run down');
+  assert.ok(!seen.includes('rout'), 'nothing scatters: there are no Routs');
+  // a pack that stands its ground is a plain fight
+  const plain = move(fresh(), onField(fresh(), [pack(fresh(), { x: 16, y: 10, face: 'w' })], 15, 10, 'e'), 'e').events[0];
+  assert.deepEqual([plain.t, plain.weak], ['contact', undefined]);
 });
 
 test('the weak gap: Dawnbell narrows it; relic-bearer variants and relic holders never flee', () => {
@@ -238,7 +244,7 @@ test('the weak gap: Dawnbell narrows it; relic-bearer variants and relic holders
   const bell = { ...withLevel(fresh(), 4), inventory: [...fresh().inventory, relicItem('dawnbell', createRng(1))] };
   assert.equal(isWeak(bell, rabble), true, 'Dawnbell: gap 2');
   assert.equal(isWeak(g5, [{ family: 'smuggler', variant: 'queen', level: 1 }]), false, 'Mags is a relic-bearer by variant');
-  assert.equal(isWeak(g5, [{ family: 'cutpurse', level: 1, relic: 'tallyknife' }]), false, 'a relic holder is never Routed');
+  assert.equal(isWeak(g5, [{ family: 'cutpurse', level: 1, relic: 'tallyknife' }]), false, 'a relic holder never flees');
   assert.equal(isWeak(g5, [{ family: 'cutpurse', level: 1, wears: 'thornwatch-hood' }]), false);
   assert.equal(isWeak(g5, [{ family: 'bandit', level: 1 }]), false, 'veterans never flee');
 });
@@ -372,9 +378,9 @@ test('a Grudge pack hunts: seeded as a hunter, never weak, sees 3 farther, a red
   let met = null;
   for (let i = 0; i < 6 && !met; i++) { const t = tick(low, w); met = t.events.find(e => e.t === 'contact'); w = t.walk; assert.equal(w.roamers[0].mood, 'chase'); }
   assert.ok(met, 'it runs you down');
-  // walking into it is a fight, never a Rout
+  // walking into it is a fight, never a pack run down (a hunter never flees)
   const hit = move(game, onField(game, [pack(game, { x: 16, y: 10, hunter: true, face: 'e' })], 15, 10, 'e'), 'e').events[0];
-  assert.equal(hit.t, 'contact');
+  assert.deepEqual([hit.t, hit.weak], ['contact', undefined]);
 });
 
 const SIGHT = deepFreeze({
@@ -428,4 +434,52 @@ test('the Keep\'s south-east gate: sealed until Act I is done, then the way into
   const after = move(done, walk, from.dir).events[0];
   assert.deepEqual([after.t, after.to, after.anchor], ['exit', 'sun-road', exit.anchor]);
   assert.ok(enterMap(done, { map: 'sun-road', anchor: exit.anchor }).walk, 'and the anchor is real');
+});
+
+// ---- Milestone 4.5 (docs/M45-SPEC.md A3, A7): no save is stranded; a gated exit says what opens it ----
+
+const LANE = deepFreeze({
+  id: 'lane', name: 'The Test Lane', region: 'verdant', biome: 'wilds', music: 'wilds', backdrop: 'hearth-road',
+  zone: null, level: 2, travel: true, dark: false, lore: [[300, 260, 4, 4]], w: 7, h: 9,
+  rows: ['###=###', '#.....#', '#.....#', '###.###', '#.....#', '#......', '#.....#', '#.....#', '###=###'],
+  entities: [
+    { id: 'lane-gate', kind: 'gate', area: [3, 3, 3, 3], look: 'chain', open: { beaten: 'hearth-road' }, guard: 'hearth-road', text: 'A rope across the lane.' },
+    { id: 'hearth-road', kind: 'encounter', enc: 'hearth-road', mode: 'block', at: [4, 4], face: 's' },
+  ],
+  exits: [
+    { id: 'lane-n', area: [3, 0, 3, 0], to: 'keep', anchor: 'from-hall' },
+    { id: 'lane-s', area: [3, 8, 3, 8], to: 'keep', anchor: 'from-hall' },
+    { id: 'lane-e', area: [6, 5, 6, 5], to: 'keep', anchor: 'from-hall', gate: { brand: 'brand-of-glass' },
+      sealed: { region: 'sunscorch', text: 'The east gate is barred.', hint: 'It opens once the Brand of Glass is yours.' } },
+  ],
+  anchors: { south: [3, 7, 'n'] },
+  roads: [{ from: 'south', to: 'lane-n', gates: ['lane-gate'] }],
+  roam: null,
+});
+registerMap(LANE);
+
+test('a carried-over position inside a shut road gate or its guard lands on the near side; a free one stays put', () => {
+  const game = fresh();
+  const at = (g, x, y) => { const w = enterMap(g, { map: 'lane', at: [x, y], face: 'n' }).walk; return [w.x, w.y]; };
+  assert.deepEqual(at(game, 3, 3), [3, 4], 'out of the shut gate, back to the side the road comes from (never beyond it)');
+  assert.deepEqual(at(game, 4, 4), [5, 4], 'out of the guard, to the nearest free tile on the near side');
+  assert.deepEqual(at(game, 2, 6), [2, 6], 'a free tile stays put');
+  assert.deepEqual(at(game, 3, 1), [3, 1], 'beyond the gate, but free: it stays (it can always fight the guard to go back)');
+  const beaten = { ...game, progress: { ...game.progress, flags: { ...game.progress.flags, beaten: { 'hearth-road': 1 }, cleared: { 'hearth-road': true } } } };
+  assert.deepEqual(at(beaten, 3, 3), [3, 3], 'an open gate is no longer solid');
+  assert.deepEqual(enterMap(game, { map: 'lane', anchor: 'south' }).walk.x, 3, 'an anchor is used as is');
+  // without roads (the mini map), the nearest free tile
+  const w = enterMap(game, { map: 'mini', at: [9, 5], face: 'n' }).walk;
+  assert.ok(canWalk(game, 'mini', w.x, w.y) && Math.abs(w.x - 9) + Math.abs(w.y - 5) === 1, `next to the block (${w.x},${w.y})`);
+});
+
+test('a gated exit says what opens it (its sealed hint), then lets you through', () => {
+  const game = fresh();
+  const walk = enterMap(game, { map: 'lane', at: [5, 5], face: 'e' }).walk;
+  const shut = move(game, walk, 'e').events.find(e => e.t === 'sealed');
+  assert.deepEqual([shut?.id, shut?.text, shut?.hint], ['lane-e', 'The east gate is barred.', 'It opens once the Brand of Glass is yours.']);
+  const branded = { ...game, progress: { ...game.progress, brands: ['brand-of-glass'] } };
+  const open = move(branded, walk, 'e').events.find(e => e.t === 'exit');
+  assert.equal(open?.id, 'lane-e');
+  assert.equal(move(game, enterMap(game, { map: 'mini', at: [10, 4], face: 'e' }).walk, 'e').events.find(e => e.t === 'sealed').hint, null, 'no hint: null');
 });

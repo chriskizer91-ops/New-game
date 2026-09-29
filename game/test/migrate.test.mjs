@@ -127,6 +127,25 @@ test('toV3 Claims a whole relic in the bag that the Codex missed (M2 and M3 refo
   assert.deepEqual(migrate(m), m, 'idempotent');
 });
 
+test('toV3 (M4.5): every fight a save has won counts as beaten, so its road gate is open; idempotent', () => {
+  const g = migrate(load('v1-node-thornhollow.json'));
+  const f = g.progress.flags;
+  const won = Object.keys(f.cleared).filter(id => ENCOUNTERS[id]?.type === 'fight');
+  assert.ok(won.length >= 3, 'the fixture has won fights');
+  // an M3 or M4 save that lost track of beaten (or never had it) for some of them
+  const old = structuredClone(g);
+  old.version = 2;
+  delete old.progress.flags.beaten[won[0]];
+  old.progress.flags.beaten = Object.fromEntries(Object.entries(old.progress.flags.beaten).filter(([id]) => id !== won[1]));
+  old.progress.flags.done = { ...old.progress.flags.done, 'tamsin-duel': true };
+  const m = migrate(deepFreeze(old));
+  for (const id of [won[0], won[1], 'tamsin-duel']) assert.ok(m.progress.flags.beaten[id] >= 1, `${id} is beaten`);
+  assert.equal(m.progress.flags.beaten['milestone-fire'], undefined, 'a Hearthfire is never beaten');
+  const kept = { ...g, progress: { ...g.progress, flags: { ...g.progress.flags, beaten: { ...g.progress.flags.beaten, [won[2]]: 4 } } } };
+  assert.equal(migrate(kept).progress.flags.beaten[won[2]], 4, 'a count a save already has is kept');
+  assert.deepEqual(migrate(m), m, 'idempotent');
+});
+
 test('save (M4.5): its own key; the M4, M3 and M2 saves are only read, offered newest first, and exported byte for byte', async () => {
   const S = await import('../src/core/save.js');
   const store = shim();

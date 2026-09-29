@@ -30,12 +30,13 @@
 //                    Waking 2: 15-25% first-try wipe.
 // Every mode: zero stuck runs. A duel lost is a yield (not retried); the door opens anyway.
 // Crossing a zone map costs a fight with one of its roaming patrols ('patrol:<zone>' in a route);
-// a weak one is Routed instead. The m2 mode has none, to compare with M2.
+// a weak one runs from you and costs nothing (Milestone 4.5: no Routs; the player walks on). The m2
+// mode has none, to compare with M2.
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
-import { newGame, startBattle, resolveBattle, rest, spawnsFor, partyLevel, routPack } from '../src/rules/gauntlet.js';
+import { newGame, startBattle, resolveBattle, rest, spawnsFor, partyLevel } from '../src/rules/gauntlet.js';
 import { isWeak } from '../src/rules/world.js';
 import { ZONES, SUN_PATH } from '../src/data/world.js';
 import { migrate } from '../src/rules/migrate.js';
@@ -175,7 +176,7 @@ function grind(g, levels, stats, ctx) {
 }
 
 // Play a route from `g`. Returns { g, done } (done: the route's last fight was won or yielded).
-// One roaming zone patrol, as the world seeds them (rules/world.js seedRoamers): a weak one is Routed.
+// One roaming zone patrol, as the world seeds them (rules/world.js seedRoamers): a weak one runs.
 function patrolFight(g, key, stats, ctx) {
   const zoneId = key.split('@')[0];
   const zone = ZONES[zoneId];
@@ -185,7 +186,7 @@ function patrolFight(g, key, stats, ctx) {
   const ns = nodeStats(stats, `patrol:${key}`);
   ns.first++;
   ns.level.push(partyLevel(g));
-  if (isWeak(g, spawns)) { ns.routs = (ns.routs || 0) + 1; ns.firstWins++; ns.wins++; return routPack(g, { spawns }).game; }
+  if (isWeak(g, spawns)) { ns.ran = (ns.ran || 0) + 1; ns.firstWins++; ns.wins++; return g; }
   const started = startBattle(g, { patrol: { spawns, where: zoneId, backdrop: zone.backdrop } });
   const b = fight(started.battle, stats);
   const res = resolveBattle(started.game, b);
@@ -352,7 +353,7 @@ function report(all) {
     const st = all[k];
     out.push('', `### ${LABELS[k]}`, '');
     const rows = Object.entries(st.nodes).filter(([, n]) => n.first).map(([id, n]) => [
-      id, id.startsWith('patrol:') ? `(zone patrol${n.routs ? `, ${pct(n.routs, n.first)} routed` : ''})` : ENCOUNTERS[id].spawns.map(s => s.family).join('+'), f1(avg(n.level)), pct(n.firstWins, n.first), f1(avg(n.rounds)),
+      id, id.startsWith('patrol:') ? `(zone patrol${n.ran ? `, ${pct(n.ran, n.first)} ran` : ''})` : ENCOUNTERS[id].spawns.map(s => s.family).join('+'), f1(avg(n.level)), pct(n.firstWins, n.first), f1(avg(n.rounds)),
       pct(avg(n.hpLeft), 1), pct(n.first - n.firstWins - n.yields, n.first), n.yields ? pct(n.yields, n.first) : '', n.wipes, n.claims || '', n.shatters || '', n.stuck || '',
     ]);
     out.push(table(rows, ['node', 'foes', 'lvl', 'win 1st', 'rounds', 'hp left', 'wipe 1st', 'yield', 'wipes', 'claimed', 'shattered', 'stuck']));

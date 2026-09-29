@@ -105,15 +105,16 @@ test('a lent relic is never claimed and never shatters; a worn relic drops from 
   assert.ok(!r.drops.some(i => i.base === 'cairnmaul'));
 });
 
-test('routSpoils rolls the rabble drop per foe, deterministically', async () => {
-  const { routSpoils } = await import('../src/rules/loot.js');
-  const { buildFoe } = await import('../src/rules/foe.js');
-  const foes = [0, 1, 2].map(i => buildFoe({ family: 'cutpurse', level: 4 }, { id: `r${i}`, seq: i }));
-  const a = routSpoils(createRng('rout'), foes, 0, { where: 'Hearth Road', day: 2 });
-  assert.deepEqual(routSpoils(createRng('rout'), foes, 0, { where: 'Hearth Road', day: 2 }), a);
+// Milestone 4.5 (no Routs): a pack you run down is a real fight, so its rabble drop comes from the
+// battle loot, per foe and deterministically, like any other win.
+test('a caught pack\'s rabble drop is the battle loot: rolled per foe, deterministically', () => {
+  const s = structuredClone(battleWith([0, 1, 2].map(() => ({ family: 'cutpurse', level: 4 })), { ctx: { caught: true } }));
+  for (const id of ['f1', 'f2', 'f3']) { s.units[id].ko = true; s.units[id].hp = 0; }
+  const a = battleLoot(s, createRng('caught'));
+  assert.deepEqual(battleLoot(s, createRng('caught')), a);
   for (const it of a.drops) assert.ok(['worn', 'wrought', 'tempered'].includes(it.rarity), it.rarity);
   let total = 0;
-  for (let k = 0; k < 40; k++) total += routSpoils(createRng(`r${k}`), foes, 0).drops.length;
+  for (let k = 0; k < 40; k++) total += battleLoot(s, createRng(`c${k}`)).drops.length;
   assert.ok(total > 0, 'rabble drop something now and then');
 });
 

@@ -13,7 +13,8 @@
 //   1  new game: keep-intro plays, the d-pad (phone) or keys (laptop) walk, A talks to Fenwick, the Sneck
 //      pre-fight card opens, a forced win, the card reveal, back in the world, the north gate open
 //   2  walking: WASD / arrows, holding to run, no page scroll (the phone uses the d-pad and B)
-//   3  a roaming pack contact starts a battle; fleeing stuns the roamer; a weak pack is Routed
+//   3  a roaming pack contact starts a battle; fleeing stuns the roamer; a weak pack you catch is a full
+//      battle (M4.5: no Routs): it starts with Auto off, the dice tray shows, and the pack is gone after
 //      with the spoils strip
 //   4  the thornwall lock prompt shows ✓/✗ and opens with a key
 //   5  holding 450 ms on Old Snag opens the grey card (.ov .card.grey) and the codex is sighted
@@ -106,9 +107,9 @@ function initScript() {
     const go = app.go;
     app.go = (name, p = {}) => {
       const force = window.__forceResult;
+      if (name === 'battle') window.__lastBattle = p.battle;
       if (name === 'battle' && force) {
         if (!force.sticky) window.__forceResult = null;
-        window.__lastBattle = p.battle;
         const b = structuredClone(p.battle);
         if (force.result === 'defeat') for (const u of Object.values(b.units)) if (u.side === 'hero') { u.hp = 0; u.ko = true; }
         if (force.result === 'victory') for (const u of Object.values(b.units)) if (u.side === 'foe') { u.hp = 0; u.ko = true; }
@@ -324,7 +325,7 @@ async function run(V) {
     } catch (e) { check(false, `${P} 2: ${e.message.split('\n')[0]}`); }
   }
 
-  // ================= 3. packs: contact, flee, stun; the Rout ============================================
+  // ================= 3. packs: contact, flee, stun; a weak pack caught is a full battle ====================
   if (want(3)) {
     console.log(' -- 3 packs');
     try {
@@ -356,7 +357,7 @@ async function run(V) {
       check(r2 && r2.mood === 'stunned', `${P} 3: after fleeing, the pack is stunned (${r2 && r2.mood})`);
       check(back.grace > 0, `${P} 3: grace after the battle (${back.grace})`);
       await shot('stunned');
-      // a weak pack: the party is far above it, so walking into it Routs it
+      // a weak pack (M4.5: no Routs): the party is far above it, and catching it is a full battle
       await W(lvl => {
         const g = window.__world.game();
         const g2 = structuredClone(g);
@@ -372,24 +373,27 @@ async function run(V) {
       const gold0 = await W(() => window.__world.game().gold);
       await W(() => window.__world.face('n'));
       await W(() => window.__world.press('n'));
-      await page.waitForSelector('.ov-spoils', { timeout: 4000 });
-      const sp = await page.innerText('.ov-spoils');
-      check(/Routed/i.test(sp) && /gold/.test(sp), `${P} 3: a weak pack is Routed, with the spoils strip ("${sp.split('\n').slice(0, 2).join(' · ')}")`);
-      await shot('spoils');
-      const chip = await page.$('.spoils-chip');
-      if (chip) {
-        await chip.click();
-        await page.waitForSelector('.ov-reveal .card', { timeout: 8000 });
-        check(true, `${P} 3: a spoils chip opens the card reveal`);
-        await page.click('.ov-reveal .cont');
-        await page.waitForTimeout(200);
-      } else block(`${P} 3: the Rout dropped no item, so no chip to open (loot.routSpoils, WP2)`);
-      await page.click('.ov-spoils [data-primary]');
-      await page.waitForTimeout(200);
+      await page.waitForFunction(() => document.getElementById('app').dataset.screen === 'battle', null, { timeout: 5000 });
+      check(!(await page.$('.ov-spoils')), `${P} 3: walking into a weak pack starts a full battle, not a Rout`);
+      const lb2 = await W(() => window.__lastBattle && window.__lastBattle.ctx);
+      check(lb2 && lb2.caught === true, `${P} 3: the battle knows the pack was run down (ctx.caught, for the Rout deed)`);
+      check((await page.getAttribute('.bt-auto', 'aria-pressed')) === 'false', `${P} 3: the fight starts with Auto off`);
+      await shot('caught-battle');
+      await page.click('.bt-auto');
+      await page.waitForFunction(() => { const t = document.querySelector('.bt-tray'); return (t && !t.hidden) || document.getElementById('app').dataset.screen !== 'battle'; }, null, { timeout: 20000 });
+      check(await page.evaluate(() => { const t = document.querySelector('.bt-tray'); return !!t && !t.hidden; }), `${P} 3: the dice tray shows the rolls`);
+      await shot('caught-dice');
+      await page.waitForFunction(() => document.getElementById('app').dataset.screen === 'aftermath', null, { timeout: 90000 });
+      for (let i = 0; i < 12 && (await screen()) !== 'world'; i++) {
+        if (await page.$('.ov-reveal .cont')) await page.click('.ov-reveal .cont');
+        else if (await page.$('.af-foot .btn.primary')) await page.click('.af-foot .btn.primary');
+        await page.waitForTimeout(350);
+      }
+      await page.waitForFunction(() => document.getElementById('app').dataset.screen === 'world', null, { timeout: 8000 });
       const after = await state();
       const gold1 = await W(() => window.__world.game().gold);
-      check(!after.roamers.some(r => r.id === 'e2e-weak'), `${P} 3: the routed pack is gone`);
-      check(gold1 > gold0, `${P} 3: the Rout paid gold (${gold0} -> ${gold1})`);
+      check(!after.roamers.some(r => r.id === 'e2e-weak'), `${P} 3: the beaten pack is gone`);
+      check(gold1 > gold0, `${P} 3: the fight paid gold (${gold0} -> ${gold1})`);
     } catch (e) { check(false, `${P} 3: ${e.message.split('\n')[0]}`); }
   }
 

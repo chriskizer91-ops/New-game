@@ -228,18 +228,3 @@ export function battleLoot(s, rng) {
   return { drops, claimed, consumables };
 }
 
-// A Rout (M3, spec D4): a weak pack scatters and leaves its normal rabble drop roll behind.
-// foeUnits are built foes (rules/foe.js buildFoe). Returns { drops, consumables }.
-export function routSpoils(rng, foeUnits, waking = 0, { where = null, day = 1 } = {}) {
-  const drops = [], consumables = {};
-  for (const f of foeUnits) {
-    if (f.summonedBy || f.noLoot) continue;
-    const prov = { from: f.name, where, day };
-    drops.push(...foeDrops(rng, f, waking, prov));
-    if (rng.chance(T.consumable[f.tier] || 0)) {
-      const id = weightedPick(rng, Object.entries(T.consumableWeights).map(([v, w]) => ({ v, w })));
-      consumables[id] = (consumables[id] || 0) + 1;
-    }
-  }
-  return { drops, consumables };
-}

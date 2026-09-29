@@ -149,7 +149,7 @@ function check(cond, msg) { if (!cond) { fails.push(msg); console.log('  FAIL', 
 const note = msg => console.log('  note', msg);
 
 const SFX = ['select', 'confirm', 'back', 'dice', 'hit', 'graze', 'miss', 'crit', 'heal', 'status', 'disarm', 'ko', 'surge', 'legend', 'victory', 'defeat', 'phase', 'chest', 'reveal', 'equip', 'levelup', 'hearth', 'beam', 'tick', 'stamp', 'coin', 'page', 'identify', 'slam', 'error',
-  'bump', 'alert', 'rout', 'door', 'blip', 'unlock', 'chime'];
+  'bump', 'alert', 'door', 'blip', 'unlock', 'chime'];
 const TRACKS = ['road', 'wilds', 'town', 'dungeon', 'battle', 'boss', 'hearth', 'victory', 'title'];
 
 async function openPage(V, { seedV1 = null, seedV2 = null, seedM4 = null } = {}) {

@@ -71,6 +71,13 @@ export function toV3(save) {
       v.codex[it.base] = { sighted: true, awakened: false, ...(isObj(v.codex[it.base]) ? v.codex[it.base] : {}), claimed: true };
     }
   }
+  // Milestone 4.5 (docs/M45-SPEC.md A7): a road gate opens on `beaten`, so every fight a save has won
+  // (cleared, or done for good) counts as beaten at least once
+  if (isObj(f.cleared) || isObj(f.done)) {
+    const won = [...Object.keys(isObj(f.cleared) ? f.cleared : {}), ...Object.keys(isObj(f.done) ? f.done : {})]
+      .filter(id => ENCOUNTERS[id]?.type === 'fight' && (f.cleared?.[id] || f.done?.[id]) && !f.beaten?.[id]);
+    if (won.length) f.beaten = { ...(isObj(f.beaten) ? f.beaten : {}), ...Object.fromEntries(won.map(id => [id, 1])) };
+  }
   if (v.version < 3) v.version = 3;
   return v;
 }

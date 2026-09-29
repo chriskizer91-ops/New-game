@@ -320,7 +320,6 @@ veteran 1, relic-bearer 2, champion 3) + Waking + ½ per Omen + 1 for a Grudge.
 - **Champions:** every broken piece + 2 random items (min tempered).
 - **Worn relics** (M3): a relic a relic-bearer or champion visibly wears drops when it falls, as
   a veteran's does (Tamsin's Vale Gauntlets).
-- **Routs** (M3): each routed foe leaves the normal rabble drop roll and consumable chance.
 - **Consumables** (so the bag can refill): 6% per rabble, 15% per veteran, 50% per relic-bearer,
   always from a Champion (Hearth Tonic 5 : Frost Draught 2 : Bitterroot 2 : Ember Salts 1).
 - **Grudges:** a settled Grudge always adds a bonus item, and all its gear drops are one rarity
@@ -355,9 +354,12 @@ and 5 sealed exits toward the regions of Act II. `docs/M3-SPEC.md` is the contra
   tiles past their leash. Walking into a pack's back is a **First Strike** (every foe's first turn
   comes 40 later); a pack walking into your back is an **ambush** (the Thornwatch set still
   cancels it). After any fight you get 6 ticks of grace; a pack you fled from is stunned 12 ticks.
-- **Rout:** a **weak** pack (all rabble, no relic held or worn, top level at least 3 below the
-  party, 2 with the Dawnbell) flees on 4 of every 5 ticks. Walking into one Routs it: full gold,
-  half XP, the rabble drop roll, never a Grudge.
+- **Weak packs:** a **weak** pack (all rabble, no relic held or worn, top level at least 3 below the
+  party, 2 with the Dawnbell) flees on 4 of every 5 ticks. Catching one is a full battle, like any
+  other (Milestone 4.5: there are no Routs), and winning it is the relics' Rout deed.
+- **Road gates** (Milestone 4.5): every fight on the route holds a gate across the road; the gate
+  opens for good once its guard (or the lair it waits on) is beaten, and a Waking brings the guard
+  back beside the open gate as an optional rematch. The Glass Flats open with the Brand of Glass.
 - **Locks:** every lock has two keys: a relic's map power (owned and not shattered) or a Domain
   level of the best active hero (a primary Domain equals the hero's level, a secondary one is half,
   rounded up). Darkness and ichor are soft: without a key you see 2 tiles, and ichor burns 4% of
@@ -377,10 +379,9 @@ and 5 sealed exits toward the regions of Act II. `docs/M3-SPEC.md` is the contra
 ```js
 // rules/gauntlet.js (game flow)
 newGame({ name, starter, seed, base })          // starter: hearthbrand | stillwater-lance | cairnmaul
-startBattle(game, { nodeId } | { patrol: { spawns, where, backdrop, dark } }, { ambush, firstStrike }) -> { game, battle }
+startBattle(game, { nodeId } | { patrol: { spawns, where, backdrop, dark } }, { ambush, firstStrike, caught }) -> { game, battle }
 resolveBattle(game, battle) -> { game, report }  // report: result xp gold drops claimed consumables levelUps
                                                  //   goldLost grudge grudgeSettled brand rematch yield wokeAt rounds
-routPack(game, { nodeId } | { spawns, where }) -> { game, report }
 rest(game, hfId) / travel(game, hfId) / spawnsFor(game, encId) / partyLevel(game) / uniqueBrands(game)
 // rules/world.js (the overworld; see ARCHITECTURE.md "World")
 enterMap move interact tick afterBattle commit present canWalk findPath threat keys lockStatus openLock openChest
@@ -390,7 +391,7 @@ enterMap move interact tick afterBattle commit present canWalk findPath threat k
 // rules/autoplay.js: autoCommand(state, heroId) -> a ready-to-act command ("Auto" button)
 // rules/party.js: canUse equip unequip compare bestHeroFor reforge temperCost temper buy
 // rules/stats.js: deriveHero(hero, inventory) itemProfile(item) POWERS
-// rules/loot.js: generateItem relicItem identifyItem affixText affixQuality routSpoils
+// rules/loot.js: generateItem relicItem identifyItem affixText affixQuality
 // rules/progression.js: xpToNext xpForLevel levelForXp grantXp levelUp xpTable
 ```
 
@@ -408,7 +409,7 @@ name, text} (summons, twins) and `escape` {foe, text} (a foe runs or withers).
 `src/rules/autoplay.js` (heal under 45%, revive the fallen, disarm relic holders before killing
 them, Analyze/Mark/Rootbind elites, use relic Arts and Surges), teleporting between fights through
 the flow API. After a wipe it rests, grinds one level on rabble patrols and retries (8 tries is
-"stuck"). Crossing a zone map costs one fight with a roaming patrol (Routed when weak). A lost duel
+"stuck"). Crossing a zone map costs one fight with a roaming patrol (nothing when it is weak: it runs). A lost duel
 is a yield and is not retried. `--modes`, `--seed N` (replay one seed) and `--trace` (every fight)
 help when tuning. "wipe 1st" is the chance the first attempt ends in a party wipe; "hp left" is the
 party's HP after a won first attempt.

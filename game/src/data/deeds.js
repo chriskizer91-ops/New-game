@@ -1,6 +1,7 @@
 // Deeds (M4 spec §4.3): what a relic must do in your hands to awaken. Every relic names three of
-// these in RELICS[id].deeds; rules/gauntlet.js resolveBattle and the Rout path mark them done on the
-// item (item.deeds[id] = day). One deed kindles a relic; all three, and Hilda's rite, awaken it.
+// these in RELICS[id].deeds; rules/gauntlet.js resolveBattle marks them done on the item
+// (item.deeds[id] = day). One deed kindles a relic; all three, and Hilda's rite, awaken it.
+// Milestone 4.5 keeps the id `rout` (saves hold it) for a pack that ran from you, run down and beaten.
 // Owner: P1 (M4).
 
 import { deepFreeze } from '../core/freeze.js';
@@ -14,7 +15,7 @@ export const DEEDS = deepFreeze({
   'legend-strike': D('legend-strike', 'Legend Strike', 'Its bearer rolls a natural 20.'),
   surge: D('surge', 'Surge', 'Its Legend Surge fires.'),
   claim: D('claim', 'Pried Loose', 'A relic is pried loose in a fight it is in.'),
-  rout: D('rout', 'Rout', 'Rout a pack while it is equipped.'),
+  rout: D('rout', 'Rout', 'Beat a pack that ran from you while it is equipped.'),
   settle: D('settle', 'Grudge Settled', 'Settle a Grudge.'),
   brand: D('brand', 'Branded', 'Earn a Brand while it is equipped.'),
   hundred: D('hundred', 'Fifty Felled', 'Fifty foes fall to its bearer.'),

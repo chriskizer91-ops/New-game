@@ -8,10 +8,9 @@
 //   openForge(ctx, { game, tab }) -> Promise<game>          Hilda's forge (M4 spec §5.1): Temper, Reroll,
 //                                                          Salvage, Gems, Awaken, every change through
 //                                                          rules/forge.js; resolves with the new game
-//   showSpoils(ctx, { report, title }) -> Promise<void>     the Rout strip, with deeds and forge spoils
 //   previewRelic(game, held, holder) -> ItemInstance   the grey card's item for a held relic or an Echo
 // Every user-visible string goes in through textContent (or esc() for the few html fragments).
-// Owner: WP7 (M3); openShop, openForge and showSpoils: P7a (M4).
+// Owner: WP7 (M3); openShop and openForge: P7a (M4).
 
 import { ENCOUNTERS, BRANDS } from '../../data/encounters.js';
 import { HEARTHS } from '../../data/world.js';
@@ -39,7 +38,7 @@ import { el, toCanvas } from '../lib/dom.js';
 import { iconCanvas, portraitCanvas, rarityColor, rarityName, tierOf, SLOT_ORDER } from '../lib/art.js';
 import { isReduced } from '../lib/anim.js';
 import {
-  typeLine, socketList, stageInfo, blockLines, gemText, gemBothText, gemIconEl, matIconEl, flamesEl, countsText, matWord, reportNews, TEMPER_STEPS,
+  typeLine, socketList, stageInfo, blockLines, gemText, gemBothText, gemIconEl, matIconEl, flamesEl, countsText, matWord, TEMPER_STEPS,
 } from '../lib/items.js';
 import '../forge.css';
 
@@ -862,58 +861,5 @@ export function openForge(ctx, { game, tab = 'temper' } = {}) {
 
   render();
   setTimeout(() => tabBtns[st.tab].focus({ preventScroll: true }), 0);
-  return S.wait();
-}
-
-// ---- the spoils strip (a Rout) --------------------------------------------------------------------------
-
-export function showSpoils(ctx, { report, title = 'Routed!' } = {}) {
-  const r = report || {};
-  const S = sheet(ctx, { cls: 'ov-spoils', label: 'Spoils', onBack: () => S.close() });
-  const P = S.panel;
-  P.classList.add('spoils');
-  P.append(text('p', 'kick', title), text('h2', 'title-display spoils-sum', `+${r.gold || 0} gold · +${r.xp || 0} XP`));
-  const items = [...(r.claimed || []), ...(r.drops || [])];
-  if (items.length) {
-    const row = el('div', 'spoils-items');
-    for (const it of items) {
-      const b = el('button', { type: 'button', class: 'spoils-chip' });
-      try { b.append(iconCanvas(it, 2)); } catch { /* optional */ }
-      const nm = text('b', '', it.unidentified ? 'Unidentified' : it.name);
-      nm.style.color = rarityColor(it.rarity);
-      b.append(nm);
-      b.setAttribute('aria-label', `${it.name}: open its card`);
-      b.addEventListener('click', async () => {
-        ctx.audio.sfx('page');
-        await ctx.services.cardReveal(it, { source: 'drop', backdrop: 'hearth-road' });
-      });
-      row.append(b);
-    }
-    P.append(row);
-  }
-  const bag = Object.entries(r.consumables || {});
-  if (bag.length) P.append(text('p', 'spoils-bag', `Also: ${bag.map(([id, n]) => `${CONSUMABLES[id]?.name || id} ×${n}`).join(', ')}`));
-  // M4: forge spoils, the deeds the Rout did, a relic Kindled or ready, a finished Codex page
-  const news = reportNews(ctx.game, r);
-  const mats = [...Object.entries(news.materials).map(([k, n]) => [matIconEl(k, 16), `+${n} ${matWord(k, n)}`]), ...Object.entries(news.gems).map(([id, n]) => [gemIconEl(id, 16), `+${n} ${GEMS[id]?.name || id}`])];
-  if (mats.length) {
-    const m = el('p', 'spoils-mats');
-    for (const [ic, t] of mats) { const c = el('span', 'sm-chip'); c.append(ic, text('span', '', t)); m.append(c); }
-    P.append(m);
-  }
-  if (news.deeds.length || news.kindled.length || news.ready.length) {
-    const ul = el('ul', 'spoils-deeds');
-    for (const d of news.deeds) { const li = el('li', 'sd-deed'); li.append(el('i', { 'aria-hidden': 'true' }), text('b', '', d.name), text('span', '', `: ${d.deed}`)); ul.append(li); }
-    for (const k of news.kindled) ul.append(text('li', 'sd-kindled', `${k.name} is Kindled${k.bonus ? ` (${k.bonus})` : ''}.`));
-    for (const k of news.ready) ul.append(text('li', 'sd-ready', `${k.name} has done its three deeds. Hilda can wake it.`));
-    P.append(ul);
-  }
-  for (const pg of news.pages) P.append(text('p', 'spoils-page', `Page ${pg.no} complete: ${pg.reward.name}. ${pg.reward.text}`));
-  for (const [id, gains] of Object.entries(r.levelUps || {})) {
-    const last = gains[gains.length - 1];
-    if (last) P.append(text('p', 'spoils-level', `${shortName(ctx.game, id)} reaches level ${last.level}.`));
-  }
-  P.append(foot(btn('Onward', 'btn primary big', () => { ctx.audio.sfx('confirm'); S.close(); }, { 'data-primary': '' })));
-  focusFirst(P);
   return S.wait();
 }

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRng } from '../src/core/rng.js';
-import { newGame, startBattle, resolveBattle, rest, spawnsFor, travel, routPack, partyLevel, uniqueBrands, fightDeedIds } from '../src/rules/gauntlet.js';
+import { newGame, startBattle, resolveBattle, rest, spawnsFor, travel, partyLevel, uniqueBrands, fightDeedIds } from '../src/rules/gauntlet.js';
 import { SAVE_VERSION } from '../src/rules/migrate.js';
 import { xpToNext, xpForLevel, levelForXp, grantXp, MAX_LEVEL } from '../src/rules/progression.js';
 import { equip, bestHeroFor } from '../src/rules/party.js';
@@ -278,22 +278,37 @@ test('the Waking: rabble +2 levels, everyone else +6, relic-bearer variants by t
   assert.equal(lvl(w1, 'poachers-holm', 0), lvl(g, 'poachers-holm', 0) + 3, 'Haskett: wakeLevels 3');
 });
 
-test('a Rout pays full gold, half the XP and the rabble drop roll, and never makes a Grudge', () => {
-  const g = newGame({ seed: 26 });
+// Milestone 4.5 (docs/M45-SPEC.md A4) replaces the Rout: a weak pack you run down is a full battle.
+test('a weak pack you run down is a full battle (M4.5, no Routs): it pays like any fight, and a win marks the Rout deed', () => {
+  const g = newGame({ seed: 26, starter: 'stillwater-lance' });
+  assert.ok(relicDeeds('stillwater-lance').includes('rout'), 'the Stillwater Lance counts Routs');
+  const uid = g.party.roster.warden.gear.weapon;
   const spawns = spawnsFor(g, 'hearth-road');
-  const { game, report } = routPack(deepFreeze(structuredClone(g)), { nodeId: 'hearth-road' });
-  assert.equal(report.result, 'rout');
-  assert.ok(report.gold > 0);
-  assert.equal(game.gold, g.gold + report.gold);
-  assert.ok(report.xp > 0);
-  assert.ok(Array.isArray(report.drops));
-  assert.equal(game.inventory.length, g.inventory.length + report.drops.length);
-  assert.deepEqual(game.progress.flags.grudges, {});
-  assert.equal(game.progress.flags.cleared['hearth-road'], true);
-  assert.equal(game.progress.flags.beaten['hearth-road'], 1);
-  assert.deepEqual(routPack(g, { nodeId: 'hearth-road' }).report, report, 'deterministic from rngState');
-  const patrol = routPack(g, { spawns });
-  assert.equal(patrol.game.progress.flags.cleared['hearth-road'], undefined, 'a zone pack has no node');
+  const win = (opts, target = { patrol: { spawns, where: 'Hearth Road' } }) => {
+    const s = startBattle(deepFreeze(structuredClone(g)), target, opts);
+    const b = structuredClone(s.battle);
+    for (const u of Object.values(b.units)) if (u.side === 'foe') u.hp = 1;
+    for (const u of Object.values(b.units)) if (u.side === 'hero') { u.hp = u.maxHp = 500; }
+    const played = playOut(b).state;
+    assert.equal(played.ended.result, 'victory');
+    return { battle: s.battle, played, ...resolveBattle(s.game, played) };
+  };
+  const caught = win({ caught: true, firstStrike: true });
+  assert.equal(caught.battle.ctx.caught, true);
+  assert.equal(caught.battle.ctx.firstStrike, true);
+  assert.equal(caught.report.result, 'victory', 'a battle, not a scatter');
+  assert.equal(caught.report.xp, caught.played.ended.xp, 'the whole XP, as any win');
+  assert.equal(caught.game.gold, g.gold + caught.report.gold);
+  assert.deepEqual(caught.report.deeds.filter(d => d.deed === 'rout'), [{ uid, relic: 'stillwater-lance', deed: 'rout' }]);
+  assert.deepEqual(caught.game.progress.flags.grudges, {});
+  const plain = win({});
+  assert.equal(plain.battle.ctx.caught, undefined);
+  assert.ok(!plain.report.deeds.some(d => d.deed === 'rout'), 'a pack that stood its ground is no Rout');
+  // an authored pack caught on its map: the same, and it is beaten for good
+  const node = win({ caught: true }, { nodeId: 'hearth-road' });
+  assert.equal(node.battle.ctx.caught, true);
+  assert.ok(node.report.deeds.some(d => d.deed === 'rout'));
+  assert.equal(node.game.progress.flags.beaten['hearth-road'], 1);
 });
 
 test('battle ctx: first strike and ambush from the world, Forewarned wards, dark maps', () => {
@@ -325,8 +340,8 @@ test('the critical path is made of real encounters and Hearthfires', () => {
 // ---- M4: deeds, the Chronicle, settled Grudges, spoils and Codex pages (spec §4.3-§4.6, §3.7) -------
 
 // A won fight against `nodeId` with every foe at 1 HP; `tweak(state)` edits the finished battle.
-function wonFight(game, nodeId, tweak = () => {}) {
-  const { game: g, battle } = startBattle(game, { nodeId });
+function wonFight(game, nodeId, tweak = () => {}, opts = {}) {
+  const { game: g, battle } = startBattle(game, { nodeId }, opts);
   const b = structuredClone(battle);
   for (const u of Object.values(b.units)) if (u.side === 'foe') u.hp = 1;
   for (const u of Object.values(b.units)) if (u.side === 'hero') { u.hp = u.maxHp = 500; }
@@ -356,6 +371,10 @@ test('fightDeedIds: what a fight did, deed by deed (spec §4.3)', () => {
     ['claim', 'hundred', 'legend-strike'], 'a Legend Strike, a pry and fifty felled count even in a lost fight');
   assert.ok(!fightDeedIds({ ...battle, waking: 1 }, out, {}, 'warden', item).includes('untouched'), 'Waking 2 or more');
   assert.ok(!fightDeedIds(battle, { ...out, log: { ...out.log, downs: 1 } }, {}, 'warden', item).includes('untouched'), 'nobody down');
+  // M4.5: a pack you ran down and beat is a Rout; losing to it is not
+  assert.ok(fightDeedIds({ ...battle, ctx: { caught: true } }, out, {}, 'warden', item).includes('rout'));
+  assert.ok(!fightDeedIds({ ...battle, ctx: { caught: true } }, lost, {}, 'warden', item).includes('rout'));
+  assert.ok(!fightDeedIds(battle, out, {}, 'warden', item).includes('rout'), 'only a caught pack');
 });
 
 test('a fight marks a relic\'s own deeds (never others), kindles it, and writes the Chronicle', () => {
@@ -390,9 +409,9 @@ test('a fight marks a relic\'s own deeds (never others), kindles it, and writes 
     if (mine.length) assert.equal(w.chronicle.mightiest.level, Math.max(...mine.map(k => k.level)));
     assert.ok(w.chronicle.bearers.includes(id), 'everyone who fought is a bearer');
   }
-  // a Rout marks `rout` on the relics the active heroes wear
-  const r = routPack(newGame({ seed: 12 }), { nodeId: 'hearth-road' });
-  assert.deepEqual(r.report.deeds, own.includes('rout') ? [{ uid, relic: 'hearthbrand', deed: 'rout' }] : []);
+  // a pack run down (M4.5: no Routs) marks `rout` on the relics the heroes who fought it wear
+  const r = wonFight(newGame({ seed: 12 }), 'hearth-road', () => {}, { caught: true });
+  assert.equal(r.report.deeds.some(d => d.deed === 'rout'), own.includes('rout'));
 });
 
 test('settling a Grudge: flags.settled keeps its name and day, and every piece from the fight says so', () => {

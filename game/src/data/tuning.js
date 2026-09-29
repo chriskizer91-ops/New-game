@@ -89,7 +89,6 @@ export const TUNING = deepFreeze({
     hunterSight: 3,                      // M4: a Grudge pack hunts you: it sees this much farther (spec §4.6)
     longsight: 4,                        // M4: Saltglass's Longsight widens the Sighted range by this much
   },
-  rout: { xp: 0.5 },                     // a Rout pays full gold and this share of XP
   forewarned: { ward: '2d6+4' },         // the dream of the four Sleepers: every hero starts the Rotwarden fight Warded
   // ---- M4: Hilda's full forge (read by rules/forge.js; spec §4.2, §4.3, §3.7) ----
   // The step from +t to +t+1 costs base * ceil(ilvl / 2) * mult[t] gold, plus silver[t] silver and

@@ -8,7 +8,7 @@
 // gate, then comes home to the Great Hall for the second council.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { newGame, startBattle, resolveBattle, routPack, rest } from '../src/rules/gauntlet.js';
+import { newGame, startBattle, resolveBattle, rest } from '../src/rules/gauntlet.js';
 import { enterMap, move, interact, findPath, present, lockStatus, openLock, afterBattle } from '../src/rules/world.js';
 import { enterDialogue, choose, dialogueView } from '../src/rules/story.js';
 import { START_AT, CRITICAL_PATH, SUN_PATH, HEARTHS } from '../src/data/world.js';
@@ -70,7 +70,7 @@ function makeBot(starter, { game = null, path = CRITICAL_PATH, start = null } = 
   }
   function battleWon(res, roamerId = null) {
     s.game = res.game;
-    s.walk = afterBattle(s.game, s.walk, { roamerId, result: res.report.result === 'rout' ? 'rout' : 'victory' });
+    s.walk = afterBattle(s.game, s.walk, { roamerId, result: 'victory' });
     if (res.report.brand) log(`Brand: ${res.report.brand.id}`);
   }
   // Process engine events in order; battles are forced wins.
@@ -83,13 +83,8 @@ function makeBot(starter, { game = null, path = CRITICAL_PATH, start = null } = 
           const r = s.walk.roamers.find(x => x.id === e.id);
           log(`contact ${e.id}`);
           const spot = e.enc ? { nodeId: e.enc } : { patrol: { spawns: r.spawns, where: MAPS[s.walk.map].name, backdrop: MAPS[s.walk.map].backdrop } };
-          battleWon(forceWin(s.game, { ...spot, opts: { ambush: e.ambush, firstStrike: e.firstStrike } }), e.id);
-          return 'battle';
-        }
-        case 'rout': {
-          const r = s.walk.roamers.find(x => x.id === e.id);
-          log(`rout ${e.id}`);
-          battleWon(routPack(s.game, e.enc ? { nodeId: e.enc } : { spawns: r.spawns }), e.id);
+          // a weak pack run down is a full battle too (M4.5: no Routs)
+          battleWon(forceWin(s.game, { ...spot, opts: { ambush: e.ambush, firstStrike: e.firstStrike, caught: !!e.weak } }), e.id);
           return 'battle';
         }
         case 'fight': log(`fight ${e.enc}`); battleWon(forceWin(s.game, { nodeId: e.enc })); return 'battle';

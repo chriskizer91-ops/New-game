@@ -10,7 +10,7 @@
 // interact(game, walk) -> { game, walk, events }          acts on the tile you face
 // tick(game, walk) -> { game, walk, events }              idle tick (every 400 ms standing still)
 // afterBattle(game, walk, { roamerId, result }) -> walk   back from a fight: grace, and the roamer
-//                                                         is gone (victory, rout) or stunned (fled)
+//                                                         is gone (victory) or stunned (fled)
 // commit(game, walk) -> game                              writes progress.pos; same object if unchanged
 // present(game, mapId) -> [Entity & { solid, state, glint, grudge, name, lead }]   (memoised per game object)
 // canWalk(game, mapId, x, y, { dir, roamer = false } = {}) -> boolean
@@ -23,26 +23,28 @@
 // sightEncounter(game, encId) -> game                 light(game, walk) -> 2 | Infinity
 // isWeak(game, spawns) -> boolean
 //
-// Events (in order; the UI stops at the first battle-starting one: encounter, contact, rout):
-//   turn { face }  step { x, y, run }  bump { id? }  exit { id, to, anchor, unlock? }  sealed { id, region, text }
+// Events (in order; the UI stops at the first battle-starting one: encounter, contact):
+//   turn { face }  step { x, y, run }  bump { id? }  exit { id, to, anchor, unlock? }
+//   sealed { id, region, text, hint, nextChapter }   hint: what opens a gated exit (M4.5)
 //   encounter { id }  gate { id, text, guard }  lock { id, lock, status }  trigger { id, dialogue }
 //   sighted { relic, enc }  hazard { pct, hurt: { heroId: hp lost } }  talk { npc, dialogue, enc? }
 //   sign { text }  use { kind, id }  chest { id, lock? }  hearthfire { id }  enter { map }
 //   alert { id, hunter? }               a roamer noticed you ("!"; M4: a Grudge's hunter shows a red one)
 //   roam { moves: [[id, x, y, face]] }  roamers that moved this tick
-//   contact { id, enc, by: 'player'|'roamer', firstStrike, ambush }   a battle with roamer `id`
-//   rout { id, enc }                    you walked into a weak pack: it scatters (gauntlet.routPack)
+//   contact { id, enc, by: 'player'|'roamer', firstStrike, ambush, weak? }   a battle with roamer `id`;
+//                                       weak: a pack that runs from you, run down (M4.5: no Routs, a full
+//                                       battle; startBattle's `caught`)
 //
 // Roamers (spec §4.5 "Roamer rules"; numbers in TUNING.world): authored `pack` encounters and zone
 // patrols are seeded on enterMap from their own RNG stream (walk.rng, never game.rngState), so a
 // Walk is plain JSON and the same inputs always give the same Walk. They wander within `leash` of
 // home, notice you within `sight` (line of sight), wait, then chase on 2 of every 3 ticks and give up
 // past leash + 6 from home. Weak packs (all rabble, no relics, top level <= party level - fleeGap)
-// flee instead, on 4 of every 5 ticks, and walking into one is a Rout. Walking into a pack's back is
-// a First Strike; a pack walking into yours is an ambush. They never enter exits, doors, stairs,
+// flee instead, on 4 of every 5 ticks; catching one is a full battle (Milestone 4.5: no Routs).
+// Walking into a pack's back is a First Strike; a pack walking into yours is an ambush. They never enter exits, doors, stairs,
 // lock or gate areas, Hearthfire stands, entity tiles or 1-wide corridors.
 // M4 (spec §4.6): a pack with an unsettled Grudge is a hunter: it sees TUNING.world.hunterSight
-// farther, is never weak (never flees, never Routs), and its chase ignores the leash until you leave
+// farther, is never weak (never flees), and its chase ignores the leash until you leave
 // the map. Saltglass's Longsight widens the Sighted range (spec §4.7).
 // registerMap() lets tests use test/fixtures/map-mini.mjs.
 // Import direction (A6): world -> story -> cond -> gauntlet.
@@ -171,11 +173,53 @@ function fireTriggers(g, map, x, y, on, events) {
   }
 }
 
+// A position inside something solid (a save carried over from before a Milestone 4.5 road gate or its
+// new terrain stood there) moves to the nearest free tile, breadth-first in n, e, s, w order. On a map
+// with roads it must be a tile you can reach from where a road starts, as things stand, so a nudge never
+// lands beyond a gate that is still shut. A free position stays put.
+function freeSpot(game, map, x, y) {
+  const here = present(game, map.id);
+  const inside = (tx, ty) => tx >= 0 && ty >= 0 && tx < map.w && ty < map.h;
+  const solid = (tx, ty) => tileOf(map.rows[ty][tx]).solid || here.some(e => e.solid && covers(e, tx, ty));
+  if (!solid(x, y)) return [x, y];
+  let near = null;
+  for (const road of map.roads || []) {
+    const a = map.anchors?.[road.from];
+    if (!a || solid(a[0], a[1])) continue;
+    near = near || new Uint8Array(map.w * map.h);
+    const q = [[a[0], a[1]]];
+    near[a[1] * map.w + a[0]] = 1;
+    for (let i = 0; i < q.length; i++) {
+      for (const k of DIR_KEYS) {
+        const nx = q[i][0] + DIRS[k][0], ny = q[i][1] + DIRS[k][1];
+        if (!inside(nx, ny) || near[ny * map.w + nx] || solid(nx, ny)) continue;
+        near[ny * map.w + nx] = 1;
+        q.push([nx, ny]);
+      }
+    }
+  }
+  const ok = (tx, ty) => !solid(tx, ty) && (!near || near[ty * map.w + tx]);
+  const seen = new Set([y * map.w + x]), q = [[x, y]];
+  let first = null;
+  for (let i = 0; i < q.length; i++) {
+    for (const k of DIR_KEYS) {
+      const nx = q[i][0] + DIRS[k][0], ny = q[i][1] + DIRS[k][1];
+      if (!inside(nx, ny) || seen.has(ny * map.w + nx)) continue;
+      seen.add(ny * map.w + nx);
+      if (ok(nx, ny)) return [nx, ny];
+      if (!first && !solid(nx, ny)) first = [nx, ny];
+      q.push([nx, ny]);
+    }
+  }
+  return first || [x, y];
+}
+
 export function enterMap(game, target) {
   const map = mapOf(target.map);
   if (!map) throw new Error(`Unknown map ${target.map}`);
-  const pos = target.anchor ? anchorOf(map.id, target.anchor) : { x: target.at[0], y: target.at[1], face: target.face || 's' };
+  let pos = target.anchor ? anchorOf(map.id, target.anchor) : { x: target.at[0], y: target.at[1], face: target.face || 's' };
   if (!pos) throw new Error(`Unknown anchor ${target.anchor} on ${map.id}`);
+  if (!target.anchor) { const [x, y] = freeSpot(game, map, pos.x, pos.y); pos = { ...pos, x, y }; }
   const g = structuredClone(game);
   const f = g.progress.flags;
   f.visits = { ...(f.visits || {}) };
@@ -207,7 +251,7 @@ export function move(game, walk, dir, { run = false } = {}) {
     // `sealed` text stands (the Keep's south-east gate opens into the Sunscorch after Act I)
     if (exit.sealed && !(exit.to && exit.gate && check(game, exit.gate))) {
       // after Act I the UI adds "The way opens in the next chapter." (spec §2.6)
-      events.push({ t: 'sealed', id: exit.id, region: exit.sealed.region, text: exit.sealed.text, nextChapter: check(game, { flag: 'act1-complete' }) });
+      events.push({ t: 'sealed', id: exit.id, region: exit.sealed.region, text: exit.sealed.text, hint: exit.sealed.hint || null, nextChapter: check(game, { flag: 'act1-complete' }) });
       return { game, walk: w, events };
     }
     let g = game;
@@ -310,11 +354,11 @@ export function tick(game, walk) {
 }
 
 // Back on the map after a fight (spec §4.5 "Grace and stun"): a few ticks with no contact; a
-// beaten or routed roamer is gone, one you fled from is stunned.
+// beaten roamer is gone, one you fled from is stunned.
 export function afterBattle(game, walk, { roamerId = null, result = null } = {}) {
   let roamers = walk.roamers;
   let gone = walk.gone;
-  if (roamerId && (result === 'victory' || result === 'rout')) {
+  if (roamerId && result === 'victory') {
     roamers = roamers.filter(r => r.id !== roamerId);
     gone = { ...gone, [roamerId]: true };
   } else if (roamerId && result === 'fled') {
@@ -563,11 +607,11 @@ function seedRoamers(game, map, walk, rng) {
   return out;
 }
 
-// You walk into (or talk to) a roamer: a weak pack is Routed; otherwise a fight, with First Strike
-// when you came at its back.
+// You walk into (or talk to) a roamer: a full fight, with First Strike when you came at its back. A
+// weak pack is caught (M4.5: no Routs): a full battle all the same, and it counts for the Rout deed.
 function touch(game, r, dir) {
-  if (!r.hunter && isWeak(game, r.spawns)) return { t: 'rout', id: r.id, enc: r.enc };
-  return { t: 'contact', id: r.id, enc: r.enc, by: 'player', firstStrike: r.face === dir && r.mood !== 'chase' && r.mood !== 'alert', ambush: false };
+  const weak = !r.hunter && isWeak(game, r.spawns);
+  return { t: 'contact', id: r.id, enc: r.enc, by: 'player', firstStrike: r.face === dir && r.mood !== 'chase' && r.mood !== 'alert', ambush: false, ...(weak ? { weak: true } : {}) };
 }
 
 // One tick for every roamer (after a step, or an idle tick). Pure: returns a new walk.

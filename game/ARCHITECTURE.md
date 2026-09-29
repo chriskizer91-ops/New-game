@@ -168,11 +168,10 @@ The UI animates events one by one and then renders the returned state.
 ```js
 newGame({ name, starter, seed, base }) -> v2 game at START_AT (keep-hall 12,6 n), the Eternal Hearth kindled
 spawnsFor(game, encId)            // Waking escalation, Grudges, Echoes; level 'party', '$rival', lend, noWaking
-startBattle(game, { nodeId } | { patrol: { spawns, where, backdrop, dark } }, { ambush, firstStrike }) -> { game, battle }
+startBattle(game, { nodeId } | { patrol: { spawns, where, backdrop, dark } }, { ambush, firstStrike, caught }) -> { game, battle }
 resolveBattle(game, battle) -> { game, report }
   // report: { result, xp, gold, drops, claimed, consumables, rounds, levelUps, goldLost, grudge, grudgeSettled,
   //           brand: { ...BRANDS[id], waking, first, count } | null, rematch, yield, wokeAt }
-routPack(game, { nodeId } | { spawns, where }) -> { game, report: { result: 'rout', xp, gold, drops, consumables, levelUps } }
 rest(game, hfId) -> game          // heal, day + 1, lastHearthfire, kindled
 travel(game, hfId) -> game        // needs kindled[hfId]; pos = the Hearthfire's stand
 partyLevel(game), uniqueBrands(game)
@@ -185,7 +184,8 @@ partyLevel(game), uniqueBrands(game)
 - A wipe loses 10% gold, teaches 25% of the fight's XP, makes a Grudge, heals everyone and moves
   `pos` to the last Hearthfire's stand (`report.wokeAt`). Losing a `duel` is a yield instead: no gold
   lost, no Grudge, a breather heal where you stand, and the encounter's `yields` flag.
-- A Rout pays full gold, `TUNING.rout.xp` of the XP and the rabble drop roll, and never makes a Grudge.
+- There are no Routs (Milestone 4.5, `docs/M45-SPEC.md` A4). A weak pack you run down is a full battle
+  (`caught`); winning it marks the `rout` deed on the relics the heroes who fought wear.
 - The Waking: rabble rise `TUNING.waking.rabbleLevels` (2) levels per Waking, everyone else 6; the
   tier comes from `familyOf(spawn)`, so a relic-bearer variant escalates as a relic-bearer.
 - `rules/party.js` adds Hilda's temper (`temperCost`, `temper`: +1 enchant per step, at most +3) and
@@ -223,7 +223,8 @@ canWalk, findPath (A*, 4-way), threat, keys, lockStatus, openLock, openChest, si
   They wander within their leash, notice you within 5 tiles with line of sight (2 in the dark),
   pause (the "!" beat), chase on 2 of every 3 ticks, and give up past leash + 6 from home. Weak
   packs (all rabble, no relics, top level at least 3 below the party) flee on 4 of every 5 ticks;
-  walking into one is a Rout. Walking into a pack's back is a First Strike; a pack walking into
+  catching one is a full battle (`contact` with `weak: true`). Walking into a pack's back is a First
+  Strike; a pack walking into
   yours is an ambush. They never enter exits, doors, stairs, lock or gate areas, Hearthfire stands,
   entity tiles or 1-wide corridors (`roamMask`).
 - **Locks** (`data/locks.js`) each open with a relic map power (owned, not shattered) OR a Domain

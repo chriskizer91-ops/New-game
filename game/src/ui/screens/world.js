@@ -47,7 +47,7 @@ import { createActors, gearSig, newGearName } from '../world/actors.js';
 import { createControls } from '../world/controls.js';
 import { createHud, createSidePanel } from '../world/hud.js';
 import { openDialogue, openMessage } from '../world/dialogue.js';
-import { openPrefight, openLockPrompt, openHearthMenu, openPauseMenu, openShop, openForge, showSpoils, previewRelic } from '../world/sheets.js';
+import { openPrefight, openLockPrompt, openHearthMenu, openPauseMenu, openShop, openForge, previewRelic } from '../world/sheets.js';
 import { playBrandBanner, playCrownwalls, showLetter, playCouncil, showToBeContinued } from '../world/story-fx.js';
 import { createLoop } from '../world/loop.js';
 import {
@@ -80,7 +80,7 @@ const distTo = (e, x, y) => { const [x0, y0, x1, y1] = areaOf(e); return Math.ma
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const withFlags = (g, patch) => ({ ...g, progress: { ...g.progress, flags: { ...g.progress.flags, ...patch } } });
 const shortName = (g, id) => { const h = g.party.roster[id]; return !h ? id : id === 'alondra' ? 'Alondra' : h.name.split(' ')[0]; };
-// Grace after every fight; the roamer is gone (victory, rout) or stunned (fled): rules/world.js
+// Grace after every fight; the roamer is gone (victory) or stunned (fled): rules/world.js
 // afterBattle when the engine has it, else the same bookkeeping in ui/world/session.js.
 function backFromBattle(game, walk, roamerId, result) {
   if (typeof W.afterBattle === 'function') return W.afterBattle(game, walk, { roamerId, result: result || 'fled' });
@@ -616,9 +616,10 @@ export function mount(root, ctx, params = {}) {
         return transition({ map: e.to, anchor: e.anchor }, { door: t === '+' || t === 's' });
       }
       case 'sealed': {
-        // a region whose maps exist waits on a gate (the Sunscorch: Act I); the rest on a later chapter
+        // a gated exit says what opens it (its own hint, M4.5); else a region whose maps exist waits on a
+        // gate (the Sunscorch: Act I); the rest on a later chapter
         const gated = !!REGIONS[e.region]?.open;
-        const tail = gated ? ' The gate opens once both Brands of the Wilds are yours.'
+        const tail = e.hint ? ` ${e.hint}` : gated ? ' The gate opens once both Brands of the Wilds are yours.'
           : e.nextChapter || check(game, { flag: 'act1-complete' }) ? ' The way opens in the next chapter.' : '';
         await openMessage(ctx, { text: `${e.text || 'The way is shut.'}${tail}`, dock: dockRect() });
         return null;
@@ -633,7 +634,6 @@ export function mount(root, ctx, params = {}) {
       case 'chest': return chestFlow(e);
       case 'hearthfire': return hearthFlow(e.id);
       case 'contact': return contactFlow(e, before);
-      case 'rout': return routFlow(e, before);
       default: return null;
     }
   }
@@ -700,9 +700,9 @@ export function mount(root, ctx, params = {}) {
       await openLockPrompt(ctx, { game, crownwall: true, status: st });
       return null;
     }
-    await openMessage(ctx, { text: e.text || 'The way is shut.', dock: dockRect() });
-    if (dead) return 'stop';
+    // a road gate whose guard stands by it (M4.5): walking into the gate is walking into the guard
     if (e.guard && presentNow().some(q => q.kind === 'encounter' && q.enc === e.guard)) return encounterFlow(e.guard);
+    await openMessage(ctx, { text: e.text || 'The way is shut.', dock: dockRect() });
     return null;
   }
   async function lockFlow(e) {
@@ -796,21 +796,9 @@ export function mount(root, ctx, params = {}) {
     if (dead) return 'stop';
     const zone = ZONES[mapNow()?.zone];
     const target = r0.enc ? { nodeId: r0.enc } : { patrol: { spawns: r0.spawns || [], where: mapNow()?.name || 'The Wilds', backdrop: zone?.backdrop || mapNow()?.backdrop || 'verdant-wood', dark: !!mapNow()?.dark } };
-    return battle(target, { enc: r0.enc || null, roamerId: e.id }, { ambush: !!e.ambush, firstStrike: !!e.firstStrike });
+    // a weak pack you ran down is a full battle too (M4.5: no Routs), and counts for the Rout deed
+    return battle(target, { enc: r0.enc || null, roamerId: e.id }, { ambush: !!e.ambush, firstStrike: !!e.firstStrike, caught: !!e.weak });
   }
-  async function routFlow(e, before) {
-    const r0 = roamerById(e.id) || roamerById(e.id, before);
-    let res;
-    try { res = G.routPack(game, r0?.enc ? { nodeId: r0.enc } : { spawns: r0?.spawns || [], where: mapNow()?.name || 'The Wilds' }); } catch (err) { console.error(err); return null; }
-    game = res.game;
-    walk = setWalk(backFromBattle(game, walk, e.id, 'rout'));
-    actors.syncRoamers(walk, performance.now(), 0);
-    ctx.audio.sfx('rout');
-    save(); refreshWorld();
-    await cards(() => showSpoils(ctx, { report: res.report }));
-    return 'stop';
-  }
-
   // The battle hand-off (§5.5): startBattle, setGame(commit), session.pending, music, go('battle').
   function battle(target, info, opts = {}) {
     let r;

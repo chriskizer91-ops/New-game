@@ -209,11 +209,6 @@
 .forge-nums .num.next { color: var(--up); }
 .forge-hint, .forge-max { margin: 0; color: var(--ash); font-size: 14px; }
 
-.spoils-sum { font-size: 26px; }
-.spoils-items { display: flex; flex-wrap: wrap; gap: 8px; }
-.spoils-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 4px 10px 4px 4px; cursor: pointer; background: var(--iron); border: 0; box-shadow: 0 0 0 2px var(--ink), 0 0 0 3px var(--seam-2); }
-.spoils-chip canvas { width: 32px; height: 32px; image-rendering: pixelated; }
-.spoils-bag, .spoils-level { margin: 8px 0 0; color: var(--parchment-2); font-size: 14px; }
 
 /* ---------- the dialogue box ---------- */
 .ov.ov-dialogue { background: transparent; overflow: visible; pointer-events: none; }

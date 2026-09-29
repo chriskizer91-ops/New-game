@@ -5,7 +5,7 @@
 // sfx names: select confirm back dice hit graze miss crit heal status disarm ko surge legend
 //            victory defeat phase chest reveal equip levelup hearth
 //            (extra: beam tick stamp coin page identify slam error)
-//            world (M3 §5.8): bump alert rout door blip unlock chime
+//            world (M3 §5.8): bump alert door blip unlock chime
 //   opts: { tier } for rarity-scaled sounds (reveal, equip, beam: 0 worn .. 7 primal)
 //         { voice } 0-7 (or { pitch } in Hz) for blip, the dialogue typewriter: one voice per speaker
 // music tracks: title road battle boss victory hearth, and for the world's maps (MAPS[id].music):
@@ -271,7 +271,6 @@ export function createAudio() {
     // a pack spots you: the "!" beat
     alert(t) { tone(880, t, .07, { type: 'square', g: .045, lp: 3200 }); tone(1320, t + .07, .16, { type: 'square', g: .055, lp: 3200 }); },
     // a weak pack scatters: a whoosh, running feet and a coin
-    rout(t) { noise(t, .3, { type: 'bandpass', f: 3000, to: 600, q: 1.2, g: .12 }); [1200, 1000, 820, 700].forEach((f, k) => tone(f, t + .05 + k * .055, .07, { type: 'triangle', g: .05 })); bell(1976, t + .3, .35, .04, null, sfxBus, 2.01); },
     // a door, a stair or a map edge: a creak and a thunk
     door(t) { noise(t, .26, { type: 'bandpass', f: 520, to: 900, q: 6, g: .1, a: .08 }); tone(92, t + .22, .16, { to: 60, g: .24, type: 'triangle' }); },
     // one typed character of dialogue; opts.pitch gives each speaker a voice
