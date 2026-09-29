@@ -142,9 +142,22 @@ const ST = {
   // M5: gone under the ground (a mound and its hole, the way down), held in something's jaws, beguiled (a heart in a swirl)
   burrowed: C => { fillPoly(C, [[.6, 11.2], [2.4, 7.6], [6, 6.2], [9.6, 7.6], [11.4, 11.2]], col('#b08a58')); fillPoly(C, [[3.6, 9], [6, 7.8], [8.4, 9], [6, 10.2]], raw('#2a1a0e')); stroke(C, [[6, .8], [6, 4]], .55, col('#e8d8b0')); fillPoly(C, [[3.9, 3.4], [8.1, 3.4], [6, 6.2]], col('#e8d8b0')); px(C, 2.2, 6, raw('#d8c090')); px(C, 9.8, 5.6, raw('#d8c090')); },
   swallowed: C => { fillPoly(C, [[.8, 6], [2.6, 2.4], [6, 1.2], [9.4, 2.4], [11.2, 6], [9.4, 9.6], [6, 10.8], [2.6, 9.6]], col('#a8403a')); fillPoly(C, [[2.4, 6], [3.6, 3.8], [6, 3.2], [8.4, 3.8], [9.6, 6], [8.4, 8.2], [6, 8.8], [3.6, 8.2]], raw('#2a0a10')); for (const x of [3.8, 6, 8.2]) { fillPoly(C, [[x - .9, 3.6], [x + .9, 3.6], [x, 5.4]], raw('#f4ecd8')); fillPoly(C, [[x - .9, 8.4], [x + .9, 8.4], [x, 6.6]], raw('#f4ecd8')); } },
-  // M6 (spec §4.2): a rot spreading, dripping; a hex-sigil round a violet eye
-  rotting: C => { fillPoly(C, [[1.4, 7], [2.6, 3.6], [6, 2], [9.4, 3.6], [10.6, 7], [8.8, 9.6], [6, 10.4], [3.2, 9.6]], col('#6f8a2e')); fillDisc(C, 4.4, 5.4, 1.3, raw('#2a2a10')); fillDisc(C, 7.6, 7.2, 1.1, raw('#2a2a10')); fillDisc(C, 7.2, 4.2, .7, raw('#c8d870')); stroke(C, [[5.4, 10], [5.4, 11.6]], .5, col('#6f8a2e')); },
-  hexed: C => { const hex = [0, 1, 2, 3, 4, 5].map(k => [6 + Math.cos(k * Math.PI / 3 + Math.PI / 6) * 5.2, 6 + Math.sin(k * Math.PI / 3 + Math.PI / 6) * 5.2]); fillPoly(C, hex, col('#5a2a7a')); fillPoly(C, [[2.4, 6], [6, 3.6], [9.6, 6], [6, 8.4]], raw('#e8d0ff')); fillDisc(C, 6, 6, 1.5, raw('#8a2ae0')); px(C, 6, 6, raw('#140820')); },
+  // M6 (spec §4.2): Rotting, a heart going over to the rot (a heal does half), the last of its red on one side, the
+  // rot dripping off it; Hexed, a witch's hex-star in a violet ring round an eye that sees you
+  rotting: C => {
+    const heart = [[6, 11.2], [1.4, 6.6], [.9, 4], [2.2, 1.8], [4.4, 1.5], [6, 3.2], [7.6, 1.5], [9.8, 1.8], [11.1, 4], [10.6, 6.6]];
+    fillPoly(C, heart, col('#86702a'));
+    fillPoly(C, [[6, 11.2], [1.4, 6.6], [.9, 4], [2.2, 1.8], [4.4, 1.5], [6, 3.2], [4.6, 5.6], [5.4, 8.4]], col('#b0443a'));
+    for (const [x, y, r] of [[7.9, 4.4, 1.25], [9, 7.1, .85], [6.3, 7.3, .8], [4.3, 9.1, .5]]) fillDisc(C, x, y, r, raw('#2c2210'));
+    px(C, 2.6, 3.2, raw('#f4a898')); px(C, 9.8, 3.4, raw('#dcd070'));
+    stroke(C, [[8.4, 9], [8.6, 11.6]], .45, col('#86702a'));
+  },
+  hexed: C => {
+    fillDisc(C, 6, 6, 5.5, col('#4a2270'));
+    const tri = r => [0, 1, 2, 0].map(k => [6 + Math.cos(k * 2 * Math.PI / 3 - Math.PI / 2 + r) * 4.5, 6 + Math.sin(k * 2 * Math.PI / 3 - Math.PI / 2 + r) * 4.5]);
+    stroke(C, tri(0), .32, raw('#c89af0')); stroke(C, tri(Math.PI), .32, raw('#c89af0'));
+    fillPoly(C, [[3.7, 6], [6, 4.5], [8.3, 6], [6, 7.5]], raw('#f0e0ff')); fillDisc(C, 6, 6, 1.05, raw('#9a3aee')); px(C, 6, 6, raw('#140820'));
+  },
   charmed: C => { const pts = []; for (let k = 0; k <= 20; k++) { const a = k * .55, r = 1 + k * .22; pts.push([6 + Math.cos(a) * r, 6.2 + Math.sin(a) * r * .9]); } stroke(C, pts, .35, raw('#f8b8dc')); fillDisc(C, 4.7, 5.2, 1.9, col('#f06aa8')); fillDisc(C, 7.3, 5.2, 1.9, col('#f06aa8')); fillPoly(C, [[2.9, 5.8], [9.1, 5.8], [6, 9.6]], col('#f06aa8')); px(C, 4.2, 4.4, raw('#ffe0f0')); },
 };
 export const STATUS_KEYS = Object.keys(ST);
@@ -285,16 +298,20 @@ const LK = {
     fillPoly(C, [[5.6, 11.2], [8.4, 7.8], [10.2, 8.4], [11.6, 11.2]], raw('#a4c0dc'));
     for (const [x, y] of [[2.4, 2.4], [6.4, 1.6], [9.6, 2.8], [4.4, 3.6]]) px(C, x, y, raw('#ffffff'));
   },
-  // M6: the Gloomfen locks (first drafts from the M6 scaffold; P6 may redraw them): black bog with a sunk boot, a bank
-  // of fog over a lamp, black water at a dock's end, a ring of hung ward-stones
+  // M6: the Gloomfen locks: a boot going down into black bog (reeds either side, a bubble), a lamp-post lost in banks of
+  // fog, black water at a dock's end, a bough hung with ward-stones (one still glowing)
   bog: C => {
-    fillPoly(C, [[.4, 11.2], [.8, 6.4], [3.6, 5], [8.4, 5.2], [11.2, 6.6], [11.6, 11.2]], col('#3a3222'));
-    fillPoly(C, [[2, 8.6], [5, 7.6], [9.4, 8], [10, 10.4], [2.4, 10.6]], raw('#1a160e'));
-    fillPoly(C, [[5.2, 5.4], [7, 5.4], [7, 8], [5.2, 8]], raw('#6a4a2a')); px(C, 3.2, 6.2, raw('#7a8a3a')); px(C, 9.4, 6.8, raw('#7a8a3a'));
+    fillPoly(C, [[.4, 11.4], [.6, 7.2], [3, 5.8], [9, 5.8], [11.4, 7.2], [11.6, 11.4]], col('#4a3e24'));
+    fillPoly(C, [[1.8, 9.4], [4, 7.8], [8.4, 7.8], [10.4, 9.4], [8.6, 10.8], [3.2, 10.8]], raw('#16120a'));
+    fillPoly(C, [[4.4, 2.4], [7.2, 2.4], [7.2, 6.4], [9, 7.4], [9, 8.8], [4.4, 8.8]], col('#7a5230')); stroke(C, [[4.4, 2.6], [7.2, 2.6]], .5, raw('#b0845a'));
+    fillPoly(C, [[3, 8.6], [10.4, 8.6], [9.6, 9.8], [3.6, 9.8]], raw('#16120a'));
+    fillDisc(C, 2.4, 8.6, .55, raw('#9a9a6a')); px(C, 10.2, 10, raw('#9a9a6a'));
+    stroke(C, [[1, 6.8], [1.4, 3.6]], .32, raw('#7a8a34')); stroke(C, [[10.9, 7], [10.4, 4.2]], .32, raw('#7a8a34')); stroke(C, [[11.6, 7.4], [11.8, 5.2]], .3, raw('#5a6a28'));
   },
   fog: C => {
-    fillDisc(C, 6, 5.6, 1.1, raw('#ffe08a')); stroke(C, [[6, 6.8], [6, 11.4]], .35, raw('#3a3430'));
-    for (const [y, a, b] of [[4.6, .6, 11.4], [7.4, 1.2, 10.8], [9.8, .4, 11.6]]) stroke(C, [[a, y], [b, y]], 1.1, col('#c8ccd2'));
+    stroke(C, [[6, 4], [6, 11.4]], .45, col('#3e3630'));
+    fillPoly(C, [[4.7, 1.8], [7.3, 1.8], [7, 4.6], [5, 4.6]], col('#4a4038')); fillDisc(C, 6, 3.3, .85, raw('#ffe08a')); px(C, 6, 3.1, raw('#fffbe0'));
+    for (const [y, a, b, w] of [[6, .4, 7.8, 1.1], [8.2, 3.4, 11.6, 1.2], [10.4, .6, 9.2, 1.1]]) stroke(C, [[a, y], [(a + b) / 2, y - .7], [b, y]], w * .55, col('#b8c0c8'));
   },
   blackwater: C => {
     fillPoly(C, [[.4, 6], [11.6, 6], [11.6, 11.4], [.4, 11.4]], col('#1a2a2e'));
@@ -302,9 +319,9 @@ const LK = {
     stroke(C, [[7.4, 8.6], [8.6, 7.8], [9.8, 8.6]], .35, raw('#4a7a82')); px(C, 3, 9.6, raw('#6aa0a8'));
   },
   'witch-ward': C => {
-    for (const [x, y] of [[2, 8.4], [4.4, 5.2], [7.6, 5.2], [10, 8.4], [6, 10.2]]) fillDisc(C, x, y, 1.25, col('#7a7468'));
-    for (const [x, y] of [[2, 6.6], [4.4, 3.4], [7.6, 3.4], [10, 6.6]]) stroke(C, [[x, y], [x, y + 1.2]], .25, raw('#c89a2e'));
-    fillDisc(C, 6, 7, .9, raw('#9ae07a')); px(C, 6, 6.6, raw('#eaffd0'));
+    stroke(C, [[.6, 2.8], [3.6, 1.8], [8.4, 1.8], [11.4, 2.8]], .6, col('#5a3e22'));
+    for (const [x, y] of [[2.2, 7.4], [4.2, 9.4], [7.8, 9.4], [9.8, 7.4]]) { stroke(C, [[x, 2.6], [x, y - 1.4]], .22, raw('#b89a5e')); fillDisc(C, x, y, 1.4, col('#8a8478')); px(C, x, y, raw('#1a1814')); }
+    stroke(C, [[6, 2.2], [6, 4.4]], .22, raw('#b89a5e')); fillDisc(C, 6, 6, 1.6, col('#8a8478')); fillDisc(C, 6, 6, .7, raw('#9ae07a')); px(C, 6, 5.8, raw('#eaffd0'));
   },
   lock: C => {
     stroke(C, [[3.6, 6], [3.6, 3.6], [6, 1.4], [8.4, 3.6], [8.4, 6]], .75, col('#8c96ac'));
@@ -396,8 +413,13 @@ const GEM_IC = {
     for (const [x, y, c] of [[7.4, 5.6, '#ff9ad8'], [4.6, 7.8, '#8af0b0'], [8.2, 8.2, '#c0a0ff'], [6.2, 8.8, '#fff0a0']]) fillDisc(C, x, y, .62, raw(c));
     px(C, 4.2, 4.4, raw('#ffffff'));
   },
-  // M6: Bog Amber, a honey-dark drop with a seed caught in it (a first draft from the M6 scaffold)
-  'bog-amber': C => { facet(C, 6, 6.4, 4.6, 4.6, '#6a3208', '#c8811e', '#f4c46a'); fillDisc(C, 6.6, 7.2, .8, raw('#3a2a10')); px(C, 4.4, 3.6, raw('#fff0c8')); },
+  // M6: Bog Amber, a honey drop of the fen's old resin, dark at its heart, a seed caught in it putting out a sprout
+  'bog-amber': C => {
+    fillPoly(C, [[6, .8], [8.4, 4], [9.6, 7], [8.8, 9.8], [6, 11.2], [3.2, 9.8], [2.4, 7], [3.6, 4]], col('#c8781a'));
+    fillPoly(C, [[6, 4.6], [8.2, 7.2], [7.6, 9.4], [6, 10.2], [4.4, 9.4], [4, 7.2]], raw('#8a4a0e'));
+    fillDisc(C, 6.3, 7.8, .95, raw('#2a1a08')); stroke(C, [[6.6, 7.2], [7.6, 5.8]], .28, raw('#6a8a2a'));
+    px(C, 4.4, 4.2, raw('#fff0c8')); px(C, 4.9, 3.3, raw('#ffe0a0'));
+  },
 };
 export const GEM_ICON_KEYS = Object.keys(GEM_IC);
 export function gemIcon(id, o = {}) {

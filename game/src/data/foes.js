@@ -16,7 +16,8 @@
 // a summon may name a `variant` of its family (the Rime-Abbot's choir).
 // M6: target 'strongest' (the strongest hero) and 'ally' (the worst-hurt friend); the `delay` effect (a whole turn
 // later unless the target saves); a family's `opener` (its first move in every fight), `koText` (said instead of
-// falling) and `keepsRelics` (beaten, it keeps what it still grips: its relic comes loose only by grip).
+// falling), `keepsRelics` (beaten, it keeps what it still grips: its relic comes loose only by grip) and `grudgeTitles`
+// ({ win?, flee? }: four titles each for its Grudge, in place of the Party-Breaker's and the Once-Fled's).
 
 import { deepFreeze } from '../core/freeze.js';
 
@@ -1086,6 +1087,8 @@ const GLOOMFEN = {
   // still grips when it is beaten (no shattered drop; docs/RULES.md §6).
   hodge: {
     id: 'hodge', name: 'Hodge', art: 'hodge', tier: 'relic-bearer', humanoid: true, unique: true, keepsRelics: true,
+    // his Grudge titles when he beats you (the spec's "Hodge the Paid-in-Full and the like"; rules/gauntlet.js)
+    grudgeTitles: { win: ['the Paid-in-Full', 'the Twice-Paid', 'the Thrice-Paid', 'the Ever-Paid'] },
     hp: 72, guard: 19, atk: 6, dmg: 4, speed: 10, armor: 'hide', aspect: null,
     saves: { STR: 3, DEX: 1, CON: 4, WIS: 3, CHA: 5 },
     relics: ['unfair-toll'],

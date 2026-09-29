@@ -3061,7 +3061,7 @@ function lampMoth(F, st) {
   const { pose, f, gT } = st, A = st.anchors, idle = !pose || pose === 'idle', lie = pose === 'ko';
   const bob = idle ? f * 1.2 : 0, spotLit = gT >= 1, T3 = gT >= 3;
   let T = [24, 17.4 + bob], Hd = [28.4, 14 + bob], ab = [[21.4, 21], [19.2, 24.4], [17.2, 27.4]], W = { nf: -2.1 + f * .35, nh: 2.5 - f * .2, ff: -.9 - f * .3, fh: .6 + f * .2 }, sq = 0, dim = false;
-  if (pose === 'attack') { T = [28, 20]; Hd = [33, 18.6]; ab = [[25, 23], [22.4, 25.4], [19.8, 27]]; W = { nf: -2.7, nh: 2.95, ff: -.35, fh: .2 }; }
+  if (pose === 'attack') { T = [26, 20]; Hd = [31, 18.6]; ab = [[23, 23], [20.4, 25.4], [17.8, 27]]; W = { nf: -2.7, nh: 2.95, ff: -.35, fh: .2 }; }
   else if (pose === 'hurt') { T = [21, 19]; Hd = [24.4, 14.4]; ab = [[19.6, 23.4], [18.8, 27.2], [18.4, 30.6]]; W = { nf: -1.7, nh: 2.2, ff: -1.4, fh: 1 }; dim = true; }
   else if (lie) { T = [24, 34.4]; Hd = [29.6, 34.6]; ab = [[19.6, 34.8], [16, 35.2], [12.8, 35.4]]; W = { nf: Math.PI - .15, nh: 2.6, ff: -.12, fh: .5 }; sq = .32; dim = true; }
   // its shadow on the ground under it
@@ -3096,7 +3096,7 @@ function lampMoth(F, st) {
   ant([Hd[0] - .4, Hd[1] - 2.4], lie ? [6, -1] : pose === 'attack' ? [5.4, -4.6] : [3, -7], 'antN'); ant([Hd[0] + 1, Hd[1] - 2.2], lie ? [6, 1] : pose === 'attack' ? [6, -2.4] : [5.4, -5.6], 'antF');
   if (!lie) F.add({ mat: 'claw', prof: 'round', bw: .5, grp: 'legs', shapes: [[-1.6, 2.6, -3, 6.4], [.6, 3, .2, 7], [2, 2.6, 3.6, 6.2]].map(([a, b, c, d]) => cap([T[0] + a, T[1] + b], [T[0] + c, T[1] + d], .55, .35)) });
   // the dust it throws in your eyes
-  if (pose === 'attack') F.add({ mat: 'mothWing', prof: 'round', bw: .6, grp: 'dust', noShadow: true, shapes: [[38, 16, .9], [41, 20, .8], [39.6, 24, .7], [43.4, 17.4, .6], [44, 22.6, .6]].map(([x, y, r]) => circ([x, y], r)), tex: () => 1 });
+  if (pose === 'attack') F.add({ mat: 'mothWing', prof: 'round', bw: .6, grp: 'dust', noShadow: true, shapes: [[37, 16, .9], [39.6, 20, .8], [38.4, 24, .7], [41.6, 17.4, .6], [42.2, 22.6, .6]].map(([x, y, r]) => circ([x, y], r)), tex: () => 1 });
   A.head = [Hd[0] + 1, Hd[1]]; A.mouth = [Hd[0] + 2, Hd[1] + 1.6]; A.center = T;
 }
 // dust off the moths' wings, and the light of their eyespots
@@ -3174,7 +3174,7 @@ function blackwaterGar(F, st, S) {
   A.head = ec; A.mouth = hf.P(HL * .6, 0); A.center = B[3];
 }
 const blackwaterGarBase = (F, st) => blackwaterGar(F, st, { k: 1, dx: 0, dy: 0 });
-const oldJaws = (F, st) => blackwaterGar(F, st, { k: 1.3, dx: .4, dy: 2.6, old: true });
+const oldJaws = (F, st) => blackwaterGar(F, st, { k: 1.3, dx: 3.4, dy: 2.6, old: true });
 // drops flung off a leaping gar
 const garMotes = (t, a) => { const c = a.center || [36, 30], out = []; for (let k = 0; k < 5; k++) { const ph = (t * .9 + k / 5) % 1; out.push({ x: c[0] - 18 + hash(k, 1, 606) * 30, y: c[1] - 6 + ph * ph * 22, c: [150, 210, 220], a: ph < .85 ? .8 : 0 }); } return out; };
 
@@ -3190,7 +3190,7 @@ function willowWight(F, st, S) {
   const barkM = 'willowBark', leafM = T3 ? 'willowWood' : 'willowLeaf', eyeM = T3 ? 'verdant' : T2 ? 'amber' : 'mireLight';
   const sw = idle ? (f ? .8 : -.6) : 0, G = S.dy + 69 * k;
   let J = { base: [31, 64], mid: [30.4, 50.4], top: [31.4, 37.6], crown: [32.2 + sw * .3, 25.4], shN: [36.4, 41], elN: [44, 44.4], haN: [50.6, 51.4], shF: [26.6, 41], elF: [20, 44.6], haF: [15.4, 52] }, shut = false, mouth = .35, reach = [.25, 1], reachF = [-.3, 1], lean = 0;
-  if (pose === 'attack') { J = Object.assign(J, { mid: [31.6, 50.4], top: [34.4, 38], crown: [37.4, 26.6], shN: [39.6, 41.6], elN: [48, 38], haN: [57.4, 35.6], shF: [29.6, 41.4], elF: [23, 45], haF: [19.4, 52.6] }); mouth = 1; reach = [1, -.15]; lean = 1; }
+  if (pose === 'attack') { J = Object.assign(J, { mid: [31.6, 50.4], top: [34.4, 38], crown: [37.4, 26.6], shN: [39.6, 41.6], elN: [46.4, 38.4], haN: [53, 36.4], shF: [29.6, 41.4], elF: [23, 45], haF: [19.4, 52.6] }); mouth = 1; reach = [1, -.15]; lean = .6; }
   else if (pose === 'hurt') { J = Object.assign(J, { mid: [29.6, 50.6], top: [28.4, 38.4], crown: [26.4, 26.8], shN: [33.4, 41], elN: [39.4, 35.6], haN: [42.6, 28.6], shF: [23.4, 41.4], elF: [17.4, 36.6], haF: [14.6, 29.8] }); shut = true; mouth = .7; reach = [.3, -1]; reachF = [-.3, -1]; lean = -1; }
   else if (lie) J = { base: [8.4, 60.6], mid: [19.4, 61.4], top: [30.4, 61.2], crown: [38, 60.4], shN: [27.4, 58.4], elN: [31.8, 53.6], haN: [36.8, 51], shF: [24.4, 64], elF: [30.4, 66.8], haF: [36.4, 67.6] };
   const P = {}; for (const key of Object.keys(J)) P[key] = T(J[key]);
@@ -3201,27 +3201,26 @@ function willowWight(F, st, S) {
     return n > .64 ? -1.4 : n > .58 ? -.6 : n < .22 ? .8 : hash(x, y, seed + 1) < .06 ? -1 : 0;
   };
   // the whips: up out of the crown, arching over, hanging straight down; or spread along the ground, fallen
+  // (each whip its own part in the one group: the same look, no seam between them, and a small box to raster)
   const whips = (root, list, g, far, fall) => {
-    const S2 = [];
+    const tex = ({ x, y }) => { const c = lie ? (x + Math.floor(hash(y, 0, 615) * 6)) % 4 : (y + Math.floor(hash(x, 0, 615) * 6)) % 4; return c === 0 ? -1.2 : hash(x, y, 616) < .1 ? 1 : T3 && hash(x >> 1, y >> 1, 617) < .12 ? { m: 'willowLeaf', dd: -1 } : 0; };
     for (const [u, spread, dome, len, sway] of list) {
       let pts;
       if (lie) { const a = u * .8 - .3, L = R(len); pts = [root, [root[0] + Math.cos(a) * L * .35, root[1] + Math.sin(a) * L * .35 - R(1.4)], [root[0] + Math.cos(a) * L * .7, Math.min(G - R(.6), root[1] + Math.sin(a) * L * .5 + R(1.4))], [root[0] + Math.cos(a) * L * .92 + R(1), Math.min(G - R(.4), root[1] + Math.sin(a) * L * .4 + R(4.6))], [root[0] + Math.cos(a) * L + R(2.2), G - R(.4)]]; }
       else {
         const q0 = [root[0] + u * R(1.6), root[1]], q1 = [root[0] + u * R(spread) * .62, root[1] - R(dome) * (1 - .3 * u * u)], q2 = [root[0] + u * R(spread), root[1] - R(dome) * .22];
-        pts = []; for (let j = 0; j <= 4; j++) { const v = j / 4; pts.push([(1 - v) * (1 - v) * q0[0] + 2 * v * (1 - v) * q1[0] + v * v * q2[0], (1 - v) * (1 - v) * q0[1] + 2 * v * (1 - v) * q1[1] + v * v * q2[1]]); }
-        for (let j = 1; j <= 4; j++) { const v = j / 4; pts.push([q2[0] + u * R(1.4) * v + Math.sin(v * 2.4 + sway) * R(.8) * v + (fall || 0) * v * v + sw * v, Math.min(G - R(.8), q2[1] + R(len) * v)]); }
+        pts = []; for (let j = 0; j <= 3; j++) { const v = j / 3; pts.push([(1 - v) * (1 - v) * q0[0] + 2 * v * (1 - v) * q1[0] + v * v * q2[0], (1 - v) * (1 - v) * q0[1] + 2 * v * (1 - v) * q1[1] + v * v * q2[1]]); }
+        for (let j = 1; j <= 3; j++) { const v = j / 3; pts.push([q2[0] + u * R(1.4) * v + Math.sin(v * 2.4 + sway) * R(.8) * v + (fall || 0) * v * v + sw * v, Math.min(G - R(.8), q2[1] + R(len) * v)]); }
       }
-      const rs = pts.map((_, j) => R(j < pts.length - 4 ? .75 : 1.05 - (j - pts.length + 4) * .14));
-      S2.push(...chainC(pts, rs));
+      const rs = pts.map((_, j) => R(j < pts.length - 3 ? .75 : 1.05 - (j - pts.length + 3) * .18));
+      F.add({ mat: leafM, prof: 'round', bw: .8, hs: .7, grp: g, shapes: chainC(pts, rs), tex: far ? farTex(tex) : tex });
     }
-    const tex = ({ x, y }) => { const c = lie ? (x + Math.floor(hash(y, 0, 615) * 6)) % 4 : (y + Math.floor(hash(x, 0, 615) * 6)) % 4; return c === 0 ? -1.2 : hash(x, y, 616) < .1 ? 1 : T3 && hash(x >> 1, y >> 1, 617) < .12 ? { m: 'willowLeaf', dd: -1 } : 0; };
-    F.add({ mat: leafM, prof: 'round', bw: .8, hs: .7, grp: g, shapes: S2, tex: far ? farTex(tex) : tex });
   };
   const fan = (n, lo, hi, spread, dome, lenA, lenB, seed) => Array.from({ length: n }, (_, i) => { const u = lo + (hi - lo) * (n > 1 ? i / (n - 1) : .5); return [u, spread * (.8 + hash(i, 1, seed) * .3), dome * (.85 + hash(i, 2, seed) * .3), lenA + (lenB - lenA) * (Math.abs(u) * .7 + hash(i, 3, seed) * .3), hash(i, 4, seed) * 6]; });
   const knob = P.crown;
   // the dome of whips behind it
   if (lie) whips(knob, fan(gf ? 11 : 9, -1, 1, 0, 0, 16, 24, 618), 'frondsFall', false);
-  else whips(knob, fan(gf ? 15 : 12, -1, 1, gf ? 25 : 23, gf ? 17 : 15, 26, 42, 619), 'frondsBack', true, lean * 3);
+  else whips(knob, fan(gf ? 13 : 11, -1, 1, gf ? 25 : 23, gf ? 17 : 15, 26, 42, 619), 'frondsBack', true, lean * 3);
   // the far arm: a bough with twig claws, a few whips hanging off it
   const bough = (sh, el, ha, dir, g, far) => {
     F.add({ mat: barkM, prof: 'round', bw: R(1.6), grp: g, shapes: chainC([sh, el, ha], [R(2.9), R(2.2), R(1.4)]), tex: far ? farTex(bark(620)) : bark(620) });
@@ -3553,7 +3552,7 @@ function blackwaterLeviathan(F, st) {
   const above = poly([[-4, -4], [100, -4], [100, WL + .4], [-4, WL + .4]]);
   const ring = (c, rx, g) => F.add({ mat: 'water', prof: 'flat', grp: g, noShadow: true, noOutline: true, shapes: [ell(c, rx, rx * .22)], cuts: [ell(c, rx - 1.2, rx * .22 - .6)], tex: () => -.8 });
   // the Blackwater: the whole channel
-  F.add({ mat: 'blackwater', prof: 'flat', grp: 'channel', noShadow: true, noOutline: true, shapes: [poly([[0, WL], [96, WL], [96, 96], [0, 96]])], tex: ({ x, y }) => ((x * 3 + y * 7) % 11 === 0 ? 1.4 : (y - WL) % 4 === 0 && hash(x >> 2, y, 651) < .5 ? .8 : 0) });
+  F.add({ mat: 'blackwater', prof: 'flat', grp: 'channel', noShadow: true, noOutline: true, shapes: [ell([48, WL + 5], 45, 9.4)], cuts: [poly([[-4, WL - 20], [100, WL - 20], [100, WL - .2], [-4, WL - .2]])], tex: ({ x, y }) => ((x * 3 + y * 7) % 11 === 0 ? 1.4 : (y - WL) % 4 === 0 && hash(x >> 2, y, 651) < .5 ? .8 : 0) });
   // a coil: an arch of it out of the water and back in
   const arch = (x0, x1, h, r, g, far) => { const pts = []; for (let i = 0; i <= 8; i++) { const u = i / 8, a = Math.PI * (1 - u); pts.push([x0 + (x1 - x0) * u, WL + 3 - Math.sin(a) * h]); } F.add({ mat: hide, prof: 'round', bw: r * .8, hs: .85, grp: g, shapes: chainC(pts, r), clip: above, tex: far ? farTex(hideT(652)) : hideT(652) }); F.add({ mat: 'leviBelly', prof: 'round', bw: 1.2, grp: g + 'fin', clip: above, shapes: spikesC(pts.slice(2, 7).map((p, i) => [p[0], p[1] - r * .8, (i - 2) * .12, -1, 3.4 + (i % 2), 1.2])), tex: far ? DARK : null }); ring([x0, WL + .6], r + 1, g + 'r0'); ring([x1, WL + .6], r + 1, g + 'r1'); return pts; };
   if (dive) {
@@ -3566,8 +3565,8 @@ function blackwaterLeviathan(F, st) {
     A.relics = []; A.relic = null; return;
   }
   // the coils behind it, and its tail
-  if (!lie) { arch(1, 25, 21 + f, 7, 'coilA', true); if (P2) arch(21, 43, 16, 7.6, 'coilB', true); }
-  else arch(6, 30, 9, 6, 'coilA', true);
+  if (!lie) { arch(9, 29, 20 + f, 6.6, 'coilA', true); if (P2) arch(26, 43, 15, 7.2, 'coilB', true); }
+  else arch(10, 30, 9, 6, 'coilA', true);
   // the neck up out of the water to the head (its head on the water, beaten)
   let N = [[48, WL + 4], [50, 70], [53, 57], [57, 46], [62, 37.4], [67, 31.4]], hc = [71.2, 25.6 + f * .8], ha = .12, jaw = .15, eye = 'open';
   if (pose === 'attack') { N = [[48, WL + 4], [51.4, 70], [56.6, 60], [62.4, 53.4], [67.6, 49], [71.6, 46.4]]; hc = [74.6, 44]; ha = .5; jaw = 1; }
@@ -3593,10 +3592,10 @@ function blackwaterLeviathan(F, st) {
   const lk = cf.P(1.6, cr + 2.6);
   F.add({ mat: 'blackiron', prof: 'round', bw: 1.4, grp: 'lock', shapes: [poly([[lk[0] - 3, lk[1] - 2.4], [lk[0] + 3, lk[1] - 2.4], [lk[0] + 2.6, lk[1] + 3], [lk[0] - 2.6, lk[1] + 3]])] });
   F.add({ mat: 'bronze', prof: 'round', bw: .6, grp: 'brokenring', shapes: [circ([lk[0], lk[1] + .4], 1.7)], cuts: [circ([lk[0], lk[1] + .4], .9), poly([[lk[0] + .2, lk[1] - 2], [lk[0] + 1.6, lk[1] - 2], [lk[0] + .6, lk[1] + .4]])] });
-  const post = P2 && !lie ? [91, WL - 12] : null, tail = post || (lie ? [92, WL + 2] : [94, WL + 1]);
+  const post = P2 && !lie ? [88, WL - 12] : null, tail = post || (lie ? [88, WL + 2] : [89, WL + 1]);
   const links = []; for (let i = 0; i <= 11; i++) { const u = i / 11, sag = P2 && !lie ? 0 : Math.sin(u * Math.PI) * 5, p = [lk[0] + (tail[0] - lk[0]) * u, lk[1] + 3 + (tail[1] - lk[1] - 3) * u + sag]; links.push(i & 1 ? ell(p, 1.2, 1.8) : ell(p, 2, 1.2)); }
   F.add({ mat: 'blackiron', prof: 'round', bw: .8, grp: 'chain', shapes: links, clip: above, tex: ({ x, y }) => (hash(x, y, 656) < .15 ? { m: 'rust', dd: 0 } : 0) });
-  if (post) F.add({ mat: 'bogwood', prof: 'round', bw: 1.6, grp: 'chainpost', shapes: [cap([88.6, WL + 2], [92.4, WL - 16], 2.2, 1.8)], tex: ({ y }) => (y % 3 === 0 ? -1 : 0) });
+  if (post) F.add({ mat: 'bogwood', prof: 'round', bw: 1.6, grp: 'chainpost', shapes: [cap([86.6, WL + 2], [89.4, WL - 16], 2.2, 1.8)], tex: ({ y }) => (y % 3 === 0 ? -1 : 0) });
   // the head: a long skull like a gar's gone to a dragon's, a heavy brow, a frill of weedy spines behind the jaw
   const hf = frame(hc[0], hc[1], ha, 1.3);
   F.add({ mat: 'weed', prof: 'round', bw: 1, grp: 'frill', shapes: spikesC([[-4, -3, -1, -.8, 7, 1.6], [-5, 1, -1, .2, 7.6, 1.6], [-3.4, 4.6, -.8, 1, 6, 1.4]].map(([t, s, dx, dy, len, w]) => { const p = hf.P(t, s), d = rot2([dx, dy], ha); return [p[0], p[1], d[0], d[1], len, w]; })), tex: ({ x, y }) => ((x + y) % 3 === 0 ? -1 : 0) });
@@ -3636,8 +3635,8 @@ const leviMotes = (t, a, gT, phase = 1) => {
 Object.assign(FOE_ART, {
   'mire-leech': { name: 'Mire Leech', kind: 'beast', w: 56, h: 40, foot: [28, 37], defaultTier: 'rabble', build: mireLeech },
   'marsh-light': { name: 'Marsh-Light', kind: 'beast', w: 40, h: 56, foot: [20, 53], defaultTier: 'rabble', build: marshLight, motes: lightMotes(3) },
-  'lamp-moth': { name: 'Lamp-Moth', kind: 'beast', w: 48, h: 40, foot: [24, 37], defaultTier: 'rabble', build: lampMoth, motes: mothMotes },
-  'blackwater-gar': { name: 'Blackwater Gar', kind: 'beast', w: 72, h: 48, foot: [36, 45], defaultTier: 'rabble', build: blackwaterGarBase, motes: garMotes },
+  'lamp-moth': { name: 'Lamp-Moth', kind: 'beast', w: 48, h: 46, foot: [24, 43], defaultTier: 'rabble', build: shifted(lampMoth, 0, 6), motes: mothMotes },
+  'blackwater-gar': { name: 'Blackwater Gar', kind: 'beast', w: 80, h: 48, foot: [40, 45], defaultTier: 'rabble', build: shifted(blackwaterGarBase, 4, 0), motes: garMotes },
   'old-jaws': { name: 'Old Jaws', kind: 'beast', w: 96, h: 64, foot: [48, 61], defaultTier: 'relic-bearer', relic: 'gar-tooth', build: oldJaws, motes: garMotes },
   'willow-wight': { name: 'Willow-Wight', kind: 'beast', w: 64, h: 72, foot: [32, 69], defaultTier: 'veteran', build: willowWightBase, motes: leafMotes(4) },
   'grandfather-willow': { name: 'Grandfather Willow', kind: 'beast', w: 96, h: 96, foot: [48, 93], defaultTier: 'relic-bearer', relic: 'weeping-bow', build: grandfatherWillow, motes: leafMotes(6) },

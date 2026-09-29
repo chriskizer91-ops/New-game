@@ -2141,6 +2141,14 @@ function gloomFord(F, Pl, v, f) {
     if (!v) part(F, 'seaweed', [C([5, 9], [7, 10.4], .5), C([10, 6.4], [11.6, 7.6], .45)], { prof: 'flat', grp: 'weed', noShadow: true, noOutline: true, hi: 2 });
     return;
   }
+  if (k === 'shallows') { // shallow black water over mud and pebbles: lighter than the deep, the stones showing through, a ripple (2 frames)
+    F.add({ mat: w, prof: 'flat', grp: 'shallow', noShadow: true, lo: 1, hi: 3, shapes: [FULL], tex: q => {
+      const n = pnoise(q.x / 4, q.y / 4, 4, 8800 + v), rip = ((q.x * 2 + q.y * 5 + (f ? 9 : 0)) % 29) === 0;
+      return -2.3 - off + n * .5 + (rip ? .75 : 0) + bayer(q.x, q.y) * .1;
+    } });
+    part(F, w, spots(3, 8810 + v * 7, 2).map(([x, y], i) => E([x + .5, y + .5], 1.3 - i * .25, .9 - i * .15)), { prof: 'flat', grp: 'bed', noShadow: true, noOutline: true, hi: 3, tex: q => -1.05 - off + (q.d < .8 ? -.6 : 0) });
+    return;
+  }
   paintWater(F, Object.assign({}, Pl, k === 'dark' ? { soil: 'w.peat', stone: 'bogwood' } : { soil: Pl.bed }), v, f, true);
 }
 /* ---- 'T' great weeping willows, alders and willows on the banks, black willows weeping into the water, dead trees black and
@@ -2467,8 +2475,16 @@ function gloomDarkFloor(F, Pl, v) {
   const D = decals();
   for (const [x, y] of spots(2, 9400 + v * 5)) pebble(D, x, y, Pl.stone);
   if (Pl.darkK === 'wetstone') for (const [x, y] of spots(2, 9410 + v, 3)) { D.set(x, y, Pl.puddle, -2 - wetOff(Pl.puddle)); D.set(x + 1, y, Pl.puddle, -2.4 - wetOff(Pl.puddle)); }
-  const wet = Pl.darkK === 'wetstone';
-  ground(F, Pl.darkFloor, SEEDS['dark-floor'] + (Pl.seed || 0), D, { lo: wet ? -2 : -1.6, hi: wet ? -1.2 : -.8, dith: .3, fn: wet ? (x, y) => ((x & 7) === 0 || ((y + ((x >> 3) & 1) * 4) & 7) === 0 ? -2.4 : undefined) : null });
+  if (Pl.darkK === 'wetstone') { // the bell-hall's floor: big dark flagstones in a running bond, each its own shade, the joints black
+    F.add({ mat: Pl.darkFloor, prof: 'flat', grp: 'wetstone', noShadow: true, lo: 1, hi: 3, shapes: [FULL], tex: q => {
+      const d = D.get(q.x, q.y); if (d) return d;
+      const b = bond(q.x, q.y, 8, 8, 4), c = hash(b.c, b.r, 9420 + v);
+      if (b.lx === 0 || b.ly === 0) return -2.4;
+      return -1.3 + (c - .5) * .3 + (hash(q.x, q.y, 9430 + v) < .03 ? .85 : 0); // wet glints
+    } });
+    return;
+  }
+  ground(F, Pl.darkFloor, SEEDS['dark-floor'] + (Pl.seed || 0), D, { lo: -1.6, hi: -.8, dith: .3, fn: null });
 }
 /* ---- 'r' roots over the ground (willow, the banks' trees, black bog-oak); on the flats, the great chain lying across the mud:
    0 north-south, 1 east-west, 2-5 the bends (N-E, E-S, S-W, W-N) ---- */

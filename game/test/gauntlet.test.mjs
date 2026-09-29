@@ -580,3 +580,18 @@ test('a Twinned foe\'s twin pays no forge spoils (it drops nothing)', () => {
   for (const f of foes) for (const [k, n] of Object.entries(TUNING.forge.spoils[f.tier] || {})) want[k] = (want[k] || 0) + n;
   assert.deepEqual(report.materials, want, 'the twin is not paid for');
 });
+
+test('M6: Hodge keeps his own Grudge titles: "Hodge the Paid-in-Full", then "the Twice-Paid"; a flight is the usual Once-Fled', () => {
+  const g0 = { ...newGame({ seed: 6 }), gold: 100 };
+  const one = startBattle(g0, { nodeId: 'hodge' });
+  const r1 = resolveBattle(one.game, ended(one.battle, 'defeat'));
+  assert.equal(r1.report.grudge.name, 'Hodge the Paid-in-Full');
+  assert.equal(spawnsFor(r1.game, 'hodge')[0].title, 'the Paid-in-Full');
+  const two = startBattle(r1.game, { nodeId: 'hodge' });
+  assert.equal(two.battle.units.f1.name, 'Hodge the Paid-in-Full');
+  const r2 = resolveBattle(two.game, ended(two.battle, 'defeat'));
+  assert.equal(r2.report.grudge.name, 'Hodge the Twice-Paid', 'the title is replaced, never stacked');
+  const three = startBattle(r2.game, { nodeId: 'hodge' });
+  const r3 = resolveBattle(three.game, ended(three.battle, 'fled'));
+  assert.equal(r3.report.grudge.name, 'Hodge the Once-Fled');
+});

@@ -581,3 +581,12 @@ test('a gated exit says what opens it (its sealed hint), then lets you through',
   assert.equal(open?.id, 'lane-e');
   assert.equal(move(game, enterMap(game, { map: 'mini', at: [10, 4], face: 'e' }).walk, 'e').events.find(e => e.t === 'sealed').hint, null, 'no hint: null');
 });
+
+test('M6: an encounter that leaves (Tamsin after her fall) is gone from its map for good, won or yielded', () => {
+  const game = fresh();
+  const here = g => present(g, 'rotbridge').some(e => e.kind === 'encounter' && e.enc === 'tamsin-rotbridge');
+  assert.ok(here(game), 'she waits on the bridge');
+  const story = s => ({ ...game, progress: { ...game.progress, flags: { ...game.progress.flags, story: { ...game.progress.flags.story, ...s } } } });
+  assert.ok(here(story({ 'tamsin-yielded-4': true })), 'a yield alone leaves her by her open gate...');
+  assert.ok(!here(story({ 'tamsin-yielded-4': true, 'tamsin-fallen': true })), '...until the barge takes her');
+});

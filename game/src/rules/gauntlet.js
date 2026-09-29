@@ -266,7 +266,10 @@ function recordGrudge(g, battle, fled) {
   const prev = g.progress.flags.grudges[key] || { key, nodeId: battle.ctx.nodeId, wins: 0, flees: 0, omens: [] };
   const wins = prev.wins + (fled ? 0 : 1);
   const flees = prev.flees + (fled ? 1 : 0);
-  const title = fled ? FLEE_TITLES[Math.min(3, flees - 1)] : WIN_TITLES[Math.min(3, wins - 1)];
+  // M6: a family may name its own titles (Hodge the Paid-in-Full), for wins and for flights
+  const own = familyOf(foe).grudgeTitles || {};
+  const winTitles = own.win || WIN_TITLES, fleeTitles = own.flee || FLEE_TITLES;
+  const title = fled ? fleeTitles[Math.min(3, flees - 1)] : winTitles[Math.min(3, wins - 1)];
   // A capped number of Grudge Omens (so a loss is never a wall), never one it already had.
   const cap = TUNING.wipe.grudgeOmens[foe.tier === 'champion' ? 'champion' : 'other'];
   const pool = [...new Set([...foe.omens, ...prev.omens])];
@@ -274,7 +277,7 @@ function recordGrudge(g, battle, fled) {
   // Grudge: two of them would be two holders, and a loss would snowball (M4; the Waking's picks are unchanged)
   const unique = !!familyOf(foe).unique || (foe.held || []).length > 0;
   const omens = prev.omens.length >= cap ? prev.omens : [...prev.omens, ...addOmens(pool, 1, `${key}:${wins + flees}:${g.seed}`, foe.tier, { unique }).slice(pool.length)];
-  const baseName = foe.name.replace(/ the (Party-Breaker|Twice-Victor|Thrice-Victor|Unbeaten|Once-Fled|Twice-Fled|Thrice-Fled|Ever-Fled)$/, '');
+  const baseName = [...WIN_TITLES, ...FLEE_TITLES, ...winTitles, ...fleeTitles].reduce((n, t) => (n.endsWith(` ${t}`) ? n.slice(0, -t.length - 1) : n), foe.name);
   const grudge = { ...prev, wins, flees, title, omens, name: `${baseName} ${title}` };
   g.progress.flags.grudges[key] = grudge;
   return grudge;

@@ -114,7 +114,7 @@ over time ticks at the start of the bearer's turn.
 | regenerating | heals its value each turn | 3 turns |
 | guarding | +2 Guard, half damage (Defend) | until its next turn |
 | burrowed (M5) | under the floor: nothing can target it, and area moves pass over it | until its next turn starts |
-| swallowed (M5) | out of the line: loses its turns, cannot be targeted, takes 1d6 of the swallower's aspect at the start of each; spat out when the swallower takes a hit of 15% of its max HP, falls or runs, or the turns run out (the last hero standing is caught and spat straight back out). The Roc's is "Carried off", the Abbot's "Held under" | 2 turns |
+| swallowed (M5) | out of the line: loses its turns, cannot be targeted, takes 1d6 of the swallower's aspect at the start of each; spat out when the swallower takes a hit of 15% of its max HP, falls or runs, or the turns run out (the last hero standing is caught and spat straight back out). The Roc's is "Carried off", the Abbot's "Held under"; in M6 the Lantern Mother's is "Led away" (a WIS save), the Leviathan's "Swallowed whole" and Hodge's Bridge Troll "In the river" | 2 turns |
 | charmed (M5) | its next turn is played for it: a plain attack on a random ally (never itself); a hit from its own side wakes it | until that turn |
 | rotting (M6) | 1d6 blight per stack at the start of each turn, and every heal it gets is halved (rounded down: potions, moves and regeneration alike); a cleanse clears it | 3 turns, 3 stacks |
 | hexed (M6) | its attack and save d20s roll with disadvantage; advantage cancels it (one die), as in D&D | 2 turns |
@@ -1018,3 +1018,172 @@ runs cleared 800/800 (stuck 0); end party level 25.4; grind fights/run 1.7
 hero attack rolls: hit 62%, graze 12%, crit 11%, miss 11%, fumble 4%
 random/worn-gear drops by rarity: worn 652, wrought 1779, tempered 2798, runed 6347, storied 3673; named relics dropped: 245
 party level entering the Ironspire: 21.1
+
+### M6: the Gloomfen Marsh (Gate 6, M6 spec §8)
+
+`node tools/sim.mjs --seeds 200 --modes gloomfen,gloomfen-forged,gloom-first-lead` (add `--gloom-leads willow,hodge`
+to run only some leads, `--jobs 4` to split the seeds over four processes, and `--iron-cache <file>` to keep each
+seed's Ironspire end state between tuning runs: valid only while nothing before the Gloomfen changes). Each mode starts
+from the end state of an `ironspire` run: the party that has just beaten the Rime-Abbot, at Waking 6 with every earlier
+Brand held (party level 30.1 on average). The tables are M6's, with every M6 foe, encounter and relic in.
+- `gloomfen`: home to the Eternal Hearth, down Mossfall's fen stair, then `GLOOM_PATH` in order with one zone patrol per
+  zone map crossed and a rest at each Hearthfire passed: the Murkway (the leeches, the reed-cutters), Willowmurk's
+  broken ward-gate, Rotbridge (a rest at the Toll-Lamp; Hodge's bar is paid, so he is not fought) and Tamsin on the
+  bridge, Bogmire, and the Lanternfen (the moths, the hags' pot; the party rests at the Fen Cairn before the Mother's
+  Hollow). With the Brand of Lanterns (Waking 7) it walks back through the Lanternfen to Bogmire, along the long
+  boardwalk (the drowned) to Misthollow (the salvage camp, then the bell-ringers), down the Blackwater Reach (the barge
+  on the towpath) to the Tidal Flats (the barge-camp), and rests at the Flats Beacon before the Leviathan. Willowmurk,
+  Rotbridge and Bogmire have no roaming zone.
+- `gloomfen-forged`: the same party with every hero's weapon tempered to +8 and one gem each (a Bog Amber in the weapon
+  when it has a socket, else in the first socketed piece they wear: 800 of 800, 701 in the weapon). At the end of the
+  region it walks back to the Toll-Lamp and fights Hodge.
+- `gloom-first-lead`: each lead's lair (`GLOOM_LEADS`) as the first thing done once the road reaches it: Grandfather
+  Willow from the Willow Hearth, Hodge on arrival at Rotbridge (his toll refused) and Mother Grue from the Fen Cairn
+  (Waking 6); the Drowned Cantor (his choir first) from the Belltower Fire and Old Jaws from the Wreck Fire, once the
+  Brand of Lanterns opens the long boardwalk (Waking 7).
+- **Hodge is fought once** (`ONE_TRY`): a party that loses to him pays the day's price instead, and the bar opens either
+  way (M6 spec A11), so his rows count one try per run, and nothing grinds or re-arms after it.
+- After a Gloomfen wipe the sim's party re-arms against the foe that beat it, as after an Ironspire wipe.
+
+**M6 targets vs results (200 seeds, starters rotated):**
+
+| target | result |
+|---|---|
+| `gloomfen`: the Lantern Mother first-try wipe 30-40% | 35% (party level 31.9; 32.5 rounds) |
+| `gloomfen`: the Blackwater Leviathan first-try wipe 30-40% | 36% (party level 35.7; 27.8 rounds) |
+| `gloomfen`: Tamsin at Rotbridge first-try party win 55-70% | 64% (36% yield) |
+| `gloomfen-forged`: a forged party <= 20% against each Champion | the Lantern Mother 8.5%, the Leviathan 15.5% |
+| `gloomfen-forged`: a forged party at the region's end beats Hodge, but not always | 61.5% first-try win (party level 36.3) |
+| `gloom-first-lead`: each lead's lair taken first 15-25% | Grandfather Willow 21%, Mother Grue 22%, the Drowned Cantor 15.5%, Old Jaws 24.5% |
+| `gloom-first-lead`: Hodge on arrival 60-80% | 73.5% first-try wipe (party level 31.0) |
+| zero stuck runs | 0 in every mode (M3's, M4's, M5's and M6's) |
+| every M3, M4, M4.5 and M5 target unchanged | unchanged: every table from `m2` to `iron-first-lead`, and the Gate 4 and Gate 5 checks, are the M5 release's number for number (the tables above stand) |
+
+**What the tuning settled:**
+- Gloomfen spawns that are not rabble climb 4 levels per Waking (§5); their Waking-0 levels are 3-12: the Lantern
+  Mother 9 (33 on arrival), the Blackwater Leviathan 7 (35 after the Brand of Lanterns), Grandfather Willow 8, Mother
+  Grue 12, the Drowned Cantor 10 (38 at Waking 7), Old Jaws 6 (34 at Waking 7). Hodge is party level + 6 at gear tier
+  3, Tamsin party + 4 at gear tier 4. The rabble climb the usual 2 and meet the party 2-4 levels under it, as M5's do.
+- At most three Waking Omens on a Gloomfen spawn, and chosen Omens on the Champions, Hodge and the named lair holders:
+  the Lantern Mother Frenzied, Swift and Ironclad; the Leviathan Frenzied and Swift; Hodge Frenzied, Swift and Ironclad;
+  Grandfather Willow, Mother Grue and the Drowned Cantor Frenzied and Swift; Old Jaws Frenzied and Thornskinned; the
+  Salvage-Master and the Bargemaster Ironclad; Tamsin Swift, Ironclad and Thornskinned. None is ever Twinned.
+- **A Champion carries Frenzied, so a Grudge cannot add it** (the Rime-Abbot's lesson, §12 M5). The Leviathan with
+  Swift, Ironclad and Thornskinned was 32% first try, but a lost fight's Grudge added Frenzied half the time, and a
+  Frenzied retry is far harder than the first try: 1 run in 200 was stuck in two modes. With Frenzied and Swift chosen,
+  a Grudge adds Emberblooded, Thornskinned or Ironclad: zero stuck since.
+- The Lantern Mother: 215 HP, Guard 19, atk 9, dmg 7, speed 11. Level 7 to 9, 160 to 215 HP, Guard 18 to 19, Lantern
+  Flare 2d8 to 3d8, Drown the Light 3d10 to 4d10, and the Swift Omen took her from 0.5% first-try wipes to 35%.
+- The Blackwater Leviathan: 160 HP, Guard 22, atk 8, dmg 6, speed 7. At 190 HP it was 15-20% without Swift and 64% with
+  it; 140-160 HP gave 30-36%. Its Guard is what makes the forge count (M5's lesson): 36% unforged, 15.5% forged.
+- Hodge: 72 HP, Guard 19 (+2 Ironclad), atk 6, dmg 4, speed 10. At 110 HP, Guard 16 and Thornskinned he wiped 86% of
+  the parties that met him on arrival, and a forged party at the region's end won only 30%: fewer HP and more Guard
+  (which a +8 weapon answers) give 73.5% and 61.5%. Toll Is Due uses DC 20: his own save DC at party level + 6 would be
+  30 or more, which no hero could make.
+- The lairs: Mother Grue from 0% to 22% (level 12, 140 HP, atk 6, dmg 5, and the hags' Rot at 2d6: at 1d6 her hollow
+  was 0-10%); the Drowned Cantor from 3% to 15.5% (level 10, 180 HP, atk 7, dmg 6); Grandfather Willow from 15% to 21%
+  (170 HP, atk 6, dmg 4); Old Jaws from 63% at level 8 to 24.5% at 6.
+- Tamsin at Rotbridge: the spec's spawn with the Swift, Ironclad and Thornskinned Omens; her kit's All In at 4d10 and
+  Fen-Step at 2d10 took the party's first-try wins from 69.5% to 64%.
+- The road: a spawn's base level also picks its Omens (seeded), and on rabble Twinned and Emberblooded double a fight's
+  danger (the salvage divers at 17: 13% wipes; at 16: 3%), so the levels were chosen with the Omens in view. The salvage
+  camp, the bell-ringers and the Blackwater's zone patrol are met back to back, with no Hearthfire between: the party
+  reaches the ringers hurt and short of tonics, so they are light (22 HP, level 3, Peal on one face at 1d4; at first
+  more than half the runs wiped there): 11%, and the patrol after them 7%. The salvage camp (22-25% at first) has the
+  Diving Bell at 2d6, a Grapnel that Exposes instead of Rooting, a Salvage Hook that Staggers, the Salvage-Master at
+  level 4 and divers at 16: 6%. The barge-camp (12-29% at first) has the Boat-Hook at 1d8, Make Fast! on one face, the
+  Bargemaster at 5 and bargehands at 17: 8%.
+
+### gloomfen: from the ironspire run's end (Waking 6), home to the Keep, then GLOOM_PATH
+
+| node | foes | lvl | win 1st | rounds | hp left | wipe 1st | yield | wipes | claimed | shattered | stuck |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| patrol:murkway | (zone patrol, 51% ran) | 30.1 | 100% | 6.6 | 75% | 0% |  | 0 |  |  |  |
+| mk-leeches | mire-leech+mire-leech+mire-leech | 30.3 | 100% | 5.4 | 69% | 0% |  | 0 |  |  |  |
+| mk-reedcutters | smuggler+smuggler+tallyman | 30.6 | 100% | 6.7 | 68% | 0% |  | 0 |  |  |  |
+| wm-wights | willow-wight+willow-wight | 30.8 | 100% | 9.7 | 73% | 1% |  | 1 |  |  |  |
+| tamsin-rotbridge | tamsin | 30.9 | 64% | 18.2 | 52% | 0% | 36% | 0 |  |  |  |
+| patrol:lanternfen | (zone patrol, 63% ran) | 31.3 | 100% | 3.7 | 89% | 0% |  | 0 |  |  |  |
+| lf-moths | lamp-moth+lamp-moth+lamp-moth+lamp-moth | 31.4 | 100% | 3.0 | 82% | 0% |  | 0 |  |  |  |
+| lf-hags | bog-hag+bog-hag+mire-leech | 31.7 | 99% | 10.3 | 71% | 2% |  | 3 |  |  |  |
+| lantern-mother | lantern-mother | 31.9 | 65% | 32.5 | 49% | 35% |  | 131 | 400 |  |  |
+| patrol:lanternfen@back | (zone patrol, 54% ran) | 33.4 | 100% | 3.6 | 69% | 0% |  | 0 |  |  |  |
+| patrol:boardwalk | (zone patrol, 36% ran) | 33.5 | 100% | 4.1 | 83% | 0% |  | 0 |  |  |  |
+| lb-drowned | drowned+drowned+drowned | 33.6 | 99% | 6.7 | 61% | 1% |  | 2 |  |  |  |
+| patrol:misthollow | (zone patrol, 48% ran) | 34.1 | 100% | 4.0 | 73% | 0% |  | 0 |  |  |  |
+| mh-salvage | tallyman+smuggler+smuggler | 34.2 | 95% | 13.6 | 65% | 6% |  | 12 | 200 |  |  |
+| mh-ringers | drowned+drowned+drowned | 34.5 | 89% | 5.6 | 53% | 11% |  | 22 |  |  |  |
+| patrol:blackwater | (zone patrol, 46% ran) | 35.0 | 93% | 7.0 | 60% | 7% |  | 14 |  |  |  |
+| br-barge | smuggler+smuggler+smuggler | 35.1 | 100% | 8.6 | 61% | 0% |  | 0 |  |  |  |
+| patrol:tidal-flats | (zone patrol, 55% ran) | 35.2 | 97% | 6.4 | 55% | 4% |  | 7 |  |  |  |
+| tf-bargemaster | tallyman+smuggler+smuggler | 35.3 | 93% | 16.1 | 60% | 8% |  | 16 | 200 |  |  |
+| blackwater-leviathan | blackwater-leviathan | 35.7 | 64% | 27.8 | 28% | 36% |  | 92 | 400 |  |  |
+
+runs cleared 200/200 (stuck 0); end party level 36.7; grind fights/run 5.7
+hero attack rolls: hit 60%, graze 13%, crit 11%, miss 13%, fumble 4%
+random/worn-gear drops by rarity: worn 146, wrought 439, tempered 1004, runed 2351, storied 2158; named relics dropped: 128
+party level entering the Gloomfen: 30.1
+
+### gloomfen-forged: the same party with weapons tempered to +8 and one gem each; Hodge at the end of the region
+
+| node | foes | lvl | win 1st | rounds | hp left | wipe 1st | yield | wipes | claimed | shattered | stuck |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| patrol:murkway | (zone patrol, 51% ran) | 30.1 | 100% | 5.4 | 77% | 0% |  | 0 |  |  |  |
+| mk-leeches | mire-leech+mire-leech+mire-leech | 30.3 | 100% | 3.8 | 72% | 0% |  | 0 |  |  |  |
+| mk-reedcutters | smuggler+smuggler+tallyman | 30.6 | 100% | 4.6 | 74% | 0% |  | 0 |  |  |  |
+| wm-wights | willow-wight+willow-wight | 30.8 | 100% | 7.1 | 75% | 1% |  | 1 |  |  |  |
+| tamsin-rotbridge | tamsin | 31.0 | 80% | 14.3 | 53% | 0% | 21% | 0 |  |  |  |
+| patrol:lanternfen | (zone patrol, 68% ran) | 31.4 | 100% | 2.7 | 91% | 0% |  | 0 |  |  |  |
+| lf-moths | lamp-moth+lamp-moth+lamp-moth+lamp-moth | 31.5 | 100% | 2.4 | 85% | 0% |  | 0 |  |  |  |
+| lf-hags | bog-hag+bog-hag+mire-leech | 31.8 | 100% | 7.5 | 76% | 0% |  | 0 |  |  |  |
+| lantern-mother | lantern-mother | 32.0 | 92% | 21.9 | 51% | 9% |  | 21 | 400 |  |  |
+| patrol:lanternfen@back | (zone patrol, 46% ran) | 33.0 | 100% | 2.8 | 71% | 0% |  | 0 |  |  |  |
+| patrol:boardwalk | (zone patrol, 20% ran) | 33.1 | 100% | 3.2 | 85% | 0% |  | 0 |  |  |  |
+| lb-drowned | drowned+drowned+drowned | 33.3 | 100% | 5.9 | 66% | 1% |  | 1 |  |  |  |
+| patrol:misthollow | (zone patrol, 38% ran) | 33.7 | 100% | 3.0 | 76% | 0% |  | 0 |  |  |  |
+| mh-salvage | tallyman+smuggler+smuggler | 33.8 | 100% | 9.5 | 68% | 0% |  | 0 | 200 |  |  |
+| mh-ringers | drowned+drowned+drowned | 34.2 | 97% | 5.2 | 57% | 3% |  | 6 |  |  |  |
+| patrol:blackwater | (zone patrol, 29% ran) | 34.5 | 96% | 5.3 | 60% | 4% |  | 8 |  |  |  |
+| br-barge | smuggler+smuggler+smuggler | 34.7 | 100% | 6.6 | 66% | 0% |  | 0 |  |  |  |
+| patrol:tidal-flats | (zone patrol, 37% ran) | 34.8 | 99% | 5.0 | 60% | 2% |  | 3 |  |  |  |
+| tf-bargemaster | tallyman+smuggler+smuggler | 35.0 | 99% | 11.4 | 64% | 1% |  | 2 | 200 |  |  |
+| blackwater-leviathan | blackwater-leviathan | 35.2 | 85% | 21.8 | 29% | 16% |  | 61 | 400 |  |  |
+| hodge | hodge | 36.3 | 62% | 18.1 | 37% | 39% |  | 77 | 123 |  |  |
+
+runs cleared 200/200 (stuck 0); end party level 36.5; grind fights/run 1.8
+hero attack rolls: hit 75%, graze 5%, crit 12%, miss 4%, fumble 4%
+random/worn-gear drops by rarity: worn 123, wrought 391, tempered 996, runed 2353, storied 1952; named relics dropped: 159
+party level entering the Gloomfen: 30.1
+forged: 800 heroes' weapons at +8; 800 gems set (701 in the weapon)
+
+### gloom-first-lead: each Gloomfen lead's lair taken first: Grandfather Willow's, Hodge's (on arrival) and Mother Grue's (Waking 6), the Drowned Cantor's and Old Jaws's once the Brand of Lanterns opens the boardwalk (Waking 7)
+
+| node | foes | lvl | win 1st | rounds | hp left | wipe 1st | yield | wipes | claimed | shattered | stuck |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| patrol:murkway | (zone patrol, 47% ran) | 30.1 | 100% | 6.7 | 75% | 0% |  | 0 |  |  |  |
+| mk-leeches | mire-leech+mire-leech+mire-leech | 30.3 | 100% | 5.4 | 68% | 0% |  | 1 |  |  |  |
+| mk-reedcutters | smuggler+smuggler+tallyman | 30.6 | 100% | 6.6 | 67% | 0% |  | 0 |  |  |  |
+| wm-willow | willow-wight+willow-wight | 30.8 | 79% | 25.4 | 61% | 21% |  | 58 | 200 |  |  |
+| wm-wights | willow-wight+willow-wight | 30.8 | 100% | 9.7 | 73% | 0% |  | 2 |  |  |  |
+| hodge | hodge | 31.0 | 27% | 23.6 | 33% | 74% |  | 147 | 53 |  |  |
+| tamsin-rotbridge | tamsin | 31.0 | 68% | 18.2 | 51% | 0% | 32% | 0 |  |  |  |
+| patrol:lanternfen | (zone patrol, 58% ran) | 31.3 | 100% | 3.7 | 88% | 0% |  | 0 |  |  |  |
+| lf-moths | lamp-moth+lamp-moth+lamp-moth+lamp-moth | 31.4 | 100% | 3.0 | 82% | 0% |  | 0 |  |  |  |
+| grue-hollow | bog-hag+bog-hag | 31.7 | 78% | 32.2 | 60% | 22% |  | 61 | 200 |  |  |
+| lf-hags | bog-hag+bog-hag+mire-leech | 31.7 | 100% | 10.4 | 71% | 0% |  | 1 |  |  |  |
+| lantern-mother | lantern-mother | 31.9 | 63% | 32.2 | 49% | 37% |  | 258 | 800 |  |  |
+| patrol:lanternfen@back | (zone patrol, 58% ran) | 33.4 | 100% | 3.8 | 71% | 0% |  | 0 |  |  |  |
+| patrol:boardwalk | (zone patrol, 33% ran) | 33.5 | 100% | 4.4 | 82% | 0% |  | 0 |  |  |  |
+| lb-drowned | drowned+drowned+drowned | 33.6 | 100% | 6.9 | 60% | 0% |  | 0 |  |  |  |
+| patrol:misthollow | (zone patrol, 43% ran) | 34.1 | 100% | 4.1 | 72% | 0% |  | 0 |  |  |  |
+| db-choir | drowned+drowned+drowned | 34.1 | 100% | 5.6 | 73% | 0% |  | 0 |  |  |  |
+| cantor | drowned+drowned+drowned | 34.6 | 85% | 25.2 | 62% | 16% |  | 34 | 200 |  |  |
+| mh-salvage | tallyman+smuggler+smuggler | 34.2 | 96% | 13.6 | 65% | 4% |  | 9 | 200 |  |  |
+| mh-ringers | drowned+drowned+drowned | 34.5 | 88% | 5.9 | 51% | 12% |  | 24 |  |  |  |
+| patrol:blackwater | (zone patrol, 42% ran) | 35.0 | 93% | 7.2 | 59% | 7% |  | 14 |  |  |  |
+| old-jaws | blackwater-gar+blackwater-gar+blackwater-gar | 35.1 | 76% | 15.6 | 56% | 25% |  | 65 | 200 |  |  |
+
+runs cleared 1000/1000 (stuck 0); end party level 33.2; grind fights/run 2.2
+hero attack rolls: hit 63%, graze 11%, crit 12%, miss 10%, fumble 4%
+random/worn-gear drops by rarity: worn 359, wrought 1159, tempered 2345, runed 5538, storied 4986; named relics dropped: 408
+party level entering the Gloomfen: 30.1

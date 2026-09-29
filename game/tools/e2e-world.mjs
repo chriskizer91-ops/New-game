@@ -77,7 +77,9 @@
 //      Gretch's Bogmire board (its bounties from the data, first in the Gloomfen)
 //   31 Hodge's bar: shut across the road; today's price on his choice, paid (a toast of what it cost), and the bar
 //      lifts; a party that cannot pay sees the price shut; his game: its three checks, once a day
-//   32 Tamsin's duel on Rotbridge: her card ("Losing is a yield", the Bogstriders worn); a forced win, then her fall
+//   32 Tamsin's duel on Rotbridge: her card ("Losing is a yield", the Bogstriders worn); a forced win, then her fall;
+//      then she is gone from the bridge (won, or yielded: the encounter's `leaves`), and the Ladder has the rumour of
+//      the man on the barge, which it did not have before
 //   33 the Lanternfen's fog: the sight closes in to the fog radius without a key, the mist thins with the Lamplighter's
 //      Lantern; the Keys tab's fog
 //   34 the Lantern Mother's pre-fight card: the Champion, the lantern held and the veil worn, the Brand of Lanterns
@@ -107,6 +109,7 @@ import { LOCKS } from '../src/data/locks.js';
 import { RELICS } from '../src/data/relics.js';
 import { PAGES } from '../src/data/codex.js';
 import { BOUNTIES } from '../src/data/quests.js';
+import { LADDER } from '../src/data/ladder.js';
 import { TUNING } from '../src/data/tuning.js';
 import { regionOpen } from '../src/ui/lib/atlas-geo.js';
 
@@ -2180,6 +2183,19 @@ async function run(V) {
       if (!gate || !MAPS.rotbridge.entities.some(e => e.kind === 'encounter' && e.enc === 'tamsin-rotbridge')) block(`${P} 32: Tamsin's gate on Rotbridge is not placed yet (P2)`);
       else {
         await setup({ patch: combine(noIntro, council3, `(g) => { g.progress.flags.story['toll-paid'] = true; return g; }`) });
+        // the Ladder's rumour of the man on the barge shows only once she has fallen (an entry with an `if`)
+        const barge = LADDER.find(l => l.id === 'man-on-the-barge');
+        const posterOf = async id => {
+          await W(() => window.__app.go('journal', { tab: 'ladder', from: 'world' }));
+          await page.waitForSelector('.poster', { timeout: 4000 });
+          return W(pid => { const n = document.querySelector(`.poster[data-id="${pid}"]`); return n ? { state: n.dataset.state, text: n.innerText.replace(/\s+/g, ' ') } : null; }, id);
+        };
+        if (!barge) block(`${P} 32: the man on the barge is not on the Ladder yet (P3)`);
+        else {
+          const before = await posterOf(barge.id);
+          check(!before, `${P} 32: before her fall the Ladder has no poster for ${barge.name} (${before ? before.text : 'none'})`);
+          await toWorld();
+        }
         const ap = approachOf('rotbridge', gate.id, { pastGates: true });
         if (!ap) throw new Error('no way up to Tamsin from the road');
         await teleport('rotbridge', ap.x, ap.y, ap.face);
@@ -2233,6 +2249,15 @@ async function run(V) {
         const tEnt = MAPS.rotbridge.entities.find(e => e.kind === 'encounter' && e.enc === 'tamsin-rotbridge');
         const left = await W(id => window.__world.entity('rotbridge', id), tEnt.id);
         check(!left, `${P} 32: after her fall Tamsin is gone from the bridge (${left ? left.state : 'gone'})`);
+        if (barge) {
+          const rumour = await posterOf(barge.id);
+          check(rumour && rumour.state === 'silhouette' && rumour.text.includes(barge.name) && /rumour/i.test(rumour.text), `${P} 32: her fall puts a rumour on the Ladder: ${barge.name} (${rumour ? `${rumour.state}: "${rumour.text}"` : 'none'})`);
+          await W(pid => document.querySelector(`.poster[data-id="${pid}"]`)?.scrollIntoView({ block: 'center' }), barge.id);
+          await page.waitForTimeout(300);
+          await shot('ladder-barge');
+          await noScroll('32 ladder');
+          await toWorld();
+        }
         if (!ENCOUNTERS['tamsin-rotbridge'].leaves) block(`${P} 32: Tamsin's encounter has no \`leaves\` yet (P4): after a yield she would stay on the bridge`);
         else {
           await setup({ patch: combine(noIntro, council3, `(g) => { Object.assign(g.progress.flags.story, { 'toll-paid': true, 'tamsin-yielded-4': true, 'tamsin-fallen': true }); return g; }`) });

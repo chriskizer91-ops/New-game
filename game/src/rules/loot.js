@@ -5,6 +5,7 @@ import { ITEMS } from '../data/items.js';
 import { AFFIXES } from '../data/affixes.js';
 import { RARITY, RARITY_ORDER, RANDOM_RARITIES } from '../data/rarity.js';
 import { RELICS, STORIED_POWERS } from '../data/relics.js';
+import { FOES } from '../data/foes.js';
 import { NAMES } from '../data/names.js';
 import { TUNING } from '../data/tuning.js';
 import { weightedPick, clamp } from './util.js';
@@ -215,7 +216,7 @@ export function battleLoot(s, rng) {
       if (piece.lend) continue;
       const item = piece.item ? { ...piece.item, provenance: prov } : relicItem(piece.relic, rng, prov);
       if (!piece.held) claimed.push(item);
-      else if (f.ko) drops.push(s.ctx.gentle ? item : { ...item, shattered: true });
+      else if (f.ko && !FOES[f.family]?.keepsRelics) drops.push(s.ctx.gentle ? item : { ...item, shattered: true }); // M6: Hodge keeps his toll unless it is pried loose
     }
     if (f.ko && !f.noLoot) {
       drops.push(...foeDrops(rng, f, s.waking || 0, prov));

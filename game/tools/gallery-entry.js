@@ -465,6 +465,8 @@ if (want('world-perf')) {
   sheet('mapFoeSheet humanoid cold', k => mapFoeSheet(['cutpurse', 'bandit', 'tallyman', 'smuggler'][k % 4], { gearTier: (k >> 2) % 4, relic: k === 7 ? 'tallyknife' : undefined }), 8);
   sheet('mapFoeSheet beast cold (32x32)', k => mapFoeSheet(['rotstag', 'gloamwing', 'mirelord', 'rotwarden'][k % 4], { gearTier: 1 + (k >> 2) }), 8);
   sheet('mapFoeSheet lair cold (M5, 32-48 px)', k => mapFoeSheet(['thunder-roc', 'mother-anvil', 'rime-abbot', 'old-horn'][k % 4], { gearTier: 1 + (k >> 2) }), 8);
+  sheet('mapFoeSheet lair cold (M6, 32-48 px)', k => mapFoeSheet(['old-jaws', 'grandfather-willow', 'lantern-mother', 'blackwater-leviathan'][k % 4], { gearTier: 1 + (k >> 2) }), 8);
+  sheet('mapFoeSheet kit cold (M6, the drowned and the fen\'s people)', k => mapFoeSheet(['drowned', 'bell-ringer', 'bog-hag', 'reedcutter'][k % 4], { gearTier: (k >> 2) * 3 }), 8);
   sheet('objectSprite cold', k => objectSprite(OBJECT_KINDS[k % OBJECT_KINDS.length], 'closed', { frame: 1 }), OBJECT_KINDS.length);
   pre.textContent = lines.join('\n');
 }

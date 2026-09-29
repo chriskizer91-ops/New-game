@@ -54,7 +54,7 @@ Status: **done**, but for what waits on other packages (listed under "Needs from
   Atlas view), a bog step (the cost, then none with the Bogstriders), Willowmurk (the fire, Elder Moss, the Journal's
   quests, Gretch's board), Hodge's bar (the price chip, pay and the toast, the bar lifts, a poor party sees it shut,
   the game with its odds and checks, once a day), Tamsin's duel card and her fall (then gone from the bridge, won or
-  yielded), the Lanternfen's fog (thick, then thin with a key; the Keys tab), the Lantern Mother's card, the long
+  yielded; the Ladder's rumour of the man on the barge absent before, there after), the Lanternfen's fog (thick, then thin with a key; the Keys tab), the Lantern Mother's card, the long
   boardwalk (sealed, open after the Brand), the Drowned Belfry's dark, the causeway home through `keep-sw`, the
   fourth council (its card, the end of Act II, opens nothing), and the performance of the Lanternfen in thick fog and
   the long boardwalk.
@@ -62,7 +62,10 @@ Status: **done**, but for what waits on other packages (listed under "Needs from
   leviathan (the dive, out of reach, the swallow), hodge (Toll Is Due at the strongest hero, the shove "In the river",
   his words when he sits), fen (a hexed and a rotting hero, a heal halved by rot).
 - `tools/e2e-flow.mjs`: Page IV in the carried-over M5 profile (tab, 14 pockets, "0 of 14 claimed", reward, the
-  road note), and `fen` among the tracks played.
+  road note), and `fen` among the tracks played. B's Ladder check moved to M6's truth: an entry with an `if` shows
+  once it holds (the man on the barge, after Tamsin's fall), so the Ladder must be the rules' `ladder()` for the game,
+  id for id and state for state, every entry without an `if` on it, the rumours shown as silhouettes (it was "every
+  LADDER entry"; it now also names what waits: "man-on-the-barge not yet").
 - `test/ui-m6.test.mjs`: 9 unit tests of the pure UI helpers (the fen track's notes, the third and fourth councils'
   cards, the region card table, the Atlas view's framing and spacing, Page IV, the battle model's Hexed/Rotting/hold
   phrases, the log lines, `priceText`).
@@ -71,15 +74,20 @@ Status: **done**, but for what waits on other packages (listed under "Needs from
 
 - **Lead:** `test/ui-m6.test.mjs` is a new file outside my list (the pure helpers' tests); keep it, or fold it into
   `test/shell.test.mjs`. Not in my list either, not touched: `tools/e2e-codes.mjs` (I only ran it).
-- **P4:** `ENCOUNTERS['tamsin-rotbridge'].leaves` (the lead's message: Tamsin leaves the map after her fall).
-  e2e-world 32 reports BLOCKED on it for the yield path until it lands (after a win she is gone already).
+- **P4:** (landed) `ENCOUNTERS['tamsin-rotbridge'].leaves`: e2e-world 32 checks she is gone after a yield and her fall.
 - **P5:** the sprites named in `view.js` (`GATE_KIND`, `LOCK_KIND`): until they land the view draws the fallback looks.
   The Gloomfen props (`wreck`, `marsh-lights`, `black-barge`, `lantern`, `sleeping-child`, `crane`, `diving-bell`,
   `sealed-chest`, `bell`, `sleeper`, `barge`) and sign looks (`ward-stone`, `ward-stone-dark`, `bootprints`) draw
   as a sign post until they are in `OBJECT_KINDS`/`OBJECT_STATES`.
 - **P6:** the battle stage draws its own mist over the fog maps' backdrops (`lanternfen`, `misthollow` and any map
-  with `fog: true`), so the backdrops need not paint low mist. `art-keys.test` fails until P6's backdrops and
-  foes land (`no backdrop murkway`; `lantern-mother still draws a stand-in`).
+  with `fog: true`), so the backdrops need not paint low mist. (`art-keys.test` is green now.)
+- **Lead (e2e-flow's harness, not mine to change):** under load, the documented headless `file://` storage quirk
+  (docs/M45-STATUS.md §3.1) now shows on `page.reload()` too: in one run of the flow, "after a reload the title
+  continues this milestone's save" failed in one profile per size (phone M4.5, laptop M5; the other six passed), with
+  only the M6 keys gone after the reload (the older saves are re-seeded by the init script on every navigation, so the
+  whole origin's storage was dropped). The same checks passed in the run before and the run after. Serving the page
+  over `http://` (the M4.5 note: an http origin never showed it) would end it; a player's browser keeps `file://`
+  storage on disk.
 
 ## Where I am
 

@@ -94,10 +94,10 @@ export const NPC_LOOKS = Object.freeze({
   // a villager of Willowmurk in a reed rain-cape, mud to the knees
   'wm-villager': { H: { build: 'human', skin: 'skinPale', hairMat: 'hairBrown', hair: 'crop', eye: '#2a2030', tunic: 'w.sedge', pants: 'w.loam', boots: 'w.peat', gloves: 'skinPale' },
     gear: { head: { look: 'hood', mat: 'w.reed', tip: 0 }, body: { kind: 'leather', mat: 'leather', shirt: 'w.sedge', belt: 'leatherDark' } } },
-  // Hodge: an extremely unpleasant old man, short and ruddy and grizzled (as P6 draws him), a cudgel, a lantern, a toll-book
-  // at his belt, under a battered hat
-  hodge: { H: { build: 'dwarf', skin: 'w.oldskin', hairMat: 'hairSilver', hair: 'none', beard: true, eye: '#2a1a14', cloak: 'rags', pants: 'wool', boots: 'leatherDark', gloves: 'w.oldskin', trinket: { kind: 'ledger', mat: 'leatherDark' } },
-    gear: { weapon: A('club', { haft: 'bogwood', studs: 'iron' }), offhand: { look: 'lantern', metal: 'iron', glow: 'amber' }, head: { look: 'hat', style: 'wide', mat: 'leatherDark', band: 'w.tarred', droop: 1 }, body: { kind: 'leather', mat: 'leatherDark', shirt: 'wool', belt: 'leather' } } },
+  // Hodge: an extremely unpleasant old man, as P6 draws him at gear tier 0: short, bald, ruddy and grizzled, a cudgel, a
+  // leather jerkin; and his own lantern and toll-book
+  hodge: { H: { build: 'dwarf', skin: 'w.oldskin', hairMat: 'hairSilver', hair: 'none', beard: true, eye: '#2a1a14', pants: 'wool', boots: 'leatherDark', gloves: 'w.oldskin', trinket: { kind: 'ledger', mat: 'leatherDark' } },
+    gear: { weapon: A('club', { haft: 'bogwood', studs: 'iron' }), offhand: { look: 'lantern', metal: 'iron', glow: 'amber' }, body: { kind: 'leather', mat: 'leather', shirt: 'wool', belt: 'leatherDark' } } },
   // Mayor Gretch: a stout older woman in a red gown, a fur on her shoulders and the chain of office over it
   gretch: { H: { build: 'brute', skin: 'skinPale', hairMat: 'hairSilver', hair: 'bun', eye: '#2a2030', cloak: 'wolfFur', mantle: 'gold', gloves: 'leatherDark', boots: 'leatherDark', trinket: { kind: 'key', mat: 'bronze' } },
     gear: { body: { kind: 'robe', mat: 'robeRed', trim: 'gold', sash: 'leatherDark' }, amulet: { metal: 'gold', gem: 'topaz' } } },
@@ -320,10 +320,12 @@ const GLOOM_FOES = {
     head: { look: 'hood', mat: 'w.choir', tip: 1, trim: t >= 2 ? 'gold' : 'robeRed', gem: t >= 3 ? 'seaglass' : null } })) },
   // bog-hags: bent, green-skinned, in rags, a gnarled stick; then a hood, weed on the stick, a mossy shawl, bottles, a blight-light
   'bog-hag': { H: HAG, gear: [0, 1, 2, 3].map(t => ({ weapon: A('staff', { style: 'gnarl', haft: 'bogwood', leaves: t >= 1 ? 'w.weed' : null, glow: t >= 3 ? 'blight' : null, gem: t === 2 ? 'bone' : null }),
+    body: { kind: 'robe', mat: 'rags', trim: t >= 2 ? 'w.fenmoss' : 'rags', sash: 'string' },
     head: t >= 1 ? { look: 'hood', mat: t >= 3 ? 'w.tarred' : 'rags', tip: 1 } : null, H: t >= 3 ? { mantle: 'w.fenmoss', bottleRow: ['blight', 'w.greenwater', 'bone'] } : t >= 2 ? { mantle: 'w.fenmoss' } : null })) },
   // Mother Grue: bigger, weed-haired, a moss cloak, a stirring-crook, bottles at her belt; the Hag-Stone on a cord at her throat
   'mother-grue': { relic: 'hag-stone', relicSlot: 'amulet', relicLook: { metal: 'string', gem: 'w.fenstone' }, own: true, glintAt: ['amulet'],
     H: Object.assign({}, HAG, { build: 'brute', hairMat: 'w.weed', cloak: 'w.fenmoss' }), gear: [0, 1, 2, 3].map(t => ({ weapon: A('staff', { style: 'crook', haft: 'bogwood', metal: 'iron', gem: t >= 2 ? 'blight' : null }),
+    body: { kind: 'robe', mat: 'w.sodden', trim: 'w.fenmoss', sash: t >= 2 ? 'leatherDark' : 'string' },
     head: { look: 'hood', mat: t >= 2 ? 'w.tarred' : 'w.fenmoss', tip: 1, trim: t >= 3 ? 'blight' : null }, H: t >= 1 ? { bottleRow: ['w.greenwater', 'ruby', 'bone'] } : null })) },
   // the Tallymen's new hands: reedcutters with reed-hooks (a chain from tier 2), divers in tarred leather, bargehands with boat-hooks
   reedcutter: { H: Object.assign({}, FEN_HAND, { tunic: 'w.sedge', scarf: 'w.loam', boots: 'w.peat' }), gear: [0, 1, 2, 3].map(t => ({ weapon: A('hook', { blade: t >= 2 ? 'steel' : 'iron', haft: 'wood' }),
@@ -334,7 +336,7 @@ const GLOOM_FOES = {
   bargehand: { H: Object.assign({}, FEN_HAND, { build: 'brute', scarf: 'robeRed' }), gear: [0, 1, 2, 3].map(t => ({ weapon: A('spear', { head: t >= 2 ? 'steel' : 'iron', haft: 'bogwood', socket: 'iron', hook: 1 }),
     body: { kind: 'leather', mat: 'w.tarboards', shirt: 'wool', belt: 'leather', pauldrons: t >= 2 ? 'iron' : null }, head: t >= 1 ? { look: 'kettle', mat: t >= 3 ? 'iron' : 'leatherDark' } : null })) },
   // the Salvage-Master (the Salvager's Helm: a brass diving helm) and the Bargemaster (the Barge-Chain Gauntlets), Tallymen both
-  'salvage-master': { relic: 'salvagers-helm', relicSlot: 'head', relicLook: { look: 'helm', mat: 'bronze', crest: null, trim: 'bronze', gem: 'seaglass', heirloom: true },
+  'salvage-master': { relic: 'salvagers-helm', relicSlot: 'head', relicLook: { look: 'helm', mat: 'copper', crest: null, trim: 'bronze', gem: 'seaglass', heirloom: true },
     H: Object.assign({}, TALLY, { apron: 'leather', slungChain: 'string' }), gear: [0, 1, 2, 3].map(t => ({ weapon: A('pick', { haft: 'wood', headMat: t >= 2 ? 'steel' : 'iron' }),
     body: { kind: 'robe', mat: 'clothGrey', trim: t >= 1 ? 'bronze' : 'wool', sash: 'leatherDark' }, H: t >= 2 ? { mantle: 'iron' } : null })) },
   bargemaster: { relic: 'barge-gauntlets', relicSlot: 'hands', relicLook: { kind: 'gauntlets', mat: 'iron', plate: 1, heirloom: true },
@@ -342,8 +344,8 @@ const GLOOM_FOES = {
     body: { kind: 'robe', mat: 'clothGrey', trim: t >= 2 ? 'iron' : 'wool', sash: 'leatherDark' }, head: { look: 'kettle', mat: 'leatherDark', trim: t >= 1 ? 'iron' : 'clothGrey' } })) },
   // Hodge on the map (his fight never stands on it: this is for the gallery and any later use); his Unfair Toll, a clipped coin, at his throat
   hodge: { relic: 'unfair-toll', relicSlot: 'amulet', relicLook: { metal: 'gold', gem: 'gold' }, own: true, glintAt: ['amulet'],
-    H: NPC_LOOKS.hodge.H, gear: [0, 1, 2, 3].map(t => Object.assign({}, NPC_LOOKS.hodge.gear, t >= 2 ? { body: { kind: 'leather', mat: 'leatherDark', shirt: 'wool', belt: 'leather', studs: 'iron' } } : {},
-      t >= 3 ? { head: { look: 'hat', style: 'wide', mat: 'w.tarred', band: 'gold', droop: 1 } } : {})) },
+    H: NPC_LOOKS.hodge.H, gear: [0, 1, 2, 3].map(t => Object.assign({}, NPC_LOOKS.hodge.gear, t >= 1 ? { head: { look: 'kettle', mat: 'leatherDark', trim: 'leather' } } : {},
+      t >= 2 ? { body: { kind: 'leather', mat: 'leatherDark', shirt: 'wool', belt: 'leather', studs: 'iron' } } : {})) },
 };
 // the M5 humanoids P6 rigged: a relic on the feet or in the off hand glints there (as the M4 holders' do)
 const IRON_RIGGED = new Set(['brigand', 'rhune', 'cutter-chief', 'sawyer']);

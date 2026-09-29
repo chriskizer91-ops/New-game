@@ -10,9 +10,10 @@
 // jetty runs out to the ferry dock (13,20) and a reed islet with a chest beyond it. Up and downstream the channel has
 // slumped the banks to mud, and alder and willow woods close in on both banks.
 // Layout notes: the parapets hold both gates: the bar spans the east abutment, and Tamsin's bay is walled on its far
-// side, so after a yield she sits beside an open gate. Hodge's fight starts only from his toll dialogue: the `hodge`
-// encounter is placed on his stool's tile but never stands on the map by itself (`if` any of nothing); the man on
-// the stool is the NPC. The ferry dock is the only way to the islet. The shallows never touch the bridge.
+// side, so she never stands in the open road; after her fall she is gone for good (her encounter `leaves` on
+// `tamsin-fallen`). Hodge's fight starts only from his toll dialogue: the `hodge` encounter is placed on his stool's
+// tile but never stands on the map by itself (`if` any of nothing); the man on the stool is the NPC, and meeting him
+// scouts his poster. The ferry dock is the only way to the islet. The shallows never touch the bridge.
 // Tiles (channel): '.' sedge, ',' shingle, '"' reeds, '=' the roads, ':' the bridge's stone, 'b' its timber span and
 // the jetty, '|' parapets, '~' the Blackwater, 'w' shallows (and the dock's water), 'm' mud banks, 'T' alders and
 // willows, 't' scrub, nets on poles and the woodpile, 'o' snags, stumps and sunk ribs, '#' the toll-house's stone,

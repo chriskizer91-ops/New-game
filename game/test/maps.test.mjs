@@ -17,7 +17,8 @@
 // target is reachable from an Ironspire-complete party with only its starter relic (Hodge's toll paid at his bar), no
 // hard lock stands on that path, the long boardwalk's east end waits on the Brand of Lanterns and the causeway home
 // on the Brand of the Deep, the re-armed fights never shut the way home, the leads are reachable, every entity is
-// reachable with every key, the maps hold what spec §2.3 puts on them, and the chests pay in bog amber.
+// reachable with every key, the maps hold what spec §2.3 puts on them, the roads are spec §2.2's gate by gate, and
+// the chests pay in bog amber.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { MAPS, MAP_IDS, ENTITY_OF, anchor, v1Anchor } from '../src/data/maps/index.js';
@@ -1200,6 +1201,12 @@ test('the Gloomfen maps hold what spec §2.3 puts on them', () => {
   assert.equal(far.guard, 'tamsin-rotbridge');
   assert.equal(on('rotbridge', 'tamsin-rotbridge').talk, 'tamsin-rotbridge');
   assert.ok(bar.area[0] > far.area[2], 'Hodge\'s bar comes first from Willowmurk, Tamsin\'s gate on the bridge\'s far half');
+  // after her fall (a win or a yield, spec A12) she is gone for good, the black barge with her, and her gate stands open
+  const fell = structuredClone(gloomStage('hearthbrand', GP.indexOf('tamsin-rotbridge') + 1));
+  fell.progress.flags.story['tamsin-fallen'] = true;
+  const after = present(fell, 'rotbridge');
+  assert.ok(!after.some(e => e.id === 'tamsin-rotbridge' || e.id === 'rb-black-barge'), 'Tamsin and the barge are gone after her fall');
+  assert.equal(after.find(e => e.id === 'rb-far-gate')?.state, 'open', 'her gate stands open after her fall');
   // the gated exits (spec §2.2): the long boardwalk's east end and Bogmire's causeway, each with its sealed words and hint
   const lbE = MAPS['long-boardwalk'].exits.find(x => x.id === 'lb-e');
   assert.deepEqual(lbE.gate, { brand: 'brand-of-lanterns' });
@@ -1242,6 +1249,37 @@ test('the Gloomfen maps hold what spec §2.3 puts on them', () => {
   for (const id of GLOOM) for (const e of MAPS[id].entities) if (e.kind === 'encounter' && e.area) assert.ok(covers(e, e.at[0], e.at[1]), `${id}/${e.id} stands in its footprint`);
   // the stair down to the Drowned Belfry lies past the salvage camp's chain, in the old city
   assert.equal(MAPS.misthollow.exits.find(x => x.id === 'mh-belfry')?.to, 'drowned-belfry');
+});
+
+// Spec §2.2's table of roads (A3): each road from its anchor to its exit (or up to its fight), with its gates in the
+// order you meet them, named by their guards (Hodge's bar has none: by its id).
+const GLOOM_ROADS = [
+  ['murkway', 'from-mossfall', 'mk-s', ['mk-leeches', 'mk-reedcutters']],
+  ['willowmurk', 'from-murkway', 'wm-w', ['wm-wights']],
+  ['willowmurk', 'from-rotbridge', 'wm-willow', []],
+  ['rotbridge', 'from-willowmurk', 'rb-w', ['rb-toll-bar', 'tamsin-rotbridge']],
+  ['lanternfen', 'from-bogmire', 'lf-n', ['lf-moths', 'lf-hags']],
+  ['long-boardwalk', 'from-bogmire', 'lb-e', ['lb-drowned']],
+  ['misthollow', 'from-boardwalk', 'mh-s', ['mh-salvage', 'mh-ringers']],
+  ['drowned-belfry', 'from-misthollow', 'cantor', ['db-choir']],
+  ['blackwater-reach', 'from-misthollow', 'br-w', ['br-barge']],
+  ['tidal-flats', 'from-reach', 'blackwater-leviathan', ['tf-bargemaster']],
+];
+
+test('the Gloomfen roads are spec §2.2\'s, gate by gate, and every Gloomfen gate stands on one of them', () => {
+  for (const [id, from, to, guards] of GLOOM_ROADS) {
+    const m = MAPS[id];
+    const road = (m.roads || []).find(r => r.from === from && r.to === to);
+    assert.ok(road, `${id}: a road from ${from} to ${to}`);
+    const named = road.gates.map(g => { const e = m.entities.find(x => x.id === g); return e?.guard || e?.id; });
+    assert.deepEqual(named, guards, `${id}: ${from} -> ${to} passes ${guards.join(', ') || 'no gate'}, in that order`);
+  }
+  // no gate stands off the roads: each one holds a road the road test walks
+  for (const id of GLOOM) {
+    for (const e of MAPS[id].entities.filter(x => x.kind === 'gate')) {
+      assert.ok((MAPS[id].roads || []).some(r => r.gates.includes(e.id)), `${id}/${e.id} holds one of ${id}'s roads`);
+    }
+  }
 });
 
 test('Gloomfen chests: a little silver, gems and materials by real ids, bog amber only in the Gloomfen, embers behind a key, no relic', () => {

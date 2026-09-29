@@ -6,7 +6,8 @@ kit), `src/data/items.js` (only if needed: not touched), `tools/sim.mjs`, `docs/
 `test/loot.test.mjs`, `test/battle.test.mjs` (new cases), `test/rivals.test.mjs` (new cases). Private build folder:
 `scratchpad/m6-builds/p4`.
 
-Status: **content, tests and tuning done; the full sim of every mode and `docs/RULES.md` in progress** (see "Where I am").
+Status: **done**: content, tests, tuning (every Gate 6 target met, zero stuck, M3-M5 unchanged), `docs/RULES.md`, and
+the lead's two asks (see "Where I am").
 
 ## What I made
 
@@ -41,7 +42,8 @@ Status: **content, tests and tuning done; the full sim of every mode and `docs/R
 - **Encounters** (`data/encounters.js`): the 25 of §3.3 with the spec's spawns, holders, modes, `once`, `duel`,
   `yields`, `talk`, `brand`, `dark` (the Mother's Hollow, the Belfry's two); every Gloomfen fight and Hearthfire on its
   map's backdrop (`BACKDROPS` lists the twelve); `tamsin-rotbridge` has `leaves: { flag: 'tamsin-fallen' }` (the lead's
-  ask); the seven PATROLS sets of §2.6. GLOOM (4 levels a Waking) and GLOOM_R, at most three Waking Omens; the Champions
+  ask; `test/data.test.mjs` checks that every encounter's `leaves` parses, with `condErrors`); the seven PATROLS sets of
+  §2.6. GLOOM (4 levels a Waking) and GLOOM_R, at most three Waking Omens; the Champions
   and named holders carry chosen Omens (`wakeOmenCap: 0`), never Twinned.
 - **Tamsin's Rotbridge kit** (`data/rivals.js`, the same for each starter): Fen-Step (2d10 slashing, she is Hasted),
   Mire-Footing (DEX or Rooted), All In (charging 4d10 slashing, then she is Exposed); Riposte 1-3, Fen-Step 4, Cheap Shot
@@ -56,6 +58,11 @@ Status: **content, tests and tuning done; the full sim of every mode and `docs/R
 - **`tools/sim.mjs`**: modes `gloomfen`, `gloomfen-forged` (+8 and a Bog Amber; Hodge at the end of the region),
   `gloom-first-lead`; `--iron-cache`; `--gloom-leads`; Hodge is fought once (`ONE_TRY`: a lost fight is not retried, the
   party pays the toll); the re-arm after a Gloomfen wipe (as M5's); the Gate 6 table; `--trace` also prints the re-arm.
+- **`docs/RULES.md`**: rotting and hexed (§4, and the M6 `swallowed` labels), the M6 foes (§5), the M6 Champions' pieces
+  and Hodge's toll by grip (§6), relics 53-66's Surges and Toll Is Due (§7), the Gloomfen spoils (§9), and §12's M6 part
+  (how to run the Gloomfen modes, targets vs results, what the tuning settled, the three mode tables).
+- **Tests**: `data.test` +6 (and the `leaves` line), `battle.test` +7, `loot.test` +3, `rivals.test` +2; mutation checks
+  on them (24 of 24 mutants caught, in a private copy).
 
 ## Decisions (with the sim's numbers; first tries, 200 seeds)
 
@@ -82,7 +89,7 @@ HP, Guard 22, speed 7: 30-36% (see 1 for the Omens); Hodge 110 HP Guard 16 Thorn
 3% → level 10, 180 HP, atk 7, dmg 6: 15.5%; Grandfather Willow 15% → 170 HP, atk 6, dmg 4: 21%; Old Jaws 63% (level 8)
 → level 6: 24.5%; Tamsin 69.5% → All In 4d10, Fen-Step 2d10: 64%.
 
-## Balance (Gate 6: the Gloomfen modes from the Ironspire cache, 200 seeds; the full run of every mode: below)
+## Balance (Gate 6: 200 seeds; the same numbers in the full run of every mode)
 
 | mode | target | result |
 |---|---|---|
@@ -99,6 +106,10 @@ HP, Guard 22, speed 7: 30-36% (see 1 for the Omens); Hodge 110 HP Guard 16 Thorn
 Road fights: the salvage camp 6%, the bell-ringers 11% (back to back), the barge-camp 8%, the hags' pot 2%, the
 drowned 1%, everything else 0-2%; the Reach's zone patrol 7% (straight after the ringers), the Tidal Flats' 4%.
 
+**The full run** (every mode, 200 seeds, `--jobs 4`, 830 s): every M3, M4 and M5 table and the Gate 4 and Gate 5 checks
+are the M5 release's, number for number (diffed against a run of the tree before my changes); Gate 4, 5 and 6 all ok;
+zero stuck in all fifteen modes. `docs/RULES.md` §12 has the Gloomfen tables.
+
 ## For P6 and P5 (the looks, settled)
 
 The art keys are §3.2's (all drawn by now per `art-keys.test`). What each carries, for the sprites: the bog-hag and
@@ -112,7 +123,7 @@ in her hand, the Veil over her face. The Leviathan: the Harpoon in its side, the
 ## For P7 (e2e-battle)
 
 Every Gloomfen family is real now, so the M6 scenarios can run. Useful facts: Hodge's opener is always `toll-is-due` at
-the strongest hero (CHA save DC 20: a level-12 harness hero fails it on 2-19); Bridge Troll is on his d12's 7-8 (d8 once
+the strongest hero (CHA save DC 20: the harness heroes fail it on most rolls); Bridge Troll is on his d12's 7-8 (d8 once
 the toll is pried); the Lantern Mother's Lead Them Down is a WIS save (the harness heroes fail it on most rolls) on the
 Children's Road's 6-10; the Leviathan's Sound is on the Wake's 16-20, its Swallow on the Deep's 6-10 and Blackwater's
 17-20; a bog-hag Hexes on 4-5 and Rots on 6-7 of her d8 (`lf-hags`); the drowned's Black Water Rots on 7-8.
@@ -130,14 +141,22 @@ Children's Road's 6-10; the Leviathan's Sound is on the Wake's 16-20, its Swallo
    want Hodge's Grudge titles, a family field (e.g. `grudgeTitles: ['the Paid-in-Full', ...]`) read before `WIN_TITLES`
    (and in the `baseName` strip) would do it. I have not added the field: say if you want it and I will.
 3. **P3 (the Bogstriders on a yield):** fine by me; the holder line says so now (the lead's wording).
+4. **P7 (optional, `ui/battle/hud.js`):** the grip bar's label is a relic name's first word after "The ", so M6's
+   possessive names read "Hodge's", "Gar's", "Corvus's", "Lamplighter's", "Salvager's", "Cantor's" (seen in the
+   e2e-battle `hodge-toll` shot). Skipping a possessive first word (e.g. "Toll", "Tooth", "Harpoon") would read better.
+   The names are the spec's (§5), so I have left them.
 
 ## Where I am
-- Done: families, variants, Champions, Hodge, encounters, relics, the Rotbridge kit, the sim's modes, tuning (all Gate
-  6 targets met in the Gloomfen modes, zero stuck), tests (data +6, battle +7, loot +3, rivals +2; my files and the
-  whole suite green but for art-keys' Gloomfen backdrops, which P6 has not painted yet), lint clean in my files.
-- Running: the full sim of every mode (M3-M6) to check the earlier milestones' targets and write the tables.
-- Next: `docs/RULES.md` (the new foes, statuses, the toll, relics 53-66, spoils, Gate 6 tables), mutation checks on my
-  tests, a private build and an e2e-battle run of the M6 scenarios.
+- Done: families, variants, Champions, Hodge, encounters, relics, the Rotbridge kit, the sim's modes, tuning (every Gate
+  6 target met, zero stuck, M3-M5 unchanged), tests, `docs/RULES.md`, and the lead's two asks (Tamsin's `leaves` with
+  its `condErrors` test line; the Bogstriders' holder line). `npm test`: 498 of 498 pass (P6's backdrops are painted
+  now, so art-keys is green too); `npm run lint`: clean.
+- A private build (`node tools/build.mjs --out scratchpad/m6-builds/p4/build`) builds; it warns that the game is
+  2576 KB (over the 2.5 MB warning line, under the 3.2 MB failure line): for the lead.
+- A private e2e-battle run of the M6 scenarios (`--only=lantern,led-away,leviathan,hodge,fen`, into
+  `scratchpad/m6-builds/p4/e2e`): all five pass.
+- Open for others: the lead's `keepsRelics` loot rule (Needs 1), if wanted Hodge's Grudge titles (Needs 2), and the
+  grip label for P7 (Needs 4).
 
 Private tuning aids (not in the tree): `scratchpad/m6-builds/p4/tune.mjs` (the first try at one fight from each seed's
 cached pre-fight state; `--spawns` fights a custom spawn for calibration), `look.mjs` (what happens inside a fight),

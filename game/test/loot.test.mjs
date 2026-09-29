@@ -296,3 +296,17 @@ test('Gloomfen spoils: a won fight in the fen pays the Sunscorch\'s tiers, and B
   assert.deepEqual(report.materials, { scrap: 2 }, 'the hags pay scrap; the leech (rabble) nothing');
   assert.deepEqual(report.gems, { 'bog-amber': 1 });
 });
+
+test('M6: Hodge keeps his toll when knocked out still gripping it: it comes loose only by grip', () => {
+  const h = structuredClone(battleWith([{ family: 'hodge', level: 37, relic: 'unfair-toll', gearTier: 3, omens: ['frenzied', 'swift', 'ironclad'] }], { seed: 5 }));
+  assert.equal(h.units.f1.held[0].held, true, 'still in his grip');
+  h.units.f1.ko = true;
+  h.units.f1.hp = 0;
+  const l = battleLoot(h, createRng(2));
+  assert.ok(![...l.claimed, ...l.drops].some(i => i.base === 'unfair-toll'), 'no toll, whole or shattered');
+  // any other holder knocked out still gripping drops its relic shattered, as before
+  const o = structuredClone(battleWith([{ family: 'blackwater-gar', variant: 'old-jaws', relic: 'gar-tooth', level: 34 }], { seed: 3 }));
+  o.units.f1.ko = true;
+  o.units.f1.hp = 0;
+  assert.ok(battleLoot(o, createRng(8)).drops.some(i => i.base === 'gar-tooth' && i.shattered));
+});

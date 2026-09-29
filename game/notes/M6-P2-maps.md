@@ -5,7 +5,7 @@ Package P2 of `docs/M6-SPEC.md` (§2, the maps parts of §8). No git is run. Fil
 (Gloomfen), `test/walk.test.mjs` (the Gloomfen walk), `test/road.test.mjs` (its map list), `tools/map-draft.mjs`.
 Private build folder: `scratchpad/m6-builds/p2`.
 
-Status: **started** (see "Where I am" at the bottom). The tile table below is final: P5 can draw from it now.
+Status: **done** (see "Where I am" at the bottom). The tile table below is final (P5 has drawn from it).
 
 ## Tile characters in the Gloomfen biomes (for P5, overworld art)
 
@@ -177,11 +177,12 @@ module's header comment always names it).
 
 ## Needs from others
 
+All answered (kept for the record):
 - **P7 (`ui/world/view.js`):** `GATE_KIND` entries for the eight new gate looks (`toll-bar`, `leech-ford`,
   `ward-gate`, `hung-lanterns`, `hag-fence`, `barge-planks`, `water-gate`, `choir-screen`) and `LOCK_KIND` entries for
-  `blackwater` and `witch-ward`, each mapping to P5's sprite of the same name (the M5 `ice-blocks` pattern). Until then
-  the new gates draw as the plain `gate` and the two locks as a sign.
-- **P5:** the looks, props, sign looks and hearth looks above.
+  `blackwater` and `witch-ward`. **Landed** (P7), each mapping to P5's sprite of the same name.
+- **P5:** the looks, props, sign looks and hearth looks above. **Landed** (every name above has its sprite in
+  `art/map-sprites.js`; every biome its tiles in `art/tiles.js`).
 - **P7 (e2e-world ids, spec §8):** the fen stair `mf-fen-stair` (Mossfall) onto `murkway`/`from-mossfall` (20,2); a bog
   step: from (20,4) walk west onto `mk-bog-west` (18,5), soft; Willowmurk's `willow-hearth` and `moss`; Hodge's bar
   `rb-toll-bar` with Hodge `rb-hodge` at (29,12) (face him from (30,12) or (29,11)); Tamsin `tamsin-rotbridge` (11,12)
@@ -189,7 +190,7 @@ module's header comment always names it).
   the boardwalk's sealed east end `lb-e` (55,8-9, from `from-bogmire` walk the boardwalk east); the Belfry (dark)
   `drowned-belfry`/`from-misthollow`; the causeway `bm-causeway` (Bogmire, 10-11,0) and `cw-n` to the Keep's
   `keep-sw`; performance: the Lanternfen (40x32, roam max 3, the pack `lf-lights`) and the long boardwalk (56x18,
-  roam max 3).
+  roam max 3). **Used**: e2e-world 28-39 pass on my private build (below).
 - **P3:** every entity id your quest steps target is placed (`willowmurk/moss`, `willowmurk/wm-willow`,
   `rotbridge/hodge`, `rotbridge/tamsin-rotbridge`, `bogmire/gretch`, `bogmire/nettie`, `lanternfen/grue-hollow`,
   `mothers-hollow/lantern-mother`, `misthollow/corvus`, `misthollow/mh-salvage`, `tidal-flats/blackwater-leviathan`).
@@ -197,12 +198,10 @@ module's header comment always names it).
   plays through the NPC. The walk bot pays through the choice that carries a `price` (not its words). The sleeping
   children leave the Hollow with the Brand of Lanterns (`{ not: { brand } }`, not `children-home`), and the black barge
   leaves Rotbridge with `tamsin-fallen`.
-- **Lead:** (1) After a yield Tamsin still sits beside her open gate on Rotbridge (road-first: a guard carries no `if`
-  of its own), although her fall takes her off on the barge either way; a talk with her there would offer the duel
-  again. If she should be gone after her fall, the rules could count `tamsin-fallen` as settling her duel (as `done`),
-  or the fall's scene mark it. (2) Hodge's encounter never stands on the map, so walking up to him never sights his
-  Unfair Toll or scouts his Ladder poster (they come when you fight him or win his game); talking to him could scout
-  his poster, if wanted.
+- **Lead:** (1) Tamsin after her fall: **answered** by the encounter-level `leaves` (P4 gave her encounter
+  `leaves: { flag: 'tamsin-fallen' }`); `maps.test` now checks that after her fall she and the barge are gone from
+  Rotbridge and her gate stands open. (2) Hodge's poster: **answered** by the `{ scout }` effect (P3 put
+  `{ scout: 'hodge' }` in his first meeting).
 
 ## Where I am
 - Read the spec, the M5 P2 notes, the stubs, the rules around gates, locks, talk and fights, and the tests.
@@ -214,9 +213,9 @@ module's header comment always names it).
   maps (§2.6); every Gloomfen Hearthfire stand moved to its map. `maps.test.mjs`: `allKeys({ brand: true })` now holds
   the third council and the Gloomfen pair; the story-gates test takes the Gloomfen Brands away before the Act's end
   (the causeway is a back way into the Wilds). The Gloomfen Gallery's header written (no STUB left in my files).
-- Tests written: `maps.test.mjs` 38 -> 48 (ten Gloomfen tests: the ways in and home, reachability x3, no hard lock,
+- Tests written: `maps.test.mjs` 38 -> 49 (eleven Gloomfen tests: the ways in and home, reachability x3, no hard lock,
   Hodge's bar and Tamsin's gate, the way home after each Brand, GLOOM_PATH/GLOOM_LEADS, every entity reachable and the
-  locks' keys, what spec §2.3 puts on each map, the chests); `road.test.mjs` lists the twelve Gloomfen maps and
+  locks' keys, what spec §2.3 puts on each map, spec §2.2's roads gate by gate, the chests); `road.test.mjs` lists the twelve Gloomfen maps and
   GLOOM_PATH/GLOOM_LEADS (52 pass); `walk.test.mjs` 9 -> 12 (the Gloomfen walk x3: 976 steps, the road held 13
   times, Hodge paid through the choice with a price, home across the causeway, council-4-done).
   `tools/map-draft.mjs` knows the Gloomfen ('all' state, lock short names, biome colours).
@@ -233,6 +232,18 @@ module's header comment always names it).
 - `tools/map-draft.mjs`: the Gloomfen biomes draw black water, dark mud and green reeds (they drew sand before).
 - Looked at every Gloomfen map in P5's real tiles (`map-draft --png --art`, `scratchpad/p2/art/*-art.png`): the tile
   table reads as meant in every biome.
+- After the lead's `leaves` and `{ scout }`: Rotbridge's layout notes say so; `maps.test.mjs` checks that after her
+  fall Tamsin and the black barge are gone from Rotbridge and her gate stands open.
+- Mutation checks (`scratchpad/p2/mutate.py`, on a scratch copy of the tree, each file restored and sha256-checked):
+  29 mutations of my maps, `world.js` and one of P4's `leaves`; all 29 caught. Two needed work: taking a gate off
+  its road's list went unseen (the gate still held a guard), so `maps.test.mjs` gained a test: the Gloomfen roads are
+  spec §2.2's table gate by gate, and every Gloomfen gate stands on one of its map's roads (49 tests now); and a
+  gated exit without `sealed` words is no wall in the rules (only sealed exits hold), so that mutation was rewritten.
+- Final numbers (23:20): `npm test` 498/498; `npm run lint` clean; the Gloomfen walk 975 steps, the road held 13
+  times (each starter). Private build `scratchpad/m6-builds/p2/aethermoor.html` (the game 2575 KB, paintings
+  20303 KB): e2e-world 28-39 on the phone, 81 checks ok, 0 failed, no console errors; PERF phone 39: the Lanternfen
+  in thick fog p95 3.20 ms, 11 drawImage; the long boardwalk p95 2.30 ms, 12 drawImage. Shots in
+  `scratchpad/m6-builds/p2/shots/`.
 - Decided: travel is false only on the Mother's Hollow and the Drowned Belfry (the dungeons), as in M5.
 - Decided (Hodge): an NPC entity `rb-hodge` (`npc: 'hodge'`) sits on his stool beside the bar; the `hodge`
   encounter is placed on his tile but never stands on the map on its own (`if: { any: [] }`), because his fight
