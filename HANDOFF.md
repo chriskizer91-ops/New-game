@@ -84,7 +84,7 @@ The player, after their testers played M4: "the way the game progressed at m2 wa
 1. Which fights must be fought? Suggested: every encounter on the road becomes a guard you must beat to pass, as M2's nodes were; packs off the road stay optional, but none flee and none Rout.
 2. Do the leads become one fixed order, like M2's single road, or does each lead open once the road to it is fought through?
 3. Does this ship as its own build first? Suggested: yes, so the testers judge the new pacing before M5's maps are built on it. By the player's rule it gets its own labeled file and save key, and reads the M4, M3 and M2 saves as carry-overs. `core/save.js` matches keys exactly, so any new key name is safe.
-4. Auto battle. M2 had it too, but the settings (`aethermoor.settings.v1`, `battleAuto`) are shared by every milestone's file in one browser: a tester who switched Auto on in one file has it on in all of them. Should the new build start with Auto off?
+4. Auto battle. M2 had it too, and the choice is remembered: every milestone's file keeps `battleAuto` under the same settings key (`aethermoor.settings.v1`), so files opened from the same origin (downloads opened in one browser) share it. A tester who switched Auto on once has had every fight since play itself. Should the new build start with Auto off?
 
 **What exists to build it with:**
 - A gate with a guard: `{ kind: 'gate', open: { beaten: '<encounter>' }, guard: '<encounter>' }`, as on the Sun Road (`sr-toll-chain`) and in the Vaults (`sv-inner-door`). The map tests already check that a gate is the only way through to what it guards.
