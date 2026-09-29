@@ -4,7 +4,8 @@
 // palace (north-east), and beside it the cistern itself, a barred gate (19,7) over dark water and the
 // cache kept inside. The market square fills the middle: the Spire Hearth (15,12) where the three
 // streets meet, the bounty board, two awning stalls, palms, and the fountain where the Water-Seller
-// works. The west gate goes down to the Dust Trail, the east gate out to the Glass Flats. South of the
+// works. The west gate goes down to the Dust Trail, the east gate out to the Glass Flats (M4.5: barred
+// until the Brand of Glass, so Kharzul comes before the Ashen Warden). South of the
 // square: Idris the Gemwright under his awning (8,18), houses, the red rock of the Spire itself (the
 // city grew round it) and the terrace on the mesa edge with the lookout (15,23).
 // Tiles (desert-town): '^' mesa cliff, '#' sandstone walls, 'H' roofs and awnings, ':' paving, '='
@@ -64,7 +65,8 @@ export default deepFreeze({
   exits: [
     { id: 'ss-n', area: [14, 0, 15, 0], to: 'sun-road', anchor: 'from-sandspire' },
     { id: 'ss-w', area: [0, 12, 0, 13], to: 'dust-trail', anchor: 'from-sandspire' },
-    { id: 'ss-e', area: [29, 12, 29, 13], to: 'glass-flats', anchor: 'from-sandspire' },
+    // M4.5 (docs/M45-SPEC.md A3): the east gate opens with the Brand of Glass, so Kharzul comes before the Ashen Warden
+    { id: 'ss-e', area: [29, 12, 29, 13], to: 'glass-flats', anchor: 'from-sandspire', gate: { brand: 'brand-of-glass' }, sealed: { region: 'sunscorch', text: 'The east gate is barred. Out on the Flats the dunes are still fusing into glass in the heat, and the Spire Guard lets nobody through.', hint: 'The gate opens once the Glass Heart under the Deep Shaft goes quiet.' } },
   ],
   anchors: { 'from-sun-road': [14, 1, 's'], 'from-dust-trail': [1, 12, 'e'], 'from-glass-flats': [28, 12, 'w'] },
   roam: null,

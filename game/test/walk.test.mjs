@@ -37,7 +37,7 @@ function forceWin(game, where) {
 // `game` (a save to start from), `path` (the targets, in order) and `start` (where to enter) default to
 // M3's long walk: newGame, CRITICAL_PATH, the Great Hall.
 function makeBot(starter, { game = null, path = CRITICAL_PATH, start = null } = {}) {
-  const s = { game: game || newGame({ name: 'Tess', seed: 9, starter }), walk: null, log: [], steps: 0 };
+  const s = { game: game || newGame({ name: 'Tess', seed: 9, starter }), walk: null, log: [], steps: 0, held: 0 };
   const log = m => { s.log.push(m); if (s.log.length > 40) s.log.shift(); };
   const where = () => `${s.walk?.map} (${s.walk?.x},${s.walk?.y})`;
   const stuck = m => { throw new Stuck(`${starter}: ${m} at ${where()}\n  ${s.log.slice(-12).join('\n  ')}`); };
@@ -182,6 +182,23 @@ function makeBot(starter, { game = null, path = CRITICAL_PATH, start = null } = 
     return handle(r.events);
   }
 
+  // M4.5 (docs/M45-SPEC.md §5): the road holds. Before a fight that holds a road gate is won, the end
+  // of that road cannot be reached from where the bot stands (the engine's own findPath, live states).
+  function roadHeld(id, mapId) {
+    const map = MAPS[mapId];
+    for (const road of map.roads || []) {
+      const here = present(s.game, mapId);
+      const mine = road.gates.map(g => here.find(e => e.id === g)).find(g => g && (g.guard === id || JSON.stringify(g.open || {}).includes(`"${id}"`)));
+      if (!mine || mine.state !== 'closed') continue;
+      const exit = map.exits.find(x => x.id === road.to);
+      const enc = map.entities.find(e => e.kind === 'encounter' && e.enc === road.to);
+      const [tx, ty] = exit ? [exit.area[0], exit.area[1]] : enc.at || [enc.area[0], enc.area[1]];
+      const path = findPath(s.game, s.walk, [tx, ty], { max: 800, adjacent: !exit });
+      if (path) stuck(`the road ${road.from} -> ${road.to} on ${mapId} is open before ${id} is beaten (${path.length} steps)`);
+      s.held++;
+    }
+  }
+
   // Reach and complete one critical-path target.
   function reach(id) {
     const hit = ENTITY_OF[id];
@@ -208,6 +225,7 @@ function makeBot(starter, { game = null, path = CRITICAL_PATH, start = null } = 
     const settled = () => s.game.progress.flags.cleared[id] || s.game.progress.flags.done[id] || (node.duel && s.game.progress.flags.story[node.yields || 'tamsin-yielded'])
       || (node.brand && s.game.progress.brands.includes(node.brand));
     if (settled()) return;
+    roadHeld(id, hit.map);
     for (let tries = 0; tries < 30 && !settled(); tries++) {
       if (s.walk.map !== hit.map) goToMap(hit.map);
       if (e.mode === 'pack') {
@@ -257,6 +275,7 @@ for (const starter of ['hearthbrand', 'stillwater-lance', 'cairnmaul']) {
     assert.equal(new Set(s.game.progress.brands).size, 2);
     assert.ok(s.game.progress.flags.story['intro-done'], 'the intro played');
     assert.ok(s.steps > 100, `${s.steps} steps`);
+    assert.ok(s.held >= 8, `the road held before ${s.held} fights (M4.5)`);
   });
 }
 
@@ -304,5 +323,6 @@ for (const starter of ['hearthbrand', 'stillwater-lance', 'cairnmaul']) {
     assert.equal(s.walk.map, 'keep-hall');
     assert.equal(f.story['council-2-done'] || s.game.progress.flags.story['council-2-done'], true, 'the second council plays in the Great Hall');
     assert.ok(s.steps > 300, `${s.steps} steps`);
+    assert.ok(s.held >= 5, `the road held before ${s.held} fights (M4.5)`);
   });
 }

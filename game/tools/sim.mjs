@@ -27,7 +27,8 @@
 //   sunscorch-forged the same, with every hero's weapon tempered to +4 and one gem each (a Sunstone in
 //                    the weapon, or in the first socketed piece they wear): both Champions <= 20%.
 //   sun-first-lead   each Sunscorch lead's lair (SUN_LEADS) as the first thing done after Sandspire, at
-//                    Waking 2: 15-25% first-try wipe.
+//                    Waking 2 (the Dust Trail's); the Glass Flats' once the Brand of Glass opens them, at
+//                    Waking 3 (M4.5): 15-25% first-try wipe.
 // Every mode: zero stuck runs. A duel lost is a yield (not retried); the door opens anyway.
 // Crossing a zone map costs a fight with one of its roaming patrols ('patrol:<zone>' in a route);
 // a weak one runs from you and costs nothing (Milestone 4.5: no Routs; the player walks on). The m2
@@ -95,6 +96,10 @@ const SUN_ROUTE = [...SUN_START,
   if (firsts.join() !== SUN_PATH.join()) throw new Error(`SUN_ROUTE must walk SUN_PATH in order: ${firsts.join(', ')}`);
 }
 // Each lead's lair taken first, right after Sandspire (the dust-trail ones kindle the Dust Cairn first).
+// Milestone 4.5: the Glass Flats open with the Brand of Glass (docs/M45-SPEC.md A3), so an east lead
+// is first taken on the way back from Kharzul through Sandspire, at Waking 3 (SUN_WEST, then the lead).
+const SUN_WEST = SUN_ROUTE.slice(0, SUN_ROUTE.indexOf('spire-hearth', SUN_ROUTE.indexOf('kharzul-heart')) + 1);
+const EAST_LEADS = new Set(['caravan', 'gnash', 'well']);
 const SUN_LEAD_ROUTES = {
   caravan: ['patrol:glass-flats', 'gf-caravan'],
   wyrm: ['patrol:dust-trail', 'dust-cairn', 'wyrm-lair'],
@@ -297,7 +302,7 @@ function simulate() {
         if (ONLY.includes('sunscorch')) { const f = sunFork('path'); entry(all.sunscorch); run('sunscorch', f.g, SUN_ROUTE, f.ctx); }
         if (ONLY.includes('sunscorch-forged')) { const f = sunFork('path'); entry(all['sunscorch-forged']); run('sunscorch-forged', forgeParty(f.g, all['sunscorch-forged']), SUN_ROUTE, f.ctx); }
         if (ONLY.includes('sun-first-lead')) {
-          for (const lead of Object.keys(SUN_LEAD_ROUTES).filter(l => !SUN_ONLY_LEADS || SUN_ONLY_LEADS.split(',').includes(l))) { const f = sunFork(lead); entry(all['sun-first-lead']); run('sun-first-lead', f.g, [...SUN_START, ...SUN_LEAD_ROUTES[lead]], f.ctx); }
+          for (const lead of Object.keys(SUN_LEAD_ROUTES).filter(l => !SUN_ONLY_LEADS || SUN_ONLY_LEADS.split(',').includes(l))) { const f = sunFork(lead); entry(all['sun-first-lead']); run('sun-first-lead', f.g, [...(EAST_LEADS.has(lead) ? SUN_WEST : SUN_START), ...SUN_LEAD_ROUTES[lead]], f.ctx); }
         }
       }
       if (ONLY.includes('leads2')) { const f = fork(); run('leads2', f.g, [...LEAD_ROUTES.mosswatch, ...LEAD_ROUTES.bell, 'thornhollow', ...AFTER_BRAND], f.ctx); }
@@ -335,7 +340,7 @@ const LABELS = {
   'first-lead': 'first-lead: each lead taken first at Waking 1',
   sunscorch: 'sunscorch: from the direct run\'s end (Waking 2), home to the Keep, then SUN_PATH',
   'sunscorch-forged': 'sunscorch-forged: the same party with weapons tempered to +4 and one gem each',
-  'sun-first-lead': 'sun-first-lead: each Sunscorch lead\'s lair taken first, right after Sandspire (Waking 2)',
+  'sun-first-lead': 'sun-first-lead: each Sunscorch lead\'s lair taken first: the Dust Trail\'s right after Sandspire (Waking 2), the Glass Flats\' once Kharzul opens them (Waking 3)',
 };
 
 // Gate 4 (M4 spec §8): the targets the Sunscorch modes are tuned to.

@@ -102,5 +102,6 @@ export default deepFreeze({
     { id: 'sr-s', area: [12, 63, 13, 63], to: 'sandspire', anchor: 'from-sun-road' },
   ],
   anchors: { 'from-keep': [12, 1, 's'], 'from-sandspire': [12, 62, 'n'] },
+  roads: [{ from: 'from-keep', to: 'sr-s', gates: ['sr-toll-chain'] }],
   roam: { max: 3, rects: [[1, 9, 24, 17], [8, 18, 24, 37], [1, 44, 24, 58]] },
 });

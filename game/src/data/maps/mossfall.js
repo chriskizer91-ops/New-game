@@ -6,6 +6,8 @@
 // its lagoon, reached only by the ford. The south edge is the Gloomfen border, where the land drops
 // away in cliffs and the fen stair goes down into the fog (sealed).
 // Layout notes: the cairn's fire-bowl sits at (30,7), next to its stand (30,8) (spec (30,6), moved 1).
+// M4.5 (docs/M45-SPEC.md §4): the smugglers have chained the head of the ford (41,13), the only way out
+// to the shrine's islet, and stand beside their chain (42,13).
 // Format: src/data/maps/index.js. Owner: WP3.
 import { deepFreeze } from '../../core/freeze.js';
 
@@ -42,7 +44,10 @@ export default deepFreeze({
     { id: 'mossfall-cairn', kind: 'hearthfire', at: [30, 7], stand: [30, 8, 'n'], cold: true },
     { id: 'mf-islet-ford', kind: 'lock', lock: 'stream', at: [41, 14] },
     { id: 'mire-shrine', kind: 'encounter', enc: 'mire-shrine', mode: 'lair', at: [42, 18], area: [41, 17, 43, 18], face: 'n' },
-    { id: 'mf-smugglers', kind: 'encounter', enc: 'mf-smugglers', mode: 'pack', at: [14, 6], face: 's' },
+    // M4.5 road gate (docs/M45-SPEC.md §4): the Reed-Runners have chained the head of the ford out to the
+    // Mire Shrine's islet and stand beside their chain
+    { id: 'mf-ford-chain', kind: 'gate', area: [41, 13, 41, 13], look: 'chain', open: { beaten: 'mf-smugglers' }, guard: 'mf-smugglers', text: 'A chain across the head of the ford, padlocked to a stake. The smugglers use this crossing, and nobody else does.' },
+    { id: 'mf-smugglers', kind: 'encounter', enc: 'mf-smugglers', mode: 'block', at: [42, 13], face: 'n' },
     { id: 'mf-bog', kind: 'encounter', enc: 'mf-bog', mode: 'pack', at: [24, 14], face: 's' },
     { id: 'mf-bramble-cache', kind: 'chest', at: [46, 3], loot: { items: [{ rarity: 'tempered', kind: 'bow' }] }, lock: 'bramble' },
     { id: 'mf-reed-cache', kind: 'chest', at: [9, 18], loot: { gold: 120 }, hidden: true },
@@ -53,5 +58,6 @@ export default deepFreeze({
     { id: 'mf-e', area: [51, 10, 51, 11], to: 'thornhollow', anchor: 'from-mossfall' },
   ],
   anchors: { 'from-thornhollow': [49, 10, 'w'], 'from-tower': [3, 9, 's'] },
+  roads: [{ from: 'from-thornhollow', to: 'mire-shrine', gates: ['mf-ford-chain'] }],
   roam: { max: 3, rects: [[6, 2, 48, 11], [14, 12, 36, 19]] },
 });

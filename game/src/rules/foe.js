@@ -42,14 +42,15 @@ export function addOmens(omens, n, seed, tier = null, { unique = false } = {}) {
 // "Stronger and stronger": each Waking step adds levels, a gear tier and Omens to every spawn.
 // M3 (spec D3, §4.7): the tier comes from familyOf(spawn), so a relic-bearer variant of a rabble or
 // veteran family escalates as a relic-bearer. Rabble rise TUNING.waking.rabbleLevels (2) per Waking,
-// everyone else TUNING.waking.levels (6); a spawn may override that with `wakeLevels`, and
-// `noWaking` returns it unescalated.
+// everyone else TUNING.waking.levels (6); a spawn may override that with `wakeLevels`, cap its Waking
+// Omens with `wakeOmenCap` (M4.5: the Glass Flats' lairs keep the two Omens they were tuned with, now
+// that the Brand of Glass must come first), and `noWaking` returns it unescalated.
 export function escalateSpawn(spawn, waking = 0, salt = '') {
   if (!waking || spawn.noWaking) return { ...spawn, omens: [...(spawn.omens || [])] };
   const tier = familyOf(spawn).tier;
   const W = TUNING.waking;
   const per = spawn.wakeLevels ?? (tier === 'rabble' ? W.rabbleLevels : W.levels);
-  const omenCount = tier === 'rabble' ? Math.max(0, waking - 1) : waking * W.omens;
+  const omenCount = Math.min(tier === 'rabble' ? Math.max(0, waking - 1) : waking * W.omens, spawn.wakeOmenCap ?? Infinity);
   return {
     ...spawn,
     level: spawn.level + waking * per,

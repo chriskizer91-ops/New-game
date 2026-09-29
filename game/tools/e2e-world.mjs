@@ -48,6 +48,9 @@
 //   19 the Journal's Grudges tab (one active, one settled; a saved name stays text), its empty state;
 //      a real Grudge pack seeded as a hunter shows a red "!" (emote '!hunt'); loot and Codex-page
 //      toasts; the second council's title card, then the end-of-Act-II card naming Ironspire and Gloomfen
+// Milestone 4.5 (docs/M45-SPEC.md §5):
+//   20 a road gate: the first gate on the Hearth Road is shut; walking into it opens its guard's
+//      pre-fight card; after the win it is open, no longer solid, and the party walks through
 // Screenshots use the real fonts when tools/e2e-flow.mjs has cached them (<tmp>/aethermoor-font-cache).
 // Playwright is not a project dependency: it comes from the global npm root.
 // Owner: WP7; M4 P7b (12-19).
@@ -57,6 +60,9 @@ import { createRequire } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import os from 'node:os';
 import path from 'node:path';
+import { MAPS } from '../src/data/maps/index.js';
+import { tileOf } from '../src/data/tiles.js';
+import { ENCOUNTERS } from '../src/data/encounters.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = Object.fromEntries(process.argv.slice(2).map(a => { const [k, v] = a.replace(/^--/, '').split('='); return [k, v ?? true]; }));
@@ -66,6 +72,36 @@ const outDir = path.resolve(args.out && args.out !== true ? args.out : path.join
 mkdirSync(outDir, { recursive: true });
 const only = args.scenario ? new Set(String(args.scenario).split(',').map(Number)) : null;
 const want = n => !only || only.has(n);
+
+// M4.5: where the road meets a gate: a tile next to it that the road's start reaches while it is shut
+// (with its guard standing), and the way to face it. Terrain and fixed things are walls.
+function approachOf(mapId, gateId) {
+  const map = MAPS[mapId];
+  const road = (map.roads || []).find(r => r.gates.includes(gateId));
+  const areaOf = e => e.area || [e.at[0], e.at[1], e.at[0], e.at[1]];
+  const gate = map.entities.find(e => e.id === gateId);
+  const guard = gate.guard && map.entities.find(e => e.kind === 'encounter' && e.enc === gate.guard);
+  const wall = new Uint8Array(map.w * map.h);
+  const put = a => { for (let y = a[1]; y <= a[3]; y++) for (let x = a[0]; x <= a[2]; x++) wall[y * map.w + x] = 1; };
+  for (let y = 0; y < map.h; y++) for (let x = 0; x < map.w; x++) if (tileOf(map.rows[y][x]).solid) wall[y * map.w + x] = 1;
+  for (const e of map.entities) if (!['trigger', 'light', 'encounter'].includes(e.kind) && !(e.kind === 'prop' && !e.solid)) put(areaOf(e));
+  if (guard) put(areaOf(guard));
+  const [fx, fy] = map.anchors[road.from];
+  const seen = new Uint8Array(map.w * map.h), q = [[fx, fy]];
+  seen[fy * map.w + fx] = 1;
+  for (let i = 0; i < q.length; i++) {
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = q[i][0] + dx, ny = q[i][1] + dy, k = ny * map.w + nx;
+      if (nx < 0 || ny < 0 || nx >= map.w || ny >= map.h || seen[k] || wall[k]) continue;
+      seen[k] = 1; q.push([nx, ny]);
+    }
+  }
+  const [x0, y0, x1, y1] = areaOf(gate);
+  for (const [x, y, face] of [[Math.round((x0 + x1) / 2), y1 + 1, 'n'], [Math.round((x0 + x1) / 2), y0 - 1, 's'], [x0 - 1, Math.round((y0 + y1) / 2), 'e'], [x1 + 1, Math.round((y0 + y1) / 2), 'w']]) {
+    if (x >= 0 && y >= 0 && x < map.w && y < map.h && seen[y * map.w + x]) return { x, y, face };
+  }
+  return null;
+}
 
 const require = createRequire(import.meta.url);
 let pw;
@@ -227,6 +263,14 @@ async function run(V) {
   const levelUp = `(g, T) => { for (const id of g.party.active) { const h = g.party.roster[id]; h.level = LVL; for (const d of Object.values(h.domains || {})) d.level = Math.max(d.level, LVL); } return g; }`;
   const noIntro = `(g) => { g.progress.flags.story['intro-done'] = true; g.progress.flags.done['keep-vault'] = true; g.progress.flags.cleared['keep-vault'] = true; return g; }`;
   const combine = (...fns) => `(g, T) => { ${fns.map((f, i) => `g = (${f})(g, T) || g;`).join(' ')} return g; }`;
+  // M4.5: every fight holding a road on these maps already won (beaten and cleared, so the gates stand
+  // open and the guards are gone), for the scenarios about walking rather than fighting
+  const roadsWon = (...maps) => {
+    const ids = maps.flatMap(m => (MAPS[m].roads || []).flatMap(r => r.gates)).map(id => Object.values(MAPS).flatMap(m => m.entities).find(e => e.id === id))
+      .flatMap(g => [g.guard, ...Object.values(g.open || {}).filter(v => typeof v === 'string')]).filter(id => id && ENCOUNTERS[id]);
+    const won = JSON.stringify(Object.fromEntries(ids.map(id => [id, 1]))), cleared = JSON.stringify(Object.fromEntries(ids.map(id => [id, true])));
+    return `(g) => { Object.assign(g.progress.flags.beaten, ${won}); Object.assign(g.progress.flags.cleared, ${cleared}); return g; }`;
+  };
 
   // ================= 1. new game ===================================================================
   if (want(1)) {
@@ -282,7 +326,7 @@ async function run(V) {
   if (want(2)) {
     console.log(' -- 2 walking');
     try {
-      await setup({ patch: noIntro });
+      await setup({ patch: combine(noIntro, roadsWon('hearth-road')) });
       await teleport('hearth-road', 13, 66, 'n');
       await W(() => window.__world.roam([]));
       const a = await state();
@@ -682,7 +726,7 @@ async function run(V) {
   if (want(11)) {
     console.log(' -- 11 performance');
     try {
-      await setup({ patch: combine(noIntro, levelUp.replace(/LVL/g, '10')) });
+      await setup({ patch: combine(noIntro, levelUp.replace(/LVL/g, '10'), roadsWon('hearth-road')) });
       await teleport('hearth-road', 13, 66, 'n');
       await W(() => window.__world.grace(100000));
       // walk up the road and back past the packs for 10 s at 4x CPU throttle
@@ -1175,6 +1219,46 @@ async function run(V) {
       await page.waitForTimeout(300);
       check(await W(() => !!window.__world.game().progress.flags.story['council-2-done']), `${P} 19: the second council is done (council-2-done)`);
     } catch (e) { check(false, `${P} 19: ${e.message.split('\n')[0]}`); }
+  }
+
+  // ================= 20. a road gate (M4.5): its guard's card, the win, and the way stays open ==========
+  if (want(20)) {
+    console.log(' -- 20 a road gate');
+    try {
+      const road = MAPS['hearth-road'].roads?.[0];
+      const gateId = road?.gates?.[0];
+      const gateE = gateId && MAPS['hearth-road'].entities.find(e => e.id === gateId);
+      const ap = gateE && approachOf('hearth-road', gateId);
+      if (!ap || !gateE.guard) throw new Error(`no guarded road gate on the Hearth Road (${gateId})`);
+      await setup({ patch: noIntro });
+      await teleport('hearth-road', ap.x, ap.y, ap.face);
+      await W(() => window.__world.roam([]));
+      const g0 = await W(id => window.__world.entity('hearth-road', id), gateId);
+      check(g0 && g0.state === 'closed' && g0.solid, `${P} 20: the road gate ${gateId} is shut before its fight`);
+      await shot('road-gate');
+      await W(d => window.__world.press(d), ap.face);
+      await page.waitForSelector('.ov-prefight', { timeout: 3000 });
+      const pf = await page.innerText('.ov-prefight');
+      check(pf.includes(ENCOUNTERS[gateE.guard].name) && /Fight/.test(pf), `${P} 20: walking into the gate opens its guard's card (${ENCOUNTERS[gateE.guard].name})`);
+      await shot('road-gate-card');
+      await W(() => { window.__forceResult = { result: 'victory', xp: 10, gold: 5 }; });
+      await page.click('.pf-fight');
+      await page.waitForFunction(() => document.getElementById('app').dataset.screen === 'aftermath');
+      for (let i = 0; i < 8 && (await screen()) !== 'world'; i++) {
+        if (await page.$('.ov-reveal .cont')) await page.click('.ov-reveal .cont');
+        else if (await page.$('.af-foot .btn.primary')) await page.click('.af-foot .btn.primary');
+        await page.waitForTimeout(300);
+      }
+      await page.waitForFunction(() => document.getElementById('app').dataset.screen === 'world', null, { timeout: 4000 });
+      await closeOverlays();
+      const g1 = await W(id => window.__world.entity('hearth-road', id), gateId);
+      check(g1 && g1.state === 'open' && !g1.solid, `${P} 20: after the win the gate is open for good (${g1 && g1.state})`);
+      const s0 = await state();
+      await W(d => window.__world.step(d, 2), ap.face);
+      const s1 = await state();
+      check(Math.abs(s1.x - s0.x) + Math.abs(s1.y - s0.y) === 2, `${P} 20: the party walks through the open gate (${s0.x},${s0.y} -> ${s1.x},${s1.y})`);
+      await shot('road-gate-open');
+    } catch (e) { check(false, `${P} 20: ${e.message.split('\n')[0]}`); }
   }
 
   const fontOnly = failed.length && failed.every(u => /fonts\.(googleapis|gstatic)\.com/.test(u));

@@ -208,9 +208,11 @@ test('the Journal\'s Grudges: an M2 save\'s Grudge reads, the settled ones carry
   // old or odd saves: missing flags, a Grudge with no fields, omens that are not a list
   assert.deepEqual(grudgeView({ progress: { flags: {} } }), { active: [], settled: [] });
   assert.deepEqual(grudgeView({}), { active: [], settled: [] });
-  const odd = grudgeView({ progress: { flags: { grudges: { 'gf-raiders#0': null, 'nowhere#2': { omens: 'swift' } }, settled: { 'x#0': 7 } } } });
-  assert.equal(odd.active.length, 2);
+  const odd = grudgeView({ progress: { flags: { grudges: { 'gf-wisps#0': null, 'gf-raiders#0': null, 'nowhere#2': { omens: 'swift' } }, settled: { 'x#0': 7 } } } });
+  assert.equal(odd.active.length, 3);
   assert.ok(odd.active.every(r => r.name && r.where && Array.isArray(r.omens)));
-  assert.equal(odd.active.find(r => r.key === 'gf-raiders#0').hunts, true, 'a pack with a Grudge hunts');
+  assert.equal(odd.active.find(r => r.key === 'gf-wisps#0').hunts, true, 'a pack with a Grudge hunts');
+  // M4.5: the raiders became the Glass Flats' road guard, and a guard keeps its ground
+  assert.equal(odd.active.find(r => r.key === 'gf-raiders#0').hunts, false, 'a road guard with a Grudge waits');
   assert.equal(odd.settled[0].name, 'A foe you know');
 });

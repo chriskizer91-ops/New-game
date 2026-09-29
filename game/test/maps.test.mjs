@@ -50,12 +50,17 @@ test('25 maps (14 in the Wilds, 10 in the Sunscorch, and the reliquary\'s Galler
   }
 });
 
-test('exits pair up both ways and land on walkable anchors; 5 sealed exits', () => {
+test('exits pair up both ways and land on walkable anchors; 4 sealed exits and 2 gated ones', () => {
   let sealed = 0;
+  const gated = [];
   for (const m of Object.values(MAPS)) {
     for (const x of m.exits) {
       for (let yy = x.area[1]; yy <= x.area[3]; yy++) for (let xx = x.area[0]; xx <= x.area[2]; xx++) assert.ok(!solidTile(m, xx, yy), `${m.id}/${x.id} exit tile walkable`);
-      if (x.sealed) { sealed++; assert.ok(REGIONS[x.sealed.region] && x.sealed.text, x.id); continue; }
+      if (x.sealed) assert.ok(REGIONS[x.sealed.region] && x.sealed.text, x.id);
+      if (x.sealed && !x.to) { sealed++; continue; }
+      // a gated exit (M4: the Keep's south-east gate; M4.5: Sandspire's east gate) is a real way through
+      // once its gate holds, so it pairs up like any other
+      if (x.sealed) { assert.ok(x.gate, `${m.id}/${x.id} leads somewhere, so it has a gate`); gated.push(x.id); }
       const a = anchor(x.to, x.anchor);
       assert.ok(a, `${m.id}/${x.id} -> ${x.to}:${x.anchor}`);
       assert.ok(!solidTile(MAPS[x.to], a.x, a.y), `${x.to}:${x.anchor} walkable`);
@@ -68,7 +73,8 @@ test('exits pair up both ways and land on walkable anchors; 5 sealed exits', () 
       assert.ok(!on, `${m.id}:${name} is not under ${on?.id}`);
     }
   }
-  assert.equal(sealed, 5);
+  assert.equal(sealed, 4);
+  assert.deepEqual(gated.sort(), ['keep-se', 'ss-e']);
 });
 
 test('every exit pairs with an exit on the far map whose anchor is where the first one leads back', () => {
@@ -172,12 +178,17 @@ test('world tables agree with the maps: the 17 Hearthfires, the 17 places, the r
     assert.ok(p.map === null || MAPS[p.map], `LORE.${id}.map`);
     assert.ok(p.region === null || REGIONS[p.region], `LORE.${id}.region`);
   }
-  const sealed = Object.values(MAPS).flatMap(m => m.exits.filter(x => x.sealed));
+  const sealed = Object.values(MAPS).flatMap(m => m.exits.filter(x => x.sealed).map(x => ({ ...x, from: m.region })));
   for (const r of Object.values(REGIONS)) {
     assert.ok(inView(r.lore), `${r.id} lore`);
     for (const id of r.entries || []) assert.equal(sealed.find(x => x.id === id)?.sealed.region, r.id, `${id} is a sealed entry to ${r.id}`);
   }
-  for (const x of sealed) assert.ok(REGIONS[x.sealed.region].entries.includes(x.id), `${x.id} is listed in REGIONS.${x.sealed.region}.entries`);
+  // every sealed way into a region is one of its entries; a gate inside a region (M4.5: Sandspire's east
+  // gate, shut until the Brand of Glass) is not a way into it
+  for (const x of sealed) {
+    if (x.from === x.sealed.region) { assert.ok(x.gate && x.to && MAPS[x.to].region === x.from, `${x.id} is a gate inside ${x.from}`); continue; }
+    assert.ok(REGIONS[x.sealed.region].entries.includes(x.id), `${x.id} is listed in REGIONS.${x.sealed.region}.entries`);
+  }
   for (const m of Object.values(MAPS)) for (const [lx, ly, tx, ty] of m.lore) assert.ok(inView([lx, ly]) && inside(m, tx, ty), `${m.id} lore`);
 });
 
@@ -351,7 +362,8 @@ for (const starter of Object.keys(STARTERS)) {
   });
 }
 
-// Everything held: level 20, every relic, every fight won. `brand` adds both Brands and the yield.
+// Everything held: level 20, every relic, every fight won. `brand` adds every Brand so far (the Verdant
+// pair, then, M4.5, the Sunscorch pair, which opens Sandspire's east gate) and every duel's yield.
 function allKeys({ brand }) {
   const g = structuredClone(newGame({ name: 'Map', starter: 'hearthbrand', seed: 11 }));
   setLevels(g, 20);
@@ -364,9 +376,9 @@ function allKeys({ brand }) {
   }
   Object.assign(f.story, { 'rangers-home': true, 'bell-rung': true, 'intro-done': true });
   if (brand) {
-    g.progress.brands = ['brand-of-briars', 'brand-of-the-heartroot'];
-    g.progress.waking = 2;
-    f.story[ENCOUNTERS['tamsin-duel'].yields || 'tamsin-yielded'] = true;
+    g.progress.brands = ['brand-of-briars', 'brand-of-the-heartroot', 'brand-of-glass', 'brand-of-ash'];
+    g.progress.waking = 4;
+    for (const e of Object.values(ENCOUNTERS)) if (e.duel) f.story[e.yields || 'tamsin-yielded'] = true;
     f.story['act1-complete'] = true;
   }
   return g;
@@ -482,7 +494,8 @@ test('the Sunscorch opens through the Keep\'s south-east gate once Act I is done
   // keep-se is the only way in: every Sunscorch exit stays in the Sunscorch, but the road home to it
   for (const id of SUN) {
     for (const x of MAPS[id].exits) {
-      assert.ok(x.to && !x.sealed, `${id}/${x.id} is a way through`);
+      // M4.5: Sandspire's east gate is sealed until the Brand of Glass, then a way through like the rest
+      assert.ok(x.to && (!x.sealed || (x.gate && MAPS[x.to].region === 'sunscorch')), `${id}/${x.id} is a way through`);
       if (MAPS[x.to].region !== 'sunscorch') assert.ok(x.to === 'keep' && id === 'sun-road' && anchor('keep', x.anchor), `${id}/${x.id} leaves the Sunscorch only for the Keep's south-east gate`);
     }
   }
@@ -532,9 +545,15 @@ test('after each Sunscorch Brand, the re-armed fights never shut the way home fr
     const from = nextTo(g, hit.map, hit.entity);
     assert.ok(from, `${id} can be stood beside`);
     const r = flood(g, { from: [hit.map, ...from] });
-    for (const fire of ['hearthstone-keep', ...Object.keys(HEARTHS).filter(h => MAPS[HEARTHS[h].map].region === 'sunscorch')]) {
+    // every fire the party has kindled on the way stays reachable (M4.5: the road still ahead is held by
+    // its own gates, so a fire past them is not "home" yet)
+    const kindled = ['hearthstone-keep', ...Object.keys(HEARTHS).filter(h => MAPS[HEARTHS[h].map].region === 'sunscorch' && g.progress.flags.kindled[h])];
+    assert.ok(kindled.length >= (id === 'kharzul-heart' ? 6 : 7), `after ${id}: ${kindled.join(', ')}`);
+    for (const fire of kindled) {
       assert.ok(reaches(r, HEARTHS[fire].map, ENTITY_OF[fire].entity), `after ${id}, ${fire} is still reachable from the lair`);
     }
+    // and the re-armed road guards stand beside open gates
+    for (const e of present(g, 'sun-road')) if (e.kind === 'gate' && e.guard) assert.equal(e.state, 'open', `after ${id}, ${e.id} stays open`);
   }
 });
 
@@ -552,15 +571,16 @@ test('world tables: SUN_PATH is spec §2.2\'s route and SUN_LEADS its leads, eac
 });
 
 // What spec §2.3 (with §2.5, §3.1, §3.3) puts on each map: its biome, its Hearthfires (true = cold), its
-// fights and their modes, at least this many locks of each type, and its people.
+// fights and their modes, at least this many locks of each type, and its people. M4.5: the route's packs
+// (the Dust Trail's scorpions, the Glass Flats' raiders) are road guards now, standing blocks.
 const SUN_SPEC = {
   'sun-road': { biome: 'desert', fires: { waystone: false }, fights: { 'sr-skinks': 'pack', 'sr-toll': 'block' }, locks: { 'dune-glass': 1 }, npcs: [] },
   sandspire: { biome: 'desert-town', fires: { 'spire-hearth': false }, fights: {}, locks: { 'barred-gate': 1 }, npcs: ['zara', 'qasim', 'idris', 'spire-guard', 'water-seller'] },
-  'dust-trail': { biome: 'canyon', fires: { 'dust-cairn': true }, fights: { 'dt-skinks': 'pack', 'dt-scorpions': 'pack', 'dt-aqueduct': 'block', 'wyrm-lair': 'lair' }, locks: { quicksand: 1, boulder: 1 }, npcs: [] },
+  'dust-trail': { biome: 'canyon', fires: { 'dust-cairn': true }, fights: { 'dt-skinks': 'pack', 'dt-scorpions': 'block', 'dt-aqueduct': 'block', 'wyrm-lair': 'lair' }, locks: { quicksand: 1, boulder: 1 }, npcs: [] },
   dusthaven: { biome: 'mine-camp', fires: { pithead: false }, fights: {}, locks: {}, npcs: ['luma', 'ode', 'miner'] },
   'deep-shaft-1': { biome: 'mine', fires: { 'shaft-lamp': true }, fights: { 'ds-crew': 'block', 'ds-scorpions': 'pack' }, locks: { 'dune-glass': 1 }, npcs: [] },
   'deep-shaft-2': { biome: 'crystal', fires: {}, fights: { 'kharzul-heart': 'lair' }, locks: {}, npcs: [] },
-  'glass-flats': { biome: 'dunes', fires: {}, fights: { 'gf-raiders': 'pack', 'gf-wisps': 'pack', 'gf-caravan': 'block', 'gnash-camp': 'lair' }, locks: { 'dune-glass': 2, mirage: 1, quicksand: 1 }, npcs: [] },
+  'glass-flats': { biome: 'dunes', fires: {}, fights: { 'gf-raiders': 'block', 'gf-wisps': 'pack', 'gf-caravan': 'block', 'gnash-camp': 'lair' }, locks: { 'dune-glass': 2, mirage: 1, quicksand: 1 }, npcs: [] },
   miragewell: { biome: 'oasis', fires: { 'well-fire': false }, fights: { 'wisp-queen': 'lair' }, locks: { mirage: 1 }, npcs: ['sabah', 'pilgrim-mw'] },
   scorchgate: { biome: 'ash', fires: { 'last-watchfire': true }, fights: { 'sg-wights': 'pack', 'sg-captain': 'block', 'tamsin-scorchgate': 'block' }, locks: { 'vault-seal': 1 }, npcs: ['cinder'] },
   'scorchgate-vaults': { biome: 'vault', fires: {}, fights: { 'vault-guard': 'block', 'ashen-warden': 'lair' }, locks: {}, npcs: [] },

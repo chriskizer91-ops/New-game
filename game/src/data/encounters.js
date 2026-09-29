@@ -312,17 +312,17 @@ export const ENCOUNTERS = deepFreeze({
   },
   'gf-caravan': {
     id: 'gf-caravan', type: 'fight', name: 'The Tallyman Caravan', place: 'The Glass Flats', backdrop: 'glass-flats', region: 'sunscorch',
-    spawns: [SUN('tallyman', 4, { variant: 'quartermaster', name: 'The Quartermaster' }), SUN('smuggler', 5, { variant: 'sharpshooter', relic: 'saltglass', name: 'Vell Saltglass' }), S('smuggler', 9)],
+    spawns: [SUN('tallyman', 4, { variant: 'quartermaster', name: 'The Quartermaster', wakeOmenCap: 2 }), SUN('smuggler', 5, { variant: 'sharpshooter', relic: 'saltglass', name: 'Vell Saltglass', wakeOmenCap: 2 }), S('smuggler', 7)],
     text: 'A Tallyman caravan with a sharpshooter on the lead wagon, and on the last wagon a crate that hums.',
   },
   'gnash-camp': {
     id: 'gnash-camp', type: 'fight', name: 'Gnash\'s Camp', place: 'The Glass Flats', backdrop: 'glass-flats', region: 'sunscorch',
-    spawns: [SUN('dune-raider', 5, { variant: 'raider-king', relic: 'dunebreaker', name: 'Gnash the Raider-King' }), SUN('dune-raider', 4), SUN('dune-raider', 4)],
+    spawns: [SUN('dune-raider', 4, { variant: 'raider-king', relic: 'dunebreaker', name: 'Gnash the Raider-King', wakeOmenCap: 2 }), SUN('dune-raider', 3, { wakeOmenCap: 2 }), SUN('dune-raider', 3, { wakeOmenCap: 2 })],
     text: 'Gnash the Raider-King holds court on a throne of glassed sand, with a giant\'s maul across his knees.',
   },
   'wisp-queen': {
     id: 'wisp-queen', type: 'fight', name: 'The Wisp-Queen', place: 'Miragewell', backdrop: 'miragewell', region: 'sunscorch',
-    spawns: [SUN('mirage-wisp', 5, { variant: 'queen', relic: 'mirage-glass', name: 'The Wisp-Queen' }), SUN('mirage-wisp', 4), SUN('mirage-wisp', 4)],
+    spawns: [SUN('mirage-wisp', 6, { variant: 'queen', relic: 'mirage-glass', name: 'The Wisp-Queen', wakeOmenCap: 2 }), SUN('mirage-wisp', 4, { wakeOmenCap: 2 }), SUN('mirage-wisp', 4, { wakeOmenCap: 2 })],
     text: 'The wisps drink the well dry each night. Their queen wears a lens of well-water that never spills.',
   },
   'sg-wights': {

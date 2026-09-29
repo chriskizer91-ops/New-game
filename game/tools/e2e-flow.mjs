@@ -286,7 +286,7 @@ async function run(V) {
   await shot('title-new', false);
   await noHScroll('title');
   check(await page.locator('.title-continue, .title-carry').count() === 0, `${V.name}: no Continue without a save`);
-  check(/M4/.test(await page.locator('.title-ver').innerText()) && /Sunscorch/i.test(await page.locator('.title-ver').innerText()), `${V.name}: the title shows the M4 · Sunscorch tag`);
+  check(/M4\.5/.test(await page.locator('.title-ver').innerText()) && /The Road/i.test(await page.locator('.title-ver').innerText()), `${V.name}: the title shows the M4.5 · The Road tag`);
   await click('.title-menu >> text=New game');
   await waitScreen('newgame');
   const audio = await page.evaluate(async ([sfx, tracks]) => {
@@ -959,8 +959,11 @@ async function runM3(V) {
   s = await store();
   check(s.bak === kept.live && JSON.parse(s.live).gold === 777, `${V.name}: carrying it over again backs the live save up first`);
   await untouched('after carrying it over again');
-  // reload: this milestone's own save is the one that continues
-  await page.goto(pathToFileURL(file).href);
+  // reload: this milestone's own save is the one that continues. A reload, not a second goto: in a
+  // throwaway headless context, a new navigation to a file:// page sometimes starts with the origin's
+  // storage wiped (Chromium drops an in-memory file:// storage area it briefly holds no page for);
+  // a real browser keeps it on disk. That was M4's unreproduced "reload" flake (docs/M45-STATUS.md).
+  await page.reload();
   await page.waitForSelector('.title-menu');
   await page.waitForTimeout(400);
   const seen = await page.evaluate(() => ({
@@ -1036,7 +1039,7 @@ async function runM4(V) {
   s = await store();
   check(s.bak === kept.live && JSON.parse(s.live).gold === 888, `${V.name}: carrying it over again backs the live save up first`);
   await untouched('after carrying it over again');
-  await page.goto(pathToFileURL(file).href);
+  await page.reload(); // a reload, not a second goto (see the Milestone 3 profile)
   await page.waitForSelector('.title-menu');
   await page.waitForTimeout(400);
   const seen = await page.evaluate(() => ({

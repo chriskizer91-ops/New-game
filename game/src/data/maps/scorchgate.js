@@ -5,12 +5,13 @@
 // in the west (4,12); the burned armory in the east is choked with fallen masonry (22,12), its cache
 // behind it. The last wall crosses the city with its gate fallen in the gap (14-17,15-16); the Last
 // Watchfire stands cold against it (20,14). Beyond it lies the old parade ground, with the reviewing
-// stand burned to its base, and at its south end the keep's base, where the Ash-Captain bars the
-// Vault door (15,29): the ash-black seal (15-16,30) over the stair down to the Scorchgate Vaults.
-// Tamsin comes to the parade ground once the Ash-Captain has fallen (16,23).
+// stand burned to its base, and at its south end the keep's base and its steps, above the Vault door:
+// the ash-black seal (15-16,30) over the stair down to the Scorchgate Vaults.
 // Layout notes: the Last Watchfire faces south to the wall, so its stand is north of it (20,13, 's').
-// The Ash-Captain stands before one leaf of the door, so his re-armed Echo never shuts the way up out
-// of the Vaults after the Brand of Ash.
+// M4.5 (docs/M45-SPEC.md §4): the road holds. The Ash-Captain has hauled the last wall's gate back up
+// across the gap (14-16,15) and stands in the gap beside it (17,15); once he falls, Tamsin waits at the
+// keep's portcullis on the steps (13-17,28), beside it (18,28), and a win or a yield opens it. Both
+// guards stand beside their gates, so the re-armed Captain never shuts the way up out of the Vaults.
 // Tiles (ash): '.' ash, 'm' ash drifts, '#' burned stone, '^' rubble and the ground beyond the walls,
 // '=' the old paving of the streets, ':' the parade ground and the keep's steps, 't' charred trees,
 // 'o' rubble, 'b' fallen gate leaves, '*' braziers, 'H' the shrine's roof, '+' its door (decoration).
@@ -63,8 +64,13 @@ export default deepFreeze({
     { id: 'sg-armory-rubble', kind: 'lock', lock: 'boulder', at: [22, 12] },
     { id: 'sg-armory-cache', kind: 'chest', at: [28, 12], loot: { items: [{ rarity: 'runed', slot: 'weapon' }], gems: { 'ash-garnet': 1 }, materials: { silver: 1 } } },
     { id: 'last-watchfire', kind: 'hearthfire', at: [20, 14], stand: [20, 13, 's'], cold: true },
-    { id: 'tamsin-scorchgate', kind: 'encounter', enc: 'tamsin-scorchgate', mode: 'block', at: [16, 23], face: 'n', talk: 'tamsin-scorchgate', if: { beaten: 'sg-captain' } },
-    { id: 'sg-captain', kind: 'encounter', enc: 'sg-captain', mode: 'block', at: [15, 29], face: 'n' },
+    // M4.5 road gates (docs/M45-SPEC.md §4): the Ash-Captain holds the last wall's gate, raised again
+    // across the gap, and stands in the gap beside it; once he falls, Tamsin waits at the keep's
+    // portcullis on the steps above the Vault door (a lost duel is a yield and opens it too)
+    { id: 'sg-wall-gate', kind: 'gate', area: [14, 15, 16, 15], look: 'gate', open: { beaten: 'sg-captain' }, guard: 'sg-captain', text: 'Scorchgate\'s last gate, hauled up out of the ash and wedged back across the gap. The Ash-Captain has not given up the wall.' },
+    { id: 'sg-captain', kind: 'encounter', enc: 'sg-captain', mode: 'block', at: [17, 15], face: 'n' },
+    { id: 'sg-keep-gate', kind: 'gate', area: [13, 28, 17, 28], look: 'gate', open: { any: [{ done: 'tamsin-scorchgate' }, { flag: 'tamsin-yielded-2' }] }, guard: 'tamsin-scorchgate', text: 'The keep\'s portcullis is down. Tamsin is leaning on the winch, and she is not letting you past without a fight.' },
+    { id: 'tamsin-scorchgate', kind: 'encounter', enc: 'tamsin-scorchgate', mode: 'block', at: [18, 28], face: 'n', talk: 'tamsin-scorchgate', if: { beaten: 'sg-captain' } },
     { id: 'sg-vault-door', kind: 'lock', lock: 'vault-seal', area: [15, 30, 16, 30] },
   ],
   exits: [
@@ -72,5 +78,6 @@ export default deepFreeze({
     { id: 'sg-vault', area: [15, 31, 16, 31], to: 'scorchgate-vaults', anchor: 'from-scorchgate' },
   ],
   anchors: { 'from-glass-flats': [15, 1, 's'], 'from-vaults': [16, 29, 'n'] },
+  roads: [{ from: 'from-glass-flats', to: 'sg-vault', gates: ['sg-wall-gate', 'sg-keep-gate'] }],
   roam: { max: 3, rects: [[2, 3, 21, 14], [22, 3, 29, 10], [3, 17, 28, 27]] },
 });

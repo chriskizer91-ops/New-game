@@ -8,7 +8,7 @@ import { equip, bestHeroFor } from '../src/rules/party.js';
 import { deriveHero } from '../src/rules/stats.js';
 import { ENCOUNTERS, GAUNTLET } from '../src/data/encounters.js';
 import { HEARTHS, START_AT, CRITICAL_PATH } from '../src/data/world.js';
-import { familyOf, buildFoe } from '../src/rules/foe.js';
+import { familyOf, buildFoe, escalateSpawn } from '../src/rules/foe.js';
 import { relicDeeds, relicsOn, stageOf } from '../src/rules/codex.js';
 import { generateItem } from '../src/rules/loot.js';
 import { RELICS } from '../src/data/relics.js';
@@ -276,6 +276,21 @@ test('the Waking: rabble +2 levels, everyone else +6, relic-bearer variants by t
   assert.equal(lvl(w1, 'hr-smugglers', 0), lvl(g, 'hr-smugglers', 0) + 6, 'Mags: a rabble family, a relic-bearer variant');
   assert.equal(lvl(w1, 'hr-smugglers', 1), lvl(g, 'hr-smugglers', 1) + 2, 'her smugglers are rabble');
   assert.equal(lvl(w1, 'poachers-holm', 0), lvl(g, 'poachers-holm', 0) + 3, 'Haskett: wakeLevels 3');
+});
+
+test('wakeOmenCap (M4.5): a spawn carries at most that many Waking Omens; levels and gear still climb', () => {
+  const spawn = { family: 'dune-raider', level: 5, variant: 'raider-king', gearTier: 0, omens: [], wakeLevels: 4 };
+  for (const waking of [1, 2, 3, 5]) {
+    const free = escalateSpawn(spawn, waking, 'cap'), capped = escalateSpawn({ ...spawn, wakeOmenCap: 2 }, waking, 'cap');
+    assert.equal(free.omens.length, waking, `Waking ${waking}: one Omen a Waking without a cap`);
+    assert.equal(capped.omens.length, Math.min(waking, 2), `Waking ${waking}: at most two with the cap`);
+    assert.equal(capped.level, free.level, 'the cap leaves levels alone');
+    assert.equal(capped.gearTier, free.gearTier, 'and gear');
+  }
+  // the Glass Flats' lairs carry the cap (they open only after the Brand of Glass, at Waking 3)
+  for (const id of ['gf-caravan', 'gnash-camp', 'wisp-queen']) {
+    for (const s of ENCOUNTERS[id].spawns) if (familyOf(s).tier !== 'rabble') assert.equal(s.wakeOmenCap, 2, `${id} ${s.family}`);
+  }
 });
 
 // Milestone 4.5 (docs/M45-SPEC.md A4) replaces the Rout: a weak pack you run down is a full battle.

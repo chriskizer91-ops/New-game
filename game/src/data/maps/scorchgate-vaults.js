@@ -11,6 +11,7 @@
 // re-armed guard stands beside it and never shuts the way back up.
 // Tiles (vault): '#' vault walls, ':' flagstones, 'k' bare stone, 'm' ash drifts, 'o' rubble,
 // '*' braziers, 's' the stair.
+// M4.5 (docs/M45-SPEC.md §4): the road runs from the stair through the inner door to the Ashen Warden.
 // Format: src/data/maps/index.js. Owner: M4 P2.
 import { deepFreeze } from '../../core/freeze.js';
 
@@ -57,5 +58,6 @@ export default deepFreeze({
     { id: 'sv-up', area: [11, 0, 12, 0], to: 'scorchgate', anchor: 'from-vaults' },
   ],
   anchors: { 'from-scorchgate': [11, 2, 's'] },
+  roads: [{ from: 'from-scorchgate', to: 'ashen-warden', gates: ['sv-inner-door'] }],
   roam: null,
 });

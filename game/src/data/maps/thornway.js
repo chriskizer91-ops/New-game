@@ -8,6 +8,10 @@
 // door in the rock face.
 // Layout notes: the den-mouth hearthfire sits at (22,9), next to its stand (22,10) (spec (22,8), moved
 // 1). Old Snag's lair sits at (22,34) (spec (24,34), moved 2) so the wallow reads from the path.
+// M4.5 (docs/M45-SPEC.md §4): the road holds. The Tallyman has barred the road at his camp's north end
+// (12-14,40) and stands beside his gate (11,40); a boulder at the foot of the thorn band (13-15,28)
+// waits on Old Snag; and the Bramble-Deep's thorns are woven shut across the path (16-18,20), the
+// bandit in the gap beside them.
 // Format: src/data/maps/index.js. Owner: WP3.
 import { deepFreeze } from '../../core/freeze.js';
 
@@ -45,7 +49,7 @@ export default deepFreeze({
     'TTTTtttttttt.===.tttttttttTTTT', // 25
     'TTTTtttttttt=====tttttttttTTTT', // 26
     'TTTTtttttttt.===.tttttttttTTTT', // 27
-    'TTTTTTTTTTTT.===.TTTTTTTTTt.tT', // 28
+    'TTTTTTTTTTTTt===tTTTTTTTTTt.tT', // 28
     'TTTTTTTTTTTT.===..TTTTTTTt..tT', // 29
     'TTTTTTTTTTT.,..===.T."mmm~~..T', // 30
     'TTTTTTTTTT.....===..."mmmmm~..', // 31
@@ -57,8 +61,8 @@ export default deepFreeze({
     'TTTTTTTTTT..T..===..".~~mmm..T', // 37
     'TTTTTTTTTTTT.===...T.."....TTT', // 38
     'TTTTTTTTTTTT.===.TTTT.,...TTTT', // 39
-    'TTHH...HHTT.===..TTTTTTTTTTTTT', // 40
-    'TTHH.,.HHT..===..TTTT..,.TTTTT', // 41
+    'TTHH...HHTT.===ttTTTTTTTTTTTTT', // 40
+    'TTHH.,.HHT..===.tTTTT..,.TTTTT', // 41
     'T..........===.TTT...."..TTTTT', // 42
     'T.....*.....===.TT..,....TTTTT', // 43
     'To.........===.....".,...TTTTT', // 44
@@ -75,7 +79,12 @@ export default deepFreeze({
     'TTTTTTTTTTTTT==TTTTTTTTTTTTTTT', // 55
   ],
   entities: [
-    { id: 'tally-camp', kind: 'encounter', enc: 'tally-camp', mode: 'block', at: [5, 44], face: 'e' },
+    // M4.5 road gates (docs/M45-SPEC.md §4): the Tallyman bars the road by his camp, Old Snag's boulder
+    // waits on the wallow, and the Bramble-Deep's bandit has woven the path shut
+    { id: 'tw-tally-gate', kind: 'gate', area: [12, 40, 14, 40], look: 'barred-gate', open: { beaten: 'tally-camp' }, guard: 'tally-camp', text: 'A barred gate of green timber across the road, with a tally-board nailed to it. Under TOLL, someone has chalked EVERYTHING.' },
+    { id: 'tally-camp', kind: 'encounter', enc: 'tally-camp', mode: 'block', at: [11, 40], face: 's' },
+    { id: 'tw-snag-boulder', kind: 'gate', area: [13, 28, 15, 28], look: 'boulder', open: { beaten: 'snag-wallow' }, text: 'A boulder shoved into the road, scored with tusk-marks. Old Snag wallows in the black mud back down the road to the east, and he charges anyone who tries to shift it.' },
+    { id: 'tw-deep-bramble', kind: 'gate', area: [16, 20, 18, 20], look: 'bramble', open: { beaten: 'bramble-deep' }, guard: 'bramble-deep', text: 'The thorns have been woven shut across the path, the way the Thornwatch taught it. Someone in there knew how.' },
     { id: 'tw-strongbox', kind: 'chest', at: [2, 42], loot: { gold: 80, items: [{ rarity: 'runed' }] }, lock: 'tally-seal' },
     { id: 'snag-wallow', kind: 'encounter', enc: 'snag-wallow', mode: 'lair', at: [22, 34], area: [21, 33, 23, 34], face: 'w' },
     { id: 'tw-thornwall', kind: 'lock', lock: 'thornwall', area: [12, 26, 16, 26] },
@@ -93,5 +102,6 @@ export default deepFreeze({
     { id: 'tw-n', area: [14, 0, 15, 0], to: 'eldergrove', anchor: 'from-thornway' },
   ],
   anchors: { 'from-thornhollow': [14, 53, 'n'], 'from-den': [26, 6, 's'], 'from-eldergrove': [14, 2, 's'], 'v1:tally-camp': [8, 46, 'w'], 'v1:snag-wallow': [21, 36, 'e'], 'v1:bramble-deep': [15, 23, 'n'], 'v1:den-mouth': [22, 10, 'n'] },
+  roads: [{ from: 'from-thornhollow', to: 'tw-den', gates: ['tw-tally-gate', 'tw-snag-boulder', 'tw-deep-bramble'] }],
   roam: { max: 3, rects: [[4, 28, 26, 52], [4, 6, 26, 24]] },
 });

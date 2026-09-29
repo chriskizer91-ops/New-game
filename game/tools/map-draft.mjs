@@ -92,7 +92,7 @@ async function reachGame(mode) {
   const rng = createRng('map-draft');
   for (const id of g.party.active) { let h = g.party.roster[id]; while (h.level < 20) h = levelUp(h, rng).hero; g.party.roster[id] = h; }
   for (const r of Object.keys(RELICS)) if (!g.inventory.some(i => i.base === r)) g.inventory.push({ uid: `draft-${r}`, base: r, kind: RELICS[r].kind });
-  g.progress.brands = ['brand-of-briars', 'brand-of-the-heartroot'];
+  g.progress.brands = ['brand-of-briars', 'brand-of-the-heartroot', 'brand-of-glass', 'brand-of-ash']; // M4.5: the Glass Flats open with the Brand of Glass
   const f = g.progress.flags;
   for (const [id, e] of Object.entries(ENCOUNTERS)) if (e.type === 'fight') { f.beaten[id] = 1; f.cleared[id] = true; if (e.once) f.done[id] = true; if (e.opens) f.unlocked[e.opens] = true; }
   Object.assign(f.story, { 'tamsin-yielded': true, 'tamsin-yielded-2': true, 'act1-complete': true, 'intro-done': true });

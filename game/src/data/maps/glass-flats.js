@@ -7,10 +7,13 @@
 // Raider-King holds court on a throne of glassed sand in a ring of crests to the north-east (42,4). Two
 // hollows are sealed by dune-glass: one in the north-west (5,8), one by the Miragewell road (45,11).
 // In the south-east the sand of a hollow breathes: quicksand (38-40,20-24) between the dunes and a cache.
-// The raiders roam the dunes south-west of the junction, the wisps the flats north of the east road.
+// The raiders hold the Scorchgate road (M4.5), the wisps roam the flats north of the east road.
 // No Hearthfire: the Spire Hearth and the Well Fire are either side.
 // Tiles (dunes): '.' sand, ',' dune ripples, '^' dune crests and fused ridges, '=' the caravan track,
 // ':' glassed flats, 'o' glass lumps, 'H' wagon canopies and tents.
+// M4.5 (docs/M45-SPEC.md §4): the road holds. The long way round the mesa and the mirage's short cut
+// meet again only where the road drops through the crests to Scorchgate; the raiders' chain crosses that
+// gap (25-26,27), with the raiders beside it (27,27).
 // Format: src/data/maps/index.js. Owner: M4 P2.
 import { deepFreeze } from '../../core/freeze.js';
 
@@ -48,7 +51,7 @@ export default deepFreeze({
     '^........................=========....^.....^^^^^..^', // 25
     '^^........,,....o.o......=========.....^^^^^.^.,,.^^', // 26
     '^^..........,............==.^^...o..,,......,,....^^', // 27
-    '^^...^^......^......^....==..^^.....^.....^^.....^^^', // 28
+    '^^...^^......^......^...^==^^^^.....^.....^^.....^^^', // 28
     '^^^^^^^^^^^^^^^^^^^^^^^^^==^^^^^^^^^^^^^^^^^^^^^^^^^', // 29
   ],
   entities: [
@@ -59,7 +62,10 @@ export default deepFreeze({
     { id: 'gf-wisps', kind: 'encounter', enc: 'gf-wisps', mode: 'pack', at: [39, 11], face: 's' },
     { id: 'gf-glass-wall-e', kind: 'lock', lock: 'dune-glass', at: [45, 11] },
     { id: 'gf-glass-cache-e', kind: 'chest', at: [47, 10], loot: { gold: 90, bag: { 'hearth-tonic': 2 }, materials: { silver: 2 } } },
-    { id: 'gf-raiders', kind: 'encounter', enc: 'gf-raiders', mode: 'pack', at: [14, 18], face: 'e' },
+    // M4.5 road gate (docs/M45-SPEC.md §4): where the Scorchgate road leaves the flats through a gap in the
+    // crests (the long way round the mesa and the mirage's short cut both come to it), the raiders' chain
+    { id: 'gf-raider-chain', kind: 'gate', area: [25, 27, 26, 27], look: 'chain', open: { beaten: 'gf-raiders' }, guard: 'gf-raiders', text: 'A chain across the road where it drops through the crests, hung with bleached bones. South of here is raider country.' },
+    { id: 'gf-raiders', kind: 'encounter', enc: 'gf-raiders', mode: 'block', at: [27, 27], face: 'n' },
     { id: 'gf-mirage', kind: 'lock', lock: 'mirage', area: [25, 17, 26, 24] },
     { id: 'gf-mirage-cache', kind: 'chest', at: [22, 20], loot: { items: [{ rarity: 'runed', slot: 'amulet' }], materials: { silver: 1 } } },
     { id: 'gf-quicksand', kind: 'lock', lock: 'quicksand', area: [38, 20, 40, 24] },
@@ -71,5 +77,6 @@ export default deepFreeze({
     { id: 'gf-s', area: [25, 29, 26, 29], to: 'scorchgate', anchor: 'from-glass-flats' },
   ],
   anchors: { 'from-sandspire': [1, 14, 'e'], 'from-miragewell': [50, 14, 'w'], 'from-scorchgate': [25, 28, 'n'] },
+  roads: [{ from: 'from-sandspire', to: 'gf-s', gates: ['gf-raider-chain'] }],
   roam: { max: 4, rects: [[10, 3, 36, 12], [2, 16, 16, 27], [34, 9, 44, 18], [27, 25, 37, 28]] },
 });
