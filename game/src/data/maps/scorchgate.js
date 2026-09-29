@@ -70,7 +70,7 @@ export default deepFreeze({
     { id: 'sg-wall-gate', kind: 'gate', area: [14, 15, 16, 15], look: 'gate', open: { beaten: 'sg-captain' }, guard: 'sg-captain', text: 'Scorchgate\'s last gate, hauled up out of the ash and wedged back across the gap. The Ash-Captain has not given up the wall.' },
     { id: 'sg-captain', kind: 'encounter', enc: 'sg-captain', mode: 'block', at: [17, 15], face: 'n' },
     { id: 'sg-keep-gate', kind: 'gate', area: [13, 28, 17, 28], look: 'gate', open: { any: [{ done: 'tamsin-scorchgate' }, { flag: 'tamsin-yielded-2' }] }, guard: 'tamsin-scorchgate', text: 'The keep\'s portcullis is down. Tamsin is leaning on the winch, and she is not letting you past without a fight.' },
-    { id: 'tamsin-scorchgate', kind: 'encounter', enc: 'tamsin-scorchgate', mode: 'block', at: [18, 28], face: 'n', talk: 'tamsin-scorchgate', if: { beaten: 'sg-captain' } },
+    { id: 'tamsin-scorchgate', kind: 'encounter', enc: 'tamsin-scorchgate', mode: 'block', at: [18, 28], face: 'n', talk: 'tamsin-scorchgate' },
     { id: 'sg-vault-door', kind: 'lock', lock: 'vault-seal', area: [15, 30, 16, 30] },
   ],
   exits: [

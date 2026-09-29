@@ -473,6 +473,47 @@ test('a carried-over position inside a shut road gate or its guard lands on the 
   assert.ok(canWalk(game, 'mini', w.x, w.y) && Math.abs(w.x - 9) + Math.abs(w.y - 5) === 1, `next to the block (${w.x},${w.y})`);
 });
 
+// Two gates on one road, neither guard beaten. An M4 save could have walked past the first fight (a pack
+// in M4) and stood where new terrain is now: (3,5) is rock.
+const LANE2 = deepFreeze({
+  id: 'lane2', name: 'The Long Lane', region: 'verdant', biome: 'wilds', music: 'wilds', backdrop: 'hearth-road',
+  zone: null, level: 2, travel: true, dark: false, lore: [[300, 260, 3, 6]], w: 7, h: 13,
+  rows: ['###=###', '#.....#', '#.....#', '###.###', '#.....#', '#..o..#', '#.....#', '###.###', '#.....#', '#.....#', '#.....#', '#.....#', '###=###'],
+  entities: [
+    { id: 'lane2-gate-1', kind: 'gate', area: [3, 7, 3, 7], look: 'chain', open: { beaten: 'hearth-road' }, guard: 'hearth-road', text: 'A rope across the lane.' },
+    { id: 'hearth-road', kind: 'encounter', enc: 'hearth-road', mode: 'block', at: [4, 8], face: 's' },
+    { id: 'lane2-gate-2', kind: 'gate', area: [3, 3, 3, 3], look: 'bramble', open: { beaten: 'waymarker-stones' }, guard: 'waymarker-stones', text: 'Bramble across the lane.' },
+    { id: 'waymarker-stones', kind: 'encounter', enc: 'waymarker-stones', mode: 'block', at: [4, 4], face: 's' },
+  ],
+  exits: [
+    { id: 'lane2-n', area: [3, 0, 3, 0], to: 'keep', anchor: 'from-hall' },
+    { id: 'lane2-s', area: [3, 12, 3, 12], to: 'keep', anchor: 'from-hall' },
+  ],
+  anchors: { south: [3, 11, 'n'] },
+  roads: [{ from: 'south', to: 'lane2-n', gates: ['lane2-gate-1', 'lane2-gate-2'] }],
+  roam: null,
+});
+registerMap(LANE2);
+
+test('a save past the first of two unbeaten gates stays past it: the nudge is judged from its own stretch of road (review S2)', () => {
+  const game = fresh();
+  const at = (g, x, y) => { const w = enterMap(g, { map: 'lane2', at: [x, y], face: 'n' }).walk; return [w.x, w.y]; };
+  assert.deepEqual(at(game, 3, 5), [3, 4], 'out of the new rock, one step, on the stretch it stood on (not back to the start)');
+  assert.deepEqual(at(game, 3, 3), [3, 4], 'out of the second shut gate, to its near side, never beyond it');
+  assert.deepEqual(at(game, 3, 7), [3, 8], 'out of the first shut gate, to the road\'s start side');
+  assert.deepEqual(at(game, 4, 8), [5, 8], 'out of the first guard, on its own side');
+  assert.deepEqual(at(game, 2, 5), [2, 5], 'a free tile stays put');
+});
+
+test('a position off the map (a damaged save) enters at the map\'s first anchor instead of throwing (review M1)', () => {
+  const game = fresh();
+  for (const bad of [[5, 999], [5, -1], [-3, 2], [1.5, 2], [undefined, 3]]) {
+    const w = enterMap(game, { map: 'lane', at: bad, face: 'n' }).walk;
+    assert.deepEqual([w.x, w.y], [3, 7], `${JSON.stringify(bad)} -> the south anchor`);
+  }
+  assert.deepEqual([enterMap(game, { map: 'lane', face: 'n' }).walk.x, enterMap(game, { map: 'lane', face: 'n' }).walk.y], [3, 7], 'no position at all');
+});
+
 test('a gated exit says what opens it (its sealed hint), then lets you through', () => {
   const game = fresh();
   const walk = enterMap(game, { map: 'lane', at: [5, 5], face: 'e' }).walk;

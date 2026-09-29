@@ -14,8 +14,8 @@
 //      pre-fight card opens, a forced win, the card reveal, back in the world, the north gate open
 //   2  walking: WASD / arrows, holding to run, no page scroll (the phone uses the d-pad and B)
 //   3  a roaming pack contact starts a battle; fleeing stuns the roamer; a weak pack you catch is a full
-//      battle (M4.5: no Routs): it starts with Auto off, the dice tray shows, and the pack is gone after
-//      with the spoils strip
+//      battle (M4.5: no Routs): it starts with Auto off (even with an old Auto setting saved), the dice
+//      tray shows, and after the win the pack is gone and the fight has paid
 //   4  the thornwall lock prompt shows ✓/✗ and opens with a key
 //   5  holding 450 ms on Old Snag opens the grey card (.ov .card.grey) and the codex is sighted
 //   6  rest at the Milestone Fire; travel to Thornhollow from the fire (and through the Atlas when
@@ -1238,6 +1238,9 @@ async function run(V) {
       await W(() => window.__world.roam([]));
       const g0 = await W(id => window.__world.entity('hearth-road', id), gateId);
       check(g0 && g0.state === 'closed' && g0.solid, `${P} 20: the road gate ${gateId} is shut before its fight`);
+      await page.waitForTimeout(250);
+      const facing = await W(() => window.__world.state().prompt);
+      check(facing.includes(ENCOUNTERS[gateE.guard].name) && !/The way is shut/.test(facing), `${P} 20: facing the gate, the prompt names its guard's fight ("${facing}")`);
       await shot('road-gate');
       await W(d => window.__world.press(d), ap.face);
       await page.waitForSelector('.ov-prefight', { timeout: 3000 });
