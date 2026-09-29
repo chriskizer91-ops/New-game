@@ -531,7 +531,7 @@ export function foeTurn(state) {
     f.intent = refreshIntent(B.s, f, f.intent || rollIntent(B.s, f, B.rng), B.rng);
     const move = familyData(f).moves[f.intent.move];
     const prov = f.statuses.find(st => st.id === 'provoked');
-    if (prov && move.target === 'enemy' && alive(B.s.units[prov.source])) f.intent.target = prov.source;
+    if (prov && move.target === 'enemy' && targetable(B.s.units[prov.source])) f.intent.target = prov.source; // a held provoker cannot be hit
     B.ev.push({ t: 'move', actor: f.id, name: move.name, text: move.text, move: f.intent.move });
     runEffects(B, f, move.effects, foeTargets(B.s, f, move));
     mult = move.delay || 1;

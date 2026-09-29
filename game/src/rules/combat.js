@@ -139,12 +139,26 @@ export function release(B, holder, why) {
   }
 }
 
+// M5 (spec §4.2): a side is never left with only the held standing. When the last one who could fight
+// beside them falls, whoever is held is let go at once (the swallow itself is refused in addStatus).
+function freeLastHeld(B, side) {
+  const us = unitsOf(B.s, side);
+  if (us.some(targetable)) return;
+  for (const u of us) {
+    const st = alive(u) && u.statuses.find(x => STATUSES[x.id]?.held);
+    if (!st) continue;
+    removeStatus(B, u, st.id, 'release');
+    B.ev.push({ t: 'text', text: `${u.name} is spat back out: nobody else is left standing.` });
+  }
+}
+
 function knockOut(B, t, src) {
   t.hp = 0;
   t.ko = true;
   t.statuses = [];
   B.ev.push({ t: 'ko', target: t.id });
   release(B, t, 'is free: what held them has fallen.');
+  freeLastHeld(B, t.side);
   if (src && src.side === 'hero' && t.side === 'foe') {
     addSurge(B, src, T.surge.kill);
     B.s.kills[src.id] = (B.s.kills[src.id] || 0) + 1; // for the weapon's Chronicle

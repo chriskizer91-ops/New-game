@@ -3,7 +3,7 @@
 
 import { SKILLS } from '../data/skills.js';
 import { commands } from './battle.js';
-import { alive, targetable, unitsOf, hasStatus } from './ai.js';
+import { targetable, unitsOf, hasStatus } from './ai.js';
 import { damageMult } from './combat.js';
 
 const frac = u => u.hp / u.maxHp;
@@ -45,9 +45,10 @@ function healPlan(s, cmds, opts) {
 
 function itemPlan(s, hero, cmds) {
   const heroes = unitsOf(s, 'hero');
-  const healerUp = heroes.some(h => alive(h) && h.skills.includes('mend') && h.mp >= SKILLS.mend.mp);
+  // M5: a held healer or reviver (swallowed, carried off) loses its turns, so it does not count
+  const healerUp = heroes.some(h => targetable(h) && h.skills.includes('mend') && h.mp >= SKILLS.mend.mp);
   const down = heroes.filter(h => h.ko && !h.gone);
-  const reviverUp = heroes.some(h => alive(h) && h.skills.includes('revive') && h.mp >= SKILLS.revive.mp);
+  const reviverUp = heroes.some(h => targetable(h) && h.skills.includes('revive') && h.mp >= SKILLS.revive.mp);
   const salts = usable(cmds, 'ember-salts');
   if (down.length && salts && !reviverUp) return { ...salts, target: down[0].id };
   const tonic = usable(cmds, 'hearth-tonic');

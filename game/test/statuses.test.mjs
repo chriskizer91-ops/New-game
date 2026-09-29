@@ -123,6 +123,63 @@ test('swallowed: spat out when the swallower falls or takes a hard hit; the last
   assert.ok(f.hp > 0);
 });
 
+test('a party left with only the held standing: they are let go at once (spec §4.2; review)', () => {
+  const s = structuredClone(battleWith([{ family: 'oldsnag', level: 8 }], { seed: 9 }));
+  const [a, b2, c, d] = unitsOf(s, 'hero');
+  const x = B(s, createRng(1));
+  assert.ok(addStatus(x, x.s.units[c.id], 'swallowed', { source: 'f1' }));
+  // the others fall one by one; while anyone else stands, the held one stays held
+  for (const h of [a, b2]) dealDamage(x, x.s.units.f1, x.s.units[h.id], 9999, { kind: 'slash' });
+  assert.ok(x.s.units[a.id].ko && x.s.units[b2.id].ko);
+  assert.ok(statusOf(x.s.units[c.id], 'swallowed'), 'still held while one other stands');
+  dealDamage(x, x.s.units.f1, x.s.units[d.id], 9999, { kind: 'slash' });
+  assert.ok(x.s.units[d.id].ko && !x.s.units.f1.ko, 'the last free hero falls; the swallower stands');
+  assert.ok(!statusOf(x.s.units[c.id], 'swallowed') && targetable(x.s.units[c.id]), 'let go once nobody else stands');
+  assert.ok(x.ev.some(e => e.t === 'status' && e.target === c.id && e.status === 'swallowed' && e.op === 'release'));
+  assert.ok(x.ev.some(e => e.t === 'text' && e.text.startsWith(`${x.s.units[c.id].name} is spat back out`)));
+});
+
+test('a Provoked foe whose provoker is held aims at someone it can hit, not at the held one (review)', () => {
+  let checked = 0;
+  for (let seed = 1; seed <= 40 && checked < 5; seed++) {
+    let s = battleWith([{ family: 'thornhound', level: 3 }], { seed });
+    for (let i = 0; i < 40 && current(s) && s.units[current(s)].side === 'hero'; i++) s = act(s, autoCommand(s, current(s))).state;
+    if (!current(s)) continue;
+    s = structuredClone(s);
+    const f = s.units[current(s)];
+    if (familyData(f).moves[f.intent?.move]?.target !== 'enemy') continue;
+    const provoker = unitsOf(s, 'hero').find(targetable);
+    put(f, 'provoked', { source: provoker.id, turns: 2 });
+    put(provoker, 'swallowed', { source: f.id });
+    const r = foeTurn(s);
+    // the foe's own move (after it, the held one's turn starts with its holder's tick, which is right)
+    const end = r.events.findIndex(e => e.t === 'turn');
+    const landed = (end < 0 ? r.events : r.events.slice(0, end)).filter(e => (e.t === 'roll' || e.t === 'damage') && e.actor === f.id);
+    assert.ok(landed.length, `seed ${seed}: the move is rolled at someone`);
+    assert.ok(!landed.some(e => e.target === provoker.id), `seed ${seed}: not at the held provoker`);
+    checked++;
+  }
+  assert.ok(checked >= 3, `${checked} single-target turns checked`);
+});
+
+test('Auto does not count on a held reviver: a downed friend gets Ember Salts while she is held (review)', () => {
+  const { game, heroes } = party();
+  let s = toHeroTurn(createBattle({ heroes, foes: [{ family: 'thornhound', level: 2 }], seed: 3, ctx: { inventory: game.inventory, bag: { 'ember-salts': 2 } } }));
+  s = structuredClone(s);
+  const me = current(s);
+  const [reviver, down] = unitsOf(s, 'hero').filter(h => h.id !== me);
+  reviver.skills = [...reviver.skills, 'revive'];
+  reviver.mp = 99;
+  down.hp = 0; down.ko = true; down.statuses = [];
+  for (const h of unitsOf(s, 'hero')) if (!h.ko) h.hp = h.maxHp;
+  s.units[me].surge = 0;
+  const salts = c => c.id === 'ember-salts';
+  assert.ok(!salts(autoCommand(s, me)), 'a free reviver will raise them herself');
+  put(reviver, 'swallowed', { source: 'f1' });
+  const cmd = autoCommand(s, me);
+  assert.ok(salts(cmd) && cmd.target === down.id, `a held one cannot: ${JSON.stringify({ id: cmd.id, target: cmd.target })}`);
+});
+
 test('charmed: the turn plays itself as a plain attack on a friend, then the charm is gone', () => {
   const { game, heroes } = party();
   const s0 = createBattle({ heroes, foes: [{ family: 'thornhound', level: 2 }], seed: 31, ctx: { inventory: game.inventory, bag: game.bag } });
