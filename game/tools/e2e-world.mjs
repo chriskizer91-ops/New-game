@@ -415,13 +415,15 @@ async function run(V) {
         window.__world.roam([{ id: 'e2e-weak', enc: null, zone: 'hearth-road', spawns: [{ family: 'cutpurse', level: 1, gearTier: 0, omens: [] }, { family: 'cutpurse', level: 1, gearTier: 0, omens: [] }], lead: { family: 'cutpurse', variant: null, art: 'cutpurse', gearTier: 0, count: 2 }, x: s.x, y: s.y - 1, home: [s.x, s.y - 1], leash: 4, face: 's', mood: 'flee', wait: 0, weak: true, trackless: true }]);
       });
       const gold0 = await W(() => window.__world.game().gold);
+      // a tester who switched Auto on in an earlier milestone (every file shares the settings key)
+      await W(() => window.__app.setSettings({ battleAuto: true }));
       await W(() => window.__world.face('n'));
       await W(() => window.__world.press('n'));
       await page.waitForFunction(() => document.getElementById('app').dataset.screen === 'battle', null, { timeout: 5000 });
       check(!(await page.$('.ov-spoils')), `${P} 3: walking into a weak pack starts a full battle, not a Rout`);
       const lb2 = await W(() => window.__lastBattle && window.__lastBattle.ctx);
       check(lb2 && lb2.caught === true, `${P} 3: the battle knows the pack was run down (ctx.caught, for the Rout deed)`);
-      check((await page.getAttribute('.bt-auto', 'aria-pressed')) === 'false', `${P} 3: the fight starts with Auto off`);
+      check((await page.getAttribute('.bt-auto', 'aria-pressed')) === 'false', `${P} 3: the fight starts with Auto off, even with an old Auto setting saved`);
       await shot('caught-battle');
       await page.click('.bt-auto');
       await page.waitForFunction(() => { const t = document.querySelector('.bt-tray'); return (t && !t.hidden) || document.getElementById('app').dataset.screen !== 'battle'; }, null, { timeout: 20000 });
@@ -429,7 +431,8 @@ async function run(V) {
       await shot('caught-dice');
       await page.waitForFunction(() => document.getElementById('app').dataset.screen === 'aftermath', null, { timeout: 90000 });
       for (let i = 0; i < 12 && (await screen()) !== 'world'; i++) {
-        if (await page.$('.ov-reveal .cont')) await page.click('.ov-reveal .cont');
+        // a chest's reveal plays first; its Continue arrives with the card
+        if (await page.$('.ov-reveal')) { await page.waitForSelector('.ov-reveal .cont', { timeout: 8000 }); await page.click('.ov-reveal .cont'); }
         else if (await page.$('.af-foot .btn.primary')) await page.click('.af-foot .btn.primary');
         await page.waitForTimeout(350);
       }
@@ -1245,7 +1248,8 @@ async function run(V) {
       await page.click('.pf-fight');
       await page.waitForFunction(() => document.getElementById('app').dataset.screen === 'aftermath');
       for (let i = 0; i < 8 && (await screen()) !== 'world'; i++) {
-        if (await page.$('.ov-reveal .cont')) await page.click('.ov-reveal .cont');
+        // a chest's reveal plays first; its Continue arrives with the card
+        if (await page.$('.ov-reveal')) { await page.waitForSelector('.ov-reveal .cont', { timeout: 8000 }); await page.click('.ov-reveal .cont'); }
         else if (await page.$('.af-foot .btn.primary')) await page.click('.af-foot .btn.primary');
         await page.waitForTimeout(300);
       }

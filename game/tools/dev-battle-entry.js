@@ -112,7 +112,7 @@ const aftermath = {
 };
 const world = { mount(root) { root.textContent = 'World (stub)'; } };
 
-const settings = { battleSpeed: Number(params.speed) || 1, battleAuto: params.auto === '1', reducedMotion: params.reduced === '1', sound: false };
+const settings = { battleSpeed: Number(params.speed) || 1, reducedMotion: params.reduced === '1', sound: false };
 try { localStorage.setItem('aethermoor.settings.v1', JSON.stringify(settings)); } catch { /* storage blocked */ }
 
 const ctx = createApp(document.getElementById('app'), { battle: battleScreen, aftermath, world }, { aliases: { road: 'world' } });
@@ -125,7 +125,7 @@ try {
   const { game, battle } = makeBattle();
   ctx.setGame(game);
   window.__battleStart = { node: nodeId, level, seed, foes: battle.order.filter(id => battle.units[id].side === 'foe').map(id => battle.units[id].name) };
-  ctx.go('battle', { battle, returnTo: 'world' });
+  ctx.go('battle', { battle, returnTo: 'world', auto: params.auto === '1' });
 } catch (e) {
   document.getElementById('app').textContent = `Dev harness error: ${e.message}. Nodes: ${GAUNTLET.join(', ')}`;
   throw e;

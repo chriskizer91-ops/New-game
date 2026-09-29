@@ -27,7 +27,7 @@ import { el, Clock, toCanvas } from '../battle/util.js';
 
 const SPEEDS = [1, 2, 4];
 
-export function mount(root, ctx, { battle, returnTo = 'world' } = {}) {
+export function mount(root, ctx, { battle, returnTo = 'world', auto: startAuto = false } = {}) {
   if (!battle) {
     root.append(el('p', { text: 'No battle to show.' }));
     return {};
@@ -38,8 +38,9 @@ export function mount(root, ctx, { battle, returnTo = 'world' } = {}) {
   let state = battle;
   const disp = makeDisp(state, labels);
   let dead = false;
-  // every fight starts with Auto off (M4.5, docs/M45-SPEC.md A5): the button works for this fight only
-  let auto = false;
+  // every fight starts with Auto off (M4.5, docs/M45-SPEC.md A5): the button works for this fight only.
+  // Only the dev battle harness (tools/dev-battle-entry.js &auto=1) asks for Auto from the start.
+  let auto = !!startAuto;
   let speed = SPEEDS.includes(ctx.settings.battleSpeed) ? ctx.settings.battleSpeed : 1;
   const node = ENCOUNTERS[state.ctx.nodeId] || null;
   const backdrop = state.ctx.backdrop || node?.backdrop || 'hearth-road';
