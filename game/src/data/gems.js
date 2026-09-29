@@ -2,7 +2,7 @@
 // Hilda's forge. A gem in a weapon adds its `weapon` stats; in anything else, its `other` stats (the
 // same keys as affix stats, rules/stats.js). `price` is Idris's price in Sandspire (null: never sold;
 // the Ash Garnet only drops in Scorchgate).
-// Owner: P1 (M4).
+// Owner: P1 (M4, M5, M6).
 
 import { deepFreeze } from '../core/freeze.js';
 
@@ -15,6 +15,8 @@ export const GEMS = deepFreeze({
   'ash-garnet': G('ash-garnet', 'Ash Garnet', 'sunscorch', '#b3261e', { crit: 1 }, { hp: 6 }, null),
   // M5 (spec §3.7): +1d4 frost in a weapon; frost resist and Guard in anything else
   'frost-opal': G('frost-opal', 'Frost Opal', 'ironspire', '#bfe6ff', { extraDice: 2, aspect: 'frost' }, { resist: { frost: 10 }, guard: 1 }, 120),
+  // M6 (spec §3.7): +1d4 blight in a weapon; blight resist and +1 regeneration in anything else
+  'bog-amber': G('bog-amber', 'Bog Amber', 'gloomfen', '#c8811e', { extraDice: 2, aspect: 'blight' }, { resist: { blight: 10 }, regen: 1 }, 120),
 });
 
 export const GEM_IDS = Object.freeze(Object.keys(GEMS));

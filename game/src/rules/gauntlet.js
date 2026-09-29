@@ -469,6 +469,8 @@ function earnBrand(g, node, report) {
   if (REGIONS.sunscorch.brands.every(b => p.brands.includes(b))) f.story = { ...(f.story || {}), 'sunscorch-complete': true };
   // M5: both Ironspire Brands call the third council (data/maps/keep-hall.js council-3)
   if (REGIONS.ironspire.brands.every(b => p.brands.includes(b))) f.story = { ...(f.story || {}), 'ironspire-complete': true };
+  // M6: both Gloomfen Brands call the fourth council (data/maps/keep-hall.js council-4), which ends Act II
+  if (REGIONS.gloomfen.brands.every(b => p.brands.includes(b))) f.story = { ...(f.story || {}), 'gloomfen-complete': true };
   report.brand = { ...brand, waking: p.waking, first: true, count: new Set(p.brands).size };
 }
 

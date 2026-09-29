@@ -69,6 +69,8 @@ export default deepFreeze({
     { id: 'council-2', kind: 'trigger', area: [0, 0, 23, 13], on: 'enter', if: { all: [{ flag: 'sunscorch-complete' }, { not: { flag: 'council-2-done' } }] }, dialogue: 'council-2' },
     // M5 (spec §3.6): the third council, once both Ironspire Brands are won (flag-guarded, never `once`)
     { id: 'council-3', kind: 'trigger', area: [0, 0, 23, 13], on: 'enter', if: { all: [{ flag: 'ironspire-complete' }, { not: { flag: 'council-3-done' } }] }, dialogue: 'council-3' },
+    // M6 (spec §3.6): the fourth council, once both Gloomfen Brands are won (flag-guarded, never `once`); it ends Act II
+    { id: 'council-4', kind: 'trigger', area: [0, 0, 23, 13], on: 'enter', if: { all: [{ flag: 'gloomfen-complete' }, { not: { flag: 'council-4-done' } }] }, dialogue: 'council-4' },
   ],
   exits: [
     { id: 'hall-s', area: [12, 13, 12, 13], to: 'keep', anchor: 'from-hall' },

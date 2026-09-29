@@ -33,13 +33,13 @@ import { createRng } from '../src/core/rng.js';
 const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures/v1');
 const fixtures = readdirSync(dir).filter(f => f.endsWith('.json')).map(f => [f, JSON.parse(readFileSync(path.join(dir, f), 'utf8'))]);
 
-test('the carry-over card has the party, the relics out of 52, and a real place to wake for every M2 fixture', () => {
-  assert.equal(RELIC_TOTAL, 52);
+test('the carry-over card has the party, the relics out of 66, and a real place to wake for every M2 fixture', () => {
+  assert.equal(RELIC_TOTAL, 66);
   for (const [name, v1] of fixtures) {
     const g = migrate(v1);
     const F = carryFacts(g);
     assert.equal(F.heroes.length, 4, name);
-    assert.equal(F.total, 52, name);
+    assert.equal(F.total, 66, name);
     assert.equal(F.gold, v1.gold, name);
     assert.equal(F.waking, v1.progress.waking, name);
     assert.equal(F.place, MAPS[g.progress.pos.map].name, name);
@@ -53,8 +53,8 @@ test('the carry-over card has the party, the relics out of 52, and a real place 
 
 test('the title Continue line reads name · place · day · level · relics', () => {
   const g = newGame({ name: 'Wren', starter: 'hearthbrand', seed: 7 });
-  assert.match(saveLine(g), /^Wren · The Great Hall · Day 1 · Lv 1 · 1\/52 relics$/);
-  for (const [name, v1] of fixtures) assert.match(saveLine(migrate(v1)), /^.+ · .+ · Day \d+ · Lv \d+ · \d+\/52 relics$/, name);
+  assert.match(saveLine(g), /^Wren · The Great Hall · Day 1 · Lv 1 · 1\/66 relics$/);
+  for (const [name, v1] of fixtures) assert.match(saveLine(migrate(v1)), /^.+ · .+ · Day \d+ · Lv \d+ · \d+\/66 relics$/, name);
 });
 
 test('you-are-here projects onto each route between its lore ends, and points stay put', () => {
@@ -168,7 +168,7 @@ test('every map\'s music names a real track (M4: the Sunscorch roads play the de
   assert.ok(MAP_IDS.some(id => MAPS[id].music === 'peaks'), 'M5: the peaks track is used');
 });
 
-test('the Codex binder: Page I counts your starter and the other 21, Pages II and III all 14, IV is sealed', () => {
+test('the Codex binder: Page I counts your starter and the other 21, Pages II, III and IV all 14', () => {
   for (const id of Object.keys(RELICS)) {
     assert.ok(RIDDLES[id], `${id} has a riddle for its unsighted pocket`);
     assert.ok(HOLDER[id], `${id} has a holder line for its sighted pocket`);
@@ -189,12 +189,12 @@ test('the Codex binder: Page I counts your starter and the other 21, Pages II an
   assert.equal(III.relics.length, 14);
   assert.deepEqual([III.progress.claimed, III.progress.needed], [0, 14]);
   assert.equal(III.reward.name, 'The Ironspire Accord');
-  for (const id of ['gloomfen']) {
-    const P = binderPage(g, id);
-    assert.equal(P.sealed, true, id);
-    assert.equal(P.relics.length, 0, id);
-    assert.ok(P.texts.length >= 1, `${id}: the sealed page quotes its closed road`);
-  }
+  // M6: Page IV holds the Gloomfen's fourteen (M6 spec §3.4), so no page is sealed any more
+  const IV = binderPage(g, 'gloomfen');
+  assert.equal(IV.relics.length, 14);
+  assert.deepEqual([IV.progress.claimed, IV.progress.needed], [0, 14]);
+  assert.equal(IV.reward.name, 'The Gloomfen Covenant');
+  assert.ok(PAGES.every(p => !binderPage(g, p.id).sealed), 'no page is sealed');
   // a forced full claim: the reward is earned (and dated once markPages records the day)
   const g2 = structuredClone(g);
   for (const x of I.relics.filter(r => !r.spare)) g2.codex[x.id] = { sighted: true, claimed: true, awakened: x.id === 'thornsplitter' };
@@ -351,7 +351,9 @@ test('M5: the second council opens the Ironspire: the Atlas, the Codex\'s road n
   assert.equal(regionOpen(g, 'ironspire'), false);
   assert.match(binderPage(g, 'ironspire').road, /east postern/);
   assert.equal(binderPage(g, 'sunscorch').road, null, 'the Sunscorch road is open');
-  assert.equal(binderPage(g, 'gloomfen').sealed, true);
+  // M6: Page IV is open, and says what opens its road: the fen stair, after the third council
+  assert.equal(binderPage(g, 'gloomfen').sealed, false);
+  assert.match(binderPage(g, 'gloomfen').road, /fen stair/);
   let V = chapterEnd(g, 'act2');
   assert.deepEqual(V.chips.map(c => [c.id, c.open]), [['ironspire', false], ['gloomfen', false]]);
   assert.deepEqual(V.lines, ['Ironspire and Gloomfen open in the next chapter.'], 'M4\'s words while the postern is shut');
@@ -373,6 +375,11 @@ test('M5: the second council opens the Ironspire: the Atlas, the Codex\'s road n
   assert.deepEqual(V.lines, ['The Blackwater still holds the causeway.', 'The Gloomfen Marsh opens in the next chapter.']);
   assert.deepEqual(V.stats.map(r => r[0]), ['Day', 'Relics', 'Brands', 'Pages']);
   assert.equal(V.stats[3][1], `0/${PAGES.filter(p => p.from != null).length}`);
+  // M6: the third council sat: the fen stair below Mossfall opens the Gloomfen, and Page IV's road note goes
+  const g3 = structuredClone(g2);
+  g3.progress.flags.story['council-3-done'] = true;
+  assert.equal(regionOpen(g3, 'gloomfen'), true);
+  assert.equal(binderPage(g3, 'gloomfen').road, null);
   // the first council's card is as it was
   assert.deepEqual(chapterEnd(newGame({ seed: 5 }), 'act1').lines, ['The Keep’s south-east gate stands open. The Sunward Road runs to Sandspire.']);
   // odd input never throws

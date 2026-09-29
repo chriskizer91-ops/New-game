@@ -205,6 +205,22 @@ export const RELIC_ART = Object.freeze({
   // a deep cowl woven from something that was not wool, under the ice, by someone who was listening: threads of cold
   // light in the weave, a spiral stitched on the brow
   'hushweave-cowl': { r: 'hood', relic: true, fx: 'fall', aspect: 'frost', p: { look: 'hood', mat: 'hushweave', tex: TX2.folds(29), weave: 'frost', spiral: 'silver', trim: 'silver', clasp: 'silver', gem: 'pearl', tip: 0 } },
+  // ---- M6: Codex Page IV, the Gloomfen Marsh (codex 53-66). STAND-INS from the M6 scaffold (stub: true), each
+  // its own look; P6 draws the real ones. ----
+  'unfair-toll': { r: 'amulet', relic: true, stub: true, fx: 'bubble', aspect: 'tide', p: { style: 'sun', chain: 'bronze', metal: 'bronze', rays: 'bronze', frame: 'iron', gem: 'pearl', core: 'water' } },
+  bogstriders: { r: 'boots', relic: true, stub: true, fx: 'spore', aspect: 'verdant', p: { mat: 'leatherDark', trim: 'moss', fold: true, buckle: 'iron', gem: 'emerald', straps: 'leather' } },
+  'weeping-bow': { r: 'bow', relic: true, stub: true, fx: 'spore', aspect: 'verdant', p: { len: 62, bulge: 9.5, limbR: 3.2, tipR: 1.5, limb: 'bark', nock: 'bronze', grip: 'moss', bindings: [.35, .65], bindMat: 'bronze', gem: 'emerald', gemMat: 'bronze', tassel: 'moss', spark: 'verdant' } },
+  'willow-ward': { r: 'shield', relic: true, stub: true, fx: 'spore', aspect: 'verdant', p: { style: 'scale', shape: 'heater', face: 'bark', rim: 'bronze', boss: 'bronze', rivets: 'bronze', runes: 'verdant', gem: 'emerald' } },
+  'hag-stone': { r: 'ring', relic: true, stub: true, fx: 'spore', aspect: 'blight', p: { style: 'signet', metal: 'iron', face: 'granite', seal: 'iron', runes: 'blight', gem: 'blight' } },
+  'lamplighters-lantern': { r: 'focus', relic: true, stub: true, fx: 'rise', aspect: 'radiant', p: { style: 'lantern', metal: 'bronze', frame: 'iron', stone: 'topaz', core: 'radiant', rays: 'gold', capGem: 'topaz', gem: 'radiant' } },
+  'mourning-veil': { r: 'hood', relic: true, stub: true, fx: 'bubble', aspect: 'tide', p: { look: 'hood', mat: 'dark', trim: 'silver', clasp: 'silver', gem: 'pearl', tip: 1, tex: TX2.folds(9) } },
+  'salvagers-helm': { r: 'helm', relic: true, stub: true, fx: 'bubble', aspect: 'tide', p: { look: 'helm', style: 'mask', mat: 'bronze', trim: 'iron', eyes: 'water', strap: 'leatherDark', crest: false } },
+  'cantors-staff': { r: 'staff', relic: true, stub: true, fx: 'bubble', aspect: 'tide', p: { style: 'song', headT: 54, haft: 'bogwood', haftR: 2.2, wobble: .2, spiral: 'bronze', holes: 'dark', holeRim: 'bronze', foot: 'bronze', bands: [], orb: 'water', orbR: 5.8, roots: 'bronze', leaves: 'seaweed', berries: 'pearl', thorns: 'bronze' } },
+  'gar-tooth': { r: 'dagger', relic: true, stub: true, fx: 'bubble', aspect: 'tide', p: { shape: 'fang', curve: 5, gripEnd: 13, guardT: 2.6, bladeL: 40, bladeW: 5.6, blade: 'bone', vein: 'water', guard: 'thorn', guardMat: 'bronze', thornMat: 'bone', guardW: 5.6, grip: 'leatherDark', gripR: 2.2, pommel: 'bronze', pommelShape: 'knot', pommelR: 3.2, pommelGem: 'pearl' } },
+  'barge-gauntlets': { r: 'gauntlets', relic: true, stub: true, fx: 'dust', aspect: 'stone', p: { mat: 'iron', plate: 1, cuffMat: 'iron', flare: 1, trim: 'bronze', cuffBand: 'iron', knuckles: 'iron', engrave: 'bronze', bolt: 'granite', cuffGem: 'topaz' } },
+  'corvus-harpoon': { r: 'spear', relic: true, stub: true, fx: 'bubble', aspect: 'tide', p: { headT: 58, headL: 22, headW: 5, wings: 3.4, haft: 'bogwood', butt: 'bronze', wrap: 'leatherDark', wrapA: 25, wrapB: 37, bands: [21, 40], bandMat: 'bronze', socket: 'bronze', head: 'steel', fuller: 'water', gem: 'pearl', ribbon: 'clothGrey', haftR: 1.9 } },
+  'deep-pearl': { r: 'amulet', relic: true, stub: true, fx: 'bubble', aspect: 'tide', p: { style: 'heart', chain: 'silver', metal: 'silver', stone: 'pearl', core: 'water', veins: 'water', gem: 'pearl' } },
+  'hexbane-shawl': { r: 'robe', relic: true, stub: true, fx: 'spore', aspect: 'blight', p: { mat: 'robeBark', trim: 'moss', sash: 'clothGrey', cowl: 'moss' } },
 });
 export const RELIC_IDS = Object.keys(RELIC_ART);
 

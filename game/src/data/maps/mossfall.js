@@ -54,10 +54,11 @@ export default deepFreeze({
   ],
   exits: [
     { id: 'mf-tower', area: [3, 8, 3, 8], to: 'mosswatch-1', anchor: 'from-mossfall' },
-    { id: 'mf-fen-stair', area: [20, 21, 21, 21], sealed: { region: 'gloomfen', text: 'Fog breathes up the stair. Willowmurk\'s safe paths start somewhere below.' } },
+    // M6: the way into the Gloomfen, once the third council has sat (spec A5, §2.4)
+    { id: 'mf-fen-stair', area: [20, 21, 21, 21], to: 'murkway', anchor: 'from-mossfall', gate: { flag: 'council-3-done' }, sealed: { region: 'gloomfen', text: 'Fog breathes up the stair. Willowmurk\'s safe paths start somewhere below.', hint: 'The stair opens once the Council has sat a third time.' } },
     { id: 'mf-e', area: [51, 10, 51, 11], to: 'thornhollow', anchor: 'from-mossfall' },
   ],
-  anchors: { 'from-thornhollow': [49, 10, 'w'], 'from-tower': [3, 9, 's'] },
+  anchors: { 'from-thornhollow': [49, 10, 'w'], 'from-tower': [3, 9, 's'], 'from-murkway': [20, 20, 'n'] },
   roads: [{ from: 'from-thornhollow', to: 'mire-shrine', gates: ['mf-ford-chain'] }],
   roam: { max: 3, rects: [[6, 2, 48, 11], [14, 12, 36, 19]] },
 });

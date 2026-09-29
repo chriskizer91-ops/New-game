@@ -64,6 +64,9 @@ const ACT2_POSTERS = [
   // M5: the Ironspire
   ['rhune', 'rp-brigands'], ['thunder-roc', 'roc-eyrie'], ['old-horn', 'troll-cave'], ['sentinel-captain', 'is-sentinels'],
   ['journeyman', 'id-smith'], ['mother-anvil', 'mother-anvil'], ['drowned-abbess', 'fm-shrine'], ['rime-abbot', 'rime-abbot'],
+  // M6: the Gloomfen (the Lantern Mother's rumour is her poster now)
+  ['hodge', 'hodge'], ['grandfather-willow', 'wm-willow'], ['mother-grue', 'grue-hollow'], ['lantern-mother', 'lantern-mother'],
+  ['salvage-master', 'mh-salvage'], ['drowned-cantor', 'cantor'], ['old-jaws', 'old-jaws'], ['blackwater-leviathan', 'blackwater-leviathan'],
 ];
 
 test('quests, bounties, shops, the Ladder and letters name real things', () => {
@@ -90,7 +93,8 @@ test('quests, bounties, shops, the Ladder and letters name real things', () => {
   // M4: the Act I rumour of a glass scorpion is Kharzul's poster now; Gloomfen stays a rumour, and so does
   // Harrow (M5 finds his forge, not him)
   assert.deepEqual(LADDER.filter(p => p.act === 2 && !p.silhouette).map(p => [p.id, p.enc]), ACT2_POSTERS);
-  assert.deepEqual(LADDER.filter(p => p.silhouette).map(p => p.id), ['lantern-mother', 'missing-smith']);
+  // M6: the Lantern Mother has her poster; Harrow is still a rumour
+  assert.deepEqual(LADDER.filter(p => p.silhouette).map(p => p.id), ['missing-smith']);
   assert.equal(new Set(LADDER.map(p => p.id)).size, LADDER.length, 'poster ids are unique');
   for (const p of LADDER) if (p.enc) assert.ok(ENCOUNTERS[p.enc]?.spawns?.[p.spawn], p.id);
   for (const b of Object.keys(BRANDS)) assert.ok(LETTERS[b]?.text, `letter for ${b}`);
@@ -117,7 +121,7 @@ test('arrivals, after-fight lines, rests and lookouts point at real things', () 
 });
 
 // Flags set outside the story data, by the rules (gauntlet, migrate, world).
-const RULE_FLAGS = ['act1-complete', 'tamsin-yielded', 'starter', 'm2-save', 'intro-done', 'met-dael', 'bounty-briarmaw', 'sunscorch-complete', 'ironspire-complete'];
+const RULE_FLAGS = ['act1-complete', 'tamsin-yielded', 'starter', 'm2-save', 'intro-done', 'met-dael', 'bounty-briarmaw', 'sunscorch-complete', 'ironspire-complete', 'gloomfen-complete'];
 
 test('no flag is read that is never set', () => {
   const read = new Map(), set = new Set(RULE_FLAGS);
@@ -218,7 +222,8 @@ test('effects use the known vocabulary and name real things', () => {
     if (k === 'materials') for (const [m, n] of Object.entries(e.materials)) assert.ok(['scrap', 'silver', 'embers'].includes(m) && n > 0, `${id}: ${m}`);
     if (k === 'letter') assert.ok(LETTERS[e.letter], `${id}: letter ${e.letter}`);
     // M5: 'ironspire' is the card after the third council (the UI draws it; the Gloomfen comes next)
-    if (k === 'end') assert.ok(['act1', 'act2', 'ironspire'].includes(e.end), `${id}: end ${e.end}`);
+    // M6: 'gloomfen' is the card after the fourth council, the end of Act II
+    if (k === 'end') assert.ok(['act1', 'act2', 'ironspire', 'gloomfen'].includes(e.end), `${id}: end ${e.end}`);
     if (k === 'gold') assert.ok(Number.isInteger(e.gold) && e.gold > 0, `${id}: gold`);
   }
 });

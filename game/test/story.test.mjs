@@ -71,7 +71,7 @@ test('quests are derived from conditions; the Ladder starts in silhouette', () =
   const done = withProgress(g, { flags: { done: { 'keep-vault': true } } });
   assert.equal(nextObjective(done).entity, 'dael');
   const lad = ladder(g);
-  assert.equal(lad.length, 35, '17 Act I posters, 8 Sunscorch posters (M4), 8 Ironspire posters (M5) and 2 rumours');
+  assert.equal(lad.length, 42, '17 Act I posters, 8 Sunscorch posters (M4), 8 Ironspire posters (M5), 8 Gloomfen posters (M6) and 1 rumour');
   assert.ok(lad.every(p => p.state === 'silhouette'));
   assert.equal(ladder(done)[0].state, 'settled');
 });

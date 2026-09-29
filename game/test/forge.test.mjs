@@ -323,11 +323,11 @@ test('every relic has three deeds and both branches, and an awakened Surge resol
 
 const claimAll = (game, ids) => ({ ...game, codex: { ...game.codex, ...Object.fromEntries(ids.map(id => [id, { sighted: true, claimed: true, awakened: false }])) } });
 
-test('Codex pages: I holds Nos. 1-24, II Nos. 25-38, III Nos. 39-52; the starters you did not choose are not needed', () => {
+test('Codex pages: I holds Nos. 1-24, II Nos. 25-38, III Nos. 39-52, IV Nos. 53-66; the starters you did not choose are not needed', () => {
   assert.deepEqual(relicsOn('verdant').map(id => RELICS[id].codex), Array.from({ length: 24 }, (_, i) => i + 1));
   assert.deepEqual(relicsOn('sunscorch').map(id => RELICS[id].codex), Array.from({ length: 14 }, (_, i) => i + 25));
   assert.deepEqual(relicsOn('ironspire').map(id => RELICS[id].codex), Array.from({ length: 14 }, (_, i) => i + 39));
-  assert.deepEqual(relicsOn('gloomfen'), []);
+  assert.deepEqual(relicsOn('gloomfen').map(id => RELICS[id].codex), Array.from({ length: 14 }, (_, i) => i + 53));
   const g = start();
   const p = pageProgress(g, 'verdant');
   assert.deepEqual([p.total, p.needed, p.claimed, p.done], [24, 22, 1, false], 'your starter and the other 21');
@@ -338,7 +338,10 @@ test('Codex pages: I holds Nos. 1-24, II Nos. 25-38, III Nos. 39-52; the starter
   assert.equal(pageProgress(claimAll(g, others.slice(1)), 'verdant').done, false, 'one missing');
   assert.deepEqual(pagesDone(claimAll(g, relicsOn('sunscorch'))), ['sunscorch']);
   assert.deepEqual(pagesDone(claimAll(g, relicsOn('ironspire'))), ['ironspire']);
-  assert.equal(PAGES.find(x => x.id === 'gloomfen').reward, null, 'sealed');
+  assert.deepEqual(pagesDone(claimAll(g, relicsOn('gloomfen'))), ['gloomfen']);
+  // M6: Page IV is open, with its reward (M6 spec §3.4); no page is sealed any more
+  assert.equal(PAGES.find(x => x.id === 'gloomfen').reward.name, 'The Gloomfen Covenant');
+  assert.ok(PAGES.every(x => x.from != null && x.reward), 'every page holds relics and pays a reward');
 });
 
 test('a finished page pays every hero for good: +5% max HP (I), +1 hit and 10% ember resist (II)', () => {

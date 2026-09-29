@@ -166,6 +166,55 @@ export const QUESTS = deepFreeze({
     ],
     reward: { gold: 200, materials: { silver: 2 } },
   },
+  // ---- M6: the Gloomfen Marsh (spec §3.6). STUBS from the M6 scaffold: the spec's steps; P3 words them. ----
+  'gloomfen-waking': {
+    id: 'gloomfen-waking', name: 'The Gloomfen Waking', kind: 'main', giver: 'isolde', start: { flag: 'ironspire-complete' },
+    steps: [
+      step('Come home to the Keep and sit the third council.', { flag: 'council-3-done' }, 'keep-hall', 'isolde'),
+      step('Go down the fen stair below Mossfall and find Elder Moss in Willowmurk.', { any: [{ flag: 'met-moss' }, { brand: 'brand-of-lanterns' }] }, 'willowmurk', 'moss'),
+      step('Get past Hodge\'s bar at Rotbridge.', { any: [{ flag: 'toll-paid' }, { beaten: 'hodge' }, { brand: 'brand-of-lanterns' }] }, 'rotbridge', 'hodge'),
+      step('Face Tamsin on Rotbridge.', { any: [{ beaten: 'tamsin-rotbridge' }, { flag: 'tamsin-yielded-4' }, { brand: 'brand-of-lanterns' }] }, 'rotbridge', 'tamsin-rotbridge'),
+      step('Reach Bogmire and speak with Mayor Gretch.', { any: [{ flag: 'met-gretch' }, { brand: 'brand-of-lanterns' }] }, 'bogmire', 'gretch'),
+      step('Follow the lanterns into the eastern bogs, and take the Brand of Lanterns.', { brand: 'brand-of-lanterns' }, 'mothers-hollow', 'lantern-mother'),
+      step('Follow the long boardwalk to Misthollow and find Corvus.', { any: [{ flag: 'met-corvus' }, { brand: 'brand-of-the-deep' }] }, 'misthollow', 'corvus'),
+      step('Go down the Blackwater to the Tidal Flats, and take the Brand of the Deep.', { brand: 'brand-of-the-deep' }, 'tidal-flats', 'blackwater-leviathan'),
+      step('Come home to the Keep. The Council is waiting.', { flag: 'council-4-done' }, 'keep-hall', 'isolde'),
+    ],
+    reward: {}, // the fourth council claims it (data/dialogue.js council-4)
+  },
+  'failing-wards': {
+    id: 'failing-wards', name: 'The Failing Wards', kind: 'side', giver: 'moss', start: { flag: 'met-moss' },
+    steps: [
+      step('Quiet Grandfather Willow, outside the wards.', { beaten: 'wm-willow' }, 'willowmurk', 'wm-willow'),
+      step('Tell Elder Moss.', { flag: 'wards-mended' }, 'willowmurk', 'moss'),
+    ],
+    reward: { relic: 'willow-ward' },
+  },
+  'nettie-remedy': {
+    id: 'nettie-remedy', name: 'Nettie\'s Remedy', kind: 'side', giver: 'nettie', start: { flag: 'met-nettie' },
+    steps: [
+      step('Take Mother Grue\'s Hag-Stone, in the Lanternfen.', { beaten: 'grue-hollow' }, 'lanternfen', 'grue-hollow'),
+      step('Bring Nettie word.', { flag: 'grue-told' }, 'bogmire', 'nettie'),
+    ],
+    reward: { relic: 'hexbane-shawl', gems: { 'bog-amber': 1 } },
+  },
+  'corvus-harpoon': {
+    id: 'corvus-harpoon', name: 'Corvus\'s Harpoon', kind: 'side', giver: 'corvus', start: { flag: 'met-corvus' },
+    steps: [
+      step('Get Corvus\'s harpoon out of the Leviathan.', { owns: 'corvus-harpoon' }, 'tidal-flats', 'blackwater-leviathan'),
+      step('Show it to Corvus.', { flag: 'harpoon-shown' }, 'misthollow', 'corvus'),
+    ],
+    reward: { gold: 300, materials: { silver: 2 } },
+  },
+  'dead-tongue': {
+    id: 'dead-tongue', name: 'The Dead Tongue', kind: 'side', giver: 'corvus', start: { flag: 'met-corvus' },
+    steps: [
+      step('Take the salvage crew\'s sealed chest.', { beaten: 'mh-salvage' }, 'misthollow', 'mh-salvage'),
+      step('Have Elder Moss read its warnings.', { flag: 'chest-read' }, 'willowmurk', 'moss'),
+      step('Tell Corvus what the chest says.', { flag: 'chest-told' }, 'misthollow', 'corvus'),
+    ],
+    reward: { gold: 250, gems: { 'bog-amber': 1 } },
+  },
 });
 
 export const BOUNTIES = deepFreeze({
@@ -185,6 +234,11 @@ export const BOUNTIES = deepFreeze({
   'b-trolls': { id: 'b-trolls', enc: 'is-trolls', name: 'The Switchback Trolls', gold: 120, giver: 'ysolde' },
   'b-frostwolves': { id: 'b-frostwolves', enc: 'fr-wolves', name: 'The Frost Road Pack', gold: 120, giver: 'ysolde' },
   'b-roc': { id: 'b-roc', enc: 'roc-eyrie', name: 'The Thunder-Roc of the Highfold', gold: 160, giver: 'ysolde' },
+  // M6 (spec §3.6): the Bogmire board, turned in to Mayor Gretch
+  'b-bogfolk': { id: 'b-bogfolk', enc: 'mk-bogfolk', name: 'The Murkway Bogfolk', gold: 100, giver: 'gretch' },
+  'b-lights': { id: 'b-lights', enc: 'lf-lights', name: 'The Lights of the Lanternfen', gold: 110, giver: 'gretch' },
+  'b-gars': { id: 'b-gars', enc: 'br-gars', name: 'The Gars of the Reach', gold: 130, giver: 'gretch' },
+  'b-jaws': { id: 'b-jaws', enc: 'old-jaws', name: 'Old Jaws of the Blackwater', gold: 170, giver: 'gretch' },
 });
 
 export const QUEST_IDS = Object.freeze(Object.keys(QUESTS));

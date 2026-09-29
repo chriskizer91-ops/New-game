@@ -44,6 +44,14 @@ const IRON_OMENS = 3;
 const IRON = (family, level, o = {}) => S(family, level, { wakeLevels: IRON_WAKE, wakeOmenCap: IRON_OMENS, ...o });
 const IRON_R = (family, level, o = {}) => S(family, level, { wakeOmenCap: IRON_OMENS, ...o });
 
+// M6: the Gloomfen's spawns that are not rabble climb GLOOM_WAKE levels per Waking and keep at most GLOOM_OMENS
+// Waking Omens, as the Ironspire's do (spec §2.6). A player arrives at Waking 6 (every earlier Brand is held) and
+// meets the Deep half at Waking 7. GLOOM_R is a rabble spawn (the usual 2 levels a Waking), with the same cap.
+const GLOOM_WAKE = 4;
+const GLOOM_OMENS = 3;
+const GLOOM = (family, level, o = {}) => S(family, level, { wakeLevels: GLOOM_WAKE, wakeOmenCap: GLOOM_OMENS, ...o });
+const GLOOM_R = (family, level, o = {}) => S(family, level, { wakeOmenCap: GLOOM_OMENS, ...o });
+
 export const ENCOUNTERS = deepFreeze({
   'hearthstone-keep': {
     id: 'hearthstone-keep', type: 'hearthfire', name: 'The Eternal Hearth', place: 'Hearthstone Keep', backdrop: 'hearth-road',
@@ -520,6 +528,173 @@ export const ENCOUNTERS = deepFreeze({
     spawns: [IRON('rime-abbot', 7, { omens: ['frenzied', 'swift'], wakeOmenCap: 0 })],
     text: 'Brother Aurel, who went down to listen to Hush and did not come up. The Crozier in his hand, the Cowl on his head. Break them both.',
   },
+
+  // ---- M6: the Gloomfen Marsh (spec §2.5, §3.3; owner P4). STUBS from the M6 scaffold: spawns and holders are the
+  // spec's, levels are first guesses (P4 tunes them with tools/sim.mjs from Waking 6), and every backdrop is a
+  // stand-in until P6 paints the map's own (spec §6.2).
+  'reed-shrine': {
+    id: 'reed-shrine', type: 'hearthfire', name: 'The Reed Shrine', place: 'The Murkway', backdrop: 'mossfall', region: 'gloomfen',
+    text: 'A shrine of bound reeds on a hummock above the bog, with a lamp the Willowmurk folk keep lit.',
+  },
+  'willow-hearth': {
+    id: 'willow-hearth', type: 'hearthfire', name: 'The Willow Hearth', place: 'Willowmurk', backdrop: 'eldergrove', region: 'gloomfen',
+    text: 'The moot-fire of Willowmurk, under the oldest willow in the fen.',
+  },
+  'toll-lamp': {
+    id: 'toll-lamp', type: 'hearthfire', name: 'The Toll-Lamp', place: 'Rotbridge', backdrop: 'mossfall', region: 'gloomfen',
+    text: 'A lamp-post fire by the road at the east end of Rotbridge. Hodge says it is free. So far.',
+  },
+  'stilt-hearth': {
+    id: 'stilt-hearth', type: 'hearthfire', name: 'The Stilt Hearth', place: 'Bogmire', backdrop: 'thornhollow', region: 'gloomfen',
+    text: 'A fire in an iron pan on the planks of Bogmire\'s market square, well away from the stilts.',
+  },
+  'fen-cairn': {
+    id: 'fen-cairn', type: 'hearthfire', name: 'The Fen Cairn', place: 'The Lanternfen', backdrop: 'mossfall', region: 'gloomfen',
+    text: 'A cairn on a hummock in the eastern bogs, its fire-bowl full of black water.',
+  },
+  'bell-hearth': {
+    id: 'bell-hearth', type: 'hearthfire', name: 'The Belltower Fire', place: 'The Misthollow Ruins', backdrop: 'frostmere', region: 'gloomfen',
+    text: 'A fire-bowl in a dry belfry above the drowned streets, cold since the city sank.',
+  },
+  'wreck-fire': {
+    id: 'wreck-fire', type: 'hearthfire', name: 'The Wreck Fire', place: 'The Blackwater Reach', backdrop: 'mossfall', region: 'gloomfen',
+    text: 'A fire-pit in a beached hull on the Reach, the planks still wet.',
+  },
+  'flats-beacon': {
+    id: 'flats-beacon', type: 'hearthfire', name: 'The Flats Beacon', place: 'The Tidal Flats', backdrop: 'glass-flats', region: 'gloomfen',
+    text: 'The Tallymen\'s beacon on the Tidal Flats, burning for barges that come up from the sea.',
+  },
+  'mk-leeches': {
+    id: 'mk-leeches', type: 'fight', name: 'Leeches in the Ford', place: 'The Murkway', backdrop: 'mossfall', region: 'gloomfen',
+    spawns: [GLOOM_R('mire-leech', 15), GLOOM_R('mire-leech', 15), GLOOM_R('mire-leech', 15)],
+    text: 'A ford of the safe path, and the leeches that wait in it.',
+  },
+  'mk-reedcutters': {
+    id: 'mk-reedcutters', type: 'fight', name: 'The Reed-Cutters', place: 'The Murkway', backdrop: 'mossfall', region: 'gloomfen',
+    spawns: [GLOOM_R('smuggler', 15, { variant: 'reedcutter' }), GLOOM_R('smuggler', 15, { variant: 'reedcutter' }), GLOOM('tallyman', 3)],
+    text: 'Tallymen cutting a road of their own through the reeds, with a chain across it.',
+  },
+  'mk-bogfolk': {
+    id: 'mk-bogfolk', type: 'fight', name: 'Bogfolk', place: 'The Murkway', backdrop: 'mossfall', region: 'gloomfen',
+    spawns: [GLOOM_R('boglurcher', 15), GLOOM_R('boglurcher', 15), GLOOM_R('boglurcher', 15)],
+    text: 'Boglurchers in a side pool, arguing with the frogs.',
+  },
+  'wm-wights': {
+    id: 'wm-wights', type: 'fight', name: 'The Broken Ward-Gate', place: 'Willowmurk', backdrop: 'eldergrove', region: 'gloomfen',
+    spawns: [GLOOM('willow-wight', 3), GLOOM('willow-wight', 3)],
+    text: 'Willow-wights crowding the west road where the ward-stones have gone dark.',
+  },
+  'wm-willow': {
+    id: 'wm-willow', type: 'fight', name: 'Grandfather Willow', place: 'Willowmurk', backdrop: 'eldergrove', region: 'gloomfen',
+    spawns: [GLOOM('willow-wight', 8, { variant: 'grandfather', relic: 'weeping-bow', name: 'Grandfather Willow', omens: ['frenzied', 'swift'], wakeOmenCap: 0 }), GLOOM('willow-wight', 4)],
+    text: 'The oldest willow outside the wards, walking, with a bow strung with its own hair.',
+  },
+  'hodge': {
+    id: 'hodge', type: 'fight', name: 'Hodge', place: 'Rotbridge', backdrop: 'mossfall', region: 'gloomfen',
+    once: true, talk: 'hodge-toll',
+    spawns: [GLOOM('hodge', 10, { relic: 'unfair-toll', name: 'Hodge', omens: ['frenzied', 'ironclad', 'swift'], wakeOmenCap: 0 })],
+    text: 'Hodge, who is not actually a troll. You refused his toll. It is a terrible idea.',
+  },
+  'tamsin-rotbridge': {
+    id: 'tamsin-rotbridge', type: 'fight', name: 'Tamsin on Rotbridge', place: 'Rotbridge', backdrop: 'mossfall', region: 'gloomfen',
+    once: true, duel: true, yields: 'tamsin-yielded-4', talk: 'tamsin-rotbridge',
+    spawns: [S('tamsin', 'party', { partyDelta: 4, gearTier: 4, omens: ['swift', 'frenzied', 'thornskinned'], variant: '$rival:rotbridge', relic: '$rival', lend: true, noWaking: true, name: 'Tamsin', wears: 'bogstriders' })],
+    text: 'Tamsin on the bridge, a month in the fen behind her, and a letter with soot on the seal in her pocket. Losing is a yield.',
+  },
+  'rb-gars': {
+    id: 'rb-gars', type: 'fight', name: 'Gars under the Bridge', place: 'Rotbridge', backdrop: 'mossfall', region: 'gloomfen',
+    spawns: [GLOOM_R('blackwater-gar', 16), GLOOM_R('blackwater-gar', 16), GLOOM_R('blackwater-gar', 16)],
+    text: 'Gars in the shallows below Rotbridge, waiting for something to fall in.',
+  },
+  'lf-moths': {
+    id: 'lf-moths', type: 'fight', name: 'The Moths', place: 'The Lanternfen', backdrop: 'mossfall', region: 'gloomfen',
+    spawns: [GLOOM_R('lamp-moth', 16), GLOOM_R('lamp-moth', 16), GLOOM_R('lamp-moth', 16), GLOOM_R('lamp-moth', 16)],
+    text: 'A cloud of lamp-moths over the road, all flying the same way.',
+  },
+  'lf-hags': {
+    id: 'lf-hags', type: 'fight', name: 'The Hags\' Pot', place: 'The Lanternfen', backdrop: 'mossfall', region: 'gloomfen',
+    spawns: [GLOOM('bog-hag', 4), GLOOM('bog-hag', 4), GLOOM_R('mire-leech', 16)],
+    text: 'Two bog-hags at a pot in the middle of the road, and something in the pot.',
+  },
+  'lf-lights': {
+    id: 'lf-lights', type: 'fight', name: 'Marsh-Lights', place: 'The Lanternfen', backdrop: 'mossfall', region: 'gloomfen',
+    spawns: [GLOOM_R('marsh-light', 16), GLOOM_R('marsh-light', 16), GLOOM_R('marsh-light', 16)],
+    text: 'Lights over the water. The locals know better than to follow them.',
+  },
+  'grue-hollow': {
+    id: 'grue-hollow', type: 'fight', name: 'Mother Grue\'s Hollow', place: 'The Lanternfen', backdrop: 'mossfall', region: 'gloomfen',
+    spawns: [GLOOM('bog-hag', 8, { variant: 'grue', relic: 'hag-stone', name: 'Mother Grue', omens: ['thornskinned', 'swift'], wakeOmenCap: 0 }), GLOOM('bog-hag', 4)],
+    text: 'A sunken hut behind a ring of hung stones, and Mother Grue at her pot with a holed stone on her finger.',
+  },
+  'lantern-mother': {
+    id: 'lantern-mother', type: 'fight', name: 'The Mother\'s Hollow', place: 'The Mother\'s Hollow', backdrop: 'heartroot', region: 'gloomfen',
+    brand: 'brand-of-lanterns', dark: true,
+    spawns: [GLOOM('lantern-mother', 8, { omens: ['frenzied', 'swift'], wakeOmenCap: 0 })],
+    text: 'The Lantern Mother among her sleeping children, her lantern lit and her veil down. Break them both.',
+  },
+  'lb-drowned': {
+    id: 'lb-drowned', type: 'fight', name: 'The Drowned on the Boardwalk', place: 'The Long Boardwalk', backdrop: 'hearth-road', region: 'gloomfen',
+    spawns: [GLOOM('drowned', 4), GLOOM('drowned', 4), GLOOM('drowned', 4)],
+    text: 'The drowned standing on the boardwalk\'s broken middle, water running off them.',
+  },
+  'lb-lights': {
+    id: 'lb-lights', type: 'fight', name: 'Lights on the Jetty', place: 'The Long Boardwalk', backdrop: 'hearth-road', region: 'gloomfen',
+    spawns: [GLOOM_R('marsh-light', 17), GLOOM_R('marsh-light', 17), GLOOM_R('lamp-moth', 17), GLOOM_R('lamp-moth', 17)],
+    text: 'Marsh-lights and moths on a side jetty, circling a lamp that is not there.',
+  },
+  'mh-salvage': {
+    id: 'mh-salvage', type: 'fight', name: 'The Salvage Camp', place: 'The Misthollow Ruins', backdrop: 'frostmere', region: 'gloomfen',
+    spawns: [GLOOM('tallyman', 6, { variant: 'salvage-master', relic: 'salvagers-helm', name: 'The Salvage-Master', omens: ['ironclad'], wakeOmenCap: 0 }), GLOOM_R('smuggler', 17, { variant: 'diver' }), GLOOM_R('smuggler', 17, { variant: 'diver' })],
+    text: 'The Tallymen\'s salvage camp across the old street: cranes, a diving bell, and a sealed chest on the jetty.',
+  },
+  'mh-ringers': {
+    id: 'mh-ringers', type: 'fight', name: 'The Bell-Ringers', place: 'The Misthollow Ruins', backdrop: 'frostmere', region: 'gloomfen',
+    spawns: [GLOOM('drowned', 5, { variant: 'bell-ringer' }), GLOOM('drowned', 5, { variant: 'bell-ringer' }), GLOOM('drowned', 5, { variant: 'bell-ringer' })],
+    text: 'The drowned bell-ringers at the water-gate, still ringing bells that are not there.',
+  },
+  'db-choir': {
+    id: 'db-choir', type: 'fight', name: 'The Drowned Choir', place: 'The Drowned Belfry', backdrop: 'frostmere-below', region: 'gloomfen',
+    dark: true,
+    spawns: [GLOOM('drowned', 5, { variant: 'choir' }), GLOOM('drowned', 5, { variant: 'choir' }), GLOOM('drowned', 5, { variant: 'choir' })],
+    text: 'The drowned choir in its stalls, singing the same note it has sung for a thousand years.',
+  },
+  'cantor': {
+    id: 'cantor', type: 'fight', name: 'The Drowned Cantor', place: 'The Drowned Belfry', backdrop: 'frostmere-below', region: 'gloomfen',
+    dark: true,
+    spawns: [GLOOM('drowned', 8, { variant: 'cantor', relic: 'cantors-staff', name: 'The Drowned Cantor', omens: ['thornskinned', 'swift'], wakeOmenCap: 0 }), GLOOM('drowned', 4, { variant: 'choir' }), GLOOM('drowned', 4, { variant: 'choir' })],
+    text: 'The choirmaster of Misthollow, beating time with his staff for a song that must not stop.',
+  },
+  'br-barge': {
+    id: 'br-barge', type: 'fight', name: 'The Barge on the Towpath', place: 'The Blackwater Reach', backdrop: 'mossfall', region: 'gloomfen',
+    spawns: [GLOOM_R('smuggler', 18, { variant: 'bargehand' }), GLOOM_R('smuggler', 18, { variant: 'bargehand' }), GLOOM_R('smuggler', 18, { variant: 'bargehand' })],
+    text: 'A Tallyman barge moored across the towpath, and its crew not moving it.',
+  },
+  'br-gars': {
+    id: 'br-gars', type: 'fight', name: 'Gars in the Reach', place: 'The Blackwater Reach', backdrop: 'mossfall', region: 'gloomfen',
+    spawns: [GLOOM_R('blackwater-gar', 18), GLOOM_R('blackwater-gar', 18), GLOOM_R('blackwater-gar', 18)],
+    text: 'Gars among the sunk boats, feeding on whatever the Leviathan left.',
+  },
+  'old-jaws': {
+    id: 'old-jaws', type: 'fight', name: 'Old Jaws', place: 'The Blackwater Reach', backdrop: 'mossfall', region: 'gloomfen',
+    spawns: [GLOOM('blackwater-gar', 8, { variant: 'old-jaws', relic: 'gar-tooth', name: 'Old Jaws', omens: ['frenzied', 'thornskinned'], wakeOmenCap: 0 }), GLOOM_R('blackwater-gar', 18), GLOOM_R('blackwater-gar', 18)],
+    text: 'The oldest gar in the Blackwater, in a pool behind the drowned mill. He has a tooth missing. You can have one of the others.',
+  },
+  'tf-bargemaster': {
+    id: 'tf-bargemaster', type: 'fight', name: 'The Barge-Camp', place: 'The Tidal Flats', backdrop: 'glass-flats', region: 'gloomfen',
+    spawns: [GLOOM('tallyman', 7, { variant: 'bargemaster', relic: 'barge-gauntlets', name: 'The Bargemaster', omens: ['ironclad'], wakeOmenCap: 0 }), GLOOM_R('smuggler', 18, { variant: 'bargehand' }), GLOOM_R('smuggler', 18, { variant: 'bargehand' })],
+    text: 'The Tallymen\'s barge-camp at the chain-post, where the great chain runs out into the deep.',
+  },
+  'blackwater-leviathan': {
+    id: 'blackwater-leviathan', type: 'fight', name: 'The Blackwater Leviathan', place: 'The Tidal Flats', backdrop: 'glass-flats', region: 'gloomfen',
+    brand: 'brand-of-the-deep',
+    spawns: [GLOOM('blackwater-leviathan', 8, { omens: ['frenzied', 'ironclad'], wakeOmenCap: 0 })],
+    text: 'The thing that lives in the Blackwater, chained by the collar, a harpoon in its side and a pearl in its brow. Break them both.',
+  },
+  'cw-lights': {
+    id: 'cw-lights', type: 'fight', name: 'Lights on the Causeway', place: 'The Blackwater Causeway', backdrop: 'hearth-road', region: 'gloomfen',
+    spawns: [GLOOM_R('marsh-light', 16), GLOOM_R('marsh-light', 16), GLOOM_R('mire-leech', 16)],
+    text: 'Marsh-lights on the reeds by the causeway, where the water-mark still shows.',
+  },
 });
 
 export const GAUNTLET = Object.freeze([
@@ -551,6 +726,14 @@ export const PATROLS = deepFreeze({
   deeps: [[IRON_R('rockling', 0), IRON_R('rockling', 0), IRON_R('forge-spark', 0)], [IRON_R('forge-spark', 0), IRON_R('forge-spark', 0), IRON_R('rockling', 0)]],
   'frost-road': [[IRON_R('rime-wolf', 0), IRON_R('rime-wolf', 0), IRON_R('brigand', 0)], [IRON_R('rime-wolf', 0), IRON_R('rime-wolf', 0), IRON_R('rime-wolf', 0)]],
   frostmere: [[IRON_R('rime-wolf', 0), IRON_R('rime-wolf', 0)], [IRON_R('rockling', 0), IRON_R('rime-wolf', 0), IRON_R('rime-wolf', 0)]],
+  // M6: the Gloomfen zones (spec §2.6). Rabble only: mire leeches, boglurchers, lamp-moths, marsh-lights, gars.
+  murkway: [[GLOOM_R('mire-leech', 0), GLOOM_R('mire-leech', 0), GLOOM_R('boglurcher', 0)], [GLOOM_R('boglurcher', 0), GLOOM_R('boglurcher', 0)]],
+  lanternfen: [[GLOOM_R('lamp-moth', 0), GLOOM_R('lamp-moth', 0), GLOOM_R('marsh-light', 0)], [GLOOM_R('marsh-light', 0), GLOOM_R('marsh-light', 0)]],
+  boardwalk: [[GLOOM_R('marsh-light', 0), GLOOM_R('marsh-light', 0), GLOOM_R('mire-leech', 0)], [GLOOM_R('mire-leech', 0), GLOOM_R('mire-leech', 0)]],
+  misthollow: [[GLOOM_R('marsh-light', 0), GLOOM_R('lamp-moth', 0), GLOOM_R('lamp-moth', 0)], [GLOOM_R('marsh-light', 0), GLOOM_R('marsh-light', 0)]],
+  blackwater: [[GLOOM_R('blackwater-gar', 0), GLOOM_R('blackwater-gar', 0), GLOOM_R('mire-leech', 0)], [GLOOM_R('blackwater-gar', 0), GLOOM_R('blackwater-gar', 0)]],
+  'tidal-flats': [[GLOOM_R('blackwater-gar', 0), GLOOM_R('mire-leech', 0), GLOOM_R('mire-leech', 0)], [GLOOM_R('blackwater-gar', 0), GLOOM_R('blackwater-gar', 0), GLOOM_R('blackwater-gar', 0)]],
+  causeway: [[GLOOM_R('marsh-light', 0), GLOOM_R('mire-leech', 0)], [GLOOM_R('mire-leech', 0), GLOOM_R('mire-leech', 0), GLOOM_R('marsh-light', 0)]],
 });
 
 export const BRANDS = deepFreeze({
@@ -562,4 +745,7 @@ export const BRANDS = deepFreeze({
   // M5 (spec §3.3)
   'brand-of-iron': { id: 'brand-of-iron', name: 'The Brand of Iron', from: 'mother-anvil', region: 'ironspire', text: 'A fifth coal relights, dull red like iron in the forge. The world wakes another notch.' },
   'brand-of-frost': { id: 'brand-of-frost', name: 'The Brand of Frost', from: 'rime-abbot', region: 'ironspire', text: 'A sixth coal relights, blue at the heart. The Ironspire is yours, and under the ice something turns over.' },
+  // M6 (spec §3.3): the seventh and eighth coals; with both, earnBrand sets gloomfen-complete (the fourth council)
+  'brand-of-lanterns': { id: 'brand-of-lanterns', name: 'The Brand of Lanterns', from: 'lantern-mother', region: 'gloomfen', text: 'A seventh coal relights, soft and gold like a lamp in a window. The world wakes another notch.' },
+  'brand-of-the-deep': { id: 'brand-of-the-deep', name: 'The Brand of the Deep', from: 'blackwater-leviathan', region: 'gloomfen', text: 'The eighth coal relights, black-green at the heart. Every coal is lit, and the whole world wakes.' },
 });

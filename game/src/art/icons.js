@@ -282,6 +282,27 @@ const LK = {
     fillPoly(C, [[5.6, 11.2], [8.4, 7.8], [10.2, 8.4], [11.6, 11.2]], raw('#a4c0dc'));
     for (const [x, y] of [[2.4, 2.4], [6.4, 1.6], [9.6, 2.8], [4.4, 3.6]]) px(C, x, y, raw('#ffffff'));
   },
+  // M6: the Gloomfen locks (first drafts from the M6 scaffold; P6 may redraw them): black bog with a sunk boot, a bank
+  // of fog over a lamp, black water at a dock's end, a ring of hung ward-stones
+  bog: C => {
+    fillPoly(C, [[.4, 11.2], [.8, 6.4], [3.6, 5], [8.4, 5.2], [11.2, 6.6], [11.6, 11.2]], col('#3a3222'));
+    fillPoly(C, [[2, 8.6], [5, 7.6], [9.4, 8], [10, 10.4], [2.4, 10.6]], raw('#1a160e'));
+    fillPoly(C, [[5.2, 5.4], [7, 5.4], [7, 8], [5.2, 8]], raw('#6a4a2a')); px(C, 3.2, 6.2, raw('#7a8a3a')); px(C, 9.4, 6.8, raw('#7a8a3a'));
+  },
+  fog: C => {
+    fillDisc(C, 6, 5.6, 1.1, raw('#ffe08a')); stroke(C, [[6, 6.8], [6, 11.4]], .35, raw('#3a3430'));
+    for (const [y, a, b] of [[4.6, .6, 11.4], [7.4, 1.2, 10.8], [9.8, .4, 11.6]]) stroke(C, [[a, y], [b, y]], 1.1, col('#c8ccd2'));
+  },
+  blackwater: C => {
+    fillPoly(C, [[.4, 6], [11.6, 6], [11.6, 11.4], [.4, 11.4]], col('#1a2a2e'));
+    fillPoly(C, [[.4, 3.4], [6.4, 3.4], [6.4, 5], [.4, 5]], col('#8a6a44')); stroke(C, [[1.6, 5], [1.6, 8]], .5, raw('#5a4428')); stroke(C, [[5.2, 5], [5.2, 8]], .5, raw('#5a4428'));
+    stroke(C, [[7.4, 8.6], [8.6, 7.8], [9.8, 8.6]], .35, raw('#4a7a82')); px(C, 3, 9.6, raw('#6aa0a8'));
+  },
+  'witch-ward': C => {
+    for (const [x, y] of [[2, 8.4], [4.4, 5.2], [7.6, 5.2], [10, 8.4], [6, 10.2]]) fillDisc(C, x, y, 1.25, col('#7a7468'));
+    for (const [x, y] of [[2, 6.6], [4.4, 3.4], [7.6, 3.4], [10, 6.6]]) stroke(C, [[x, y], [x, y + 1.2]], .25, raw('#c89a2e'));
+    fillDisc(C, 6, 7, .9, raw('#9ae07a')); px(C, 6, 6.6, raw('#eaffd0'));
+  },
   lock: C => {
     stroke(C, [[3.6, 6], [3.6, 3.6], [6, 1.4], [8.4, 3.6], [8.4, 6]], .75, col('#8c96ac'));
     fillPoly(C, [[2, 5.6], [10, 5.6], [10, 11.2], [2, 11.2]], col('#c89a2e'));
@@ -372,6 +393,8 @@ const GEM_IC = {
     for (const [x, y, c] of [[7.4, 5.6, '#ff9ad8'], [4.6, 7.8, '#8af0b0'], [8.2, 8.2, '#c0a0ff'], [6.2, 8.8, '#fff0a0']]) fillDisc(C, x, y, .62, raw(c));
     px(C, 4.2, 4.4, raw('#ffffff'));
   },
+  // M6: Bog Amber, a honey-dark drop with a seed caught in it (a first draft from the M6 scaffold)
+  'bog-amber': C => { facet(C, 6, 6.4, 4.6, 4.6, '#6a3208', '#c8811e', '#f4c46a'); fillDisc(C, 6.6, 7.2, .8, raw('#3a2a10')); px(C, 4.4, 3.6, raw('#fff0c8')); },
 };
 export const GEM_ICON_KEYS = Object.keys(GEM_IC);
 export function gemIcon(id, o = {}) {

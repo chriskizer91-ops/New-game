@@ -86,6 +86,21 @@ export const RIDDLES = Object.freeze({
   'cutters-pick': 'A notch in the haft for every block of lake it took. The Tallymen’s Cutter-Chief keeps it at the saw camp on the Frost Road.',
   'rime-crozier': 'Frozen to its bearer’s hand for thirty years. He went down under Frostmere to listen, and never came back up.',
   'hushweave-cowl': 'Woven from something that was not wool, by someone who was listening. The Abbot under the ice wears it pulled low.',
+  // M6: Page IV (STUBS from the M6 scaffold; P7 writes the real riddles)
+  'unfair-toll': 'A clipped coin on a chain. The man who keeps the bridge charges what he likes.',
+  bogstriders: 'Boots for a country where the ground is only a rumour. Someone you know came through the fen in them.',
+  'weeping-bow': 'Strung with a hair of a willow that has wept for three hundred years, and walks.',
+  'willow-ward': 'The last of three shields Willowmurk made. The elder keeps it for whoever mends the wards.',
+  'hag-stone': 'A holed stone on a ring of bog-iron. Look through it and see what is really there.',
+  'lamplighters-lantern': 'The lamp that led a city’s children out, the night the city sank. It is leading them again.',
+  'mourning-veil': 'Black lace, still wet. She has worn it since she went back for the last child.',
+  'salvagers-helm': 'A copper helm with a Tallyman stamp. The salvage crew in the sunken city dives in it.',
+  'cantors-staff': 'It has beaten time under the water for a thousand years, for a song that must not stop.',
+  'gar-tooth': 'A tooth as long as a hand. The oldest gar in the Blackwater has more.',
+  'barge-gauntlets': 'A link of a great chain in each palm. The Bargemaster keeps the chain.',
+  'corvus-harpoon': 'A diver lost it in something on his last dive. It has been in that something ever since.',
+  'deep-pearl': 'Grown in a brow over a thousand years in the dark. It glows.',
+  'hexbane-shawl': 'Knotted from bog-cotton and a hag’s hair. The witch of Bogmire makes one for whoever earns it.',
 });
 
 // Who holds each relic, short enough for a pocket ("Held by ...") and the grey card's stamp.
@@ -104,6 +119,10 @@ export const HOLDER = Object.freeze({
   'ironvein-bracers': 'Tamsin', 'roc-feather-cloak': 'the Thunder-Roc', 'thanes-rune': 'Thane Brundar', 'trollhide-mantle': 'Old Horn',
   runestaff: 'Harrow’s Journeyman', 'anvil-heart': 'Mother Anvil', 'worldforge-hammer': 'Mother Anvil', 'cutters-pick': 'the Cutter-Chief',
   'rime-crozier': 'the Rime-Abbot', 'hushweave-cowl': 'the Rime-Abbot',
+  'unfair-toll': 'Hodge of Rotbridge', bogstriders: 'Tamsin', 'weeping-bow': 'Grandfather Willow', 'willow-ward': 'Elder Moss',
+  'hag-stone': 'Mother Grue', 'lamplighters-lantern': 'the Lantern Mother', 'mourning-veil': 'the Lantern Mother', 'salvagers-helm': 'the Salvage-Master',
+  'cantors-staff': 'the Drowned Cantor', 'gar-tooth': 'Old Jaws', 'barge-gauntlets': 'the Bargemaster', 'corvus-harpoon': 'the Blackwater Leviathan',
+  'deep-pearl': 'the Blackwater Leviathan', 'hexbane-shawl': 'Nettie the Swamp Witch',
 });
 
 const PAGE_IDS = PAGES.map(p => p.id);
@@ -111,6 +130,8 @@ const PAGE_IDS = PAGES.map(p => p.id);
 export const ROAD_NOTE = Object.freeze({
   sunscorch: 'The road to the Sunscorch opens once both Brands of the Wilds are yours.',
   ironspire: 'The road to the Ironspire opens once the Council has sat a second time: the Keep’s east postern.',
+  // M6 (a first draft from the M6 scaffold; P7 may reword it)
+  gloomfen: 'The road to the Gloomfen opens once the Council has sat a third time: the fen stair below Mossfall.',
 });
 const isSealed = P => !P || P.from == null;
 const shortRegion = P => String(P?.name || '').replace(/^The /, '').split(' ')[0];

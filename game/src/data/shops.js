@@ -20,4 +20,8 @@ export const SHOPS = deepFreeze({
   durra: { id: 'durra', name: 'Durra Ironhand\'s Armoury', items: ['frost-draught', 'hearth-tonic', 'bitterroot', 'ember-salts'], gems: ['frost-opal', 'moss-agate', 'glass-pearl'] },
   // Quartermaster Quill's stores at Stormwatch: the consumables, tonics first for the ice road
   quill: { id: 'quill', name: 'Quartermaster Quill\'s Stores', items: ['hearth-tonic', 'ember-salts', 'bitterroot', 'frost-draught'] },
+  // M6 (spec §3.7): Nettie's hut in Bogmire (the consumables and three gems, the new Bog Amber first), and Sedge's
+  // herbs in Willowmurk
+  nettie: { id: 'nettie', name: 'Nettie\'s Hut', items: ['hearth-tonic', 'bitterroot', 'frost-draught', 'ember-salts'], gems: ['bog-amber', 'moss-agate', 'glass-pearl'] },
+  sedge: { id: 'sedge', name: 'Sedge\'s Herbs', items: ['bitterroot', 'hearth-tonic', 'frost-draught', 'ember-salts'] },
 });

@@ -48,7 +48,15 @@ export const LADDER = deepFreeze([
   P2('mother-anvil', 'mother-anvil', 'Mother Anvil'),
   P2('drowned-abbess', 'fm-shrine', 'The Drowned Abbess'),
   P2('rime-abbot', 'rime-abbot', 'The Rime-Abbot'),
-  // Act II rumours: Gloomfen stays sealed until a later chapter, and Harrow is still missing
-  { id: 'lantern-mother', name: 'the Lantern Mother', silhouette: true, act: 2 },
+  // M6: the Gloomfen Marsh (spec §3.6). M5's rumour of the Lantern Mother is her poster now.
+  P2('hodge', 'hodge', 'Hodge of Rotbridge'),
+  P2('grandfather-willow', 'wm-willow', 'Grandfather Willow'),
+  P2('mother-grue', 'grue-hollow', 'Mother Grue'),
+  P2('lantern-mother', 'lantern-mother', 'The Lantern Mother'),
+  P2('salvage-master', 'mh-salvage', 'The Salvage-Master'),
+  P2('drowned-cantor', 'cantor', 'The Drowned Cantor'),
+  P2('old-jaws', 'old-jaws', 'Old Jaws'),
+  P2('blackwater-leviathan', 'blackwater-leviathan', 'The Blackwater Leviathan'),
+  // Act II rumours: Harrow is still missing
   { id: 'missing-smith', name: 'the missing smith', silhouette: true, act: 2 },
 ]);

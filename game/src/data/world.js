@@ -3,7 +3,7 @@
 // optional leads.
 // Coordinates: tiles for maps, viewBox 1200x800 for the illustrated map (`lore`).
 // Owner: WP3; M4 P2 (the Sunscorch stands, SUN_PATH, SUN_LEADS); M5 P2 (the Ironspire stands, IRON_PATH,
-// IRON_LEADS). Imports nothing from rules/.
+// IRON_LEADS); M6 P2 (the Gloomfen stands, GLOOM_PATH, GLOOM_LEADS). Imports nothing from rules/.
 
 import { deepFreeze } from '../core/freeze.js';
 
@@ -12,7 +12,7 @@ export const REGIONS = deepFreeze({
   verdant: { id: 'verdant', name: 'The Verdant Wilds', act: 1, lore: [270, 220], brands: ['brand-of-briars', 'brand-of-the-heartroot'], open: true },
   sunscorch: { id: 'sunscorch', name: 'The Sunscorch Wastes', act: 2, lore: [870, 470], entries: ['keep-se'], brands: ['brand-of-glass', 'brand-of-ash'], open: true },
   ironspire: { id: 'ironspire', name: 'The Ironspire Peaks', act: 2, lore: [870, 160], entries: ['keep-e', 'fr-highfold'], brands: ['brand-of-iron', 'brand-of-frost'], open: true },
-  gloomfen: { id: 'gloomfen', name: 'The Gloomfen Marsh', act: 2, lore: [280, 530], entries: ['keep-sw', 'mf-fen-stair'], brands: [], open: false },
+  gloomfen: { id: 'gloomfen', name: 'The Gloomfen Marsh', act: 2, lore: [280, 530], entries: ['keep-sw', 'mf-fen-stair'], brands: ['brand-of-lanterns', 'brand-of-the-deep'], open: true },
 });
 export const REGION_IDS = Object.freeze(Object.keys(REGIONS));
 
@@ -40,6 +40,15 @@ export const ZONES = deepFreeze({
   deeps: { id: 'deeps', level: 15, sets: 'deeps', backdrop: 'ironhold-deeps' },
   'frost-road': { id: 'frost-road', level: 16, sets: 'frost-road', backdrop: 'frost-road' },
   frostmere: { id: 'frostmere', level: 16, sets: 'frostmere', backdrop: 'frostmere' },
+  // M6: the Gloomfen Marsh (spec §2.6; levels are P4's to tune). STAND-IN backdrops from the M6 scaffold until P6
+  // paints each map's own.
+  murkway: { id: 'murkway', level: 15, sets: 'murkway', backdrop: 'mossfall' },
+  lanternfen: { id: 'lanternfen', level: 16, sets: 'lanternfen', backdrop: 'mossfall' },
+  boardwalk: { id: 'boardwalk', level: 17, sets: 'boardwalk', backdrop: 'hearth-road' },
+  misthollow: { id: 'misthollow', level: 17, sets: 'misthollow', backdrop: 'frostmere' },
+  blackwater: { id: 'blackwater', level: 18, sets: 'blackwater', backdrop: 'mossfall' },
+  'tidal-flats': { id: 'tidal-flats', level: 18, sets: 'tidal-flats', backdrop: 'glass-flats' },
+  causeway: { id: 'causeway', level: 16, sets: 'causeway', backdrop: 'hearth-road' },
 });
 
 // The Hearthfires (ten in the Wilds, seven in the Sunscorch, eight in the Ironspire). x, y, face is the STAND (where the party wakes, rests and arrives by
@@ -75,6 +84,16 @@ export const HEARTHS = deepFreeze({
   'deeps-forge': H('ironhold-deeps', 6, 14, [875, 175], 'The Deeps Furnace', { cold: true }),
   'stormwatch-fire': H('stormwatch', 13, 14, [1020, 240], 'The Watch Fire'),
   'frost-cairn': H('frost-road', 28, 12, [1000, 180], 'The Frost Cairn', { cold: true }),
+  // M6 (spec §2.5): the stands of the Gloomfen maps (STUB places from the M6 scaffold; M6 P2 lays them out). Their
+  // Atlas points are spread so that all 33 fires keep 43 px apart in the realm view on a phone (test/shell.test.mjs).
+  'reed-shrine': H('murkway', 24, 19, [288, 487], 'The Reed Shrine'),
+  'willow-hearth': H('willowmurk', 15, 12, [457, 610], 'The Willow Hearth'),
+  'toll-lamp': H('rotbridge', 34, 11, [226, 620], 'The Toll-Lamp'),
+  'stilt-hearth': H('bogmire', 17, 14, [295, 480], 'The Stilt Hearth'),
+  'fen-cairn': H('lanternfen', 18, 17, [259, 526], 'The Fen Cairn', { cold: true }),
+  'bell-hearth': H('misthollow', 8, 7, [340, 689], 'The Belltower Fire', { cold: true }),
+  'wreck-fire': H('blackwater-reach', 12, 11, [245, 727], 'The Wreck Fire', { cold: true }),
+  'flats-beacon': H('tidal-flats', 8, 9, [124, 754], 'The Flats Beacon'),
 });
 export const HEARTH_IDS = Object.freeze(Object.keys(HEARTHS));
 
@@ -98,10 +117,10 @@ export const LORE = deepFreeze({
   peaksveil: P('Peak\'s Veil', 'Monastery', 'ironspire', [750, 240], 'peaks-veil'),
   stormwatch: P('Stormwatch Outpost', 'Military Post', 'ironspire', [1020, 240], 'stormwatch'),
   frostmere: P('Frostmere Lake', 'Sacred Lake', 'ironspire', [980, 120], 'frostmere'),
-  bogmire: P('Bogmire', 'Swamp Town', 'gloomfen', [280, 530]),
-  rotbridge: P('Rotbridge', 'Crossing Point', 'gloomfen', [170, 600]),
-  willowmurk: P('Willowmurk', 'Hidden Village', 'gloomfen', [410, 620]),
-  misthollow: P('Misthollow Ruins', 'Sunken Ruins', 'gloomfen', [330, 680]),
+  bogmire: P('Bogmire', 'Swamp Town', 'gloomfen', [280, 530], 'bogmire'),
+  rotbridge: P('Rotbridge', 'Crossing Point', 'gloomfen', [170, 600], 'rotbridge'),
+  willowmurk: P('Willowmurk', 'Hidden Village', 'gloomfen', [410, 620], 'willowmurk'),
+  misthollow: P('Misthollow Ruins', 'Sunken Ruins', 'gloomfen', [330, 680], 'misthollow'),
 });
 
 // Every encounter and Hearthfire on the guided route, in order (the sim and the walk test follow it).
@@ -122,6 +141,15 @@ export const IRON_PATH = Object.freeze(['er-wolves', 'er-toll', 'camp-fire', 'er
   'fr-cutters', 'frost-cairn', 'fm-wraiths', 'fb-choir', 'rime-abbot']);
 export const IRON_LEADS = deepFreeze({
   roc: ['hf-trolls', 'roc-eyrie'], horn: ['troll-cave'], smith: ['id-smith'], shrine: ['fm-shrine'],
+});
+
+// M6: the Gloomfen critical path (spec §2.2), road-first: the Brand of Lanterns, then the Brand of the Deep. Hodge's
+// toll-bar stands between the Toll-Lamp and Tamsin: a gate, not a fight (the walk bot pays; the sim skips it).
+export const GLOOM_PATH = Object.freeze(['mk-leeches', 'reed-shrine', 'mk-reedcutters', 'willow-hearth', 'wm-wights', 'toll-lamp', 'tamsin-rotbridge',
+  'stilt-hearth', 'lf-moths', 'fen-cairn', 'lf-hags', 'lantern-mother', 'lb-drowned', 'bell-hearth', 'mh-salvage',
+  'mh-ringers', 'wreck-fire', 'br-barge', 'flats-beacon', 'tf-bargemaster', 'blackwater-leviathan']);
+export const GLOOM_LEADS = deepFreeze({
+  willow: ['wm-willow'], grue: ['grue-hollow'], cantor: ['db-choir', 'cantor'], jaws: ['old-jaws'], hodge: ['hodge'],
 });
 
 // The optional leads after the Brand (and the early optional fights), by name.

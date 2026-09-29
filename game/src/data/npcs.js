@@ -282,6 +282,18 @@ export const NPCS = deepFreeze({
   ]),
   // Brother Aurel speaks once, after the Rime-Abbot's fight (like the Ashen Warden)
   'rime-abbot': N('rime-abbot', 'Brother Aurel', 'Champion', []),
+  // ---- M6: the Gloomfen Marsh (spec §3.1). STUBS from the M6 scaffold: each has one stub dialogue until P3 writes
+  // them; their art keys are their own (art/map-sprites.js draws a villager until P5 draws them). Hodge speaks through
+  // his encounter's `talk` (his toll) and is listed for his name, as Tamsin is.
+  moss: N('moss', 'Elder Moss', 'Elder of Willowmurk', [{ d: 'moss' }]),
+  sedge: N('sedge', 'Sedge', 'Herb-seller', [{ d: 'sedge' }]),
+  'wm-villager': N('wm-villager', 'Villager', 'Flavour', [{ d: 'wm-villager' }]),
+  hodge: N('hodge', 'Hodge', 'Toll-keeper', [{ d: 'hodge-toll' }]),
+  gretch: N('gretch', 'Mayor Gretch', 'Mayor of Bogmire', [{ d: 'gretch' }]),
+  nettie: N('nettie', 'Nettie the Swamp Witch', 'Healer, herbalist', [{ d: 'nettie' }]),
+  pell: N('pell', 'Widow Pell', 'Flavour', [{ d: 'pell' }]),
+  'bm-watch': N('bm-watch', 'Stilt-Watch', 'Guard', [{ d: 'bm-watch' }]),
+  corvus: N('corvus', 'Corvus', 'Treasure diver', [{ d: 'corvus' }]),
 });
 
 export const NPC_IDS = Object.freeze(Object.keys(NPCS));

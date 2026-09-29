@@ -1088,6 +1088,84 @@ export const DIALOGUE = deepFreeze({
     ],
     do: [{ end: 'ironspire' }],
   },
+
+  // ==== M6: the Gloomfen Marsh (spec §3.1, §3.5, §3.6). STUBS from the M6 scaffold: one line each, and the flags
+  // the quests read. P3 writes the real scenes (Hodge's daily price needs P1's `pay`; spec §4.4). ==============
+  moss: {
+    lines: [['moss', 'The one who comes when the fen calls. Sit. A riddle first, then the truth: the lanterns are walking.']],
+    do: [{ set: 'met-moss' }],
+    choices: [
+      { text: 'Tell him Grandfather Willow is at rest.', if: { all: [{ beaten: 'wm-willow' }, { not: { flag: 'wards-mended' } }] }, next: 'moss-wards' },
+      { text: 'Show him the sealed chest.', if: { all: [{ beaten: 'mh-salvage' }, { not: { flag: 'chest-read' } }] }, next: 'moss-chest' },
+      LEAVE,
+    ],
+  },
+  'moss-wards': { lines: [['moss', 'The wards sing again. Take the last Willow-Ward. It knows you now.']], do: [{ set: 'met-moss' }, { set: 'wards-mended' }, { claim: 'failing-wards' }] },
+  'moss-chest': { lines: [['moss', 'A dead tongue. It says: do not open. Then, smaller: the Worldforge, in a First-Age hand.']], do: [{ set: 'chest-read' }] },
+  sedge: { lines: [['sedge', 'Reed-salve, bog-myrtle, a tonic that tastes of the fen. It works. Nothing else does, here.']], choices: [{ text: 'Buy something.', do: [{ open: 'shop:sedge' }] }, LEAVE] },
+  'wm-villager': { lines: [['wm-villager', 'Three of the ward-stones went dark in one night. The willows walk right up to the fires now.']] },
+  'hodge-toll': {
+    lines: [['hodge', 'Toll. Don\'t look at me like that. It\'s a bridge. Bridges have tolls. Mine has a bigger one.']],
+    choices: [
+      { text: 'Pay the toll.', do: [{ set: 'toll-paid' }] },
+      {
+        text: 'Play him for it: best of three.', if: { all: [{ since: { flag: 'hodge-tried', days: 1 } }, { not: { owns: 'unfair-toll' } }] }, do: [{ set: 'hodge-tried', value: 'day' }],
+        contest: { checks: [{ domain: 'influence', dc: 14 }, { ability: 'CHA', dc: 14 }, { domain: 'influence', dc: 15 }], need: 2, pass: 'hodge-won', fail: 'hodge-lost' },
+      },
+      { text: 'Refuse, and make him move.', do: [{ fight: 'hodge' }] },
+      LEAVE,
+    ],
+  },
+  'hodge-won': { lines: [['hodge', 'Two of three. Fine. FINE. Take the coin. It never liked me either.']], do: [{ give: 'unfair-toll' }, { set: 'toll-paid' }] },
+  'hodge-lost': { lines: [['hodge', 'Come back tomorrow. The toll will be different. It always is.']] },
+  'tamsin-rotbridge': {
+    lines: [['tamsin', 'You again. On a bridge, this time. Somebody wrote to say you\'d come this way.']],
+    choices: [{ text: 'Try again.', do: [{ fight: 'tamsin-rotbridge' }] }, { text: 'Not yet.' }],
+  },
+  'tamsin-rb-win': { lines: [['tamsin', 'Four times. Four. Keep the boots. I won\'t need them where I\'m going.']] },
+  'tamsin-rb-yield': { lines: [['tamsin', 'Stay down. The bridge is old, but it\'s honest.']], do: [{ set: 'tamsin-yielded-4' }] },
+  'tamsin-fall': {
+    lines: [['narrator', 'A black barge comes out of the fog. Tamsin walks down to it, and does not look back until she is aboard.']],
+    do: [{ set: 'tamsin-fallen' }],
+  },
+  gretch: {
+    lines: [['gretch', 'A Warden. In Bogmire. Wipe your boots. The children are missing, and the Keep sends one Warden.']],
+    do: [{ set: 'met-gretch' }],
+    choices: [{ text: 'Turn in bounties.', if: { bounty: 'any', state: 'ready' }, do: [{ claim: 'bounties' }] }, LEAVE],
+  },
+  nettie: {
+    lines: [['nettie', 'Healer, herbalist, and not someone you cross. You\'ll want amber. Everyone wants amber.']],
+    do: [{ set: 'met-nettie' }],
+    choices: [
+      { text: 'Tell her Mother Grue is quiet.', if: { all: [{ beaten: 'grue-hollow' }, { not: { flag: 'grue-told' } }] }, next: 'nettie-grue' },
+      { text: 'Buy something.', do: [{ open: 'shop:nettie' }] },
+      LEAVE,
+    ],
+  },
+  'nettie-grue': { lines: [['nettie', 'Grue\'s quiet? Then I owe you. Wear this. Nobody hexes a woman wearing my shawl twice.']], do: [{ set: 'met-nettie' }, { set: 'grue-told' }, { claim: 'nettie-remedy' }] },
+  pell: { lines: [['pell', 'My boy followed a light into the fen. They all say lights. I say a lantern. A lantern has a hand.']] },
+  'bm-watch': { lines: [['bm-watch', 'Mind the eastern quarter. The stilts are going, and so are the people.']] },
+  corvus: {
+    lines: [['corvus', 'Down more times than anyone. Lost my harpoon on the last one. It went into something. Something big.']],
+    do: [{ set: 'met-corvus' }],
+    choices: [
+      { text: 'Show him his harpoon.', if: { all: [{ owns: 'corvus-harpoon' }, { not: { flag: 'harpoon-shown' } }] }, next: 'corvus-harpoon' },
+      { text: 'Tell him what the chest says.', if: { all: [{ flag: 'chest-read' }, { not: { flag: 'chest-told' } }] }, next: 'corvus-chest' },
+      LEAVE,
+    ],
+  },
+  'corvus-harpoon': { lines: [['corvus', 'That\'s her. That\'s my girl. Keep her. You\'ve earned her more than I have.']], do: [{ set: 'met-corvus' }, { set: 'harpoon-shown' }, { claim: 'corvus-harpoon' }] },
+  'corvus-chest': { lines: [['corvus', 'The Worldforge. I pulled that up with my own hands. I\'ll never dive for the Tallymen again.']], do: [{ set: 'met-corvus' }, { set: 'chest-told' }, { claim: 'dead-tongue' }] },
+
+  // ---- the fourth council (keep-hall trigger `council-4`, guarded by the flag it sets): the end of Act II ----
+  'council-4': {
+    lines: [
+      ['narrator', 'Eight coals burn in the Eternal Hearth, and every chair at the long table is filled.'],
+      ['isolde', 'Eight, {warden}. Sit. The Gloomfen sits with us tonight: Mayor Gretch, who has brought a box.'],
+      ['gretch', 'Sealed in soot. Came the week the children went. I didn\'t open it. I\'m not a fool.'],
+    ],
+    do: [{ set: 'council-4-done' }, { claim: 'gloomfen-waking' }, { end: 'gloomfen' }],
+  },
 });
 
 export const ARRIVALS = deepFreeze({

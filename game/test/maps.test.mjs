@@ -39,12 +39,14 @@ const cellsOf = e => { const [x0, y0, x1, y1] = areaOf(e), out = []; for (let y 
 const DIRS = { n: [0, -1], e: [1, 0], s: [0, 1], w: [-1, 0] };
 const entities = () => Object.values(MAPS).flatMap(m => m.entities.map(e => ({ map: m.id, e })));
 
-test('43 maps (14 in the Wilds, 10 in the Sunscorch, 17 in the Ironspire with the East Road, and the reliquary\'s two Galleries); every row is w characters from the legend; entities and exits are in bounds', () => {
-  assert.equal(MAP_IDS.length, 43);
+test('56 maps (14 in the Wilds, 10 in the Sunscorch, 17 in the Ironspire with the East Road, 12 in the Gloomfen, and the reliquary\'s three Galleries); every row is w characters from the legend; entities and exits are in bounds', () => {
+  assert.equal(MAP_IDS.length, 56);
   assert.ok(MAPS['keep-gallery'], 'the Sunscorch Gallery');
   assert.ok(MAPS['keep-gallery-2'], 'the Ironspire Gallery');
+  assert.ok(MAPS['keep-gallery-3'], 'the Gloomfen Gallery');
   assert.equal(MAP_IDS.filter(id => MAPS[id].region === 'sunscorch').length, 10);
   assert.equal(MAP_IDS.filter(id => MAPS[id].region === 'ironspire').length, 17);
+  assert.equal(MAP_IDS.filter(id => MAPS[id].region === 'gloomfen').length, 12);
   for (const m of Object.values(MAPS)) {
     assert.equal(m.rows.length, m.h, `${m.id} height`);
     m.rows.forEach((r, y) => {
@@ -83,8 +85,9 @@ test('exits pair up both ways and land on walkable anchors; 2 sealed exits and 6
       assert.ok(!on, `${m.id}:${name} is not under ${on?.id}`);
     }
   }
-  assert.equal(sealed, 2, 'the two ways into the Gloomfen');
-  assert.deepEqual(gated.sort(), ['fr-highfold', 'keep-e', 'keep-se', 'pv-w', 'ss-e', 'sw-n']);
+  // M6: the two ways into the Gloomfen lead somewhere now (the fen stair, the causeway), so no exit is sealed for good
+  assert.equal(sealed, 0, 'no exit is sealed for good');
+  assert.deepEqual(gated.sort(), ['bm-causeway', 'fr-highfold', 'keep-e', 'keep-se', 'keep-sw', 'lb-e', 'mf-fen-stair', 'pv-w', 'ss-e', 'sw-n']);
 });
 
 test('every exit pairs with an exit on the far map whose anchor is where the first one leads back', () => {
@@ -169,13 +172,14 @@ test('world tables: the critical path, leads and zones name real things', () => 
   for (const m of Object.values(MAPS)) if (m.zone) assert.ok(ZONES[m.zone], `${m.id} zone`);
 });
 
-test('world tables agree with the maps: the 25 Hearthfires, the 17 places, the regions and their sealed entries', () => {
+test('world tables agree with the maps: the 33 Hearthfires, the 17 places, the regions and their sealed entries', () => {
   const inView = ([x, y]) => x >= 0 && x <= 1200 && y >= 0 && y <= 800;
   const fires = Object.keys(ENCOUNTERS).filter(id => ENCOUNTERS[id].type === 'hearthfire');
   assert.deepEqual(Object.keys(HEARTHS).sort(), fires.sort(), 'HEARTHS covers every Hearthfire');
-  assert.equal(fires.length, 25);
+  assert.equal(fires.length, 33);
   assert.equal(fires.filter(id => ENCOUNTERS[id].region === 'sunscorch').length, 7, 'seven in the Sunscorch (M4 spec §2.5)');
   assert.equal(fires.filter(id => ENCOUNTERS[id].region === 'ironspire').length, 8, 'eight in the Ironspire (M5 spec §2.5: seven, and the East Road\'s Last Camp)');
+  assert.equal(fires.filter(id => ENCOUNTERS[id].region === 'gloomfen').length, 8, 'eight in the Gloomfen (M6 spec §2.5)');
   for (const [id, h] of Object.entries(HEARTHS)) {
     const e = ENTITY_OF[id].entity;
     assert.equal(h.name, ENCOUNTERS[id].name, `${id} name`);
@@ -203,7 +207,7 @@ test('world tables agree with the maps: the 25 Hearthfires, the 17 places, the r
   for (const m of Object.values(MAPS)) for (const [lx, ly, tx, ty] of m.lore) assert.ok(inView([lx, ly]) && inside(m, tx, ty), `${m.id} lore`);
 });
 
-test('the reliquary: a pedestal per relic in codex order, Page I on rows 10 and 12 of the Great Hall, Pages II and III on rows 2 and 5 of their Galleries', () => {
+test('the reliquary: a pedestal per relic in codex order, Page I on rows 10 and 12 of the Great Hall, Pages II, III and IV on rows 2 and 5 of their Galleries', () => {
   const byCodex = Object.values(RELICS).sort((a, b) => a.codex - b.codex).map(r => r.id);
   const room = (mapId, ys, from, to) => {
     const peds = MAPS[mapId].entities.filter(e => e.kind === 'pedestal');
@@ -217,7 +221,8 @@ test('the reliquary: a pedestal per relic in codex order, Page I on rows 10 and 
   room('keep-hall', [10, 12], 1, 24);
   room('keep-gallery', [2, 5], 25, 38);
   room('keep-gallery-2', [2, 5], 39, 52);
-  assert.equal(byCodex.length, 52);
+  room('keep-gallery-3', [2, 5], 53, 66);
+  assert.equal(byCodex.length, 66);
 });
 
 test('pack homes are walkable, roamable, off the exits and inside a roam rect', () => {
@@ -452,7 +457,7 @@ test('story gates: the north gate, the toll chain, the crownwalls and the Eldest
     // before the vault fight there is no Act I to have finished, and so no council after it (M5: the second
     // council opens the Keep's east postern)
     for (const k of LATER) delete g.progress.flags.story[k];
-    assert.deepEqual([...mapsOf(flood(g))].sort(), ['keep', 'keep-gallery', 'keep-gallery-2', 'keep-hall'], 'keep-n-gate holds until keep-vault is done');
+    assert.deepEqual([...mapsOf(flood(g))].sort(), ['keep', 'keep-gallery', 'keep-gallery-2', 'keep-gallery-3', 'keep-hall'], 'keep-n-gate holds until keep-vault is done');
   }
   // Until Skarn is beaten, his chain closes the road: Thornhollow and the Smugglers' Hollow are out of reach.
   // (Skarn is on the road to Act I, so nothing after it has happened either: M5's Highfold path is a back

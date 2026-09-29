@@ -2,7 +2,7 @@
 // (test/shell.test.mjs). Coordinates are the illustrated map's viewBox (1200x800, the same 3:2 aspect
 // as the image).
 //
-//   VIEWS                      { wilds, sunscorch, ironspire, realm }: the crop each Atlas view shows, { x, y, w, h }
+//   VIEWS                      { wilds, sunscorch, ironspire, gloomfen, realm }: the crop each Atlas view shows, { x, y, w, h }
 //                              (every view is 3:2, like the frame)
 //   REGION_VIEW                { [regionId]: viewId } the view that frames each open region
 //   regionOpen(game, id)       -> boolean   a region is open on the Atlas when REGIONS says so and one of
@@ -38,9 +38,12 @@ export const VIEWS = Object.freeze({
   // M5: the Ironspire, from the Highfold and the Keep's east shore up to Frostmere (a first framing from the
   // M5 scaffold; P7 may reframe it)
   ironspire: Object.freeze({ x: 520, y: 60, w: 600, h: 400 }),
+  // M6: the Gloomfen, from Mossfall's fen stair down to the Tidal Flats (a first framing from the M6 scaffold; P7 may
+  // reframe it)
+  gloomfen: Object.freeze({ x: 30, y: 320, w: 660, h: 440 }),
   realm: Object.freeze({ x: 0, y: 0, w: 1200, h: 800 }),
 });
-export const REGION_VIEW = Object.freeze({ verdant: 'wilds', sunscorch: 'sunscorch', ironspire: 'ironspire' });
+export const REGION_VIEW = Object.freeze({ verdant: 'wilds', sunscorch: 'sunscorch', ironspire: 'ironspire', gloomfen: 'gloomfen' });
 
 // exit id -> exit, over every map (a region's `entries` name exits)
 const EXIT = {};

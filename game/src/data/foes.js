@@ -1,4 +1,4 @@
-// Foe families of the Verdant Wilds (M2, M3), the Sunscorch Wastes (M4) and the Ironspire Peaks (M5). Art keys match the shared vocabulary.
+// Foe families of the Verdant Wilds (M2, M3), the Sunscorch Wastes (M4), the Ironspire Peaks (M5) and the Gloomfen Marsh (M6). Art keys match the shared vocabulary.
 //
 // Stats are for level 1; rules/foe.js scales them by level, gear tier, Omens and the Waking.
 // Each family has a MOVE TABLE read like a D&D random table: the foe rolls its intent die
@@ -931,6 +931,41 @@ const TALLY_IRON = {
   },
 };
 
-export const FOES = deepFreeze({ ...VERDANT, ...TALLY_SUN, ...SUNSCORCH, ...TALLY_IRON, ...IRONSPIRE });
+// ---- M6: the Gloomfen Marsh (spec §3.2; owner P4). STUBS from the M6 scaffold: each borrows an earlier
+// family's numbers, moves and look until P4 writes the real family in its place (with `art: <its id>`,
+// which P6 draws; art-keys.test.mjs fails for a new key until both have landed).
+const stub = (id, name, from, o = {}) => ({ ...from, id, name, stub: true, variants: {}, ...o });
+const stubHolder = (name, hp, o = {}) => ({ name, tier: 'relic-bearer', hp, ...o });
+const GLOOMFEN = {
+  'mire-leech': stub('mire-leech', 'Mire Leech', VERDANT.rotgrub, { aspect: 'blight', text: 'A leech as long as your arm, black and patient. It drinks.' }),
+  'marsh-light': stub('marsh-light', 'Marsh-Light', VERDANT.glowcap, { kind: 'spirit', aspect: 'radiant', text: 'A light over the water that the locals know better than to follow.' }),
+  'lamp-moth': stub('lamp-moth', 'Lamp-Moth', VERDANT.briarling, { kind: 'beast', aspect: 'radiant', text: 'A moth the size of a hand, drawn to the Lantern Mother\'s light.' }),
+  'blackwater-gar': stub('blackwater-gar', 'Blackwater Gar', VERDANT.thornhound, { aspect: 'tide',
+    variants: { 'old-jaws': stubHolder('Old Jaws', 80) },
+    text: 'A gar out of the Blackwater, all teeth and no manners. It leaps.' }),
+  'bog-hag': stub('bog-hag', 'Bog-Hag', VERDANT['feral-druid'], { aspect: 'blight',
+    variants: { grue: stubHolder('Mother Grue', 70) },
+    text: 'A hag of the eastern bogs, stirring something in a pot you should not look into.' }),
+  'willow-wight': stub('willow-wight', 'Willow-Wight', VERDANT.sapwight, { kind: 'plant', aspect: 'verdant',
+    variants: { grandfather: stubHolder('Grandfather Willow', 90) },
+    text: 'A willow that got up and walked when Willowmurk\'s wards failed.' }),
+  drowned: stub('drowned', 'Drowned', IRONSPIRE['rime-wraith'], { kind: 'undead', aspect: 'tide',
+    variants: { 'bell-ringer': { name: 'Drowned Bell-Ringer', hp: 34 }, choir: { name: 'Drowned Chorister', hp: 30 }, cantor: stubHolder('The Drowned Cantor', 72) },
+    text: 'One of Misthollow\'s drowned, still going about its business under the water.' }),
+  hodge: stub('hodge', 'Hodge', VERDANT.tamsin, { unique: true, relics: ['unfair-toll'],
+    text: 'The toll-keeper of Rotbridge: not actually a troll, just an extremely unpleasant old man.' }),
+  'lantern-mother': stub('lantern-mother', 'The Lantern Mother', VERDANT.rotwarden, { kind: 'undead', aspect: 'radiant', unique: true, relics: ['lamplighters-lantern', 'mourning-veil'],
+    text: 'The last lamplighter of Misthollow, leading children out along the boardwalk again.' }),
+  'blackwater-leviathan': stub('blackwater-leviathan', 'The Blackwater Leviathan', VERDANT.rotwarden, { kind: 'beast', aspect: 'tide', unique: true, relics: ['corvus-harpoon', 'deep-pearl'],
+    text: 'The thing that lives in the Blackwater, as long as the channel is wide, chained and maddened.' }),
+};
+
+// the Tallymen of the Gloomfen: new variants of the M3 families (spec §3.2)
+const TALLY_GLOOM = {
+  tallyman: { ...TALLY_IRON.tallyman, variants: { ...TALLY_IRON.tallyman.variants, 'salvage-master': stubHolder('The Salvage-Master', 70), bargemaster: stubHolder('The Bargemaster', 74) } },
+  smuggler: { ...TALLY_IRON.smuggler, variants: { ...TALLY_IRON.smuggler.variants, reedcutter: { name: 'Reed-Cutter', hp: 22 }, diver: { name: 'Salvage Diver', hp: 22 }, bargehand: { name: 'Bargehand', hp: 24 } } },
+};
+
+export const FOES = deepFreeze({ ...VERDANT, ...TALLY_SUN, ...SUNSCORCH, ...TALLY_IRON, ...IRONSPIRE, ...TALLY_GLOOM, ...GLOOMFEN });
 
 export const FOE_IDS = Object.freeze(Object.keys(FOES));

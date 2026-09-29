@@ -17,7 +17,7 @@ export default deepFreeze({
     '#::::::::::::::::#', // 1
     '#::::::::::::::::#', // 2
     '#:______________:#', // 3
-    '+:______________:#', // 4
+    '+:______________:+', // 4
     '#::::::::::::::::#', // 5
     '#::::::::::::::::#', // 6
     '####*###*###*###*#', // 7
@@ -37,11 +37,13 @@ export default deepFreeze({
     { id: 'pedestal-cutters-pick', kind: 'pedestal', relic: 'cutters-pick', at: [11, 5] },
     { id: 'pedestal-rime-crozier', kind: 'pedestal', relic: 'rime-crozier', at: [13, 5] },
     { id: 'pedestal-hushweave-cowl', kind: 'pedestal', relic: 'hushweave-cowl', at: [15, 5] },
-    { id: 'gal2-plaque', kind: 'sign', at: [16, 4], look: 'plaque', text: 'The Ironspire Gallery: fourteen pedestals of Ironhold granite, cut for the third page of the Codex. They are cold to the touch.' },
+    { id: 'gal2-plaque', kind: 'sign', at: [16, 1], look: 'plaque', text: 'The Ironspire Gallery: fourteen pedestals of Ironhold granite, cut for the third page of the Codex. They are cold to the touch.' },
   ],
   exits: [
     { id: 'gal2-w', area: [0, 4, 0, 4], to: 'keep-gallery', anchor: 'from-gallery-2' },
+    // M6: the door to the Gloomfen Gallery, the reliquary's fourth room (M6 spec §2.4)
+    { id: 'gal2-e', area: [17, 4, 17, 4], to: 'keep-gallery-3', anchor: 'from-gallery-2' },
   ],
-  anchors: { 'from-gallery': [1, 4, 'e'] },
+  anchors: { 'from-gallery': [1, 4, 'e'], 'from-gallery-3': [16, 4, 'w'] },
   roam: null,
 });

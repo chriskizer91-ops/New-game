@@ -16,4 +16,7 @@ export const LETTERS = deepFreeze({
   // M5: the Ironspire. After Mother Anvil (his "first daughter"), and after Hush's heartbeat slows.
   'brand-of-iron': { text: 'Five coals, and my hammer off my first daughter. Keep it, little Warden. I have a bigger one now. Give Hild my love. — U.' },
   'brand-of-frost': { text: 'Six. Did you feel it slow, down on the ice? Every coal you light, it beats a little slower. Keep going, little Warden. — U.' },
+  // M6: the Gloomfen (STUBS from the M6 scaffold; P3 writes them). The seventh coal, then the eighth.
+  'brand-of-lanterns': { text: 'Seven. The fen\'s children are home, and you are a lamp in a window, little Warden. Moths come to lamps. — U.' },
+  'brand-of-the-deep': { text: 'Eight. All of them lit, and the fen has stopped singing. Come down to the Hearth, little Warden. I kept you a chair. — U.' },
 });
