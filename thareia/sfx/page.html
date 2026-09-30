@@ -83,13 +83,14 @@ li.row[data-vote="no"] { border-color: color-mix(in srgb, var(--no) 55%, var(--l
 (function () {
 /*BUNDLE*/
 const { SFX: SOUNDS, sfxInit, playSfx, MUSIC, musicPlay, musicStop, musicPlaying } = window.TH;
-const SFX = [...MUSIC.map(m => ({ ...m, id: 'music-' + m.id, mid: m.id, cat: 'Music (new)', music: true })), ...SOUNDS];
+const SFX = [...MUSIC.map(m => ({ ...m, id: 'music-' + m.id, mid: m.id, cat: 'Music', music: true })), ...SOUNDS];
 
 const votes = {};           // id -> { vote: 'yes' | 'no', note? }
 let db = null, show = 'all';
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const cats = [...new Set(SFX.map(s => s.cat))];
+const rank = c => c.startsWith('Music') ? 0 : c.endsWith('(new)') ? 1 : 2;
+const cats = [...new Set(SFX.map(s => s.cat))].sort((a, b) => rank(a) - rank(b));
 
 function render() {
   const host = $('list'); host.innerHTML = '';
