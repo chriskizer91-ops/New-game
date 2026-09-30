@@ -228,7 +228,9 @@ const GLOOM_REACH = GLOOM_ROUTE.slice(0, GLOOM_ROUTE.indexOf('wreck-fire') + 1);
 const GLOOM_LEAD_ROUTES = {
   willow: { from: [...GLOOM_START.slice(0, GLOOM_START.indexOf('wm-wights') + 1), 'willow-hearth'], route: ['wm-willow'] },
   hodge: { from: GLOOM_START, route: ['hodge'] },
-  grue: { from: GLOOM_WEST, route: ['patrol:lanternfen', 'lf-moths', 'fen-cairn', 'grue-hollow'] },
+  // batch 3: the painting puts Mother Grue's hut before the Lanternfen's first gate, behind only its witch-ward, a
+  // few steps from Bogmire: past the zone's patrol, back to the Stilt Hearth to rest, then her
+  grue: { from: GLOOM_WEST, route: ['patrol:lanternfen', 'stilt-hearth', 'grue-hollow'] },
   cantor: { from: [...GLOOM_MISTHOLLOW, 'mh-salvage', 'bell-hearth'], route: ['db-choir', 'cantor'] },
   jaws: { from: [...GLOOM_REACH, 'br-barge', 'wreck-fire'], route: ['old-jaws'] },
 };

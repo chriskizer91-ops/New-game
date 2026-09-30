@@ -217,7 +217,7 @@ export const QUESTS = deepFreeze({
   'dead-tongue': {
     id: 'dead-tongue', name: 'The Dead Tongue', kind: 'side', giver: 'corvus', start: { flag: 'met-corvus' },
     steps: [
-      step('Take the sealed chest from the Tallymen\'s salvage camp.', { beaten: 'mh-salvage' }, 'misthollow', 'mh-salvage'),
+      step('Take the sealed chest from the Tallymen\'s salvage crew, who have chained the old high street.', { beaten: 'mh-salvage' }, 'misthollow', 'mh-salvage'),
       step('Have Elder Moss read its warnings, in Willowmurk.', { flag: 'chest-read' }, 'willowmurk', 'moss'),
       step('Tell Corvus what the chest says.', { flag: 'chest-told' }, 'misthollow', 'corvus'),
     ],

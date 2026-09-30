@@ -1368,7 +1368,7 @@ export const HEARTH_LOOKS = Object.freeze({
   'camp-fire': 'painted', // M5: the Last Camp's ring of stones is in the map's painting; the sprite is only its fire
   // M6: the Gloomfen's eight
   'reed-shrine': 'reedshrine', 'willow-hearth': 'mootring', 'toll-lamp': 'tollpost', 'stilt-hearth': 'firebasket', 'fen-cairn': 'fencairn',
-  'bell-hearth': 'bellbowl', 'wreck-fire': 'hullfire', 'flats-beacon': 'ironbeacon',
+  'bell-hearth': 'bellbowl', 'wreck-fire': 'painted', 'flats-beacon': 'painted', // batch 3: the beached hull and the beacon are in their maps' paintings
 });
 const OBJ_SIZE = { gate: [16, 24], crownwall: [16, 24], thornwall: [16, 24], pedestal: [16, 24], board: [16, 24], bellframe: [16, 24], lookout: [16, 32], door: [16, 24], 'barred-gate': [16, 24] };
 Object.assign(OBJ_SIZE, { 'dune-glass': [16, 24], 'vault-seal': [16, 24], 'glass-spire': [16, 24], 'vault-door': [16, 24] });
@@ -2129,7 +2129,7 @@ function gloomObjectParts(F, kind, st, f, o, W, H) {
       F.add({ mat: 'w.char', prof: 'flat', grp: 'soot', noShadow: true, noOutline: true, shapes: [C([6.8, 5.8], [9.2, 6.6], .3)], tex: () => .8 });
       return;
     }
-    case 'barge': { // a Tallyman barge moored at the creek mouth: grey-tarred, crates and a chain on deck, their mark on the side
+    case 'barge': { // a Tallyman barge moored by its chain across the towpath: grey-tarred, crates and a chain on deck, their mark on the side
       F.add({ mat: 'w.blackwater', prof: 'flat', grp: 'wake', noShadow: true, noOutline: true, shapes: [E([24, B - 2.6], 23, 2.8)], tex: q => -2.62 + ((q.x * 2 + q.y) % 11 === 0 ? .6 : 0) });
       F.add({ mat: 'w.tarboards', prof: 'round', bw: 2, grp: 'hull', shapes: [P([[1.4, 13], [46.6, 13], [45.4, 21.6], [42, 24.6], [6, 24.6], [2.6, 21.6]])], tex: q => (q.y === 17 || q.y === 21 ? -1 : 0) });
       F.add({ mat: 'w.boards', prof: 'bevel', bw: .8, grp: 'deck', shapes: [RECT(2, 10.4, 46, 14)], tex: q => (q.x % 5 === 0 ? -1 : 0) });

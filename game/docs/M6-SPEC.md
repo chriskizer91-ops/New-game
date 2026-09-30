@@ -19,7 +19,7 @@ M6 is built **road-first** on the Milestone 4.5 contract (`docs/M45-SPEC.md`), a
 | A3 | **Road-first.** Every M6 map declares its `roads`; every fight on `GLOOM_PATH` holds a gate (or a Brand); lead fights guard their side roads; no route or lead fight is a roaming pack. `test/road.test.mjs` covers the new maps with no new code (its map list grows). Zone patrols roam as before, and a caught weak pack is a full battle. Every fight is a full battle with the dice, and Auto starts off, as in M4.5 and M5. |
 | A4 | **One order.** The Brand of Lanterns (the Lantern Mother, in the eastern bogs) comes first; the long boardwalk's east end, onto the Misthollow Ruins, opens with it. Then the Brand of the Deep (the Blackwater Leviathan, on the Tidal Flats). |
 | A5 | **The ways in.** Mossfall's fen stair (`mf-fen-stair`) opens once the third council is sat (`council-3-done`), onto the Murkway: Willowmurk's safe paths. The Keep's south-west gate (`keep-sw`) opens onto the Blackwater Causeway once the Blackwater falls (`{ brand: 'brand-of-the-deep' }`): the way home, as the Highfold was M5's. Nothing past the fourth council opens: Act III is the next chapter. |
-| A6 | **Size.** The game keeps M5's limits (warns above 2.5 MB, fails above 3.2 MB; `--minify` in reserve). The player's paintings have their own limit, set by the player's answer on batch 2 (§6.3): raise the budget and keep full detail. It is 24 MB (the 43 painted maps take about 19.5 MB), and no package raises or lowers it. The download is then about 22 MB; a claude.ai page holds 16 MB, so a page for the phone, if the player asks for one, is a separate build with lighter paintings (the download keeps full detail). |
+| A6 | **Size.** The game keeps M5's limits (warns above 2.5 MB, fails above 3.2 MB; `--minify` in reserve). The player's paintings have their own limit, set by the player's answer on batch 2 (§6.3): raise the budget and keep full detail. It was 24 MB for batch 2 (the 43 painted maps took about 20 MB); batch 3 painted the Gloomfen at full detail too, so it is 32 MB (§6.3), and no package raises or lowers it. The download is then about 30 MB; a claude.ai page holds 16 MB, so a page for the phone, if the player asks for one, is a separate build with lighter paintings (the download keeps full detail). |
 | A7 | **Building** as in M5: the lead builds the rules (P1) and integrates; agents build maps, story, foes and relics, art and UI in parallel with disjoint files (§7), never run git, build into private folders and write `game/notes/M6-<pkg>.md`. Before a package is committed, the lead lists the assertions its test files lost against the base (the M5 lesson). |
 | A8 | **Ids are fixed by this spec.** A package may add ids only inside its own files; a missing id is asked for in its notes. |
 | A9 | **Frozen, as before:** `art/heroes.js`, `art/hero-looks.js`, the card reveal, the M2 encounter and spawn arrays, and every delivered file (M2, M3, M4, M4.5, M5). Earlier content changes only where §2.4 says. |
@@ -49,24 +49,26 @@ M6 is built **road-first** on the Milestone 4.5 contract (`docs/M45-SPEC.md`), a
 
 | id | Name | Biome | Size | Zone | Music | Role |
 |---|---|---|---|---|---|---|
-| `murkway` | The Murkway | fen | 44×40 | `murkway` | fen | Mossfall's fen stair → Willowmurk: the safe paths through the bog |
-| `willowmurk` | Willowmurk | willow-village | 30×26 | — | town | the hidden village; Elder Moss; the failing wards; hub 1 |
-| `rotbridge` | Rotbridge | channel | 40×28 | — | fen | the one crossing of the Blackwater Channel: Hodge's toll-bar, Tamsin's duel, the fall |
-| `bogmire` | Bogmire | stilt-town | 34×28 | — | town | the stilt town; Mayor Gretch, Nettie; the Bogmire board; hub 2 |
-| `lanternfen` | The Lanternfen | bog (fog) | 40×32 | `lanternfen` | fen | Bogmire's eastern bogs, where the children follow the lights; Mother Grue |
-| `mothers-hollow` | The Mother's Hollow | drowned-grove (dark) | 22×20 | — | dungeon | the Lantern Mother (Champion); the sleeping children |
-| `long-boardwalk` | The Long Boardwalk | boardwalk | 56×18 | `boardwalk` | fen | Bogmire → the Misthollow Ruins, on stilts over open water (east end: the Brand of Lanterns, A4) |
-| `misthollow` | The Misthollow Ruins | sunken-city (fog) | 36×32 | `misthollow` | fen | the sunken city; the salvage camp; Corvus; the stair down to the belfry |
-| `drowned-belfry` | The Drowned Belfry | belfry (dark) | 22×24 | — | dungeon | beneath Misthollow: the drowned choir, the Drowned Cantor; the Sleeper under the floor |
-| `blackwater-reach` | The Blackwater Reach | channel | 48×26 | `blackwater` | fen | Misthollow → the Tidal Flats, down the lower channel among sunk boats; Old Jaws |
-| `tidal-flats` | The Tidal Flats | mudflat | 40×30 | `tidal-flats` | fen | the channel mouth: the Tallymen's barge-camp and the Leviathan's deep (Champion) |
-| `causeway` | The Blackwater Causeway | causeway | 48×16 | `causeway` | road | Bogmire ↔ the Keep's south-west gate, once the Blackwater falls (A5) |
+| `murkway` | The Murkway | fen | 45×36 | `murkway` | fen | Mossfall's fen stair → Willowmurk: the safe paths through the bog |
+| `willowmurk` | Willowmurk | willow-village | 42×28 | — | town | the hidden village; Elder Moss; the failing wards; hub 1 |
+| `rotbridge` | Rotbridge | channel | 42×28 | — | fen | the one crossing of the Blackwater Channel: Hodge's toll-bar, Tamsin's duel, the fall |
+| `bogmire` | Bogmire | stilt-town | 42×28 | — | town | the stilt town; Mayor Gretch, Nettie; the Bogmire board; hub 2 |
+| `lanternfen` | The Lanternfen | bog (fog) | 45×30 | `lanternfen` | fen | Bogmire's eastern bogs, where the children follow the lights; Mother Grue |
+| `mothers-hollow` | The Mother's Hollow | drowned-grove (dark) | 30×20 | — | dungeon | the Lantern Mother (Champion); the sleeping children |
+| `long-boardwalk` | The Long Boardwalk | boardwalk | 74×20 | `boardwalk` | fen | Bogmire → the Misthollow Ruins, on stilts over open water (east end: the Brand of Lanterns, A4) |
+| `misthollow` | The Misthollow Ruins | sunken-city (fog) | 42×28 | `misthollow` | fen | the sunken city; the salvage camp; Corvus; the stair down to the belfry |
+| `drowned-belfry` | The Drowned Belfry | belfry (dark) | 22×33 | — | dungeon | beneath Misthollow: the drowned choir, the Drowned Cantor; the Sleeper under the floor |
+| `blackwater-reach` | The Blackwater Reach | channel | 45×30 | `blackwater` | fen | Misthollow → the Tidal Flats, down the lower channel among sunk boats; Old Jaws |
+| `tidal-flats` | The Tidal Flats | mudflat | 45×30 | `tidal-flats` | fen | the channel mouth: the Tallymen's barge-camp and the Leviathan's deep (Champion) |
+| `causeway` | The Blackwater Causeway | causeway | 36×24 | `causeway` | road | Bogmire ↔ the Keep's south-west gate, once the Blackwater falls (A5) |
 
 Every map uses the M3 map format, is registered in `MAPS`, has `region: 'gloomfen'`, sets `lore` (the Atlas's
 "you are here", §2.5) and declares `roads` (A3). The Lanternfen and the Misthollow Ruins set `fog: true` (§4.4); the
 Mother's Hollow and the Drowned Belfry set `dark: true`. A fourth reliquary room joins the Keep:
-**`keep-gallery-3`, the Gloomfen Gallery** (18×8), through a door on the east wall of the Ironspire Gallery; Codex
-Page IV's 14 pedestals stand on its rows 2 and 5 in codex order.
+**`keep-gallery-3`, the Gloomfen Gallery** (18×12), through a door on the east wall of the Ironspire Gallery; Codex
+Page IV's 14 pedestals stand on its rows 4 and 7 in codex order, either side of its runner. The sizes are the
+paintings' own (batch 3, §6.3): every map here is traced from its painting, so the tables below give each place's
+role, and the maps' own modules and `notes/M6-B3-*.md` give where things stand.
 
 Geography follows the player's regional painting in spirit (the long boardwalk from Bogmire to Misthollow, the
 channel down to the Tidal Flats and the Aethersea) and the Atlas's markers for "you are here". Where the two
@@ -490,12 +492,18 @@ starter's Art keeps faces 8–11, as in her earlier duels. `$rival:rotbridge` re
   `test/paint.test.mjs` fails when a painted map's rows change after it. P2 edits three painted maps (§2.4: the
   Keep, Mossfall, the Ironspire Gallery) and keeps their rows as they are; any row change there is checked on the
   grid overlay and restamped by the lead (`tools/paint-import.mjs --stamp=<id>`).
-- **Batch 3, requested** (`art-requests/batch-3.md`, written once P2's maps were final): the 13 new maps (the
-  Gloomfen's twelve and the Gloomfen Gallery) draw from their tiles until the player paints them. 16 pictures (the
-  Murkway in two panels, the long boardwalk in three), prompted in the style of the player's own whole-map paintings
-  (`paint-prompts.mjs --style=atlas`: the layout reference and one of the player's paintings as the style). At the
-  batch-2 density they would add about 5 MB, past the 24 MB limit: the player is asked about the budget when they
-  arrive.
+- **Batch 3, done.** The player painted all 16 pictures (`art-in/batch-3/`: the Murkway in two halves, the long
+  boardwalk in three thirds). Their image tool could not take the layout references, so they were painted from
+  `art-requests/batch-3/places.md` in layouts of their own, which the player approved. Every Gloomfen map and the
+  Gloomfen Gallery is therefore **traced from its painting**, as the East Road was (M5 A11). The map takes the
+  painting's own shape (the sizes in §2.1). Its tiles only say what is solid (`overTiles: false`). Every id, road, gate
+  order and lock keeps its role, and moves to the painted place that suits it. `art-in/batch-3/panels.json` gives each
+  map's size and where its pictures lie. The halves and thirds are joined across three-tile blends at seams where their
+  paths meet. Things the painting shows (the crane, the sunk boats, the wrecks, the always-lit ward-stones) are
+  `look: 'painted'` signs. The Wreck Fire and the Flats Beacon draw only their flames (hearth look `painted`). At
+  full detail the 13 add about 7 MB, so the paint limit goes from 24 MB to 32 MB (A6; the player's batch-2 answer:
+  raise the budget and keep full detail). One lead moved: Mother Grue's hut stands before the Lanternfen's first
+  gate now (RULES.md §12: 24%).
 - The title backdrop and the Gloomfen card's still (A10), as `CUTS`.
 
 ## 7. Work packages

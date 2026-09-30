@@ -213,7 +213,7 @@ test('world tables agree with the maps: the 33 Hearthfires, the 17 places, the r
   for (const m of Object.values(MAPS)) for (const [lx, ly, tx, ty] of m.lore) assert.ok(inView([lx, ly]) && inside(m, tx, ty), `${m.id} lore`);
 });
 
-test('the reliquary: a pedestal per relic in codex order, Page I on rows 10 and 12 of the Great Hall, Pages II, III and IV on rows 2 and 5 of their Galleries', () => {
+test('the reliquary: a pedestal per relic in codex order, Page I on rows 10 and 12 of the Great Hall, Pages II and III on rows 2 and 5 of their Galleries, Page IV on rows 4 and 7 of the Gloomfen Gallery', () => {
   const byCodex = Object.values(RELICS).sort((a, b) => a.codex - b.codex).map(r => r.id);
   const room = (mapId, ys, from, to) => {
     const peds = MAPS[mapId].entities.filter(e => e.kind === 'pedestal');
@@ -227,7 +227,7 @@ test('the reliquary: a pedestal per relic in codex order, Page I on rows 10 and 
   room('keep-hall', [10, 12], 1, 24);
   room('keep-gallery', [2, 5], 25, 38);
   room('keep-gallery-2', [2, 5], 39, 52);
-  room('keep-gallery-3', [2, 5], 53, 66);
+  room('keep-gallery-3', [4, 7], 53, 66);
   assert.equal(byCodex.length, 66);
 });
 

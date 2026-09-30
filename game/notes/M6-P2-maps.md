@@ -114,6 +114,11 @@ The names are fixed; each is used on the maps as listed (ids in the per-map list
 
 ## Per map: ids and places (for P3, P5, P7)
 
+**Superseded by batch 3 for places:** every Gloomfen map was traced from the player's painting afterwards, with new
+sizes and positions (`docs/M6-SPEC.md` §6.3). The ids and roles below still hold; where each thing stands now is in the
+maps' modules and in `notes/M6-B3-1.md` to `M6-B3-7.md`.
+
+
 Coordinates are tiles (x,y). Every id below is final; a place may still move by a tile or two in the polish pass (the
 module's header comment always names it).
 - **murkway**: exits `mk-n` (fen stair, N) and `mk-s` (to Willowmurk, S-E); anchors `from-mossfall` (20,2),

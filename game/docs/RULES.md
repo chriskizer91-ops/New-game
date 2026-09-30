@@ -1038,12 +1038,14 @@ Brand held (party level 30.1 on average). The tables are M6's, with every M6 foe
   when it has a socket, else in the first socketed piece they wear: 800 of 800, 701 in the weapon). At the end of the
   region it walks back to the Toll-Lamp and fights Hodge.
 - `gloom-first-lead`: each lead's lair (`GLOOM_LEADS`) as the first thing done once the road reaches it, after the road
-  fight that guards its way in and a rest at the nearest fire (the review's finding: every lair stands past a road
-  gate): Grandfather Willow past the wights at the ward-gate, from the Willow Hearth; Hodge on arrival at Rotbridge (his
-  toll refused); Mother Grue past the moths, from the Fen Cairn (Waking 6); the Drowned Cantor (his choir first) past
-  the salvage chain, from the Belltower Fire, and Old Jaws past the barge, from the Wreck Fire, once the Brand of
-  Lanterns opens the long boardwalk (Waking 7). A party that walks on to Old Jaws's dock straight from the barge, with
-  no rest, is harder pressed (the review measured 52.5% at his old level).
+  fight that guards its way in (or the zone's patrol, where no road fight does) and a rest at the nearest fire (the
+  review's finding: a lair behind a road gate is taken past its fight): Grandfather Willow past the wights at the
+  ward-gate, from the Willow Hearth; Hodge on arrival at Rotbridge (his toll refused); Mother Grue past the Lanternfen's
+  patrol, from the Stilt Hearth (Waking 6: batch 3's painting puts her hut before the Lanternfen's first gate, behind
+  only its witch-ward, a few steps from Bogmire); the Drowned Cantor (his choir first) past the salvage chain, from the
+  Belltower Fire, and Old Jaws past the barge, from the Wreck Fire, once the Brand of Lanterns opens the long boardwalk
+  (Waking 7). A party that walks on to Old Jaws's dock straight from the barge, with no rest, is harder pressed (the
+  review measured 52.5% at his old level).
 - **Hodge is fought once** (`ONE_TRY`): a party that loses to him pays the day's price instead, and the bar opens either
   way (M6 spec A11), so his rows count one try per run, and nothing grinds or re-arms after it.
 - After a Gloomfen wipe the sim's party re-arms against the foe that beat it, as after an Ironspire wipe.
@@ -1057,7 +1059,7 @@ Brand held (party level 30.1 on average). The tables are M6's, with every M6 foe
 | `gloomfen`: Tamsin at Rotbridge first-try party win 55-70% | 64% (36% yield) |
 | `gloomfen-forged`: a forged party <= 20% against each Champion | the Lantern Mother 8.5%, the Leviathan 15.5% |
 | `gloomfen-forged`: a forged party at the region's end beats Hodge, but not always | 61.5% first-try win (party level 36.3) |
-| `gloom-first-lead`: each lead's lair taken first 15-25% | Grandfather Willow 23%, Mother Grue 22%, the Drowned Cantor 19.5%, Old Jaws 17.5% |
+| `gloom-first-lead`: each lead's lair taken first 15-25% | Grandfather Willow 23%, Mother Grue 24%, the Drowned Cantor 19.5%, Old Jaws 17.5% |
 | `gloom-first-lead`: Hodge on arrival 60-80% | 73.5% first-try wipe (party level 31.0) |
 | zero stuck runs | 0 in every mode (M3's, M4's, M5's and M6's) |
 | every M3, M4, M4.5 and M5 target unchanged | unchanged: every table from `m2` to `iron-first-lead`, and the Gate 4 and Gate 5 checks, are the M5 release's number for number (the tables above stand) |
@@ -1084,10 +1086,11 @@ Brand held (party level 30.1 on average). The tables are M6's, with every M6 foe
   (which a +8 weapon answers) give 73.5% and 61.5%. Toll Is Due uses DC 20: his own save DC at party level + 6 would be
   30 or more, which no hero could make.
 - The lairs: Mother Grue from 0% to 22% (level 12, 140 HP, atk 6, dmg 5, and the hags' Rot at 2d6: at 1d6 her hollow
-  was 0-10%); the Drowned Cantor from 3% to 15.5% (level 10, 180 HP, atk 7, dmg 6); Grandfather Willow from 15% to 21%
-  (170 HP, atk 6, dmg 4); Old Jaws from 63% at level 8 to 24.5% at 6. The review moved every lair behind the road fight
-  that guards it (a rest between): Grandfather Willow 23%, the Drowned Cantor 19.5%, and Old Jaws 25%, on the band's
-  edge, so he is level 5 with his two gars at 17 (was 18): 17.5% (5 with gars at 18: 22.5%; 6 with gars at 17: 23.5%).
+  was 0-10%; 24% once batch 3 put her hut before the first gate, taken from the Stilt Hearth); the Drowned Cantor from
+  3% to 15.5% (level 10, 180 HP, atk 7, dmg 6); Grandfather Willow from 15% to 21% (170 HP, atk 6, dmg 4); Old Jaws
+  from 63% at level 8 to 24.5% at 6. The review moved every lair behind the road fight that guards it (a rest
+  between): Grandfather Willow 23%, the Drowned Cantor 19.5%, and Old Jaws 25%, on the band's edge, so he is level 5
+  with his two gars at 17 (was 18): 17.5% (5 with gars at 18: 22.5%; 6 with gars at 17: 23.5%).
 - Tamsin at Rotbridge: the spec's spawn with the Swift, Ironclad and Thornskinned Omens; her kit's All In at 4d10 and
   Fen-Step at 2d10 took the party's first-try wins from 69.5% to 64%.
 - The road: a spawn's base level also picks its Omens (seeded), and on rabble Twinned and Emberblooded double a fight's
@@ -1173,8 +1176,8 @@ forged: 800 heroes' weapons at +8; 800 gems set (701 in the weapon)
 | hodge | hodge | 31.0 | 27% | 23.6 | 33% | 74% |  | 147 | 53 |  |  |
 | tamsin-rotbridge | tamsin | 31.0 | 68% | 18.2 | 51% | 0% | 32% | 0 |  |  |  |
 | patrol:lanternfen | (zone patrol, 58% ran) | 31.3 | 100% | 3.7 | 88% | 0% |  | 0 |  |  |  |
+| grue-hollow | bog-hag+bog-hag | 31.4 | 76% | 32.1 | 58% | 24% |  | 81 | 200 |  |  |
 | lf-moths | lamp-moth+lamp-moth+lamp-moth+lamp-moth | 31.4 | 100% | 3.0 | 82% | 0% |  | 0 |  |  |  |
-| grue-hollow | bog-hag+bog-hag | 31.7 | 78% | 32.2 | 60% | 22% |  | 61 | 200 |  |  |
 | lf-hags | bog-hag+bog-hag+mire-leech | 31.7 | 100% | 10.4 | 71% | 0% |  | 1 |  |  |  |
 | lantern-mother | lantern-mother | 31.9 | 63% | 32.2 | 49% | 37% |  | 258 | 800 |  |  |
 | patrol:lanternfen@back | (zone patrol, 58% ran) | 33.4 | 100% | 3.8 | 71% | 0% |  | 0 |  |  |  |
@@ -1189,7 +1192,7 @@ forged: 800 heroes' weapons at +8; 800 gems set (701 in the weapon)
 | br-barge | smuggler+smuggler+smuggler | 35.1 | 99% | 8.6 | 60% | 1% |  | 2 |  |  |  |
 | old-jaws | blackwater-gar+blackwater-gar+blackwater-gar | 35.2 | 83% | 15.3 | 56% | 18% |  | 40 | 200 |  |  |
 
-runs cleared 1000/1000 (stuck 0); end party level 33.4; grind fights/run 2.3
+runs cleared 1000/1000 (stuck 0); end party level 33.3; grind fights/run 2.4
 hero attack rolls: hit 63%, graze 11%, crit 12%, miss 10%, fumble 4%
-random/worn-gear drops by rarity: worn 389, wrought 1234, tempered 2484, runed 5970, storied 5271; named relics dropped: 408
+random/worn-gear drops by rarity: worn 390, wrought 1228, tempered 2453, runed 5929, storied 5217; named relics dropped: 408
 party level entering the Gloomfen: 30.1

@@ -86,14 +86,14 @@ export const HEARTHS = deepFreeze({
   'frost-cairn': H('frost-road', 28, 12, [1000, 180], 'The Frost Cairn', { cold: true }),
   // M6 (spec §2.5): the stands of the laid-out Gloomfen maps (M6 P2); each fire faces north from its stand. Their
   // Atlas points are spread so that all 33 fires keep 43 px apart in the realm view on a phone (test/shell.test.mjs).
-  'reed-shrine': H('murkway', 25, 14, [288, 487], 'The Reed Shrine'),
-  'willow-hearth': H('willowmurk', 15, 11, [457, 610], 'The Willow Hearth'),
-  'toll-lamp': H('rotbridge', 35, 13, [226, 620], 'The Toll-Lamp'),
-  'stilt-hearth': H('bogmire', 17, 16, [295, 480], 'The Stilt Hearth'),
-  'fen-cairn': H('lanternfen', 20, 17, [259, 526], 'The Fen Cairn', { cold: true }),
-  'bell-hearth': H('misthollow', 3, 11, [340, 689], 'The Belltower Fire', { cold: true }),
-  'wreck-fire': H('blackwater-reach', 34, 5, [245, 727], 'The Wreck Fire', { cold: true }),
-  'flats-beacon': H('tidal-flats', 25, 13, [124, 754], 'The Flats Beacon'),
+  'reed-shrine': H('murkway', 39, 26, [288, 487], 'The Reed Shrine'),
+  'willow-hearth': H('willowmurk', 21, 13, [457, 610], 'The Willow Hearth'),
+  'toll-lamp': H('rotbridge', 37, 9, [226, 620], 'The Toll-Lamp'),
+  'stilt-hearth': H('bogmire', 20, 13, [295, 480], 'The Stilt Hearth'),
+  'fen-cairn': H('lanternfen', 31, 12, [259, 526], 'The Fen Cairn', { cold: true }),
+  'bell-hearth': H('misthollow', 38, 14, [340, 689], 'The Belltower Fire', { cold: true }),
+  'wreck-fire': H('blackwater-reach', 27, 9, [245, 727], 'The Wreck Fire', { cold: true }),
+  'flats-beacon': H('tidal-flats', 18, 9, [124, 754], 'The Flats Beacon'),
 });
 export const HEARTH_IDS = Object.freeze(Object.keys(HEARTHS));
 

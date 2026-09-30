@@ -330,9 +330,9 @@ keys and reads the earlier ones, newest first, without ever writing or removing 
   `refs.json`); `tools/paint-prompts.mjs` writes its prompt sheet; `tools/paint-import.mjs` fits the
   returned paintings to their maps (joining panels) and writes the asset modules; `test/paint.test.mjs`
   checks them, and fails when a painted map's rows no longer match its stamp (check the grid overlay,
-  then `paint-import.mjs --stamp=<id>` keeps the picture and restamps it). Since M6 every map up to the
-  Ironspire is painted (`art-in/maps/`). The build counts the paintings apart from the game and fails
-  above 24 MB of them (M6 spec A6).
+  then `paint-import.mjs --stamp=<id>` keeps the picture and restamps it). Since M6 every map is painted
+  (`art-in/maps/`, and `art-in/batch-3/` for the Gloomfen, whose maps are traced from their paintings like the East Road). The build counts the paintings apart from the game and fails
+  above 32 MB of them (M6 spec A6).
 
 ## Art contract (`src/art/`)
 

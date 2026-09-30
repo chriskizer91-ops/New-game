@@ -12,9 +12,10 @@
 // are kept), so the delivered file's format never changes between builds.
 // Size rule (M5 spec A6, raised from M4's A3 for a third region): the game (the full document without
 // the player's paintings) warns above 2.5 MB and fails above 3.2 MB; the paintings (src/ui/assets/paint/
-// and cuts/, M5 spec A10) fail above 24 MB of their own (M6 spec A6: the player chose full detail for
-// every painted map over a smaller file). A claude.ai page holds 16 MB, so above that the fragment is
-// only a note: a page for the phone gets its own lighter copy of the paintings.
+// and cuts/, M5 spec A10) fail above 32 MB of their own (M6 spec A6: the player chose full detail for
+// every painted map over a smaller file; 24 MB for batch 2, 32 MB once batch 3 painted the Gloomfen). A
+// claude.ai page holds 16 MB, so above that the fragment is only a note: a page for the phone gets its own
+// lighter copy of the paintings.
 // Owner: WP8.
 import { build } from 'esbuild';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
@@ -68,7 +69,7 @@ async function bundle(minifyAll) {
   return { full, fragment, bytes: Buffer.byteLength(full), painted };
 }
 
-const WARN = 2.5 * 1024 * 1024, FAIL = 3.2 * 1024 * 1024, PAINT_FAIL = 24 * 1024 * 1024, PAGE = 16 * 1024 * 1024;
+const WARN = 2.5 * 1024 * 1024, FAIL = 3.2 * 1024 * 1024, PAINT_FAIL = 32 * 1024 * 1024, PAGE = 16 * 1024 * 1024;
 const kb = n => (n / 1024).toFixed(0) + ' KB';
 const fullMinify = argv.includes('--minify');
 const { full, fragment, bytes, painted } = await bundle(fullMinify);
@@ -78,7 +79,7 @@ if (game > FAIL) {
   process.exit(1);
 }
 if (painted > PAINT_FAIL) {
-  console.error(`build FAILED: the paintings are ${kb(painted)}, over their 24 MB limit (M6 spec A6)`);
+  console.error(`build FAILED: the paintings are ${kb(painted)}, over their 32 MB limit (M6 spec A6)`);
   process.exit(1);
 }
 await mkdir(out, { recursive: true });
