@@ -141,12 +141,45 @@ The player, after their testers played M4: "the way the game progressed at m2 wa
 2. **Tracing a batch of paintings in parallel:** seven builders, each in a private copy of `game/` (a `tar` copy, `node_modules` and `../art-in` linked), one or two maps each, with a written brief and a trace-sheet tool (the painting at the map's size with a labelled tile grid) and `paint-import --grid` to check rows against the picture. The lead merged each builder's maps, its Hearthfire lines in `world.js` and its notes, re-imported every painting (byte-identical to the builder's), and looked at every overlay.
 3. A picture's layout can differ from the request's references (the player's image tool may not take them); read the batch's README before fitting pictures to maps.
 
-### 3.4 Next
+### 3.4 In progress: Milestone 7, Act III (the Hearth Below)
 
-1. **Milestone 7, Act III** (the roadmap: the Hollow Council, the Unsmith, 3 endings, the post-game Heat ladder; `docs/DESIGN-BRIEF.md` §9, §13). Write `game/docs/M7-SPEC.md` first. What the game already set up for it: the four soot-sealed boxes and their letters (Qasim, Brundar, Gretch, Miravel; the eighth letter says "open them together"), Tamsin's fall and the violet-black relic (not yet in the Codex), Harrow Ironvein and the Worldforge plans (the Unsmith is strongly implied to be Harrow, never said), the Sleepers (Hush under Frostmere, Lull under the Belfry, one under the ash, a fourth unnamed), Fenwick's secret (no No. 000 poker exists yet), and the end-of-Act-II card, which names the Hollow Council. The brief's numbers do not fit the game as built (160 relics and 120 Codex entries for the true ending against 66 relics; 7 companions against 4 fixed heroes; 30 Omens against 6), so the spec must rescale them.
-2. **Delivery size:** M6 only just fit the 30 MiB a file sent in the chat may be (fully minified, §6 "Delivery"). Settle how M7 goes out in its spec.
-3. Step 0 as before: freeze `dist/aethermoor-m6.html` (pin its sha256), M7's own key `aethermoor.save.m7` reading M6 first, save version 6 (`AETH6.` codes), `dist/aethermoor-m7.html`.
-4. **Deliver** the same way (§6 "Delivery").
+The contract is `game/docs/M7-SPEC.md`. The player's answers are built into its Part A: Act III now and the post-game
+next; batch 4 painted from written descriptions; Tamsin fights beside the party as a guest; Kindle Anew needs No. 000,
+the Masterpiece and every page.
+
+**Done and pushed:**
+- **The spec.**
+- **Batch 4's painting request:** `art-requests/batch-4.md` and `batch-4/places.md`. It was sent to the player. When
+  the pictures come, trace each map from its painting as batch 3's were (M6-STATUS §2.4, `tools/paint-sheet.mjs`).
+- **Step 0:** its own save `aethermoor.save.m7` (version 6, `AETH6.`, the M6 save offered first); `dist/aethermoor-m6.html`
+  is frozen, and the download is `dist/aethermoor-m7.html`.
+- **P1, the rules:**
+  - the hollow and Unsmith tiers;
+  - the guest (`side: 'ally'`);
+  - the Stolen Arts;
+  - the Masterpiece;
+  - Page V's `nos`, and the conditions and the effect for the endings;
+  - the Unmade and Hearthlit statuses and the `save` stat;
+  - a sign that opens a scene;
+  - `wakeAt`.
+  - See the headers of `rules/battle.js`, `ai.js`, `foe.js`, `codex.js`, `cond.js`, `story.js` and `forge.js`.
+- **The scaffold:** every Act III id stubbed, marked `STUB from the M7 scaffold` (`game/notes/M7-scaffold.md`).
+- **The delivery zip:** `tools/zip.mjs` (spec A6). M7's HTML will pass the 30 MiB a sent file may be, so it goes out
+  zipped. M6's file zips from 29.85 to 21.56 MiB.
+
+**Running:** six packages in parallel (P2 maps, P3 story, P4 foes, relics and balance, P5 overworld art, P6 battle and
+item art, P7 UI).
+- Each works in a private copy of the base `e86320f`, with the briefs in the lead's scratch folder.
+- Each package writes `game/notes/M7-<pkg>.md`.
+- A lost package is rebuilt from the spec §7 and its brief.
+
+**Then:**
+1. Merge each package (a branch cut from the base, merged into the M7 work).
+2. Tune with `tools/sim.mjs` to the spec's §8 bands.
+3. Two independent reviews.
+4. The gates: unit, e2e-world, -battle, -flow and -codes, performance and size.
+5. Deliver `dist/aethermoor-m7.html` zipped.
+6. Write `game/docs/M7-STATUS.md`, and update this file and `CLAUDE.md`.
 
 ## 4. Architecture and key decisions
 
