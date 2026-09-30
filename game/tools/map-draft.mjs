@@ -8,10 +8,12 @@
 //   node tools/map-draft.mjs thornway --png --phone=14,26   # also a phone-camera crop around (14,26)
 //   node tools/map-draft.mjs --lint                      # the design lint only, every map
 //   node tools/map-draft.mjs mossfall --png --art        # paint with the real tileset (src/art/tiles.js)
+//   node tools/map-draft.mjs worldforge --png --art --biome=forge   # ... in another biome's tiles (a stand-in, a new one)
 //
 // PNG options: --scale=16 (px per tile; with --art it is a zoom factor, default 2), --labels (label every
 // entity, not just the big ones), --art (the biome's real tiles, canopies and roofs from WP5's
-// tileAtlas, bundled on the fly with esbuild; entities stay as small markers),
+// tileAtlas, bundled on the fly with esbuild; entities stay as small markers), --biome=<id> (draw the map as if it
+// were that biome: a stand-in, or a biome whose tiles have just landed),
 // --reach=all|start (shade walkable tiles a flood fill from START_AT cannot reach: 'all' uses every
 // key and the end-game story state, 'start' a level-1 party with only its starter relic).
 // The PNG is drawn in headless Chromium (Playwright is global: export NODE_PATH=$(npm root -g)).
@@ -32,8 +34,11 @@
 // yield), the four Ironspire locks have short names, and the Ironspire biomes draw as snow, rock or ice. M6: the
 // 'all' state holds the Gloomfen's Brands and flags too (the third council, Hodge's toll, the fourth duel's yield),
 // the four Gloomfen locks have short names, and the Gloomfen biomes draw as marsh, planks, sand or drowned stone
-// (black water, dark mud, green reeds).
-// Owner: WP3; M4 P2; M5 P2; M6 P2.
+// (black water, dark mud, green reeds). M7: the 'all' state holds the fourth and fifth councils (the vault stair down
+// to the Hearth Below), the Act III biomes draw as violet-grey granite, grey ash over a red drop, black slag round a
+// dark hollow, and iron plates by molten metal, a prop drawn on an area (the Great Hall's vault stair and boxes) is
+// boxed, and --biome previews a map in another biome's tiles.
+// Owner: WP3; M4 P2; M5 P2; M6 P2; M7 P2.
 import { createRequire } from 'node:module';
 import { execSync } from 'node:child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -196,14 +201,17 @@ function paint(d) {
     mountain: '#a7aea9', monastery: '#c3c6c2', scree: '#9d9a93', 'dwarf-hall': '#6c6660', forge: '#4a3c36', outpost: '#b9bcb6', tundra: '#dfe6ea', 'frozen-lake': '#d6e2e8', 'ice-cave': '#3f5a6e',
     // M6: the Gloomfen (dark marsh, planks over black water, sand at the sea, drowned stone below)
     'willow-village': '#4f6b3a', channel: '#556b3f', 'stilt-town': '#5a4a36', bog: '#4d5a36', 'drowned-grove': '#2f3b2c', boardwalk: '#4a5a44',
-    'sunken-city': '#7d837c', belfry: '#34413d', mudflat: '#b7a782', causeway: '#6f7a5e' }[d.biome];
+    'sunken-city': '#7d837c', belfry: '#34413d', mudflat: '#b7a782', causeway: '#6f7a5e',
+    // M7: the Hearth Below (the Council's violet-grey granite, grey ash, black slag, iron plates)
+    council: '#4a4552', 'hearth-roots': '#6e6a66', chains: '#2a2628', worldforge: '#3a302c' }[d.biome];
+  const HOT = d.biome === 'worldforge', DEEP = d.biome === 'hearth-roots' || d.biome === 'chains'; // molten '~', a red glow below 'x'
   const GRASS = SUN || '#5b8c3a';
   const ICY = ['mountain', 'monastery', 'scree', 'outpost', 'tundra', 'frozen-lake'].includes(d.biome); // M5: 'm' is a snowdrift there
   // M6: in the Gloomfen 'm' is dark mud, '"' green reeds, and the water is black (the mudflat's sand stays sand)
   const FEN = ['willow-village', 'channel', 'stilt-town', 'bog', 'drowned-grove', 'boardwalk', 'sunken-city', 'belfry', 'mudflat', 'causeway'].includes(d.biome);
   const ground = { '.': GRASS, ',': GRASS, '"': FEN ? '#55693a' : SUN ? '#b9a35e' : '#4d7d31', '=': SUN ? '#a88a58' : '#c9a96c', ':': '#9c968b', _: '#8c6b49', m: ICY ? '#f6f9fb' : FEN ? '#43342a' : SUN ? '#e4cc98' : '#6d5333', f: '#2f4a3d', r: '#5e4731', k: '#2c2931',
-    T: GRASS, t: GRASS, Y: '#5b3f25', R: '#3d2b1d', o: GRASS, '#': '#6b6771', H: '#9b4531', '|': GRASS, '*': '#6b6771', '~': FEN ? '#1e3a45' : '#2f69a9', w: FEN ? '#3f6668' : '#5b99c9',
-    b: '#a27d51', '^': '#7b6551', v: GRASS, '+': '#5b3b1f', s: '#9b9b9b', i: '#1d1519', x: '#000000' };
+    T: GRASS, t: GRASS, Y: '#5b3f25', R: '#3d2b1d', o: GRASS, '#': '#6b6771', H: '#9b4531', '|': GRASS, '*': '#6b6771', '~': HOT ? '#e0701a' : FEN ? '#1e3a45' : '#2f69a9', w: FEN ? '#3f6668' : '#5b99c9',
+    b: '#a27d51', '^': '#7b6551', v: GRASS, '+': '#5b3b1f', s: '#9b9b9b', i: DEEP ? '#7a1e10' : '#1d1519', x: DEEP ? '#1a0604' : '#000000' };
   // pass 1: ground
   for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) {
     const ch = d.m.rows[y][x], px = X(x), py = Y(y);
@@ -293,7 +301,7 @@ function paint(d) {
       case 'pedestal': glyph('p', e.at[0], e.at[1], '#dcdce8', '#404060'); break;
       case 'lookout': glyph('Lk', e.at[0], e.at[1], '#50a0a0', '#fff'); break;
       case 'bellframe': glyph('Bf', e.at[0], e.at[1], '#50a0a0', '#fff'); break;
-      case 'prop': glyph('pr', e.at[0], e.at[1], 'rgba(200,200,200,0.6)', '#222', true); break;
+      case 'prop': { const [px, py] = e.at || e.area; if (e.area) box(e, 'rgba(210,210,210,0.8)', [3, 2], 2); glyph('pr', px, py, 'rgba(200,200,200,0.6)', '#222', true); if (d.labels || e.solid) big.push([e.prop, px, py, '#e0e0e0']); break; }
       case 'trigger': box(e, 'rgba(90,230,255,0.8)', [2, 3], 1); break;
       case 'light': g.strokeStyle = 'rgba(255,240,120,0.8)'; g.lineWidth = 1; g.beginPath(); g.arc(X(e.at[0]) + S / 2, Y(e.at[1]) + S / 2, e.radius * S, 0, Math.PI * 2); g.stroke(); break;
       default: glyph('?', e.at[0], e.at[1], '#888');
@@ -424,7 +432,7 @@ if (wantPng) {
     }
     const warn = [];
     for (const e of m.entities) if (e.kind !== 'trigger' && e.kind !== 'light') for (const [x, y] of cells(e)) if (y + 1 < m.h && m.rows[y + 1][x] === 'T') warn.push([x, y]);
-    const lines = [`${m.id}: ${m.name}  ${m.w}x${m.h}  ${m.biome} / zone ${m.zone || '-'} / Lv ${m.level}`, ''];
+    const lines = [`${m.id}: ${m.name}  ${m.w}x${m.h}  ${typeof flag('biome') === 'string' ? `${flag('biome')} (as)` : m.biome} / zone ${m.zone || '-'} / Lv ${m.level}`, ''];
     for (const e of m.entities) lines.push(`${e.kind.padEnd(10)} ${e.id}${e.at ? ` (${e.at})` : ''}${e.area ? ` [${e.area}]` : ''}${e.lock ? ` ${e.lock}` : ''}${e.mode ? ` ${e.mode}` : ''}`);
     lines.push('');
     for (const x of m.exits) lines.push(`exit       ${x.id} [${x.area}] ${x.sealed ? `sealed ${x.sealed.region}` : `> ${x.to}:${x.anchor}`}`);
@@ -432,11 +440,12 @@ if (wantPng) {
     if (m.roam) lines.push(`roam       max ${m.roam.max}: ${m.roam.rects.map(r => `[${r}]`).join(' ')}`);
     lines.push('');
     for (const w of warnings) lines.push(`! ${w}`);
-    const md = { id: m.id, biome: m.biome, w: m.w, h: m.h, rows: m.rows, entities: m.entities, exits: m.exits, anchors: m.anchors, roam: m.roam };
+    const biome = typeof flag('biome') === 'string' ? flag('biome') : m.biome;
+    const md = { id: m.id, biome, w: m.w, h: m.h, rows: m.rows, entities: m.entities, exits: m.exits, anchors: m.anchors, roam: m.roam };
     const src = art
       ? await page.evaluate(paintArt, { m: md, zoom: scale, legendW: 470, lines })
-      : await page.evaluate(paint, { m: md, biome: m.biome, scale, labels: !!flag('labels'), legendW: 470, dead: deadTiles, corr: corridors(m), warn, lines });
-    const file = path.join(outDir, `${id}${art ? '-art' : ''}.png`);
+      : await page.evaluate(paint, { m: md, biome, scale, labels: !!flag('labels'), legendW: 470, dead: deadTiles, corr: corridors(m), warn, lines });
+    const file = path.join(outDir, `${id}${art ? '-art' : ''}${biome !== m.biome ? `-${biome}` : ''}.png`);
     writeFileSync(file, Buffer.from(src.split(',')[1], 'base64'));
     console.log(`wrote ${file}${warnings.length ? `  (${warnings.length} lint note${warnings.length > 1 ? 's' : ''})` : ''}`);
     for (const w of warnings) console.log(`  - ${w}`);

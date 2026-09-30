@@ -53,14 +53,14 @@ export const ZONES = deepFreeze({
   blackwater: { id: 'blackwater', level: 18, sets: 'blackwater', backdrop: 'blackwater-reach' },
   'tidal-flats': { id: 'tidal-flats', level: 18, sets: 'tidal-flats', backdrop: 'tidal-flats' },
   causeway: { id: 'causeway', level: 16, sets: 'causeway', backdrop: 'causeway' },
-  // M7 (spec §2.6): the Ash Stair. A Waking-0 level like every zone's: at Waking 8 (no Brand is left to raise it) its
-  // rabble stand at about 38. STUB from the M7 scaffold: the backdrop is Scorchgate's until P6 paints `ash-stair`, and
-  // P4 tunes the level.
-  'ash-stair': { id: 'ash-stair', level: 22, sets: 'ash-stair', backdrop: 'scorchgate' },
+  // M7 (spec §2.6): the Ash Stair, fighting on its own map's backdrop. A Waking-0 level like every zone's: at Waking 8
+  // (no Brand is left to raise it) its rabble stand at about 38.
+  'ash-stair': { id: 'ash-stair', level: 22, sets: 'ash-stair', backdrop: 'ash-stair' },
 });
 
-// The Hearthfires (ten in the Wilds, seven in the Sunscorch, eight in the Ironspire, eight in the Gloomfen, two below the Keep). x, y, face is the STAND (where the party wakes, rests and arrives by
-// travel), facing the fire. `cold` fires start unlit (the cold-hearth lock).
+// The Hearthfires (ten in the Wilds, seven in the Sunscorch, eight in the Ironspire, eight in the Gloomfen, two below the
+// Keep). x, y, face is the STAND (where the party wakes, rests and arrives by travel), facing the fire. `cold` fires
+// start unlit (the cold-hearth lock).
 const H = (map, x, y, lore, name, o = {}) => ({ map, x, y, face: 'n', lore, name, cold: false, ...o });
 export const HEARTHS = deepFreeze({
   'hearthstone-keep': H('keep-hall', 12, 5, [540, 390], 'The Eternal Hearth'),
@@ -102,11 +102,12 @@ export const HEARTHS = deepFreeze({
   'bell-hearth': H('misthollow', 38, 14, [340, 689], 'The Belltower Fire', { cold: true }),
   'wreck-fire': H('blackwater-reach', 27, 9, [245, 727], 'The Wreck Fire', { cold: true }),
   'flats-beacon': H('tidal-flats', 18, 9, [124, 754], 'The Flats Beacon'),
-  // M7 (spec §2.5): the Hearth Below's two (STUB from the M7 scaffold: first places; M7 P2 lays them out). Their maps lie
-  // under the Keep, so both share the Keep's Atlas point, "below the Keep": the Below view shows them, and the realm
-  // view leaves them out (a phone's realm has no room for a 34th and 35th fire 43 px apart, test/shell.test.mjs).
-  'under-coal': H('ash-stair', 21, 7, [540, 390], 'The Under-Coal', { cold: true }),
-  'chain-fire': H('chained-deep', 26, 2, [540, 390], 'The Chain Fire'),
+  // M7 (spec §2.5): the stands of the laid-out Hearth Below maps (M7 P2). The Under-Coal lies in its niche in the Ash
+  // Stair's east wall, so its stand faces east; the Chain Fire's faces north. Their maps lie under the Keep, so both
+  // share the Keep's Atlas point, "below the Keep": the Below view shows them, and the realm view leaves them out (a
+  // phone's realm has no room for a 34th and 35th fire 43 px apart, test/shell.test.mjs).
+  'under-coal': H('ash-stair', 21, 7, [540, 390], 'The Under-Coal', { cold: true, face: 'e' }),
+  'chain-fire': H('chained-deep', 25, 2, [540, 390], 'The Chain Fire'),
 });
 export const HEARTH_IDS = Object.freeze(Object.keys(HEARTHS));
 

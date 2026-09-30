@@ -16,8 +16,9 @@
 // across the causeway and through the Keep's south-west gate to the Great Hall for the fourth council.
 // M7 (spec §2.2, §8; owner M7 P2): the same bot walks ACT3_PATH from a Gloomfen-complete save (all eight Brands, the four
 // councils sat, at the Keep, level 8 with only its starter relic): the fifth council plays as it enters the Great Hall,
-// then it goes down the vault stair, through the Hollow Council back to back, down the Ash Stair and across the Chained
-// Deep (where Tamsin joins), to the Unsmith at the Worldforge, and climbs home to the Great Hall.
+// then it goes down the vault stair, through the Hollow Council back to back (the stair behind it shut from Miravel's fall
+// until Gretch's), down the Ash Stair and across the Chained Deep (where Tamsin joins), to the Unsmith at the Worldforge,
+// and climbs home to the Great Hall.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { newGame, startBattle, resolveBattle, rest } from '../src/rules/gauntlet.js';
@@ -318,17 +319,23 @@ function makeBot(starter, { game = null, path = CRITICAL_PATH, start = null } = 
     return null;
   }
 
+  function follow(ids) {
+    for (const id of ids) {
+      log(`-> ${id}`);
+      if (id.startsWith('npc:')) talk(id.slice(4));
+      else if (id.startsWith('pay:')) pay(id.slice(4));
+      else reach(id);
+    }
+    return s;
+  }
+
   return {
     run() {
       enter(start || { map: START_AT.map, at: [START_AT.x, START_AT.y], face: START_AT.face });
-      for (const id of path) {
-        log(`-> ${id}`);
-        if (id.startsWith('npc:')) talk(id.slice(4));
-        else if (id.startsWith('pay:')) pay(id.slice(4));
-        else reach(id);
-      }
-      return s;
+      return follow(path);
     },
+    // M7: walk on to more targets from where the bot stands (the Act III walk stops between the Council's fights)
+    more(ids) { return follow(ids); },
     // walk (across maps) into `mapId`
     home(mapId) { log(`-> home to ${mapId}`); goToMap(mapId); return s; },
   };
@@ -513,10 +520,31 @@ function gloomfenSave(starter) {
 // ACT3_PATH as a player walks it: Tamsin, waiting before the forge door, is spoken to (and joins) past the Chain Fire
 const ACT3_WALK = ACT3_PATH.flatMap(id => (id === 'chain-fire' ? [id, 'npc:tamsin'] : [id]));
 
+// The stair back up to the vault, tried from its foot in the Hollow Hall: the event a step onto it gives
+function stairBack(game) {
+  const [x, y] = MAPS['hollow-hall'].anchors['from-vault'];
+  const walk = { map: 'hollow-hall', visit: 1, x, y, face: 's', tick: 0, rng: 1, grace: 0, gone: {}, roamers: [] };
+  const up = MAPS['hollow-hall'].exits.find(e => e.id === 'hh-up');
+  const dir = [['n', 0, -1], ['e', 1, 0], ['s', 0, 1], ['w', -1, 0]].find(([, dx, dy]) => x + dx >= up.area[0] && x + dx <= up.area[2] && y + dy >= up.area[1] && y + dy <= up.area[3]);
+  return move(game, walk, dir[0]).events.find(e => e.t === 'sealed' || e.t === 'exit');
+}
+
 for (const starter of ['hearthbrand', 'stillwater-lance', 'cairnmaul']) {
   test(`the Act III walk (${starter}): from a Gloomfen-complete save down the vault stair, ACT3_PATH to the Unsmith, then home`, () => {
-    const bot = makeBot(starter, { game: gloomfenSave(starter), path: ACT3_WALK, start: { map: 'keep', anchor: 'from-hall' } });
-    const s = bot.run();
+    // down to the Hollow Hall and through Miravel's soot line; then the stair behind has filled with ash, and it stays
+    // so until the last chair is empty (spec §2.2, A11)
+    const miravel = ACT3_WALK.indexOf('hollow-miravel') + 1, gretch = ACT3_WALK.indexOf('hollow-gretch') + 1;
+    const bot = makeBot(starter, { game: gloomfenSave(starter), path: ACT3_WALK.slice(0, miravel), start: { map: 'keep', anchor: 'from-hall' } });
+    let s = bot.run();
+    assert.equal(stairBack(gloomfenSave(starter)).t, 'exit', 'before the Council sits, the stair back is a way home');
+    const shut = stairBack(s.game);
+    assert.equal(shut.t, 'sealed', 'once Miravel falls, the stair back is shut');
+    assert.equal(`${shut.text} ${shut.hint}`, 'The stair behind you has filled with ash. The Hollow Council sits until the last chair is empty.');
+    s = bot.more(ACT3_WALK.slice(miravel, gretch - 1));
+    assert.equal(stairBack(s.game).t, 'sealed', 'still shut while Gretch holds the last chair');
+    s = bot.more(ACT3_WALK.slice(gretch - 1, gretch));
+    assert.equal(stairBack(s.game).t, 'exit', 'open again once the last chair is empty');
+    s = bot.more(ACT3_WALK.slice(gretch));
     const f = s.game.progress.flags;
     assert.equal(f.story['council-5-done'], true, 'the fifth council played in the Great Hall');
     assert.ok(s.exits.has('hall-down'), 'down the vault stair');

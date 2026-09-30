@@ -7,7 +7,13 @@
 //   oneWay  'ledge': walkable only when moving south, or in the direction of an exit on it
 //   noRoam  walkable for the player, never entered by roaming packs (doors, stairs)
 // Locks, gates, crownwalls, darkness and ichor are map entities, never tiles.
-// Owner: WP1.
+// Biomes give these characters their looks (art/tiles.js); a map names its biome, and the character's solidity never
+// changes with it. M5, M6 and M7 added biomes, not characters: art/tiles.js bakes a cell for every tile id into every
+// biome's atlas, so a new id would change every older atlas, which test/world-art.test.mjs pins pixel for pixel. M7's
+// four (the Hearth Below: `council`, `hearth-roots`, `chains` and `worldforge`) are described character by character
+// in notes/M7-P2-maps.md, and each Act III map's header says the same: its pillars, drops, molten metal, chains, slag
+// and iron plates are `Y`, `x`, `~`, `Y`, `k` and `=` in their biomes.
+// Owner: WP1; M7 P2 (the notes above).
 
 import { deepFreeze } from '../core/freeze.js';
 
