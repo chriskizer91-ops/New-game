@@ -323,6 +323,85 @@ const SCENES = {
   belfry: ['#######################', '##*####*#####*####*####', '##kkkkkkkkkkkkkkkkkkk##', '##kYkkkt_tkkt_tkkYkkk##', '##kkkkkk_____kkkkkkkk##', '##kk~~~kkkkfkkkk~~~kk##', '##kk~~~k:::::::k~~~kk##', '##kkwwwk:::::::kwwwkk##', '##kYkkkkkkkokkkkkkYkk##', '##kkkkkxxxxxxkkkkkkkk##', '#######s#####+#########', '#######################'],
   mudflat: ['~~~~~~~~~~~~~~~~~~~~~~~', '~~~~~~~~~~~~~~~~~~~~~~~', '~~.....~~~~bb~.~~~~~~~~', '....,,....wbb.w....o...', '..mmm....rrrr..........', '.mmmmm..=r..,,....HHHH.', '..mmm..==r......=.HHHH.', '......==.rrrrr..=.####.', '.o..===..t...r==..#__#.', '....=..""....r=...||||.', '..,,=.."""...ww=.......', '....=........www=...o..'],
   causeway: ['~~~~~~~~~~~~~~~~~~~~~~~', '~~~""~~~~~~~~~~~~~""~~~', '~~~~~~~~~~~~~~~~~~~~~~~', '~~~~~.T.~~~~~~~~~~~~~~~', ':::::::::,::::::::o::::', '=======================', '=======================', '::::,:::::::::::::::::t', '^^^^^^^^^^^^^^^^^^^^^^^', '~~~~~~~~~~~~~~~~~~~~~~~', '~~""~~~~~ww~~~mm~""~~~~', '~~~~~~~~~~~~~~~~~~~~~~~'],
+  // M7: the Hearth Below's biomes, cut from P2's four maps (the characters each place uses: notes/M7-P2-maps.md)
+  council: [
+    '##*kkkkk*######k#*#####',
+    '###kkkkk#######:::::###',
+    '###kkkkk######:::::,:##',
+    'Y#Y#YkY#Y*Y#Y:::::,:::*',
+    ':,:::::::::::::::::,::#',
+    ':::::::::,:::::RRR:sss#',
+    '::::::,::::::::RRR:sss#',
+    ':::,:::::,::,:,RRR:sss#',
+    '::::::::::::,:::::::::#',
+    'kY#Y*Y#Y#YkY#:::::::,:*',
+    'kkk#####kkkkk#:::::::##',
+    'kkk#####kkkkk##:::::###',
+  ],
+  'hearth-roots': [
+    '#####*ssss*############',
+    '######sssssssssssssss##',
+    '######sssssssssssssss##',
+    '######sssssssssssssssY#',
+    '######sssssssssssssssY#',
+    '###^xxxxxx^m.........##',
+    '...xxxxxxxx,....i....##',
+    '.,.xxxxxxxx....,.,,..k#',
+    '.,.xxxxxxxx..........##',
+    '.xxxxxxxxxx.,.....ii.*#',
+    '.xxxxxxxxxx.........o##',
+    '.xxxxxxxxxxxxYYYsssYYY#',
+    '.xxxxxxxxxxxxYYYsssYYY#',
+    '.xxxxxxxxxxxxxxYsssYYY#',
+  ],
+  chains: [
+    '#================######',
+    '=================######',
+    '=================######',
+    '=================######',
+    '^|=||||||||||====######',
+    '^^^^^^^^^^^#|====######',
+    'xxxxxxxxxx^:::::::::::+',
+    'xxxxxxxxxx^:::::::::::+',
+    'xxxxxxxxxx^:::::::::::+',
+    'xkxxxxxxxx^:::::::::::+',
+    '#kkkkkkkkkkk^xxxxxxxxxx',
+    '#kkkkkkkokkk^xxxxxxxxxx',
+    'Rkfkkkkkkkko^xxxxxxxxxx',
+    'RkkkkkkkkkkYY^^^^^^^^^^',
+    '#kkkkkkkkkYYooooooooYYo',
+    '#kkkkkkkYkYoooooooooYYo',
+    '#fkfkkkYYoooooooooooYYo',
+    '#kfkkYYYooooooooooooYYo',
+    '#kkkYYooooooooooooooYYo',
+    'xxYYYoooooooooooooooYYo',
+    'xxYoooooooooooooooooYYo',
+  ],
+  worldforge: [
+    '####*###*##~~~####*####',
+    '#kkkkkkkkkk~~~~~~~~~~~~',
+    '#,ttkkkktkk~~~_tt__tt__',
+    '#kkkkkkkkkk~~~_________',
+    '*kk,kkkkkkk~~~_____,_Y_',
+    '#kk,kokkkkk~~~___Y_____',
+    '#kkkkkkkkkk~~~,________',
+    '#kkkkk,kkkk~~~_o______,',
+    '#kkkkkkkkkk~~~_________',
+    '+==========bbb_________',
+    '+==========bbb_________',
+    '+==========bbb____,___,',
+    '#kkkkkkkkkk~~~____,____',
+    '~_____________Y__######',
+    '~_____,_Y______o_######',
+    '~___Y______ooo___######',
+    '~,_________o:o___######',
+    '~_o______,___,___######',
+    '~_________::::::#######',
+    'b_________::::::#######',
+    'b_________::::::::#####',
+    'b____,___,::::::::#####',
+    '~____,____::::::#######',
+  ],
 };
 function sceneCanvas(biome, rows, sprites = [], frame = 0) {
   const A = tileAtlas(biome), src = document.createElement('canvas');
@@ -374,7 +453,9 @@ const MAP_FOE_KEYS = ['cutpurse', 'bandit', 'tallyman', 'smuggler', 'feral-druid
   // M5: the Ironspire's walker-rig foes (the brigands and ice-cutters through foeLooks, the rest kitted in art/map-sprites.js)
   'brigand', 'rhune', 'cutter-chief', 'sawyer', 'iron-sentinel', 'sentinel-captain', 'forgeborn', 'bellows', 'journeyman', 'rime-wraith', 'drowned-abbess', 'choir-wraith',
   // M6: the Gloomfen's walker-rig foes (the drowned in art/map-sprites.js kits; the hags, Hodge and the Tallymen's hands until P6's rig lands)
-  'drowned', 'bell-ringer', 'drowned-choir', 'drowned-cantor', 'bog-hag', 'mother-grue', 'hodge', 'reedcutter', 'salvage-diver', 'bargehand', 'salvage-master', 'bargemaster'];
+  'drowned', 'bell-ringer', 'drowned-choir', 'drowned-cantor', 'bog-hag', 'mother-grue', 'hodge', 'reedcutter', 'salvage-diver', 'bargehand', 'salvage-master', 'bargemaster',
+  // M7: the Hearth Below's walker-rig foes (kitted in art/map-sprites.js; the Forge-Warden and the Unsmith are drawn whole, in MAP_FOE_SIZE)
+  'cinder-thrall', 'thrall-overseer', 'unmade', 'hollow-miravel', 'hollow-qasim', 'hollow-brundar', 'hollow-gretch'];
 if (want('world-foes')) {
   const s = section('world-foes', 'World: map foes', 'mapFoeSheet(artKey, { gearTier, variant, relic }): 2 gait frames x rows s, n, e, w. Humanoids reuse the walker rig via foeLooks (gearTier 0-3 shown); named holders carry their relic; beasts are dedicated 16-32 px sprites.');
   const r = row(s, 'humanoids at gearTier 0 and 3 (3x)');
@@ -467,6 +548,9 @@ if (want('world-perf')) {
   sheet('mapFoeSheet lair cold (M5, 32-48 px)', k => mapFoeSheet(['thunder-roc', 'mother-anvil', 'rime-abbot', 'old-horn'][k % 4], { gearTier: 1 + (k >> 2) }), 8);
   sheet('mapFoeSheet lair cold (M6, 32-48 px)', k => mapFoeSheet(['old-jaws', 'grandfather-willow', 'lantern-mother', 'blackwater-leviathan'][k % 4], { gearTier: 1 + (k >> 2) }), 8);
   sheet('mapFoeSheet kit cold (M6, the drowned and the fen\'s people)', k => mapFoeSheet(['drowned', 'bell-ringer', 'bog-hag', 'reedcutter'][k % 4], { gearTier: (k >> 2) * 3 }), 8);
+  sheet('mapFoeSheet kit cold (M7, the thralls, the unmade, the Council)', k => mapFoeSheet(['cinder-thrall', 'unmade', 'hollow-miravel', 'hollow-gretch'][k % 4], { gearTier: (k >> 2) * 3 }), 8);
+  sheet('mapFoeSheet whole cold (M7, 24x32 and 32x48)', k => mapFoeSheet(['forge-warden', 'unsmith'][k % 2], { gearTier: k >> 1 }), 8);
+  sheet('objectSprite big prop cold (M7, 240x152 and 112x240)', k => objectSprite(['sleeper-first', 'worldforge'][k % 2], 'closed', { frame: k >> 1 }), 4);
   sheet('objectSprite cold', k => objectSprite(OBJECT_KINDS[k % OBJECT_KINDS.length], 'closed', { frame: 1 }), OBJECT_KINDS.length);
   pre.textContent = lines.join('\n');
 }

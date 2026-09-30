@@ -3,6 +3,9 @@
 // open where it opens); every speaker has a drawn look; every foe family and variant walks on the map as its own
 // sprite (a kit, a beast or its battle rig, never a hashed villager); and the M3-M5 overworld art is pixel for pixel as
 // it shipped (the pinned digests were taken from the M5 art before any M6 change).
+// M7 (P5): the Hearth Below's four biomes draw every tile id and compose every cell of the Act III maps; its steps, chains
+// and council table read their neighbours; its gate, props, signs and Hearthfires are drawn to their footprints; its foes
+// walk as their own sprites, the Council and the Unsmith with their gifts until taken; and the M6 art is pinned too.
 //
 // The art returns ImageData; node has none, so a minimal one is provided (data, width, height), which is all the art
 // layer uses. `AETH_PIN=1 node --test test/world-art.test.mjs` prints the digests instead of checking them.
@@ -214,4 +217,170 @@ const PINNED = {
   'objects': 'ac7ee78323ed036627e3bf30',
   'hearths': '1791d9c79e8a10ac55f0b5d2',
   'emotes': '09db643ab26425b67b9b0feb',
+};
+
+/* ---------- M7 (P5): the Hearth Below ---------- */
+const BELOW = ['council', 'hearth-roots', 'chains', 'worldforge'];
+// the biome each Act III map draws in once P5's tiles land (notes/M7-P2-maps.md; the maps name stand-ins until then)
+const BELOW_OF = { 'hollow-hall': 'council', 'ash-stair': 'hearth-roots', 'chained-deep': 'chains', worldforge: 'worldforge' };
+// which of a tile's variants a cell drew: the atlas rect of its first ground op, looked up among the tile's variants
+const variantOf = (A, rows, x, y, id) => { const [sx, sy] = A.cell(rows, x, y, 0).ground[0]; for (let v = 0; v < A.variants(id); v++) { const [ax, ay] = A.at(id, v, 0); if (ax === sx && ay === sy) return v; } return -1; };
+
+test('the Hearth Below\'s four biomes draw every tile id, still and animated', () => {
+  for (const b of BELOW) {
+    assert.ok(BIOMES.includes(b), `${b} is a biome`);
+    const A = tileAtlas(b), W = A.img.width, H = A.img.height;
+    for (const id of TILE_IDS) for (const f of [0, 1]) {
+      const [sx, sy] = A.at(id, 0, f);
+      assert.ok(sx >= 0 && sy >= 0 && sx + 16 <= W && sy + 16 <= H, `${b}: ${id} frame ${f} lies inside the atlas`);
+    }
+    // the animated tiles move: molten metal, the hot crust, the ember veins, the red cracks, the braziers and seams and vents
+    for (const id of ['water', 'ford', 'ichor', 'fungus', 'torch-wall']) assert.notDeepEqual(A.at(id, 0, 0), A.at(id, 0, 1), `${b}: ${id} has two frames`);
+  }
+  // 'ash' and 'forge' stay Scorchgate's and Harrow's Forge's (spec §6.1)
+  for (const b of ['ash', 'forge']) assert.ok(BIOMES.includes(b) && !BELOW.includes(b), `${b} is still its own place`);
+});
+
+test('every cell of every Act III map composes in its Hearth Below biome, in both frames', () => {
+  for (const [id, b] of Object.entries(BELOW_OF)) {
+    const m = MAPS[id], A = tileAtlas(b), W = A.img.width, H = A.img.height;
+    assert.ok(m, `${id} is a map`);
+    for (let y = 0; y < m.h; y++) for (let x = 0; x < m.w; x++) for (const f of [0, 1]) {
+      const ops = A.cell(m.rows, x, y, f);
+      assert.ok(ops.ground.length > 0, `${id} (${x},${y}): no ground`);
+      for (const op of ops.ground.concat(ops.over)) {
+        assert.ok(op.length === 6 && op.every(Number.isFinite), `${id} (${x},${y}) '${m.rows[y][x]}': an op is not six numbers`);
+        const [sx, sy, sw, sh] = op;
+        assert.ok(sx >= 0 && sy >= 0 && sw > 0 && sh > 0 && sx + sw <= W && sy + sh <= H, `${id} (${x},${y}): an op reads outside the atlas`);
+      }
+    }
+  }
+});
+
+test('the Hearth Below\'s steps follow their flight, its great chains their band, and the council table is drawn a ninth to a tile', () => {
+  const A = tileAtlas('hearth-roots');
+  // a long flight going east has its treads upright (variants 2-3); one going south lies across (0-1)
+  const east = ['##########', '.ssssssss#', '.ssssssss#', '.ssssssss#', '##########'], south = east[0].split('').map((_, x) => east.map(r => r[x]).join(''));
+  assert.ok(variantOf(A, east, 4, 2, 'stair') >= 2, 'a flight going east: treads upright');
+  assert.ok(variantOf(A, south, 2, 4, 'stair') < 2, 'a flight going south: treads across');
+  // a short flight wider than it is long goes the way its ends open (the Deep's steps down off the walkway, between the rail)
+  assert.ok(variantOf(tileAtlas('chains'), ['#===#', '|sss|', 'kkkkk'], 2, 1, 'stair') < 2, 'three steps down off the walkway lie across');
+  // a chain band running down to the south-west carries a chain on the diagonal (orientation 3 of 0-3: shape = variant / 10)
+  const C = tileAtlas('chains'), band = ['oooooYY', 'ooooYYo', 'oooYYoo', 'ooYYooo', 'oYYoooo', 'YYooooo', 'Yoooooo'];
+  assert.equal(Math.floor(variantOf(C, band, 3, 3, 'first-root') / 10), 3, 'a band to the south-west: a diagonal chain');
+  // a band two tiles wide running north-south carries one chain down the line between its columns
+  const two = Array.from({ length: 7 }, () => 'oYYo'), l = variantOf(C, two, 1, 3, 'first-root'), r = variantOf(C, two, 2, 3, 'first-root');
+  assert.deepEqual([Math.floor(l / 10), Math.floor(r / 10)], [2, 2], 'north-south');
+  const off = v => (Math.floor(v / 2) % 5) - 2;
+  assert.ok(Math.abs(off(l)) === 2 && off(r) === -off(l), 'one chain on the line between the two columns');
+  // the round council table: its nine tiles are nine different drawings, and no rim of rock round it
+  const T3 = tileAtlas('council'), table = [':::::', ':RRR:', ':RRR:', ':RRR:', ':::::'], seen = new Set();
+  for (let y = 1; y <= 3; y++) for (let x = 1; x <= 3; x++) { const ops = T3.cell(table, x, y, 0); assert.equal(ops.ground.length, 1, `table (${x},${y}): one drawing, no rim`); seen.add(ops.ground[0].slice(0, 2).join()); }
+  assert.equal(seen.size, 9, 'nine ninths');
+});
+
+test('the Hearth Below\'s gate, props, signs and Hearthfires are drawn, to their footprints', () => {
+  const px = img => { let n = 0; for (let i = 3; i < img.data.length; i += 4) n += img.data[i] ? 1 : 0; return n; };
+  // the soot line the gift's light will not let you cross: laid a tile at a time, 16 x 24; shut it shimmers, open it is scuffed soot
+  const shut = objectSprite('hollow-gate', 'closed'), open = objectSprite('hollow-gate', 'open');
+  assert.deepEqual([shut.width, shut.height, shut.frames], [16, 24, 2], 'the hollow gate');
+  assert.notDeepEqual(objectSprite('hollow-gate', 'closed', { frame: 1 }).data, shut.data, 'its light moves');
+  assert.ok(px(shut) > 3 * px(open) && px(open) > 0, 'open, only the soot is left');
+  // the big props are one sprite each, drawn once at their foot, sized to the footprints the maps give them
+  const big = { 'sleeper-first': [240, 152, [120, 107]], worldforge: [112, 240, [56, 239]], 'great-anvil': [48, 40, [24, 39]] };
+  for (const [k, [w, h, foot]] of Object.entries(big)) {
+    const img = objectSprite(k, 'closed');
+    assert.deepEqual([img.width, img.height, img.anchors.foot], [w, h, foot], k);
+    assert.equal(img.frames, 2, `${k} breathes, burns or glows`);
+    assert.ok(px(img) > w * h / 6, `${k} fills its footprint`);
+  }
+  for (const k of ['vault-stair', 'vault-boxes', 'vault-boxes-open']) { const img = objectSprite(k, 'closed'); assert.ok(img.width === 16 && px(img) > 40, k); }
+  assert.notDeepEqual(objectSprite('vault-boxes', 'closed').data, objectSprite('vault-boxes-open', 'closed').data, 'the boxes open');
+  // the sign looks: the chains, the four chairs with their marks, the heart's step
+  const signs = ['chain', 'chair-tree', 'chair-sun', 'chair-anvil', 'chair-lantern', 'heart-step'], seen = new Set();
+  for (const st of signs) { assert.ok(OBJECT_STATES.sign.includes(st), st); const pic = objectSprite('sign', st); assert.ok(px(pic) > 60, `sign ${st} draws`); seen.add(digest(h => img(h, pic))); }
+  assert.equal(seen.size, signs.length, 'each sign look is its own');
+  // the two Hearthfires by id, and every gate, prop, sign and Hearthfire the Act III maps and the Keep's vault name
+  assert.deepEqual([HEARTH_LOOKS['under-coal'], HEARTH_LOOKS['chain-fire']], ['undercoal', 'chainfire']);
+  for (const id of Object.keys(BELOW_OF).concat(['keep-hall'])) for (const e of MAPS[id].entities) {
+    let kind = null, st = 'closed', opts = {};
+    if (e.kind === 'gate' && e.look === 'hollow-gate') kind = 'hollow-gate';
+    else if (e.kind === 'prop') kind = e.prop;
+    else if (e.kind === 'sign' && e.look && e.look !== 'painted') { kind = 'sign'; st = e.look; }
+    else if (e.kind === 'hearthfire') { kind = 'hearth'; st = 'lit'; opts = { id: e.id }; }
+    else continue;
+    assert.ok(OBJECT_KINDS.includes(kind), `${id}/${e.id}: ${kind} is drawn`);
+    assert.ok(px(objectSprite(kind, st, opts)) > 12, `${id}/${e.id}: ${kind} ${st} draws`);
+  }
+});
+
+test('the Hearth Below\'s foes walk on the map as their own sprites; the Council and the Unsmith carry their gifts until taken', () => {
+  const OWN = { 'cinder-thrall': 'kit', unmade: 'kit', 'forge-warden': 'beast', 'hollow-miravel': 'kit', 'hollow-qasim': 'kit', 'hollow-brundar': 'kit', 'hollow-gretch': 'kit', unsmith: 'beast' };
+  for (const [key, look] of Object.entries(OWN)) {
+    assert.equal(mapFoeLook(key), look, key);
+    for (const gearTier of [0, 1, 2, 3]) {
+      const s = mapFoeSheet(key, { gearTier });
+      assert.deepEqual([s.img.width, s.img.height], [s.w * 2, s.h * 4], `${key} g${gearTier}: 2 frames x 4 rows`);
+      if (look === 'beast') assert.deepEqual([s.w, s.h], MAP_FOE_SIZE[key], `${key}: its size`);
+    }
+  }
+  assert.deepEqual([MAP_FOE_SIZE['forge-warden'], MAP_FOE_SIZE.unsmith], [[24, 32], [32, 48]], 'the Forge-Warden as tall as a door, the Unsmith tall');
+  // the thralls harden by gear tier; the Thrall-Overseer (a cinder-thrall variant) is its own sprite
+  assert.notDeepEqual(mapFoeSheet('cinder-thrall', { gearTier: 0 }).img.data, mapFoeSheet('cinder-thrall', { gearTier: 3 }).img.data, 'the thralls by gear tier');
+  assert.equal(mapFoeLook('cinder-thrall', 'thrall-overseer'), 'kit');
+  assert.notDeepEqual(mapFoeSheet('cinder-thrall', { variant: 'thrall-overseer' }).img.data, mapFoeSheet('cinder-thrall').img.data, 'the overseer is drawn apart');
+  // each of the Council wears the gift sent to their chair (by default, and when named), and it is gone once taken
+  const gifts = { 'hollow-miravel': 'hollow-wreath', 'hollow-qasim': 'hollow-chalice', 'hollow-brundar': 'hollow-gauntlet', 'hollow-gretch': 'hollow-chain', unsmith: 'unmaking-hammer' };
+  for (const [key, relic] of Object.entries(gifts)) {
+    const worn = mapFoeSheet(key, { gearTier: 1 }).img.data;
+    assert.deepEqual(mapFoeSheet(key, { gearTier: 1, relic }).img.data, worn, `${key} wears ${relic}`);
+    assert.notDeepEqual(mapFoeSheet(key, { gearTier: 1, relic: null }).img.data, worn, `${key} without ${relic}`);
+  }
+  // the Unsmith speaks with a face of his own (his battle art is a Champion build), not a hashed villager: Hilda's twin
+  assert.ok(NPC_LOOKS.unsmith && NPC_LOOKS.unsmith.H.hairMat === NPC_LOOKS.hilda.H.hairMat, 'the Unsmith has his own look, his sister\'s hair');
+  assert.deepEqual([npcSheet('unsmith').img.width, npcSheet('unsmith').img.height], [48, 96], 'his sheet');
+  // hollowed: the same folk as their town walkers, not the same drawing
+  for (const k of ['miravel', 'qasim', 'brundar', 'gretch']) assert.notDeepEqual(npcSheet(k).img.data.slice(0, 48 * 24 * 4), mapFoeSheet('hollow-' + k).img.data.slice(0, 32 * 24 * 4), k);
+});
+
+/* the M6 overworld art, pixel for pixel: pinned from the M6 art as it shipped (the lead's M7 base), before any M7 change, and
+   checked against a private hash of 517 looks */
+const M6_NPCS = ['moss', 'sedge', 'wm-villager', 'hodge', 'gretch', 'nettie', 'pell', 'bm-watch', 'corvus', 'lantern-mother'];
+const M6_FOES = ['drowned', 'bell-ringer', 'drowned-choir', 'drowned-cantor', 'bog-hag', 'mother-grue', 'hodge', 'reedcutter', 'salvage-diver', 'bargehand', 'salvage-master', 'bargemaster',
+  'mire-leech', 'marsh-light', 'lamp-moth', 'blackwater-gar', 'old-jaws', 'willow-wight', 'grandfather-willow', 'lantern-mother', 'blackwater-leviathan'];
+const M6_KINDS = ['toll-bar', 'leech-ford', 'ward-gate', 'hung-lanterns', 'hag-fence', 'barge-planks', 'water-gate', 'choir-screen', 'blackwater', 'witch-ward',
+  'wreck', 'marsh-lights', 'black-barge', 'lantern', 'sleeping-child', 'crane', 'diving-bell', 'sealed-chest', 'barge', 'bell', 'sleeper'];
+const M6_HEARTHS = ['reed-shrine', 'willow-hearth', 'toll-lamp', 'stilt-hearth', 'fen-cairn', 'bell-hearth', 'wreck-fire', 'flats-beacon'];
+test('the M6 overworld art is pixel for pixel as it shipped', () => {
+  const pin = (name, got) => { if (PIN) console.log(`  '${name}': '${got}',`); else assert.equal(got, PINNED_M6[name], `${name}: the M6 overworld art changed`); };
+  for (const b of GLOOM) pin('atlas ' + b, digest(h => {
+    const A = tileAtlas(b); img(h, A.img);
+    for (let y = 0; y < GRID.length; y++) for (let x = 0; x < GRID[0].length; x++) for (const f of [0, 1]) h.update(JSON.stringify(A.cell(GRID, x, y, f)));
+  }));
+  pin('npcs', digest(h => { for (const k of M6_NPCS) img(h, npcSheet(NPCS[k].art).img); }));
+  pin('map foes', digest(h => {
+    for (const k of M6_FOES) for (const gearTier of [0, 1, 2, 3]) { const s = mapFoeSheet(k, { gearTier }); img(h, s.img); h.update(JSON.stringify([s.w, s.h, s.foot, s.head, s.frames])); }
+    for (const k of M6_FOES) img(h, mapFoeSheet(k, { gearTier: 1, relic: null }).img);
+  }));
+  pin('objects', digest(h => {
+    for (const kind of M6_KINDS) for (const st of OBJECT_STATES[kind]) for (const frame of [0, 1]) img(h, objectSprite(kind, st, { frame }));
+    for (const st of ['ward-stone', 'ward-stone-dark', 'bootprints']) for (const frame of [0, 1]) img(h, objectSprite('sign', st, { frame }));
+  }));
+  pin('hearths', digest(h => { for (const id of M6_HEARTHS) for (const st of ['lit', 'cold']) for (const frame of [0, 1]) img(h, objectSprite('hearth', st, { id, frame })); }));
+});
+const PINNED_M6 = {
+  'atlas willow-village': '3482f253526c6a360e14578b',
+  'atlas channel': '287ea13b7a6f21ae0dceab14',
+  'atlas stilt-town': '683bb3f4ee4b2936af7ebc5b',
+  'atlas bog': '72889a79ebc885157928ecbe',
+  'atlas drowned-grove': 'b251c0cc3ded3824b0975934',
+  'atlas boardwalk': '3ad5781a74e71de1079c53a2',
+  'atlas sunken-city': '159f6ab8d21eba225067b72d',
+  'atlas belfry': '932654e5a59f7422e10d3b28',
+  'atlas mudflat': 'dcd80c1728037c69f7f68464',
+  'atlas causeway': '928edc96632a51fea09d6c16',
+  'npcs': '70fac2df90c6c3566601914c',
+  'map foes': '003f7deb2290a17cc1682b8d',
+  'objects': '2fdd65e51d72f22d3154d196',
+  'hearths': '6c89254702671bef6ac77793',
 };
