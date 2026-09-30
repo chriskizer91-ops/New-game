@@ -241,6 +241,7 @@ function assertPrice(price, at) {
   assert.deepEqual(priceErrors(price, at), []);
   for (const id of Object.keys(price.bag || {})) assert.ok(CONSUMABLES[id], `${at}: consumable ${id}`);
   for (const id of Object.keys(price.materials || {})) assert.ok(['scrap', 'silver', 'embers'].includes(id), `${at}: material ${id}`);
+  for (const id of Object.keys(price.gems || {})) assert.ok(GEMS[id], `${at}: gem ${id}`); // M7: the bog amber
 }
 
 test('effects use the known vocabulary and name real things', () => {
@@ -961,7 +962,7 @@ test('the Hearth Below\'s quests (spec §3.6): ids, givers, starts, steps and re
   assert.equal(mp.giver, 'hilda');
   assert.deepEqual(mp.start, { all: [{ beaten: 'hollow-gretch' }, { flag: 'worldforge-page' }] });
   const M = TUNING.masterpiece;
-  assert.deepEqual(mp.steps[0].done, { any: [{ afford: { gold: M.gold, materials: { embers: M.embers, silver: M.silver } } }, { masterpiece: true }] }, 'Hilda\'s price (TUNING.masterpiece), and it stays paid');
+  assert.deepEqual(mp.steps[0].done, { any: [{ afford: { gold: M.gold, materials: { embers: M.embers, silver: M.silver }, gems: { 'bog-amber': M.amber } } }, { masterpiece: true }] }, 'Hilda\'s price (TUNING.masterpiece, the bog amber too), and it stays paid');
   assert.deepEqual(mp.steps.at(-1).done, { masterpiece: true });
   assert.deepEqual(mp.reward, {}, 'the Masterpiece is its reward');
   const fw = QUESTS['fenwicks-truth'];

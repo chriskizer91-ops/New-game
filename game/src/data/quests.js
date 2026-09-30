@@ -238,13 +238,12 @@ export const QUESTS = deepFreeze({
     reward: {}, // the ending is its reward
   },
   // Hilda offers the Masterpiece once the Council is freed and the Worldforge page is yours (spec §4.5). The price is
-  // TUNING.masterpiece: the gold and materials here are what a condition can say (the bog amber is on her forge's tab;
-  // story-data.test keeps them the same). The first step stays done once the price is spent on it. Her thanks once it
+  // TUNING.masterpiece, bog amber and all (story-data.test keeps them the same). The first step stays done once the price is spent on it. Her thanks once it
   // is forged closes the quest (data/dialogue.js hilda-forged).
   masterpiece: {
     id: 'masterpiece', name: 'The Masterpiece', kind: 'side', giver: 'hilda', start: { all: [{ beaten: 'hollow-gretch' }, { flag: 'worldforge-page' }] },
     steps: [
-      step('Gather Hilda\'s price for the Masterpiece: gold, embers, silver and bog amber.', { any: [{ afford: { gold: 2000, materials: { embers: 5, silver: 5 } } }, { masterpiece: true }] }, 'keep', 'hilda'),
+      step('Gather Hilda\'s price for the Masterpiece: gold, embers, silver and bog amber.', { any: [{ afford: { gold: 2000, materials: { embers: 5, silver: 5 }, gems: { 'bog-amber': 2 } } }, { masterpiece: true }] }, 'keep', 'hilda'),
       step('Name your Masterpiece, and have Hilda forge it.', { masterpiece: true }, 'keep', 'hilda'),
     ],
     reward: {}, // the Masterpiece itself (rules/forge.js forgeMasterpiece)

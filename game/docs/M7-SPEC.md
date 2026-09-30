@@ -7,7 +7,8 @@ Seal, and each gift takes the chair it was sent to. Elder Miravel, Cistern Lord 
 walk down a stair that was never there into the Council's First-Age chamber beneath the Keep. There they wait, hollowed,
 to be fought back to back. Below them the hearth's roots go down through the ash to the Chained Deep, where the
 Sleepers the hearth was built on lie in their chains, and Tamsin is waiting, sorry. At the bottom stands the Worldforge,
-and the smith who drew its plans: Harrow Ironvein, Hilda's twin, the Unsmith. After him the Warden chooses what the
+built to plans a First-Age smith drew and Harrow stole from under Ironhold, and the smith who built it: Harrow
+Ironvein, Hilda's twin, the Unsmith. After him the Warden chooses what the
 hearth burns now: the Sleepers again (Rekindle), nothing at all (Release), or a legend the Warden forged themself
 (Kindle Anew, the true ending). M7 is built road-first on the Milestone 4.5 contract (`docs/M45-SPEC.md`), as M5 and M6
 were. Part A overrides Part B.

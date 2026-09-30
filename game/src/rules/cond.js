@@ -17,7 +17,8 @@
 //                            holds when any bounty is in that state
 //   { since: { flag, days } } story[flag] is not a day number yet, or flags.day - story[flag] >= days
 //   { day: { every, at } }   M6: flags.day % every === at (Hodge's price of the day, spec §4.4)
-//   { afford: { gold?, bag?: { [id]: n }, materials?: { [id]: n } } }   M6: the party has all of it
+//   { afford: { gold?, bag?: { [id]: n }, materials?: { [id]: n }, gems?: { [id]: n } } }   M6: the party has all of
+//                            it (M7: gems too, the Masterpiece's bog amber)
 //   { masterpiece: true }    M7: the party owns the Warden's Masterpiece (an item with masterpiece: true, not shattered)
 //   { pages: 'all' }         M7: every page of the Codex is complete, as the Codex screen counts it
 //   { ending }               M7: game.ending is that ending ('rekindle' | 'release' | 'anew'), or any ending (true)
@@ -137,6 +138,7 @@ export function canAfford(game, price) {
   if ((price.gold || 0) > (game?.gold || 0)) return false;
   for (const [id, n] of Object.entries(price.bag || {})) if ((game?.bag?.[id] || 0) < n) return false;
   for (const [id, n] of Object.entries(price.materials || {})) if ((game?.materials?.[id] || 0) < n) return false;
+  for (const [id, n] of Object.entries(price.gems || {})) if ((game?.gems?.[id] || 0) < n) return false; // M7
   return true;
 }
 
@@ -145,14 +147,15 @@ export const COND_KEYS = Object.freeze(['all', 'any', 'not', 'flag', 'cleared', 
   'owns', 'power', 'wears', 'active', 'domain', 'unlocked', 'opened', 'kindled', 'quest', 'bounty', 'since', 'day', 'afford',
   'masterpiece', 'pages', 'ending']);
 
-// M6: a price is { gold?, bag?, materials? } with whole, positive amounts (the `afford` condition, the `pay` effect)
+// M6: a price is { gold?, bag?, materials? } with whole, positive amounts (the `afford` condition, the `pay` effect);
+// M7: and gems?
 export function priceErrors(price, at = 'price') {
   if (!price || typeof price !== 'object' || Array.isArray(price)) return [`${at}: not an object`];
   const out = [];
   const whole = n => Number.isInteger(n) && n > 0;
-  for (const k of Object.keys(price)) if (!['gold', 'bag', 'materials'].includes(k)) out.push(`${at}: unknown part ${k}`);
+  for (const k of Object.keys(price)) if (!['gold', 'bag', 'materials', 'gems'].includes(k)) out.push(`${at}: unknown part ${k}`);
   if ('gold' in price && !whole(price.gold)) out.push(`${at}.gold: a whole number above 0`);
-  for (const part of ['bag', 'materials']) {
+  for (const part of ['bag', 'materials', 'gems']) {
     if (!(part in price)) continue;
     if (!price[part] || typeof price[part] !== 'object') { out.push(`${at}.${part}: not an object`); continue; }
     for (const [id, n] of Object.entries(price[part])) if (!whole(n)) out.push(`${at}.${part}.${id}: a whole number above 0`);

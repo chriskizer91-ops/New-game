@@ -381,3 +381,19 @@ test('M7 a sign may open a scene once its condition holds: the Worldforge\'s hea
   const after = interact(won, walk).events;
   assert.deepEqual(after.map(e => [e.t, e.dialogue]), [['talk', 'the-heart']]);
 });
+
+test('M7 a price may ask for gems (the Masterpiece\'s bog amber), and a found rumour names its poster', async () => {
+  const { canAfford, priceErrors } = await import('../src/rules/cond.js');
+  const { ladder } = await import('../src/rules/story.js');
+  const g = migrate(party().game);
+  const price = { gold: 1, gems: { 'bog-amber': 2 } };
+  assert.deepEqual(priceErrors(price), []);
+  assert.equal(priceErrors({ gems: { 'bog-amber': 0 } }).length, 1, 'whole amounts above 0');
+  assert.equal(canAfford({ ...g, gems: { 'bog-amber': 1 } }, price), false);
+  assert.equal(canAfford({ ...g, gems: { 'bog-amber': 2 } }, price), true);
+  const rumours = game => ladder(game).filter(p => p.id === 'missing-smith');
+  assert.ok(rumours(g).length && rumours(g).every(p => !('found' in p)), 'before the fifth council the smith is only missing');
+  const sat = structuredClone(g);
+  sat.progress.flags.story = { ...sat.progress.flags.story, 'council-5-done': true };
+  assert.deepEqual(rumours(sat).map(p => p.found), ['unsmith'], 'after it, the rumour is found: the Unsmith');
+});

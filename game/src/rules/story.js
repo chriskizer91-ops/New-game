@@ -14,7 +14,8 @@
 // claimQuest(game, id) -> { game, events }               id may be 'bounty:<bountyId>' to turn a bounty in,
 //                                                        or 'bounties' to turn in every settled one
 // bounties(game) -> [{ id, enc, name, gold, state: 'active'|'ready'|'done' }]
-// ladder(game) -> [{ id, name, act, state: 'silhouette'|'scouted'|'settled' }]   M6: an entry with an `if` shows once it holds
+// ladder(game) -> [{ id, name, act, state: 'silhouette'|'scouted'|'settled', found? }]   M6: an entry with an `if` shows once it
+//                  holds. M7: a rumour whose `found.if` holds carries `found`, the id of the poster it settled into
 // afterDialogue(game, encId, result) -> dialogueId | null   what to play back from a fight ('victory'|'yield')
 // restDialogue(game, hfId) -> dialogueId | null             what to play after resting (the Fawnrest dream)
 // pendingLetter(game) -> brandId | null                     a held Brand whose Unsmith letter is unread
@@ -140,6 +141,7 @@ function priceOf(choice) {
     if (p.gold) out.gold = (out.gold || 0) + p.gold;
     if (p.bag) out.bag = addCounts(out.bag, p.bag);
     if (p.materials) out.materials = addCounts(out.materials, p.materials);
+    if (p.gems) out.gems = addCounts(out.gems, p.gems);
   }
   return out;
 }
@@ -202,6 +204,7 @@ function payInto(g, price, events) {
   if (price.gold) g.gold -= price.gold;
   if (price.bag) g.bag = addCounts(g.bag, minus(price.bag));
   if (price.materials) g.materials = addCounts(g.materials, minus(price.materials));
+  if (price.gems) g.gems = addCounts(g.gems, minus(price.gems)); // M7
   events.push({ t: 'paid', price: structuredClone(price) });
 }
 
@@ -300,6 +303,7 @@ export function ladder(game) {
   return LADDER.filter(p => check(game, p.if)).map(p => ({
     id: p.id, name: p.name, act: p.act, enc: p.enc || null, spawn: p.spawn ?? null,
     state: p.enc && check(game, { beaten: p.enc }) ? 'settled' : (scouted[p.enc] || scouted[p.id]) ? 'scouted' : 'silhouette',
+    ...(p.found && check(game, p.found.if) ? { found: p.found.poster } : {}),
   }));
 }
 
