@@ -117,3 +117,76 @@ test('Rotbridge brings her Rotbridge kit (\'$rival:rotbridge\'), for each starte
     assert.ok(u.gear.some(x => x.relic === 'bogstriders'), `${starter}: the boots are on her sprite`);
   }
 });
+
+// M7 (spec A12, §3.5, §4.3; P4): Tamsin's finale kit. She fights beside the party against the Unsmith, a guest the
+// engine plays; the same kit for each starter but her Art (the Bargain swung in her old starter's manner); every move
+// but her ward and her last stand goes at the foes, and one pries at his pieces.
+test('every rival starter has a finale kit: every d12 face covered, the same moves but her Art, aimed at the foes, one of them prying at his pieces', () => {
+  const rivals = [...new Set(Object.values(STARTERS).map(s => s.rival))];
+  const shared = new Set();
+  for (const r of rivals) {
+    const kit = RIVAL_KITS[r]?.finale;
+    assert.ok(kit, `${r}: a finale kit`);
+    assert.equal(kit.gearTier, 5, `${r}: in her finale look`);
+    const fam = familyOf({ family: 'tamsin', variant: r, kit: 'finale' });
+    const faces = new Map();
+    for (const [lo, hi, move] of kit.table) {
+      assert.ok(fam.moves[move], `${r}: ${move} is one of her moves`);
+      for (let f = lo; f <= hi; f++) { assert.ok(!faces.has(f), `${r}: face ${f} once`); faces.set(f, move); }
+    }
+    assert.equal(faces.size, 12, `${r}: the kit covers every face of her d12`);
+    const used = new Set(faces.values());
+    // she sold her starter for the Bargain: the old starter's Art (which needs it) is not on her table
+    const old = Object.keys(FOES.tamsin.variants[r].moves).find(m => !FOES.tamsin.moves[m]);
+    assert.ok(!used.has(old), `${r}: ${old} needs the starter she sold`);
+    for (const m of used) assert.ok(!fam.moves[m].requires, `${r}: ${m} needs nothing she lacks`);
+    const others = rivals.filter(x => x !== r).map(x => RIVAL_KITS[x].finale.moves);
+    const own = Object.keys(kit.moves).filter(m => others.every(o => !o[m]));
+    assert.equal(own.length, 1, `${r}: one Art of her own`);
+    for (let f = 8; f <= 10; f++) assert.equal(faces.get(f), own[0], `${r}: her Art on face ${f}`);
+    for (const m of Object.keys(kit.moves).filter(m => m !== own[0])) shared.add(JSON.stringify([m, kit.moves[m]]));
+    // aimed at the Unsmith (or whatever stands beside him), but her ward over the worst hurt of the party and her last stand
+    for (const m of used) {
+      const mv = fam.moves[m];
+      if (mv.target === 'self') assert.ok(mv.when?.hpBelow && mv.effects.some(e => e.type === 'heal'), `${r}: ${m} is her last stand`);
+      else if (mv.target === 'ally') assert.ok(mv.effects.every(e => e.status === 'warded'), `${r}: ${m} wards one of the party`);
+      else assert.equal(mv.target, 'enemy', `${r}: ${m} goes at the foes`);
+    }
+    // one of them pries at his pieces with the grip effect, on top of a crushing blow
+    const pry = [...used].filter(m => fam.moves[m].effects.some(e => e.type === 'grip' && /^\d+d\d+$/.test(e.dice)));
+    assert.equal(pry.length, 1, `${r}: one move pries`);
+    assert.ok(fam.moves[pry[0]].effects.some(e => e.type === 'attack' && e.kind === 'crush'), `${r}: and it lands a crushing blow too`);
+    // she fights like one more strong hero, not like a Champion: her blows land at half weight and scale slowly
+    for (const m of used) for (const e of fam.moves[m].effects.filter(x => x.type === 'attack')) assert.ok(e.mult <= 0.5 && e.diceEvery >= 12, `${r}: ${m} is a guest's blow`);
+  }
+  assert.equal(shared.size, Object.keys(RIVAL_KITS.cairnmaul.finale.moves).length - 1, 'the same shared moves for each starter');
+  // the earlier kits are untouched
+  for (const r of rivals) for (const k of ['ironhold', 'rotbridge']) assert.ok(RIVAL_KITS[r][k], `${r}: ${k}`);
+});
+
+test('the Unsmith\'s guest is Tamsin in her finale kit, for each starter: party level + 2, wearing her Bargain, on the party\'s side; she pries at his pieces', async () => {
+  const { startBattle, partyLevel } = await import('../src/rules/gauntlet.js');
+  const { runEffects } = await import('../src/rules/combat.js');
+  for (const starter of Object.keys(STARTERS)) {
+    const g = newGame({ starter, seed: 6 });
+    g.progress.flags.story.starter = starter;
+    g.progress.waking = 8;
+    const { battle } = startBattle(g, { nodeId: 'unsmith' });
+    const t = battle.units.a1;
+    assert.deepEqual([t.side, t.guest, t.family, t.variant, t.kit], ['ally', true, 'tamsin', STARTERS[starter].rival, 'finale'], starter);
+    assert.equal(t.level, partyLevel(g) + 2, `${starter}: party level + 2`);
+    assert.ok(t.gear.some(x => x.relic === 'tamsins-bargain'), `${starter}: she wears Tamsin's Bargain`);
+    assert.equal(t.held.length, 0, `${starter}: she holds nothing anyone could pry`);
+    assert.ok(familyData(t).moves['pry-it-loose'], `${starter}: the kit is hers`);
+    assert.ok(!Object.values(battle.units).some(u => u.side === 'foe' && u.family === 'tamsin'), `${starter}: she is not among the foes`);
+    // Pry It Loose, from her to him: grip damage on one of his pieces
+    const s = structuredClone(battle);
+    const B = { s, rng: createRng(`pry:${starter}`), ev: [], touched: new Set(), relic: null };
+    const u = s.units.f1;
+    const before = u.held.map(p => p.grip);
+    runEffects(B, s.units.a1, familyData(t).moves['pry-it-loose'].effects.filter(e => e.type === 'grip'), ['f1']);
+    const grip = B.ev.find(e => e.t === 'grip' && e.target === 'f1');
+    assert.ok(grip && grip.to < grip.from, `${starter}: she pries at ${grip?.relic}`);
+    assert.ok(u.held.some((p, i) => p.grip < before[i]));
+  }
+});

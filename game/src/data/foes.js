@@ -1215,49 +1215,196 @@ const TALLY_GLOOM = {
   },
 };
 
-// ---- M7: the Hearth Below (spec §3.2; owner P4). STUB from the M7 scaffold, all of them: each borrows an earlier family's
-// numbers, moves and look until P4 writes the real family in its place (with `art: <its id>`, which P6 draws;
-// art-keys.test.mjs fails for a new key until both have landed). The kind and aspect are the spec's.
-const stub = (id, name, from, o = {}) => ({ ...from, id, name, stub: true, variants: {}, ...o });
-// a borrowed move table stretched onto a bigger die, for a stand-in whose tier rolls one
-const stretch = (table, from, to) => table.map(([lo, hi, m]) => [Math.floor((lo - 1) * to / from) + 1, Math.floor(hi * to / from), m]);
-// STUB from the M7 scaffold: the Hollow Council fights on the `champion` tier (a d20, its borrowed table stretched onto
-// it) until P1 adds the `hollow` tier (a d20, +4 while the gift is held; spec §4.2) and moves them onto it. Each one is
-// unique, never flees, and holds the gift sent to their chair (spec A11, §3.5).
-const hollow = (id, name, from, relic, aspect, koText, text) => stub(id, name, from, {
-  tier: 'champion', kind: 'human', aspect, unique: true, noFlee: true, relics: [relic], table: stretch(from.table, 8, 20), koText, text,
-});
+// ---- M7: the Hearth Below (spec §3.2, §3.5; owner P4). Stats are for level 1, like everything above; the Waking adds the
+// rest (a player arrives at Waking 8 with every Brand held, and no Brand is left to raise it; data/encounters.js BELOW).
+//   - The cinder-thralls are the Unsmith's ash-men, shaped from the hearth's own ash: the Ash Stair's packs, and at its
+//     narrows an overseer with a whip of hot chain (`thrall-overseer`, a veteran). The unmade are relic-bearers the
+//     Worldforge unmade: husks still carrying the shape of what they held. The forge-warden is a bellows-and-anvil
+//     construct that holds the Worldforge's bridge.
+//   - The Hollow Council (spec A11, §3.5): tier `hollow`, a d20 that adds +4 while the gift sent to their chair is still
+//     held (`bonusWhile`: their one piece, `relics`). Each gift's Arts need the gift and sit on the d20's high faces, so
+//     the +4 brings them up more often; pried loose, the gift takes the +4 with it and its Arts fall back to plain moves.
+//     Beaten while it still grips its gift, a member drops it as a Champion drops a piece (not `keepsRelics`). Two phases
+//     each (at 1 and 0.5); the second answers their own story: Miravel's thorns, Qasim's drought, Brundar's iron,
+//     Gretch's fear and favours. Each is unique, never flees, carries chosen Omens (never Twinned), says their own words
+//     back to themselves at 0 HP (`koText`) and has Grudge titles of their own. They are fought back to back and tuned
+//     together (spec §8).
+//   - The Unsmith (spec A16, §3.5): tier `unsmith`, two d20s (two intents shown, two moves a turn; a Stagger breaks the
+//     next of the two). Three phases, each with a piece of his: the Smith (the Unmaking Hammer: hammer blows, and Unmake,
+//     which leaves a hero Unmade for two turns), the Thief (at 0.66, `steals`: he takes up the relics the Warden never
+//     claimed, rules/codex.js stolenFor, and a table row 'stolen' plays one of his Stolen Arts, or `stolenFallback` for
+//     a Warden who left him none) and the Worldforge (at 0.33: the forge's fire on every hero, and the heart's pull,
+//     which holds a hero in the furnace's mouth). The Ironvein Apron turns his blows into a ward.
+// Tuned with tools/sim.mjs (docs/RULES.md §12, M7).
+const THRALL_MOVES = {
+  'cinder-fist': { name: 'Cinder Fist', target: 'enemy', text: 'A fist of packed ash with a live coal for a knuckle: 1d6 crushing, and it Burns.', effects: [atk('1d6', 'crush', { aspect: 'ember', riders: [status('burning')] })] },
+  'ash-in-the-eyes': { name: 'Ash in the Eyes', target: 'enemy', text: 'It bursts into hot ash in your face and pulls itself back together behind it. DEX save or Frightened.', effects: [status('frightened', { save: 'DEX' })] },
+  reform: { name: 'Reform', target: 'self', when: { hpBelow: 0.5 }, fallback: 'cinder-fist', text: 'It slumps into a heap of ash, and the heap stands up again: Regenerating.', effects: [status('regenerating', { value: { dice: '1d6', diceEvery: 3 } })] },
+};
+const UNMADE_MOVES = {
+  'empty-grip': { name: 'Empty Grip', target: 'enemy', text: 'Its hands still close on the shape of the relic it held. They close on you instead: 1d8 crushing.', effects: [atk('1d8', 'crush')] },
+  'phantom-art': { name: 'Phantom Art', target: 'enemy', text: 'It swings the relic it no longer holds, and the Art it no longer has comes anyway: 2d6 blight, CON save for half.', effects: [{ type: 'damage', dice: '2d6', kind: 'blight', aspect: 'blight', save: 'CON' }] },
+  'grey-touch': { name: 'Grey Touch', target: 'enemy', text: 'A grey hand on your arm, and the colour goes out of you where it touched: 1d6 blight, and you are Rotting.', effects: [atk('1d6', 'blight', { aspect: 'blight', riders: [status('rotting')] })] },
+  husk: { name: 'Husk', target: 'self', text: 'It is only a husk. A blow goes straight through it and finds almost nothing to hurt: Guarding.', effects: [status('guarding')] },
+};
+const WARDEN_MOVES = {
+  'hammer-arm': { name: 'Hammer Arm', target: 'enemy', text: 'Its hammer arm comes down on you like a smith\'s on the anvil: 1d10 crushing.', effects: [atk('1d10', 'crush')] },
+  'bellows-breath': { name: 'Bellows Breath', target: 'all-enemies', text: 'It opens the bellows in its chest on the whole bridge: 1d8 ember to every hero, CON save for half.', effects: [{ type: 'damage', dice: '1d8', kind: 'ember', aspect: 'ember', save: 'CON' }] },
+  'hold-the-bridge': { name: 'Hold the Bridge', target: 'enemy', charge: true, text: 'It plants itself on the bridge and drives its anvil head into you, charging: 2d10 crushing, and you Stagger.', effects: [atk('2d10', 'crush', { riders: [status('staggered')] })] },
+  stoke: { name: 'Stoke', target: 'self', text: 'Its thralls rake its fire-door, and the fire inside it goes white: Hasted, and Warded.', effects: [status('hasted'), status('warded', { value: { dice: '1d8', diceEvery: 3 } })] },
+};
+
 const HEARTH_BELOW = {
-  // STUB from the M7 scaffold: an ember construct (the forge-spark) until P4 writes the cinder-thralls
-  'cinder-thrall': stub('cinder-thrall', 'Cinder-Thrall', IRONSPIRE['forge-spark'], { kind: 'construct', aspect: 'ember',
-    variants: { 'thrall-overseer': { name: 'Thrall-Overseer', tier: 'veteran', hp: 26, table: stretch(IRONSPIRE['forge-spark'].table, 6, 8) } },
-    text: 'One of the Unsmith\'s ash-men, shaped from the hearth\'s own ash. It remembers being a fire.' }),
-  // STUB from the M7 scaffold: an undead (the ash-wight) with the spec's blight, until P4 writes the unmade
-  unmade: stub('unmade', 'The Unmade', SUNSCORCH['ash-wight'], { kind: 'undead', aspect: 'blight',
-    text: 'A relic-bearer the Worldforge unmade: a husk still carrying the shape of the thing it held.' }),
-  // STUB from the M7 scaffold: an ember construct (the forgeborn) until P4 writes the forge-warden
-  'forge-warden': stub('forge-warden', 'Forge-Warden', IRONSPIRE.forgeborn, { kind: 'construct', aspect: 'ember',
-    text: 'A bellows-and-anvil construct that holds the Worldforge\'s bridge, breathing like a forge.' }),
-  // STUB from the M7 scaffold, all four: the Hollow Council, each a human family of their own region, until P4 writes them
-  'hollow-miravel': hollow('hollow-miravel', 'Hollow Miravel', VERDANT['feral-druid'], 'hollow-wreath', 'verdant',
-    'The Hollow Wreath goes dark, and Miravel looks at her own hands as if she has never seen them.',
-    'The Elder of Eldergrove, wearing the Hollow Wreath the Unsmith sent her chair. It has hollowed her.'),
-  'hollow-qasim': hollow('hollow-qasim', 'Hollow Qasim', SUNSCORCH['dune-raider'], 'hollow-chalice', 'ember',
-    'The Hollow Chalice runs dry, and Qasim sits down on the steps of his chair like a man after a long walk.',
-    'The Cistern Lord of Sandspire, holding the Hollow Chalice the Unsmith sent his chair. It has hollowed him.'),
-  'hollow-brundar': hollow('hollow-brundar', 'Hollow Brundar', VERDANT.bandit, 'hollow-gauntlet', 'stone',
-    'The Hollow Gauntlet opens, and Brundar lets go of whatever it was holding for him.',
-    'The Thane of Ironhold, in the Hollow Gauntlet the Unsmith sent his chair. It has hollowed him.'),
-  'hollow-gretch': hollow('hollow-gretch', 'Hollow Gretch', GLOOMFEN['bog-hag'], 'hollow-chain', 'blight',
-    'The Hollow Chain slips from her neck, and Gretch says, very quietly, that she knew she should not have opened it.',
-    'The Mayor of Bogmire, wearing the Hollow Chain the Unsmith sent her chair. It has hollowed her.'),
-  // STUB from the M7 scaffold: a Champion (the Ashen Warden: three phases, at 1, 0.66 and 0.33) on the `champion` tier
-  // until P1 adds the `unsmith` tier (two d20s, two moves a turn; spec §4.2) and P4 writes his three phases, his
-  // pieces' Arts and his stolen Arts (spec §3.5, §4.4)
-  unsmith: stub('unsmith', 'The Unsmith', SUNSCORCH['ashen-warden'], { kind: 'human', aspect: 'ember',
+  'cinder-thrall': {
+    id: 'cinder-thrall', name: 'Cinder-Thrall', art: 'cinder-thrall', tier: 'rabble', kind: 'construct',
+    hp: 17, guard: 14, atk: 4, dmg: 2, speed: 11, armor: 'none', aspect: 'ember',
+    saves: { STR: 1, DEX: 2, CON: 2, WIS: 0 },
+    moves: THRALL_MOVES,
+    table: [[1, 3, 'cinder-fist'], [4, 5, 'ash-in-the-eyes'], [6, 6, 'reform']],
+    variants: {
+      // the thralls' driver at the Ash Stair's narrows (spec §3.3): a veteran of the same ash, a head taller, in an iron
+      // smith's mask with the broken-ring mark on his collar (P6's `thrall-overseer`)
+      'thrall-overseer': {
+        name: 'Thrall-Overseer', tier: 'veteran', hp: 30, art: 'thrall-overseer',
+        moves: {
+          ...THRALL_MOVES,
+          'hot-chain': { name: 'Hot Chain', target: 'enemy', text: 'A whip of chain drawn hot from the forge, cracked across you: 1d8 slashing, and it Burns.', effects: [atk('1d8', 'slash', { aspect: 'ember', riders: [status('burning')] })] },
+          'drive-them': { name: 'Drive Them', target: 'all-allies', text: 'He cracks the hot chain over his thralls, and they come on faster: every one of them is Hasted.', effects: [status('hasted')] },
+        },
+        table: [[1, 3, 'hot-chain'], [4, 5, 'cinder-fist'], [6, 6, 'ash-in-the-eyes'], [7, 8, 'drive-them']],
+      },
+    },
+    text: 'One of the Unsmith\'s ash-men, shaped from the hearth\'s own ash with a coal for a heart. It remembers being a fire, and it would like to be one again.',
+  },
+  unmade: {
+    id: 'unmade', name: 'The Unmade', art: 'unmade', tier: 'veteran', kind: 'undead',
+    hp: 28, guard: 15, atk: 4, dmg: 2, speed: 9, armor: 'none', aspect: 'blight',
+    saves: { STR: 2, DEX: 0, CON: 3, WIS: 1 },
+    moves: UNMADE_MOVES,
+    table: [[1, 3, 'empty-grip'], [4, 5, 'phantom-art'], [6, 7, 'grey-touch'], [8, 8, 'husk']],
+    text: 'A relic-bearer the Worldforge unmade: a grey husk still carrying the shape of the thing it held, and still reaching for it.',
+  },
+  'forge-warden': {
+    id: 'forge-warden', name: 'Forge-Warden', art: 'forge-warden', tier: 'veteran', kind: 'construct',
+    hp: 40, guard: 17, atk: 5, dmg: 3, speed: 8, armor: 'plate', aspect: 'ember',
+    saves: { STR: 4, DEX: 0, CON: 4, WIS: 1 },
+    moves: WARDEN_MOVES,
+    table: [[1, 3, 'hammer-arm'], [4, 5, 'bellows-breath'], [6, 7, 'hold-the-bridge'], [8, 8, 'stoke']],
+    text: 'A kiln of firebrick as tall as a door, with an anvil for a head, a hammer for an arm and a bellows that breathes like a forge, set at the near end of the Worldforge\'s bridge to keep it. Its thralls keep it fed.',
+  },
+  // ---- the Hollow Council (spec A11, §3.5): Nos. 67-70 are the gifts they wear
+  'hollow-miravel': {
+    id: 'hollow-miravel', name: 'Hollow Miravel', art: 'hollow-miravel', tier: 'hollow', kind: 'human', unique: true, noFlee: true,
+    hp: 150, guard: 19, atk: 10, dmg: 7, speed: 10, armor: 'hide', aspect: 'verdant',
+    saves: { STR: 2, DEX: 2, CON: 3, WIS: 5, CHA: 3 },
+    relics: ['hollow-wreath'], bonusWhile: 'hollow-wreath',
+    grudgeTitles: { win: ['the Unheeded', 'the Twice-Unheeded', 'the Thrice-Unheeded', 'the Ever-Unheeded'] },
+    koText: 'Miravel says, in her own voice, "Keep folk come for timber and advice." Then, quieter: "They never take it."',
+    moves: {
+      'rowan-staff': { name: 'Rowan Staff', target: 'enemy', text: 'The rowan staff she walked Eldergrove\'s bounds with for sixty years: 2d8 crushing.', effects: [atk('2d8', 'crush')] },
+      'unheeded-advice': { name: 'Unheeded Advice', target: 'enemy', text: 'She tells you, very kindly, exactly what you are doing wrong, and you cannot stop hearing it. WIS save or Hexed.', effects: [status('hexed', { save: 'WIS' })] },
+      'grey-bark': { name: 'Grey Bark', target: 'self', text: 'Bark creeps over her skin, grey where it should be green: Warded.', effects: [status('warded', { value: { dice: '2d8', diceEvery: 3 } })] },
+      'hollow-bloom': { name: 'Hollow Bloom', target: 'all-enemies', requires: 'hollow-wreath', fallback: 'rowan-staff', text: 'The Hollow Wreath blooms violet-black, and thorns come up through the floor under every one of you: 2d8 verdant, STR save for half, and you are Rooted.', effects: [{ type: 'damage', dice: '2d8', kind: 'pierce', aspect: 'verdant', save: 'STR', riders: [status('rooted')] }] },
+      thornwall: { name: 'Thornwall', target: 'all-enemies', text: 'A wall of grey thorn comes up round the whole line: 1d8 piercing to every hero, and you Bleed.', effects: [{ type: 'damage', dice: '1d8', kind: 'pierce', aspect: 'verdant', riders: [status('bleeding')] }] },
+      'every-fallen-tree': { name: 'Every Fallen Tree', target: 'enemy', charge: true, text: 'Every tree she ever let fall comes back up through the floor at one of you as a single trunk of thorn, charging: 3d8 piercing, and you Bleed (two stacks).', effects: [atk('3d8', 'pierce', { aspect: 'verdant', riders: [status('bleeding', { stacks: 2 })] })] },
+      'hollow-harvest': { name: 'Hollow Harvest', target: 'all-enemies', requires: 'hollow-wreath', fallback: 'rowan-staff', text: 'The Hollow Wreath takes the green out of everything in the hall and gives it to her: 2d6 verdant to every hero, and she Regenerates.', effects: [{ type: 'damage', dice: '2d6', kind: 'verdant', aspect: 'verdant' }, status('regenerating', { self: true, value: { dice: '2d6', diceEvery: 3 } })] },
+    },
+    phases: [
+      { at: 1, text: 'The Elder. Miravel stands before the tree\'s chair with the Hollow Wreath in her white hair, and it glows violet-black.', table: [[1, 7, 'rowan-staff'], [8, 11, 'unheeded-advice'], [12, 14, 'grey-bark'], [15, 20, 'hollow-bloom']] },
+      { at: 0.5, text: 'Every Tree That Fell. The wreath shows her every tree she ever let fall, and every one of them comes back up through the floor as thorn.', table: [[1, 5, 'rowan-staff'], [6, 10, 'thornwall'], [11, 14, 'every-fallen-tree'], [15, 20, 'hollow-harvest']] },
+    ],
+    text: 'Elder Miravel of Eldergrove, before the chair carved with the tree, wearing the Hollow Wreath the Unsmith sent her. It has hollowed her: she is grey from her hair to her feet, and only the wreath has any colour left.',
+  },
+  'hollow-qasim': {
+    id: 'hollow-qasim', name: 'Hollow Qasim', art: 'hollow-qasim', tier: 'hollow', kind: 'human', unique: true, noFlee: true,
+    hp: 125, guard: 19, atk: 8, dmg: 6, speed: 11, armor: 'hide', aspect: 'ember',
+    saves: { STR: 3, DEX: 3, CON: 3, WIS: 3, CHA: 4 },
+    relics: ['hollow-chalice'], bonusWhile: 'hollow-chalice',
+    grudgeTitles: { win: ['the Unquenched', 'the Twice-Unquenched', 'the Thrice-Unquenched', 'the Ever-Thirsting'] },
+    koText: '"I dislike owing," says Qasim, hoarse, in his own voice again. "So I pay quickly."',
+    moves: {
+      scimitar: { name: 'Scimitar', target: 'enemy', text: 'The jewelled scimitar of Sandspire\'s Cistern Lords, and he was a raider before he was a lord: 2d8 slashing.', effects: [atk('2d8', 'slash')] },
+      'sand-in-the-eyes': { name: 'Sand in the Eyes', target: 'enemy', text: 'An old raider\'s trick: a fistful of hot sand out of nowhere. DEX save or Frightened.', effects: [status('frightened', { save: 'DEX' })] },
+      'what-you-owe': { name: 'What You Owe', target: 'enemy', text: '"You owe Sandspire water," he says, and names the sum. CHA save, or you stop to count it, and your next turn comes a whole turn later.', effects: [{ type: 'delay', save: 'CHA', dc: 20, turns: 1, text: '{target} stops to count what they owe, and loses a turn.' }] },
+      'hollow-draught': { name: 'Hollow Draught', target: 'self', requires: 'hollow-chalice', fallback: 'scimitar', text: 'He drinks from the Hollow Chalice, and whatever it holds, it is never full: he heals 3d8, and is Hasted.', effects: [{ type: 'heal', dice: '3d8', diceEvery: 3 }, status('hasted')] },
+      drought: { name: 'Drought', target: 'all-enemies', text: 'The air goes dry as the Dust Trail at noon, and then drier: 2d8 ember to every hero, CON save for half, and you Burn.', effects: [{ type: 'damage', dice: '2d8', kind: 'ember', aspect: 'ember', save: 'CON', riders: [status('burning')] }] },
+      mirage: { name: 'Mirage', target: 'enemy', text: 'He shows you water where there is none, as the wisps of the Glass Flats do. WIS save or Charmed.', effects: [status('charmed', { save: 'WIS' })] },
+      'drink-them-dry': { name: 'Drink Them Dry', target: 'all-enemies', requires: 'hollow-chalice', fallback: 'scimitar', text: 'He holds the Hollow Chalice out over you and it drinks, from every one of you: 2d6 ember to every hero, and he heals 2d8.', effects: [{ type: 'damage', dice: '2d6', kind: 'ember', aspect: 'ember' }, { type: 'heal', dice: '2d8', diceEvery: 3, self: true }] },
+    },
+    phases: [
+      { at: 1, text: 'The Cistern Lord. Qasim stands before the sun\'s chair with the Hollow Chalice in his hand, and it is full of something dark that does not spill.', table: [[1, 7, 'scimitar'], [8, 11, 'sand-in-the-eyes'], [12, 14, 'what-you-owe'], [15, 20, 'hollow-draught']] },
+      { at: 0.5, text: 'The Drought. The chalice shows him every cup he ever sold that he should have given, and it drinks the hall dry to fill itself.', table: [[1, 5, 'scimitar'], [6, 10, 'drought'], [11, 14, 'mirage'], [15, 20, 'drink-them-dry']] },
+    ],
+    text: 'Cistern Lord Qasim of Sandspire, before the chair carved with the sun, holding the Hollow Chalice the Unsmith sent him. It has hollowed him: he is grey from his turban to his boots, and the chalice is never full.',
+  },
+  'hollow-brundar': {
+    id: 'hollow-brundar', name: 'Hollow Brundar', art: 'hollow-brundar', tier: 'hollow', kind: 'human', unique: true, noFlee: true,
+    hp: 110, guard: 18, atk: 8, dmg: 6, speed: 8, armor: 'mail', aspect: 'stone',
+    saves: { STR: 5, DEX: 1, CON: 5, WIS: 3, CHA: 2 },
+    relics: ['hollow-gauntlet'], bonusWhile: 'hollow-gauntlet',
+    grudgeTitles: { win: ['the Unforgiving', 'the Twice-Unforgiving', 'the Thrice-Unforgiving', 'the Iron-Hearted'] },
+    koText: '"I don\'t open gifts from men who rob me," Brundar growls, in his own voice, and his fist comes open.',
+    moves: {
+      'thanes-hammer': { name: 'Thane\'s Hammer', target: 'enemy', text: 'The Thane\'s war-hammer, rune-cut and heavier than it looks: 2d8 crushing.', effects: [atk('2d8', 'crush')] },
+      'debts-paid': { name: 'Debts Paid', target: 'enemy', text: 'Ironhold pays its debts, even the ones it would sooner not have: 1d10 crushing, and you Stagger.', effects: [atk('1d10', 'crush', { riders: [status('staggered')] })] },
+      'sentinels-stance': { name: 'Sentinel\'s Stance', target: 'self', text: 'He sets his feet the way Ironhold\'s Sentinels set theirs on the stair, and nothing gets past: Guarding, and Warded.', effects: [status('guarding'), status('warded', { value: { dice: '2d8', diceEvery: 3 } })] },
+      'iron-grip': { name: 'Iron Grip', target: 'enemy', requires: 'hollow-gauntlet', fallback: 'thanes-hammer', text: 'The Hollow Gauntlet closes on you and does not let go: 3d8 crushing, and you are Rooted.', effects: [atk('3d8', 'crush', { riders: [status('rooted')] })] },
+      'seal-the-deeps': { name: 'Seal the Deeps', target: 'all-enemies', text: 'He brings his fist down on the floor, and the hall shuts round you like the Deeps\' doors: 2d6 crushing to every hero, STR save for half, and you Stagger.', effects: [{ type: 'damage', dice: '2d6', kind: 'crush', aspect: 'stone', save: 'STR', riders: [status('staggered')] }] },
+      ironfall: { name: 'Ironfall', target: 'enemy', charge: true, requires: 'hollow-gauntlet', fallback: 'thanes-hammer', text: 'He lifts the hammer in the Hollow Gauntlet as high as the hall, charging, and it holds on to everything he ever kept: 4d10 crushing.', effects: [atk('4d10', 'crush')] },
+    },
+    phases: [
+      { at: 1, text: 'The Thane. Brundar stands before the anvil\'s chair in the Hollow Gauntlet. It has closed on his hand, and it will not open.', table: [[1, 7, 'thanes-hammer'], [8, 11, 'debts-paid'], [12, 14, 'sentinels-stance'], [15, 20, 'iron-grip']] },
+      { at: 0.5, text: 'Iron. The gauntlet shows him the Deeps he sealed to hide Harrow\'s theft, and he seals the hall the same way.', table: [[1, 5, 'thanes-hammer'], [6, 10, 'seal-the-deeps'], [11, 14, 'debts-paid'], [15, 20, 'ironfall']] },
+    ],
+    text: 'Thane Brundar of Ironhold, before the chair carved with the anvil under the mountain, in the Hollow Gauntlet the Unsmith sent him. It has hollowed him: he is grey as the Deeps, and the gauntlet holds on to everything.',
+  },
+  'hollow-gretch': {
+    id: 'hollow-gretch', name: 'Hollow Gretch', art: 'hollow-gretch', tier: 'hollow', kind: 'human', unique: true, noFlee: true,
+    hp: 140, guard: 19, atk: 8, dmg: 6, speed: 10, armor: 'none', aspect: 'blight',
+    saves: { STR: 1, DEX: 2, CON: 3, WIS: 5, CHA: 5 },
+    relics: ['hollow-chain'], bonusWhile: 'hollow-chain',
+    grudgeTitles: { win: ['the Owed', 'the Twice-Owed', 'the Thrice-Owed', 'the Ever-Owed'] },
+    koText: '"I\'m not a fool," Gretch says, very quietly, in her own voice. "I\'m not that kind of fool."',
+    moves: {
+      gavel: { name: 'Gavel', target: 'enemy', text: 'Bogmire\'s moot-hall gavel, which has settled more arguments than any law: 2d8 crushing.', effects: [atk('2d8', 'crush')] },
+      'mayors-word': { name: 'The Mayor\'s Word', target: 'all-enemies', text: 'She tells you, very calmly, what the fen does to people who cross the Mayor of Bogmire. Every hero: WIS save or Frightened.', effects: [status('frightened', { save: 'WIS' })] },
+      'counted-twice': { name: 'Counted Twice', target: 'enemy', text: 'Everyone in Bogmire counts twice, and she counts you: you are Marked.', effects: [status('marked')] },
+      'too-tight': { name: 'Too Tight', target: 'enemy', requires: 'hollow-chain', fallback: 'gavel', text: 'The Hollow Chain tightens, on your throat instead of hers: 2d8 blight, and you are Rotting.', effects: [atk('2d8', 'blight', { aspect: 'blight', riders: [status('rotting')] })] },
+      'call-in-a-favour': { name: 'Call In a Favour', target: 'self', fallback: 'gavel', text: 'Everyone in Bogmire owes the Mayor a favour, and some of them are in the fen: a mire leech comes up out of the soot to pay its own.', effects: [{ type: 'summon', family: 'mire-leech', count: 1, max: 2, levelDelta: -4 }] },
+      fear: { name: 'Fear', target: 'all-enemies', text: 'She stops pretending she is not afraid, and it is catching. Every hero: WIS save or Frightened, and WIS save or Hexed.', effects: [status('frightened', { save: 'WIS' }), status('hexed', { save: 'WIS' })] },
+      'every-favour-owed': { name: 'Every Favour Owed', target: 'all-enemies', requires: 'hollow-chain', fallback: 'gavel', text: 'Every favour the chain ever bought her, called in at once: 3d8 blight to every hero, WIS save for half, and you are Frightened.', effects: [{ type: 'damage', dice: '3d8', kind: 'blight', aspect: 'blight', save: 'WIS', riders: [status('frightened')] }] },
+    },
+    phases: [
+      { at: 1, text: 'The Mayor. Gretch stands before the lantern\'s chair in the Hollow Chain. It is too tight, and she will not take it off.', table: [[1, 7, 'gavel'], [8, 11, 'mayors-word'], [12, 14, 'counted-twice'], [15, 20, 'too-tight']] },
+      { at: 0.5, text: 'Fear and Favours. The chain shows her what she runs Bogmire on, and she runs out of both at once.', table: [[1, 5, 'gavel'], [6, 9, 'call-in-a-favour'], [10, 14, 'fear'], [15, 20, 'every-favour-owed']] },
+    ],
+    text: 'Mayor Gretch of Bogmire, before the chair carved with the lantern among the reeds, wearing the Hollow Chain the Unsmith sent her. It has hollowed her: she is grey as the fen at dawn, and the chain is always a little too tight.',
+  },
+  // ---- the Unsmith (spec A16, §3.5): Nos. 72-74 are his pieces
+  unsmith: {
+    id: 'unsmith', name: 'The Unsmith', art: 'unsmith', tier: 'unsmith', kind: 'human', unique: true, noFlee: true,
+    hp: 185, guard: 19, atk: 9, dmg: 6, speed: 9, armor: 'hide', aspect: 'ember',
+    saves: { STR: 5, DEX: 2, CON: 5, WIS: 4, CHA: 4 },
     relics: ['unmaking-hammer', 'ironvein-apron', 'worldforge-heart'],
-    koText: 'The hammer drops. Harrow Ironvein looks up at the Worldforge, and then at you, and for a moment he looks like his sister.',
-    text: 'Harrow Ironvein, Hilda\'s twin, the smith who drew the Worldforge\'s plans: the Unsmith. He has kept the fire in.' }),
+    stolenFallback: 'nothing-left',
+    koText: 'Harrow Ironvein goes down on one knee before his forge. He looks at you, and for a moment he looks exactly like his sister. "Thorough," he says. "She always was, too."',
+    moves: {
+      'hammer-blow': { name: 'Hammer Blow', target: 'enemy', text: 'A smith\'s hammer in the hand that taught Ironhold\'s smiths: 2d10 crushing, and 1d8 more.', effects: [atk('2d10', 'crush', { diceEvery: 5, bonusDice: [{ dice: '1d8' }] })] },
+      'ring-the-anvil': { name: 'Ring the Anvil', target: 'all-enemies', text: 'He strikes the great anvil once, and the note goes through every one of you: 1d8 crushing to every hero, CON save for half, and you Stagger.', effects: [{ type: 'damage', dice: '1d8', diceEvery: 5, kind: 'crush', save: 'CON', riders: [status('staggered')] }] },
+      unmake: { name: 'Unmake', target: 'enemy', requires: 'unmaking-hammer', fallback: 'hammer-blow', text: 'The Unmaking Hammer comes down on the relic in your hand, not on you. It is still in your hand afterwards, but it is only iron: 2d8 crushing, and you are Unmade for two turns (your relic\'s Legend Surge is struck out of it).', effects: [atk('2d8', 'crush', { diceEvery: 5, riders: [status('unmade')] })] },
+      'forge-apron': { name: 'Forge-Apron', target: 'self', requires: 'ironvein-apron', fallback: 'hammer-blow', text: 'He turns the next blow on the Ironvein Apron, which has never once burned through: Guarding, and Warded.', effects: [status('guarding'), status('warded', { value: { dice: '3d8', diceEvery: 3 } })] },
+      'nothing-left': { name: 'Nothing Left', target: 'self', text: 'He reaches for the relics you never claimed, and finds you left him none. For a moment he only stands there with his hands open: he is Exposed.', effects: [status('exposed')] },
+      worldfire: { name: 'Worldfire', target: 'all-enemies', text: 'The Worldforge opens behind him, and its fire comes out over all of you: 3d8 ember to every hero, DEX save for half, and you Burn.', effects: [{ type: 'damage', dice: '3d8', diceEvery: 5, kind: 'ember', aspect: 'ember', save: 'DEX', riders: [status('burning')] }] },
+      'hearts-pull': { name: 'The Heart\'s Pull', target: 'enemy', charge: true, requires: 'worldforge-heart', fallback: 'hammer-blow', text: 'The heart in his chest pulls, charging, and one of you goes toward it: 1d8 ember, and you are held in the furnace\'s mouth for two turns, burning.', effects: [atk('1d8', 'crush', { diceEvery: 5, aspect: 'ember', riders: [status('swallowed', { label: 'In the furnace' })] })] },
+      'heart-flare': { name: 'Heart Flare', target: 'all-enemies', requires: 'worldforge-heart', fallback: 'hammer-blow', text: 'The Worldforge Heart beats once and the forge beats with it: 2d6 ember to every hero, and he heals 2d8.', effects: [{ type: 'damage', dice: '2d6', diceEvery: 5, kind: 'ember', aspect: 'ember' }, { type: 'heal', dice: '2d8', diceEvery: 3, self: true }] },
+    },
+    phases: [
+      { at: 1, text: 'The Smith. Harrow Ironvein puts down the plans, picks up the Unmaking Hammer, and looks at you the way his sister looks at a blade that has come back to be mended.', table: [[1, 8, 'hammer-blow'], [9, 12, 'ring-the-anvil'], [13, 16, 'forge-apron'], [17, 20, 'unmake']] },
+      { at: 0.66, steals: true, text: 'The Thief. He hangs the relics you never came for on his apron like a pedlar\'s wares, and every one of them turns to face you.', table: [[1, 6, 'hammer-blow'], [7, 14, 'stolen'], [15, 17, 'unmake'], [18, 20, 'ring-the-anvil']] },
+      { at: 0.33, text: 'The Worldforge. The furnace behind him opens like a door, and the heart in his chest burns through his shirt.', table: [[1, 6, 'hammer-blow'], [7, 11, 'worldfire'], [12, 15, 'hearts-pull'], [16, 20, 'heart-flare']] },
+    ],
+    text: 'Harrow Ironvein, Hilda\'s twin and Ironhold\'s master smith, who stole the Worldforge\'s plans from under Ironhold and built it: the Unsmith. He has kept the fire in for you. Two dice, two hands, three pieces, and whatever relics you left behind.',
+  },
 };
 
 export const FOES = deepFreeze({ ...VERDANT, ...TALLY_SUN, ...SUNSCORCH, ...TALLY_IRON, ...IRONSPIRE, ...TALLY_GLOOM, ...GLOOMFEN, ...HEARTH_BELOW });
