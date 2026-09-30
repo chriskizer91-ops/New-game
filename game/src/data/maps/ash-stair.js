@@ -20,9 +20,7 @@
 import { deepFreeze } from '../../core/freeze.js';
 
 export default deepFreeze({
-  // STUB (M7 P2): the biome is `ash` (Scorchgate's tiles) until art/tiles.js draws `hearth-roots` (P5);
-  // test/world-art.test.mjs wants every map's biome drawn. The lead switches it when P5's tiles land.
-  id: 'ash-stair', name: 'The Ash Stair', region: 'below', biome: 'ash', music: 'dungeon',
+  id: 'ash-stair', name: 'The Ash Stair', region: 'below', biome: 'hearth-roots', music: 'dungeon',
   backdrop: 'ash-stair', zone: 'ash-stair', level: 22, travel: true, dark: false,
   lore: [[540, 390, 12, 18]],
   w: 24, h: 36,

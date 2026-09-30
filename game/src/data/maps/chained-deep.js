@@ -29,9 +29,7 @@ import { deepFreeze } from '../../core/freeze.js';
 const CHAIN = (id, at, text) => ({ id, kind: 'sign', at, look: 'chain', text });
 
 export default deepFreeze({
-  // STUB (M7 P2): the biome is `forge` (Harrow's Forge's slag and soot) until art/tiles.js draws `chains` (P5);
-  // test/world-art.test.mjs wants every map's biome drawn. The lead switches it when P5's tiles land.
-  id: 'chained-deep', name: 'The Chained Deep', region: 'below', biome: 'forge', music: 'dungeon',
+  id: 'chained-deep', name: 'The Chained Deep', region: 'below', biome: 'chains', music: 'dungeon',
   backdrop: 'chained-deep', zone: null, level: 22, travel: true, dark: false,
   lore: [[540, 390, 21, 14]],
   w: 42, h: 28,
@@ -67,7 +65,7 @@ export default deepFreeze({
   ],
   entities: [
     // the narrows, halfway along the walkway: the unmade stand in them and hold the chain gate (spec A3)
-    { id: 'cd-chain-gate', kind: 'gate', area: [18, 4, 18, 6], open: { beaten: 'cd-unmade' }, guard: 'cd-unmade',
+    { id: 'cd-chain-gate', kind: 'gate', area: [18, 4, 18, 6], look: 'chain', open: { beaten: 'cd-unmade' }, guard: 'cd-unmade',
       text: 'The walkway narrows between the spur and the rim, and a length of great chain hangs across it. The unmade stand under it, holding the shapes of what they held.' },
     { id: 'cd-unmade', kind: 'encounter', enc: 'cd-unmade', mode: 'block', at: [17, 5], face: 'w' },
     // the Chain Fire, lit, on its platform past the narrows (spec §2.5)

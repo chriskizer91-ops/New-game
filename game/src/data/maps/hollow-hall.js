@@ -23,14 +23,12 @@ import { deepFreeze } from '../../core/freeze.js';
 // a line of soot across the nave that the gift's light will not let you cross, held by the Council member beside it
 const GATE = (id, area, guard, text) => ({ id, kind: 'gate', area, look: 'hollow-gate', open: { beaten: guard }, guard, text });
 const KEEPER = (id, at) => ({ id, kind: 'encounter', enc: id, mode: 'block', at, face: 'w' });
-// the chairs are signs with the look `throne` until batch 4's painting lands, and then `painted` (spec §2.3)
-const CHAIR = (id, at, text) => ({ id, kind: 'sign', at, look: 'throne', text });
+// the chairs are signs, each drawn with its region's mark (art/map-sprites.js chair-tree, -sun, -anvil, -lantern) until
+// batch 4's painting lands, and then `painted` (spec §2.3)
+const CHAIR = (id, at, look, text) => ({ id, kind: 'sign', at, look, text });
 
 export default deepFreeze({
-  // STUB (M7 P2): the biome is `dwarf-hall` (Ironhold's tiles: its pillars read as pillars) until art/tiles.js draws
-  // `council` (P5);
-  // test/world-art.test.mjs wants every map's biome drawn. The lead switches it when P5's tiles land.
-  id: 'hollow-hall', name: 'The Hollow Hall', region: 'below', biome: 'dwarf-hall', music: 'dungeon',
+  id: 'hollow-hall', name: 'The Hollow Hall', region: 'below', biome: 'council', music: 'dungeon',
   backdrop: 'hollow-hall', zone: null, level: 22, travel: false, dark: false,
   lore: [[540, 390, 18, 12]],
   w: 36, h: 24,
@@ -71,10 +69,10 @@ export default deepFreeze({
     GATE('hh-gate-4', [23, 10, 23, 13], 'hollow-gretch', 'A line of soot across the nave. Mayor Gretch stands at its end in the Hollow Chain, and its light will not let you cross.'),
     KEEPER('hollow-gretch', [23, 14]),
     // the four great chairs, each carved with its region's mark
-    CHAIR('hh-chair-verdant', [8, 4], 'A great stone chair on a low dais, carved with a tree. A faint violet-black light clings to the seat, as if someone rose from it a moment ago.'),
-    CHAIR('hh-chair-sunscorch', [13, 20], 'A great stone chair on a low dais, carved with a sun. The stone is warm, and a violet-black light clings to the seat.'),
-    CHAIR('hh-chair-ironspire', [18, 4], 'A great stone chair on a low dais, carved with an anvil under a mountain. The arms are worn smooth, and a violet-black light clings to the seat.'),
-    CHAIR('hh-chair-gloomfen', [23, 20], 'A great stone chair on a low dais, carved with a lantern among reeds. The stone is damp, and a violet-black light clings to the seat.'),
+    CHAIR('hh-chair-verdant', [8, 4], 'chair-tree', 'A great stone chair on a low dais, carved with a tree. A faint violet-black light clings to the seat, as if someone rose from it a moment ago.'),
+    CHAIR('hh-chair-sunscorch', [13, 20], 'chair-sun', 'A great stone chair on a low dais, carved with a sun. The stone is warm, and a violet-black light clings to the seat.'),
+    CHAIR('hh-chair-ironspire', [18, 4], 'chair-anvil', 'A great stone chair on a low dais, carved with an anvil under a mountain. The arms are worn smooth, and a violet-black light clings to the seat.'),
+    CHAIR('hh-chair-gloomfen', [23, 20], 'chair-lantern', 'A great stone chair on a low dais, carved with a lantern among reeds. The stone is damp, and a violet-black light clings to the seat.'),
     { id: 'hh-alms', kind: 'chest', at: [28, 5], loot: { gold: 200, items: [{ rarity: 'storied', slot: 'amulet' }], materials: { silver: 2 } } },
   ],
   exits: [

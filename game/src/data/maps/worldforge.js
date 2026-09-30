@@ -21,9 +21,7 @@
 import { deepFreeze } from '../../core/freeze.js';
 
 export default deepFreeze({
-  // STUB (M7 P2): the biome is `forge` (Harrow's Forge's tiles) until art/tiles.js draws `worldforge` (P5);
-  // test/world-art.test.mjs wants every map's biome drawn. The lead switches it when P5's tiles land.
-  id: 'worldforge', name: 'The Worldforge', region: 'below', biome: 'forge', music: 'boss',
+  id: 'worldforge', name: 'The Worldforge', region: 'below', biome: 'worldforge', music: 'boss',
   backdrop: 'worldforge', zone: null, level: 22, travel: false, dark: false,
   lore: [[540, 390, 18, 12]],
   w: 36, h: 24,
@@ -47,7 +45,7 @@ export default deepFreeze({
     '#kkkkk,okkk~~~___,Y____,______######', // 16
     '*kkkkkkkkkk~~~_______Y____,___######', // 17
     '#kkkkkkkkkk~~~____________,_o_##:###', // 18
-    '#kkkkkkkkkk~~~_____o_______Y__######', // 19
+    '#kkkkkkkkkk~~~_____o_______Y__#~~###', // 19
     '#kttkkkk,tk~~~_tt,____tt___,__~~####', // 20
     '#kkkkkkkkkk~~~~~~~~~~~~~~~~~~~~~####', // 21
     '####*###*##~~~####*#####*###########', // 22
@@ -62,7 +60,7 @@ export default deepFreeze({
     { id: 'unsmith', kind: 'encounter', enc: 'unsmith', mode: 'lair', at: [27, 12], area: [26, 11, 28, 12], face: 'w' },
     // the heart: the step before the furnace's mouth, behind him (spec §4.7). Its look is `altar` until batch 4's painting
     // lands, and then `painted` (spec §2.3)
-    { id: 'wf-heart', kind: 'sign', at: [30, 11], look: 'altar', talk: 'the-heart', talkIf: { beaten: 'unsmith' }, text: 'The step before the furnace\'s mouth. The heat comes out of it like breath.' },
+    { id: 'wf-heart', kind: 'sign', at: [30, 11], look: 'heart-step', talk: 'the-heart', talkIf: { beaten: 'unsmith' }, text: 'The step before the furnace\'s mouth. The heat comes out of it like breath.' },
     // the Worldforge in the east wall, and the great anvil beside the smith's place (each drawn once, at its foot)
     { id: 'wf-furnace', kind: 'prop', prop: 'worldforge', at: [32, 18], solid: true },
     { id: 'wf-anvil', kind: 'prop', prop: 'great-anvil', at: [25, 7], solid: true },

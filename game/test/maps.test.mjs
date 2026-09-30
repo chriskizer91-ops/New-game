@@ -1477,15 +1477,13 @@ test('every Hearth Below entity is reachable with every key', () => {
 
 // What spec §2.3 (with §2.5, §2.6, §3.1, §3.3) puts on each map: its biome and backdrop, its Hearthfires (true = cold), its
 // fights and their modes, and its people. Road-first (A3): every route fight stands still (a block or a lair); only the
-// zone's packs roam. Each map fights on its own backdrop (spec §6.2, P6's). STUB (M7 P2): the biomes are drawn stand-ins
-// (Ironhold's, Scorchgate's and Harrow's Forge's tiles) until art/tiles.js draws the spec's four (council, hearth-roots,
-// chains and worldforge, P5's): test/world-art.test.mjs wants every map's biome drawn. The lead switches the maps and
-// these four values together.
+// zone's packs roam. Each map fights on its own backdrop (spec §6.2, P6's) and walks on its own biome (spec §6.1, P5's
+// art/tiles.js: council, hearth-roots, chains and worldforge).
 const ACT3_SPEC = {
-  'hollow-hall': { biome: 'dwarf-hall', backdrop: 'hollow-hall', fires: {}, fights: { 'hollow-miravel': 'block', 'hollow-qasim': 'block', 'hollow-brundar': 'block', 'hollow-gretch': 'block' }, npcs: [] },
-  'ash-stair': { biome: 'ash', backdrop: 'ash-stair', fires: { 'under-coal': true }, fights: { 'as-thralls': 'block', 'as-patrol': 'pack' }, npcs: [] },
-  'chained-deep': { biome: 'forge', backdrop: 'chained-deep', fires: { 'chain-fire': false }, fights: { 'cd-unmade': 'block' }, npcs: ['tamsin'] },
-  worldforge: { biome: 'forge', backdrop: 'worldforge', fires: {}, fights: { 'wf-warden': 'block', unsmith: 'lair' }, npcs: [] },
+  'hollow-hall': { biome: 'council', backdrop: 'hollow-hall', fires: {}, fights: { 'hollow-miravel': 'block', 'hollow-qasim': 'block', 'hollow-brundar': 'block', 'hollow-gretch': 'block' }, npcs: [] },
+  'ash-stair': { biome: 'hearth-roots', backdrop: 'ash-stair', fires: { 'under-coal': true }, fights: { 'as-thralls': 'block', 'as-patrol': 'pack' }, npcs: [] },
+  'chained-deep': { biome: 'chains', backdrop: 'chained-deep', fires: { 'chain-fire': false }, fights: { 'cd-unmade': 'block' }, npcs: ['tamsin'] },
+  worldforge: { biome: 'worldforge', backdrop: 'worldforge', fires: {}, fights: { 'wf-warden': 'block', unsmith: 'lair' }, npcs: [] },
 };
 
 test('the Hearth Below maps hold what spec §2.3 puts on them', () => {
