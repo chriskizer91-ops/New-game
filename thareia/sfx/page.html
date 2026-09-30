@@ -74,14 +74,16 @@ li.row[data-vote="no"] { border-color: color-mix(in srgb, var(--no) 55%, var(--l
       <button class="chip" data-f="no" aria-pressed="false">No</button>
       <button class="next" id="next">Play next unrated</button>
     </div>
-    <p class="save-note" id="save-note">Every sound here is made in code, with no sound files. Tap Play, then Yes or No.</p>
+    <p class="save-note" id="save-note">Every sound and song here is made in code, with no sound files. Tap Play, then Yes or No.</p>
   </header>
   <main id="list"></main>
 </div>
 
 <script>
 (function () {
-/*SOUNDS*/
+/*BUNDLE*/
+const { SFX: SOUNDS, sfxInit, playSfx, MUSIC, musicPlay, musicStop, musicPlaying } = window.TH;
+const SFX = [...MUSIC.map(m => ({ ...m, id: 'music-' + m.id, mid: m.id, cat: 'Music (new)', music: true })), ...SOUNDS];
 
 const votes = {};           // id -> { vote: 'yes' | 'no', note? }
 let db = null, show = 'all';
@@ -106,7 +108,8 @@ function render() {
         <div class="what"><b>${esc(s.name)}</b><span>${esc(s.desc)}</span></div>
         <div class="acts"><button class="play" aria-label="Play ${esc(s.name)}">Play</button>
           <button class="yes" aria-pressed="${v === 'yes'}">Yes</button><button class="no" aria-pressed="${v === 'no'}">No</button></div>`;
-      li.querySelector('.play').onclick = e => play(s, e.currentTarget);
+      const pb = li.querySelector('.play'); if (s.music && musicPlaying() === s.mid) pb.textContent = 'Stop';
+      pb.onclick = e => play(s, e.currentTarget);
       li.querySelector('.yes').onclick = () => vote(s.id, 'yes');
       li.querySelector('.no').onclick = () => vote(s.id, 'no');
       if (v === 'no') {
@@ -129,7 +132,14 @@ function tally() {
   $('meter').innerHTML = `<i style="width:${y / t * 100}%;background:var(--yes)"></i><i style="width:${n / t * 100}%;background:var(--no)"></i>`;
 }
 function play(s, btn) {
-  sfxInit(); playSfx(s);
+  sfxInit();
+  if (s.music) {
+    const on = musicPlaying() === s.mid;
+    document.querySelectorAll('.play').forEach(b => { if (b.textContent === 'Stop') b.textContent = 'Play'; });
+    if (on) musicStop(); else { musicPlay(s.mid); if (btn) btn.textContent = 'Stop'; }
+    return;
+  }
+  playSfx(s);
   if (btn) { btn.classList.add('on'); setTimeout(() => btn.classList.remove('on'), 400); }
 }
 function vote(id, v) {
@@ -160,8 +170,8 @@ try { Object.assign(votes, JSON.parse(localStorage.getItem('thareia-sfx-votes') 
 render();
 (async () => {
   try { db = window.claude?.use ? await window.claude.use('db') : null; } catch { db = null; }
-  if (!db) { $('save-note').textContent = 'Every sound here is made in code, with no sound files. Answers are saved on this device only.'; return; }
-  $('save-note').textContent = 'Every sound here is made in code, with no sound files. Your answers save to this page, and Claude can read them.';
+  if (!db) { $('save-note').textContent = 'Every sound and song here is made in code, with no sound files. Answers are saved on this device only.'; return; }
+  $('save-note').textContent = 'Every sound and song here is made in code, with no sound files. Your answers save to this page, and Claude can read them.';
   db.collection('votes').onSnapshot(snap => {
     for (const k of Object.keys(votes)) delete votes[k];
     for (const d of snap.docs) { const v = d.data(); if (v && (v.vote === 'yes' || v.vote === 'no')) votes[d.id] = { vote: v.vote, note: v.note || '' }; }

@@ -11,7 +11,7 @@ const hz = f => {
 };
 const rnd = (a, b) => a + Math.random() * (b - a);
 
-let AC = null, OUT = null, REV = null, NOISE = null, BUS = null, BUSREV = null;
+let AC = null, OUT = null, REV = null, NOISE = null, BUS = null, BUSREV = null, ECHO = null;
 export function sfxInit(given) {
   if (AC && !given) { if (AC.state === 'suspended') AC.resume(); return AC; }
   AC = given || new (window.AudioContext || window.webkitAudioContext)();
@@ -27,11 +27,12 @@ export function sfxInit(given) {
 export const sfxContext = () => AC;
 
 // the output of one voice: panned, with a reverb send
-function route(pan = 0, rv = 0) {
+function route(pan = 0, rv = 0, echo = 0) {
   const g = AC.createGain();
   const out = BUS || OUT, rev = BUSREV || REV;
   if (AC.createStereoPanner) { const p = AC.createStereoPanner(); p.pan.value = Math.max(-1, Math.min(1, pan)); g.connect(p); p.connect(out); } else g.connect(out);
   if (rv) { const s = AC.createGain(); s.gain.value = rv; g.connect(s); s.connect(rev); }
+  if (echo && ECHO) { const s = AC.createGain(); s.gain.value = echo; g.connect(s); s.connect(ECHO); }
   return g;
 }
 // attack to g over a, hold, then an exponential fall to silence at d
@@ -63,13 +64,13 @@ function tone(t, o) {
   if (o.to) osc.frequency.exponentialRampToValueAtTime(Math.max(1, hz(o.to)), t + (o.glide ?? o.d));
   if (o.detune) osc.detune.value = o.detune;
   if (o.vib) { const l = AC.createOscillator(), lg = AC.createGain(); l.frequency.value = o.vib; lg.gain.value = o.vibd ?? f * .02; l.connect(lg); lg.connect(osc.frequency); l.start(t); l.stop(t + o.d + .1); }
-  const e = envelope(t, o); filter(t, o, osc).connect(e); e.out.connect(route(o.pan, o.rv));
+  const e = envelope(t, o); filter(t, o, osc).connect(e); e.out.connect(route(o.pan, o.rv, o.echo));
   osc.start(t); osc.stop(t + o.d + .05);
 }
 // filtered noise: { d, g, a, hold, lp|bp|hp, f2, fg, q, pan, rv, am }
 function noise(t, o) {
   const s = AC.createBufferSource(); s.buffer = NOISE; if (o.rate) s.playbackRate.value = o.rate;
-  const e = envelope(t, o); filter(t, o, s).connect(e); e.out.connect(route(o.pan, o.rv));
+  const e = envelope(t, o); filter(t, o, s).connect(e); e.out.connect(route(o.pan, o.rv, o.echo));
   s.start(t, Math.random() * 1.5); s.stop(t + o.d + .05);
 }
 // a bell or metal strike by frequency modulation: { f, ratio, index, d, g, pan, rv }
@@ -78,7 +79,7 @@ function fm(t, o) {
   c.frequency.value = f; m.frequency.value = f * (o.ratio ?? 3.5);
   mg.gain.setValueAtTime(f * (o.index ?? 2), t); mg.gain.exponentialRampToValueAtTime(f * .01 + 1, t + o.d);
   m.connect(mg); mg.connect(c.frequency);
-  const e = envelope(t, { a: .002, ...o }); c.connect(e); e.out.connect(route(o.pan, o.rv));
+  const e = envelope(t, { a: .002, ...o }); c.connect(e); e.out.connect(route(o.pan, o.rv, o.echo));
   c.start(t); m.start(t); c.stop(t + o.d + .05); m.stop(t + o.d + .05);
 }
 const arp = (t, notes, step, o) => notes.forEach((n, i) => { if (n) tone(t + i * step, { ...o, f: n, pan: (o.pan ?? 0) + (o.spread ? (i / Math.max(1, notes.length - 1) - .5) * o.spread : 0) }); });
@@ -184,7 +185,12 @@ add(WALK, 'sign', 'Read a sign', 'A knock on a wooden post.', t => { tone(t, { f
 const SHIP = 'The airship';
 add(SHIP, 'ship-takeoff', 'Skiff lifts off', 'The sunstone crystals hum up in pitch as the ship rises, with wind swelling.', t => { chord(t, [110, 165, 220], { to: 2, a: .3, d: 2.2, g: .07, rv: .4, vib: 4, vibd: 2 }); [110, 165, 220].forEach((f, i) => tone(t, { f, to: f * 2, d: 2.2, g: .05, a: .4, glide: 1.8, pan: (i - 1) * .4 })); noise(t + .4, { bp: 500, f2: 1200, d: 1.8, g: .15, a: .9 }); });
 add(SHIP, 'ship-land', 'Skiff lands at the dock', 'The hum settles down, a wooden bump, and ropes creak.', t => { [220, 330].forEach((f, i) => tone(t, { f, to: f / 2, d: 1.2, g: .06, pan: i ? .3 : -.3 })); thump(t + 1, .5, 110, .3); creak(t + 1.15, .5, .06, 160); });
-add(SHIP, 'sails', 'Sails fill and flap', 'Canvas snapping in the wind.', t => { for (let i = 0; i < 4; i++) noise(t + i * .32 + rnd(0, .06), { bp: rnd(600, 900), d: .14, g: .3, q: 1.2, pan: rnd(-.4, .4) }); });
+add(SHIP, 'sails', 'Crystal sails fill', 'The magic sails catching the Aether: a strange, airy, spacey whoosh with a glassy shimmer, rising and falling like a breath.', t => {
+  noise(t, { bp: 300, f2: 2200, fg: 1.1, d: 2.2, g: .22, q: 9, a: .7, pan: -.5, rv: .6 });
+  noise(t + .15, { bp: 2600, f2: 500, fg: 1.4, d: 2.1, g: .16, q: 11, a: .6, pan: .5, rv: .6 });
+  [[220, 330], [277, 415], [330, 494]].forEach(([a, b], i) => tone(t + i * .18, { f: a, to: b, glide: 1.3, d: 2, g: .035, a: .5, vib: 4, vibd: 5, rv: .8, pan: (i - 1) * .6 }));
+  bells(t + .5, ['E6', 'B6', 'F#7'], .22, { ratio: 3.5, index: .8, d: 1.2, g: .03, rv: .8 });
+});
 add(SHIP, 'wind', 'High-altitude wind', 'A steady, whistling wind above the land.', t => { noise(t, { bp: 450, f2: 900, fg: 1.5, d: 3, g: .25, a: .8, q: 2 }); noise(t + .5, { bp: 1400, f2: 900, d: 2.4, g: .06, a: .6, q: 6, pan: .5 }); });
 add(SHIP, 'crystal-flare', 'Crystal flare', "The ship's attack: a bright zap of focused sunstone light.", t => { tone(t, { f: 2000, to: 200, d: .35, g: .12, type: 'sawtooth', lp: 5000 }); fm(t, { f: 1760, ratio: 1.5, index: 2, d: .6, g: .06, rv: .5 }); });
 add(SHIP, 'recharge', 'Sunstone recharging', 'A pulsing hum climbing to full.', t => tone(t, { f: 220, to: 660, d: 1.8, g: .12, type: 'triangle', a: .2, am: 8, amd: .9, rv: .3 }));
@@ -223,6 +229,11 @@ add(CUE, 'auros', 'Auros overhead', "The Moon's deep, slowly beating hum, heard 
 
 export const SFX = S;
 
+// Shared with the music (music.js): the voices, and a way to route a whole piece through its own bus and echo.
+export { tone, noise, fm, hz, rnd };
+export function withBus(bus, rev, echo, fn) { const b = BUS, r = BUSREV, e = ECHO; BUS = bus; BUSREV = rev; ECHO = echo; try { fn(); } finally { BUS = b; BUSREV = r; ECHO = e; } }
+export const sfxNodes = () => ({ AC, OUT, REV });
+
 // Play one sound at its measured level (LEVEL, written by tools/level.mjs from offline renders), on a bus of its own.
 export function playSfx(sound, t) {
   const e = typeof sound === 'string' ? S.find(x => x.id === sound) : sound;
@@ -234,5 +245,5 @@ export function playSfx(sound, t) {
 }
 
 // LEVEL: GENERATED
-const LEVEL = {'ui-cursor': 7.83, 'ui-confirm': 2.07, 'ui-back': 2.49, 'ui-error': 2.54, 'ui-open': 6.92, 'ui-close': 6.17, 'ui-page': 3, 'ui-blip': 3.56, 'ui-save': 1.68, 'ui-buy': 3.61, 'hit-slash': 6.15, 'hit-blunt': 1.59, 'hit-thrust': 9.43, 'bow-shot': 4.91, 'arrow-hit': 7.62, 'dagger': 8.78, 'crit': 2.13, 'graze': 16, 'miss': 5.05, 'parry': 3.79, 'shield-bash': 1.76, 'dice-roll': 9.2, 'dice-land': 9.75, 'turn': 4.02, 'burn': 6.72, 'chill': 4.39, 'poison': 5.45, 'rot': 5.26, 'stagger': 9.95, 'fear': 3.12, 'charm': 3.76, 'hex': 7.06, 'ward': 2.63, 'haste': 8.02, 'regen': 4.4, 'ko': 1.08, 'ember': 3.89, 'frost': 2.45, 'storm': 3.07, 'stone': 3.61, 'verdant': 3.88, 'tide': 1.26, 'radiant': 2.96, 'blight': 4.6, 'heal': 2.04, 'revive': 3.01, 'surge-charge': 3.93, 'surge-release': 1.52, 'grip-crack': 2.3, 'relic-drop': 5.12, 'reveal-common': 3.95, 'reveal-heirloom': 3.5, 'reveal-primal': 2.42, 'equip': 8.37, 'levelup': 3.07, 'chest': 4.9, 'coins': 6.95, 'identify': 4.14, 'step-grass': 3.81, 'step-stone': 2.76, 'step-wood': 1.83, 'step-water': 6.15, 'door': 15.68, 'bump': 3.24, 'alert': 4.96, 'stairs': 2.79, 'hearthfire': 2.83, 'sign': 3, 'ship-takeoff': 2.21, 'ship-land': 1.09, 'sails': 3.82, 'wind': 4.15, 'crystal-flare': 7.03, 'recharge': 3.91, 'aether-storm': 1.95, 'rope-creak': 16, 'spyglass': 11.91, 'serpent': 5.56, 'wolf': 4.25, 'boar': 16, 'bandit': 10.61, 'slime': 5.11, 'skeleton': 11.33, 'bird': 16, 'frog': 1.29, 'insect': 3.59, 'beast': 2.31, 'ghost': 4.4, 'victory': 3.41, 'defeat': 3.08, 'boss': 1.22, 'flee': 7.33, 'quest': 4.95, 'new-area': 3.02, 'rain': 1.27, 'thunder': 2.03, 'campfire': 6.13, 'river': 2.72, 'bell': 5.01, 'auros': 0.78};
+const LEVEL = {'ui-cursor': 7.83, 'ui-confirm': 2.07, 'ui-back': 2.49, 'ui-error': 2.54, 'ui-open': 6.15, 'ui-close': 5.47, 'ui-page': 2.69, 'ui-blip': 3.57, 'ui-save': 1.61, 'ui-buy': 3.61, 'hit-slash': 8.36, 'hit-blunt': 1.59, 'hit-thrust': 8.16, 'bow-shot': 5.4, 'arrow-hit': 7.36, 'dagger': 7.77, 'crit': 2.2, 'graze': 16, 'miss': 3.35, 'parry': 3.45, 'shield-bash': 1.76, 'dice-roll': 8.63, 'dice-land': 9.75, 'turn': 4.01, 'burn': 6.11, 'chill': 4.68, 'poison': 5.39, 'rot': 6.22, 'stagger': 9.95, 'fear': 3.05, 'charm': 3.87, 'hex': 7.05, 'ward': 2.7, 'haste': 8.02, 'regen': 4.39, 'ko': 1.08, 'ember': 3.12, 'frost': 2.61, 'storm': 2.43, 'stone': 3.43, 'verdant': 3.75, 'tide': 1.33, 'radiant': 2.97, 'blight': 4.69, 'heal': 2.15, 'revive': 3.1, 'surge-charge': 3.93, 'surge-release': 1.49, 'grip-crack': 2.18, 'relic-drop': 5.12, 'reveal-common': 3.94, 'reveal-heirloom': 3.59, 'reveal-primal': 2.42, 'equip': 8.37, 'levelup': 3.07, 'chest': 4.94, 'coins': 6.76, 'identify': 3.51, 'step-grass': 3.99, 'step-stone': 3.22, 'step-wood': 1.83, 'step-water': 6.42, 'door': 15.68, 'bump': 3.24, 'alert': 4.96, 'stairs': 2.79, 'hearthfire': 2.9, 'sign': 3, 'ship-takeoff': 2.16, 'ship-land': 1.09, 'sails': 4.4, 'wind': 3.73, 'crystal-flare': 7.08, 'recharge': 4.01, 'aether-storm': 1.52, 'rope-creak': 16, 'spyglass': 10.52, 'serpent': 5.44, 'wolf': 3.53, 'boar': 16, 'bandit': 10.61, 'slime': 5.03, 'skeleton': 14.91, 'bird': 16, 'frog': 1.29, 'insect': 3.59, 'beast': 2.42, 'ghost': 4.38, 'victory': 3.44, 'defeat': 3.06, 'boss': 1.22, 'flee': 5.56, 'quest': 4.95, 'new-area': 2.94, 'rain': 1.5, 'thunder': 2.06, 'campfire': 7.44, 'river': 3, 'bell': 4.91, 'auros': 0.85};
 // LEVEL: END

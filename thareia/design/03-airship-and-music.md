@@ -118,3 +118,25 @@ Pictures and sound stored inside the file grow by a third, so about 22 MB of rea
 | The airship, portraits, cut-scenes, title art | about 2 MB |
 
 With music made in code, the room it would have taken (about 5 MB) goes to painted maps: about 12 more.
+
+## Sound in play (2026-09-30)
+
+The player rated the 100 code-made sounds (`../sfx/`): 99 yes. The sails were redone as a stranger, airier, spacey
+whoosh for a crystal-powered ship, to be rated again.
+
+**How sounds are used in play** (the player left this to judgment):
+- **Loops under the music:** rain, river, campfire and high wind play as a quiet bed where they belong (a river map, a
+  rainy night, a Hearthfire, flying high). Auros's hum plays on quiet night maps as the Approach nears, a little
+  louder each chapter.
+- **Repeating with movement:** footsteps match the ground under the walker (grass, cobbles, boardwalk, water) on
+  every step; the airship's crystal hum loops while flying, rising in pitch as it climbs; the sails swell on take-off
+  and on turns; the rigging creaks now and then.
+- **Stacked in moments:** a crit is the weapon's hit plus the critical ring; breaking a relic's grip is the crack, then
+  the drop, then the card reveal of its rarity; a boss's entrance plays the boss sting under its roar.
+- **Varied so repeats never grate:** each repeat shifts pitch and loudness slightly, and footsteps and coins pick
+  from small variations.
+
+**Music from the same voices:** `../sfx/music.js` plays pieces written as notes through the sound library's
+instruments (strings, harp, flute, brass, choir, crystal bells with an echo, drums). First three pieces: "Over the
+Wilds" (walking and towns), "Break the Grip" (battle) and "Sunstone Wind" (flying). The whole library, 100 sounds
+and 3 pieces, is 31 KB.
