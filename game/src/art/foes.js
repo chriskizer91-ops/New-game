@@ -4136,7 +4136,8 @@ function unsmith(F, st) {
   // the stolen relics (phase 2): hung on short chains from his cloak's edges and his belt, each glinting
   if (P2 && !lie) {
     const HANG = [[[28, 44], [27.6, 50.6]], [[25.8, 58], [25.4, 65]], [[67.4, 44], [68.2, 50.6]], [[70, 57.6], [70.6, 64.6]], [[40.4, 61.6], [40.6, 67.4]], [[54.4, 61.6], [54.8, 67.6]]];
-    const ids = [].concat(st.stolen || []).slice(0, 6), n = ids.length || 6, glints = [];
+    // a list (even an empty one: every relic claimed, so he took nothing) is what he took; no list, the glint of stolen things
+    const given = Array.isArray(st.stolen), ids = given ? st.stolen.slice(0, 6) : [], n = given ? ids.length : 6, glints = [];
     for (let i = 0; i < n; i++) {
       const [top, at] = HANG[i], art = stolenArt(i, ids[i]); if (!art) continue;
       const a0 = U(top), a1 = U(at);
@@ -4473,7 +4474,7 @@ function build(key, o) {
   const held = o.relicHeld !== false && !(def.kind === 'humanoid' && def.relics && relic && (o.broken || []).includes(relic)), phase = clamp(o.phase || 1, 1, 3);
   const broken = (o.broken || []).slice().sort().join(',');
   const rk = [key, pose, frameKey(pose, t), gT, tier, relic || '-', held ? 1 : 0, phase, broken, o.flip ? 'L' : 'R'].join('|') + (o.wears && def.kind === 'humanoid' ? '|w:' + [].concat(o.wears).join('+') : '')
-    + (def.stolen && o.stolen && o.stolen.length ? '|s:' + [].concat(o.stolen).join('+') : ''); // M7: what the Unsmith took (only he draws it)
+    + (def.stolen && Array.isArray(o.stolen) ? '|s:' + o.stolen.join('+') : ''); // M7: what the Unsmith took (only he draws it; [] is nothing)
   return rasterCache.get(rk, () => {
     if (def.kind === 'humanoid') {
       const m3 = !!def.m3, hu = m3 ? humanoidM3(def, Object.assign({}, o, { relic })) : humanoid(def, o), { H, gear } = hu;

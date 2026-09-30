@@ -129,7 +129,9 @@ test('M7 battle: the tiers\' lookups read the hollow and the Unsmith as the Cham
   assert.deepEqual(foeLook({ art: 'ashen-warden', tier: 'unsmith', stolen: ids.slice(0, 2) }).stolen, ids.slice(0, 2));
   assert.deepEqual(foeLook({ art: 'ashen-warden', tier: 'unsmith', stolen: { ids, moves: {} } }).stolen, ids.slice(0, 6));
   assert.equal(foeLook({ art: 'ashen-warden', tier: 'unsmith' }).stolen, undefined, 'nothing taken, nothing passed');
-  assert.equal(foeLook({ art: 'ashen-warden', tier: 'unsmith', stolen: [] }).stolen, undefined);
+  // once he has taken up nothing (every relic claimed), an empty list reaches the art, which then draws none
+  assert.deepEqual(foeLook({ art: 'ashen-warden', tier: 'unsmith', stolen: [] }).stolen, []);
+  assert.deepEqual(foeLook({ art: 'ashen-warden', tier: 'unsmith', stolen: { ids: [], moves: {} } }).stolen, []);
 });
 
 test('M7 battle: Page V\'s grip words go by the thing (the four gifts no longer all read "Hollow")', () => {

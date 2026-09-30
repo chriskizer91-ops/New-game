@@ -27,7 +27,7 @@ export function foeLook(u) {
   // M7: what the Unsmith took (his Stolen Arts' relic ids, at most six: a display unit's list, or an engine unit's
   // { ids }); the art hangs those very relics on him in his Thief phase (art/foes.js, def.stolen)
   const took = Array.isArray(u.stolen) ? u.stolen : u.stolen?.ids;
-  if (took?.length) o.stolen = took.slice(0, 6);
+  if (Array.isArray(took)) o.stolen = took.slice(0, 6); // [] once he has taken nothing: none drawn
   if (def.relics) {
     // multi-relic champion: pieces snap off one by one
     o.broken = held.filter(p => !p.held).map(p => p.relic || p.echoOf).filter(Boolean);
@@ -56,7 +56,7 @@ const RIM = 'rgba(236, 223, 195, 0.26)';
 // (a worn piece only lengthens the key, so every earlier foe's key is as it was)
 // (M7: so does what the Unsmith took)
 const lookKey = o => [o.tier, o.gearTier, o.phase, o.relic || '-', o.relicHeld ? 1 : 0, (o.broken || []).join('+')].join('|') + (o.wears ? `|${o.wears}` : '')
-  + (o.stolen?.length ? `|s:${o.stolen.join('+')}` : '');
+  + (o.stolen ? `|s:${o.stolen.join('+')}` : '');
 
 // The art animates from t: idle breath (1.6 Hz), blinks, a relic glint and shine window, and
 // emissive flicker. Composing is the per-frame cost (a 96px boss is ~12 ms on a slow phone), so t

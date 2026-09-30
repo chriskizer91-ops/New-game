@@ -100,6 +100,10 @@ test('the Unsmith: three phase looks, his three pieces drawn from their relics a
   assert.equal(thief.anchors.glints.length, 6, 'six stolen things when none are named');
   assert.equal(named.anchors.glints.length, 3, 'the three he took');
   assert.ok(differ(thief, named) > 20, 'what he took is what shows');
+  // M7 (lead): an empty list is what he took when the Warden claimed everything: no stolen things hang on him at all
+  const none = renderFoe('unsmith', { phase: 2, t: .3, stolen: [] });
+  assert.ok(!(none.anchors.glints || []).length, 'he took nothing, and wears nothing stolen');
+  assert.ok(differ(none, thief) > 20, 'unlike the glint of stolen things when the battle does not say');
   assert.ok(!renderFoe('unsmith', { phase: 1, t: .3, stolen: ['hearthbrand'] }).anchors.glints && !renderFoe('unsmith', { phase: 3, t: .3 }).anchors.glints, 'only the Thief wears them');
   // the Worldforge: the heart burning in his chest (molten light there); gone cold once the heart is snapped out
   const hot = (r, g, b) => r > 230 && g > 150 && b < 170;
