@@ -45,7 +45,21 @@ Nothing here is built yet.
 - **The airship** is a small painted image in a few views, brought to life with code. See `03-airship-and-music.md`.
 - **The six region paintings** arrived (`../art-in/regions/`); the south-centre region is the **Southern Lowlands**.
 
+**Music, the airship's systems and the quality bar (2026-09-30)**
+- **Two songs**: one for battle, one for everything else. Compressed only lightly, so they sound as supplied.
+- **The airship does all of it**: upgrades in the four canon parts (hull, sunstone array, heat source, steering; the array
+  carries the level gates), sunstone charge recharged at docks, sky battles on deck with the same battle system (the ship
+  adds one action a round; sky raiders, Aether serpents), the ship as home (rest, save, swap party, store gear), cargo
+  runs, spotting glints and hidden places from the air, Aether weather (storms, Luminal tides, the Doldrums), the
+  crossing to Auros in its five stages, and two or three ships over the game (a skiff, a larger ship, the Aethership).
+- **The first ship's turnaround sheet** and **the Auros painting** arrived (`../art-in/airship/`, `../art-in/auros/`).
+- **Walking zooms into the region paintings.**
+- **The quality bar is Final Fantasy IX.** The battle content and coded gameplay of the current game are the base.
+- The player wants an **image-generation AI connected** so image requests can be made directly.
+
 ## Open
+- **How the walking view stays sharp** when zoomed into a 1536 × 1024 painting (a phone test decides).
+- **Characters at FF9 quality:** bigger, more detailed sprites than the current game's, or painted art.
 - **The Southern Lowlands:** what lives there (the canon has no named places on the south shore).
 - **How hard are the level gates?** A hard lock, or a warning you can ignore? What keeps the party out: a dock permit, a
   ship that can't yet climb, guarded roads?
