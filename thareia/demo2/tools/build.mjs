@@ -68,40 +68,37 @@ await writeFile(path.join(game, 'src/art/painted-backdrops.js'),
   `// Painted battle backdrops (Thareia demo 2): key -> WebP data URL, drawn by art/scenes.js paintedBackdrop.\nexport const PAINTED_BACKDROPS = Object.freeze({ 'forest-ruins': '${ruins}' });\n`);
 await patch('src/art/scenes.js', [
   ["export const BACKDROPS = Object.freeze({", "export const BACKDROPS = Object.freeze({\n  'forest-ruins': { name: 'The Old Ruins', horizon: .5, floor: [.56, 1], fx: 'leaf', painted: true },"],
-  ["export function renderBackdrop(key, o = {}) {", `// Thareia demo 2: a painted backdrop is the painting drawn into the battle's own small pixel canvas (so it pixelates the
-// way the sprites do), anchored at the bottom so its open floor stays in view, with the key's ambient drift on top.
-const PB = {};
-function paintedImage(key) {
-  let e = PB[key];
-  if (!e) { e = PB[key] = { img: null }; if (typeof Image !== 'undefined') { const im = new Image(); im.onload = () => { e.img = im; }; im.src = PAINTED_BACKDROPS[key]; } }
-  return e.img;
-}
+  ["export function renderBackdrop(key, o = {}) {", `// Thareia demo 2: a painted backdrop fills the whole battle screen as the screen's own background (ui/screens/battle.js
+// adds .bt-painted), so the stage draws only the key's ambient drift, on a clear canvas.
 function paintedBackdrop(key, o) {
-  const w = o.w || 160, h = o.h || 96, img = paintedImage(key);
-  if (!img) return renderBackdrop('hearth-road', o);
-  const c = typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(w, h) : Object.assign(document.createElement('canvas'), { width: w, height: h });
-  const g = c.getContext('2d'); g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
-  const s = Math.max(w / img.width, h / img.height), dw = img.width * s, dh = img.height * s;
-  g.drawImage(img, (w - dw) / 2, h - dh, dw, dh);
-  if (o.dark) { g.fillStyle = 'rgba(8,10,24,.45)'; g.fillRect(0, 0, w, h); }
-  const id = g.getImageData(0, 0, w, h), d = id.data;
-  if (!o.reduced) {
-    try {
-      for (const p of ambient(key, o.t || 0, { w, h, dark: o.dark })) {
-        const x = Math.round(p.x), y = Math.round(p.y); if (p.a <= .05 || x < 0 || y < 0 || x >= w || y >= h) continue;
-        const i = (y * w + x) * 4, a = Math.min(1, p.a); d[i] = d[i] * (1 - a) + p.c[0] * a; d[i + 1] = d[i + 1] * (1 - a) + p.c[1] * a; d[i + 2] = d[i + 2] * (1 - a) + p.c[2] * a;
-      }
-    } catch { /* no drift */ }
-  }
-  return id;
+  const w = o.w || 160, h = o.h || 96, img = new ImageData(w, h), d = img.data;
+  if (o.reduced) return img;
+  try {
+    for (const p of ambient(key, o.t || 0, { w, h, dark: o.dark })) {
+      const x = Math.round(p.x), y = Math.round(p.y); if (p.a <= .05 || x < 0 || y < 0 || x >= w || y >= h) continue;
+      const i = (y * w + x) * 4; d[i] = p.c[0]; d[i + 1] = p.c[1]; d[i + 2] = p.c[2]; d[i + 3] = Math.round(Math.min(1, p.a) * 255);
+    }
+  } catch { /* no drift */ }
+  return img;
 }
 export function renderBackdrop(key, o = {}) {
   if (BACKDROPS[key]?.painted) return paintedBackdrop(key, o);`],
 ]);
+await patch('src/ui/screens/battle.js', [
+  ["import { BACKDROPS, renderBackdrop } from '../../art/scenes.js';", "import { BACKDROPS, renderBackdrop } from '../../art/scenes.js';\nimport { PAINTED_BACKDROPS } from '../../art/painted-backdrops.js';"],
+  ["  if (reduced) shell.classList.add('reduced');", "  if (reduced) shell.classList.add('reduced');\n  if (BACKDROPS[backdrop]?.painted && PAINTED_BACKDROPS[backdrop]) { shell.classList.add('bt-painted'); shell.style.setProperty('--bt-paint', `url(${PAINTED_BACKDROPS[backdrop]})`); }"],
+]);
 {
-  const f = path.join(game, 'src/art/scenes.js'); const s = await readFile(f, 'utf8');
-  const at = s.indexOf('\nimport '); if (at < 0) throw new Error('scenes.js has no imports');
-  await writeFile(f, s.slice(0, at) + "\nimport { PAINTED_BACKDROPS } from './painted-backdrops.js';" + s.slice(at));
+  const f = path.join(game, 'src/ui/battle.css');
+  await writeFile(f, (await readFile(f, 'utf8')) + `
+/* Thareia demo 2: a painted backdrop fills the whole battle screen, pixelated like the sprites; the bands over it are see-through */
+.bt.bt-painted { background: #0b0908 var(--bt-paint) 72% bottom / cover no-repeat; image-rendering: pixelated; }
+.bt.bt-painted .bt-stage { background: transparent; box-shadow: none; }
+.bt.bt-painted .bt-top { background: linear-gradient(180deg, rgba(12, 9, 8, .72), rgba(12, 9, 8, .35)); box-shadow: none; }
+.bt.bt-painted .bt-ribbon { background: rgba(12, 9, 8, .38); }
+.bt.bt-painted .bt-party { background: linear-gradient(180deg, rgba(12, 9, 8, 0), rgba(12, 9, 8, .35)); box-shadow: none; }
+.bt.bt-painted .bt-dock { background: rgba(12, 9, 8, .62); }
+`);
 }
 
 // 5. the player's song for battles and boss fights (window.__THAREIA_SONGS, put into the page in step 9)
@@ -152,7 +149,7 @@ function demoGame() {
     const d = deriveHero(h, g.inventory);
     g.party.roster[id] = { ...h, hp: d.maxHp, mp: d.maxMp };
   }
-  g.progress.pos = { map: 'town-square', x: 22, y: 23, face: 'n' };
+  g.progress.pos = { map: 'town-square', x: 24, y: 22, face: 'n' };
   return g;
 }
 if (!app.game || app.game.progress?.pos?.map !== 'town-square') app.setGame(demoGame());
