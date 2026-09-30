@@ -1,5 +1,5 @@
 // The people of the Verdant Wilds (M3 spec §3.1, §4.4), the Sunscorch Wastes (M4 spec §3.1), the
-// Ironspire Peaks (M5 spec §3.1) and the Gloomfen Marsh (M6 spec §3.1).
+// Ironspire Peaks (M5 spec §3.1) and the Gloomfen Marsh (M6 spec §3.1), and what they say in Act III (M7 spec §3.1).
 //
 // NPCS[id] = { id, name, art, role, talk: [{ if?, d }] }
 //   art   npc sprite key (art/map-sprites.js npcSheet)
@@ -12,7 +12,9 @@
 // M4 givers follow one order: the thank-you (it sets the met flag too, so a deed done before the
 // meeting is never lost), then the first meeting while the met flag is unset, then story beats,
 // then the notices, then the lines that repeat. The Ironspire's givers (M5) and the Gloomfen's (M6) keep it.
-// Owner: WP3S (M3), P3 story (M4, M5, M6).
+// M7: the Hollow Council, once freed, open with their thanks (once: it is a first meeting too), and each notices the
+// gift that hollowed them; after an ending (the `ending` condition) the Keep's people answer it first.
+// Owner: WP3S (M3), P3 story (M4, M5, M6, M7).
 
 import { deepFreeze } from '../core/freeze.js';
 
@@ -23,12 +25,20 @@ const FALLEN = { any: [{ flag: 'tamsin-fallen' }, { beaten: 'tamsin-rotbridge' }
 
 export const NPCS = deepFreeze({
   fenwick: N('fenwick', 'Fenwick', 'Hearthkeeper', [
-    // M7 (spec §3.1): once the Hollow Council is freed, the truth, and his poker (STUB from the M7 scaffold: P3 writes it)
-    { if: { all: [{ beaten: 'hollow-gretch' }, { not: { quest: 'fenwicks-truth' } }] }, d: 'fenwick-truth' },
+    // M7 (spec §3.1): once the Hollow Council is freed, the truth, and his poker (once; it gives No. 000). After an
+    // ending, what the hearth burns now. Without the poker he is an old man at last.
+    { if: { all: [{ beaten: 'hollow-gretch' }, { not: { flag: 'fenwick-told' } }] }, d: 'fenwick-truth' },
+    { if: { ending: 'rekindle' }, d: 'fenwick-rekindle' },
+    { if: { ending: 'release' }, d: 'fenwick-release' },
+    { if: { ending: 'anew' }, d: 'fenwick-anew' },
+    { if: { wears: 'fenwicks-poker' }, d: 'notice-fenwick-poker' },
     // M4: a stone that beats, carried into the Great Hall (M5: and a hood woven under the ice; M6: and her lantern)
     { if: { wears: 'sunstone-heart' }, d: 'notice-fenwick-heart' },
     { if: { wears: 'hushweave-cowl' }, d: 'notice-fenwick-cowl' },
     { if: { wears: 'lamplighters-lantern' }, d: 'notice-fenwick-lantern' },
+    // M7: an old man once the poker is yours; before that, the four on the stair under his hearth
+    { if: { flag: 'fenwick-told' }, d: 'fenwick-old' },
+    { if: { flag: 'council-5-done' }, d: 'fenwick-hollow' },
     // M6: the seventh coal, and the eighth (after the fourth council the hearth goes quiet)
     { if: { flag: 'council-4-done' }, d: 'fenwick-eight' },
     { if: { brand: 'brand-of-lanterns' }, d: 'fenwick-seven' },
@@ -43,6 +53,13 @@ export const NPCS = deepFreeze({
   ]),
   isolde: N('isolde', 'Isolde', 'Warden-Commander', [
     { if: { all: [{ done: 'keep-vault' }, { not: { flag: 'heard-commission' } }] }, d: 'isolde-commission' },
+    // M7 (spec §3.1): after the Unsmith, Tamsin comes home to her, once (and should Tamsin's scene below have been cut
+    // short, her relic waits on Isolde's table for you); after an ending, what the hearth burns now
+    { if: { all: [{ beaten: 'unsmith' }, { not: { flag: 'tamsin-gave' } }] }, d: 'isolde-bargain' },
+    { if: { all: [{ beaten: 'unsmith' }, { not: { flag: 'heard-tamsin-home' } }] }, d: 'isolde-tamsin' },
+    { if: { ending: 'rekindle' }, d: 'isolde-rekindle' },
+    { if: { ending: 'release' }, d: 'isolde-release' },
+    { if: { ending: 'anew' }, d: 'isolde-anew' },
     // M5: after the third council, the Gloomfen (once, then it repeats below). M6: she sends you to the fen stair,
     // never once Rotbridge is behind you or the fourth council has sat
     { if: { all: [{ flag: 'council-3-done' }, { not: { flag: 'heard-gloomfen' } }, { not: FALLEN }, { not: { flag: 'council-4-done' } }] }, d: 'isolde-gloomfen' },
@@ -55,6 +72,11 @@ export const NPCS = deepFreeze({
     { if: { wears: 'cinder-crown' }, d: 'notice-isolde-crown' },
     { if: { wears: 'thanes-rune' }, d: 'notice-isolde-rune' },
     { if: { wears: 'bogstriders' }, d: 'notice-isolde-boots' },
+    { if: { wears: 'tamsins-bargain' }, d: 'notice-isolde-bargain' },
+    // M7: she holds the hall while the Warden goes down: the choice at the bottom, the Council home, the open stair
+    { if: { beaten: 'unsmith' }, d: 'isolde-heart' },
+    { if: { beaten: 'hollow-gretch' }, d: 'isolde-freed' },
+    { if: { flag: 'council-5-done' }, d: 'isolde-holds' },
     // M6: after the fourth council, the four boxes; after Rotbridge, she will hear it at the Council table
     { if: { flag: 'council-4-done' }, d: 'isolde-boxes' },
     { if: FALLEN, d: 'isolde-rotbridge' },
@@ -86,10 +108,15 @@ export const NPCS = deepFreeze({
     { if: { all: [{ flag: 'council-3-done' }, { not: { flag: 'heard-hild' } }] }, d: 'hilda-letter' },
     // M6: the man on the barge wore her brother's mark on his clasp (once, when you come home from Rotbridge)
     { if: { all: [FALLEN, { not: { flag: 'heard-barge' } }] }, d: 'hilda-barge' },
-    // M7 (spec §3.1, §4.5): once the Hollow Council is freed and the Worldforge page is yours, the Masterpiece
-    // (STUB from the M7 scaffold: a line only; P3 writes it)
-    { if: { all: [{ beaten: 'hollow-gretch' }, { flag: 'worldforge-page' }] }, d: 'hilda-masterpiece' },
-    // M4: Hilda critiques the Sunscorch's blades by name (M5: and her brother's work; M6: the fen's iron)
+    // M7 (spec §3.1, §4.5): her thanks once the Masterpiece is forged (once: it closes the quest; rules/forge.js sets
+    // masterpiece-forged); how Harrow went, once you can tell her; the offer, once, when the Hollow Council is freed and
+    // the Worldforge page is yours (it names her brother at last; every line of hers offers the Masterpiece until it is
+    // forged); her work in the hearth, if that was the ending
+    { if: { all: [{ flag: 'masterpiece-forged' }, { not: { quest: 'masterpiece' } }] }, d: 'hilda-forged' },
+    { if: { all: [{ beaten: 'unsmith' }, { not: { flag: 'harrow-told' } }] }, d: 'hilda-told' },
+    { if: { all: [{ beaten: 'hollow-gretch' }, { flag: 'worldforge-page' }, { not: { flag: 'masterpiece-forged' } }, { not: { flag: 'masterpiece-offered' } }] }, d: 'hilda-masterpiece' },
+    { if: { ending: 'anew' }, d: 'hilda-anew' },
+    // M4: Hilda critiques the Sunscorch's blades by name (M5: and her brother's work; M6: the fen's iron; M7: his last)
     { if: { wears: 'cinderfang' }, d: 'notice-hilda-cinderfang' },
     { if: { wears: 'dunebreaker' }, d: 'notice-hilda-dunebreaker' },
     { if: { wears: 'worldforge-hammer' }, d: 'notice-hilda-hammer' },
@@ -98,6 +125,15 @@ export const NPCS = deepFreeze({
     { if: { wears: 'ironvein-bracers' }, d: 'notice-hilda-bracers' },
     { if: { wears: 'barge-gauntlets' }, d: 'notice-hilda-chain' },
     { if: { wears: 'corvus-harpoon' }, d: 'notice-hilda-harpoon' },
+    { if: { wears: 'unmaking-hammer' }, d: 'notice-hilda-unmaking' },
+    { if: { wears: 'ironvein-apron' }, d: 'notice-hilda-apron' },
+    { if: { wears: 'worldforge-heart' }, d: 'notice-hilda-worldheart' },
+    // M7: her brother gone (she banks the forge now); the Masterpiece waiting on her bench; without the page, a hint at
+    // it; and his mark on the four gifts
+    { if: { beaten: 'unsmith' }, d: 'hilda-banks' },
+    { if: { all: [{ beaten: 'hollow-gretch' }, { flag: 'worldforge-page' }, { not: { flag: 'masterpiece-forged' } }] }, d: 'hilda-masterpiece-again' },
+    { if: { all: [{ beaten: 'hollow-gretch' }, { not: { flag: 'worldforge-page' } }] }, d: 'hilda-page' },
+    { if: { flag: 'council-5-done' }, d: 'hilda-hollow' },
     // her brother: in the Ironspire (after the second council), the hammer he left, the letter he sent
     { if: { flag: 'council-3-done' }, d: 'hilda-waits' },
     { if: { flag: 'hammer-shown' }, d: 'hilda-harrow' },
@@ -124,11 +160,13 @@ export const NPCS = deepFreeze({
     { d: 'garret' },
   ]),
   miravel: N('miravel', 'Miravel', 'Main quest', [
-    // M7 (spec §3.1): freed from the Hollow Wreath (STUB from the M7 scaffold: P3 writes it)
-    { if: { beaten: 'hollow-miravel' }, d: 'freed-miravel' },
+    // M7 (spec §3.1): freed from the Hollow Wreath: her thanks once, then the wreath noticed, then her line
+    { if: { all: [{ beaten: 'hollow-miravel' }, { not: { flag: 'heard-miravel' } }] }, d: 'freed-miravel' },
     { if: { all: [{ brand: 'brand-of-briars' }, { not: { flag: 'met-miravel-rot' } }] }, d: 'miravel-brand' },
     { if: { wears: 'rootsong' }, d: 'notice-miravel-rootsong' },
     { if: { wears: 'rotwood-circlet' }, d: 'notice-miravel-circlet' },
+    { if: { wears: 'hollow-wreath' }, d: 'notice-miravel-wreath' },
+    { if: { beaten: 'hollow-miravel' }, d: 'miravel-home-again' },
     // M6: she laid Eldergrove's soot-sealed box on the fourth council's table
     { if: { flag: 'council-4-done' }, d: 'miravel-box' },
     { if: { brand: 'brand-of-briars' }, d: 'miravel-brand' },
@@ -143,7 +181,8 @@ export const NPCS = deepFreeze({
     { d: 'ivo' },
   ]),
   pilgrim: N('pilgrim', 'Pilgrim', 'Flavour', [{ if: { quest: 'miracle-sap', state: 'ready' }, d: 'pilgrim-thanks' }, { d: 'pilgrim' }]),
-  // M7 (spec A12): in the Chained Deep she waits to join (the map's cd-tamsin; STUB from the M7 scaffold: P3 writes it)
+  // M7 (spec A12): in the Chained Deep she waits before the forge door to join you (the map's cd-tamsin, until
+  // tamsin-returned); her other meetings are her duels' talk
   tamsin: N('tamsin', 'Tamsin', 'Rival', [{ if: { flag: 'council-5-done' }, d: 'tamsin-return' }, { d: 'tamsin-door' }]),
   vesper: N('vesper', 'Vesper', 'Tallyman con', [{ d: 'vesper' }]),
   rotwarden: N('rotwarden', 'The Rotwarden', 'Boss', []),
@@ -159,13 +198,16 @@ export const NPCS = deepFreeze({
     { d: 'zara-again' },
   ]),
   qasim: N('qasim', 'Cistern Lord Qasim', 'Lord of the cistern', [
-    // M7 (spec §3.1): freed from the Hollow Chalice (STUB from the M7 scaffold: P3 writes it)
-    { if: { beaten: 'hollow-qasim' }, d: 'freed-qasim' },
+    // M7 (spec §3.1): freed from the Hollow Chalice: his thanks once (also a first meeting), then the chalice noticed,
+    // then his line
+    { if: { all: [{ beaten: 'hollow-qasim' }, { not: { flag: 'heard-qasim' } }] }, d: 'freed-qasim' },
     { if: { all: [{ beaten: 'dt-aqueduct' }, { not: { flag: 'cistern-told' } }] }, d: 'qasim-water' },
     { if: { not: { flag: 'met-qasim' } }, d: 'qasim' },
     { if: { all: [{ flag: 'sunscorch-complete' }, { not: { flag: 'council-2-done' } }] }, d: 'qasim-summons' },
     { if: { wears: 'qasims-signet' }, d: 'notice-qasim-signet' },
     { if: { wears: 'cinderfang' }, d: 'notice-qasim-cinderfang' },
+    { if: { wears: 'hollow-chalice' }, d: 'notice-qasim-chalice' },
+    { if: { beaten: 'hollow-qasim' }, d: 'qasim-home-again' },
     { if: { flag: 'council-2-done' }, d: 'qasim-council' },
     { if: { flag: 'cistern-told' }, d: 'qasim-home' },
     { d: 'qasim-again' },
@@ -260,8 +302,9 @@ export const NPCS = deepFreeze({
   ]),
   // Ironhold
   brundar: N('brundar', 'Thane Brundar', 'Thane of Ironhold', [
-    // M7 (spec §3.1): freed from the Hollow Gauntlet (STUB from the M7 scaffold: P3 writes it)
-    { if: { beaten: 'hollow-brundar' }, d: 'freed-brundar' },
+    // M7 (spec §3.1): freed from the Hollow Gauntlet: his thanks once (also a first meeting), then the gauntlet noticed,
+    // then his line
+    { if: { all: [{ beaten: 'hollow-brundar' }, { not: { flag: 'heard-brundar' } }] }, d: 'freed-brundar' },
     // the Thane's leave (the main quest): Tamsin's duel won or yielded gives the Rune-Key (also a first meeting)
     { if: { all: [{ any: [{ beaten: 'tamsin-ironhold' }, { flag: 'tamsin-yielded-3' }] }, { not: { flag: 'rune-given' } }] }, d: 'brundar-rune' },
     // the thank-you of the Sentinel's Oath
@@ -271,6 +314,8 @@ export const NPCS = deepFreeze({
     { if: { wears: 'thanes-rune' }, d: 'notice-brundar-rune' },
     { if: { wears: 'worldforge-hammer' }, d: 'notice-brundar-hammer' },
     { if: { wears: 'ironwall' }, d: 'notice-brundar-wall' },
+    { if: { wears: 'hollow-gauntlet' }, d: 'notice-brundar-gauntlet' },
+    { if: { beaten: 'hollow-brundar' }, d: 'brundar-home-again' },
     { if: { flag: 'council-3-done' }, d: 'brundar-council' },
     { if: { brand: 'brand-of-iron' }, d: 'brundar-iron' },
     { if: { flag: 'rune-given' }, d: 'brundar-again' },
@@ -365,14 +410,17 @@ export const NPCS = deepFreeze({
   ]),
   // Bogmire: Mayor Gretch keeps order with fear and favours (the main quest, the Bogmire board, a soot-sealed box)
   gretch: N('gretch', 'Mayor Gretch', 'Mayor of Bogmire', [
-    // M7 (spec §3.1): freed from the Hollow Chain (STUB from the M7 scaffold: P3 writes it)
-    { if: { beaten: 'hollow-gretch' }, d: 'freed-gretch' },
+    // M7 (spec §3.1): freed from the Hollow Chain: her thanks once (also a first meeting), then the chain noticed, then
+    // her line (every one of them keeps the Bogmire board)
+    { if: { all: [{ beaten: 'hollow-gretch' }, { not: { flag: 'heard-gretch' } }] }, d: 'freed-gretch' },
     // the children home: the town's thanks (also a first meeting, for a Warden who went straight into the bogs)
     { if: { all: [{ flag: 'children-home' }, { not: { flag: 'gretch-thanked' } }] }, d: 'gretch-children' },
     { if: { not: { flag: 'met-gretch' } }, d: 'gretch' },
     { if: { all: [{ flag: 'gloomfen-complete' }, { not: { flag: 'council-4-done' } }] }, d: 'gretch-summons' },
     { if: { wears: 'lamplighters-lantern' }, d: 'notice-gretch-lantern' },
     { if: { wears: 'hexbane-shawl' }, d: 'notice-gretch-shawl' },
+    { if: { wears: 'hollow-chain' }, d: 'notice-gretch-chain' },
+    { if: { beaten: 'hollow-gretch' }, d: 'gretch-home-again' },
     { if: { flag: 'council-4-done' }, d: 'gretch-council' },
     { if: { flag: 'children-home' }, d: 'gretch-home' },
     { d: 'gretch-again' },
@@ -417,6 +465,10 @@ export const NPCS = deepFreeze({
   ]),
   // the Lantern Mother speaks once, after her fight (like the Ashen Warden and Brother Aurel)
   'lantern-mother': N('lantern-mother', 'The Lantern Mother', 'Champion', []),
+  // ---- M7: the Hearth Below (spec A16) ------------------------------------------------------------------------------
+  // the Unsmith speaks at the Worldforge, before and after his fight, under his own name at last (his look is his
+  // battle art's, art/foes.js, until art/map-sprites.js gives him one)
+  unsmith: N('unsmith', 'Harrow Ironvein', 'The Unsmith', []),
 });
 
 export const NPC_IDS = Object.freeze(Object.keys(NPCS));

@@ -1,9 +1,10 @@
 // Story data tests (M3 spec §3.1, §3.6, §4.4, §6.1 WP3S; M4 spec §3.1, §3.6, §8; M5 spec §3.1, §3.5,
-// §3.6, §8; M6 spec §2.4, §3.1, §3.5, §3.6, §8): ids, conditions, line lengths, quest targets, the beats around
-// fights and rests, "no flag is read that is never set", the thank-you rule, the Sunscorch's, the Ironspire's and
-// the Gloomfen's people, the second, third and fourth councils, Hush's and Lull's scenes, Hodge's toll, Tamsin's
-// fall, the letters, and the Act II Ladder.
-// Owner: WP3S (M3), P3 story (M4, M5, M6).
+// §3.6, §8; M6 spec §2.4, §3.1, §3.5, §3.6, §8; M7 spec §3.1, §3.5, §3.6, §4.7, §8): ids, conditions, line lengths,
+// quest targets, the beats around fights and rests, "no flag is read that is never set", every scene reachable, the
+// thank-you rule, the Sunscorch's, the Ironspire's and the Gloomfen's people, the second, third, fourth and fifth
+// councils, Hush's and Lull's scenes, Hodge's toll, Tamsin's fall and return, the Hollow Council, Fenwick's truth,
+// Hilda's Masterpiece, the Unsmith, the Worldforge's heart and the endings, the letters, and the Ladder.
+// Owner: WP3S (M3), P3 story (M4, M5, M6, M7).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { NPCS } from '../src/data/npcs.js';
@@ -21,7 +22,8 @@ import { CONSUMABLES } from '../src/data/items.js';
 import { GEMS } from '../src/data/gems.js';
 import { DOMAINS } from '../src/data/domains.js';
 import { condErrors, priceErrors } from '../src/rules/cond.js';
-import { ENDING_IDS } from '../src/data/endings.js';
+import { ENDINGS, ENDING_IDS } from '../src/data/endings.js';
+import { TUNING } from '../src/data/tuning.js';
 
 const SPEAKERS = new Set([...Object.keys(NPCS), ...HERO_IDS, 'narrator']);
 const conds = [];
@@ -38,6 +40,8 @@ test('dialogue: speakers exist, lines are at most 140 characters, every link res
       cond(c.if, `${id} choice`);
       for (const next of [c.next, c.check?.pass, c.check?.fail, c.contest?.pass, c.contest?.fail]) if (next) assert.ok(DIALOGUE[next], `${id} -> ${next}`);
       if (c.check) cond(c.check.adv, `${id} adv`);
+      // M7: a price that is not paid in coin (Kindle Anew's): each part a condition, with the reason it shows
+      for (const n of c.needs || []) { cond(n.if, `${id} needs`); assert.ok(typeof n.why === 'string' && n.why.length, `${id}: every need says why`); }
       for (const e of c.do || []) if (e.fight) assert.ok(ENCOUNTERS[e.fight], `${id} fight ${e.fight}`);
     }
     for (const e of d.do || []) {
@@ -104,6 +108,7 @@ test('quests, bounties, shops, the Ladder and letters name real things', () => {
   // M6: the Lantern Mother has her poster; Harrow is still a rumour
   assert.deepEqual(LADDER.filter(p => p.silhouette).map(p => p.id), ['missing-smith', 'man-on-the-barge']);
   for (const p of LADDER) cond(p.if, `ladder ${p.id}`); // M6: an entry that shows only once its condition holds
+  for (const p of LADDER) cond(p.found?.if, `ladder ${p.id} found`); // M7: a rumour found, and the poster it settles into
   assert.equal(new Set(LADDER.map(p => p.id)).size, LADDER.length, 'poster ids are unique');
   for (const p of LADDER) if (p.enc) assert.ok(ENCOUNTERS[p.enc]?.spawns?.[p.spawn], p.id);
   for (const b of Object.keys(BRANDS)) assert.ok(LETTERS[b]?.text, `letter for ${b}`);
@@ -138,8 +143,10 @@ test('arrivals, after-fight lines, rests and lookouts point at real things', () 
   for (const m of Object.values(MAPS)) for (const e of m.entities) if (e.kind === 'bellframe' || e.kind === 'lookout') assert.ok(DIALOGUE[e.id], `${m.id}/${e.id}`);
 });
 
-// Flags set outside the story data, by the rules (gauntlet, migrate, world).
-const RULE_FLAGS = ['act1-complete', 'tamsin-yielded', 'starter', 'm2-save', 'intro-done', 'met-dael', 'bounty-briarmaw', 'sunscorch-complete', 'ironspire-complete', 'gloomfen-complete'];
+// Flags set outside the story data, by the rules (gauntlet, migrate, world; M7: forge, whose Masterpiece sets
+// masterpiece-forged, one to a save).
+const RULE_FLAGS = ['act1-complete', 'tamsin-yielded', 'starter', 'm2-save', 'intro-done', 'met-dael', 'bounty-briarmaw', 'sunscorch-complete', 'ironspire-complete', 'gloomfen-complete',
+  'masterpiece-forged'];
 
 test('no flag is read that is never set', () => {
   const read = new Map(), set = new Set(RULE_FLAGS);
@@ -204,7 +211,7 @@ function storyLeaves() {
     out.push([c, at]);
   };
   for (const n of Object.values(NPCS)) for (const t of n.talk) leaf(t.if, `talk ${n.id}`);
-  for (const [id, d] of Object.entries(DIALOGUE)) for (const c of d.choices || []) { leaf(c.if, `${id} choice`); leaf(c.check?.adv, `${id} adv`); }
+  for (const [id, d] of Object.entries(DIALOGUE)) for (const c of d.choices || []) { leaf(c.if, `${id} choice`); leaf(c.check?.adv, `${id} adv`); for (const n of c.needs || []) leaf(n.if, `${id} needs`); }
   for (const q of Object.values(QUESTS)) { leaf(q.start, `${q.id} start`); for (const s of q.steps) leaf(s.done, `${q.id} step`); }
   for (const [enc, list] of Object.entries(AFTER)) for (const a of list) leaf(a.if, `after ${enc}`);
   for (const r of RESTS) leaf(r.if, `rest ${r.at}`);
@@ -238,7 +245,8 @@ function assertPrice(price, at) {
 
 test('effects use the known vocabulary and name real things', () => {
   const KEYS = ['set', 'unset', 'give', 'item', 'gold', 'bag', 'gems', 'materials', 'unlock', 'heal', 'fight', 'claim', 'open', 'letter', 'end', 'pay', 'scout', 'ending'];
-  const OPEN = ['forge', 'atlas', 'journal', 'ladder', 'bounties'];
+  // M7: 'masterpiece' is Hilda's forge on its Masterpiece tab (spec §4.5, §5)
+  const OPEN = ['forge', 'atlas', 'journal', 'ladder', 'bounties', 'masterpiece'];
   for (const [id, d] of Object.entries(DIALOGUE)) for (const e of [...(d.do || []), ...(d.choices || []).flatMap(c => c.do || [])]) {
     const k = Object.keys(e).find(x => KEYS.includes(x));
     assert.ok(k, `${id}: unknown effect ${JSON.stringify(e)}`);
@@ -249,7 +257,8 @@ test('effects use the known vocabulary and name real things', () => {
     if (k === 'letter') assert.ok(LETTERS[e.letter], `${id}: letter ${e.letter}`);
     // M5: 'ironspire' is the card after the third council (the UI draws it; the Gloomfen comes next)
     // M6: 'gloomfen' is the card after the fourth council, the end of Act II
-    if (k === 'end') assert.ok(['act1', 'act2', 'ironspire', 'gloomfen'].includes(e.end), `${id}: end ${e.end}`);
+    // M7: 'act3-open' is the Act III title card after the fifth council; 'act3' an ending's card, the credits and the last
+    if (k === 'end') assert.ok(['act1', 'act2', 'ironspire', 'gloomfen', 'act3-open', 'act3'].includes(e.end), `${id}: end ${e.end}`);
     if (k === 'gold') assert.ok(Number.isInteger(e.gold) && e.gold > 0, `${id}: gold`);
     if (k === 'pay') assertPrice(e.pay, `${id}: pay`); // M6: Hodge's price of the day
     if (k === 'scout') assert.ok(ENCOUNTERS[e.scout], `${id}: scout ${e.scout}`); // M6: Hodge's poster, from talk
@@ -692,4 +701,294 @@ test('the Unsmith\'s Gloomfen letters count coals: seven, then eight (the region
   assert.match(LETTERS['brand-of-lanterns'].text, /^Seven\./);
   assert.match(LETTERS['brand-of-the-deep'].text, /^Eight\./);
   for (const b of ['brand-of-lanterns', 'brand-of-the-deep']) assert.ok(LETTERS[b].text.endsWith('— U.'), b);
+});
+
+// ---- M7 (P3 story) ----------------------------------------------------------------------------------
+
+const COUNCIL = ['miravel', 'qasim', 'brundar', 'gretch'];
+// the gift sent to each chair (spec §3.4), and the word each one's lines know it by
+const GIFTS = { miravel: ['hollow-wreath', /wreath/], qasim: ['hollow-chalice', /chalice/], brundar: ['hollow-gauntlet', /gauntlet/], gretch: ['hollow-chain', /chain/] };
+const PAGE_V = new Set(Object.values(RELICS).filter(r => r.codex === 0 || (r.codex >= 67 && r.codex <= 74)).map(r => r.id));
+// every effect a node applies: its own, and its choices'
+const doOf = id => [...(DIALOGUE[id].do || []), ...(DIALOGUE[id].choices || []).flatMap(c => c.do || [])];
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
+test('every scene is reachable: from a talk, a trigger, a sign, an encounter, a fight\'s end, a rest, an arrival or a lookout', () => {
+  const roots = new Set();
+  for (const n of Object.values(NPCS)) for (const t of n.talk) roots.add(t.d);
+  for (const m of Object.values(MAPS)) for (const e of m.entities) {
+    if (e.kind === 'trigger') roots.add(e.dialogue);
+    if (e.talk) roots.add(e.talk); // an encounter's or a sign's (M7: the Worldforge's heart)
+    if (['board', 'table', 'pedestal', 'lookout', 'bellframe'].includes(e.kind) && DIALOGUE[e.id]) roots.add(e.id);
+  }
+  for (const e of Object.values(ENCOUNTERS)) if (e.talk) roots.add(e.talk);
+  for (const list of Object.values(AFTER)) for (const a of list) roots.add(a.d);
+  for (const r of RESTS) roots.add(r.d);
+  for (const d of Object.values(ARRIVALS)) roots.add(d);
+  for (const id of Object.keys(LOOKOUTS)) roots.add(id);
+  const seen = new Set();
+  for (const r of roots) reachable(r, seen);
+  assert.deepEqual(Object.keys(DIALOGUE).filter(id => !seen.has(id)), []);
+});
+
+test('the fifth council, the Opening (spec A5, §3.1): flag-guarded, never once; the four boxes opened together; each gift takes its chair; down a stair that was never there; the Act III card on every path', () => {
+  const t = MAPS['keep-hall'].entities.find(e => e.id === 'council-5');
+  assert.ok(t && t.kind === 'trigger' && !t.once, 'a keep-hall trigger, never once');
+  assert.deepEqual(t.if, { all: [{ flag: 'council-4-done' }, { not: { flag: 'council-5-done' } }] });
+  assert.equal(t.dialogue, 'council-5');
+  const d = DIALOGUE['council-5'];
+  assert.ok(d.do.some(e => e.set === 'council-5-done'), 'it sets council-5-done as it opens (a reload replays it)');
+  assert.deepEqual(d.do.filter(e => e.scout).map(e => e.scout), COUNCIL.map(w => `hollow-${w}`), 'the four posters leave silhouette');
+  assert.ok(endsOn('council-5', 'act3-open'), 'every path ends with { end: act3-open }');
+  const nodes = [...reachable('council-5')];
+  const said = nodes.flatMap(id => DIALOGUE[id].lines);
+  for (const who of [...COUNCIL, 'isolde', 'hilda', 'fenwick']) assert.ok(said.some(([w]) => w === who), `${who} is at the fifth council`);
+  const text = said.map(l => l[1]).join(' ');
+  for (const re of [/together/, /vault/, /Seal/, /wreath/, /chalice/, /gauntlet/, /chain of office/, /chair/, /hammer in a broken ring/, /never a stair/]) assert.match(text, re);
+  // Hilda knows the mark: the Unsmith is her brother (the rumours settle into his poster here)
+  assert.ok(said.some(([w, l]) => w === 'hilda' && /brother/.test(l) && /barge/.test(l)), 'Hilda names the mark her brother\'s');
+  // it opens nothing but the stair (the map's exit, on council-5-done): no fight, no gift, no screen
+  for (const id of nodes) for (const e of doOf(id)) assert.ok(!('fight' in e) && !('give' in e) && !('open' in e), `${id}: only the story`);
+  // Isolde's word can open it too (the main quest is hers: the thank-you rule), only until it has sat
+  const word = DIALOGUE['isolde-boxes'].choices.find(c => c.next === 'council-5');
+  assert.deepEqual(word.if, { not: { flag: 'council-5-done' } });
+  assert.ok(NPCS.isolde.talk.some(x => x.d === 'isolde-boxes'));
+});
+
+test('the Hollow Council (spec A11, §3.1): fights only in the Hollow Hall; each freed in a scene of their own, the fourth\'s with his last letter; home again, each thanks you once, notices the gift, then has a line', () => {
+  for (const who of COUNCIL) {
+    const enc = `hollow-${who}`, [gift, word] = GIFTS[who];
+    assert.ok(!ENCOUNTERS[enc].talk, `${enc}: a fight only, no talk`);
+    assert.ok(!MAPS['hollow-hall'].entities.some(e => e.kind === 'npc' && e.npc === who), `${who} has no talk in the Hollow Hall`);
+    const wins = AFTER[enc].filter(a => a.on === 'victory');
+    assert.equal(wins.length, 1, `${enc}: one scene as they are freed`);
+    const scene = DIALOGUE[wins[0].d];
+    assert.ok(scene.lines.some(([w]) => w === who), `${enc}: ${who} speaks, in their own voice again`);
+    assert.match(lineText(wins[0].d), word, `${enc}: the gift is off them`);
+    // a wipe wakes the party by a fire; who is beaten stays beaten
+    assert.deepEqual(AFTER[enc].filter(a => a.on === 'defeat').map(a => [a.if, a.d]), [[{ flag: 'woke-by-council' }, 'hollow-woke-again'], [undefined, 'hollow-woke']]);
+    // home: the freed one stands in their town, and talks in the givers' order
+    assert.ok(Object.values(MAPS).some(m => m.entities.some(e => e.kind === 'npc' && e.npc === who && same(e.if, { beaten: enc }))), `${who} comes home once freed`);
+    const talk = NPCS[who].talk;
+    assert.equal(talk[0].d, `freed-${who}`, `${who}: the thanks first`);
+    assert.deepEqual(talk[0].if, { all: [{ beaten: enc }, { not: { flag: `heard-${who}` } }] });
+    const thanks = DIALOGUE[`freed-${who}`];
+    assert.ok(thanks.do.some(e => e.set === `heard-${who}`), `${who}: the thanks plays once`);
+    assert.ok(thanks.do.some(e => e.set === (who === 'miravel' ? 'met-miravel-rot' : `met-${who}`)), `${who}: the thanks is a first meeting too`);
+    assert.match(lineText(`freed-${who}`), word, `${who}: what the gift showed them`);
+    const notice = talk.findIndex(x => x.if?.wears === gift);
+    const again = talk.findIndex(x => same(x.if, { beaten: enc }));
+    assert.ok(notice > 0 && again > notice, `${who}: then the gift noticed, then a line of their own`);
+  }
+  // Mayor Gretch keeps the Bogmire board in every line of hers, freed or not
+  for (const id of ['freed-gretch', 'gretch-home-again', 'notice-gretch-chain']) assert.ok(DIALOGUE[id].choices.some(c => (c.do || []).some(e => e.claim === 'bounties')), id);
+  // the fourth shows the Unsmith's last letter, once, and no other scene does
+  const shows = Object.keys(DIALOGUE).filter(id => doOf(id).some(e => e.letter === 'hollow'));
+  assert.deepEqual(shows, ['hollow-gretch-after']);
+  assert.deepEqual(AFTER['hollow-gretch'].find(a => a.on === 'victory').if, { not: { flag: 'letter:hollow' } });
+  assert.match(lineText('hollow-gretch-after'), /letter sealed in soot/);
+  assert.match(lineText('hollow-gretch-after'), /stair/, 'the stair back up to the vault clears');
+  assert.ok(DIALOGUE['hollow-woke'].do.some(e => e.set === 'woke-by-council'));
+  assert.match(lineText('hollow-woke'), /freed stay freed/, 'who is beaten stays beaten');
+});
+
+test('Fenwick\'s truth (spec §3.1, §3.6): once the Council is freed; the hearth never burned wood; nine hundred years on the Sleepers; his poker given; an old man after', () => {
+  assert.deepEqual(NPCS.fenwick.talk[0], { if: { all: [{ beaten: 'hollow-gretch' }, { not: { flag: 'fenwick-told' } }] }, d: 'fenwick-truth' });
+  const nodes = [...reachable('fenwick-truth')];
+  const text = nodes.map(lineText).join(' ');
+  for (const re of [/never burned wood/, /Sleepers/, /four hills/, /nine hundred years/, /poker/, /Worldforge/]) assert.match(text, re);
+  const gives = nodes.filter(id => doOf(id).some(e => e.give === 'fenwicks-poker'));
+  assert.equal(gives.length, 1, 'one scene gives No. 000');
+  assert.deepEqual(Object.keys(DIALOGUE).filter(id => doOf(id).some(e => e.give === 'fenwicks-poker')), gives, 'and only Fenwick gives it');
+  const g = DIALOGUE[gives[0]].do;
+  assert.ok(g.some(e => e.set === 'fenwick-told') && g.some(e => e.claim === 'fenwicks-truth'), 'it closes his quest');
+  // "to stir what comes next"; without it he ages, and the scene says so
+  assert.match(lineText(gives[0]), /stir what comes next/);
+  assert.match(lineText(gives[0]), /knees/);
+  // every line of his after it is an old man's: the old man's comes before every line he had before it
+  const at = x => NPCS.fenwick.talk.findIndex(t => same(t.if, x));
+  assert.ok(at({ flag: 'fenwick-told' }) < at({ flag: 'council-5-done' }) && at({ flag: 'council-5-done' }) < at({ flag: 'council-4-done' }));
+  assert.match(lineText(NPCS.fenwick.talk[at({ flag: 'fenwick-told' })].d), /knees|hands shake/);
+  assert.ok(NPCS.fenwick.talk.some(t => t.if?.wears === 'fenwicks-poker'), 'he notices his poker on you');
+});
+
+test('Hilda (spec §3.1, §4.5): the Masterpiece offered once the Council is freed and the page is yours, naming her brother; every line of hers then opens its tab; a hint without the page; her thanks close the quest; Harrow\'s end', () => {
+  assert.equal(NPCS.hilda.talk[0].d, 'hilda-hammer', 'her M5 thank-you is still first');
+  const READY = { all: [{ beaten: 'hollow-gretch' }, { flag: 'worldforge-page' }, { not: { flag: 'masterpiece-forged' } }] };
+  assert.deepEqual(NPCS.hilda.talk.find(x => x.d === 'hilda-masterpiece').if, { all: [...READY.all, { not: { flag: 'masterpiece-offered' } }] });
+  assert.ok(DIALOGUE['hilda-masterpiece'].do.some(e => e.set === 'masterpiece-offered'), 'the offer plays once');
+  assert.match(lineText('hilda-masterpiece'), /Harrow Ironvein\. The Unsmith\. My twin\./, 'her brother named at last');
+  // the forge's Masterpiece tab (P7's): on every line of hers that opens her forge, while it waits to be forged
+  let forges = 0;
+  for (const id of new Set(NPCS.hilda.talk.flatMap(t => [...reachable(t.d)]))) {
+    if (!(DIALOGUE[id].choices || []).some(c => (c.do || []).some(e => e.open === 'forge'))) continue;
+    forges++;
+    const tab = DIALOGUE[id].choices.find(c => (c.do || []).some(e => e.open === 'masterpiece'));
+    assert.ok(tab && same(tab.if, READY), `${id} offers the Masterpiece while it waits`);
+  }
+  assert.ok(forges > 20);
+  // without the page: a hint at it; with the page, her offer's repeat; after him, her forge banked
+  assert.deepEqual(NPCS.hilda.talk.find(x => x.d === 'hilda-page').if, { all: [{ beaten: 'hollow-gretch' }, { not: { flag: 'worldforge-page' } }] });
+  assert.deepEqual(NPCS.hilda.talk.find(x => x.d === 'hilda-masterpiece-again').if, READY);
+  // her thanks, once it is forged (rules/forge.js sets masterpiece-forged), closes the quest
+  assert.deepEqual(NPCS.hilda.talk.find(x => x.d === 'hilda-forged').if, { all: [{ flag: 'masterpiece-forged' }, { not: { quest: 'masterpiece' } }] });
+  assert.ok(DIALOGUE['hilda-forged'].do.some(e => e.claim === 'masterpiece'));
+  // Harrow's end, once: his last words reach her
+  assert.deepEqual(NPCS.hilda.talk.find(x => x.d === 'hilda-told').if, { all: [{ beaten: 'unsmith' }, { not: { flag: 'harrow-told' } }] });
+  assert.ok(DIALOGUE['hilda-told'].do.some(e => e.set === 'harrow-told'));
+  assert.match(lineText('hilda-told'), /kept the fire in/);
+  for (const r of ['unmaking-hammer', 'ironvein-apron', 'worldforge-heart']) assert.ok(NPCS.hilda.talk.some(t => t.if?.wears === r), `Hilda knows her brother's ${r}`);
+});
+
+test('Tamsin below (spec A12, §3.1): her return sets tamsin-returned and met-tamsin-below, and she is sorry; past the unmade the party sees her; after the Unsmith she gives up her relic; Isolde keeps it for you should that scene be lost', () => {
+  const ret = DIALOGUE['tamsin-return'];
+  for (const f of ['tamsin-returned', 'met-tamsin-below']) assert.ok(ret.do.some(e => e.set === f), f);
+  assert.ok(ret.do.some(e => e.scout === 'unsmith'), 'the Unsmith\'s poster leaves silhouette');
+  assert.match(lineText('tamsin-return'), /sorry/);
+  assert.match(lineText('tamsin-return'), /stand with you/);
+  assert.deepEqual(NPCS.tamsin.talk[0], { if: { flag: 'council-5-done' }, d: 'tamsin-return' });
+  const cd = MAPS['chained-deep'].entities.find(e => e.id === 'cd-tamsin');
+  assert.equal(cd.npc, 'tamsin');
+  assert.equal(cd.talk, 'tamsin-return');
+  // past the unmade (the gate before the Chain Fire and her door) the party sees her, until she has joined
+  assert.deepEqual(AFTER['cd-unmade'], [{ on: 'victory', if: { not: { flag: 'tamsin-returned' } }, d: 'tamsin-waiting' }]);
+  assert.ok(reachable('tamsin-waiting').has('tamsin-return'));
+  // after the Unsmith (once): his end, then her relic; it comes from her, or from Isolde's table
+  const win = AFTER.unsmith.filter(a => a.on === 'victory');
+  assert.equal(win.length, 1);
+  assert.deepEqual(win[0].if, { not: { flag: 'tamsin-gave' } });
+  assert.ok(reachable(win[0].d).has('tamsin-after'));
+  const givers = Object.keys(DIALOGUE).filter(id => doOf(id).some(e => e.give === 'tamsins-bargain'));
+  assert.deepEqual(givers.sort(), ['isolde-bargain', 'tamsin-after']);
+  for (const id of givers) for (const f of ['tamsin-gave', 'tamsin-returned', 'met-tamsin-below']) assert.ok(DIALOGUE[id].do.some(e => e.set === f), `${id} sets ${f}`);
+  assert.deepEqual(NPCS.isolde.talk.find(x => x.d === 'isolde-bargain').if, { all: [{ beaten: 'unsmith' }, { not: { flag: 'tamsin-gave' } }] });
+  assert.match(lineText('tamsin-after'), /Isolde/, 'she goes up to Isolde');
+  // the night before, at the Chain Fire, once
+  assert.deepEqual(RESTS.find(r => r.at === 'chain-fire'), { at: 'chain-fire', if: { all: [{ flag: 'tamsin-returned' }, { not: { beaten: 'unsmith' } }, { not: { flag: 'chain-fire-night' } }] }, d: 'chain-fire-night' });
+});
+
+test('the Unsmith (spec A16, §3.5): Harrow Ironvein speaks at last; past the forge-warden he calls you across; his word always offers the fight; his end sends word to Hilda', () => {
+  assert.equal(NPCS.unsmith.name, 'Harrow Ironvein');
+  assert.deepEqual(AFTER['wf-warden'].map(a => [a.on, a.d]), [['victory', 'unsmith-bridge']]);
+  assert.ok(reachable('unsmith-bridge').has('unsmith'));
+  // his word before the fight: every node of it offers the fight, and "Not yet." (it can be his encounter's talk)
+  for (const id of ['unsmith', 'unsmith-why']) {
+    assert.ok(doOf(id).some(e => e.fight === 'unsmith'), `${id} offers the fight`);
+    assert.ok(DIALOGUE[id].choices.some(c => c.text === 'Not yet.' && !c.do && !c.next), `${id}: not yet`);
+  }
+  assert.deepEqual([...reachable('unsmith')].sort(), ['unsmith', 'unsmith-why']);
+  if (ENCOUNTERS.unsmith.talk) assert.equal(ENCOUNTERS.unsmith.talk, 'unsmith', 'his encounter talks with his word');
+  for (const re of [/never burned wood/, /Sleepers/, /relic/, /melts/, /hearth goes out/]) assert.match(lineText('unsmith-why'), re);
+  assert.ok([...reachable('unsmith')].some(id => DIALOGUE[id].lines.some(([w]) => w === 'tamsin')), 'Tamsin answers him');
+  // his end: word for Hild, which Bryn carries up to her
+  assert.match(lineText('unsmith-after'), /Tell Hild I kept the fire in/);
+  assert.deepEqual(DIALOGUE['unsmith-after'].choices.map(c => c.next), ['tamsin-after']);
+  // a wipe: a fire, and Tamsin; then a shorter word
+  assert.deepEqual(AFTER.unsmith.filter(a => a.on === 'defeat').map(a => [a.if, a.d]), [[{ flag: 'woke-by-unsmith' }, 'unsmith-woke-again'], [undefined, 'unsmith-woke']]);
+});
+
+test('the Worldforge\'s heart (spec A14, §4.7): Rekindle and Release always; Kindle Anew needs ENDINGS.anew.needs part by part, with its reasons; each ending sets its ending, closes the main quest and plays act3; afterwards the heart only says what was chosen', () => {
+  assert.equal(MAPS.worldforge.entities.find(e => e.id === 'wf-heart').talk, 'the-heart');
+  const ch = DIALOGUE['the-heart'].choices;
+  const before = ch.filter(c => same(c.if, { not: { ending: true } }));
+  assert.deepEqual(before.map(c => c.text.split(':')[0]), ['Rekindle', 'Release', 'Kindle Anew', 'Not yet.']);
+  assert.ok(!before[0].needs && !before[1].needs, 'Rekindle and Release are always offered');
+  const anew = before[2];
+  assert.deepEqual(anew.needs.map(n => n.if), ENDINGS.anew.needs.all, 'one part for each condition of Kindle Anew, in its order');
+  assert.deepEqual(anew.needs.map(n => n.why), ['Fenwick\'s Poker', 'your Masterpiece', 'every page of the Codex']);
+  assert.ok(!before[3].next && !before[3].do, 'the player may walk away and come back');
+  const scene = {};
+  for (const [c, id] of [[before[0], 'rekindle'], [before[1], 'release'], [anew, 'anew']]) {
+    // a last word before it is final: go on, or think again
+    const last = DIALOGUE[c.next];
+    assert.ok(last.choices.some(x => x.next === 'the-heart'), `${id}: think again`);
+    const go = last.choices.find(x => x.next && x.next !== 'the-heart');
+    if (id === 'anew') assert.deepEqual(go.needs, anew.needs, 'the last word keeps the price');
+    scene[id] = go.next;
+    const d = DIALOGUE[go.next];
+    assert.deepEqual(d.do.filter(e => 'ending' in e), [{ ending: id }], `${id}: its scene sets its ending`);
+    assert.ok(d.do.findIndex(e => 'ending' in e) < d.do.findIndex(e => e.claim === 'hollow-council'), `${id}: then closes the main quest`);
+    assert.ok(endsOn(go.next, 'act3'), `${id}: it ends on act3`);
+    assert.ok(!d.choices?.length, `${id}: nothing more to choose`);
+  }
+  assert.deepEqual(Object.keys(DIALOGUE).filter(id => doOf(id).some(e => 'ending' in e)).sort(), Object.values(scene).sort(), 'only the three scenes set an ending');
+  assert.match(lineText(scene.anew), /Masterpiece/);
+  assert.match(lineText(scene.anew), /poker/);
+  assert.match(lineText(scene.anew), /chains/, 'the Sleepers freed');
+  assert.match(lineText(scene.rekindle), /chains draw tight/);
+  assert.match(lineText(scene.release), /chains go slack/);
+  assert.match(lineText(scene.release), /cold/, 'the hearth gone out');
+  // afterwards: one choice, for the ending chosen, which only says so
+  for (const id of ENDING_IDS) {
+    const after = ch.filter(c => same(c.if, { ending: id }));
+    assert.equal(after.length, 1, id);
+    const n = DIALOGUE[after[0].next];
+    assert.ok(!after[0].do && !n.do && !n.choices, `${id}: the heart only says what was chosen`);
+  }
+});
+
+test('the Keep in Act III (spec §3.1, A14): Isolde holds the hall, then the Council is home, then the choice is below; after an ending Isolde and Fenwick answer it first', () => {
+  const at = (npc, x) => NPCS[npc].talk.findIndex(t => same(t.if, x));
+  assert.ok(at('isolde', { beaten: 'unsmith' }) < at('isolde', { beaten: 'hollow-gretch' }) && at('isolde', { beaten: 'hollow-gretch' }) < at('isolde', { flag: 'council-5-done' }));
+  assert.ok(at('isolde', { flag: 'council-5-done' }) < at('isolde', { flag: 'council-4-done' }), 'the open stair before the boxes');
+  assert.match(lineText(NPCS.isolde.talk[at('isolde', { flag: 'council-5-done' })].d), /holding the hall/);
+  for (const npc of ['isolde', 'fenwick']) {
+    for (const id of ENDING_IDS) {
+      const i = at(npc, { ending: id });
+      assert.ok(i > 0, `${npc} answers ${id}`);
+      // only once-only lines (a commission, a truth, a homecoming) come before it
+      for (const x of NPCS[npc].talk.slice(0, i)) if (!('ending' in x.if)) assert.ok(JSON.stringify(x.if).includes('"not":{"flag"'), `${npc}: ${x.d} plays once, then the ending's line`);
+    }
+  }
+  assert.match(lineText('fenwick-release'), /[Ll]ogs/, 'the hearth never burned wood; now it does');
+  assert.match(lineText('isolde-anew'), /gold/);
+  assert.match(lineText('isolde-rekindle'), /as it always has/);
+  assert.equal(NPCS.hilda.talk.find(t => same(t.if, { ending: 'anew' }))?.d, 'hilda-anew', 'Hilda\'s work in the hearth');
+  for (const m of ['hollow-hall', 'ash-stair', 'chained-deep', 'worldforge']) assert.ok(ARRIVALS[m], `arrival lines for ${m}`);
+  assert.match(lineText(ARRIVALS['chained-deep']), /four/, 'Alondra\'s fourth Sleeper, under the hearth');
+});
+
+test('the Hearth Below\'s quests (spec §3.6): ids, givers, starts, steps and rewards; who closes each', () => {
+  const main = QUESTS['hollow-council'];
+  assert.equal(main.kind, 'main');
+  assert.equal(main.giver, 'isolde');
+  assert.deepEqual(main.start, { flag: 'council-5-done' });
+  assert.deepEqual(main.steps.map(s => s.done), [{ beaten: 'hollow-gretch' }, { any: [{ flag: 'met-tamsin-below' }, { beaten: 'unsmith' }] }, { beaten: 'unsmith' }, { ending: true }]);
+  assert.deepEqual(main.steps.map(s => s.target.entity), ['hollow-gretch', 'cd-tamsin', 'unsmith', 'wf-heart']);
+  assert.deepEqual(main.reward, {}, 'the ending is its reward');
+  const mp = QUESTS.masterpiece;
+  assert.equal(mp.kind, 'side');
+  assert.equal(mp.giver, 'hilda');
+  assert.deepEqual(mp.start, { all: [{ beaten: 'hollow-gretch' }, { flag: 'worldforge-page' }] });
+  const M = TUNING.masterpiece;
+  assert.deepEqual(mp.steps[0].done, { any: [{ afford: { gold: M.gold, materials: { embers: M.embers, silver: M.silver } } }, { masterpiece: true }] }, 'Hilda\'s price (TUNING.masterpiece), and it stays paid');
+  assert.deepEqual(mp.steps.at(-1).done, { masterpiece: true });
+  assert.deepEqual(mp.reward, {}, 'the Masterpiece is its reward');
+  const fw = QUESTS['fenwicks-truth'];
+  assert.equal(fw.giver, 'fenwick');
+  assert.deepEqual(fw.start, { beaten: 'hollow-gretch' });
+  assert.deepEqual(fw.steps.map(s => [s.done, s.target.entity]), [[{ flag: 'fenwick-told' }, 'fenwick']]);
+  const claims = q => Object.keys(DIALOGUE).filter(id => doOf(id).some(e => e.claim === q)).sort();
+  assert.deepEqual(claims('hollow-council'), ['ending-anew', 'ending-rekindle', 'ending-release']);
+  assert.deepEqual(claims('masterpiece'), ['hilda-forged']);
+  assert.deepEqual(claims('fenwicks-truth'), ['fenwick-poker']);
+});
+
+test('the Hearth Below\'s Ladder (spec §3.6): the Council\'s posters and the Unsmith\'s, scouted by the Opening and by Tamsin; the two rumours settle into his', () => {
+  const unsmith = LADDER.find(p => p.id === 'unsmith');
+  assert.deepEqual([unsmith.enc, unsmith.name, unsmith.act], ['unsmith', 'The Unsmith', 3]);
+  const FOUND = { poster: 'unsmith', if: { flag: 'council-5-done' } };
+  assert.deepEqual(LADDER.filter(p => p.silhouette).map(p => [p.id, p.found]), [['missing-smith', FOUND], ['man-on-the-barge', FOUND]]);
+  for (const p of LADDER.filter(x => x.found)) assert.ok(LADDER.some(x => x.id === p.found.poster && x.enc && !x.silhouette), `${p.id} settles into a poster`);
+  const scouts = enc => Object.keys(DIALOGUE).filter(id => doOf(id).some(e => e.scout === enc));
+  for (const w of COUNCIL) assert.deepEqual(scouts(`hollow-${w}`), ['council-5'], `hollow-${w}: scouted at the Opening`);
+  assert.deepEqual(scouts('unsmith'), ['tamsin-return'], 'the Unsmith: at Tamsin\'s return');
+});
+
+test('Page V is noticed (spec §3.4): every one of its nine relics, by somebody who knows it', () => {
+  assert.equal(PAGE_V.size, 9);
+  const noticed = new Set(Object.values(NPCS).flatMap(n => n.talk.map(t => t.if?.wears)).filter(Boolean));
+  for (const r of PAGE_V) assert.ok(noticed.has(r), `somebody notices ${r}`);
+  for (const who of COUNCIL) assert.ok(NPCS[who].talk.some(t => t.if?.wears === GIFTS[who][0]), `${who} knows the gift sent to their chair`);
+  assert.ok(NPCS.isolde.talk.some(t => t.if?.wears === 'tamsins-bargain'), 'Isolde knows Tamsin\'s sword');
 });

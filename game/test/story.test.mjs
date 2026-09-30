@@ -7,7 +7,10 @@
 // M6 (spec §2.4, §3.1, §3.5, §3.6): the Gloomfen's: Hodge's toll, Tamsin's duel and her fall, the wards, Nettie's
 // remedy, Corvus's harpoon and the dead tongue, the main quest and the fourth council, the Champions, the children's
 // homecoming and Lull, the Bogmire board, the shops, the notices and the Keep's news.
-// Owner: WP1 (M3), P3 story (M4, M5, M6 tests).
+// M7 (spec §3.1, §3.5, §3.6, §4.7): the Hearth Below's: the Opening, the Hollow Council freed and home again, Fenwick's
+// truth, Hilda's Masterpiece, Tamsin's return and her relic, the Unsmith, the heart and the three endings, the main
+// quest and the Ladder.
+// Owner: WP1 (M3), P3 story (M4, M5, M6, M7 tests).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { newGame } from '../src/rules/gauntlet.js';
@@ -17,7 +20,13 @@ import { check, condErrors, questState } from '../src/rules/cond.js';
 import { relicItem } from '../src/rules/loot.js';
 import { createRng } from '../src/core/rng.js';
 import { talkTo, dialogueView, enterDialogue, choose, questLog, nextObjective, ladder, afterDialogue, restDialogue, bounties } from '../src/rules/story.js';
-import { enterMap } from '../src/rules/world.js';
+import { enterMap, present } from '../src/rules/world.js';
+import { forgeMasterpiece } from '../src/rules/forge.js';
+import { RELICS } from '../src/data/relics.js';
+import { LADDER } from '../src/data/ladder.js';
+import { QUESTS } from '../src/data/quests.js';
+import { TUNING } from '../src/data/tuning.js';
+import { ENDING_IDS } from '../src/data/endings.js';
 
 import { readFileSync } from 'node:fs';
 
@@ -1143,4 +1152,331 @@ test('Mayor Gretch takes the Bogmire board\'s bounties in; Sedge and Nettie sell
     ['bm-watch', 'barge-gauntlets', 'notice-watch-chain'], ['hilda', 'barge-gauntlets', 'notice-hilda-chain'], ['hilda', 'corvus-harpoon', 'notice-hilda-harpoon'],
     ['fenwick', 'lamplighters-lantern', 'notice-fenwick-lantern'], ['isolde', 'bogstriders', 'notice-isolde-boots'],
   ]) assert.equal(talkTo(wear(met, relic), npc), d, `${npc} notices ${relic}`);
+});
+
+// ---- M7: the Hearth Below (P3) ------------------------------------------------------------------------------
+
+// A save that has sat the fourth council: all eight Brands, Tamsin fallen at Rotbridge, the Gloomfen won, and every
+// earlier once-only line of the Keep's people heard.
+const gloomfen = () => deepFreeze(story(brand(ironspire(), 'brand-of-lanterns', 'brand-of-the-deep'), {
+  'gloomfen-complete': true, 'council-4-done': true, 'toll-paid': true, 'tamsin-yielded-4': true, 'tamsin-fallen': true,
+  'heard-hild': true, 'heard-barge': true, 'met-moss': true, 'met-gretch': true, 'met-corvus': true,
+}));
+const hall = g => enterMap(g, { map: 'keep-hall', at: [12, 6], face: 'n' });
+// Play a scene from `id`, taking the choice that matches each pattern in turn: the game, every event, the nodes seen.
+function playScene(g, id, ...picks) {
+  const events = [], path = [id];
+  let r = enterDialogue(g, id);
+  g = r.game; events.push(...r.events);
+  for (const re of picks) {
+    const c = pick(g, id, re);
+    g = c.game; events.push(...c.events);
+    if (!c.next) break;
+    id = c.next; path.push(id);
+    r = enterDialogue(g, id);
+    g = r.game; events.push(...r.events);
+  }
+  return { game: g, events, path };
+}
+// the Opening sat; the Hollow Council freed (the last letter read); Tamsin joined below; the Unsmith beaten, his end
+// played, Tamsin's relic given and her homecoming heard at the Keep
+const opened = () => deepFreeze(enterDialogue(gloomfen(), 'council-5').game);
+const freed = () => deepFreeze(enterDialogue(beat(opened(), 'hollow-miravel', 'hollow-qasim', 'hollow-brundar', 'hollow-gretch'), 'hollow-gretch-after').game);
+const joined = () => deepFreeze(playScene(beat(freed(), 'as-thralls', 'cd-unmade'), 'tamsin-return', /Stand with us/).game);
+const fallen = () => deepFreeze(enterDialogue(playScene(beat(joined(), 'wf-warden', 'unsmith'), 'unsmith-after', /Tamsin/).game, 'isolde-tamsin').game);
+const TOWNS = [['miravel', 'eldergrove'], ['qasim', 'sandspire'], ['brundar', 'ironhold'], ['gretch', 'bogmire']];
+const GIFT = { miravel: ['hollow-wreath', 'notice-miravel-wreath'], qasim: ['hollow-chalice', 'notice-qasim-chalice'], brundar: ['hollow-gauntlet', 'notice-brundar-gauntlet'], gretch: ['hollow-chain', 'notice-gretch-chain'] };
+const inTown = (g, npc, map) => present(g, map).some(e => e.kind === 'npc' && e.npc === npc);
+
+test('the Opening: the fifth council plays on entering the Great Hall once the fourth has sat; the boxes open together; the four go down; the Act III card; never again', () => {
+  const g = gloomfen();
+  assert.equal(talkTo(g, 'isolde'), 'isolde-boxes');
+  assert.equal(questState(g, 'hollow-council'), 'hidden');
+  const h = hall(g);
+  assert.deepEqual(h.events.filter(e => e.t === 'trigger').map(e => e.id), ['council-5']);
+  const o = playScene(h.game, 'council-5', /Open them together/, /Go after them/);
+  assert.deepEqual(o.path, ['council-5', 'council-5-open', 'council-5-stair']);
+  assert.ok(flag(o.game, 'council-5-done'));
+  assert.deepEqual(o.events.filter(e => e.t === 'end'), [{ t: 'end', act: 'act3-open' }]);
+  assert.ok(dialogueView(o.game, 'council-5-open').lines.some(l => l.name === 'Hilda' && /brother/.test(l.text)), 'Hilda knows the mark on the gifts');
+  // guarded by the flag it sets: a reload mid-scene plays it again; once it has sat, never
+  assert.ok(hall(h.game).events.some(e => e.id === 'council-5'));
+  assert.ok(!hall(o.game).events.some(e => e.id === 'council-5'));
+  // the four leave their towns; the main quest points down the vault stair
+  for (const [npc, map] of TOWNS) {
+    assert.ok(inTown(g, npc, map), `${npc} at home before`);
+    assert.ok(!inTown(o.game, npc, map), `${npc} gone down the stair`);
+  }
+  assert.equal(questState(o.game, 'hollow-council'), 'active');
+  assert.deepEqual([nextObjective(o.game).map, nextObjective(o.game).entity], ['hollow-hall', 'hollow-gretch']);
+  // Isolde's word can open them too (the fourth council leaves you in the hall with her); then the trigger never plays
+  const word = pick(g, 'isolde-boxes', /Open them together/);
+  assert.equal(word.next, 'council-5');
+  const w = enterDialogue(word.game, 'council-5').game;
+  assert.ok(!hall(w).events.some(e => e.id === 'council-5'));
+  assert.ok(!texts(w, 'isolde-boxes').some(t => /Open them/.test(t)), 'not twice');
+  // the Keep holds its breath: Isolde holds the hall, Fenwick feels them on the stair, Hilda knows the mark
+  assert.equal(talkTo(o.game, 'isolde'), 'isolde-holds');
+  assert.equal(talkTo(o.game, 'fenwick'), 'fenwick-hollow');
+  assert.equal(talkTo(o.game, 'hilda'), 'hilda-hollow');
+});
+
+test('the Hollow Council: each freed after their fight, the fourth with his last letter; a wipe wakes you at the hearth; home again, each thanks you once, then notices the gift, then has a line', () => {
+  let g = opened();
+  // a wipe against any of them: a fire, and who is freed stays freed; then a shorter word; they are no duel
+  assert.equal(afterDialogue(g, 'hollow-miravel', 'defeat'), 'hollow-woke');
+  assert.equal(afterDialogue(enterDialogue(g, 'hollow-woke').game, 'hollow-qasim', 'defeat'), 'hollow-woke-again');
+  assert.equal(afterDialogue(g, 'hollow-miravel', 'yield'), null);
+  for (const who of Object.keys(GIFT)) {
+    g = beat(g, `hollow-${who}`);
+    assert.equal(afterDialogue(g, `hollow-${who}`, 'victory'), `hollow-${who}-after`);
+    assert.ok(dialogueView(g, `hollow-${who}-after`).lines.some(l => l.speaker === who), `${who} speaks, freed`);
+  }
+  for (const who of ['miravel', 'qasim', 'brundar']) assert.deepEqual(enterDialogue(g, `hollow-${who}-after`).events, [], `${who}: no letter`);
+  // the fourth's scene shows his last letter, once
+  const four = enterDialogue(g, 'hollow-gretch-after');
+  assert.deepEqual(four.events, [{ t: 'letter', id: 'hollow' }]);
+  assert.ok(flag(four.game, 'letter:hollow'));
+  assert.equal(afterDialogue(four.game, 'hollow-gretch', 'victory'), null, 'once');
+  assert.equal(stepAt(four.game, 'hollow-council'), 'cd-tamsin', 'the main quest goes on down, to the Chained Deep');
+  // home: each thanks you once (a first meeting too), then notices the gift, then a line of their own
+  for (const [who, map] of TOWNS) {
+    assert.ok(inTown(four.game, who, map), `${who} is home`);
+    const t = talk(four.game, who);
+    assert.equal(t.id, `freed-${who}`);
+    assert.equal(talkTo(t.game, who), `${who}-home-again`);
+    assert.equal(talkTo(wear(t.game, GIFT[who][0]), who), GIFT[who][1], `${who} knows the gift`);
+  }
+  // Mayor Gretch keeps the Bogmire board, freed or not
+  assert.ok(texts(beat(four.game, 'mk-bogfolk'), 'freed-gretch').includes('Turn in bounties.'));
+  // a Council member never met in their town: the thanks is the first meeting
+  const q = talk(story(four.game, { 'met-qasim': false }), 'qasim');
+  assert.equal(q.id, 'freed-qasim');
+  assert.ok(flag(q.game, 'met-qasim'));
+});
+
+test('Fenwick\'s truth: once the Council is freed he tells it, gives No. 000 and closes his quest; then an old man; the Poker is Kindle Anew\'s first part', () => {
+  assert.equal(talkTo(opened(), 'fenwick'), 'fenwick-hollow', 'before the Council is freed, the four on the stair');
+  const g = freed();
+  assert.equal(questState(g, 'fenwicks-truth'), 'active');
+  assert.equal(stepAt(g, 'fenwicks-truth'), 'fenwick');
+  assert.equal(talkTo(g, 'fenwick'), 'fenwick-truth');
+  assert.match(said(g, 'fenwick-truth'), /never burned wood/);
+  const t = playScene(g, 'fenwick-truth', /Let him finish/);
+  assert.deepEqual(t.path, ['fenwick-truth', 'fenwick-poker']);
+  assert.deepEqual(t.events.filter(e => e.t === 'item').map(e => e.item.base), ['fenwicks-poker']);
+  assert.ok(owns(t.game, 'fenwicks-poker'));
+  assert.equal(t.game.codex['fenwicks-poker'].claimed, true);
+  assert.equal(questState(t.game, 'fenwicks-truth'), 'done');
+  assert.equal(talkTo(t.game, 'fenwick'), 'fenwick-old', 'an old man now, for good');
+  assert.equal(talkTo(wear(t.game, 'fenwicks-poker'), 'fenwick'), 'notice-fenwick-poker');
+  // told late, after an ending, it still gives No. 000 (Page V never closes on it)
+  assert.equal(talkTo({ ...g, ending: 'release' }, 'fenwick'), 'fenwick-truth');
+  // the Poker is the first part of Kindle Anew's price
+  const reasons = x => dialogueView(beat(x, 'unsmith'), 'the-heart').choices.find(c => /^Kindle Anew/.test(c.text)).reasons || [];
+  assert.equal(reasons(g)[0], 'Fenwick\'s Poker');
+  assert.ok(!reasons(t.game).includes('Fenwick\'s Poker'));
+});
+
+test('Hilda\'s Masterpiece: with the page she names her brother and opens the forge\'s Masterpiece tab; without it, a hint; forged, her thanks close the quest; one to a save; Harrow\'s end', () => {
+  assert.ok(!texts(opened(), 'hilda-hollow').includes('Forge the Masterpiece.'), 'not before the Council is freed');
+  const g = freed();
+  assert.equal(talkTo(g, 'hilda'), 'hilda-page', 'no page: a hint at it');
+  assert.ok(!texts(g, 'hilda-page').includes('Forge the Masterpiece.'));
+  assert.equal(questState(g, 'masterpiece'), 'hidden');
+  const p = deepFreeze(story(g, { 'worldforge-page': true }));
+  assert.equal(questState(p, 'masterpiece'), 'active');
+  assert.equal(talkTo(p, 'hilda'), 'hilda-masterpiece');
+  assert.match(said(p, 'hilda-masterpiece'), /Harrow Ironvein\. The Unsmith\. My twin\./);
+  assert.deepEqual(pick(p, 'hilda-masterpiece', /Forge the Masterpiece/).events, [{ t: 'open', screen: 'masterpiece' }]);
+  const o = enterDialogue(p, 'hilda-masterpiece').game;
+  assert.equal(talkTo(o, 'hilda'), 'hilda-masterpiece-again', 'the offer once, then its short word');
+  assert.equal(texts(o, 'hilda-masterpiece-again')[0], 'Forge the Masterpiece.');
+  const worn = wear(o, 'unmaking-hammer');
+  assert.equal(talkTo(worn, 'hilda'), 'notice-hilda-unmaking');
+  assert.equal(texts(worn, 'notice-hilda-unmaking')[0], 'Forge the Masterpiece.', 'every line of hers offers it');
+  // the quest: her price, then the forging; the price stays paid once spent on it
+  const M = TUNING.masterpiece;
+  assert.equal(questLog(o).find(q => q.id === 'masterpiece').step.text, QUESTS.masterpiece.steps[0].text);
+  const rich = { ...o, gold: M.gold + 50, materials: { ...o.materials, embers: M.embers, silver: M.silver }, gems: { ...(o.gems || {}), 'bog-amber': M.amber } };
+  assert.equal(questLog(rich).find(q => q.id === 'masterpiece').step.text, QUESTS.masterpiece.steps[1].text);
+  const f = forgeMasterpiece(rich, { base: 'longsword', name: 'Hearthsong' });
+  assert.ok(f.ok, f.reason);
+  assert.equal(questState(f.game, 'masterpiece'), 'ready', 'every step done, the price spent');
+  assert.equal(talkTo(f.game, 'hilda'), 'hilda-forged');
+  const th = enterDialogue(f.game, 'hilda-forged').game;
+  assert.equal(questState(th, 'masterpiece'), 'done');
+  assert.ok(!texts(th, talkTo(th, 'hilda')).includes('Forge the Masterpiece.'), 'one to a save');
+  // Harrow's end, once Bryn can tell her; then she banks the forge; Kindle Anew: her work in the hearth
+  const h = beat(th, 'unsmith');
+  assert.equal(talkTo(h, 'hilda'), 'hilda-told');
+  assert.match(said(h, 'hilda-told'), /kept the fire in/);
+  const told = enterDialogue(h, 'hilda-told').game;
+  assert.equal(talkTo(told, 'hilda'), 'hilda-banks');
+  assert.equal(talkTo({ ...told, ending: 'anew' }, 'hilda'), 'hilda-anew');
+});
+
+test('Tamsin below: past the unmade the party sees her; her return sets tamsin-returned and met-tamsin-below and scouts the Unsmith; the watch at the Chain Fire; after him, her relic, and home to Isolde; a lost scene leaves it on Isolde\'s table', () => {
+  const u = deepFreeze(beat(freed(), 'as-thralls', 'cd-unmade'));
+  assert.equal(afterDialogue(u, 'cd-unmade', 'victory'), 'tamsin-waiting');
+  assert.equal(pick(u, 'tamsin-waiting', /Go to her/).next, 'tamsin-return');
+  assert.equal(talkTo(u, 'tamsin'), 'tamsin-return', 'or walk up to her before the forge door');
+  assert.ok(present(u, 'chained-deep').some(e => e.id === 'cd-tamsin'));
+  const r = playScene(u, 'tamsin-return', /Stand with us/);
+  assert.deepEqual(r.path, ['tamsin-return', 'tamsin-joins']);
+  for (const f of ['tamsin-returned', 'met-tamsin-below']) assert.ok(flag(r.game, f), f);
+  assert.match(said(u, 'tamsin-return'), /sorry/);
+  assert.ok(!present(r.game, 'chained-deep').some(e => e.id === 'cd-tamsin'), 'she leaves her place and walks with you');
+  assert.equal(ladder(r.game).find(p => p.id === 'unsmith').state, 'scouted');
+  assert.equal(afterDialogue(r.game, 'cd-unmade', 'victory'), null, 'once she has joined');
+  assert.equal(stepAt(r.game, 'hollow-council'), 'unsmith');
+  // the Chain Fire: she keeps the watch, once
+  assert.equal(restDialogue(u, 'chain-fire'), null, 'not before she has joined');
+  assert.equal(restDialogue(r.game, 'chain-fire'), 'chain-fire-night');
+  assert.equal(restDialogue(enterDialogue(r.game, 'chain-fire-night').game, 'chain-fire'), null);
+  // after the Unsmith: his end, then her relic (once), and she goes up to Isolde
+  const won = deepFreeze(beat(r.game, 'wf-warden', 'unsmith'));
+  assert.equal(restDialogue(won, 'chain-fire'), null, 'not after him');
+  assert.equal(afterDialogue(won, 'unsmith', 'victory'), 'unsmith-after');
+  const a = playScene(won, 'unsmith-after', /Tamsin/);
+  assert.deepEqual(a.path, ['unsmith-after', 'tamsin-after']);
+  assert.deepEqual(a.events.filter(e => e.t === 'item').map(e => e.item.base), ['tamsins-bargain']);
+  assert.equal(a.game.codex['tamsins-bargain'].claimed, true);
+  assert.equal(afterDialogue(a.game, 'unsmith', 'victory'), null, 'once');
+  assert.equal(talkTo(a.game, 'isolde'), 'isolde-tamsin');
+  const home = enterDialogue(a.game, 'isolde-tamsin').game;
+  assert.equal(talkTo(home, 'isolde'), 'isolde-heart');
+  assert.equal(talkTo(wear(home, 'tamsins-bargain'), 'isolde'), 'notice-isolde-bargain');
+  // the scene lost (the page closed on it): Isolde has the relic for you, once, and her homecoming with it
+  assert.equal(talkTo(won, 'isolde'), 'isolde-bargain');
+  const kept = enterDialogue(won, 'isolde-bargain');
+  assert.deepEqual(kept.events.filter(e => e.t === 'item').map(e => e.item.base), ['tamsins-bargain']);
+  assert.equal(talkTo(kept.game, 'isolde'), 'isolde-heart');
+  // passed by below (never spoken to): the quest never sticks, and after the fight she still gives it and leaves her place
+  const passed = deepFreeze(beat(u, 'wf-warden', 'unsmith'));
+  assert.equal(stepAt(passed, 'hollow-council'), 'wf-heart');
+  const late = playScene(passed, 'unsmith-after', /Tamsin/);
+  assert.ok(flag(late.game, 'tamsin-returned') && flag(late.game, 'met-tamsin-below') && owns(late.game, 'tamsins-bargain'));
+  assert.ok(!present(late.game, 'chained-deep').some(e => e.id === 'cd-tamsin'));
+});
+
+test('the Unsmith: past the forge-warden he calls you across; his word offers the fight or not yet; a wipe, a fire and Tamsin; he is no duel', () => {
+  const b = deepFreeze(beat(joined(), 'wf-warden'));
+  assert.equal(afterDialogue(b, 'wf-warden', 'victory'), 'unsmith-bridge');
+  assert.equal(pick(b, 'unsmith-bridge', /Cross the bridge/).next, 'unsmith');
+  assert.deepEqual(texts(b, 'unsmith'), ['Ask him why.', 'Face him.', 'Not yet.']);
+  assert.deepEqual(pick(b, 'unsmith', /Face him/).events, [{ t: 'fight', enc: 'unsmith' }]);
+  assert.deepEqual(pick(b, 'unsmith', /Not yet/).events, []);
+  assert.equal(pick(b, 'unsmith', /why/).next, 'unsmith-why');
+  assert.deepEqual(pick(b, 'unsmith-why', /Face him/).events, [{ t: 'fight', enc: 'unsmith' }]);
+  assert.ok(dialogueView(b, 'unsmith').lines.some(l => l.name === 'Harrow Ironvein'), 'he speaks under his own name');
+  assert.ok(dialogueView(b, 'unsmith').lines.some(l => l.name === 'Tamsin'), 'and Tamsin answers him');
+  assert.match(said(b, 'unsmith-why'), /never burned wood/);
+  assert.equal(afterDialogue(b, 'unsmith', 'defeat'), 'unsmith-woke');
+  assert.equal(afterDialogue(enterDialogue(b, 'unsmith-woke').game, 'unsmith', 'defeat'), 'unsmith-woke-again');
+  assert.equal(afterDialogue(b, 'unsmith', 'yield'), null, 'he is no duel');
+  assert.equal(afterDialogue(beat(b, 'unsmith'), 'wf-warden', 'victory'), null, 'the bridge word, not after him');
+});
+
+// Kindle Anew's price paid: the Poker (Fenwick's truth), the Masterpiece (Hilda's forge) and every page of the Codex
+function everything(g) {
+  let x = playScene(g, 'fenwick-truth', /Let him finish/).game;
+  const M = TUNING.masterpiece;
+  x = story({ ...x, gold: M.gold, materials: { ...x.materials, embers: M.embers, silver: M.silver }, gems: { ...(x.gems || {}), 'bog-amber': M.amber } }, { 'worldforge-page': true });
+  const f = forgeMasterpiece(x, { base: 'maul', name: 'Kettle\'s End' });
+  assert.ok(f.ok, f.reason);
+  x = enterDialogue(f.game, 'hilda-forged').game;
+  return deepFreeze({ ...x, codex: Object.fromEntries(Object.keys(RELICS).map(id => [id, { sighted: true, claimed: true, awakened: false }])) });
+}
+
+test('the Worldforge\'s heart: Kindle Anew disabled with three reasons on a fresh Act III save, enabled with the Poker, the Masterpiece and every page; each ending once and for good; then the heart and the Keep say what was chosen', () => {
+  const g = fallen();
+  const v = dialogueView(g, 'the-heart');
+  assert.deepEqual(v.choices.map(c => c.text), ['Rekindle: chain the Sleepers again.', 'Release: break their chains.', 'Kindle Anew: a legend of your own.', 'Not yet.']);
+  assert.ok(!v.choices[0].disabled && !v.choices[1].disabled, 'Rekindle and Release, always');
+  assert.equal(v.choices[2].disabled, true);
+  assert.deepEqual(v.choices[2].reasons, ['Fenwick\'s Poker', 'your Masterpiece', 'every page of the Codex']);
+  assert.equal(choose(g, 'the-heart', v.choices[2].i).next, null, 'refused while it is locked');
+  assert.equal(choose(g, 'choose-anew', 0).next, null, 'its last word keeps the price');
+  assert.equal(pick(g, 'the-heart', /Not yet/).next, null);
+  assert.equal(pick(g, 'the-heart', /Not yet/).game.ending, null, 'the player may walk away and come back');
+  // everything paid: Kindle Anew opens
+  const full = everything(g);
+  const k = dialogueView(full, 'the-heart').choices.find(c => /^Kindle Anew/.test(c.text));
+  assert.ok(!k.disabled && !k.reasons, 'Kindle Anew, enabled');
+  const INDEX = { rekindle: 0, release: 1, anew: 2 }; // the heart's choices, as the data lists them
+  for (const [id, re, go] of [['rekindle', /^Rekindle:/, /^Rekindle\./], ['release', /^Release:/, /^Release them/], ['anew', /^Kindle Anew:/, /^Kindle Anew\./]]) {
+    for (const from of id === 'anew' ? [full] : [g, full]) {
+      assert.equal(pick(from, `choose-${id}`, /Think again/).next, 'the-heart');
+      const r = playScene(from, 'the-heart', re, go);
+      assert.deepEqual(r.path, ['the-heart', `choose-${id}`, `ending-${id}`]);
+      assert.equal(r.game.ending, id);
+      assert.deepEqual(r.events.filter(e => e.t === 'ending'), [{ t: 'ending', id }]);
+      assert.deepEqual(r.events.filter(e => e.t === 'end'), [{ t: 'end', act: 'act3' }]);
+      assert.equal(questState(r.game, 'hollow-council'), 'done', 'the main quest closes with the ending');
+      // a second choice changes nothing: another ending's scene, or a hidden choice of the heart taken anyway
+      for (const other of ENDING_IDS) {
+        const again = enterDialogue(r.game, `ending-${other}`);
+        assert.equal(again.game.ending, id, `${id}, then ${other}`);
+        assert.ok(!again.events.some(e => e.t === 'ending'));
+      }
+      const other = ENDING_IDS.find(x => x !== id && x !== 'anew');
+      const sneak = choose(r.game, 'the-heart', INDEX[other]);
+      assert.equal(sneak.next, `choose-${other}`);
+      const on = choose(sneak.game, sneak.next, 0);
+      assert.equal(enterDialogue(on.game, on.next).game.ending, id);
+      // the heart only says what was chosen, and does nothing more
+      const after = dialogueView(r.game, 'the-heart').choices;
+      assert.deepEqual(after.map(c => c.text), ['Look into the furnace.']);
+      const look = choose(r.game, 'the-heart', after[0].i);
+      assert.equal(look.next, { rekindle: 'heart-rekindled', release: 'heart-released', anew: 'heart-anew' }[id]);
+      assert.deepEqual(look.events, []);
+      assert.deepEqual(enterDialogue(look.game, look.next).events, []);
+      // the Keep answers it
+      if (from === full) {
+        assert.equal(talkTo(r.game, 'isolde'), `isolde-${id}`);
+        assert.equal(talkTo(r.game, 'fenwick'), `fenwick-${id}`);
+      }
+    }
+  }
+});
+
+test('the Hollow Council, Isolde\'s main quest: from the fifth council to the ending, step by step, and never stuck', () => {
+  assert.equal(questState(gloomfen(), 'hollow-council'), 'hidden');
+  let g = opened();
+  assert.equal(stepAt(g, 'hollow-council'), 'hollow-gretch');
+  g = beat(g, 'hollow-miravel', 'hollow-qasim', 'hollow-brundar');
+  assert.equal(stepAt(g, 'hollow-council'), 'hollow-gretch', 'all four');
+  assert.equal(talkTo(g, 'isolde'), 'isolde-holds');
+  g = beat(g, 'hollow-gretch');
+  assert.equal(stepAt(g, 'hollow-council'), 'cd-tamsin');
+  assert.equal(talkTo(g, 'isolde'), 'isolde-freed');
+  assert.equal(stepAt(story(g, { 'met-tamsin-below': true }), 'hollow-council'), 'unsmith');
+  const past = beat(g, 'unsmith');
+  assert.equal(stepAt(past, 'hollow-council'), 'wf-heart', 'straight past Tamsin: never stuck');
+  assert.deepEqual([nextObjective(past).map, nextObjective(past).entity], ['worldforge', 'wf-heart']);
+  assert.equal(questState({ ...past, ending: 'release' }, 'hollow-council'), 'ready', 'an ending chosen: every step done (its scene claims it)');
+});
+
+test('the Ladder below the Keep: the same count at every stage; the Council scouted at the Opening, the Unsmith at Tamsin\'s return; the rumours found; each settled as they fall', () => {
+  const g = gloomfen();
+  const poster = (x, id) => ladder(x).find(p => p.id === id).state;
+  const found = x => LADDER.filter(p => p.found && check(x, p.found.if)).map(p => [p.id, p.found.poster]);
+  const FIVE = ['hollow-miravel', 'hollow-qasim', 'hollow-brundar', 'hollow-gretch', 'unsmith'];
+  const n = ladder(g).length;
+  assert.equal(n, 48, 'the 47 of a new game, and the rumour of the barge');
+  for (const id of FIVE) assert.equal(poster(g, id), 'silhouette', id);
+  assert.deepEqual(found(g), []);
+  const o = opened();
+  assert.equal(ladder(o).length, n, 'nothing added or taken away');
+  for (const id of FIVE.slice(0, 4)) assert.equal(poster(o, id), 'scouted', id);
+  assert.equal(poster(o, 'unsmith'), 'silhouette', 'until Tamsin\'s return');
+  assert.deepEqual(found(o), [['missing-smith', 'unsmith'], ['man-on-the-barge', 'unsmith']], 'both rumours were the Unsmith');
+  for (const r of ['hollow-wreath', 'hollow-chalice', 'hollow-gauntlet', 'hollow-chain']) assert.ok(o.codex[r]?.sighted, `${r}: sighted at the Opening`);
+  const j = joined();
+  assert.equal(poster(j, 'unsmith'), 'scouted');
+  assert.equal(ladder(j).length, n);
+  const all = fallen();
+  for (const id of FIVE) assert.equal(poster(all, id), 'settled', id);
+  assert.equal(ladder(all).length, n);
 });

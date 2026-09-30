@@ -1,10 +1,10 @@
-// The Unsmith's letters (M3 spec §3.1, §3.6; M4 spec §3.6; M5 spec §3.6; M6 spec §3.6): one per Brand, shown once
-// (story['letter:<brandId>']).
-// LETTERS[brandId] = { text }
+// The Unsmith's letters (M3 spec §3.1, §3.6; M4 spec §3.6; M5 spec §3.6; M6 spec §3.6; M7 spec §3.6): one per Brand,
+// shown once (story['letter:<brandId>']), and one more, his last (M7).
+// LETTERS[brandId | 'hollow'] = { text }
 // The Sunscorch Brands come in either order, so their letters never count coals. The Ironspire is
 // taken in one order after the Sunscorch (M5 A4), so its letters can: the fifth coal, then the sixth. The
 // Gloomfen is taken in one order too (M6 A4): the seventh coal, then the eighth, the last of Act II.
-// Owner: WP3S (M3), P3 story (M4, M5, M6).
+// Owner: WP3S (M3), P3 story (M4, M5, M6, M7).
 
 import { deepFreeze } from '../core/freeze.js';
 
@@ -20,7 +20,7 @@ export const LETTERS = deepFreeze({
   // M6: the Gloomfen. After the Lantern Mother (and after Rotbridge: he has Tamsin now), and after Lull's scene.
   'brand-of-lanterns': { text: 'Seven. You carried the fen\'s children home, little Warden. I only needed the one, and she came to me on her own. — U.' },
   'brand-of-the-deep': { text: 'Eight. Every coal lit, and the fen has stopped singing. I sent your Council four gifts. Tell them to open them together. — U.' },
-  // M7 (spec §3.6): not a Brand's: the Hollow Council's last after-scene shows it ({ letter: 'hollow' }, P3's), signed
-  // with his own initial at last
+  // M7 (spec §3.6): not a Brand's: the Hollow Council's last after-scene shows it (data/dialogue.js hollow-gretch-after,
+  // { letter: 'hollow' }), signed with his own initial at last
   hollow: { text: 'Four chairs empty. You are very thorough, little Warden. Come down. I have kept the fire in for you. — H.' },
 });
