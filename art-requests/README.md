@@ -11,9 +11,11 @@ way in all four directions. The battles stay exactly as they are.
 1. Pick a batch: `pilot.md` (four images, done), then `batch-2.md` (every map of the Verdant Wilds and
    the Sunscorch that was not painted yet; done in Milestone 6, with the Ironspire's maps too), then
    `batch-3.md` (the Gloomfen's maps and the Gloomfen Gallery, in the style of your whole-map paintings:
-   each prompt takes its layout reference and one of your paintings as the style).
-2. For each image, open your image generator, attach the reference picture it names (maps only),
-   paste the prompt, and generate. Make two to four tries and keep the best, or keep them all.
+   each prompt takes its layout reference and one of your paintings as the style; done in Milestone 6),
+   then `batch-4.md` (Act III: the four maps under the Keep, and four optional stills. There is no
+   layout reference: each is painted from its description, with one of your paintings as the style).
+2. For each image, open your image generator, attach the picture it names (the layout reference or the
+   style), paste the prompt, and generate. Make two to four tries and keep the best, or keep them all.
 3. Name each file exactly as the batch says (`map-keep.png`, and `map-keep-2.png` for a second try).
 4. Send them back (below). The game fits each painting to its map, turns it into the game's pixel
    grid and palette, and packs it into the one HTML file.
@@ -44,7 +46,7 @@ Or upload the PNGs (or one zip of them) to GitHub:
 
 1. Open https://github.com/chriskizer91-ops/New-game and switch the branch to
    `claude/cool-ptolemy-uc93gg`.
-2. Open the batch's folder: `art-in/pilot/`, `art-in/batch-2/`.
+2. Open the batch's folder: `art-in/pilot/`, `art-in/batch-2/`, `art-in/batch-4/`.
 3. **Add file → Upload files**, drag the images in, then **Commit changes**.
 4. Tell me in the chat, and I'll take it from there.
 

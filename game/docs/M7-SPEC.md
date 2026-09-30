@@ -85,14 +85,17 @@ listing only the Act II regions.
 
 ### 2.2 Connections and roads
 
-- The Great Hall `hall-down` (the vault floor, gated and sealed, A5) leads to `hollow-hall`/`from-vault` at the hall's
-  south end. The way back is `hh-up` to keep-hall `from-below` (the vault, (21,7), facing west). It is gated
-  `{ any: [{ not: { beaten: 'hollow-miravel' } }, { beaten: 'hollow-gretch' }] }`, and sealed with words while it holds:
-  "The stair behind you has filled with ash. The Hollow Council sits until the last chair is empty."
-- `hollow-hall` `hh-down` (the north end) leads to `ash-stair`/`from-hall` (the top).
-- `ash-stair` `as-down` (the bottom) leads to `chained-deep`/`from-stair`.
-- `chained-deep` `cd-forge` leads to `worldforge`/`from-deep`.
-- Each exit pairs back the other way.
+- The Great Hall `hall-down` (the vault floor, gated and sealed, A5) leads to `hollow-hall`/`from-vault`, the foot of
+  the stair in at the hall's south-west. The way back is `hh-up` to keep-hall `from-below` (the vault, (21,7), facing
+  west). It is gated `{ any: [{ not: { beaten: 'hollow-miravel' } }, { beaten: 'hollow-gretch' }] }` and sealed with
+  words while that does not hold: "The stair behind you has filled with ash. The Hollow Council sits until the last
+  chair is empty."
+- `hollow-hall` `hh-down` (the stair down at the east end) leads to `ash-stair`/`from-hall` (the top). The way back is
+  `as-up` to `hollow-hall`/`from-ash`.
+- `ash-stair` `as-down` (the bottom) leads to `chained-deep`/`from-stair`. The way back is `cd-up` to
+  `ash-stair`/`from-deep`.
+- `chained-deep` `cd-forge` (the forge door) leads to `worldforge`/`from-deep`. The way back is `wf-out` to
+  `chained-deep`/`from-forge`.
 
 The roads (the table `test/maps.test.mjs` pins), each from its anchor to its exit or fight, gates in the order you meet
 them, named by their guards:
@@ -109,50 +112,69 @@ them, named by their guards:
 
 ### 2.3 Layout of each map (what must be there; P2 draws the tiles, the paintings will move it)
 
+Each map is laid out as batch 4 describes it (`art-requests/batch-4/places.md`), so the tiles and the paintings agree
+on where the way in, the road and the way on go. Directions are the picture's: north is up.
+
 - **hollow-hall** (36×24, landscape):
-  - **The nave:** the stair up from the vault at the south edge (`from-vault`, exit `hh-up`), then a long nave running
-    north between two rows of pillars.
-  - **The four chairs:** great stone chairs, two a side, each carved with its region's mark (signs `hh-chair-verdant`,
-    `-sunscorch`, `-ironspire`, `-gloomfen`).
-  - **The gates:** before each chair a gate crosses the nave, `hh-gate-1` to `hh-gate-4` (look `hollow-gate`: a line
-    of soot across the floor that the gift's light will not let you cross). Each is held by its Council member, who
-    stands beside it facing the stair (block): Miravel at the first, Qasim, Brundar, then Gretch.
-  - **The far end:** at the north end, the First-Age council table, and behind it a stair down (`hh-down`).
-  - **The boxes:** the four opened boxes lie on a plinth by the entrance (prop `hh-boxes`, solid).
-  - **The chest:** `hh-alms` in an alcove, reachable once the fourth is beaten.
+  - **The way in:** the stair up to the vault, at the south edge near the west end (`from-vault`, exit `hh-up`).
+  - **The nave:** 5 tiles wide, from the stair's foot east along the hall's whole length, between two rows of pillars.
+  - **The four chairs:** great stone chairs on daises in four bays behind the pillars, spaced evenly and alternating
+    sides, each carved with its region's mark: the tree (north, sign `hh-chair-verdant`), the sun (south,
+    `hh-chair-sunscorch`), the anvil under a mountain (north, `hh-chair-ironspire`) and the lantern among reeds
+    (south, `hh-chair-gloomfen`). The signs take the look `painted` once painted.
+  - **The gates:** across the nave before each chair, `hh-gate-1` to `hh-gate-4` (look `hollow-gate`: a line of soot
+    across the floor that the gift's light will not let you cross). Each is held by its Council member, who stands
+    beside it facing the stair (block): Miravel at the first, then Qasim, Brundar and Gretch.
+  - **The far end:** the round First-Age council table (solid), with the nave passing round it, and past it, by the
+    east wall, the stair down (`hh-down`; anchor `from-ash` at its head).
+  - **The chest:** `hh-alms`, in an alcove in the north wall past the fourth chair.
 - **ash-stair** (24×36, portrait):
-  - **The descent:** from the top (`from-hall`) a stair winds down through the hearth's roots: drifts of grey ash,
-    ember veins glowing in the walls, roots of black iron.
-  - **The first landing:** the Under-Coal (Hearthfire `under-coal`, cold), a coal the size of a cart set in the rock.
-  - **The thralls:** below it, the cinder-thralls hold the stair (`as-thralls`, gate `as-ash-gate`).
-  - **The side ledge:** a chest, `as-cache`.
-  - **The zone's patrols:** they roam the two wide landings (`ash-stair` zone).
-  - **The foot:** the bottom of the stair (`as-down`).
+  - **The way in:** the top edge, left of centre (`from-hall`, exit `as-up`).
+  - **The stair:** 4 tiles wide, winding down in switchbacks along the shaft's walls, round an open drop (solid).
+  - **The first landing** (the top third, east): the Under-Coal in its niche in the rock (Hearthfire `under-coal`,
+    cold; a coal the size of a cart).
+  - **The narrows** just below it, 3 tiles between two iron roots: gate `as-ash-gate`, held by the cinder-thralls
+    (`as-thralls`).
+  - **Two wide landings** (the middle, west; the lower third, east), where the zone's patrols roam (`ash-stair`).
+  - **The side ledge** off the middle landing: the chest `as-cache`.
+  - **The way on:** the bottom edge (`as-down`; anchor `from-deep` above it).
 - **chained-deep** (42×28, landscape):
-  - **The cavern:** a vast cave floored with fused slag.
-  - **The First Sleeper:** in the middle, under a web of great chains, the First Sleeper lies asleep under the hearth
-    (prop `sleeper-first`, large, solid).
-  - **The chains:** four chains run off into the dark, one to each quarter. Three are signs,
-    `cd-chain-hush` (north-east, to Frostmere), `cd-chain-lull` (south-west, to Misthollow) and `cd-chain-ash`
-    (south-east, to the Sunscorch). The fourth is the one over the Sleeper.
-  - **The road and its gate:** the road goes round the Sleeper. The unmade hold it (`cd-unmade`, gate `cd-chain-gate`).
-  - **The Chain Fire:** Hearthfire `chain-fire`, lit, past the gate.
-  - **Tamsin:** she waits by the forge door (`cd-tamsin`, `npc: 'tamsin'`, talk `tamsin-return`), and leaves the map
-    once she has joined (`if: { not: { flag: 'tamsin-returned' } }`).
-  - **The way on:** the forge door (`cd-forge`).
+  - **The way in:** the stair at the north-west corner (`from-stair`, exit `cd-up`).
+  - **The road:** a walkway of iron plates, 4 tiles wide, along the north part of the cavern above the Sleeper's hollow,
+    bending down to the forge door in the middle of the east edge.
+  - **The First Sleeper:** in the middle, curled asleep in its hollow under a web of great chains, with the hearth's
+    iron roots sunk in its back (prop `sleeper-first`, large, solid; the painting carries it once painted).
+  - **The chains:** three run from the web to tunnels at the south-west corner, the middle of the south edge and the
+    south-east corner. They are signs, `cd-chain-lull`, `cd-chain-ash` and `cd-chain-hush`, and their words name where
+    each goes (Misthollow's Lull, the Sleeper under the Sunscorch's ash, Frostmere's Hush). The fourth chain is the
+    web over the Sleeper.
+  - **The narrows:** halfway along, 3 tiles between a spur of rock and the hollow's rim: gate `cd-chain-gate`, held by
+    the unmade (`cd-unmade`).
+  - **The Chain Fire:** past the narrows, on a platform beside the walkway (Hearthfire `chain-fire`, lit).
+  - **Tamsin:** on the paving before the forge door (`cd-tamsin`, `npc: 'tamsin'`, talk `tamsin-return`). She leaves
+    the map once she has joined (`if: { not: { flag: 'tamsin-returned' } }`).
+  - **The way on:** the forge door (`cd-forge`; anchor `from-forge` before it).
 - **worldforge** (36×24, landscape):
-  - **The forge:** its great anvil, and the Worldforge itself, a furnace shaped like a heart with molten channels
-    running from it (solid).
-  - **The bridge:** an iron bridge crosses the channels, held by the forge-warden (`wf-warden`, gate `wf-bridge-gate`).
-  - **The Unsmith:** before the Worldforge, his lair `unsmith` (3 by 2, his sprite's foot inside it; `finale: true`).
-  - **The heart:** behind him, the forge's heart (sign `wf-heart`, look `painted` once painted). Its talk opens the
-    endings (§4.7) once `{ beaten: 'unsmith' }`.
+  - **The way in:** the iron door in the middle of the west edge (`from-deep`, exit `wf-out`).
+  - **The moat:** a molten channel, 3 tiles wide, from the north edge to the south edge a third of the way in (solid).
+  - **The bridge:** across the moat in line with the way in, 3 tiles wide. Gate `wf-bridge-gate` stands at its near end,
+    held by the forge-warden (`wf-warden`).
+  - **The forge floor:** beyond the bridge, with the great anvil (solid) and the Worldforge in the east wall (solid,
+    large), a heart-shaped furnace with molten channels running from it.
+  - **The Unsmith:** on the open space before the furnace, his lair `unsmith` (3 by 2, his sprite's foot inside it;
+    `finale: true`).
+  - **The heart:** the step before the furnace's mouth, behind him (sign `wf-heart`, look `painted` once painted). Its
+    talk opens the endings (§4.7) once `{ beaten: 'unsmith' }`.
 
 ### 2.4 The earlier maps and data this spec changes
 
 - **keep-hall** (painted; no row changes):
   - the trigger `council-5` (A5), the exit `hall-down`, the anchor `from-below`, the prop `vault-stair` (not solid,
     `if: { flag: 'council-5-done' }`) on the exit's tiles, and the sealed words.
+  - The four boxes on the vault's back row, (21-22, 6), solid: `vault-boxes` (soot-sealed,
+    `if: { all: [{ flag: 'council-4-done' }, { not: { flag: 'council-5-done' } }] }`), then `vault-boxes-open` (opened,
+    `if: { flag: 'council-5-done' }`). The way from the vault door to the stair, (20,7) to (21,7) to (21,8), stays
+    open.
   - The fifth council's scene takes the four Council members out of their towns (their NPC `if`s, §3.1).
 - **world.js:** REGIONS gains `below`. HEARTHS gains `under-coal` and `chain-fire`. ZONES gains `ash-stair`, with its
   backdrop. `ACT3_PATH` and `ACT3_LEADS` are new.
@@ -406,7 +428,8 @@ Masterpiece (§4.5).
 
 - **Tiles:** the four biomes (`council`, `ash`, `chains`, `forge`), drawn until the paintings land.
 - **Props:**
-  - `vault-stair` (a stair going down through the vault floor), `hh-boxes` (four opened boxes, soot-sealed);
+  - `vault-stair` (a stair going down through the vault floor), `vault-boxes` and `vault-boxes-open` (the four
+    soot-sealed boxes, then opened);
   - `sleeper-first` (large), the chains (`chain` sign look), the Worldforge (large);
   - the gate look `hollow-gate`;
   - the Hearthfire looks `undercoal` and `chainfire`.
@@ -427,7 +450,10 @@ Masterpiece (§4.5).
 - **Maps:** four, painted from written descriptions (`art-requests/batch-4.md`, the places in
   `art-requests/batch-4/places.md`). Each description says the picture's shape (3:2 or 2:3), what must be there (the
   road, the doors and stairs, the plain spots where the game draws a fire, a fight or a person), and the mood.
-- **Stills:** optionally, the three ending stills and the Hearth Below's card still.
+- **Stills:** optionally, the three ending stills and the Hearth Below's card still: `cut-ending-rekindle.png`,
+  `cut-ending-release.png`, `cut-ending-anew.png` and `cut-hearth-below.png`, imported as the `CUTS` stills
+  `ending-rekindle`, `ending-release`, `ending-anew` and `hearth-below`. A screen shows the still when it is listed
+  and draws its own scene when it is missing, as the other cards do.
 - **When they come:** each map is traced from its painting, as batch 3's were (`tools/paint-sheet.mjs`,
   `paint-import.mjs --grid`, `art-in/batch-4/panels.json`), and the maps' places move to where the painting puts them.
 
