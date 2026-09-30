@@ -79,6 +79,10 @@ Nothing here is built yet.
   `03-airship-and-music.md`). The old game's whole sound system, every effect and all 12 songs, is 36 KB; one recorded
   song costs about 3.3 MB inside the file.
 
+**Story (2026-09-30):** the main quest line is `05-story-and-quests.md`. The antagonist is **the Unwaning**, an Aurosi
+faction harvesting Thareia's crystal energy forever; the ending is the player's choice; the party is Taela, Twick,
+Delva, Renn and Veyra, with the player's own hero.
+
 ## Open
 - **The walking views:** how many per region, and how they connect (they cost the most space; see below).
 - **The Southern Lowlands:** what lives there (the canon has no named places on the south shore).
@@ -87,5 +91,3 @@ Nothing here is built yet.
 - **Level bands:** how levels 1–50 spread across the six regions, the crossing to Auros, and Auros itself.
 - **The first airship:** passage on fixed routes first and a ship of your own later, or your own ship from the start?
   Is sunstone fuel a resource to manage?
-- **The party:** who the hero is, and who the other three are.
-- **The story's answer** to the Ember Line mystery, and where the Sedrin crossings fall.

@@ -1,7 +1,9 @@
 # 05 — The story and the quest line (proposal)
 
-*A proposal for the player to approve or change. Built on the compendium; anything it does not say is marked
-**[NEW]**. Every [PLAYED] fact stays true.*
+*Built on the compendium; anything it does not say is marked **[NEW]**. Every [PLAYED] fact stays true.*
+
+**Decided by the player (2026-09-30):** the antagonist is an Aurosi faction that wants to harvest the crystals
+forever, stealing the planet's energy; the ending keeps its choice; the party stays as listed.
 
 ## The shape
 
@@ -20,7 +22,25 @@ The tide and the Warming are exposing ruins from earlier cycles, and the waking 
 smugglers steal them, and beasts drawn to the warmth swallow or nest on them. So legendary gear is always in someone's
 hands, as in the old game, and every relic has a story: *"pried from a hobgoblin chief in Scorchgate's sealed vault."*
 
-## The party [NEW proposal, from canon characters]
+## The antagonist: the Unwaning [NEW, decided]
+
+An **Aurosi faction**, mostly elves old enough to remember several Approaches, who want Auros to glow forever. They
+have learned that the Ember Line is one half of a machine joined to Auros, and they mean to **lock it into harvest**:
+drawing Thareia's deep sunstone heat up to Auros's Spire Forests every cycle, forever, whatever it costs the planet.
+
+- **Their leader:** **Ithariel**, a Sovereign-Lens of Luminara who has watched seven Approaches and calls Thareia
+  "the orchard".
+- **What they are doing now:** tuning the waking nodes to pull, not answer. **The harm the party meets everywhere is
+  their siphon:** the overheating nodes, the Rot along the water table, the singing mines, the tremors under Ironhold.
+- **How they work on Thareia:** through money and hands. Aldric's "Sandspire buyers" lead to **Lord Harven
+  Dustveil**, who thinks he is buying node relics for himself and is really buying them for the Unwaning. Crystal
+  cutters, harvester constructs, and sky raiders in their pay carry the relics the party pries loose.
+- **Their creatures and machines:** harvester constructs (amber-veined, humming), cutter crews with crystal saws,
+  and on Auros, lens-knights who fight with focused light.
+- **Veyra Lenslight** works for Luminara but not for them. When she finds the Unwaning inside her own government, she
+  joins the party (Chapter 6).
+
+## The party [from canon characters, decided]
 
 The **hero** is made by the player (any of the canon's peoples) and **not all human-looking**. Companions, recruited
 along the main road (four fight at once):
@@ -90,11 +110,11 @@ Chapter 2.
 - **Sandspire's Workshop District:** **Twick Gearspark** joins, thrilled, and becomes the ship's engineer.
 - **Dusthaven:** **Jokka Gritsand**'s miners hear the stones singing; the deep shafts hit crystal that is too old.
   Fights in the mines against creatures drawn to the heat.
-- **Lord Harven Dustveil**, a Cistern Lord, has been buying every relic and deep crystal: he means to own the
-  network's nodes. **[NEW]** Not a villain, as in canon: a rival who bargains, and a boss only if the party refuses
-  him.
-- **Scorchgate's sealed lower levels:** hobgoblin warbands hold the ruins; below them lies a second node, warm and
-  awake. **Boss:** the warband's chief, wearing the node's relic.
+- **Lord Harven Dustveil**, a Cistern Lord, has been buying every relic and deep crystal. He thinks he is cornering
+  the network for himself; the party finds letters sealed with an Aurosi lens mark. **[NEW]** Not a villain, as in
+  canon: a rival who bargains, and turns on the Unwaning once he learns he has been used.
+- **Scorchgate's sealed lower levels:** hobgoblin warbands hold the ruins; below them an Unwaning cutter crew is
+  retuning a second node. **Boss:** their harvester construct, wearing the node's relic.
 - **Upgrade:** sunstone array II, which rides the desert's heat thermals.
 
 ### Chapter 4: What the Dwarves Found (Ironspire Peaks, 25–35)
@@ -105,8 +125,9 @@ Chapter 2.
 - **Peak's Veil:** the monks hear Auros's hum; one of them noticed the Hearth's shift first.
 - **Stormwatch:** Aether storms. The first sky battles, on deck.
 - **The hub** (from the Flickering Hearth draft's answers): a cathedral-sized chamber under Ironhold, a ten-foot
-  sunstone column ringed by glowing floors. Every node's line runs here. **Boss:** its ancient guardian, which can be
-  fought or calmed with resonance.
+  sunstone column ringed by glowing floors. Every node's line runs here, and the Unwaning's great siphon lens is bolted to its
+  column. **Boss:** Ithariel's lieutenant, a lens-knight; the chamber's ancient guardian can be calmed with resonance
+  and fights beside you.
 - **Upgrade:** the **larger ship**, built by the Amberworks–Ironhold exchange, with array III that clears the peaks.
 
 ### Chapter 5: Not Yet (Gloomfen and the Southern Lowlands, 33–42)
@@ -118,7 +139,8 @@ Chapter 2.
   Reach, where a submerged relief at **Deep Thar** shows lines through Thareia joined to lines through Auros: **the
   two worlds as one structure.**
 - **The Warming** fires (the canon's arc-ending event): every sunstone vibrates, the Hearth changes color, the Warm
-  Roads glow, and **Auros brightens, answering from above.**
+  Roads glow, and **Auros brightens.** The Unwaning have begun the harvest, and the only place to stop it is the
+  other end.
 
 ### Chapter 6: The Crossing (the Aether, 42–46)
 
@@ -134,8 +156,10 @@ Chapter 2.
 - **The answer [NEW proposal]:** the network is **one machine built across both worlds by builders older than
   either**, a bridge that retunes at every Approach. This time it is waking fully because a circuit was completed: the
   egg-stone Sedrin placed in Misthollow's sixth basin.
-- **The ending:** a choice at the machine's heart, to let the bridge open fully (the worlds joined) or to lay it back
-  to sleep for another century. The Maelstrom's heartbeat, the third terminus, is left for a sequel.
+- **The final battle:** Ithariel at Deepwell's heart, in three phases, wearing the harvest's greatest relics.
+- **The ending (decided: the player chooses):** with the harvest broken, let the bridge open fully both ways (the
+  worlds joined, sharing what flows) or lay it back to sleep for another century. The Maelstrom's heartbeat, the
+  third terminus, is left for a sequel.
 
 ## Level gates, told by the ship
 
@@ -149,9 +173,3 @@ Chapter 2.
 
 Upgrades between these (hull, heat source, steering) show on the ship; each part has three levels.
 
-## Open questions for the player
-
-1. The antagonist: Dustveil as a rival (as above), or a harder villain? Or an Aurosi faction that wants the
-   network to sleep?
-2. Does the ending's choice stand, or should the game commit to one answer?
-3. The party list above: keep, swap anyone, or add Joe or Merryn as guests?
