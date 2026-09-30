@@ -21,7 +21,8 @@
 //   leaves    (M6) a condition: once it holds the encounter is gone from its map for good, as a done one is
 //             (Tamsin after her fall)
 //   finale    (M7) the road's end, the Unsmith: on the route it counts as a Brand does (test/road.test.mjs, spec A3)
-//   allies    (M7) [{ family, kit, level? }]: guests on the heroes' side (spec §4.3). STUB from the M7 scaffold: data
+//   allies    (M7) [spawn]: guests on the heroes' side (spec §4.3; rules/gauntlet.js alliesFor), each resolved like a foe's
+//             spawn (level 'party' with partyDelta, variant '$rival:<kit>') but without the Waking, Grudges or Echoes
 //             only, until P1's guest reads it and adds its check
 // Hearthfires with `cold` start unlit (a cold-hearth lock) in data/world.js HEARTHS and on the map.
 
@@ -771,10 +772,10 @@ export const ENCOUNTERS = deepFreeze({
     text: 'The forge-warden at the near end of the bridge, breathing like a bellows, and two thralls feeding it.',
   },
   // the finale (spec A3): it counts as a Brand does on the road. Tamsin fights beside the party as a guest (`allies`,
-  // spec A12, §4.3): data only until P1's guest reads it (the `finale` kit is P1's and P4's, data/rivals.js).
+  // spec A12, §4.3), in her `finale` kit (data/rivals.js, P4's; until it lands she fights in her rival starter's own).
   unsmith: {
     id: 'unsmith', type: 'fight', name: 'The Unsmith', place: 'The Worldforge', backdrop: 'harrows-forge', region: 'below',
-    finale: true, allies: [{ family: 'tamsin', kit: 'finale' }],
+    finale: true, allies: [{ family: 'tamsin', variant: '$rival:finale', level: 'party', partyDelta: 2 }],
     spawns: [BELOW('unsmith', 8, { omens: ['frenzied', 'ironclad'], wakeOmenCap: 0 })],
     text: 'Harrow Ironvein before the Worldforge, with his hammer, his apron and the heart of the forge. Break all three.',
   },

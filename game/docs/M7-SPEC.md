@@ -69,9 +69,9 @@ were. Part A overrides Part B.
 | id | Name | Biome | Size | Zone | Music | Role |
 |---|---|---|---|---|---|---|
 | `hollow-hall` | The Hollow Hall | council | 36×24 | — | dungeon | beneath the vault: the Council's First-Age chamber, four great chairs; the Hollow Council, back to back |
-| `ash-stair` | The Ash Stair | ash | 24×36 | `ash-stair` | dungeon | the hearth's roots: a stair down through drifted ash and glowing ember veins; the Under-Coal |
+| `ash-stair` | The Ash Stair | hearth-roots | 24×36 | `ash-stair` | dungeon | the hearth's roots: a stair down through drifted ash and glowing ember veins; the Under-Coal |
 | `chained-deep` | The Chained Deep | chains | 42×28 | — | dungeon | the cavern of the chains: the First Sleeper under the hearth, the chains out to the other three; Tamsin; the Chain Fire |
-| `worldforge` | The Worldforge | forge | 36×24 | — | boss | Harrow's forge at the bottom of the world: the Unsmith; the ending, at the forge's heart |
+| `worldforge` | The Worldforge | worldforge | 36×24 | — | boss | Harrow's forge at the bottom of the world: the Unsmith; the ending, at the forge's heart |
 
 Every map uses the M3 map format and is registered in `MAPS` with `region: 'below'`. Each sets `lore` (the Atlas's
 "you are here": the Keep's point, §5) and declares `roads` (A3). None is dark or foggy: the Act III road needs no light
@@ -426,7 +426,8 @@ Masterpiece (§4.5).
 
 ### 6.1 Overworld (P5)
 
-- **Tiles:** the four biomes (`council`, `ash`, `chains`, `forge`), drawn until the paintings land.
+- **Tiles:** the four biomes (`council`, `hearth-roots`, `chains`, `worldforge`; `ash` and `forge` are already Scorchgate's
+  and Harrow's Forge's), drawn until the paintings land.
 - **Props:**
   - `vault-stair` (a stair going down through the vault floor), `vault-boxes` and `vault-boxes-open` (the four
     soot-sealed boxes, then opened);

@@ -53,7 +53,7 @@ export default deepFreeze({
     // the finale (spec A3): his lair before the furnace, his sprite's foot inside it
     { id: 'unsmith', kind: 'encounter', enc: 'unsmith', mode: 'lair', at: [27, 12], area: [26, 11, 28, 12], face: 'w' },
     // STUB from the M7 scaffold: the heart speaks only its words until P1 wires its talk (the-heart) and P5/P2 its look
-    { id: 'wf-heart', kind: 'sign', at: [30, 11], talk: 'the-heart', text: 'The step before the furnace\'s mouth. The heat comes out of it like breath.' },
+    { id: 'wf-heart', kind: 'sign', at: [30, 11], talk: 'the-heart', talkIf: { beaten: 'unsmith' }, text: 'The step before the furnace\'s mouth. The heat comes out of it like breath.' },
   ],
   exits: [
     { id: 'wf-out', area: [0, 11, 0, 12], to: 'chained-deep', anchor: 'from-forge' },

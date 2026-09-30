@@ -377,7 +377,8 @@ export function interact(game, walk) {
   if (!e) return { game, walk, events };
   switch (e.kind) {
     case 'npc': events.push({ t: 'talk', npc: e.npc, dialogue: talkTo(game, e.npc) }); break;
-    case 'sign': events.push({ t: 'sign', text: e.text }); break;
+    // M7: a sign may open a scene (`talk`, once `talkIf` holds): the Worldforge's heart and its endings
+    case 'sign': events.push(e.talk && check(game, e.talkIf) ? { t: 'talk', npc: null, dialogue: e.talk } : { t: 'sign', text: e.text }); break;
     case 'board': case 'table': case 'pedestal': case 'lookout': case 'bellframe': events.push({ t: 'use', kind: e.kind, id: e.id }); break;
     case 'chest': events.push({ t: 'chest', id: e.id, ...(e.lock ? { lock: e.lock } : {}) }); break;
     case 'lock': events.push({ t: 'lock', id: e.id, lock: e.lock, status: lockStatus(game, e.lock) }); break;

@@ -365,3 +365,19 @@ test('M7 Hearthlit adds +1 to the attack roll; the save stat adds to every savin
   };
   assert.equal(saveOf(1), saveOf(0) + 1);
 });
+
+test('M7 a sign may open a scene once its condition holds: the Worldforge\'s heart after the Unsmith', async () => {
+  const { interact } = await import('../src/rules/world.js');
+  const { MAPS } = await import('../src/data/maps/index.js');
+  const heart = MAPS.worldforge.entities.find(e => e.id === 'wf-heart');
+  assert.equal(heart.kind, 'sign');
+  assert.equal(heart.talk, 'the-heart');
+  const g = migrate(party().game);
+  const walk = { map: 'worldforge', x: heart.at[0], y: heart.at[1] + 1, face: 'n', tick: 0, grace: 0, roamers: [] };
+  const before = interact(g, walk).events;
+  assert.deepEqual(before.map(e => e.t), ['sign'], 'before the Unsmith falls it is only a step before the furnace');
+  const won = structuredClone(g);
+  won.progress.flags.beaten = { ...won.progress.flags.beaten, unsmith: 1 };
+  const after = interact(won, walk).events;
+  assert.deepEqual(after.map(e => [e.t, e.dialogue]), [['talk', 'the-heart']]);
+});
