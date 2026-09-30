@@ -1,0 +1,169 @@
+// Building foe combatants from spawns, and escalating spawns for the Waking and Grudges.
+// M7 (spec §4.2, §4.4): a tier's `dice` (the Unsmith's two); a spawn's `stolen` (the relics the Warden never claimed,
+// rules/codex.js stolenFor) is what its bearer takes up at the phase that `steals`, each as a Stolen Art (stolenArt).
+
+import { FOES, FOE_TIERS, tierAs, tierRow } from '../data/foes.js';
+import { ITEMS } from '../data/items.js';
+import { RELICS } from '../data/relics.js';
+import { OMENS, OMEN_IDS } from '../data/omens.js';
+import { TUNING } from '../data/tuning.js';
+import { RARITY_ORDER } from '../data/rarity.js';
+import { withKit } from '../data/rivals.js';
+import { createRng } from '../core/rng.js';
+
+// Visible gear rarity by gear tier: rags, then wrought, tempered, runed.
+export const GEAR_RARITY = Object.freeze(['worn', 'wrought', 'tempered', 'runed']);
+
+export function familyOf(spawn) {
+  const fam = FOES[spawn.family];
+  if (!fam) throw new Error(`Unknown foe family: ${spawn.family}`);
+  const v = spawn.variant && fam.variants?.[spawn.variant];
+  return withKit(v ? { ...fam, ...v } : fam, spawn.variant, spawn.kit); // M5: Tamsin's kit for the duel
+}
+
+// Deterministically add `n` Omens the spawn does not already have (some Omens are not
+// allowed on some tiers: a twinned Champion would be two Champions). A `unique` foe (Old Snag,
+// Gorrow, the Gloamwing...) never gets an Omen that copies it (twinned): if that is the pick, it
+// re-picks from the rest, so every other outcome stays what it was.
+export function addOmens(omens, n, seed, tier = null, { unique = false } = {}) {
+  const out = [...(omens || [])];
+  const rng = createRng(seed);
+  for (let i = 0; i < n; i++) {
+    const free = OMEN_IDS.filter(o => !out.includes(o) && !(tier && (OMENS[o].notFor?.includes(tier) || OMENS[o].notFor?.includes(tierAs(tier)))));
+    if (!free.length) break;
+    let pick = rng.pick(free);
+    if (unique && OMENS[pick].split) {
+      const rest = free.filter(o => !OMENS[o].split);
+      if (!rest.length) break;
+      pick = rng.pick(rest);
+    }
+    out.push(pick);
+  }
+  return out;
+}
+
+// "Stronger and stronger": each Waking step adds levels, a gear tier and Omens to every spawn.
+// M3 (spec D3, §4.7): the tier comes from familyOf(spawn), so a relic-bearer variant of a rabble or
+// veteran family escalates as a relic-bearer. Rabble rise TUNING.waking.rabbleLevels (2) per Waking,
+// everyone else TUNING.waking.levels (6); a spawn may override that with `wakeLevels`, cap its Waking
+// Omens with `wakeOmenCap` (M4.5: the Glass Flats' lairs keep the two Omens they were tuned with, now
+// that the Brand of Glass must come first), and `noWaking` returns it unescalated.
+export function escalateSpawn(spawn, waking = 0, salt = '') {
+  if (!waking || spawn.noWaking) return { ...spawn, omens: [...(spawn.omens || [])] };
+  const tier = familyOf(spawn).tier;
+  const W = TUNING.waking;
+  const per = spawn.wakeLevels ?? (tier === 'rabble' ? W.rabbleLevels : W.levels);
+  const omenCount = Math.min(tier === 'rabble' ? Math.max(0, waking - 1) : waking * W.omens, spawn.wakeOmenCap ?? Infinity);
+  return {
+    ...spawn,
+    level: spawn.level + waking * per,
+    gearTier: Math.min(3, (spawn.gearTier || 0) + waking * W.gearTier),
+    omens: addOmens(spawn.omens, omenCount, `${spawn.family}:${spawn.level}:${waking}:${salt}`, tier, { unique: !!familyOf(spawn).unique }),
+  };
+}
+
+const scale = (base, every, level) => base + Math.floor((level - 1) / every);
+
+function visibleGear(fam, spawn) {
+  if (!fam.gear) return [];
+  const tier = Math.min(3, spawn.gearTier || 0);
+  const rarity = GEAR_RARITY[tier];
+  const gear = fam.gear[tier].map(g => ({ base: g.base, kind: ITEMS[g.base].kind, slot: ITEMS[g.base].slot, rarity }));
+  const worn = spawn.wears && RELICS[spawn.wears];
+  if (worn) {
+    const i = gear.findIndex(g => g.slot === worn.slot);
+    const piece = { base: worn.id, kind: worn.kind, slot: worn.slot, rarity: worn.rarity, relic: worn.id };
+    if (i >= 0) gear[i] = piece; else gear.push(piece);
+  }
+  return gear;
+}
+
+function heldPieces(fam, spawn) {
+  const L = spawn.level;
+  const ironclad = (spawn.omens || []).reduce((m, o) => m * (OMENS[o]?.gripMult || 1), 1);
+  const gripFor = base => Math.round(base * (1 + 0.1 * (L - 1)) * ironclad);
+  // spawn.held: [{ relic, lend? } | { item }] (items are Echoes of relics already claimed; a lent
+  // relic can be disarmed but is never claimed and never shatters: rules/loot.js)
+  const list = spawn.held || (spawn.relic ? [spawn.relic] : (fam.relics || [])).map(relic => ({ relic, ...(spawn.lend ? { lend: true } : {}) }));
+  return list.map(h => {
+    const max = gripFor(h.relic ? RELICS[h.relic].grip || 20 : 20);
+    return { relic: h.relic || null, item: h.item || null, grip: max, max, held: true, ...(h.lend ? { lend: true } : {}) };
+  });
+}
+
+// A foe combatant. `id` and `seq` come from the battle.
+export function buildFoe(spawn, { id, seq = 0, name } = {}) {
+  const fam = familyOf(spawn);
+  const L = Math.max(1, spawn.level || 1);
+  const F = TUNING.foe;
+  const omens = [...(spawn.omens || [])];
+  const gt = fam.humanoid ? Math.min(3, spawn.gearTier || 0) : 0;
+  const om = omens.map(o => OMENS[o]).filter(Boolean);
+  const gear = visibleGear(fam, spawn);
+  const weaponBase = gear.find(g => g.slot === 'weapon' && ITEMS[g.base]);
+  const bodyBase = gear.find(g => g.slot === 'body');
+  const bodyArmor = bodyBase && (ITEMS[bodyBase.base]?.armor || RELICS[bodyBase.base]?.armor);
+  const hp = Math.round(fam.hp * (1 + F.hpPerLevel * (L - 1)) * (1 + F.gearHp * gt) * (1 + F.omenHp * om.length));
+  const rewards = 1 + F.omenReward * om.length;
+  const saves = {};
+  for (const [k, v] of Object.entries(fam.saves || {})) saves[k] = scale(v, F.saveEvery, L);
+  const speed = fam.speed + om.reduce((a, o) => a + (o.speed || 0), 0);
+  const R = TUNING.ribbon;
+  const displayName = [name || spawn.name || fam.name, spawn.title].filter(Boolean).join(' ');
+  return {
+    id, seq, side: 'foe', family: fam.id, variant: spawn.variant || null, art: fam.art, name: displayName,
+    tier: fam.tier, level: L, gearTier: gt, omens,
+    // M4: the look's tier (uncapped, beasts too): the Waking re-gear the art draws, and Tamsin's kindled
+    // kit at 4. Stats use gearTier.
+    artTier: Math.max(0, Math.floor(spawn.gearTier || 0)),
+    hp, maxHp: hp,
+    guard: scale(fam.guard, F.guardEvery, L) + gt + om.reduce((a, o) => a + (o.guard || 0), 0),
+    atk: scale(fam.atk, F.atkEvery, L) + gt,
+    dmg: scale(fam.dmg, F.dmgEvery, L),
+    speed, delay: Math.max(R.minDelay, R.baseDelay - (speed - 10) * R.speedDelay),
+    armor: bodyArmor?.type || fam.armor || 'none', aspect: fam.aspect || null,
+    weak: [...(fam.weak || [])], resist: [...(fam.resist || []), ...om.flatMap(o => o.resist || [])], immune: [...(fam.immune || [])],
+    saves, statuses: [], next: 0, ko: false, gone: false,
+    die: FOE_TIERS[fam.tier].die, ...(FOE_TIERS[fam.tier].dice > 1 ? { dice: FOE_TIERS[fam.tier].dice, intent2: null } : {}), intent: null, queue: [],
+    ...(spawn.stolen?.length ? { stealable: [...spawn.stolen] } : {}),
+    held: heldPieces(fam, spawn), phase: 1, gear,
+    weapon: weaponBase ? { dice: ITEMS[weaponBase.base].dice, dmg: ITEMS[weaponBase.base].dmg } : null,
+    xp: Math.round(tierRow(TUNING.xp.tier, fam.tier) * L * rewards),
+    gold: Math.round(tierRow(TUNING.gold.tier, fam.tier) * L * rewards),
+    grudge: spawn.grudge || null, wears: spawn.wears || null, ...(spawn.kit ? { kit: spawn.kit } : {}),
+    summonedBy: spawn.summonedBy || null, noLoot: !!spawn.noLoot, spawnIndex: spawn.spawnIndex ?? null,
+  };
+}
+
+// Rarity of the visible weapon/armour a humanoid carries (for loot and art).
+export function gearRarityIndex(foe) {
+  return RARITY_ORDER.indexOf(GEAR_RARITY[foe.gearTier || 0]);
+}
+
+// M7 (spec §4.4): a relic the Warden never claimed, in the Unsmith's hands: one move of its own, named for it. A weapon
+// is an attack of its aspect; armour, a shield or a focus a ward on himself; a ring or an amulet a heal when it is
+// radiant or verdant, else a hex on a hero. (TUNING.unsmith.stolen holds the numbers.)
+export function stolenArt(relicId) {
+  const r = RELICS[relicId];
+  if (!r) throw new Error(`Unknown relic: ${relicId}`);
+  const S = TUNING.unsmith.stolen, name = `Stolen: ${r.name}`, aspect = r.aspect || null;
+  const base = { name, stolen: relicId };
+  if (r.slot === 'weapon') {
+    const kind = r.weapon?.dmg || 'crush';
+    return { ...base, target: 'enemy', text: `He swings the ${r.name}, the one you never came for: ${S.strike} ${aspect || kind}.`,
+      effects: [{ type: 'attack', dice: S.strike, diceEvery: S.strikeEvery, kind, ...(aspect ? { aspect } : {}) }] };
+  }
+  if (r.slot === 'ring' || r.slot === 'amulet') {
+    if (aspect === 'radiant' || aspect === 'verdant') {
+      return { ...base, target: 'self', text: `He turns the ${r.name} on his own wounds: he heals ${S.heal}.`, effects: [{ type: 'heal', dice: S.heal, diceEvery: S.healEvery }] };
+    }
+    return { ...base, target: 'enemy', text: `The ${r.name} was meant for you. Now it curses you: WIS save or Hexed.`, effects: [{ type: 'status', status: S.hex, save: 'WIS' }] };
+  }
+  return { ...base, target: 'self', text: `He wears the ${r.name} you left behind: Guarding, and Warded.`,
+    effects: [{ type: 'status', status: 'guarding' }, { type: 'status', status: 'warded', value: { ...S.ward } }] };
+}
+
+// The Stolen Arts he takes: the move for each relic (keyed 'stolen:<relic>') and the Guard they add.
+export function stolenMoves(ids) {
+  return Object.fromEntries(ids.map(id => [`stolen:${id}`, stolenArt(id)]));
+}

@@ -1,0 +1,174 @@
+// Title: the Keep at dusk with the party on the road, the name, and the way in (M3 spec §5.7). M6 (spec A10):
+// the player's world painting (CUTS['title-world']) is the backdrop, and the party stands on a dark rise in
+// front of it, looking out over the realm; without the still (or when it fails to load) the drawn scene plays.
+//   - a live save: "Continue", sub-line "Wren · Thornhollow · Day 4 · Lv 5 · 9/24 relics"
+//   - no live save yet, but an earlier milestone's: "Continue from Milestone 6" (or 5, 4.5, 4 or 3; with only an M2
+//     save, "Continue from the Gauntlet") -> the carry-over card -> "Walk on" -> ctx.adopt(game) (held
+//     in memory; the world writes it, to this milestone's own key, on the first step)
+//   - "New game" over any journey asks first; newgame's Begin backs the old save up (ctx.replaceGame)
+//   - the milestone tag (TAG)
+// Owner: WP8; M6 P7 (the painted backdrop).
+import { renderBackdrop, renderHero } from '../../art/index.js';
+import { CUTS } from '../assets/cuts/index.js';
+import { el, esc, button, toCanvas } from '../lib/dom.js';
+import { animate, isReduced } from '../lib/anim.js';
+import { gearOf, customOf } from '../lib/art.js';
+import { screenNav } from '../lib/keys.js';
+import { openCarryCard } from '../lib/carry.js';
+import { saveLine } from '../lib/carry-facts.js';
+
+const TAG = '<span>M7</span> · Hearth Below';
+// where a carried-over save comes from (ctx.carryFrom): the button, the card's kind, the old home
+const FROM = {
+  m6: { label: 'Continue from Milestone 6', kind: 'm6', who: 'Milestone 6', home: 'file' },
+  m5: { label: 'Continue from Milestone 5', kind: 'm5', who: 'Milestone 5', home: 'file' },
+  m45: { label: 'Continue from Milestone 4.5', kind: 'm45', who: 'Milestone 4.5', home: 'file' },
+  m4: { label: 'Continue from Milestone 4', kind: 'm4', who: 'Milestone 4', home: 'file' },
+  v2: { label: 'Continue from Milestone 3', kind: 'm3', who: 'Milestone 3', home: 'file' },
+  v1: { label: 'Continue from the Gauntlet', kind: 'm2', who: 'M2', home: 'page' },
+};
+
+export function mount(root, ctx) {
+  const game = ctx.game || null, carry = game ? null : ctx.carry;
+  const shown = game || carry; // whose party stands on the road in the painting
+  root.classList.add('full');
+  const scene = el('div', 'title-scene');
+  const cv = el('canvas', { class: 'px', 'aria-hidden': 'true' });
+  scene.append(cv, el('div', 'title-fade'));
+  const card = el('div', 'title-card');
+  card.append(
+    el('p', 'realm', 'A pixel JRPG of stolen legends'),
+    el('h1', 'title-display game-title', 'Aethermoor'),
+    el('p', 'title-sub', 'Hearth &amp; Heirloom'),
+    el('p', 'title-ver', TAG),
+    el('p', 'title-tag', 'The Eternal Hearth has flickered. Every legend in the land is in someone else’s hands. Go and take them back, one fight at a time.'),
+  );
+  const menu = el('div', 'title-menu');
+  const go = (name, p) => () => { ctx.audio.unlock(); ctx.audio.sfx('confirm'); ctx.go(name, p); };
+  if (game) {
+    menu.append(button(`Continue<small>${esc(saveLine(game))}</small>`, 'btn primary big title-continue', go('world', { arrive: 'continue' }), { 'data-primary': '' }));
+  } else if (carry) {
+    const F = FROM[ctx.carryFrom] || FROM.v1;
+    const cont = button(`${F.label}<small>${esc(saveLine(carry))}</small>`, 'btn primary big title-carry', async () => {
+      ctx.audio.unlock(); ctx.audio.sfx('select');
+      const ok = await openCarryCard(ctx, carry, {
+        kind: F.kind,
+        note: `Your ${F.who} save is never touched: the old ${F.home} keeps playing it. This milestone keeps its own save, and nothing is saved here until you take your first step.`,
+      });
+      if (!ok) { cont.focus(); return; }
+      ctx.adopt(carry);
+      ctx.go('world', { arrive: 'carry' });
+    }, { 'data-primary': '' });
+    menu.append(cont);
+  }
+  if (shown) {
+    // a new game replaces the journey on this device, so ask first (in the page, never with confirm())
+    const w = shown.party.roster.warden;
+    const ask = el('div', 'title-confirm'); ask.hidden = true;
+    const ng = button('New game', 'btn big title-new', () => { ctx.audio.unlock(); ctx.audio.sfx('select'); ng.hidden = true; ask.hidden = false; ask.querySelector('.btn').focus(); });
+    ask.append(
+      el('p', '', game
+        ? `A new Hearthwarden replaces ${esc(w.name)}’s journey on this device once you begin. It is kept as a backup, and Settings can bring it back.`
+        : `A new Hearthwarden starts fresh instead of carrying ${esc(w.name)}’s journey over. The old save itself is never touched, and Settings can still carry it over later.`),
+      el('div', 'row-btns', [button('Start fresh', 'btn danger', go('newgame')), button('Keep my journey', 'btn', () => { ctx.audio.sfx('back'); ask.hidden = true; ng.hidden = false; ng.focus(); })]),
+    );
+    menu.append(ng, ask);
+  } else {
+    menu.append(button('New game', 'btn primary big title-new', go('newgame'), { 'data-primary': '' }));
+  }
+  menu.append(button('Settings', 'btn big', go('settings', { from: 'title' })));
+  card.append(menu);
+  const hint = el('p', 'tap-hint', 'Tap anywhere to wake the hearth');
+  card.append(hint);
+  card.append(el('p', 'title-foot', 'Plays on a phone or a laptop. Arrows or WASD to move, Enter or Z to confirm, Esc or X to go back.'));
+  root.append(scene, card);
+
+  // the painted scene: the Keep at dusk, the party on the road. M6: the player's world painting behind a dark
+  // rise the party stands on (the canvas draws only the rise and the party over it)
+  const still = CUTS['title-world'];
+  let painted = !!still;
+  if (painted) {
+    scene.classList.add('painted');
+    const img = el('img', { class: 'title-still', src: still.src, alt: '', 'aria-hidden': 'true', width: still.w, height: still.h, draggable: 'false', decoding: 'async' });
+    img.addEventListener('error', () => { if (!painted) return; painted = false; img.remove(); scene.classList.remove('painted'); draw(performance.now() / 1000); });
+    scene.prepend(img);
+  }
+  const heroes = ['alondra', 'bryn', 'pip', 'warden'];
+  const tmp = document.createElement('canvas');
+  let W = 0, H = 0, k = 3, rise = null;
+  const wideMQ = matchMedia('(min-width: 1000px) and (min-aspect-ratio: 5/4)');
+  const layout = () => {
+    const vw = scene.clientWidth || innerWidth, wide = wideMQ.matches;
+    const vh = wide ? Math.max(innerHeight, root.clientHeight) : Math.min(innerHeight * (vw < 520 ? .5 : .62), 560);
+    k = vw < 520 ? 3 : vw < 1000 ? 4 : 5;
+    W = Math.ceil(vw / k); H = Math.max(84, Math.ceil(vh / k));
+    cv.width = W; cv.height = H;
+    cv.style.width = W * k + 'px'; cv.style.height = H * k + 'px';
+    rise = null;
+  };
+  layout();
+  const draw = t => {
+    const g = cv.getContext('2d');
+    g.imageSmoothingEnabled = false;
+    const floor = Math.round(H * .86);
+    const baseX = Math.round(W * (W < 140 ? .58 : wideMQ.matches ? .66 : .62));
+    if (painted) {
+      g.clearRect(0, 0, W, H);
+      if (!rise) rise = riseCanvas(W, H, floor, baseX);
+      g.drawImage(rise, 0, 0);
+    } else g.putImageData(renderBackdrop('hearth-road', { w: W, h: H, t, reduced: isReduced() }), 0, 0);
+    heroes.forEach((id, i) => {
+      const gear = shown ? gearOf(shown, id) : undefined;
+      const img = renderHero(id, gear, { pose: 'idle', t: t + i * .37, custom: shown ? customOf(shown, id) : undefined, reduced: isReduced() });
+      toCanvas(img, tmp);
+      const x = baseX + i * 13 - 32 + (i % 2 ? 0 : 3), y = floor - 56 + (i % 2 ? -5 : 0);
+      g.drawImage(tmp, x, y);
+    });
+  };
+  animate(cv, draw, 10);
+
+  const unlock = () => { ctx.audio.unlock(); hint.classList.add('gone'); root.removeEventListener('pointerdown', unlock); };
+  root.addEventListener('pointerdown', unlock);
+  ctx.audio.music('title');
+  let rt = 0;
+  const onResize = () => { clearTimeout(rt); rt = setTimeout(() => { layout(); draw(performance.now() / 1000); }, 120); };
+  addEventListener('resize', onResize);
+  const nav = screenNav(root, {});
+  return {
+    unmount() { removeEventListener('resize', onResize); root.removeEventListener('pointerdown', unlock); clearTimeout(rt); },
+    onAction(a) { if (!hint.classList.contains('gone')) { hint.classList.add('gone'); } return nav(a); },
+  };
+}
+
+// The dark rise the party stands on in front of the painting (M6): a silhouette across the bottom that climbs
+// to the party's feet, its edge lit by the dusk, with a few tufts of grass. Pixel art at 1 px per art px.
+function riseCanvas(W, H, floor, baseX) {
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  const hash = x => { let h = Math.imul(x | 0, 374761393) ^ 0x5bd1e995; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+  const top = x => {
+    // the ground climbs toward the party and falls away past it
+    const d = (x - baseX) / W;
+    const lift = d < -.08 ? Math.min(1, (-.08 - d) / .5) : d > .22 ? Math.min(1, (d - .22) / .2) : 0;
+    return Math.round(floor + 1 + lift * H * .07 + (hash(x >> 2) - .5) * 2);
+  };
+  for (let x = 0; x < W; x++) {
+    const y0 = top(x);
+    g.fillStyle = '#0d0a0f';
+    g.fillRect(x, y0, 1, H - y0);
+    g.fillStyle = '#1a1210';
+    g.fillRect(x, y0 + 1, 1, 2);
+    g.fillStyle = hash(x) < .5 ? '#5a3a20' : '#7a4e26';
+    g.fillRect(x, y0, 1, 1);
+    // tufts of grass on the edge, lit on their tips
+    if (hash(x * 7 + 3) < .16) {
+      const h = 1 + Math.floor(hash(x * 13) * 3);
+      g.fillStyle = '#1a1210';
+      g.fillRect(x, y0 - h, 1, h);
+      g.fillStyle = '#8a5a2a';
+      g.fillRect(x, y0 - h, 1, 1);
+    }
+  }
+  return c;
+}

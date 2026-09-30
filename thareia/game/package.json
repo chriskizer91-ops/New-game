@@ -1,0 +1,15 @@
+{
+  "name": "thareia",
+  "private": true,
+  "type": "module",
+  "description": "Thareia, a browser airship JRPG built into one self-contained HTML file (forked from Aethermoor: Hearth & Heirloom).",
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "test": "node --test test/*.test.mjs",
+    "lint": "eslint src test tools",
+    "atlas": "node tools/make-atlas.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}

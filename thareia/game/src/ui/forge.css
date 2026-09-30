@@ -1,0 +1,274 @@
+/* Hilda's forge and the M4 loot UI (spec §5.1, §5.3; owner P7a). Imported by ui/world/sheets.js.
+   The forge sheet (tabs, the purse and pouch, the pieces, the card preview with its before and after),
+   Idris's gem shop, the aftermath's deeds, forge spoils and Codex page banner,
+   and the Party screen's Codex bonus. Phone first (360 px); the forge goes two columns from 860 px.
+   Selectors carry .forge / .ov-forge (or their own names) so they win over the M3 rules in world.css. */
+
+/* ---------- sheets that can grow past the screen stay scrollable from the top ---------- */
+.ov.ov-sheet.ov-forge, .ov.ov-sheet.ov-shop { justify-content: flex-start; }
+.ov.ov-sheet.ov-forge .ov-inner, .ov.ov-sheet.ov-shop .ov-inner { margin: auto auto 0; }
+@media (min-width: 700px) {
+  .ov.ov-sheet.ov-forge .ov-inner, .ov.ov-sheet.ov-shop .ov-inner { margin: auto; }
+}
+@media (min-width: 860px) { .ov.ov-sheet.ov-forge .ov-inner { max-width: 960px; } }
+
+/* ---------- small pixel icons ---------- */
+canvas.gem-i, canvas.mat-i, canvas.flame { display: block; flex: none; image-rendering: pixelated; image-rendering: crisp-edges; }
+.coin { flex: none; }
+
+/* ---------- the forge sheet ---------- */
+.w-sheet.forge { padding-bottom: 12px; }
+.w-sheet.forge h2 { margin-bottom: 8px; }
+.forge-tabs {
+  display: flex; gap: 6px; margin: 0 -16px; padding: 3px 16px 5px; overflow-x: auto; overscroll-behavior-x: contain;
+  scrollbar-width: none; -webkit-overflow-scrolling: touch;
+}
+.forge-tabs::-webkit-scrollbar { display: none; }
+.forge-tab {
+  position: relative; flex: 0 0 auto; min-width: 70px; min-height: var(--tap); padding: 0 12px; cursor: pointer;
+  font-family: var(--f-pixel); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--parchment-2);
+  background: var(--iron); border: 0; box-shadow: 0 0 0 2px var(--ink), inset 0 -2px 0 var(--seam);
+}
+.forge-tab:hover { color: var(--hearth-hot); }
+.forge-tab[aria-selected="true"] { color: #231306; background: linear-gradient(180deg, #ffd27a 0, #f09a36 60%, #c86a1c 100%); box-shadow: 0 0 0 2px var(--ink), inset 0 -3px 0 rgba(0, 0, 0, .25); }
+.ft-dot { display: none; position: absolute; top: 5px; right: 5px; width: 7px; height: 7px; border-radius: 50%; background: #ffe890; box-shadow: 0 0 0 1px var(--ink), 0 0 6px #ffcb66; }
+.forge-tab.has-dot .ft-dot { display: block; }
+@media (min-width: 560px) { .forge-tab { flex: 1 1 0; } }
+
+.forge-purse-host { margin: 10px 0 0; }
+.forge-purse { display: flex; flex-wrap: wrap; gap: 6px; }
+.fp-chip {
+  display: inline-flex; align-items: center; gap: 5px; min-height: 28px; padding: 3px 8px;
+  background: var(--ink); box-shadow: inset 0 0 0 1px var(--seam); font-size: 13px; color: var(--parchment-2);
+}
+.fp-chip .coin { margin: 0; }
+.fp-n { font-family: var(--f-pixel); font-weight: 400; font-size: 12px; color: var(--hearth-hot); font-variant-numeric: tabular-nums; }
+.fp-chip[data-k="gold"] .fp-n { color: #ffe08a; }
+.fp-chip.none { opacity: .62; }
+.fp-chip.none .fp-n { color: var(--ash); }
+.fp-l { font-size: 13px; }
+.fp-nogems { font-size: 13px; }
+.w-sheet.forge .forge-line { margin: 10px 0 8px; font-family: var(--f-display); font-style: italic; font-size: 17px; line-height: 1.3; color: var(--parchment-2); }
+@media (max-width: 559px) {
+  /* M7 review: six tabs do not fit one line on a phone, and a strip that scrolls hid the last ones (a scene opening
+     the Masterpiece tab left it off the screen): they wrap, so every tab shows */
+  .forge-tabs { flex-wrap: wrap; margin: 0; padding: 3px 0 5px; overflow: visible; }
+  .forge-tab { flex: 1 1 auto; padding: 0 10px; }
+  .forge-purse { gap: 5px; }
+  .fp-chip { gap: 4px; padding: 2px 6px; }
+  .fp-chip[data-k^="gem:"] .fp-l { display: none; } /* the pouch shows each gem by its colour; the name is in its title */
+  .w-sheet.forge .forge-line { font-size: 15px; margin: 8px 0 6px; }
+}
+
+.forge-body { display: grid; gap: 12px; }
+.forge-pieces { min-width: 0; }
+.w-sheet.forge .forge-list { max-height: 30vh; min-height: 52px; padding: 3px; overflow-y: auto; overscroll-behavior: contain; }
+.w-sheet.forge .forge-item { grid-template-columns: 34px minmax(0, 1fr) auto; padding: 3px 10px 3px 6px; }
+.w-sheet.forge .forge-item:hover, .w-sheet.forge .forge-item:focus-visible { box-shadow: 0 0 0 2px var(--ink), 0 0 0 3px var(--seam-2); }
+.w-sheet.forge .forge-item.on { background: var(--iron-3); box-shadow: 0 0 0 2px var(--ink), 0 0 0 3px var(--hearth); }
+.forge-item-t b, .forge-item-t small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fi-badge { justify-self: end; display: inline-flex; align-items: center; gap: 4px; font-family: var(--f-pixel); font-size: 10px; letter-spacing: .04em; color: var(--hearth-hot); white-space: nowrap; }
+.fi-badge:empty { display: none; }
+.fi-yield { gap: 6px; } .fi-yield span { display: inline-flex; align-items: center; gap: 2px; }
+.fi-socks i { display: block; width: 10px; height: 10px; border-radius: 50%; background: #07060a; box-shadow: 0 0 0 1px var(--seam-2); }
+.fi-socks i.set { background: radial-gradient(circle at 35% 30%, #fff, var(--gc, #c8c0b0) 45%, #000 130%); box-shadow: 0 0 0 1px var(--ink); }
+.fi-pips i { display: block; width: 8px; height: 8px; background: #2c2019; box-shadow: 0 0 0 1px var(--ink), inset 0 0 0 1px #4a3a2e; }
+.fi-pips i.on { background: radial-gradient(circle at 40% 35%, #fff1b0, #ee8e31 55%, #7a3a12); box-shadow: 0 0 0 1px var(--ink), 0 0 4px rgba(238, 142, 49, .8); }
+.fi-pips small { margin-left: 2px; font-size: 9px; }
+.fi-pips .ready { color: #ffe890; } .fi-pips .awake { color: #fff3c4; }
+.forge-none { padding: 8px 6px; font-size: 14px; color: var(--ash); }
+.forge-none.small { padding-top: 2px; font-size: 13px; }
+
+.w-sheet.forge .forge-detail { margin-top: 0; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.w-sheet.forge .forge-card {
+  --rc: var(--r-worn);
+  display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "art info" "more more"; gap: 10px 12px; align-items: start;
+  padding: 12px; background: linear-gradient(180deg, color-mix(in srgb, var(--rc) 12%, #2b221d), #19130f 70%);
+  box-shadow: 0 0 0 2px var(--ink), 0 0 0 4px var(--rc), 0 0 0 6px var(--ink);
+}
+.w-sheet.forge .forge-card[data-r="wrought"] { --rc: var(--r-wrought); } .w-sheet.forge .forge-card[data-r="tempered"] { --rc: var(--r-tempered); }
+.w-sheet.forge .forge-card[data-r="runed"] { --rc: var(--r-runed); } .w-sheet.forge .forge-card[data-r="storied"] { --rc: var(--r-storied); }
+.w-sheet.forge .forge-card[data-r="heirloom"] { --rc: var(--r-heirloom); } .w-sheet.forge .forge-card[data-r="regalia"] { --rc: var(--r-regalia); }
+.w-sheet.forge .forge-card[data-r="primal"] { --rc: var(--r-primal); }
+.fc-art { grid-area: art; line-height: 0; }
+.fc-art canvas { width: 64px; height: 64px; background: #07060a; box-shadow: 0 0 0 2px var(--ink), 0 0 0 3px color-mix(in srgb, var(--rc) 55%, var(--seam)); }
+.fc-info { grid-area: info; display: grid; gap: 2px; min-width: 0; justify-items: start; }
+.w-sheet.forge .forge-card-name { font-family: var(--f-display); font-size: 21px; line-height: 1.1; text-wrap: balance; }
+.fc-type, .fc-who { font-size: 12px; line-height: 1.35; color: var(--ash); }
+.fc-type { font-family: var(--f-pixel); font-size: 9px; letter-spacing: .06em; text-transform: uppercase; }
+.fc-see { min-height: 36px; margin-top: 4px; padding: 0 10px; font-size: 10px; position: relative; }
+.fc-see::after { content: ""; position: absolute; inset: -4px 0; } /* a 44 px touch area */
+.fc-more { grid-area: more; display: grid; gap: 8px; min-width: 0; }
+.fc-k { margin: 0; font-family: var(--f-pixel); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--ash); }
+@media (min-width: 560px) { .fc-art canvas { width: 128px; height: 128px; } }
+
+.forge-flames { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.w-sheet.forge .flames { grid-template-columns: repeat(10, auto); }
+.ff-t { font-family: var(--f-pixel); font-size: 11px; color: var(--hearth-hot); }
+.flame.lit-now { animation: flameLit .7s ease-out; }
+@keyframes flameLit { 0% { transform: scale(2.2) translateY(-3px); filter: brightness(2.2); } 100% { transform: none; filter: none; } }
+.w-sheet.forge .forge-nums { margin: 0; }
+.w-sheet.forge .forge-nums dt { font-size: 14px; }
+.w-sheet.forge .forge-nums dd .arrow { color: var(--ash); }
+.forge-need { margin: 0; font-size: 14px; color: var(--parchment-2); }
+.forge-cost { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.fcost-k { font-family: var(--f-pixel); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--ash); margin-right: 2px; }
+.fcost-part { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 3px 9px; background: var(--ink); box-shadow: inset 0 0 0 1px var(--seam-2); }
+.fcost-part b { font-size: 15px; } .fcost-part small { font-size: 12px; color: var(--ash); }
+.fcost-part.short { box-shadow: inset 0 0 0 1px var(--down); } .fcost-part.short small { color: var(--down); }
+.forge-act { display: grid; gap: 6px; }
+.w-sheet.forge .forge-go { width: 100%; min-height: 50px; font-size: 13px; }
+.forge-why { margin: 0; font-size: 14px; color: var(--down); }
+.w-sheet.forge .forge-hint, .w-sheet.forge .forge-max { font-size: 15px; }
+.forge-gone { margin: 0; padding: 8px 10px; font-size: 14px; color: var(--parchment-2); background: rgba(238, 142, 49, .08); box-shadow: inset 3px 0 0 var(--hearth); }
+.forge-gone b { color: var(--parchment); }
+
+/* Reroll */
+.rr-traits { display: grid; gap: 6px; }
+.rr-trait {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 10px; min-height: var(--tap); padding: 6px 10px;
+  text-align: left; cursor: pointer; font-size: 15px; color: #b9e89f; background: var(--iron); border: 0; box-shadow: 0 0 0 2px var(--ink), inset 0 0 0 1px var(--seam);
+}
+.rr-trait:hover { box-shadow: 0 0 0 2px var(--ink), inset 0 0 0 1px var(--seam-2); }
+.rr-trait.on { background: var(--iron-3); box-shadow: 0 0 0 2px var(--ink), 0 0 0 3px var(--hearth); }
+.rr-q { font-style: normal; font-size: 12px; letter-spacing: 1px; color: var(--hearth-hot); white-space: nowrap; }
+.rr-was { grid-column: 1 / -1; font-size: 12px; color: var(--ash); }
+.rr-trait.rolled .rr-text, .rr-trait.rolled .rr-q { animation: rrIn .5s cubic-bezier(.2, .9, .25, 1.15) both; }
+.rr-trait.rolled .rr-q { animation-delay: .12s; }
+.rr-trait.rolled .rr-was { animation: rrWas .5s ease-out both; }
+@keyframes rrIn { from { opacity: 0; transform: translateX(46px); } to { opacity: 1; transform: none; } }
+@keyframes rrWas { from { opacity: 1; color: var(--parchment); } to { opacity: 1; } }
+
+/* Salvage */
+.sv-yield { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.sv-yield li { display: inline-flex; align-items: center; gap: 7px; font-size: 16px; color: var(--parchment); }
+.sv-confirm { padding: 12px; background: rgba(90, 24, 16, .35); box-shadow: 0 0 0 2px var(--ink), 0 0 0 3px var(--down); }
+.sv-confirm p { margin: 0 0 10px; font-size: 15px; }
+.sv-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.sv-btns .btn { width: 100%; }
+
+/* Gems */
+.gm-socks { display: flex; flex-wrap: wrap; gap: 10px; }
+.gem-sock {
+  width: 52px; height: 52px; display: grid; place-items: center; cursor: pointer; border: 0; border-radius: 50%;
+  background: radial-gradient(circle at 50% 45%, #1d1612 0 58%, #120e0c 100%); box-shadow: 0 0 0 2px var(--ink), 0 0 0 3px var(--seam-2);
+}
+.gem-sock .ring { width: 24px; height: 24px; border-radius: 50%; background: #07060a; box-shadow: 0 0 0 3px #2c2019, inset 0 2px 4px rgba(0, 0, 0, .9); }
+.gem-sock.on { box-shadow: 0 0 0 2px var(--ink), 0 0 0 4px var(--hearth), 0 0 12px rgba(238, 142, 49, .5); }
+.gm-info { display: grid; gap: 4px; justify-items: start; }
+.gm-which { margin: 0; font-family: var(--f-pixel); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--parchment-2); }
+.gm-does { margin: 0; font-size: 15px; color: #b9e89f; }
+.gem-out { margin-top: 2px; }
+.gm-pouch { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.gem-pick {
+  width: 100%; display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; align-items: center; min-height: 50px; padding: 5px 10px;
+  text-align: left; cursor: pointer; background: var(--iron); border: 0; box-shadow: 0 0 0 2px var(--ink), inset 0 0 0 1px var(--seam);
+}
+.gem-pick:hover:not(:disabled) { box-shadow: 0 0 0 2px var(--ink), 0 0 0 3px var(--hearth); }
+.gem-pick:disabled { cursor: default; opacity: .55; }
+.gp-t { display: grid; min-width: 0; } .gp-t b { font-size: 15px; } .gp-t small { font-size: 13px; color: var(--parchment-2); }
+.pouch-k { margin-top: 2px; }
+
+/* Awaken */
+.aw-stage { margin: 0; font-family: var(--f-pixel); font-size: 11px; letter-spacing: .06em; line-height: 1.5; text-transform: uppercase; color: var(--ash); }
+.aw-stage.stage-kindled { color: var(--hearth-hot); } .aw-stage.ready { color: #ffe890; }
+.aw-stage.stage-awakened { color: #fff3c4; text-shadow: 0 0 10px rgba(255, 203, 102, .7); }
+.aw-deeds { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.aw-deeds li { display: grid; grid-template-columns: 10px auto minmax(0, 1fr); gap: 4px 10px; align-items: baseline; font-size: 15px; color: var(--ash); }
+.aw-deeds li i { width: 10px; height: 10px; background: #2c2019; box-shadow: 0 0 0 2px var(--ink), inset 0 0 0 1px #4a3a2e; transform: translateY(1px); }
+.aw-deeds li.on { color: var(--parchment); }
+.aw-deeds li.on i { background: radial-gradient(circle at 40% 35%, #fff1b0, #ee8e31 55%, #7a3a12); box-shadow: 0 0 0 2px var(--ink), 0 0 6px rgba(238, 142, 49, .85); }
+.aw-deeds li span { font-size: 13px; color: var(--ash); }
+.aw-branches { display: grid; gap: 8px; }
+.aw-branch {
+  display: grid; gap: 3px; min-height: var(--tap); padding: 10px 12px; text-align: left; cursor: pointer; color: var(--parchment);
+  background: linear-gradient(180deg, #2b221d, #19130f); border: 0; box-shadow: 0 0 0 2px var(--ink), inset 0 0 0 1px var(--seam-2);
+}
+.aw-branch:hover:not(.shut) { box-shadow: 0 0 0 2px var(--ink), 0 0 0 3px var(--hearth); }
+.aw-branch.on { background: linear-gradient(180deg, #4a2e14, #1f150e); box-shadow: 0 0 0 2px var(--ink), 0 0 0 4px #ffcb66, 0 0 18px rgba(255, 203, 102, .35); }
+.aw-branch.shut { cursor: default; color: var(--ash); background: var(--soot-2); }
+.awb-path { font-family: var(--f-pixel); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--hearth); }
+.aw-branch.shut .awb-path { color: var(--ash); }
+.awb-name { font-family: var(--f-display); font-size: 22px; line-height: 1.1; color: #ffe890; }
+.aw-branch.shut .awb-name { color: var(--parchment-2); }
+.awb-text { font-size: 14px; line-height: 1.35; color: var(--parchment-2); }
+.awb-stats { font-size: 13px; color: #b9e89f; }
+.aw-branch.shut .awb-stats { color: var(--ash); }
+.awb-why { font-size: 13px; color: #ffb4a4; }
+.aw-awake { display: grid; gap: 4px; padding: 12px; background: radial-gradient(100% 120% at 50% 0%, rgba(255, 203, 102, .18), rgba(0, 0, 0, 0) 70%), var(--soot-2); box-shadow: 0 0 0 2px var(--ink), 0 0 0 3px #ffcb66; }
+.aw-awake p { margin: 0; }
+
+@media (min-width: 860px) {
+  .forge-body { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 18px; align-items: start; }
+  .w-sheet.forge .forge-list { max-height: min(62vh, 560px); }
+}
+
+/* ---------- Idris's gem shop ---------- */
+.shop-row.gem-row { grid-template-columns: 32px minmax(0, 1fr) auto; }
+.shop-gem { display: grid; place-items: center; width: 32px; height: 32px; }
+.shop-pouch { margin: 0 0 8px; }
+.shop-line { margin: 0 0 10px; font-size: 14px; color: var(--parchment-2); }
+.shop-empty { color: var(--ash); }
+
+/* ---------- the aftermath: a finished Codex page, deeds, forge spoils ---------- */
+.af-page {
+  margin: 5px; padding: 18px 16px; text-align: center;
+  background: radial-gradient(90% 120% at 50% 0%, rgba(255, 232, 144, .28), rgba(0, 0, 0, 0) 70%), var(--soot-2);
+  box-shadow: 0 0 0 3px var(--ink), 0 0 0 5px #ffe890, 0 0 40px rgba(255, 232, 144, .25);
+}
+.af-page .kick { margin: 0; font-family: var(--f-pixel); font-size: 11px; letter-spacing: .3em; text-transform: uppercase; color: var(--hearth-hot); }
+.af-page h2 { margin: 6px 0; font-size: clamp(26px, 7vw, 34px); color: #fff3c4; }
+.af-page p { margin: 6px auto 0; max-width: 52ch; }
+.af-page .af-page-reward { font-size: 17px; color: #b9e89f; }
+.af-deeds .label, .af-mats .label { margin: 0 0 8px; font-weight: 400; }
+.af-deed-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
+.af-deed-list li { display: grid; grid-template-columns: 12px minmax(0, 1fr); gap: 10px; align-items: baseline; font-size: 16px; color: var(--parchment-2); }
+.af-deed-list li i { width: 10px; height: 10px; background: radial-gradient(circle at 40% 35%, #fff1b0, #ee8e31 55%, #7a3a12); box-shadow: 0 0 0 2px var(--ink), 0 0 6px rgba(238, 142, 49, .8); transform: translateY(1px); }
+.af-deed-list li b { color: var(--parchment); }
+.af-deed-list li.kindled { color: var(--hearth-hot); }
+.af-deed-list li.ready { color: #ffe890; }
+.af-deed-list li.ready i { background: radial-gradient(circle at 40% 35%, #fff, #ffe890 50%, #c8801c); }
+.af-mat-row { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+.af-mat { display: inline-flex; align-items: center; gap: 8px; font-size: 17px; }
+.af-mat b { color: var(--hearth-hot); font-variant-numeric: tabular-nums; }
+
+/* ---------- the Party screen: the Codex pages' bonus ---------- */
+.page-box { margin-top: 10px; padding: 10px 12px; background: rgba(255, 232, 144, .06); box-shadow: inset 3px 0 0 #ffe890; }
+.page-box p { margin: 4px 0 0; font-size: 15px; }
+.page-box b { color: #fff3c4; }
+
+@media (prefers-reduced-motion: reduce) {
+  .flame.lit-now, .rr-trait.rolled .rr-text, .rr-trait.rolled .rr-q, .rr-trait.rolled .rr-was { animation: none; }
+}
+
+/* ---------- M7 (spec §4.5): the Masterpiece tab ---------- */
+/* no list of pieces: the tab is its own panel, the width of the sheet */
+.forge-body.is-master { grid-template-columns: minmax(0, 1fr) !important; }
+.forge-body.is-master .forge-pieces { display: none; }
+.forge-tab[data-tab="masterpiece"] { color: #eef4ff; }
+.forge-tab[data-tab="masterpiece"][aria-selected="true"] { color: #10131e; background: linear-gradient(180deg, #ffffff 0, #c4d6f4 60%, #6a7eb0 100%); }
+.mp-why { margin: 0; padding: 0 0 0 18px; display: grid; gap: 4px; font-size: 14px; color: #ffb4a4; }
+.mp-note { margin: 0; font-size: 14px; color: var(--parchment-2); }
+.mp-bases { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+@media (min-width: 700px) { .mp-bases { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.mp-base {
+  display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 6px; align-items: center; min-height: var(--tap); padding: 4px 8px 4px 4px;
+  text-align: left; cursor: pointer; color: var(--parchment); background: var(--iron); border: 0; box-shadow: 0 0 0 2px var(--ink), inset 0 -2px 0 var(--seam);
+}
+.mp-base canvas { width: 32px; height: 32px; image-rendering: pixelated; }
+.mp-base-t { display: grid; min-width: 0; }
+.mp-base-t b { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mp-base-t small { font-size: 11px; color: var(--ash); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.mp-base:hover, .mp-base:focus-visible { box-shadow: 0 0 0 2px var(--ink), 0 0 0 3px var(--seam-2); }
+.mp-base.on { background: #1d2438; box-shadow: 0 0 0 2px var(--ink), 0 0 0 3px #c4d6f4; }
+.mp-base.on .mp-base-t b { color: #eef4ff; }
+.mp-field { display: grid; gap: 4px; }
+.mp-label { margin: 0; }
+.mp-name {
+  width: 100%; min-height: var(--tap); padding: 6px 10px; font: inherit; font-family: var(--f-display); font-size: 20px; font-weight: 700;
+  color: #fffaf0; background: #0b0d15; border: 0; box-shadow: 0 0 0 2px var(--ink), inset 0 0 0 1px #6a7eb0;
+}
+.mp-name:focus { outline: none; box-shadow: 0 0 0 2px var(--ink), inset 0 0 0 2px #c4d6f4; }
+.mp-say { margin: 0; min-height: 1.2em; font-size: 14px; color: #c4d6f4; overflow-wrap: anywhere; }
+.mp-say.bad { color: #ffb4a4; }
+.mp-rule { margin: 0; font-size: 13px; color: var(--ash); }

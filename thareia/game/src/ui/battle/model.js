@@ -1,0 +1,238 @@
+// The display model: what the screen currently shows for each combatant. Events mutate it one
+// by one while they animate; after a sequence it is re-synced from the engine's returned state,
+// which stays the single source of truth.
+// M7 (spec §4.2-§4.4, §5): a guest on the party's side (`side: 'ally'`, `guest: true`: Tamsin against the Unsmith) is
+// shown with the party (inParty), in her foe art; a two-dice foe keeps its second intent (`intent2`, slot 1); a hollow
+// foe's intent carries its natural roll and the +4 (dieText); the Unsmith's Stolen Arts are the relic ids he took
+// (`stolen`).
+import { STATUSES } from '../../data/statuses.js';
+import { RELICS } from '../../data/relics.js';
+import { PAGES } from '../../data/codex.js';
+import { tierAs } from '../../data/foes.js';
+import { familyData } from '../../rules/ai.js';
+import { holdPhrase } from '../../rules/util.js';
+
+const clone = x => (x == null ? x : structuredClone(x));
+
+// heroes go by their short name on the field: "Sister Alondra" -> "Alondra"
+export function shortName(name) {
+  const n = String(name || '');
+  const m = n.match(/^(Sister|Brother|Old|Captain|Mother|Father)\s+(.+)$/);
+  if (m) return m[2];
+  return n.split(' the ')[0];
+}
+
+function dunit(u, label) {
+  return {
+    id: u.id, side: u.side, name: u.name, label: label || (u.side === 'hero' || u.side === 'ally' ? shortName(u.name) : u.name), level: u.level, heroId: u.heroId || null,
+    tier: u.tier || null, art: u.art || null, family: u.family || null, variant: u.variant || null, gearTier: u.gearTier || 0, wears: u.wears || null,
+    hp: u.hp, maxHp: u.maxHp, mp: u.mp ?? 0, maxMp: u.maxMp ?? 0, surge: u.surge ?? 0,
+    statuses: clone(u.statuses) || [], ko: !!u.ko, gone: !!u.gone, phase: u.phase || 1,
+    held: clone(u.held) || [], intent: clone(u.intent), queue: clone(u.queue) || [], analyzed: !!u.analyzed,
+    omens: [...(u.omens || [])], summonedBy: u.summonedBy || null, weaponItem: u.weaponItem || null,
+    // M7: the second die's intent (the Unsmith), the relics he took (his Stolen Arts), and the guest
+    ...(u.dice > 1 ? { dice: u.dice, intent2: clone(u.intent2) } : {}),
+    ...(u.stolen ? { stolen: [...(u.stolen.ids || [])] } : {}),
+    // (the guest keeps her look's tier, uncapped: Tamsin's finale kit is drawn at 5; a foe's stays as it shipped)
+    ...(u.guest ? { guest: true, artTier: u.artTier ?? u.gearTier ?? 0 } : {}), ...(u.kit ? { kit: u.kit } : {}),
+  };
+}
+
+// ---- M7 (spec §4.2-§4.4, §5): the guest, the two dice, the hollow +4, the Stolen Arts ---------------------------
+// Pure, for the party row, the plates, the ribbon and the log (node tests use them).
+
+// On the party's side of the field: a hero, or a guest who fights beside them (the engine plays her; she takes no
+// command). Every "not a hero means a foe" test goes through this.
+export const inParty = u => u?.side === 'hero' || u?.side === 'ally';
+export const isGuest = u => u?.side === 'ally';
+// A tier the lookups (dice looks, words, ranks) know, or the tier it reads as (the hollow and the Unsmith: the
+// Champion's, data/foes.js tierAs)
+export const tierKey = (table, tier) => (tier && table?.[tier] ? tier : tierAs(tier));
+// The intents a unit shows, in the order they are played: its own, then (a two-dice foe) its second
+export const intentsOf = u => [u?.intent, u?.dice > 1 ? u?.intent2 : null].filter(Boolean);
+// An intent's roll as words: "d20 17", a hollow foe's "d20 13 +4 = 17" (the natural roll, the bonus, the face that
+// picks the move), an opener's "first move"
+export function dieText(it) {
+  if (!it) return '';
+  if (it.face == null) return 'first move';
+  if (it.bonus) return `d${it.die} ${it.natural} +${it.bonus} = ${it.face}`;
+  return `d${it.die} ${it.face}`;
+}
+// The Stolen Arts a unit shows: [{ id, name }] for each relic he took (the move is "Stolen: <name>")
+export const stolenOf = u => (Array.isArray(u?.stolen) ? u.stolen : []).filter(id => RELICS[id]).map(id => ({ id, name: RELICS[id].name, move: `Stolen: ${RELICS[id].name}` }));
+
+// Foes that share a name get letters (Cutpurse A, B, C), kept stable for the whole battle.
+export class Labels {
+  constructor() { this.map = {}; this.used = {}; }
+  assign(state) {
+    const foes = state.order.map(id => state.units[id]).filter(u => u.side === 'foe');
+    const count = {};
+    for (const f of foes) count[f.name] = (count[f.name] || 0) + 1;
+    for (const f of foes) {
+      if (this.map[f.id]) continue;
+      if (count[f.name] > 1 || this.used[f.name]) {
+        const n = this.used[f.name] || 0;
+        this.used[f.name] = n + 1;
+        this.map[f.id] = `${f.name} ${String.fromCharCode(65 + (n % 26))}`;
+      } else {
+        this.map[f.id] = f.name;
+        this.used[f.name] = 1;
+      }
+    }
+    // the first of a pair that was alone at the start keeps a letter once a twin arrives
+    return this.map;
+  }
+  of(id, fallback) { return this.map[id] || fallback; }
+}
+
+export function makeDisp(state, labels) {
+  labels.assign(state);
+  const units = {};
+  for (const id of state.order) units[id] = dunit(state.units[id], state.units[id].side === 'foe' ? labels.of(id) : null);
+  return { units, order: [...state.order], actor: state.actor };
+}
+
+// Re-sync from the engine state; returns ids of units that did not exist before.
+export function syncDisp(disp, state, labels) {
+  labels.assign(state);
+  const added = [];
+  for (const id of state.order) {
+    if (!disp.units[id]) added.push(id);
+    disp.units[id] = dunit(state.units[id], state.units[id].side === 'foe' ? labels.of(id) : null);
+  }
+  disp.order = [...state.order];
+  disp.actor = state.actor;
+  return added;
+}
+
+export function addUnitFrom(disp, state, id, labels) {
+  labels.assign(state);
+  const u = state.units[id];
+  if (!u) return null;
+  disp.units[id] = dunit(u, labels.of(id));
+  if (!disp.order.includes(id)) disp.order.push(id);
+  return disp.units[id];
+}
+
+// A status event on a display unit. M5: `release` (a swallower lets go, a charm is broken by a friend's
+// hit) takes the status off like `remove`; an `add` keeps who applied it (`source`) and how a hold reads
+// (`label`) when the event carries them (the Player fills them in from the engine state).
+export function applyStatus(u, ev) {
+  if (!u) return;
+  const i = u.statuses.findIndex(s => s.id === ev.status);
+  if (ev.op === 'add') {
+    const st = { id: ev.status, stacks: ev.stacks || 1, turns: ev.turns ?? null, value: ev.value ?? null };
+    if (ev.source) st.source = ev.source;
+    if (ev.label) st.label = ev.label;
+    if (i >= 0) u.statuses[i] = { ...u.statuses[i], ...st }; else u.statuses.push(st);
+  } else if (ev.op === 'remove' || ev.op === 'release' || (ev.op === 'trigger' && ev.stacks === 0)) {
+    if (i >= 0) u.statuses.splice(i, 1);
+  } else if ((ev.op === 'tick' || ev.op === 'trigger') && i >= 0) {
+    u.statuses[i] = { ...u.statuses[i], stacks: ev.stacks || u.statuses[i].stacks, turns: ev.turns ?? u.statuses[i].turns };
+  }
+}
+
+export const statusName = id => STATUSES[id]?.name || id;
+export const harmful = id => !!STATUSES[id]?.harmful;
+
+// ---- M5 (spec §4.2, §5): holds, charms and burrows, read from a unit's statuses ------------------------
+// Pure, for the plates, the stage and the ribbon (node tests use them).
+
+// The status that holds a unit out of the line (swallowed), or null.
+export const heldStatus = u => (u?.statuses || []).find(s => STATUSES[s.id]?.held) || null;
+// A unit nothing can target (burrowed, swallowed): rules/ai.js targetable, from the display copy.
+export const untargetable = u => (u?.statuses || []).some(s => STATUSES[s.id]?.untargetable);
+export const isCharmed = u => (u?.statuses || []).some(s => STATUSES[s.id]?.charm);
+// A foe under the floor: untargetable, and not held by anyone (a foe that dives).
+export const isSunk = u => u?.side === 'foe' && untargetable(u) && !heldStatus(u);
+
+// How a hold reads on the hero's plate: { label: 'Held under', by: 'The Rime-Abbot', turns: 2, text }.
+// `label` is the status's own ("Held under", "Carried off", "Swallowed"; else the status name), `by` the
+// swallower's display name (nameOf(sourceId)), `turns` the turns left (null when unknown).
+export function holdInfo(u, nameOf = () => '') {
+  const st = heldStatus(u);
+  if (!st) return null;
+  const label = String(st.label || statusName(st.id));
+  const by = (st.source && nameOf(st.source)) || '';
+  const turns = Number.isFinite(st.turns) && st.turns > 0 ? st.turns : null;
+  const left = turns ? `${turns} ${turns === 1 ? 'turn' : 'turns'} left` : '';
+  return { id: st.id, label, by, turns, text: [holdPhrase(label, by, false), left].filter(Boolean).join(', ') };
+}
+
+// A hold in a sentence: the rules' holdPhrase ("in the river, put there by Hodge"), which the engine's own
+// lost-turn line uses too.
+export { holdPhrase };
+
+// What a status event lacks for the plate (the engine's `add` event names neither the source nor the
+// label): filled in from the unit's entry in the engine state the events lead to, when it is still there.
+export function withStatusSource(ev, state) {
+  if (ev?.t !== 'status' || ev.op !== 'add' || (ev.source && ev.label)) return ev;
+  const st = state?.units?.[ev.target]?.statuses?.find(s => s.id === ev.status);
+  if (!st || (!st.source && !st.label)) return ev;
+  return { ...ev, source: ev.source || st.source || null, label: ev.label || st.label || null };
+}
+
+export function pieceIndex(u, relic) {
+  return (u?.held || []).findIndex(p => p.relic === relic || p.item?.base === relic);
+}
+
+// The grip bar's word for a relic: its name's first word after "The " ("Thornsplitter", "Cinderfang"). M6: from Page
+// IV on, a name that starts with whose it is ("Hodge's Unfair Toll", "The Gar's Tooth") goes by the thing itself, its
+// last word ("Toll", "Tooth"); the older relics keep the words they shipped with ("Warden's"). M7: Page V's pieces
+// always go by the thing ("Poker", "Wreath", "Chalice", "Gauntlet", "Chain", "Bargain", "Hammer", "Apron", "Heart"):
+// the four gifts all start "Hollow", and No. 000 would read "Fenwick's".
+const PAGE_IV = PAGES.find(p => p.id === 'gloomfen')?.from ?? Infinity;
+// A relic of Page IV (Codex No. 53 on): the M6 looks and words apply to it, so the older relics stay as they shipped.
+export const ofPageIV = relic => (RELICS[relic]?.codex ?? 0) >= PAGE_IV;
+// M7: a relic of Page V, the Hearth Below (the page lists its numbers: No. 000 and 67 to 74)
+const PAGE_V = new Set(PAGES.find(p => p.id === 'below')?.nos || []);
+export const ofPageV = relic => !!RELICS[relic] && PAGE_V.has(RELICS[relic].codex);
+const WHOSE = /['\u2019]s?$/;
+export function gripWord(name, relic = null) {
+  const words = String(name || 'relic').replace(/^The /, '').split(' ');
+  if (words.length > 1 && ofPageV(relic)) return words[words.length - 1];
+  if (words.length > 1 && WHOSE.test(words[0]) && ofPageIV(relic)) return words[words.length - 1];
+  return words[0];
+}
+
+export function relicLabel(relic, u) {
+  if (RELICS[relic]) return RELICS[relic].name;
+  const p = (u?.held || []).find(q => q.item?.base === relic);
+  return p?.item?.name || 'the relic';
+}
+
+// what a foe's move is aimed at, for the intent bubble
+export function moveTargetKind(u, moveId) {
+  try { return familyData(u).moves[moveId]?.target || 'enemy'; } catch { return 'enemy'; }
+}
+// M7: does a move of a foe (or of the guest) strike with an attack roll? (the guest's figure casts otherwise)
+export function moveAttacks(u, moveId) {
+  try { return !!familyData(u).moves[moveId]?.effects?.some(e => e.type === 'attack'); } catch { return false; }
+}
+
+// ---- M6 (spec §4.2, §5): the fen's two statuses, and a dive under water --------------------------------------
+// Pure, for the hero cards, the plates and the stage (node tests use them).
+
+// Hexed: the unit rolls its d20s with disadvantage (advantage cancels it).
+export const isHexed = u => (u?.statuses || []).some(s => STATUSES[s.id]?.hex);
+// Rotting: its stacks (0 when it is not rotting); every heal it gets is halved while it rots.
+export const rotStacks = u => (u?.statuses || []).filter(s => (STATUSES[s.id]?.healMult ?? 1) < 1).reduce((n, s) => Math.max(n, s.stacks || 1), 0);
+// The words a hero's card carries for them, in order: "Hexed", "Rotting" (its stacks are on the status chip).
+export function afflictions(u) {
+  const out = [];
+  if (isHexed(u)) out.push('Hexed');
+  if (rotStacks(u)) out.push('Rotting');
+  return out;
+}
+// A foe that goes down into water rather than under a floor (the Blackwater Leviathan's Sound): a tide foe.
+export function divesUnderWater(u) {
+  try { return familyData(u).aspect === 'tide'; } catch { return false; }
+}
+// A unit's statuses for a screen reader, by name and mid-sentence ("poisoned x2, guarding"; a foe gone under the
+// water is "dived"). worded: leave out what a hero card's label already says in full (a hold, a charm, Hexed and
+// Rotting), so no status is named twice.
+export function statusWords(u, { worded = false } = {}) {
+  return (u?.statuses || [])
+    .filter(s => { const d = STATUSES[s.id] || {}; return !(worded && (d.held || d.charm || d.hex || (d.healMult ?? 1) < 1)); })
+    .map(s => `${STATUSES[s.id]?.untargetable && divesUnderWater(u) ? 'dived' : statusName(s.id).toLowerCase()}${s.stacks > 1 ? ` x${s.stacks}` : ''}`);
+}

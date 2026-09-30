@@ -1,0 +1,166 @@
+// Equipment rules: who can use what, equip/unequip, and stat comparisons for the UI's
+// green/red arrows. All functions return new game objects; inputs are never mutated.
+
+import { CONSUMABLES } from '../data/items.js';
+import { TUNING } from '../data/tuning.js';
+import { deriveHero } from './stats.js';
+import { pageBonus, markPages } from './codex.js';
+import { temper as forgeTemper, temperCost as forgeTemperCost } from './forge.js';
+import { canUse, handsOf } from './gear.js';
+import { indexItems } from './util.js';
+
+// canUse lives in rules/gear.js (M4: rules/forge.js asks it too); re-exported here for the UI.
+export { canUse };
+
+function setHero(game, hero) {
+  return { ...game, party: { ...game.party, roster: { ...game.party.roster, [hero.id]: hero } } };
+}
+
+// Who is wearing this uid right now?
+export function wearerOf(game, uid) {
+  for (const h of Object.values(game.party.roster)) {
+    for (const [slot, id] of Object.entries(h.gear)) if (id === uid) return { heroId: h.id, slot };
+  }
+  return null;
+}
+
+// The gear map a hero would have after equipping `item` (two-handers clear the offhand).
+function gearAfter(hero, item, byId) {
+  const gear = { ...hero.gear, [item.slot]: item.uid };
+  const displaced = [];
+  if (hero.gear[item.slot] && hero.gear[item.slot] !== item.uid) displaced.push(hero.gear[item.slot]);
+  if (item.slot === 'weapon' && handsOf(item) === 2 && gear.offhand) { displaced.push(gear.offhand); gear.offhand = null; }
+  if (item.slot === 'offhand') {
+    const w = gear.weapon && byId[gear.weapon];
+    if (w && handsOf(w) === 2) return { gear: null, displaced, reason: `${w.name} needs both hands.` };
+  }
+  return { gear, displaced, reason: null };
+}
+
+export function equip(game, heroId, uid) {
+  const byId = indexItems(game.inventory);
+  const item = byId[uid];
+  const hero = game.party.roster[heroId];
+  if (!item || !hero) return { game, ok: false, reason: 'Nothing to equip', displaced: [] };
+  const can = canUse(hero, item);
+  if (!can.ok) return { game, ok: false, reason: can.reason, displaced: [] };
+  const plan = gearAfter(hero, item, byId);
+  if (!plan.gear) return { game, ok: false, reason: plan.reason, displaced: [] };
+  let g = game;
+  const prev = wearerOf(game, uid);
+  if (prev && prev.heroId !== heroId) {
+    const other = g.party.roster[prev.heroId];
+    g = setHero(g, { ...other, gear: { ...other.gear, [prev.slot]: null } });
+  }
+  g = bear(g, uid, heroId);
+  g = setHero(g, clampVitals({ ...g.party.roster[heroId], gear: plan.gear }, g.inventory, pageBonus(g)));
+  return { game: g, ok: true, reason: null, displaced: plan.displaced };
+}
+
+export function unequip(game, heroId, slot) {
+  const hero = game.party.roster[heroId];
+  if (!hero || !hero.gear[slot]) return game;
+  return setHero(game, clampVitals({ ...hero, gear: { ...hero.gear, [slot]: null } }, game.inventory, pageBonus(game)));
+}
+
+function clampVitals(hero, inventory, bonus = null) {
+  const d = deriveHero(hero, inventory, bonus);
+  return { ...hero, hp: Math.min(hero.hp ?? d.maxHp, d.maxHp), mp: Math.min(hero.mp ?? d.maxMp, d.maxMp) };
+}
+
+// M4 (the Chronicle, spec §4.4): whoever equips a piece joins the list of those who have carried it.
+function bear(game, uid, heroId) {
+  const it = game.inventory.find(i => i.uid === uid);
+  const bearers = Array.isArray(it?.chronicle?.bearers) ? it.chronicle.bearers : [];
+  if (!it || bearers.includes(heroId)) return game;
+  const next = { ...it, chronicle: { ...it.chronicle, bearers: [...bearers, heroId] } };
+  return { ...game, inventory: game.inventory.map(i => (i.uid === uid ? next : i)) };
+}
+
+function summary(d) {
+  return {
+    hp: d.maxHp, mp: d.maxMp, guard: d.guard, hit: d.weapon.hit, dmg: Math.round(d.weapon.avg * 10) / 10,
+    speed: d.speed, delay: d.delay, crit: 21 - d.critRange,
+  };
+}
+
+// Stat deltas if `hero` equipped `item`: positive = green arrow, negative = red. `bonus` is the
+// party-wide stats block (rules/codex.js pageBonus), so the absolute numbers match the Party screen.
+export function compare(hero, item, inventory, bonus = null) {
+  const byId = { ...indexItems(inventory), [item.uid]: item };
+  const can = canUse(hero, item);
+  const before = summary(deriveHero(hero, byId, bonus));
+  if (!can.ok) return { ok: false, reason: can.reason, slot: item.slot, current: hero.gear[item.slot] || null, before, after: before, deltas: {} };
+  const plan = gearAfter(hero, item, byId);
+  if (!plan.gear) return { ok: false, reason: plan.reason, slot: item.slot, current: hero.gear[item.slot] || null, before, after: before, deltas: {} };
+  const after = summary(deriveHero({ ...hero, gear: plan.gear }, byId, bonus));
+  const deltas = {};
+  for (const k of Object.keys(before)) if (after[k] !== before[k]) deltas[k] = Math.round((after[k] - before[k]) * 10) / 10;
+  return { ok: true, reason: null, slot: item.slot, current: hero.gear[item.slot] || null, displaced: plan.displaced, before, after, deltas };
+}
+
+// A single number for "is this an upgrade?" used by the auto-equip helper and the sim.
+export function upgradeScore(cmp) {
+  if (!cmp.ok) return -Infinity;
+  const d = cmp.deltas;
+  // Delay is inverted: lower is faster. Damage and Guard dominate, as in the prototype.
+  return (d.dmg || 0) * 2 + (d.guard || 0) * 3 + (d.hit || 0) * 1.5 + (d.hp || 0) * 0.2 + (d.mp || 0) * 0.1 + (d.speed || 0) * 0.8 - (d.delay || 0) * 0.05 + (d.crit || 0) * 1.5;
+}
+
+// Which active hero gains the most from this item (null if nobody can use it).
+export function bestHeroFor(game, item) {
+  let best = null, score = 0;
+  for (const id of game.party.active) {
+    const s = upgradeScore(compare(game.party.roster[id], item, game.inventory));
+    if (s > score) { best = id; score = s; }
+  }
+  return best;
+}
+
+// Hilda's reforge: restores a shattered relic for gold.
+export function reforgeCost(item) {
+  return Math.round(TUNING.shop.reforgePerIlvl * Math.max(1, item.ilvl || 1));
+}
+
+export function reforge(game, uid) {
+  const item = game.inventory.find(i => i.uid === uid);
+  if (!item?.shattered) return { game, ok: false, reason: 'Not shattered', pages: [] };
+  const cost = reforgeCost(item);
+  if (game.gold < cost) return { game, ok: false, reason: `Needs ${cost} gold`, pages: [] };
+  const fixed = { ...item };
+  delete fixed.shattered;
+  // M4: whole again and yours, so the relic is Claimed (its Codex page can finish; its holder now
+  // carries an Echo), and a page it finishes is recorded
+  const g = {
+    ...game, gold: game.gold - cost, inventory: game.inventory.map(i => (i.uid === uid ? fixed : i)),
+    codex: { ...game.codex, [item.base]: { sighted: true, awakened: false, ...game.codex?.[item.base], claimed: true } },
+    progress: { ...game.progress, flags: { ...game.progress.flags } },
+  };
+  const pages = markPages(g);
+  return { game: g, ok: true, cost, pages };
+}
+
+// ---- M3: Hilda's Temper and the shops (spec §3.9, §4.7) --------------------------------------------
+// M4: the forge lives in rules/forge.js (Temper to +10 with materials); these keep M3's names and
+// M3's shape, where a cost is its gold.
+
+// Gold for the next step, or null when it is as far as it goes (or shattered).
+export function temperCost(item) {
+  return forgeTemperCost(item)?.gold ?? null;
+}
+
+// Temper one step (+1 enchant each, spec D10). Returns { game, ok, cost, reason }.
+export function temper(game, uid) {
+  const r = forgeTemper(game, uid);
+  return { ...r, cost: r.cost ? r.cost.gold : null };
+}
+
+// Buy n of a consumable at its price. Returns { game, ok, reason }.
+export function buy(game, consumableId, n = 1) {
+  const c = CONSUMABLES[consumableId];
+  const count = Math.max(1, Math.floor(n) || 1);
+  if (!c) return { game, ok: false, reason: 'Not for sale' };
+  const cost = c.price * count;
+  if (game.gold < cost) return { game, ok: false, reason: `Needs ${cost} gold` };
+  return { game: { ...game, gold: game.gold - cost, bag: { ...game.bag, [consumableId]: (game.bag?.[consumableId] || 0) + count } }, ok: true, reason: null };
+}
