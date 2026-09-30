@@ -54,19 +54,33 @@ Nothing here is built yet.
   crossing to Auros in its five stages, and two or three ships over the game (a skiff, a larger ship, the Aethership).
 - **The first ship's turnaround sheet** and **the Auros painting** arrived (`../art-in/airship/`, `../art-in/auros/`).
 - **Walking zooms into the region paintings.**
-- **The quality bar is Final Fantasy IX.** The battle content and coded gameplay of the current game are the base.
+- **The quality bar is Final Fantasy IX** in scope and feel; the look is retro pixel characters on painted backgrounds
+  (see below). The battle content and coded gameplay of the current game are the base.
 - The player wants an **image-generation AI connected** so image requests can be made directly.
 
+**After the phone test (2026-09-30): the look and the travel layers**
+- **Lean into retro pixel characters on painted backgrounds.** The 2× and 3× sprites were tested and rejected: they
+  look clunky, not better.
+  - **Walking** (fields, towns): the old **16 × 24** walker. Towns are **top-down**, as in the current game.
+  - **Battles and building interiors:** the current **64 × 64** battle rig at 1×.
+  - Gear still shows on both, as now.
+- **Cut-scenes are painted images of events**, not of the party (their outfits change).
+- **A full story**, told through those scenes and the game's dialogue.
+- **Travel works in layers:**
+  1. **World map** (the whole continent painting): long-distance auto-travel. Tap a place you have been and watch the
+     airship fly there.
+  2. **Region map at 1× zoom:** pilot the skiff yourself for normal travel; land at docks and clearings.
+  3. **Closer walking views:** new, closer paintings for walking the wilds with the 16 × 24 walker (beasts, bandits).
+     The region paintings alone are too far away for walking.
+  4. **Towns and dungeons:** top-down maps with the 16 × 24 walker.
+
 ## Open
-- **How the walking view stays sharp** when zoomed into a 1536 × 1024 painting (a phone test decides).
-- **Characters at FF9 quality:** bigger, more detailed sprites than the current game's, or painted art.
+- **The walking views:** how many per region, and how they connect (they cost the most space; see below).
 - **The Southern Lowlands:** what lives there (the canon has no named places on the south shore).
 - **How hard are the level gates?** A hard lock, or a warning you can ignore? What keeps the party out: a dock permit, a
   ship that can't yet climb, guarded roads?
 - **Level bands:** how levels 1–50 spread across the six regions, the crossing to Auros, and Auros itself.
 - **The first airship:** passage on fixed routes first and a ship of your own later, or your own ship from the start?
   Is sunstone fuel a resource to manage?
-- **Sprites:** pixel characters on painted backgrounds (recommended, since equipped gear shows on pixel sprites), or
-  painted sprite sheets.
 - **The party:** who the hero is, and who the other three are.
 - **The story's answer** to the Ember Line mystery, and where the Sedrin crossings fall.
