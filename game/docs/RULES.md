@@ -1324,13 +1324,16 @@ just beaten the Blackwater Leviathan, at Waking 8 with every Brand held (party l
 
 **M7 targets vs results (200 seeds, starters rotated):**
 
+(Re-run after the browser gate's rules fix: a pried gift now takes its +4 from the rolls already made. Every number moved
+within the seeds' noise, and every target holds.)
+
 | target | result |
 |---|---|
-| `below`: the Hollow Council back to back, 35-45% of runs wipe somewhere in the four | 37.5% (75 of 200) |
-| `below`: no Council member above 25% (first try) | Miravel 2.5%, Qasim 11%, Brundar 14%, Gretch 13.5% |
-| `below`: the Unsmith with Tamsin, first try 30-40% | 36% (party level 41.1; 38.2 rounds; Tamsin falls in 25% of first tries) |
-| `below-forged`: a forged party with the Masterpiece, the Unsmith <= 20% | 9% |
-| `below`: the road fights <= 10% each | the thralls 0%, their pack 2%, the zone patrol 0%, the unmade 2.5%, the forge-warden 5.5% |
+| `below`: the Hollow Council back to back, 35-45% of runs wipe somewhere in the four | 41% (82 of 200) |
+| `below`: no Council member above 25% (first try) | Miravel 6%, Qasim 13%, Brundar 15.5%, Gretch 11.5% |
+| `below`: the Unsmith with Tamsin, first try 30-40% | 31.5% (party level 41.1; 37.7 rounds; Tamsin falls in 25% of first tries) |
+| `below-forged`: a forged party with the Masterpiece, the Unsmith <= 20% | 7% |
+| `below`: the road fights <= 10% each | the thralls 0%, their pack 1%, the zone patrol 0%, the unmade 3%, the forge-warden 5.5% |
 | zero stuck runs | 0 in every mode (M3's to M7's) |
 | every M3, M4, M4.5, M5 and M6 target unchanged | unchanged: every table from `m2` to `gloom-first-lead`, and the Gate 4, Gate 5 and Gate 6 checks, are the M6 release's number for number (the tables above stand; M3's first tries are still those the M5 section lists: m2 13% / 1% / 33%, direct Tamsin 66% win and Rotwarden 33%, leads2 4%, looper-w2 10%, first-lead 20% / 28% / 23% / 20%) |
 
@@ -1363,22 +1366,22 @@ just beaten the Blackwater Leviathan, at Waking 8 with every Brand held (party l
 
 | node | foes | lvl | win 1st | rounds | hp left | wipe 1st | yield | wipes | claimed | shattered | stuck |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| hollow-miravel | hollow-miravel | 36.7 | 98% | 19.8 | 49% | 3% |  | 6 | 200 |  |  |
-| hollow-qasim | hollow-qasim | 37.4 | 89% | 23.6 | 47% | 11% |  | 22 | 200 |  |  |
-| hollow-brundar | hollow-brundar | 38.3 | 86% | 24.0 | 48% | 14% |  | 28 | 200 |  |  |
-| hollow-gretch | hollow-gretch | 39.0 | 87% | 19.1 | 53% | 14% |  | 29 | 200 |  |  |
-| as-thralls | cinder-thrall+cinder-thrall+cinder-thrall+cinder-thrall | 39.8 | 100% | 10.7 | 70% | 0% |  | 0 |  |  |  |
-| as-patrol | cinder-thrall+cinder-thrall+cinder-thrall | 40.1 | 98% | 10.7 | 70% | 2% |  | 4 |  |  |  |
-| patrol:ash-stair | (zone patrol, 25% ran) | 40.4 | 100% | 7.9 | 76% | 0% |  | 0 |  |  |  |
-| cd-unmade | unmade+unmade+cinder-thrall | 40.5 | 98% | 10.5 | 63% | 3% |  | 5 |  |  |  |
-| wf-warden | forge-warden+cinder-thrall+cinder-thrall | 40.8 | 95% | 15.3 | 62% | 6% |  | 11 |  |  |  |
-| unsmith | unsmith | 41.1 | 64% | 38.2 | 41% | 36% |  | 110 | 600 |  |  |
+| hollow-miravel | hollow-miravel | 36.7 | 94% | 19.9 | 48% | 6% |  | 15 | 200 |  |  |
+| hollow-qasim | hollow-qasim | 37.4 | 87% | 23.6 | 46% | 13% |  | 26 | 200 |  |  |
+| hollow-brundar | hollow-brundar | 38.3 | 85% | 23.3 | 48% | 16% |  | 31 | 200 |  |  |
+| hollow-gretch | hollow-gretch | 39.1 | 89% | 19.5 | 53% | 12% |  | 23 | 200 |  |  |
+| as-thralls | cinder-thrall+cinder-thrall+cinder-thrall+cinder-thrall | 39.9 | 100% | 11.0 | 70% | 0% |  | 0 |  |  |  |
+| as-patrol | cinder-thrall+cinder-thrall+cinder-thrall | 40.1 | 99% | 10.8 | 70% | 1% |  | 2 |  |  |  |
+| patrol:ash-stair | (zone patrol, 27% ran) | 40.4 | 100% | 8.0 | 75% | 0% |  | 0 |  |  |  |
+| cd-unmade | unmade+unmade+cinder-thrall | 40.5 | 97% | 10.4 | 63% | 3% |  | 6 |  |  |  |
+| wf-warden | forge-warden+cinder-thrall+cinder-thrall | 40.8 | 95% | 15.1 | 62% | 6% |  | 11 |  |  |  |
+| unsmith | unsmith | 41.1 | 69% | 37.7 | 41% | 32% |  | 100 | 600 |  |  |
 
-runs cleared 200/200 (stuck 0); end party level 42.1; grind fights/run 4.8
+runs cleared 200/200 (stuck 0); end party level 42.1; grind fights/run 4.7
 hero attack rolls: hit 56%, graze 13%, crit 12%, miss 15%, fumble 4%
-random/worn-gear drops by rarity: worn 64, wrought 215, tempered 731, runed 1302, storied 2037; named relics dropped: 0
+random/worn-gear drops by rarity: worn 65, wrought 213, tempered 740, runed 1388, storied 1964; named relics dropped: 0
 party level entering the Hearth Below: 36.7
-the Hollow Council: 38% of runs wipe somewhere in the group (75 of 200)
+the Hollow Council: 41% of runs wipe somewhere in the group (82 of 200)
 unsmith: Stolen Arts taken 6.0 on average (of 6.0 he could take; the Thief reached in 100% of first tries)
 unsmith: the guest falls in 25% of first tries
 
@@ -1386,22 +1389,22 @@ unsmith: the guest falls in 25% of first tries
 
 | node | foes | lvl | win 1st | rounds | hp left | wipe 1st | yield | wipes | claimed | shattered | stuck |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| hollow-miravel | hollow-miravel | 36.7 | 99% | 13.6 | 52% | 1% |  | 2 | 200 |  |  |
-| hollow-qasim | hollow-qasim | 37.4 | 98% | 15.9 | 53% | 2% |  | 5 | 200 |  |  |
-| hollow-brundar | hollow-brundar | 38.2 | 100% | 13.9 | 57% | 0% |  | 0 | 200 |  |  |
-| hollow-gretch | hollow-gretch | 38.8 | 100% | 12.5 | 65% | 0% |  | 0 | 200 |  |  |
+| hollow-miravel | hollow-miravel | 36.7 | 99% | 13.5 | 52% | 1% |  | 3 | 200 |  |  |
+| hollow-qasim | hollow-qasim | 37.4 | 99% | 15.9 | 53% | 2% |  | 4 | 200 |  |  |
+| hollow-brundar | hollow-brundar | 38.2 | 97% | 13.9 | 58% | 4% |  | 7 | 200 |  |  |
+| hollow-gretch | hollow-gretch | 38.9 | 100% | 12.7 | 63% | 0% |  | 0 | 200 |  |  |
 | as-thralls | cinder-thrall+cinder-thrall+cinder-thrall+cinder-thrall | 39.5 | 100% | 7.9 | 73% | 0% |  | 0 |  |  |  |
-| as-patrol | cinder-thrall+cinder-thrall+cinder-thrall | 39.8 | 100% | 7.4 | 74% | 0% |  | 0 |  |  |  |
-| patrol:ash-stair | (zone patrol, 15% ran) | 40.0 | 100% | 5.3 | 80% | 0% |  | 0 |  |  |  |
-| cd-unmade | unmade+unmade+cinder-thrall | 40.1 | 100% | 7.4 | 67% | 0% |  | 0 |  |  |  |
-| wf-warden | forge-warden+cinder-thrall+cinder-thrall | 40.4 | 100% | 12.0 | 64% | 1% |  | 1 |  |  |  |
-| unsmith | unsmith | 40.7 | 91% | 27.3 | 48% | 9% |  | 23 | 600 |  |  |
+| as-patrol | cinder-thrall+cinder-thrall+cinder-thrall | 39.8 | 100% | 7.5 | 74% | 0% |  | 0 |  |  |  |
+| patrol:ash-stair | (zone patrol, 15% ran) | 40.0 | 100% | 5.3 | 79% | 0% |  | 0 |  |  |  |
+| cd-unmade | unmade+unmade+cinder-thrall | 40.2 | 100% | 7.6 | 67% | 0% |  | 0 |  |  |  |
+| wf-warden | forge-warden+cinder-thrall+cinder-thrall | 40.5 | 98% | 12.1 | 64% | 3% |  | 5 |  |  |  |
+| unsmith | unsmith | 40.7 | 93% | 27.0 | 49% | 7% |  | 16 | 600 |  |  |
 
-runs cleared 200/200 (stuck 0); end party level 41.5; grind fights/run 0.7
-hero attack rolls: hit 75%, graze 4%, crit 13%, miss 4%, fumble 3%
-random/worn-gear drops by rarity: worn 47, wrought 143, tempered 671, runed 1179, storied 1553; named relics dropped: 0
+runs cleared 200/200 (stuck 0); end party level 41.4; grind fights/run 0.6
+hero attack rolls: hit 76%, graze 4%, crit 13%, miss 4%, fumble 3%
+random/worn-gear drops by rarity: worn 48, wrought 135, tempered 675, runed 1174, storied 1587; named relics dropped: 0
 party level entering the Hearth Below: 36.7
 forged: 800 heroes' weapons at +10; 800 gems set (752 in the weapon); the Warden's Masterpiece forged in 200 runs
-the Hollow Council: 3% of runs wipe somewhere in the group (6 of 200)
+the Hollow Council: 6% of runs wipe somewhere in the group (11 of 200)
 unsmith: Stolen Arts taken 6.0 on average (of 6.0 he could take; the Thief reached in 100% of first tries)
-unsmith: the guest falls in 4% of first tries
+unsmith: the guest falls in 3% of first tries
