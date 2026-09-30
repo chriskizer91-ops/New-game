@@ -2,7 +2,7 @@
 // face right, toward the party); beasts are built from lit vector parts like the item recipes.
 //
 // renderFoe(key, { tier, gearTier, relic, relicHeld, phase, pose, t, broken, flip, reduced, tint }) -> ImageData
-//   tier      'rabble' | 'veteran' | 'relic-bearer' | 'champion' (or 0..3)
+//   tier      'rabble' | 'veteran' | 'relic-bearer' | 'champion' (or 0..3); M7's 'hollow' and 'unsmith' count as 'champion'
 //   gearTier  0..3: the Waking re-gear. Humanoids swap visible gear; beasts grow thornier and rot.
 //   relic     relic id carried (defaults to FOE_ART[key].relic); drawn from RELIC_ART, the same art as the card
 //   relicHeld false once the relic is disarmed: it disappears from the sprite
@@ -23,7 +23,7 @@
 // the Drowned Abbess, the Thunder-Roc); and two Champions whose pieces are their relics' own art, each gone once
 // snapped off (Mother Anvil: the Worldforge Hammer and the Anvil Heart; the Rime-Abbot: the Rime Crozier and the
 // Hushweave Cowl). Their gear tiers 0-3 are the Waking.
-import { Forge, Xf, compose, vnoise, hash } from './forge.js';
+import { Forge, Xf, compose, vnoise, hash, MAT, mix } from './forge.js';
 import { RECIPE, TX, TX2 } from './recipes.js';
 import { ART, rimeTex } from './item-art.js';
 import { heroForge, posePreset, paintFace, BUILD, FRAME_BATTLE } from './heroes.js';
@@ -31,7 +31,7 @@ import { RELIC_ART, gearLooks, itemArt, stagedArt, awakenMotes } from './item-lo
 import { FOES } from '../data/foes.js';
 import { lru } from './cache.js';
 
-const TIERS = { rabble: 0, veteran: 1, 'relic-bearer': 2, bearer: 2, relic: 2, champion: 3 };
+const TIERS = { rabble: 0, veteran: 1, 'relic-bearer': 2, bearer: 2, relic: 2, champion: 3, hollow: 3, unsmith: 3 }; // M7: the two new tiers draw as a Champion's
 export const tierNum = t => (typeof t === 'number' ? t : TIERS[t] ?? 0);
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
@@ -586,13 +586,17 @@ function humanoidM3(def, o) {
   const gear = Object.assign({}, T); delete gear.H;
   if (tier >= 1 && def.veteran) Object.assign(gear, def.veteran.gear);
   if (def.wear) { const a = relicArt(def.wear), s = relicSlot(def.wear); if (a && s) gear[s] = a; }
-  const relic = o.relic === undefined ? def.relic : o.relic, held = o.relicHeld !== false, slot = relic ? relicSlot(relic) : null;
+  const relic = o.relic === undefined ? def.relic : o.relic, slot = relic ? relicSlot(relic) : null;
+  const held = o.relicHeld !== false && !(def.relics && relic && (o.broken || []).includes(relic)); // M7: a snapped piece is gone
   if (relic && !held && slot === 'weapon') gear.weapon = null; // the relic clattered away
   if (relic && held && slot) gear[slot] = relicArt(relic);
   // M6: pieces worn besides the one held (`wears`: Tamsin's Bogstriders on Rotbridge); the held relic keeps its slot
   if (o.wears) for (const w of [].concat(o.wears)) { const a = relicArt(w), s = relicSlot(w); if (a && s && w !== relic && !(relic && held && s === slot)) gear[s] = a; }
   // a kindled kit (Tamsin at Scorchgate, gearTier 4): everything she carries has the Kindled stage's ember rim
   if (T.kindle) for (const s of Object.keys(gear)) if (gear[s] && gear[s].p) gear[s] = stagedArt(gear[s], 'kindled');
+  // M7: a look that changes with the phase and with its piece (the Hollow Council: grey while the gift holds them, ash in
+  // their second phase, the violet light gone once the gift is off)
+  if (def.phased) def.phased(H, gear, { phase: clamp(o.phase || 1, 1, 3), held: !!(relic && held), gT: gt });
   return { H, gear, relic, held, relicSlotName: relic && held && slot ? slot : null };
 }
 const capsX = (X, pts, rs) => { const S = []; for (let k = 0; k < pts.length - 1; k++) S.push(X.cap(pts[k][0], pts[k][1], pts[k + 1][0], pts[k + 1][1], Array.isArray(rs) ? rs[k] : rs, Array.isArray(rs) ? rs[k + 1] : rs)); return S; };
@@ -1900,8 +1904,8 @@ Object.assign(FOE_ART, {
 // Tamsin at Scorchgate (spec §3.5): gearTier 4 is her kindled look, the M3 gearTier 3 kit with the Kindled stage's
 // ember rim on everything she carries (her lent starter too) and ember motes rising off her
 FOE_ART.tamsin.gear.push(Object.assign({}, FOE_ART.tamsin.gear[3], { kindle: true, head: A('circlet', { look: 'circlet', mat: 'gold', gem: 'ember' }), body: A('mail', { mat: 'steel', trim: 'gold', belt: 'leatherDark', pauldrons: 'steel', glyph: 'ember' }), H: { mantle: 'cloakRed' } }));
-FOE_ART.tamsin.motes = (t, a, gT) => (gT >= 4 ? awakenMotes(t, { x: (a.center || [32, 36])[0] - 12, y: (a.center || [32, 36])[1] - 24, w: 24, h: 36 }, { n: 7 }) : null);
-FOE_ART.tamsin.aura = (gT, t) => (gT >= 4 ? [[255, 146, 58], 2, .34 + .08 * Math.sin(t * 3)] : null); // a faint ember halo
+FOE_ART.tamsin.motes = (t, a, gT) => (gT >= 5 ? bargainMotes(t, a) : gT >= 4 ? awakenMotes(t, { x: (a.center || [32, 36])[0] - 12, y: (a.center || [32, 36])[1] - 24, w: 24, h: 36 }, { n: 7 }) : null); // M7: gT 5, the finale (below)
+FOE_ART.tamsin.aura = (gT, t) => (gT >= 5 ? [[150, 92, 214], 1, .3 + .06 * Math.sin(t * 2)] : gT >= 4 ? [[255, 146, 58], 2, .34 + .08 * Math.sin(t * 3)] : null); // a faint ember halo (M7, gT 5: the Bargain's violet)
 
 /* =====================================================================
    M5 · THE IRONSPIRE PEAKS (spec §3.2, §3.5, §6.2): the families of the mountains, their named holders and variants,
@@ -3867,6 +3871,574 @@ Object.assign(FOE_ART, {
   }),
 });
 
+/* =====================================================================
+   M7 · THE HEARTH BELOW (spec §3.2, §6.2): the Hollow Council, the Unsmith, the cinder-thralls, the unmade and the
+   forge-warden, and Tamsin's look at the finale (gear tier 5), when she fights beside the party
+   ===================================================================== */
+/* ---- THE HOLLOW COUNCIL (hollow tier; on the rig, as their own NPC looks, corrupted): Elder Miravel in the Hollow
+   Wreath, Cistern Lord Qasim with the Hollow Chalice, Thane Brundar in the Hollow Gauntlet, Mayor Gretch in the Hollow
+   Chain. While the gift holds them their skin is grey, the violet light is in their eyes and round them, and the gift
+   glows violet-black (drawn from its relic's recipe); in their second phase (at half) the grey goes to ash and cracks,
+   and each one's own story shows: Miravel's thorns, Qasim's drought, Brundar's iron, Gretch's fear and favours. The
+   gift snapped off is gone, and the violet light with it; the grey stays. ---- */
+// their own skin gone grey (m7.hollow.<skin>), and in the second phase going to ash (m7.ash.<skin>): each registered
+// once, a mix of the person's own ramp toward the hollow one
+function hollowSkin(skin, ash) {
+  const key = (ash ? 'm7.ash.' : 'm7.hollow.') + skin;
+  if (!MAT[key]) { const b = MAT[skin] || MAT.skin, g = MAT[ash ? 'm7.ashskin' : 'm7.hollowskin'].pal; MAT[key] = Object.assign({}, b, { pal: b.pal.map((c, i) => mix(c, g[i], ash ? .8 : .64).map(Math.round)) }); }
+  return key;
+}
+const HOLLOW_EYE = ['#d6b0fc', '#f6e8ff'];
+// the gift's hold on its wearer: grey skin (ash in the second phase), the violet light in the eyes while it holds;
+// own.dress(H, gear, { phase, held }) is the person's own changes
+const hollowed = own => (H, gear, st) => {
+  const sk = hollowSkin(own.skin, st.phase >= 2);
+  for (const k of ['skin', 'gloves', 'boots']) if (H[k] === own.skin) H[k] = sk;
+  H.eye = st.held ? HOLLOW_EYE[st.phase >= 2 ? 1 : 0] : own.eye;
+  H.giftHeld = st.held; // read by the pose hooks
+  if (own.dress) own.dress(H, gear, st);
+};
+// the second phase: the ash cracks (lit violet while the gift holds them)
+const ashCracks = lit => ({ x, y }) => { const n = Math.abs(vnoise(x * .24, y * .24, 701) - .5); return n < .05 ? (lit ? { m: 'm7.violet', dd: -1.9 } : { m: 'dark', dd: 0 }) : hash(x, y, 702) < .07 ? -1 : 0; };
+// rig-space briars: a black thorn vine along pts, thorns on alternate sides
+function briar(c, pts, r, n, grp) {
+  const { X } = c, S = capsX(X, pts, r);
+  for (let k = 0; k < n; k++) {
+    const u = (k + .5) / n, i = Math.min(pts.length - 2, Math.floor(u * (pts.length - 1))), f = u * (pts.length - 1) - i;
+    const dx = pts[i + 1][0] - pts[i][0], dy = pts[i + 1][1] - pts[i][1], l = Math.hypot(dx, dy) || 1, ux = dx / l, uy = dy / l, sd = k & 1 ? 1 : -1;
+    const x = pts[i][0] + dx * f, y = pts[i][1] + dy * f;
+    S.push(X.poly([[x - ux * .7, y - uy * .7], [x - uy * sd * 2.3 + ux * .9, y + ux * sd * 2.3 + uy * .9], [x + ux * .7, y + uy * .7]]));
+  }
+  c.F.add({ X, mat: 'm7.blackthorn', prof: 'round', bw: .7, grp, shapes: S, tex: () => -.4 });
+}
+// what every one of them has: the cracks, and the light in the eyes (under the face painter's eyes)
+function hollowX(c) {
+  const { F, X, j, H, phase, lie } = c, lit = !!(c.relic && c.held);
+  if (phase >= 2) for (const p of F.parts) if (p.mat === H.skin || p.mat === H.gloves) { const t0 = p.tex; p.tex = q => ashCracks(lit)(q) || (t0 ? t0(q) : 0); }
+  if (lit && !lie) {
+    const [hx0, hy0] = j.hc, ey = Math.round(hy0 + .1), r = phase >= 2 ? 1.05 : .75;
+    F.add({ X, mat: 'm7.violet', prof: 'flat', grp: 'eyeglow', noShadow: true, noOutline: true, shapes: [X.circ(Math.round(hx0 - 4) + .5, ey + 1, r), X.circ(Math.round(hx0 + 3) + .5, ey + 1, r)], tex: () => -1.2 });
+  }
+}
+// the gift's glint: every Council member's one piece is `relics[0]`, so the battle screen snaps it like a Champion's
+const giftPt = (c, p) => { c.anchors.relic = p; c.anchors.relics = [p]; };
+// the violet light round them while the gift holds (it goes out when the gift is snapped off)
+const hollowAura = gift => (gT, t, o = {}) => (o.relic === null || o.relicHeld === false || (o.broken || []).includes(gift) ? null
+  : [[172, 108, 238], (o.phase || 1) >= 2 ? 3 : 2, ((o.phase || 1) >= 2 ? .36 : .26) + .06 * Math.sin(t * 2.4)]);
+// ash drifting up off them and violet sparks, while the gift holds (the gift's glint point is there only then)
+const hollowMotes = (t, a, gT, phase = 1) => {
+  if (!a.relic) return null;
+  const out = [], c = a.center || [32, 36], n = phase >= 2 ? 8 : 5;
+  for (let k = 0; k < n; k++) { const ph = (t * (.22 + hash(k, 2, 703) * .14) + hash(k, 3, 703)) % 1; out.push({ x: c[0] - 10 + hash(k, 1, 703) * 20 + Math.sin(t * 1.4 + k) * 2, y: c[1] + 18 - ph * 46, c: k % 3 ? [150, 144, 158] : [200, 140, 248], a: Math.sin(ph * Math.PI) * .8 }); }
+  return out;
+};
+
+// Elder Miravel: the Hollow Wreath on her head (a circlet of black thorns, from its recipe), her gnarled staff gone to
+// dead grey wood with a violet-black stone in its roots, her bark robe and moss mantle gone grey. Her thorns (phase 2):
+// black briars grow out of the wreath, down past her face and over her shoulders and arms, and round her staff
+function miravelX(c) {
+  hollowX(c);
+  const { F, X, j, b, drawn, lie, phase } = c, [hx0, hy0] = j.hc;
+  if (drawn) { const big = Object.assign({}, drawn, { p: Object.assign({}, drawn.p, { thornK: 1.7, tips: 'm7.violet' }) }), m = drawItem(F, big, X.P(hx0 + .1, hy0 - 3.6), Math.atan2(X.ay, X.ax), .34, { center: [32, 38] }); giftPt(c, m([32, 47])); }
+  if (phase >= 2 && drawn && !lie) {
+    const cx = j.cx, lean = j.lean;
+    briar(c, [[hx0 - 6.4, hy0 - 3.4], [hx0 - 7.6, hy0 + 2], [hx0 - 6.4, hy0 + 7.4], [cx - b.shW - .4 + lean, j.sh + 1.4], [cx - b.shW - 1.6 + lean, j.sh + 7.4], [j.hL[0] + 1.2, j.hL[1] - 2.6]], [.8, .75, .7, .7, .6, .5], 7, 'briarN');
+    briar(c, [[hx0 + 6.6, hy0 - 3], [hx0 + 7.8, hy0 + 3], [cx + b.shW + .8 + lean, j.sh + 2], [cx + b.shW + 1.6 + lean, j.sh + 9]], [.75, .7, .65, .5], 5, 'briarF');
+  }
+}
+// Cistern Lord Qasim: a big man in a white turban (gone grey) with a stone at its front, his teal cloak gone slate;
+// the Hollow Chalice held out before him in his hand (from its recipe), drinking. His drought (phase 2): his skin dries
+// and cracks like a dry cistern's floor, his cloak and robes gone to dust
+function qasimX(c) {
+  hollowX(c);
+  const { F, X, j, drawn, lie, H } = c, [hx0, hy0] = j.hc;
+  // the turban: a wound dome of cloth over the head, its tail hanging behind, a stone at the front
+  const tm = H.turban || 'clothWhite', gem = c.relic && c.held ? 'm7.voidglass' : 'seaglass';
+  F.add({ X, mat: tm, prof: 'round', bw: 2.6, grp: 'turban', shapes: [X.ell(hx0 + .4, hy0 - 3.6, 7.8, 6.2)], clip: X.poly([[hx0 - 12, hy0 - 16], [hx0 + 12, hy0 - 16], [hx0 + 12, hy0 - 1.2], [hx0 - 12, hy0 - 1.2]]), tex: ({ x, y }) => (((x + y * 2) % 5 + 5) % 5 === 0 ? -1.2 : (x + y) % 7 === 0 ? .8 : 0) });
+  F.add({ X, mat: tm, prof: 'round', bw: 1.2, grp: 'turbantail', shapes: capsX(X, [[hx0 + 6.4, hy0 - 2.4], [hx0 + 8.2, hy0 + 2.6], [hx0 + 7.6, hy0 + 8]], [1.5, 1.3, 1]) });
+  F.add({ X, mat: gem, prof: 'round', bw: 1, grp: 'turbangem', noShadow: true, shapes: [X.circ(hx0 - 6.4, hy0 - 4.6, 1.15)] });
+  if (drawn && !lie) { const h = j.hL, m = drawItem(F, drawn, X.P(h[0] - .2, h[1] - .6), Math.atan2(X.ay, X.ax), .3, { center: [32, 52] }); giftPt(c, m([32, 24])); }
+  else if (drawn) { const m = drawItem(F, drawn, X.P(j.hL[0], j.hL[1] + 1.4), Math.atan2(X.ay, X.ax), .26, { center: [32, 40] }); giftPt(c, m([32, 24])); }
+}
+// the chalice held out before him, up at the height of his chest (thrust at you when he strikes); his other hand open
+const qasimPose = (P, { pose, b, H }) => {
+  if (pose === 'ko' || !H.giftHeld) return;
+  P.hL = pose === 'attack' ? [b.hL[0] - 5.4, b.hL[1] - 9] : pose === 'hurt' ? [b.hL[0] + 1, b.hL[1] - 4] : [b.hL[0] - 2.4, b.hL[1] - 6.6];
+};
+// Thane Brundar: a dwarf in iron plate under his red cloak, his iron crown with a violet-black stone where the ruby was,
+// his braided beard with its gold clasp, his axe; the Hollow Gauntlet on his hands (the rig draws it from its look),
+// talons at its fingertips and its light in the veins. His iron (phase 2): the gauntlet's iron climbing his arms and
+// shards of it breaking out of his shoulders
+function brundarX(c) {
+  hollowX(c);
+  const { F, X, j, b, lie, phase, H } = c, [hx0, hy0] = j.hc, lit = !!(c.relic && c.held);
+  // the beard's braid and its clasp
+  if (!lie) {
+    F.add({ X, mat: H.hairMat, prof: 'round', bw: 1, grp: 'braid', shapes: capsX(X, [[hx0, hy0 + 15.6], [hx0 - .4, hy0 + 18.6], [hx0 + .2, hy0 + 21]], [1.5, 1.2, .9]), tex: ({ x, y }) => ((x + y) % 2 === 0 ? -1 : 0) });
+    F.add({ X, mat: 'gold', prof: 'round', bw: .8, grp: 'braidclasp', shapes: [X.cap(hx0 - 1.3, hy0 + 17.2, hx0 + 1.1, hy0 + 17.2, .9)] });
+  }
+  if (lit) {
+    // the gauntlet's talons and the light in its veins, on both hands
+    for (const [h, g] of [[j.hL, 'talonsN'], [j.hR, 'talonsF']]) {
+      F.add({ X, mat: 'm7.blackthorn', prof: 'ridge', grp: g, shapes: [[-2.6, -.6], [-2.4, 1.2], [-1.2, 2.2]].map(([dx, dy]) => X.poly([[h[0] + dx + .7, h[1] + dy - .6], [h[0] + dx - 1.8, h[1] + dy + .9], [h[0] + dx + .7, h[1] + dy + .8]])) });
+      F.add({ X, mat: 'm7.violet', prof: 'flat', grp: g + 'veins', noShadow: true, shapes: [X.cap(h[0] + .4, h[1] - 1, h[0] - .8, h[1] + .8, .35)] });
+    }
+    giftPt(c, c.anchors.handL);
+  }
+  if (phase >= 2 && lit && !lie) {
+    const cx = j.cx, lean = j.lean, S = [];
+    for (const [x, y, dx, dy, l] of [[cx - b.shW + lean, j.sh - .6, -.6, -1, 5.4], [cx - b.shW + 2 + lean, j.sh - 1.4, -.1, -1, 4.2], [cx + b.shW - 1 + lean, j.sh - 1, .5, -1, 4.8], [cx + b.shW + 1 + lean, j.sh + 2.6, 1, -.4, 3.6]]) { const n = Math.hypot(dx, dy); S.push(X.poly([[x - dy / n * 1.3, y + dx / n * 1.3], [x + dx / n * l, y + dy / n * l], [x + dy / n * 1.3, y - dx / n * 1.3]])); }
+    F.add({ X, mat: 'm7.voidiron', prof: 'ridge', hs: .9, grp: 'ironshards', shapes: S });
+    for (const [h, a, g] of [[j.hL, j.aL, 'ironN'], [j.hR, j.aR, 'ironF']]) F.add({ X, mat: 'm7.voidiron', prof: 'round', bw: 1, grp: g, shapes: [X.cap(h[0] + (a[0] - h[0]) * .15, h[1] + (a[1] - h[1]) * .15, h[0] + (a[0] - h[0]) * .7, h[1] + (a[1] - h[1]) * .7, 1.9, 1.6)], tex: ({ x, y }) => (y % 3 === 0 ? -1 : Math.abs(vnoise(x * .4, y * .4, 704) - .5) < .06 ? { m: 'm7.violet', dd: -1.6 } : 0) });
+  }
+}
+// Mayor Gretch: a stout older woman in her red gown (gone dull), the fur on her shoulders, her mace of office; the Hollow
+// Chain on her chest where her own chain of office hung (from its recipe). Her fear and favours (phase 2): the chain grows
+// long and heavy, its links wound round her and trailing to the floor, and the favours she called in are pinned to her
+// gown, each sealed in violet
+function gretchX(c) {
+  hollowX(c);
+  const { F, X, j, b, drawn, lie, phase } = c, cx = j.cx, lean = j.lean;
+  if (drawn) { const at = X.P(cx + (lie ? 0 : lean * .6), j.sh + 3.2), m = drawItem(F, drawn, at, Math.atan2(X.ay, X.ax), .3, { center: [32, 30] }); giftPt(c, m([32, 45])); }
+  if (phase >= 2 && drawn && !lie) {
+    const links = []; let k = 0;
+    const run = pts => { for (let i = 0; i < pts.length - 1; i++) { const [a0, a1] = pts[i], [b0, b1] = pts[i + 1], n = Math.max(1, Math.round(Math.hypot(b0 - a0, b1 - a1) / 1.6)); for (let q = 0; q < n; q++, k++) { const u = q / n, x = a0 + (b0 - a0) * u, y = a1 + (b1 - a1) * u; links.push(k & 1 ? X.ell(x, y, .6, 1) : X.ell(x, y, 1, .6)); } } };
+    run([[cx + lean * .6, j.sh + 9.4], [cx - 1.4, j.wa + 2], [cx - b.skW * .7, j.wa + 7], [cx - b.skW - 1, 44.6], [cx - b.skW - 3.6, 46.2]]);
+    run([[cx - b.waW - .6, j.wa - .4], [cx - 1, j.wa + .8], [cx + b.waW + .6, j.wa - .2]]);
+    F.add({ X, mat: 'm7.voidiron', prof: 'round', bw: .6, grp: 'favourchain', shapes: links });
+    const slips = [[cx - 3.4, j.wa + 5.2, -.3], [cx + 2.6, j.wa + 8.6, .25], [cx - 1, j.wa + 11.6, -.1]];
+    F.add({ X, mat: 'parchment', prof: 'round', bw: .6, grp: 'favours', shapes: slips.map(([x, y, a]) => X.poly([[x - 1.4, y - 1.8 + a * 2], [x + 1.4, y - 1.8 - a * 2], [x + 1.4, y + 1.8 - a * 2], [x - 1.4, y + 1.8 + a * 2]])), tex: ({ y }) => (y % 2 === 0 ? -1 : 0) });
+    F.add({ X, mat: 'm7.violet', prof: 'flat', grp: 'favourseals', noShadow: true, shapes: slips.map(([x, y]) => X.circ(x, y + .6, .6)) });
+  }
+}
+const gretchPose = hunch(.4);
+// their own things, hollowed
+const hollowStaff = A('staff', { style: 'gnarl', headT: 60, haft: 'm7.deadwood', haftR: 2.05, wobble: 1.1, crystal: 'm7.voidglass', leaves: 'm7.husk', wrap: 'm7.blackthorn', wrapA: 26, wrapB: 40, foot: 'blackiron' });
+const thaneAxe = A('axe', { headT: 47, bladeLo: 13, bladeHi: 8.5, bladeW: 16, bulge: 3, back: 'spike', spikeL: 5.5, haft: 'bogwood', haftR: 2.2, wrap: 'leatherDark', wrapEnd: 16, bands: [22], bandMat: 'iron', blade: 'steel', socket: 'iron', edge: null });
+const mayorMace = A('mace', { style: 'knob', headT: 50, headW: 6, haft: 'm7.voidiron', haftR: 1.8, wrap: 'leatherRed', wrapEnd: 14, bands: [37], bandMat: 'bronze', headMat: 'bronze', pommelR: 2.4, gem: 'm7.voidglass' });
+const COUNCIL = (name, gift, o) => H3(name, 'champion', Object.assign({ relic: gift, relics: [gift], phases: 2, glow: () => 'm7.violet', aura: hollowAura(gift), motes: hollowMotes }, o));
+Object.assign(FOE_ART, {
+  'hollow-miravel': COUNCIL('Hollow Miravel', 'hollow-wreath', {
+    drawSlot: 'head',
+    H: { build: 'human', skin: 'skinTan', hairMat: 'hairSilver', hair: 'long', ears: 'long', eye: '#5a3a10', mantle: 'm7.husk', gloves: 'skinTan', boots: 'bark', tunic: 'robeBark', pants: 'robeBark', cloak: 'rotwood' },
+    gear: [{ weapon: hollowStaff, body: A('robe', { mat: 'robeBark', trim: 'm7.deadwood', sash: 'clothGrey' }) }],
+    phased: hollowed({ skin: 'skinTan', eye: '#5a3a10' }),
+    extra: miravelX,
+  }),
+  'hollow-qasim': COUNCIL('Hollow Qasim', 'hollow-chalice', {
+    drawSlot: 'offhand', pose: qasimPose,
+    H: { build: 'brute', skin: 'skinDeep', hairMat: 'hairBlack', hair: 'short', beard: true, eye: '#1a1a1a', cloak: 'clothSlate', mantle: 'clothSlate', gloves: 'skinDeep', boots: 'leatherRed', tunic: 'hushweave', turban: 'hushweave' },
+    gear: [{ body: A('robe', { mat: 'hushweave', trim: 'gold', sash: 'clothSlate' }) }],
+    phased: hollowed({ skin: 'skinDeep', eye: '#1a1a1a', dress: (H, gear, { phase }) => { if (phase >= 2) { H.cloak = 'sand'; H.mantle = 'sand'; H.turban = 'ash'; gear.body = A('robe', { mat: 'ash', trim: 'gold', sash: 'sand' }); } } }),
+    extra: qasimX,
+  }),
+  'hollow-brundar': COUNCIL('Hollow Brundar', 'hollow-gauntlet', {
+    H: { build: 'dwarf', skin: 'skinTan', hairMat: 'hairAuburn', hair: 'long', beard: true, eye: '#2a2030', cloak: 'cloakRed', mantle: 'grizzle', gloves: 'leatherDark', boots: 'blackiron' },
+    gear: [{ weapon: thaneAxe, head: A('crown', { style: 'regal', metal: 'iron', gem: 'm7.voidglass' }), body: A('plate', { mat: 'iron', trim: 'gold' }) }],
+    phased: hollowed({ skin: 'skinTan', eye: '#2a2030' }),
+    extra: brundarX,
+  }),
+  'hollow-gretch': COUNCIL('Hollow Gretch', 'hollow-chain', {
+    drawSlot: 'amulet', pose: gretchPose,
+    H: { build: 'brute', skin: 'skinPale', hairMat: 'hairSilver', hair: 'bun', eye: '#2a2030', cloak: 'wolfFur', mantle: 'bronze', gloves: 'leatherDark', boots: 'leatherDark' },
+    gear: [{ weapon: mayorMace, body: A('robe', { mat: 'robeRed', trim: 'bronze', sash: 'leatherDark' }) }],
+    phased: hollowed({ skin: 'skinPale', eye: '#2a2030', dress: (H, gear, { phase }) => { if (phase >= 2) gear.body = A('robe', { mat: 'robeRed', trim: 'm7.voidiron', sash: 'm7.voidiron', glyph: 'm7.violet' }); } }),
+    extra: gretchX,
+  }),
+});
+
+/* ---- THE UNSMITH (unsmith tier; 96x96, ground 93): Harrow Ironvein, Hilda's twin. A tall, broad smith: his sister's
+   copper hair cut short and going grey at the temples, a copper beard, soot on him; a boatman's cloak over a smith's
+   leather apron, the hammer-in-a-broken-ring mark on the cloak's clasp. His three pieces are their relics' own art,
+   each gone when it is snapped off: the Unmaking Hammer in his hand (then an empty fist), the Ironvein Apron (then the
+   scorched shirt under it), the Worldforge Heart in his chest (then a cold hole). The Smith (1): the hammer, the heart's
+   light only leaking at his collar. The Thief (2): hung with the relics you never claimed, each on a chain from his
+   cloak and belt, glinting (o.stolen, their ids, when the battle screen passes them; else the glint of stolen things).
+   The Worldforge (3): the heart burning in his chest through the burnt bib, the fire running out along his veins, his
+   eyes gone to molten metal, the hem of his cloak smouldering. Beaten, he goes down on one knee, the hammer dropped,
+   and looks up. ---- */
+// what he took, when the battle screen does not say: six stolen things of the kinds he likes to take
+const STOLEN_ANY = [['ring', 'ember', 11], ['amulet', 'radiant', 12], ['dagger', 'frost', 13], ['focus', 'verdant', 14], ['circlet', 'tide', 15], ['sword', 'storm', 16]];
+const stolenArts = new Map();
+function stolenArt(i, id) {
+  const key = id || '#' + i;
+  if (!stolenArts.has(key)) {
+    let a = id ? relicArt(id) : null;
+    if (!a) { const [kind, aspect, seed] = STOLEN_ANY[i % STOLEN_ANY.length]; a = itemArt({ kind, rarity: 'heirloom', aspect, seed }); }
+    stolenArts.set(key, a && RECIPE[a.r] ? a : null);
+  }
+  return stolenArts.get(key);
+}
+function unsmith(F, st) {
+  const { pose, f, phase, broken, held } = st, A = st.anchors, P2 = phase === 2, P3 = phase >= 3, idle = !pose || pose === 'idle', lie = pose === 'ko', atk = pose === 'attack', hurt = pose === 'hurt';
+  const on = id => held && !broken.includes(id) && !!relicArt(id);
+  const hamOn = on('unmaking-hammer'), apronOn = on('ironvein-apron'), heartOn = on('worldforge-heart');
+  const skinM = 'skin', hairM = 'hairCopper', cloakM = 'm7.boatcloak', shirtM = 'clothGrey', legM = 'leatherDark';
+  const by = idle ? f * .8 : 0, kneel = lie ? 15 : 0;
+  // the joints: hips, shoulders, the head, both arms, the lean of the upper body
+  let lean = 0, head = [47.4, 18.6 + by], tilt = 0, eye = 'open';
+  let nearArm = [[63.4, 33], [70, 45.6], [69.4, 56.4]], farArm = [[30.6, 33], [26.4, 46], [27.6, 57.6]], hamDir = -Math.PI / 2 + .36;
+  if (atk) { lean = 3.4; head = [52, 21]; nearArm = [[66, 34], [70.4, 44.6], [71.2, 54.4]]; farArm = [[33, 34], [27, 44], [23, 51]]; hamDir = 1.36; }
+  else if (hurt) { lean = -3; head = [44, 19.4]; tilt = -.18; eye = 'shut'; nearArm = [[61, 33], [68, 42], [69, 33]]; farArm = [[28, 33], [23.6, 44], [31, 42]]; hamDir = -Math.PI / 2 - .5; }
+  else if (lie) { head = [49.4, 19.6]; tilt = -.26; nearArm = [[63.4, 33], [70, 45], [72.6, 55.4]]; farArm = [[30.6, 33], [27, 45], [34, 53.6]]; }
+  const U = p => [p[0] + lean * (62 - p[1]) / 30, p[1] + (p[1] < 62 ? by : 0) + kneel]; // the upper body leans from the hips
+  const skinT = seed => ({ x, y }) => (hash(x, y, seed) < .1 ? { m: 'char', dd: 1 } : 0); // soot
+  const cloakT = far => ({ x, y }) => { const n = Math.sin(x * .8 + vnoise(x * .08, y * .06, 711) * 7); let r = n > .82 ? -1 : n < -.9 ? .7 : 0; if (P3 && y > (lie ? 88 : 80) && hash(x, y, 712) < .22) return { m: 'ember', dd: -1.2 }; return r + (far ? -1 : 0); };
+  const limb = (pts, rs, mat, grp, tex) => F.add({ mat, prof: 'round', bw: Math.max(1.4, rs[0] * .6), grp, shapes: chainC(pts, rs), tex });
+  const hand = (h, dir, grp, fist, far) => { const S = [circ(h, 2.6)]; if (!fist) for (const [a, l] of [[-.45, 4], [0, 4.6], [.4, 4.2], [.8, 3.2]]) { const d = rot2(dir, a); S.push(cap(h, [h[0] + d[0] * l, h[1] + d[1] * l], 1.1, .8)); } else S.push(ell([h[0] + dir[0] * 1.6, h[1] + dir[1] * 1.6], 2.6, 2.2)); F.add({ mat: skinM, prof: 'round', bw: 1.4, grp, shapes: S, tex: far ? DARK : skinT(713) }); };
+  const boot = (a, grp, far, flat) => F.add({ mat: 'leatherDark', prof: 'round', bw: 2, grp, shapes: [poly([[a[0] - 4, a[1] - 5], [a[0] + 3.4, a[1] - 5], [a[0] + 4.2, a[1] - 1.6], [a[0] + 8, a[1] + .2], [a[0] + 8.4, a[1] + 3.4], [a[0] - 4.4, a[1] + 3.4]].map(p => (flat ? [p[0], p[1] + (a[1] + 3.4 > 93 ? 93 - a[1] - 3.4 : 0)] : p)))], tex: far ? DARK : ({ x }) => (x % 4 === 0 ? -1 : 0) });
+  // the cloak behind him: a tarred boatman's cloak from the shoulders to the calf, its lining just showing
+  const hem = []; for (let k = 0; k <= 11; k++) { const x = 21.6 + k * 4.6, y = (lie ? 92 : 84.6) + (k & 1 ? 1.6 : -.4) + hash(k, 1, 714) * 1.4; hem.push([x, Math.min(93, y)]); }
+  F.add({ mat: cloakM, prof: 'round', bw: 5, hs: .8, grp: 'cloakback', shapes: [poly([U([27, 30]), U([67, 30]), U([72.4, 42]), [74.6 + lean * .3, 62 + kneel * .5], ...hem.slice().reverse(), [19.6, 62 + kneel * .5], U([22.6, 42])])], tex: cloakT(true) });
+  // the legs: standing wide, or down on one knee
+  if (!lie) {
+    const fl = atk ? [[41, 62], [37, 75], [34, 88]] : [[41, 62], [39.4, 75.6], [38.4, 88]], nl = atk ? [[53, 62], [59, 74], [61, 88]] : [[53, 62], [55.6, 75.6], [57, 88]];
+    limb(fl, [4.2, 3.8, 3.2], legM, 'legF', DARK); boot(fl[2], 'bootF', true);
+    limb(nl, [4.2, 3.8, 3.2], legM, 'legN', ({ x, y }) => ((x + y) % 7 === 0 ? -1 : 0)); boot(nl[2], 'bootN', false);
+  } else {
+    limb([[42, 77], [37.6, 88.6], [26.4, 89.6]], [4.2, 3.8, 3.2], legM, 'legF', DARK); F.add({ mat: 'leatherDark', prof: 'round', bw: 2, grp: 'bootF', shapes: [poly([[27.6, 86.4], [19.6, 87.4], [19.4, 92.6], [27.8, 92.6]])], tex: DARK });
+  }
+  // the far arm, behind him
+  const fa = farArm.map(U), na = nearArm.map(U);
+  limb([fa[0], fa[1]], [3.8, 3.4], shirtM, 'armFu', DARK); limb([fa[1], fa[2]], [3.2, 2.6], skinM, 'armFl', DARK);
+  hand(fa[2], atk ? [-.6, .8] : [.1, 1], 'handF', !atk, true);
+  // the body: a dark shirt, sleeves to the elbow, a belt with the tongs on it
+  F.add({ mat: shirtM, prof: 'round', bw: 5, hs: .7, grp: 'torso', shapes: [poly([U([29, 31]), U([65, 31]), U([63, 46]), U([59.4, 63]), U([35, 63]), U([31, 46])])], tex: ({ x, y }) => (P3 && !apronOn && Math.abs(vnoise(x * .2, y * .2, 715) - .5) < .04 ? { m: 'm7.molten', dd: -1.6 } : (x * 2 + y) % 9 === 0 ? -1 : 0) });
+  F.add({ mat: 'leather', prof: 'round', bw: 1.2, grp: 'belt', shapes: [cap(U([34.6, 60.6]), U([59.6, 60.6]), 1.6)] });
+  F.add({ mat: 'iron', prof: 'round', bw: .8, grp: 'tongs', shapes: [cap(U([35.6, 61]), U([32.8, 73]), .8, .6), cap(U([37, 61]), U([35.6, 73.4]), .8, .6)] });
+  // the apron (from its recipe, without its waist-ties), or the scorched shirt where it was
+  const ap = U([47, 56]);
+  if (apronOn) { const m = drawItem(F, relicArt('ironvein-apron'), ap, lean * .03, .84, { center: [32, 36], drop: ['ties'] }); A.apron = m([32, 22]); }
+  else F.add({ mat: 'char', prof: 'flat', grp: 'scorch', noShadow: true, shapes: [ell(U([45.4, 44]), 5, 6), ell(U([51, 55]), 3.6, 4)], tex: ({ x, y }) => (hash(x, y, 716) < .5 ? -1 : 0) });
+  // kneeling, the near knee is up before the apron and its foot planted in front
+  if (lie) { limb([[54, 77], [64, 76.4], [65.4, 88.6]], [4.4, 4, 3.3], legM, 'legN', ({ x, y }) => ((x + y) % 7 === 0 ? -1 : 0)); boot([65.4, 88.8], 'bootN', false); }
+  // the heart: behind his collar (its light leaking), or in phase 3 burning in his chest through the burnt bib
+  const hc = U([47, 39.6]);
+  if (P3) {
+    F.add({ mat: 'char', prof: 'round', bw: 1.6, grp: 'chesthole', shapes: [poly(Array.from({ length: 12 }, (_, k) => { const a = k / 12 * Math.PI * 2, r = 7.6 + (k & 1 ? 1.6 : 0) + hash(k, 2, 717); return [hc[0] + Math.cos(a) * r, hc[1] + Math.sin(a) * r * .9]; }))], tex: () => -1.6 });
+    if (heartOn) {
+      F.add({ mat: 'm7.molten', prof: 'flat', grp: 'chestrim', noShadow: true, shapes: [ell(hc, 7.4, 6.8)], cuts: [ell(hc, 5.8, 5.2)], tex: ({ x, y }) => ((x + y) & 1 ? -2.6 : -1.6) });
+      const ha = Object.assign({}, relicArt('worldforge-heart'), {}), m = drawItem(F, ha, [hc[0], hc[1] + 1.2], 0, .44, { center: [32, 22], drop: ['band', 'shoulders', 'drip'] });
+      A.heart = m([32, 21]);
+    }
+  } else if (heartOn) {
+    // a crack burnt in the top corner of the bib, over his heart, and its light coming through
+    const c = U([41.6, 37.4]);
+    F.add({ mat: 'm7.molten', prof: 'flat', grp: 'heartglow', noShadow: true, shapes: [cap(U([40.6, 34.8]), U([42.4, 37.2]), .9, 1.2), cap(U([42.4, 37.2]), U([41.2, 40.4]), 1.2, .6), cap(U([42.4, 37.2]), U([44.2, 38.6]), .8, .4), ell(c, 2.3, 2.1)], tex: ({ x, y }) => ((x + y) & 1 ? -1 : -.2) });
+    A.heart = c;
+  }
+  // the fire along his veins (phase 3, while the heart is in him)
+  if (P3 && heartOn && !lie) {
+    const V = [];
+    for (const [a, l] of [[-2.5, 12], [-.7, 11], [2.2, 10], [.6, 9], [-1.6, 8]]) { const pts = [hc]; for (let k = 1; k <= 3; k++) { const u = k / 3; pts.push([hc[0] + Math.cos(a + Math.sin(k * 2.1) * .3) * l * u, hc[1] + Math.sin(a + Math.sin(k * 2.1) * .3) * l * u]); } V.push(...chainC(pts, [.7, .6, .45, .3])); }
+    F.add({ mat: 'm7.molten', prof: 'flat', grp: 'veins', noShadow: true, noOutline: true, shapes: V, tex: () => -1.1 });
+  }
+  // the stolen relics (phase 2): hung on short chains from his cloak's edges and his belt, each glinting
+  if (P2 && !lie) {
+    const HANG = [[[28, 44], [27.6, 50.6]], [[25.8, 58], [25.4, 65]], [[67.4, 44], [68.2, 50.6]], [[70, 57.6], [70.6, 64.6]], [[40.4, 61.6], [40.6, 67.4]], [[54.4, 61.6], [54.8, 67.6]]];
+    const ids = [].concat(st.stolen || []).slice(0, 6), n = ids.length || 6, glints = [];
+    for (let i = 0; i < n; i++) {
+      const [top, at] = HANG[i], art = stolenArt(i, ids[i]); if (!art) continue;
+      const a0 = U(top), a1 = U(at);
+      F.add({ mat: 'iron', prof: 'round', bw: .6, grp: 'stolenchain' + i, shapes: Array.from({ length: 4 }, (_, k) => { const u = (k + .5) / 4, p = [a0[0] + (a1[0] - a0[0]) * u, a0[1] + (a1[1] - a0[1]) * u]; return k & 1 ? ell(p, .5, .9) : ell(p, .8, .5); }) });
+      const weapon = RECIPE[art.r].cls, m = drawItem(F, art, [a1[0], a1[1] + (weapon ? 5 : 3.2)], weapon ? Math.PI / 4 + Math.PI / 2 : 0, weapon ? .16 : .17, { center: weapon ? cardPt(art, 12) : [32, 22] });
+      glints.push(m(weapon ? cardPt(art, 30) : [32, 34]));
+    }
+    A.glints = glints;
+  }
+  // the head: his sister's face on a bigger man; the beard; the copper going grey at the temples; soot
+  const hf = frame(...U(head), tilt);
+  F.add({ mat: skinM, prof: 'round', bw: 2.4, grp: 'neck', shapes: [cap(U([47, 25]), U([47.6, 31]), 3.6, 3.8)], tex: skinT(718) });
+  F.add({ mat: cloakM, prof: 'round', bw: 3, grp: 'collar', shapes: [ell(U([46.6, 30.6]), 12.4, 4.2)], cuts: [ell(U([48.4, 29.2]), 4.8, 2.6)], tex: cloakT(false) });
+  F.add({ mat: skinM, prof: 'round', bw: 3, grp: 'face', shapes: [rell(hf, 0, 0, 6.6, 7.6)] }); // a clean face, so it reads as a portrait too
+  F.add({ mat: skinM, prof: 'round', bw: 1, grp: 'ear', shapes: [hf.ell(-4.8, .6, 1.4, 2.2)], tex: () => -1 });
+  F.add({ mat: skinM, prof: 'round', bw: 1, grp: 'nose', shapes: [hf.poly([[4.4, -1.8], [7.6, 2.2], [7.2, 3.4], [4.6, 3.2]])], tex: ({ nx }) => (nx < -.3 ? -1 : 0) });
+  // his sister's copper, going grey only at the temple (above and before the ear), so the grey reads and the copper stays
+  const grey = ({ x, y }) => { const [u, v] = hf.uv(x + .5, y + .5); if (u > -5.4 && u < -1.2 && v > -4.8 && v < 1.2 && hash(x, y, 720) < .6) return { m: 'hairSilver', dd: 0 }; return (x + y) % 3 === 0 ? -1 : 0; };
+  F.add({ mat: hairM, prof: 'round', bw: 2, grp: 'hair', shapes: [hf.poly([[-6.4, -1.4], [-6.6, -5.4], [-3.4, -8.2], [1.4, -8.4], [5.2, -6.4], [6, -3.8], [3.4, -4.6], [-1.6, -4], [-4, -1.6], [-5, 1.4]])], tex: grey });
+  F.add({ mat: hairM, prof: 'round', bw: 2.4, grp: 'beard', shapes: [hf.poly([[-4.8, .6], [-3.6, 5.6], [-.8, 9.6], [2.4, 11], [5.6, 8.8], [7.2, 4.4], [4.4, 5.2], [1.4, 3.6], [-1.6, 2.6]])], tex: ({ x, y }) => { const [u, v] = hf.uv(x + .5, y + .5); if (u < -1.6 && v < 3.6 && hash(x, y, 721) < .5) return { m: 'hairSilver', dd: 0 }; return (x + (y >> 1)) % 3 === 0 ? -1 : 0; } });
+  F.add({ mat: hairM, prof: 'round', bw: .8, grp: 'brow', shapes: [hf.cap(.6, -2.6, 5.4, -2.2, .9, .7)], tex: () => -1 });
+  const eyeM = P3 ? 'm7.molten' : 'dark';
+  if (eye === 'shut') F.add({ mat: 'dark', prof: 'flat', grp: 'eye', noShadow: true, shapes: [hf.cap(2.2, -.4, 4.6, -.2, .45)] });
+  else F.add({ mat: eyeM, prof: 'flat', grp: 'eye', noShadow: true, noOutline: true, shapes: [hf.ell(3.6, -.6, 1.1, .8)], tex: P3 ? () => .4 : null });
+  F.add({ mat: 'dark', prof: 'flat', grp: 'mouth', noShadow: true, shapes: [hf.cap(3.4, 5.2, 5.8, 4.8, .45)] });
+  // the cloak's front edges over his shoulders, and the clasp at his throat: a hammer in a broken ring
+  F.add({ mat: cloakM, prof: 'round', bw: 3, grp: 'cloakN', shapes: [poly([U([58.4, 30]), U([67.6, 30.6]), U([70.6, 40]), U([69.6, 58]), U([66.2, 58]), U([63.8, 42])])], tex: cloakT(false) });
+  F.add({ mat: cloakM, prof: 'round', bw: 3, grp: 'cloakF', shapes: [poly([U([35.4, 30]), U([26.6, 30.6]), U([23.6, 40]), U([24.2, 58]), U([27.4, 58]), U([30, 42])])], tex: cloakT(true) });
+  const cl = U([51.6, 31.6]);
+  F.add({ mat: 'bronze', prof: 'round', bw: 1.2, grp: 'clasp', shapes: [circ(cl, 3.2)] });
+  // the mark struck in it: a ring broken at the top right, and a hammer upright inside it
+  F.add({ mat: 'dark', prof: 'flat', grp: 'mark', noShadow: true, shapes: [circ(cl, 2.35)], cuts: [circ(cl, 1.45), poly([[cl[0] + .2, cl[1] - .2], [cl[0] + 1.4, cl[1] - 3.2], [cl[0] + 3.4, cl[1] - 1.6]])] });
+  F.add({ mat: 'dark', prof: 'flat', grp: 'markHammer', noShadow: true, shapes: [cap([cl[0], cl[1] + 1.2], [cl[0], cl[1] - .3], .34), cap([cl[0] - .9, cl[1] - .7], [cl[0] + .9, cl[1] - .7], .46)] });
+  // the near arm, the hammer in the fist (an empty fist once it is gone)
+  limb([na[0], na[1]], [4, 3.6], shirtM, 'armNu'); limb([na[1], na[2]], [3.4, 2.8], skinM, 'armNl', skinT(722));
+  if (P3 && heartOn && !lie) F.add({ mat: 'm7.molten', prof: 'flat', grp: 'armvein', noShadow: true, noOutline: true, shapes: chainC([na[1], [(na[1][0] + na[2][0]) / 2 + .6, (na[1][1] + na[2][1]) / 2], na[2]], [.5, .4, .3]), tex: () => -1.2 });
+  if (hamOn && !lie) {
+    const ham = relicArt('unmaking-hammer'), m = drawItem(F, P3 ? Object.assign({}, ham, { p: Object.assign({}, ham.p, { seam: 'm7.molten' }) }) : ham, na[2], hamDir + Math.PI / 4, .74, { center: cardPt(ham, 19) });
+    A.hammer = m(cardPt(ham, 49)); A.weaponTip = A.hammer;
+    if (atk) F.add({ mat: 'm7.violet', prof: 'flat', grp: 'unmakeflare', noShadow: true, noOutline: true, shapes: spikesC([[A.hammer[0], A.hammer[1] + 3, .6, 1, 7, 1.4], [A.hammer[0] - 3, A.hammer[1] + 2, -.5, 1, 6, 1.2], [A.hammer[0] + 3, A.hammer[1] + 1, 1, .6, 5, 1]]), tex: () => -.8 });
+  } else if (hamOn) {
+    const ham = relicArt('unmaking-hammer'), m = drawItem(F, ham, [76, 89.4], -.08, .62, { center: cardPt(ham, 30) });
+    A.hammer = m(cardPt(ham, 49));
+  }
+  hand(na[2], atk ? [.7, .7] : hurt ? [0, -1] : [0, 1], 'handN', hamOn && !lie, false);
+  A.head = hf.P(1, -1); A.mouth = hf.P(4.6, 5); A.center = U([47, 50]);
+  A.relics = [A.hammer, A.apron, A.heart].filter(Boolean); A.relic = A.relics[0] || null;
+}
+// forge sparks off the hammer (the Smith), the stolen things' glitter (the Thief), embers and heat off the heart (the
+// Worldforge)
+const unsmithMotes = (t, a, gT, phase = 1) => {
+  const out = [], c = a.heart || a.center || [47, 50], h = a.hammer || [70, 24];
+  for (let j = 0; j < 4; j++) { const ph = (t * (.8 + hash(j, 2, 723) * .5) + hash(j, 3, 723)) % 1; out.push({ x: h[0] - 4 + hash(j, 1, 723) * 8 + ph * 3, y: h[1] - ph * 16, c: j & 1 ? [255, 236, 170] : [255, 150, 60], a: (1 - ph) * .9 }); }
+  if (phase === 2) for (const g of a.glints || []) { const s = Math.sin(t * 3 + g[0]); if (s > .7) out.push({ x: g[0], y: g[1] - 1, c: [255, 250, 230], a: (s - .7) * 3 }); }
+  if (phase >= 3) for (let j = 0; j < 8; j++) { const ph = (t * (.35 + hash(j, 5, 723) * .2) + hash(j, 6, 723)) % 1; out.push({ x: c[0] - 14 + hash(j, 4, 723) * 28 + Math.sin(t * 2 + j) * 2, y: c[1] + 30 - ph * 70, c: j % 3 ? [255, 170, 60] : [255, 240, 190], a: Math.sin(ph * Math.PI) * .9 }); }
+  return out;
+};
+Object.assign(FOE_ART, {
+  // `stolen`: renderFoe draws the relic ids in o.stolen on him in phase 2 (the battle screen passes the unit's stolen ids)
+  unsmith: { name: 'The Unsmith', kind: 'beast', w: 96, h: 96, foot: [48, 93], defaultTier: 'champion', relic: 'unmaking-hammer', relics: ['unmaking-hammer', 'ironvein-apron', 'worldforge-heart'], phases: 3, stolen: true, build: unsmith, motes: unsmithMotes },
+});
+
+/* ---- CINDER-THRALL (rabble; 64x64, ground 61) and the THRALL-OVERSEER (its veteran variant; 80x80, ground 77): the
+   Unsmith's ash-men, shaped from the hearth's own ash. Gaunt grey figures of packed ash, hunched and long-armed,
+   crumbling at the edges, the hearth's fire still alive in them: ember seams, two ember eyes, a coal in the chest. The
+   Waking: an iron shackle on a wrist (1); slag driven into the shoulders and both wrists shackled (2); the Unsmith's
+   violet-black in the seams and horns of slag (3). The overseer is a head taller, with an iron smith's mask for a face,
+   an iron collar with the broken-ring mark, and a length of chain for a whip. Beaten, it falls in on itself: a heap of
+   ash with the coal still in it. ---- */
+function thrall(F, st, S) {
+  const { pose, f, gT } = st, A = st.anchors, k = S.k, T = p => [S.dx + p[0] * k, S.dy + p[1] * k], R = r => r * k;
+  const idle = !pose || pose === 'idle', lie = pose === 'ko', ov = !!S.overseer, V = gT >= 3, cr = .014 + gT * .005;
+  const ashTex = (seed, far) => ({ x, y }) => {
+    const n = Math.abs(vnoise(x * .16 / k, y * .16 / k, seed) - .5);
+    if (n < cr) return { m: V && hash(x >> 1, y >> 1, seed) < .45 ? 'm7.violet' : 'ember', dd: n < cr * .4 ? -.4 : -1.4 };
+    const r = vnoise(x * .45, y * .45, seed + 1) > .7 ? -1 : hash(x, y, seed + 2) < .08 ? .8 : 0;
+    return far ? r - 1 : r;
+  };
+  const ash = (shapes, g, seed, far, o = {}) => F.add(Object.assign({ mat: 'm7.cinder', prof: 'round', bw: R(2), grp: g, shapes, tex: ashTex(seed, far) }, o));
+  const coal = c => { F.add({ mat: 'ember', prof: 'round', bw: R(1.2), grp: 'coal', noShadow: true, shapes: [ell(c, R(2.4), R(1.8))], tex: ({ d }) => (d < 1 ? -.6 : .4) }); return c; };
+  if (lie) {
+    // the heap: a drift of ash, the coal in it, the skull tipped on top, the shackle lying in it
+    const c = T([33, 58.4]);
+    ash([ell(c, R(17), R(5.4))], 'heap', 731, false, { clip: poly([[0, 0], [99, 0], [99, T([0, 61])[1] + .4], [0, T([0, 61])[1] + .4]]), bw: R(2.4) });
+    ash([ell(T([27, 55.4]), R(7), R(4)), ell(T([40, 55.8]), R(6), R(3.6))], 'heaptop', 732, false);
+    A.center = coal(T([33, 56.4]));
+    ash([ell(T([42, 51.6]), R(4.2), R(3.6))], 'skull', 733, false);
+    F.add({ mat: 'ember', prof: 'flat', grp: 'eyes', noShadow: true, shapes: [ell(T([43.4, 51.6]), R(.9), R(.5))], tex: () => -1.4 });
+    if (gT >= 1) F.add({ mat: 'iron', prof: 'round', bw: R(.8), grp: 'shackle', shapes: [ell(T([22, 58]), R(2.6), R(1.4))], cuts: [ell(T([22, 58]), R(1.6), R(.6))] });
+    A.head = T([42, 51.6]); A.mouth = T([44, 53]); return;
+  }
+  let bx = 0, by = idle ? f * .6 : 0;
+  const J = { hipF: [28, 43], knF: [25.6, 51.6], ftF: [24.6, 59.6], hipN: [34, 43.4], knN: [37.2, 51.6], ftN: [38, 59.6], back: [29.4, 27.4], chest: [38, 31], belly: [33, 38.6], shF: [30, 27.6], elF: [25, 37.6], haF: [24, 48], shN: [40.4, 28.6], elN: [45.8, 38.4], haN: [47.4, 48.6], head: [44, 22.2] };
+  if (pose === 'attack') { bx = 1.8; Object.assign(J, { elN: [49.6, 31], haN: [55, 29.8], head: [46.6, 23.4], elF: [26, 36], haF: [21, 40.4] }); }
+  else if (pose === 'hurt') { bx = -2.4; by = -.4; Object.assign(J, { head: [40, 20.2], elN: [43.6, 33], haN: [41, 26.4], elF: [22.4, 34], haF: [18.6, 28.4] }); }
+  const B = p => T([p[0] + bx, p[1] + by]), P = {};
+  for (const key of Object.keys(J)) P[key] = key.startsWith('kn') || key.startsWith('ft') ? T(J[key]) : B(J[key]);
+  const limb = (pts, rs, g, seed, far) => ash(chainC(pts, rs.map(R)), g, seed, far, { bw: R(rs[0] * .7) });
+  const claw = (h, dir, g, far) => { const S2 = [circ(h, R(2.2))]; for (const [a, l] of [[-.55, 4.6], [0, 5.4], [.5, 4.4]]) { const d = rot2(dir, a); S2.push(cap(h, [h[0] + d[0] * R(l), h[1] + d[1] * R(l)], R(1), R(.3))); } ash(S2, g, 734, far, { bw: R(1) }); };
+  const shackle = (h, g) => { F.add({ mat: 'iron', prof: 'round', bw: R(.9), grp: g, shapes: [ell([h[0], h[1] - R(3.4)], R(2.6), R(1.4))], tex: ({ x, y }) => (hash(x, y, 735) < .25 ? { m: 'rust', dd: 0 } : 0) }); F.add({ mat: 'iron', prof: 'round', bw: R(.6), grp: g + 'links', shapes: [0, 1, 2].map(i => (i & 1 ? ell([h[0] - R(.4), h[1] - R(1.4) + R(i * 1.7)], R(.6), R(1)) : ell([h[0] - R(.4), h[1] - R(1.4) + R(i * 1.7)], R(1), R(.6)))) }); };
+  // the far leg and arm; the ash drifted round its feet
+  limb([P.hipF, P.knF, P.ftF], [3.6, 3, 3.4], 'legF', 736, true);
+  ash([ell([P.ftF[0] + R(.6), P.ftF[1] + R(.6)], R(4.4), R(1.6))], 'driftF', 737, true, { bw: R(1.2) });
+  limb([P.shF, P.elF, P.haF], [3, 2.4, 2], 'armF', 738, true); claw(P.haF, pose === 'attack' ? [-.5, .8] : [.1, 1], 'clawF', true);
+  if (gT >= 2) shackle(P.haF, 'shackleF');
+  // the near leg, the body: hunched, split down the chest where the coal shows
+  limb([P.hipN, P.knN, P.ftN], [3.8, 3.2, 3.6], 'legN', 739, false);
+  ash([ell([P.ftN[0] + R(.8), P.ftN[1] + R(.6)], R(4.6), R(1.6))], 'driftN', 740, false, { bw: R(1.2) });
+  const bite = []; for (let i = 0; i < 5; i++) bite.push(circ([P.back[0] - R(2.6) + hash(i, 1, 741) * R(4), P.back[1] + R(2 + i * 3.4)], R(.8 + hash(i, 2, 741) * .6)));
+  ash([poly([P.shF, [P.back[0], P.back[1] - R(1.4)], P.shN, [P.chest[0] + R(2.4), P.chest[1] + R(1)], [P.belly[0] + R(3.6), P.belly[1] + R(1.6)], [P.hipN[0] + R(1.4), P.hipN[1] + R(1.4)], [P.hipF[0] - R(1.6), P.hipF[1] + R(1)], [P.back[0] - R(2.8), P.belly[1] - R(2)]])], 'body', 742, false, { bw: R(3), cuts: bite });
+  F.add({ mat: 'dark', prof: 'flat', grp: 'split', noShadow: true, shapes: [poly([[P.chest[0] - R(1), P.chest[1] - R(1.6)], [P.chest[0] + R(1.6), P.chest[1] + R(2.6)], [P.chest[0] - R(.6), P.chest[1] + R(6.4)], [P.chest[0] - R(2.6), P.chest[1] + R(2)]])] });
+  A.center = coal([P.chest[0] - R(.4), P.chest[1] + R(2.4)]);
+  if (gT >= 2) F.add({ mat: 'slag', prof: 'ridge', hs: .9, grp: 'slagplates', shapes: spikesC([[P.shN[0] - R(1), P.shN[1] - R(.4), .3, -1, R(4.4), R(1.8)], [P.shF[0] + R(1), P.shF[1] - R(.8), -.4, -1, R(3.8), R(1.6)], [P.back[0], P.back[1], -.9, -.6, R(3.4), R(1.5)]]) });
+  // the head: a lump of packed ash thrust forward, two ember eyes, a crack of a mouth; the overseer's iron mask over it
+  const h = P.head, lump = [circ(h, R(4.6)), ell([h[0] + R(1.4), h[1] + R(1.4)], R(3.8), R(3.2)), circ([h[0] - R(1.8), h[1] - R(2.2)], R(2.4))];
+  ash(lump, 'head', 743, false, { bw: R(2) });
+  if (V) F.add({ mat: 'slag', prof: 'ridge', hs: .9, grp: 'horns', shapes: spikesC([[h[0] - R(1.4), h[1] - R(3.6), -.5, -1, R(4.6), R(1.3)], [h[0] + R(1.4), h[1] - R(4), .2, -1, R(4), R(1.2)]]) });
+  if (ov) {
+    F.add({ mat: 'iron', prof: 'round', bw: R(1.4), grp: 'mask', shapes: [ell([h[0] + R(2), h[1] + R(.6)], R(3.2), R(4))], tex: ({ x, y }) => (hash(x, y, 744) < .2 ? { m: 'rust', dd: 0 } : 0) });
+    F.add({ mat: gT >= 3 ? 'm7.violet' : 'ember', prof: 'flat', grp: 'eyes', noShadow: true, shapes: [ell([h[0] + R(3.4), h[1] - R(.4)], R(1.3), R(.45)), ell([h[0] + R(1), h[1] - R(.4)], R(1.1), R(.45))] });
+    F.add({ mat: 'blackiron', prof: 'round', bw: R(1), grp: 'collar', shapes: [ell([P.shN[0] - R(3), P.shN[1] + R(.4)], R(6), R(2))], cuts: [ell([P.shN[0] - R(3), P.shN[1] - R(.4)], R(4.4), R(1.2))] });
+    const mk = [P.shN[0] - R(1.6), P.shN[1] + R(1.6)];
+    F.add({ mat: 'bronze', prof: 'round', bw: R(.6), grp: 'collarmark', shapes: [circ(mk, R(1.2))], cuts: [circ(mk, R(.5)), poly([[mk[0], mk[1] - R(1.4)], [mk[0] + R(1.4), mk[1] - R(1.4)], [mk[0] + R(.4), mk[1]]])] });
+  } else {
+    F.add({ mat: gT >= 3 ? 'm7.violet' : 'ember', prof: 'flat', grp: 'eyes', noShadow: true, shapes: [ell([h[0] + R(2.8), h[1] - R(.6)], R(1), R(.6)), ell([h[0] + R(.2), h[1] - R(.8)], R(.9), R(.6))] });
+    F.add({ mat: 'ember', prof: 'flat', grp: 'mouth', noShadow: true, shapes: [poly([[h[0] + R(1), h[1] + R(2.4)], [h[0] + R(2.4), h[1] + R(2)], [h[0] + R(3.4), h[1] + R(2.8)], [h[0] + R(4.4), h[1] + R(2.2)], [h[0] + R(4.4), h[1] + R(2.8)], [h[0] + R(1), h[1] + R(3)]])], tex: () => (pose === 'attack' ? .6 : -.8) });
+  }
+  // the near arm and its claw; the shackle (the overseer's whip: a length of chain)
+  limb([P.shN, P.elN, P.haN], [3.2, 2.6, 2.2], 'armN', 745, false); claw(P.haN, pose === 'attack' ? [1, -.1] : [.1, 1], 'clawN', false);
+  if (gT >= 1) shackle(P.haN, 'shackleN');
+  if (ov) {
+    const w0 = P.haN, tail = pose === 'attack' ? [[w0[0] + R(4), w0[1] - R(3)], [w0[0] + R(9), w0[1] - R(2)], [w0[0] + R(13), w0[1] + R(1.4)], [w0[0] + R(15), w0[1] + R(5)]] : [[w0[0] + R(1), w0[1] + R(4)], [w0[0] + R(2.4), w0[1] + R(8)], [w0[0] + R(1.4), w0[1] + R(11.4)], [w0[0] + R(3.4), T([0, 60.4])[1]]], L = [];
+    let q = 0; for (let i = 0; i < tail.length - 1; i++) { const a = tail[i], b = tail[i + 1], n = Math.max(1, Math.round(Math.hypot(b[0] - a[0], b[1] - a[1]) / R(1.5))); for (let j = 0; j < n; j++, q++) { const u = j / n, p = [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u]; L.push(q & 1 ? ell(p, R(.6), R(1)) : ell(p, R(1), R(.6))); } }
+    F.add({ mat: 'blackiron', prof: 'round', bw: R(.6), grp: 'whip', shapes: L });
+    A.weaponTip = tail[tail.length - 1];
+  }
+  A.head = h; A.mouth = [h[0] + R(2.6), h[1] + R(2.6)];
+}
+// ash flaking up off them, and the odd spark from the coal
+const thrallMotes = (t, a, gT) => {
+  const out = [], c = a.center || [32, 40], n = 4 + gT;
+  for (let j = 0; j < n; j++) { const ph = (t * (.3 + hash(j, 2, 746) * .2) + hash(j, 3, 746)) % 1; out.push({ x: c[0] - 9 + hash(j, 1, 746) * 18 + Math.sin(t + j) * 2, y: c[1] + 14 - ph * 38, c: j % 4 === 0 ? [255, 150, 60] : gT >= 3 && j % 4 === 1 ? [196, 136, 246] : [150, 144, 140], a: Math.sin(ph * Math.PI) * .75 }); }
+  return out;
+};
+const thrallBase = (F, st) => thrall(F, st, { k: 1, dx: 0, dy: 0 });
+const thrallOverseer = (F, st) => thrall(F, st, { k: 1.25, dx: 0, dy: .5, overseer: true });
+
+/* ---- THE UNMADE (veteran; 64x64, ground 61): relic-bearers the Worldforge unmade, husks still carrying the shape of
+   what they held. A grey-brown husk of a person, papery and split, hollow inside (the dark in the split, the Unsmith's
+   violet far down in it), a blank face with violet holes for eyes, the rags of what it wore; and in its hand the shape of
+   the relic it carried, drawn in violet with nothing inside it. The Waking: the shape grows (a knife; a sword; a sword
+   and a shield on the other arm; a great blade, the shield, and a crown of the same light), and the husk splits wider.
+   Beaten, it folds up where it stood and the shape goes out. ---- */
+const GHOSTS = [A('dagger', { shape: 'straight', gripEnd: 11, guardT: 3, bladeL: 34, bladeW: 4.6, blade: 'iron', guard: 'quillon', guardMat: 'iron', guardW: 7, grip: 'leather', gripR: 2, pommel: 'iron', pommelR: 2.8 }), A('sword', Object.assign({}, ART.shortsword.p, { bladeL: 44 })), A('sword', Object.assign({}, ART.shortsword.p, { bladeL: 46, guard: 'oath', guardMat: 'iron', gem: 'ruby' })), A('sword', { gripEnd: 18, guardT: 4, bladeW: 4.6, bladeL: 56, tipL: 10, taper: .86, blade: 'steel', guard: 'flame', guardMat: 'gold', gem: 'ruby', grip: 'leather', gripR: 2.2, pommel: 'gold', pommelR: 3.4 })];
+const GHOST_SHIELD = A('shield', { r: 24, face: 'wood', rim: 'iron', boss: 'iron', bossR: 7 });
+const GHOST_CROWN = A('crown', { style: 'regal', metal: 'gold', gem: 'ruby', gem2: 'sapphire', tines: 5 });
+// the shape of a relic in violet, with nothing inside it: every part of the recipe laid flat in a dim violet, lit at its edges
+function ghostItem(F, art, at, angle, k, opt) {
+  const n0 = F.parts.length, m = drawItem(F, art, at, angle, k, Object.assign({ plain: true }, opt));
+  for (let i = n0; i < F.parts.length; i++) { const p = F.parts[i]; p.mat = 'm7.violet'; p.prof = 'flat'; p.noShadow = true; p.tex = ({ d }) => (d < .9 ? -.9 : -2.6); }
+  return m;
+}
+function unmade(F, st) {
+  const { pose, f, gT } = st, A = st.anchors, idle = !pose || pose === 'idle', lie = pose === 'ko', husk = 'm7.husk';
+  const huskTex = (seed, far) => ({ x, y }) => { const s = Math.abs(vnoise(x * .15, y * .5, seed) - .5); if (s < .025 + gT * .006) return { m: 'dark', dd: 0 }; const r = (x * 3 + y) % 7 === 0 ? -1 : hash(x, y, seed) < .07 ? 1 : 0; return far ? r - 1 : r; };
+  const hk = (shapes, g, seed, far, o = {}) => F.add(Object.assign({ mat: husk, prof: 'round', bw: 1.6, grp: g, shapes, tex: huskTex(seed, far) }, o));
+  if (lie) {
+    // folded up where it stood: knees, the husk bowed over them, the face down; the shape gone
+    hk([ell([30, 57.4], 11, 4)], 'knees', 751, true);
+    hk([poly([[20, 58], [24, 46], [34, 42], [42, 46], [44, 58]])], 'back', 752, false, { bw: 2.6 });
+    F.add({ mat: 'rags', prof: 'round', bw: 1.2, grp: 'rags', shapes: [poly([[22, 58.6], [24, 50], [30, 48], [28, 59.4]])], tex: ({ x }) => (x % 3 === 0 ? -1 : 0) });
+    hk([ell([44, 52.4], 4.2, 3.8)], 'head', 753, false);
+    A.head = [44, 52]; A.mouth = [46, 54]; A.center = [32, 52]; return;
+  }
+  let bx = 0, by = idle ? f * .6 : 0;
+  const J = { hipF: [29, 42], knF: [27.4, 51], ftF: [26.6, 59.8], hipN: [35, 42.4], knN: [37, 51], ftN: [37.8, 59.8], shF: [28.4, 26.4], elF: [25.6, 35.6], haF: [26.4, 44.4], shN: [38.6, 26.8], elN: [42.4, 35.6], haN: [45.4, 42.4], head: [34.6, 18.6] };
+  let wA = -.64; // the direction the relic's shape points, grip to tip
+  if (pose === 'attack') { bx = 1.6; Object.assign(J, { elN: [44.2, 27.8], haN: [47.6, 23.4], head: [36.4, 19.4], elF: [24.6, 33.4], haF: [22.6, 40.4] }); wA = -1.08; }
+  else if (pose === 'hurt') { bx = -2.2; Object.assign(J, { head: [31.6, 18.2], elN: [41, 32], haN: [42, 25], elF: [23, 32], haF: [21.4, 26] }); wA = -1.5; }
+  const B = p => [p[0] + bx, p[1] + by], P = {};
+  for (const key of Object.keys(J)) P[key] = key.startsWith('kn') || key.startsWith('ft') ? J[key] : B(J[key]);
+  const limb = (pts, rs, g, seed, far) => hk(chainC(pts, rs), g, seed, far, { bw: Math.max(1, rs[0] * .6) });
+  // the far side: leg, arm, and at the Waking's height the shape of a shield on it
+  limb([P.hipF, P.knF, P.ftF], [2.6, 2.2, 2], 'legF', 754, true);
+  limb([P.shF, P.elF, P.haF], [2.4, 2, 1.7], 'armF', 755, true);
+  if (gT >= 2) ghostItem(F, GHOST_SHIELD, [P.haF[0] - 1, P.haF[1] - 3], 0, .32, { center: [32, 32] });
+  limb([P.hipN, P.knN, P.ftN], [2.8, 2.3, 2.1], 'legN', 756, false);
+  // the husk: a torso split open down the chest, dark inside, the violet far down in it; the rags of a tabard
+  hk([poly([[P.shF[0] - 1, P.shF[1] - .6], [P.shN[0] + 1.4, P.shN[1] - .4], [P.shN[0] + .6, P.shN[1] + 8], [P.hipN[0] + 1.4, P.hipN[1] + 1], [P.hipF[0] - 1.6, P.hipF[1] + 1], [P.shF[0] - .6, P.shF[1] + 8]])], 'torso', 757, false, { bw: 2.4 });
+  const sx = (P.shF[0] + P.shN[0]) / 2 + 1.4, sy = P.shF[1] + 3, wide = 1.4 + gT * .5;
+  F.add({ mat: 'dark', prof: 'flat', grp: 'split', noShadow: true, shapes: [poly([[sx - .4, sy], [sx + wide, sy + 5], [sx + wide * .6, sy + 11], [sx - .6, sy + 13.6], [sx - wide * .8, sy + 7]])] });
+  F.add({ mat: 'm7.violet', prof: 'flat', grp: 'deep', noShadow: true, noOutline: true, shapes: [ell([sx, sy + 9], wide * .5 + .3, 1.6)], tex: () => -1.8 });
+  F.add({ mat: 'rags', prof: 'round', bw: 1.2, grp: 'tabard', shapes: [poly([[P.shF[0] + 1, P.shF[1] + 12], [P.shN[0] - .4, P.shN[1] + 12], [P.hipN[0], P.hipN[1] + 7], [P.hipF[0], P.hipF[1] + 7]])], cuts: [0, 1, 2, 3].map(i => poly([[P.hipF[0] + i * 2 - .6, P.hipF[1] + 7.6], [P.hipF[0] + i * 2 + .4, P.hipF[1] + 4.2 - (i & 1) * 1.4], [P.hipF[0] + i * 2 + 1.4, P.hipF[1] + 7.6]])), tex: ({ x }) => (x % 3 === 0 ? -1 : 0) });
+  // the head: a blank husk face, two violet holes where the eyes were; a crown of the same light at the last
+  const h = P.head;
+  hk([ell(h, 5, 5.8)], 'head', 758, false, { bw: 2 });
+  F.add({ mat: 'dark', prof: 'flat', grp: 'sockets', noShadow: true, shapes: [ell([h[0] + 2.8, h[1] - .2], 1.2, 1.4), ell([h[0] - .2, h[1] - .4], 1.1, 1.4)] });
+  F.add({ mat: 'm7.violet', prof: 'flat', grp: 'eyes', noShadow: true, noOutline: true, shapes: [circ([h[0] + 2.8, h[1]], .6), circ([h[0] - .2, h[1] - .2], .55)] });
+  if (gT >= 3) ghostItem(F, GHOST_CROWN, [h[0] + .4, h[1] - 5.6], 0, .24, { center: [32, 40] });
+  // the near arm and the shape of what it held
+  limb([P.shN, P.elN, P.haN], [2.4, 2, 1.7], 'armN', 759, false);
+  const g = GHOSTS[Math.min(3, gT)], m = ghostItem(F, g, P.haN, wA + Math.PI / 4, g.r === 'dagger' ? .34 : gT >= 3 ? .32 : .36, { center: cardPt(g, 11) });
+  A.weaponTip = m(cardPt(g, g.r === 'dagger' ? 48 : 60));
+  hk([circ(P.haN, 1.7)], 'handN', 760, false);
+  A.head = [h[0] + 1, h[1] - 1]; A.mouth = [h[0] + 2, h[1] + 3]; A.center = [sx, sy + 7];
+}
+// flakes of husk falling off it, and a violet mote or two out of the split
+const unmadeMotes = (t, a, gT) => {
+  const out = [], c = a.center || [33, 36];
+  for (let j = 0; j < 3 + gT; j++) { const ph = (t * (.2 + hash(j, 2, 761) * .15) + hash(j, 3, 761)) % 1; out.push(j & 1 ? { x: c[0] - 8 + hash(j, 1, 761) * 16, y: c[1] - 10 + ph * 34, c: [150, 138, 116], a: (1 - ph) * .6 } : { x: c[0] + Math.sin(t * 2 + j) * 2, y: c[1] - ph * 24, c: [200, 140, 248], a: (1 - ph) * .7 }); }
+  return out;
+};
+
+/* ---- FORGE-WARDEN (veteran; 80x80, ground 77): the keeper of the Worldforge's bridge, a bellows-and-anvil construct: a
+   squat kiln of firebrick in iron bands for a body, a grated fire-door in its belly, an anvil for a head (the horn
+   thrust forward, a slit of fire under its brow), a great leather bellows on its back breathing like a forge (its idle
+   frames), a chimney puffing; stumpy iron legs; one arm ending in a hammer, the other in a pair of tongs. The Waking:
+   iron bands (1); studs on the bands and a second chimney (2); the fire in it white-hot and the Unsmith's black in the
+   grate (3). Beaten, it sags down on its legs, the fire out but for an ember, the anvil tipped forward. ---- */
+function forgeWarden(F, st) {
+  const { pose, f, gT } = st, A = st.anchors, idle = !pose || pose === 'idle', lie = pose === 'ko', atk = pose === 'attack', hurt = pose === 'hurt';
+  const fire = lie ? 'ember' : gT >= 3 ? 'm7.molten' : 'ember', breathe = idle ? f : atk ? 1 : 0;
+  let bx = 0, by = lie ? 7 : idle ? f * .6 : 0, tip = lie ? .16 : hurt ? -.08 : atk ? .06 : 0;
+  if (atk) bx = 2; else if (hurt) bx = -2.4;
+  const piv = [40, 72], ct = Math.cos(tip), sn = Math.sin(tip);
+  const W = p => { const dx = p[0] - piv[0], dy = p[1] - piv[1]; return [piv[0] + dx * ct - dy * sn + bx, piv[1] + dx * sn + dy * ct + by]; };
+  const brickTex = far => ({ x, y }) => { const row = Math.floor(y / 3), off = (row & 1) * 3; let r = y % 3 === 0 || (x + off) % 6 === 0 ? -1.4 : hash(x >> 1, row, 771) < .2 ? .6 : 0; if (gT >= 3 && hash(x, y, 772) < .05) return { m: 'm7.violet', dd: -1.4 }; return far ? r - 1 : r; };
+  const iron = (shapes, g, o = {}) => F.add(Object.assign({ mat: 'blackiron', prof: 'round', bw: 1.6, grp: g, shapes, tex: ({ x, y }) => (hash(x, y, 773) < .12 ? { m: 'rust', dd: 0 } : 0) }, o));
+  // the legs: short thick iron, clawed feet (sagging when beaten)
+  for (const [x, g, far] of [[32, 'legF', true], [49, 'legN', false]]) {
+    const top = W([x, 66]), foot = lie ? [x + (far ? -2 : 3), 74.6] : [x + (atk && !far ? 2 : 0), 73];
+    iron([cap(top, foot, 4, 3.4)], g, far ? { tex: DARK } : {});
+    iron([poly([[foot[0] - 5, 77], [foot[0] - 3.4, foot[1] - 1], [foot[0] + 3.4, foot[1] - 1], [foot[0] + 6.4, 77]])], g + 'foot', far ? { tex: DARK } : {});
+  }
+  // the far arm: the tongs
+  const shF = W([27, 45]), elF = atk ? W([18, 50]) : W([19, 54]), tgF = atk ? W([14, 58]) : W([17, 64]);
+  iron([cap(shF, elF, 2.4, 2), cap(elF, tgF, 2, 1.6)], 'armF', { tex: DARK });
+  iron([circ(elF, 2.4)], 'elbowF', { tex: DARK });
+  iron([cap(tgF, [tgF[0] - 2, tgF[1] + 7], 1, .6), cap(tgF, [tgF[0] + 2, tgF[1] + 7], 1, .6)], 'tongs', { tex: DARK });
+  // the bellows on its back: two boards and the leather between, pleated, breathing
+  const bw0 = W([22, 30]), bw1 = W([15 - breathe * 2.4, 38]), bw2 = W([22, 50]), nz = W([28, 44]);
+  F.add({ mat: 'leather', prof: 'round', bw: 2.2, grp: 'bellows', shapes: [poly([bw0, bw1, bw2, nz])], tex: ({ x, y }) => ((x + y * 2) % 4 === 0 ? -1.2 : 0) });
+  F.add({ mat: 'wood', prof: 'round', bw: 1, grp: 'bellowsboard', shapes: [cap(bw0, nz, 1.3), cap(bw2, nz, 1.3)] });
+  // the chimney(s) on its back
+  for (const [x, h] of gT >= 2 ? [[28, 14], [33.6, 10]] : [[28, 14]]) { iron([cap(W([x, 34]), W([x - 1, 34 - h]), 1.8, 1.5)], 'chimney' + x); iron([ell(W([x - 1, 33 - h]), 2.8, 1.1)], 'chimcap' + x); }
+  // the body: a kiln of firebrick, iron bands round it, the fire-door in its belly
+  F.add({ mat: 'm7.firebrick', prof: 'round', bw: 5, hs: .7, grp: 'kiln', shapes: [poly([W([26, 36]), W([54, 36]), W([57.6, 50]), W([55.4, 66.4]), W([24.6, 66.4]), W([22.4, 50])])], tex: brickTex(false) });
+  for (const [y, g] of [[44, 'band0'], [60, 'band1']].slice(0, gT >= 1 ? 2 : 1)) {
+    iron([cap(W([22.6, y]), W([57.6, y]), 1.4)], g);
+    if (gT >= 2) F.add({ mat: 'iron', prof: 'round', bw: .6, grp: g + 'studs', noShadow: true, shapes: [28, 35, 42, 49].map(x => circ(W([x, y]), .8)) });
+  }
+  const door = W([45, 54.4]);
+  iron([poly([[door[0] - 6.4, door[1] - 5], [door[0] + 6.4, door[1] - 5], [door[0] + 6.4, door[1] + 5], [door[0] - 6.4, door[1] + 5]])], 'doorframe');
+  F.add({ mat: fire, prof: 'flat', grp: 'fire', noShadow: true, shapes: [poly([[door[0] - 5, door[1] - 3.6], [door[0] + 5, door[1] - 3.6], [door[0] + 5, door[1] + 3.8], [door[0] - 5, door[1] + 3.8]])], tex: ({ x, y }) => (lie ? (hash(x, y, 774) < .15 ? -.6 : -3.4) : gT >= 3 && (x + y) % 5 === 0 ? { m: 'm7.violet', dd: -1 } : y > door[1] + 1 ? .3 : -.4) });
+  iron([-3, -1, 1, 3].map(dx => cap([door[0] + dx, door[1] - 4], [door[0] + dx, door[1] + 4], .55)), 'grate');
+  A.center = door;
+  // the anvil for a head: face, heel, the horn thrust forward, the slit of fire under the brow
+  iron([poly([W([34, 36.6]), W([50, 36.6]), W([48, 32.6]), W([36, 32.6])])], 'anvilneck', { bw: 1.4 });
+  const ah = [[31, 24], [54.6, 24], [56, 26.2], [62, 27], [68.6, 29.4], [62.4, 30.8], [56, 31.4], [52, 33], [34, 33], [31, 30.4], [27.4, 29.6], [28, 26]];
+  iron([poly(ah.map(W))], 'anvil', { bw: 2.2, hs: .85, tex: ({ x, y }) => (hash(x, y, 775) < .08 ? -1 : 0) });
+  F.add({ mat: 'steel', prof: 'round', bw: .8, grp: 'anvilface', shapes: [cap(W([31.4, 24.6]), W([54.4, 24.6]), .9)] });
+  const eyeM = gT >= 3 ? 'm7.molten' : 'ember';
+  if (hurt || lie) F.add({ mat: 'dark', prof: 'flat', grp: 'eye', noShadow: true, shapes: [cap(W([50.4, 28.4]), W([54.4, 28.4]), .5)] });
+  else F.add({ mat: eyeM, prof: 'flat', grp: 'eye', noShadow: true, shapes: [cap(W([49.8, 28.2]), W([55, 28.6]), 1)] });
+  // the near arm: jointed iron ending in a hammer
+  const shN = W([53, 44]), elN = atk ? W([62.4, 37]) : W([62, 52]), hmN = atk ? [71.6, 45.4] : lie ? W([63, 70]) : W([65, 62.4]);
+  iron([cap(shN, elN, 2.6, 2.2), cap(elN, hmN, 2.2, 1.8)], 'armN');
+  iron([circ(elN, 2.6)], 'elbowN');
+  const ha = Math.atan2(hmN[1] - elN[1], hmN[0] - elN[0]), hf = frame(hmN[0], hmN[1], ha);
+  iron([hf.poly([[-2, -5], [4.4, -5], [4.4, 5], [-2, 5]])], 'hammer', { bw: 1.8 });
+  iron([hf.poly([[4.4, -3.6], [5.6, -3.6], [5.6, 3.6], [4.4, 3.6]])], 'hammerface', { mat: 'steel' });
+  A.weaponTip = hf.P(5, 0); A.head = W([52, 28.4]); A.mouth = W([58, 30.6]);
+  if (atk) F.add({ mat: 'ember', prof: 'flat', grp: 'sparks', noShadow: true, noOutline: true, shapes: spikesC([[hmN[0] + 3, hmN[1] + 4, .4, 1, 6, 1], [hmN[0] + 4, hmN[1] - 2, .5, -1, 5, 1], [hmN[0] + 1, hmN[1] + 5, -.3, 1, 4, .8]]), tex: () => .6 });
+}
+// sparks and smoke up its chimney, an ember puffed out of the bellows now and then
+const wardenMotes = (t, a, gT) => {
+  const out = [], top = [27, 18];
+  for (let j = 0; j < 4 + gT; j++) { const ph = (t * (.5 + hash(j, 2, 776) * .4) + hash(j, 3, 776)) % 1; out.push({ x: top[0] + Math.sin(t * 2 + j) * 2 + ph * 3, y: top[1] - ph * 18, c: j % 3 === 0 ? [120, 116, 118] : gT >= 3 && j % 3 === 1 ? [255, 250, 230] : [255, 160, 60], a: (1 - ph) * .85 }); }
+  return out;
+};
+
+Object.assign(FOE_ART, {
+  'cinder-thrall': { name: 'Cinder-Thrall', kind: 'beast', w: 64, h: 64, foot: [32, 61], defaultTier: 'rabble', build: thrallBase, motes: thrallMotes },
+  'thrall-overseer': { name: 'Thrall-Overseer', kind: 'beast', w: 80, h: 80, foot: [40, 77], defaultTier: 'veteran', build: thrallOverseer, motes: thrallMotes },
+  unmade: { name: 'The Unmade', kind: 'beast', w: 64, h: 64, foot: [32, 61], defaultTier: 'veteran', build: unmade, motes: unmadeMotes },
+  'forge-warden': { name: 'Forge-Warden', kind: 'beast', w: 80, h: 80, foot: [40, 77], defaultTier: 'veteran', build: forgeWarden, motes: wardenMotes },
+});
+
+
+/* ---- TAMSIN AT THE FINALE (gear tier 5): she followed the barge to the bottom of the world, and she fights beside the
+   party against the Unsmith. Her mail and her red cloak, ash on it from the Ash Stair; the Vale Gauntlets as ever; and
+   in her hand Tamsin's Bargain, the violet-black sword she bought with her starter, glinting violet. The battle screen
+   draws her on the party's side with `flip: true` (facing the foes, the light still from the top left). ---- */
+const sootCloak = ({ x, y }) => (hash(x, y, 781) < .22 ? { m: 'm7.cinder', dd: hash(x, y, 782) < .5 ? -1 : 0 } : (x + y) % 6 === 0 ? -1 : 0);
+FOE_ART.tamsin.gear.push({ weapon: RELIC_ART['tamsins-bargain'], body: A('mail', { mat: 'steel', trim: 'gold', belt: 'leatherDark', pauldrons: 'steel' }), feet: A('boots', { mat: 'leatherDark', trim: 'm7.cinder', greave: 'steel' }), H: { mantle: 'cloakRed', cloakTex: sootCloak, pants: 'leatherDark' } });
+// the Bargain's dark coming off her blade and hands, a violet mote or two
+function bargainMotes(t, a) {
+  const out = [], w = a.weaponMid || a.center || [36, 30];
+  for (let j = 0; j < 4; j++) { const ph = (t * (.3 + hash(j, 2, 783) * .2) + hash(j, 3, 783)) % 1; out.push({ x: w[0] - 3 + hash(j, 1, 783) * 6 + Math.sin(t * 2 + j) * 1.5, y: w[1] + 2 - ph * 16, c: j & 1 ? [150, 92, 214] : [200, 150, 250], a: (1 - ph) * .7 }); }
+  return out;
+}
+
 // any art key data/foes.js names that has no art of its own yet draws a stand-in of its kind, so a battle or a Ladder
 // poster never meets "unknown foe" (test/art-keys.test.mjs lists every stand-in as a failure)
 for (const f of Object.values(FOES)) for (const v of [f].concat(Object.values(f.variants || {}))) {
@@ -3898,9 +4470,10 @@ function build(key, o) {
   const pose = o.pose || 'idle', t = o.t || 0, gT = clamp(o.gearTier ?? 0, 0, def.kind === 'humanoid' && def.gear ? def.gear.length - 1 : 3), tier = tierNum(o.tier ?? def.defaultTier);
   let relic = o.relic === undefined ? def.relic : o.relic;
   if (relic === undefined && def.variantRelic && o.variant && relicArt(o.variant)) relic = o.variant; // Tamsin: the rival starter
-  const held = o.relicHeld !== false, phase = clamp(o.phase || 1, 1, 3);
+  const held = o.relicHeld !== false && !(def.kind === 'humanoid' && def.relics && relic && (o.broken || []).includes(relic)), phase = clamp(o.phase || 1, 1, 3);
   const broken = (o.broken || []).slice().sort().join(',');
-  const rk = [key, pose, frameKey(pose, t), gT, tier, relic || '-', held ? 1 : 0, phase, broken, o.flip ? 'L' : 'R'].join('|') + (o.wears && def.kind === 'humanoid' ? '|w:' + [].concat(o.wears).join('+') : '');
+  const rk = [key, pose, frameKey(pose, t), gT, tier, relic || '-', held ? 1 : 0, phase, broken, o.flip ? 'L' : 'R'].join('|') + (o.wears && def.kind === 'humanoid' ? '|w:' + [].concat(o.wears).join('+') : '')
+    + (def.stolen && o.stolen && o.stolen.length ? '|s:' + [].concat(o.stolen).join('+') : ''); // M7: what the Unsmith took (only he draws it)
   return rasterCache.get(rk, () => {
     if (def.kind === 'humanoid') {
       const m3 = !!def.m3, hu = m3 ? humanoidM3(def, Object.assign({}, o, { relic })) : humanoid(def, o), { H, gear } = hu;
@@ -3909,9 +4482,9 @@ function build(key, o) {
       if (m3 && def.drawSlot && hu.relicSlotName === def.drawSlot) { drawn = gear[def.drawSlot]; gear[def.drawSlot] = null; }
       const L = gearLooks(gear), b = BUILD[H.build] || BUILD.human;
       const P = posePreset(pose, pose === 'attack' ? (t < .4 ? .1 : .6) : t, L.weapon ? L.weapon.cls : null, b);
-      if (m3 && def.pose) def.pose(P, { pose, b, L, gT, H });
+      if (m3 && def.pose) def.pose(P, { pose, b, L, gT, H, phase });
       const r = heroForge(H, { gear: L, pose: P, frame: FRAME_BATTLE, aspectGlow: m3 && def.glow ? def.glow(gT) : H.shadeEyes === 'blight' ? 'blight' : 'arcane' });
-      if (m3) m3Humanoid(def, r, { P, H, L, gear, gT, tier, pose, relic, held, slot: hu.relicSlotName, drawn, wears: o.wears });
+      if (m3) m3Humanoid(def, r, { P, H, L, gear, gT, tier, pose, relic, held, slot: hu.relicSlotName, drawn, wears: o.wears, phase, stolen: o.stolen });
       const R = r.F.raster({ mirror: !o.flip });
       const W = FRAME_BATTLE.w, mx = p => (p && !o.flip ? [W - p[0], p[1]] : p);
       const anchors = {}; for (const k in r.anchors) anchors[k] = k === 'relics' ? r.anchors[k].map(mx) : mx(r.anchors[k]);
@@ -3921,7 +4494,7 @@ function build(key, o) {
       return { R, anchors, face: r.face ? { H, hc: r.j.hc, map: r.map, st: P.face } : null, def, gT, relicParts: R.parts.some(p => p.relic) };
     }
     const F = new Forge(def.w, def.h), anchors = { foot: def.foot.slice() };
-    def.build(F, { pose, t, f: pose === 'idle' || !pose ? Math.floor(t * 1.6) % 2 : 0, gT, tier, phase, relic, held, broken: o.broken || [], anchors });
+    def.build(F, { pose, t, f: pose === 'idle' || !pose ? Math.floor(t * 1.6) % 2 : 0, gT, tier, phase, relic, held, broken: o.broken || [], anchors, stolen: def.stolen ? o.stolen : undefined });
     const R = F.raster({ mirror: !!o.flip });
     // mirror every anchor; a list of points (relics) mirrors point by point
     const fx = p => [def.w - p[0], p[1]];
@@ -3933,7 +4506,7 @@ export function renderFoe(key, o = {}) {
   const base = build(key, o), t = o.reduced ? 0 : (o.t || 0);
   const oo = { flicker: o.reduced ? 0 : Math.floor(t * 8), hue: (170 + t * 30) % 360 };
   if (base.relicParts && base.anchors.relic) {
-    const pts = base.anchors.relics || [base.anchors.relic];
+    const pts = (base.anchors.relics || [base.anchors.relic]).concat(base.anchors.glints || []); // M7: the Unsmith's stolen things glint too
     oo.glints = [];
     pts.forEach((g, k) => { const gp = ((t + k * 1.2) % 2.4) / 2.4; if (o.reduced || gp < .14) oo.glints.push([Math.round(g[0]), Math.round(g[1]), o.reduced ? 1 : gp < .04 || gp > .1 ? 1 : 2]); });
     if (!o.reduced) { const cyc = (t % 2.4) / .9; if (cyc < 1) { oo.shine = [Math.round(-30 + cyc * 160), 3]; oo.shineMask = p => p.relic; } }
@@ -3941,7 +4514,7 @@ export function renderFoe(key, o = {}) {
   if (base.def.motes && !o.reduced) oo.particles = base.def.motes(t, base.anchors, base.gT, o.phase || 1);
   if (o.tint) oo.tint = o.tint;
   const img = compose(base.R, oo);
-  if (base.def.aura) { const a = base.def.aura(base.gT, o.reduced ? 0 : t); if (a) halo(img, ...a); }
+  if (base.def.aura) { const a = base.def.aura(base.gT, o.reduced ? 0 : t, o); if (a) halo(img, ...a); }
   if (base.face) { const fc = base.face, st = o.pose === 'idle' || !o.pose ? ((t % 3.7) < .14 ? 'blink' : 'open') : fc.st; paintFace(img, fc.H, fc.hc, FRAME_BATTLE.ox, FRAME_BATTLE.oy, st, !o.flip, fc.map); }
   img.anchors = base.anchors;
   return img;
