@@ -40,6 +40,17 @@ export function rollTerms(rng, terms, mult = 1) {
   return { dice, total };
 }
 
+// A hold in a sentence (M6): a label that is a doing takes "by" ("held under by the Rime-Abbot", "led away by the
+// Lantern Mother"); a label that is a place says who put the hero there ("in the river, put there by Hodge").
+// lower: the label as it reads mid-sentence. The battle screen's plates, captions and log use it, and so does the
+// engine's lost-turn line.
+export const isPlaceLabel = label => /^(in|into|under|on|at) /i.test(String(label || ''));
+export function holdPhrase(label, by = '', lower = true) {
+  const l = lower ? String(label || '').toLowerCase() : String(label || '');
+  if (!by) return l;
+  return isPlaceLabel(l) ? `${l}, put there by ${by}` : `${l} by ${by}`;
+}
+
 export function rollExpr(rng, expr, level = 1, every = 0) {
   const { terms, flat } = scaledTerms(expr, level, every);
   const r = rollTerms(rng, terms);

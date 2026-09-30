@@ -8,7 +8,7 @@ import { statusIcon, diceIcon, gripIcon, INTENT_DIE } from '../../art/icons.js';
 import { STATUSES } from '../../data/statuses.js';
 import { RELICS } from '../../data/relics.js';
 import { el, pixelIcon, toCanvas, clamp } from './util.js';
-import { heldStatus, isCharmed, isSunk, untargetable, divesUnderWater, gripWord } from './model.js';
+import { heldStatus, isCharmed, isSunk, untargetable, divesUnderWater, gripWord, statusWords } from './model.js';
 
 // ---- small shared pieces ----------------------------------------------------------------------------
 
@@ -141,7 +141,7 @@ export class Hud {
     // intent bubble
     this.setIntent(u, u.intent, analyzedQueue ?? (u.analyzed ? u.queue : []));
     const intentTxt = u.intent ? `, intends ${u.intent.name}${u.intent.charging ? ' (charging)' : ''}` : '';
-    f.hit.setAttribute('aria-label', `${u.label || u.name}, level ${u.level}, HP ${u.hp} of ${u.maxHp}${u.statuses.length ? ', ' + u.statuses.map(s => s.id).join(', ') : ''}${untargetable(u) ? ', cannot be targeted' : ''}${intentTxt}`);
+    f.hit.setAttribute('aria-label', `${u.label || u.name}, level ${u.level}, HP ${u.hp} of ${u.maxHp}${statusWords(u).map(w => `, ${w}`).join('')}${untargetable(u) ? ', cannot be targeted' : ''}${intentTxt}`);
   }
 
   gripChip(u, p, i) {
@@ -187,7 +187,7 @@ export class Hud {
     const d = dieFor(u, intent);
     f.intentKey = '';
     this.setIntent(u, intent, u.analyzed ? u.queue : []);
-    if (reduced || ms < 90) return;
+    if (reduced || ms < 90 || intent.face == null) return; // an opener is not rolled: its die stays blank
     f.intent.classList.add('rolling');
     let k = 0;
     const draw = () => {

@@ -83,8 +83,9 @@ export function chooseTarget(s, foe, move, rng) {
   return weightedPick(rng, entries);
 }
 
+// "7: Bite at Wren"; an intent with no face (an opener, which is not rolled) is just "Toll Is Due at Wren"
 function intentText(face, move, target) {
-  return `${face}: ${move.name}${move.charge ? ', charging' : ''}${target ? ` at ${target}` : ''}`;
+  return `${face == null ? '' : `${face}: `}${move.name}${move.charge ? ', charging' : ''}${target ? ` at ${target}` : ''}`;
 }
 
 // Roll the foe's intent die and read its move table.
@@ -102,6 +103,7 @@ export function rollIntent(s, foe, rng) {
 }
 
 // M5: a move's `then` forces the foe's next intent (a Burrow's eruption): the same die face, the named move.
+// M6: a family's `opener` passes face null: its first move is not rolled, so it shows no face.
 export function intentFor(s, foe, moveId, rng, face = foe.die) {
   const id = resolveMoveId(s, foe, moveId);
   const move = familyData(foe).moves[id];

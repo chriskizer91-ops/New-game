@@ -206,8 +206,24 @@ export function mount(root, ctx, { battle, returnTo = 'world', auto: startAuto =
   function caption(text, kind = '') {
     captionEl.textContent = text;
     captionEl.dataset.kind = kind;
+    fitCaption(String(text));
     captionEl.classList.remove('flash'); void captionEl.offsetWidth; captionEl.classList.add('flash');
     clearTimeout(captionTimer);
+  }
+  // A caption longer than its two lines ends on a whole word and "…" (the clamp alone cut "2d10" to "2d1…"). A
+  // screen reader still hears it whole, and the log keeps it whole.
+  function fitCaption(text) {
+    const over = () => captionEl.scrollHeight > captionEl.clientHeight + 1;
+    if (!captionEl.clientHeight || !over()) return;
+    const words = text.split(' '), vis = el('span', { 'aria-hidden': 'true' });
+    captionEl.replaceChildren(vis, el('span.bt-sr', { text }));
+    let lo = 1, hi = words.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1;
+      vis.textContent = `${words.slice(0, mid).join(' ')}…`;
+      if (over()) hi = mid - 1; else lo = mid;
+    }
+    vis.textContent = `${words.slice(0, lo).join(' ').replace(/[,;:]$/, '')}…`;
   }
   function log(line) {
     if (!line) return;

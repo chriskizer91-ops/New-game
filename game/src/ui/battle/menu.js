@@ -288,7 +288,7 @@ export function inspectSheet(root, info, extra, { sfx, onRelic }) {
     if (info.side === 'foe') {
       const it = info.intent;
       const rows = [];
-      if (it) rows.push(el('p.bt-ins-intent', null, el('b', { text: `d${it.die} ${it.face}` }), el('span', { text: ` ${it.name}${it.target && extra.names(it.target) && it.target !== info.id ? ` at ${extra.names(it.target)}` : ''}${it.charging ? ', charging' : ''}${it.cancelled ? ' (broken off)' : ''}` })));
+      if (it) rows.push(el('p.bt-ins-intent', null, el('b', { text: it.face == null ? 'First move' : `d${it.die} ${it.face}` }), el('span', { text: ` ${it.name}${it.target && extra.names(it.target) && it.target !== info.id ? ` at ${extra.names(it.target)}` : ''}${it.charging ? ', charging' : ''}${it.cancelled ? ' (broken off)' : ''}` })));
       if (info.analyzed && info.queue.length) rows.push(...info.queue.map((q, i) => el('p.bt-ins-intent.next', null, el('b', { text: `then ${q.face}` }), el('span', { text: ` ${q.name}` }), el('small', { text: i === 0 ? ' (foreseen)' : '' }))));
       else rows.push(el('p.bt-ins-note', { text: 'Analyze foresees its next move.' }));
       parts.push(sec('Intent', ...rows));

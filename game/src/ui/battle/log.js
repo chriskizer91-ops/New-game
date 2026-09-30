@@ -15,7 +15,7 @@ export function logLine(ev, disp) {
   switch (ev.t) {
     case 'turn': return { text: `${N(ev.actor)}'s turn`, kind: 'turn' };
     case 'intent':
-      return { text: ev.queued ? `Foreseen: ${N(ev.foe)} will use ${ev.name} (d${ev.die} ${ev.face})` : `${N(ev.foe)} readies ${ev.text.replace(/^\d+: /, '')} (d${ev.die} ${ev.face})`, kind: 'intent' };
+      return { text: ev.queued ? `Foreseen: ${N(ev.foe)} will use ${ev.name} (d${ev.die} ${ev.face})` : `${N(ev.foe)} readies ${ev.text.replace(/^\d+: /, '')} (${ev.face == null ? 'always the first move' : `d${ev.die} ${ev.face}`})`, kind: 'intent' };
     case 'roll': {
       const dice = ev.rolls && ev.rolls.length > 1 ? `[${ev.rolls.join(', ')}] keeps ${ev.kept}` : `${ev.kept}`;
       const sign = ev.bonus >= 0 ? `+ ${ev.bonus}` : `- ${-ev.bonus}`;

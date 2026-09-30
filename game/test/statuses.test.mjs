@@ -101,6 +101,19 @@ test('swallowed: out of the line, loses its turns to the swallower\'s tick, and 
   assert.ok(targetable(s.units[h.id]), 'back in the line');
 });
 
+// M6 (review): a hold whose label is a place reads as one in the engine's lost-turn line too, like the battle screen's
+test('a hold that is a place: "is in the river, put there by Hodge, and loses the turn"', () => {
+  const s0 = structuredClone(battleWith([{ family: 'hodge', level: 12 }], { seed: 9 }));
+  const h = unitsOf(s0, 'hero')[2];
+  const b = B(s0, createRng(4));
+  assert.ok(addStatus(b, h, 'swallowed', { source: 'f1', label: 'In the river' }));
+  h.hp = h.maxHp = 999; // it lives through the hold
+  const { events } = playUntil(s0, s => !statusOf(s.units[h.id], 'swallowed'));
+  const lost = events.filter(e => e.t === 'text' && e.text.startsWith(`${h.name} is `) && e.text.endsWith('loses the turn.'));
+  assert.ok(lost.length >= 1, 'a turn lost in the river');
+  for (const e of lost) assert.equal(e.text, `${h.name} is in the river, put there by ${s0.units.f1.name}, and loses the turn.`);
+});
+
 test('swallowed: spat out when the swallower falls or takes a hard hit; the last one standing is never swallowed', () => {
   const s = structuredClone(battleWith([{ family: 'oldsnag', level: 8 }], { seed: 9 }));
   const [a, b2, c, d] = unitsOf(s, 'hero');
@@ -315,6 +328,11 @@ test('M6 a family\'s opener is its first move in every fight', () => {
     for (const seed of [1, 2, 3]) {
       const st = battleWith([{ family: fam.id, level: 10 }], { seed });
       assert.equal(st.units.f1.intent.move, fam.opener, `${fam.id} opens with ${fam.opener} (seed ${seed})`);
+      // it is not rolled, so it shows no face (review: "12: Toll Is Due" named a face that was never rolled)
+      const ev = st.openingEvents.find(e => e.t === 'intent' && e.foe === 'f1');
+      assert.equal(st.units.f1.intent.face, null, `${fam.id}: no face`);
+      assert.equal(ev.face, null);
+      assert.ok(ev.text.startsWith(fam.moves[fam.opener].name), `${fam.id}: "${ev.text}" names the move, not a face`);
     }
   }
 });

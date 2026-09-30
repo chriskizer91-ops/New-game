@@ -185,6 +185,35 @@ const fails = [];
 function check(cond, msg) { if (!cond) { fails.push(msg); console.log('  FAIL', msg); } else console.log('  ok', msg); }
 const note = msg => console.log('  note', msg);
 
+// A reload that tells the browser's storage quirk from a game bug. In a throwaway headless context, Chromium now
+// and then drops the whole file:// origin's storage across a reload (docs/M45-STATUS.md §3; M6's review saw it in
+// about one reload in fifteen, and not once in twenty over http://): the game's keys go, and so does a key that only this test
+// writes. So the test writes that key first. If it is gone after the reload, the browser wiped the origin, not the
+// game: every key is put back as it was and the page reloads once more. A second wipe fails the run. A game that
+// dropped its own save keeps the test's key, so its check still fails.
+async function reloadKept(page, V, label, wait = 400) {
+  const before = await page.evaluate(() => {
+    const all = {};
+    for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); all[k] = localStorage.getItem(k); }
+    localStorage.setItem('e2e.kept', '1');
+    return all;
+  });
+  for (let n = 0; n < 2; n++) {
+    await page.reload();
+    await page.waitForSelector('.title-menu');
+    await page.waitForTimeout(wait);
+    if (await page.evaluate(() => localStorage.getItem('e2e.kept') === '1')) return;
+    note(`${V.name}: the browser wiped the file:// origin's storage on a reload (${label}; the test's own key went too)${n ? '' : ': it is put back and the page reloaded once more'}`);
+    if (n) break;
+    await page.evaluate(all => {
+      localStorage.clear();
+      for (const [k, v] of Object.entries(all)) localStorage.setItem(k, v);
+      localStorage.setItem('e2e.kept', '1');
+    }, before);
+  }
+  check(false, `${V.name}: the browser kept the page's storage across a reload (${label}): it wiped the file:// origin twice`);
+}
+
 const SFX = ['select', 'confirm', 'back', 'dice', 'hit', 'graze', 'miss', 'crit', 'heal', 'status', 'disarm', 'ko', 'surge', 'legend', 'victory', 'defeat', 'phase', 'chest', 'reveal', 'equip', 'levelup', 'hearth', 'beam', 'tick', 'stamp', 'coin', 'page', 'identify', 'slam', 'error',
   'bump', 'alert', 'door', 'blip', 'unlock', 'chime'];
 const TRACKS = ['road', 'wilds', 'town', 'dungeon', 'battle', 'boss', 'hearth', 'victory', 'title', 'desert', 'peaks', 'fen'];
@@ -802,9 +831,7 @@ async function run(V) {
   }
 
   // ======== H. reload: the title's Continue ========
-  await page.reload();
-  await page.waitForSelector('.title-menu');
-  await page.waitForTimeout(600);
+  await reloadKept(page, V, "the title's Continue", 600);
   g = await game();
   const sub = (await page.locator('.title-continue small').innerText()).trim();
   const want = `${NAME} · ${MAPS[g.progress.pos.map].name} · Day ${g.progress.flags.day} · Lv `;
@@ -1010,9 +1037,8 @@ async function runM3(V) {
   // throwaway headless context, a new navigation to a file:// page sometimes starts with the origin's
   // storage wiped (Chromium drops an in-memory file:// storage area it briefly holds no page for);
   // a real browser keeps it on disk. That was M4's unreproduced "reload" flake (docs/M45-STATUS.md).
-  await page.reload();
-  await page.waitForSelector('.title-menu');
-  await page.waitForTimeout(400);
+  // A reload does it too, more rarely, so reloadKept() tells that wipe from the game's own.
+  await reloadKept(page, V, 'the Milestone 3 profile');
   const seen = await page.evaluate(() => ({
     cont: document.querySelectorAll('.title-continue').length, carry: document.querySelectorAll('.title-carry').length,
     live: !!localStorage.getItem('aethermoor.save.m6'), mark: localStorage.getItem('aethermoor.m6.started'), screen: document.getElementById('app').dataset.screen,
@@ -1089,9 +1115,7 @@ async function runM4(V) {
   s = await store();
   check(s.bak === kept.live && JSON.parse(s.live).gold === 888, `${V.name}: carrying it over again backs the live save up first`);
   await untouched('after carrying it over again');
-  await page.reload(); // a reload, not a second goto (see the Milestone 3 profile)
-  await page.waitForSelector('.title-menu');
-  await page.waitForTimeout(400);
+  await reloadKept(page, V, 'the Milestone 4 profile'); // a reload, not a second goto (see the Milestone 3 profile)
   const seen = await page.evaluate(() => ({
     cont: document.querySelectorAll('.title-continue').length, carry: document.querySelectorAll('.title-carry').length,
     live: !!localStorage.getItem('aethermoor.save.m6'), mark: localStorage.getItem('aethermoor.m6.started'), screen: document.getElementById('app').dataset.screen,
@@ -1169,9 +1193,7 @@ async function runM45(V) {
   s = await store();
   check(s.bak === kept.live && JSON.parse(s.live).gold === 999, `${V.name}: carrying it over again backs the live save up first`);
   await untouched('after carrying it over again');
-  await page.reload(); // a reload, not a second goto (see the Milestone 3 profile)
-  await page.waitForSelector('.title-menu');
-  await page.waitForTimeout(400);
+  await reloadKept(page, V, 'the Milestone 4.5 profile'); // a reload, not a second goto (see the Milestone 3 profile)
   const seen = await page.evaluate(() => ({
     cont: document.querySelectorAll('.title-continue').length, carry: document.querySelectorAll('.title-carry').length,
     live: !!localStorage.getItem('aethermoor.save.m6'), mark: localStorage.getItem('aethermoor.m6.started'), screen: document.getElementById('app').dataset.screen,
@@ -1267,9 +1289,7 @@ async function runM5(V) {
   s = await store();
   check(s.bak === kept.live && JSON.parse(s.live).gold === 1111, `${V.name}: carrying it over again backs the live save up first`);
   await untouched('after carrying it over again');
-  await page.reload(); // a reload, not a second goto (see the Milestone 3 profile)
-  await page.waitForSelector('.title-menu');
-  await page.waitForTimeout(400);
+  await reloadKept(page, V, 'the Milestone 5 profile'); // a reload, not a second goto (see the Milestone 3 profile)
   const seen = await page.evaluate(() => ({
     cont: document.querySelectorAll('.title-continue').length, carry: document.querySelectorAll('.title-carry').length,
     live: !!localStorage.getItem('aethermoor.save.m6'), mark: localStorage.getItem('aethermoor.m6.started'), screen: document.getElementById('app').dataset.screen,

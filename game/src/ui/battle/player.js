@@ -114,7 +114,7 @@ export class Player {
       u.intent = { die: ev.die, face: ev.face, move: ev.move, name: ev.name, text: ev.text, target: ev.target, charging: ev.charging };
       if (u.ko || u.gone) continue;
       S.hud.tumbleIntent(u, u.intent, 560 / S.clock.speed, S.reduced || S.clock.skipping);
-      any = true;
+      if (ev.face != null) any = true; // an opener is not rolled: no dice sound for it
     }
     if (any) { S.sfx('dice'); await this.wait(600); }
     for (const ev of batch) await this.peak(ev);
@@ -259,7 +259,8 @@ export class Player {
       return;
     }
     if (ev.op === 'add') {
-      this.float(t.id, statusName(ev.status), `status ${harmful(ev.status) ? 'bad' : 'good'}`, ev.stacks > 1 ? `x${ev.stacks}` : '', 1000);
+      // a hero's Charmed, Hexed or Rotting shows as the tag over its figure, which pops in (a float would cover it)
+      if (!(this.isHero(t.id) && S.party.popTag(t.id, ev.status))) this.float(t.id, statusName(ev.status), `status ${harmful(ev.status) ? 'bad' : 'good'}`, ev.stacks > 1 ? `x${ev.stacks}` : '', 1000);
       S.sfx('status');
       await this.wait(300);
     } else if (ev.op === 'release') {

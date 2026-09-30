@@ -9,7 +9,7 @@
 import { HeroSprite, heroGear, heroCustom } from './sprites.js';
 import { el, clamp } from './util.js';
 import { statusChip } from './hud.js';
-import { holdInfo, isCharmed, afflictions, rotStacks } from './model.js';
+import { holdInfo, isCharmed, afflictions, rotStacks, statusWords } from './model.js';
 
 const STRIP_H = 54; // logical px
 const FEET = 51;
@@ -159,7 +159,7 @@ export class Party {
     v.card.classList.toggle('rotting', !u.ko && words.some(w => w[0] === 'rotting'));
     const fen = u.ko ? [] : afflictions(u), rot = rotStacks(u);
     const fenText = fen.map(w => (w === 'Hexed' ? 'hexed: its rolls at a disadvantage' : `rotting${rot > 1 ? ` x${rot}` : ''}: heals halved`)).map(t => `, ${t}`).join('');
-    v.card.setAttribute('aria-label', `${u.name}: ${u.ko ? 'knocked out' : `HP ${u.hp} of ${u.maxHp}, MP ${u.mp} of ${u.maxMp}`}${held ? `, ${held.text}: out of the line` : ''}${charmed ? ', charmed: its next turn is an attack on a friend' : ''}${fenText}, Legend Surge ${Math.round(u.surge)}%${u.statuses.length ? ', ' + u.statuses.map(s => s.id).join(', ') : ''}`);
+    v.card.setAttribute('aria-label', `${u.name}: ${u.ko ? 'knocked out' : `HP ${u.hp} of ${u.maxHp}, MP ${u.mp} of ${u.maxMp}`}${held ? `, ${held.text}: out of the line` : ''}${charmed ? ', charmed: its next turn is an attack on a friend' : ''}${fenText}, Legend Surge ${Math.round(u.surge)}%${statusWords(u, { worded: true }).map(w => `, ${w}`).join('')}`);
     const key = u.statuses.map(s => `${s.id}${s.stacks}`).join(',');
     if (key !== v.statusKey) {
       const before = new Set(v.statusKey.split(',').map(k => k.replace(/\d+$/, '')));
@@ -169,6 +169,16 @@ export class Party {
     const guarding = u.statuses.some(s => s.id === 'guarding');
     const base = u.ko ? 'ko' : guarding ? 'guard' : 'idle';
     if (v.base !== base) { v.base = base; if (!v.poseUntil) v.pose = base; }
+  }
+  // M6 (review): a hero's new Charmed, Hexed or Rotting is its tag word popping in, not a float, which would cover
+  // the tag; a new stack of rot pops it again. False when the hero shows no such word.
+  popTag(id, k) {
+    const w = this.v.get(id)?.tag.querySelector(`.bt-tag-w[data-k="${k}"]`);
+    if (!w) return false;
+    w.classList.remove('pop');
+    void w.offsetWidth;
+    w.classList.add('pop');
+    return true;
   }
   setActor(id) {
     this.actorId = id;

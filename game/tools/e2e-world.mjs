@@ -1621,7 +1621,7 @@ async function run(V) {
       check(pieces.every(n => pf.includes(n)) && /Glinting/i.test(pf), `${P} 24: its pieces glint on the card: ${pieces.join(' and ')}`);
       check(pf.includes(BRANDS[E.brand].name.replace(/^The /, '')), `${P} 24: the card names ${BRANDS[E.brand].name}`);
       const worn = await W(() => [...document.querySelectorAll('.pf-relic')].map(b => b.innerText.replace(/\s+/g, ' ')));
-      check(worn.some(t => /Anvil Heart/.test(t) && /Worn/.test(t)) && worn.some(t => /Worldforge Hammer/.test(t) && /Held by/.test(t)), `${P} 24: the hammer is held and the heart worn (${worn.join(' | ')})`);
+      check(worn.some(t => /Anvil Heart/.test(t) && /Worn by /.test(t)) && worn.some(t => /Worldforge Hammer/.test(t) && /Held by/.test(t)), `${P} 24: the hammer is held and the heart worn (${worn.join(' | ')})`);
       await shot('mother-anvil-prefight');
       await noScroll('24 prefight');
       await page.click('.ov-prefight .pf-not-yet');
@@ -2328,7 +2328,7 @@ async function run(V) {
         check(pieces.every(n => pf.includes(n)) && /Glinting/i.test(pf), `${P} 34: its pieces glint on the card: ${pieces.join(' and ')}`);
         check(pf.includes(BRANDS[E.brand].name.replace(/^The /, '')), `${P} 34: the card names ${BRANDS[E.brand].name}`);
         const worn = await W(() => [...document.querySelectorAll('.pf-relic')].map(b => b.innerText.replace(/\s+/g, ' ')));
-        check(worn.some(t => /Mourning Veil/.test(t) && /Worn/.test(t)) && worn.some(t => /Lantern/.test(t) && /Held by/.test(t)), `${P} 34: the lantern is held and the veil worn (${worn.join(' | ')})`);
+        check(worn.some(t => /Mourning Veil/.test(t) && /Worn by /.test(t)) && worn.some(t => /Lantern/.test(t) && /Held by/.test(t)), `${P} 34: the lantern is held and the veil worn (${worn.join(' | ')})`);
         await shot('lantern-mother-prefight');
         await noScroll('34 prefight');
         await page.click('.ov-prefight .pf-not-yet');

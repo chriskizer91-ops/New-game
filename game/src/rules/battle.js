@@ -29,7 +29,7 @@ import { buildFoe } from './foe.js';
 import { alive, targetable, unitsOf, familyData, rollIntent, refreshIntent, intentEvent, intentFor, strongest } from './ai.js';
 import { runEffects, dealDamage, applyHeal, addStatus, removeStatus, addSurge, damageMult, effLabel, statusOf, savingThrow } from './combat.js';
 import { battleLoot } from './loot.js';
-import { rngFrom, rollExpr, indexItems, clamp } from './util.js';
+import { rngFrom, rollExpr, indexItems, clamp, holdPhrase, isPlaceLabel } from './util.js';
 import { ASPECT_IDS, PHYSICAL_KINDS } from '../data/aspects.js';
 import { OMENS } from '../data/omens.js';
 import { RELICS } from '../data/relics.js';
@@ -100,7 +100,7 @@ export function createBattle({ heroes = [], foes = [], seed = 1, waking = 0, ctx
   tollIsDue(B, heroes, items);
   for (const f of unitsOf(s, 'foe')) {
     const opener = familyData(f).opener; // M6: a foe whose first move is always the same
-    f.intent = opener ? intentFor(s, f, opener, rng) : rollIntent(s, f, rng);
+    f.intent = opener ? intentFor(s, f, opener, rng, null) : rollIntent(s, f, rng);
     B.ev.push(intentEvent(f));
   }
   advance(B);
@@ -239,7 +239,9 @@ function startTurn(B, u) {
   if (skip) {
     B.ev.push({ t: 'status', target: u.id, status: skip.id, op: 'trigger', stacks: skip.stacks, turns: skip.turns });
     const by = skip.source && B.s.units[skip.source];
-    B.ev.push({ t: 'text', text: STATUSES[skip.id].held ? `${u.name} is ${(skip.label || 'swallowed').toLowerCase()}${by ? ` by ${by.name}` : ''} and loses the turn.` : `${u.name} is frozen solid and loses the turn.` });
+    // "is swallowed by the Sandmaw and loses the turn"; a place: "is in the river, put there by Hodge, and loses the turn"
+    const label = skip.label || 'swallowed', who = by ? by.name : '';
+    B.ev.push({ t: 'text', text: STATUSES[skip.id].held ? `${u.name} is ${holdPhrase(label, who)}${who && isPlaceLabel(label) ? ',' : ''} and loses the turn.` : `${u.name} is frozen solid and loses the turn.` });
     return false;
   }
   return true;

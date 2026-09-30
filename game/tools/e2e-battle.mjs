@@ -13,7 +13,8 @@
 // Veil snapped off (lantern); a hero led away under the water ("Led away", by her) and back in the line (led-away);
 // the Blackwater Leviathan diving ("Dived · out of reach", drawn in its dive pose) and swallowing a hero whole
 // (leviathan); Hodge's Toll Is Due at the strongest hero and his shove off the bridge ("In the river"), and his words
-// when he sits down (hodge); a hexed hero and a rotting one, and a heal halved by rot (fen). A fight that needs a rare
+// when he sits down (hodge); a hexed hero and a rotting one, and a heal halved by rot (fen). M6's review: at 360x740 a
+// hit of 9 dice or more keeps the tray's total inside the tray and the screen (tray). A fight that needs a rare
 // moment is found by the rules first (a starter, level and seed that has it; the harness plays the same fight).
 // A scenario whose foes are still the scaffold's stand-ins reports BLOCKED, not a pass, and fails the run.
 // Asserts no console errors or uncaught exceptions, no horizontal scroll, 44px tap targets, and the
@@ -618,6 +619,7 @@ const heroProbe = ev => {
     k: q('.bt-hold-k'), by: q('.bt-hold-by'), t: q('.bt-hold-t'), tag: q('.bt-hero-tag'), aria: card?.getAttribute('aria-label') || '',
     ribbonHeld: document.querySelectorAll('.bt-rib.held').length, ban: document.querySelector('.bt-move-ban:not([hidden])')?.textContent || '',
     side: document.querySelector('.bt-move-ban')?.dataset.side || '', caption: document.querySelector('.bt-caption')?.textContent || '',
+    floats: [...document.querySelectorAll('.bt-float b')].map(b => b.textContent), pops: [...(card?.querySelectorAll('.bt-tag-w.pop') || [])].map(w => w.dataset.k),
   };
 };
 
@@ -844,7 +846,7 @@ await scenario('leviathan', async rec => {
     const down = await pauseWhen(page, ev => ev.t === 'status' && ev.status === 'burrowed' && ev.op === 'add', 'phone360-leviathan-dive', { hurry: true, probe: foeProbe });
     check(down, 'the Leviathan never dived (the rules said it would)');
     rec.shots.push(down.path);
-    check(down.info.sunk && down.info.water && /^Dived · out of reach$/.test(down.info.state) && /cannot be targeted/.test(down.info.aria), `the dived plate reads "${down.info.state}" (${down.info.aria})`);
+    check(down.info.sunk && down.info.water && /^Dived · out of reach$/.test(down.info.state) && /\bdived, cannot be targeted/.test(down.info.aria) && !/burrowed/.test(down.info.aria), `the dived plate reads "${down.info.state}" (${down.info.aria})`);
     check(down.info.pose === 'dive', `under the water the stage draws it in its dive pose (${down.info.pose || 'none'})`);
     await layoutChecks(page, 'leviathan/dived');
     const up = await pauseWhen(page, (ev, id) => ev.t === 'status' && ev.target === id && ev.status === 'burrowed' && ev.op === 'remove', 'phone360-leviathan-up', { hurry: true, arg: down.ev.target, probe: foeProbe });
@@ -896,8 +898,36 @@ await scenario('hodge', async rec => {
   await finishCommon(rec, s);
   await s.context.close();
   check(log.some(l => /Hodge: Toll Is Due/.test(l)) && log.some(l => /CHA save/.test(l)), 'the log has the toll and its CHA save');
+  // his opener is not rolled: the log gives it no die face (M6 review: "12: Toll Is Due" named a face never rolled)
+  check(log.some(l => /Hodge readies Toll Is Due .*\(always the first move\)/.test(l)) && !log.some(l => /readies Toll Is Due .*\(d\d+ \d+\)/.test(l)), 'the log names no die face for his opener');
   check(log.some(l => /stops to count out the toll|pays it no mind|loses a turn/.test(l)) || log.some(l => /CHA save: .* saved/.test(l)), 'the log says how the toll went');
   if (s.aftermath.result.result === 'victory') check(log.some(l => /sits down on his stool/.test(l)), 'beaten, Hodge sits down on his stool (his own words on his fall)');
+});
+
+await scenario('tray', async rec => {
+  // M6 review: at 360x740, a foe's hit at the Gloomfen's levels rolls 11 to 14 dice. The tray's damage row stays on
+  // one line (the dice give way to "+N"), and its total ends inside the tray and inside the screen.
+  if (stubbed('hodge').length) { blocked(rec, 'Hodge is still the scaffold stand-in (P4: data/foes.js)'); return; }
+  const s = await open(PHONE360, 'node=hodge&level=30&speed=4&auto=1&starter=hearthbrand&seed=2');
+  const { page } = s;
+  const trayProbe = () => {
+    const t = document.querySelector('.bt-tray'), d = document.querySelector('.bt-tray-dmg'), tot = d?.querySelector('.total');
+    if (!t || t.hidden || !tot) return null;
+    const tr = t.getBoundingClientRect(), dr = d.getBoundingClientRect(), br = tot.getBoundingClientRect(), line = parseFloat(getComputedStyle(d).lineHeight) || 26;
+    return { chips: d.querySelectorAll('.bt-dchip').length, more: d.querySelector('.more')?.textContent || '', total: tot.textContent, trayBottom: Math.round(tr.bottom), totalBottom: Math.round(br.bottom), totalRight: Math.round(br.right), vw: innerWidth, vh: innerHeight, rowH: Math.round(dr.height), line: Math.round(line) };
+  };
+  const rows = [];
+  for (let i = 0; i < 6; i++) {
+    const p = await pauseWhen(page, ev => ev.t === 'damage' && (ev.dice?.length || 0) >= 9, i ? null : 'phone360-tray-many-dice', { hurry: true, probe: trayProbe });
+    if (!p) break;
+    if (p.path) rec.shots.push(p.path);
+    if (p.info) rows.push({ dice: p.ev.dice.length, ...p.info });
+  }
+  check(rows.length >= 2, `Hodge's side rolled too few big hits to check the tray (${rows.length})`);
+  for (const r of rows) check(r.totalBottom <= Math.min(r.trayBottom, r.vh) + 1 && r.totalRight <= r.vw + 1, `${r.dice} dice: the total "${r.total}" ends inside the tray and the screen (${JSON.stringify(r)})`);
+  rec.notes.push(`hits of ${rows.map(r => `${r.dice} dice (${r.chips} shown${r.more ? `, ${r.more}` : ''})`).join(', ')}`);
+  check(!s.errors.length, `errors: ${s.errors.slice(0, 5).join(' | ')}`);
+  await s.context.close();
 });
 
 await scenario('fen', async rec => {
@@ -922,6 +952,9 @@ await scenario('fen', async rec => {
     const word = st === 'hexed' ? 'Hexed' : 'Rotting';
     const cls = await page.evaluate(([id, c]) => document.querySelector(`.bt-hero[data-id="${id}"]`)?.classList.contains(c), [p.ev.target, st]);
     check(p.info.tag.includes(word) && cls && new RegExp(st === 'hexed' ? 'hexed: its rolls at a disadvantage' : 'rotting.*heals halved').test(p.info.aria), `the ${st} hero's card says "${word}" (${p.info.tag}; ${p.info.aria})`);
+    // M6 review: the word pops in over the figure, and no float covers it; the label names it once
+    check(p.info.pops.includes(st) && !p.info.floats.some(t => t.toLowerCase() === st), `"${word}" pops in, with no float over it (pops ${JSON.stringify(p.info.pops)}; floats ${JSON.stringify(p.info.floats)})`);
+    check((p.info.aria.match(new RegExp(`\\b${st}\\b`, 'g')) || []).length === 1, `the card's label names ${st} once ("${p.info.aria}")`);
     await layoutChecks(page, `fen/${st}`);
   }
   if (rotHeal) {

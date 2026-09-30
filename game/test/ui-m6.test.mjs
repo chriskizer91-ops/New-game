@@ -14,7 +14,7 @@ import { PAGES } from '../src/data/codex.js';
 import { TRACK_NAMES, badNotes } from '../src/core/audio.js';
 import { chapterEnd, hasRegionCard } from '../src/ui/world/story-fx.js';
 import { VIEWS, REGION_VIEW, framed, toFrame, relax, regionOpen } from '../src/ui/lib/atlas-geo.js';
-import { isHexed, rotStacks, afflictions, divesUnderWater, isSunk, holdInfo, gripWord } from '../src/ui/battle/model.js';
+import { isHexed, rotStacks, afflictions, divesUnderWater, isSunk, holdInfo, gripWord, statusWords } from '../src/ui/battle/model.js';
 import { RELICS } from '../src/data/relics.js';
 import { foeLook } from '../src/ui/battle/sprites.js';
 import { logLine } from '../src/ui/battle/log.js';
@@ -129,9 +129,18 @@ test('M6 battle UI: hexed and rotting read on the card, a dive into water is kno
   const nameOf = id => ({ f1: 'The Lantern Mother', f2: 'Hodge' }[id] || '');
   assert.equal(holdInfo(hero({ statuses: [{ id: 'swallowed', stacks: 1, turns: 2, source: 'f1', label: 'Led away' }] }), nameOf).text, 'Led away by The Lantern Mother, 2 turns left');
   assert.equal(holdInfo(hero({ statuses: [{ id: 'swallowed', stacks: 1, turns: 1, source: 'f2', label: 'In the river' }] }), nameOf).text, 'In the river, put there by Hodge, 1 turn left');
+  // a screen reader hears each status once, by name: a dived foe is "dived", and a hero card leaves out what its
+  // label already says in full (a hold, a charm, Hexed, Rotting)
+  const burrowed = { id: 'burrowed', stacks: 1, turns: null };
+  assert.deepEqual(statusWords(foe({ family: 'blackwater-leviathan', statuses: [burrowed] })), ['dived']);
+  assert.deepEqual(statusWords(foe({ family: 'kharzul', statuses: [burrowed] })), ['burrowed']);
+  const fen = [{ id: 'hexed', stacks: 1, turns: 2 }, { id: 'rotting', stacks: 2, turns: 3 }, { id: 'poisoned', stacks: 2, turns: 3 }, { id: 'swallowed', stacks: 1, turns: 1, source: 'f2', label: 'In the river' }, { id: 'charmed', stacks: 1, turns: null }];
+  assert.deepEqual(statusWords(hero({ statuses: fen }), { worded: true }), ['poisoned x2']);
+  assert.deepEqual(statusWords(hero({ statuses: fen })), ['hexed', 'rotting x2', 'poisoned x2', 'swallowed', 'charmed']);
+  for (const junk of [null, undefined, {}, { statuses: null }]) assert.deepEqual(statusWords(junk), []);
 });
 
-test('M6 battle UI: the log says a heal halved by rot, a hold by its label, and a foe\'s own last words', () => {
+test('M6 battle UI: the log says a heal halved by rot, a hold by its label, a foe\'s own last words, and an opener with no face', () => {
   const disp = { units: { pip: hero(), f1: foe(), f2: foe({ id: 'f2', label: 'Hodge' }) } };
   assert.equal(logLine({ t: 'heal', target: 'pip', amount: 4, rot: true }, disp).text, 'Pip recovers 4 HP (halved by rot)');
   assert.equal(logLine({ t: 'heal', target: 'pip', amount: 8 }, disp).text, 'Pip recovers 8 HP');
@@ -140,6 +149,9 @@ test('M6 battle UI: the log says a heal halved by rot, a hold by its label, and 
   assert.equal(logLine({ t: 'status', target: 'pip', status: 'hexed', op: 'add', stacks: 1 }, disp).text, 'Pip is Hexed');
   assert.equal(logLine({ t: 'status', target: 'pip', status: 'rotting', op: 'add', stacks: 2 }, disp).text, 'Pip is Rotting x2');
   assert.equal(logLine({ t: 'ko', target: 'f2', text: 'Hodge sits down on his stool.' }, disp).text, 'Hodge sits down on his stool.');
+  // an opener is not rolled: the log names no face for it (a rolled intent still gives its die and face)
+  assert.equal(logLine({ t: 'intent', foe: 'f2', die: 12, face: null, move: 'toll-is-due', name: 'Toll Is Due', text: 'Toll Is Due at Pip', target: 'pip' }, disp).text, 'Hodge readies Toll Is Due at Pip (always the first move)');
+  assert.equal(logLine({ t: 'intent', foe: 'f2', die: 12, face: 9, move: 'clipped-coin', name: 'Clipped Coin', text: '9: Clipped Coin at Pip', target: 'pip' }, disp).text, 'Hodge readies Clipped Coin at Pip (d12 9)');
 });
 
 test('M6: a price reads as it costs ("120 gold", "2 Hearth Tonics", "1 silver")', () => {

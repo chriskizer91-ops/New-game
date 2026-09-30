@@ -172,7 +172,7 @@ export function openPrefight(ctx, { game, encId } = {}) {
       b.setAttribute('aria-label', `See the card: ${item.name}, ${r.worn ? 'worn' : 'held'} by ${r.holder}`);
       try { b.append(iconCanvas(item, 2)); } catch { /* icon optional */ }
       const t = el('span', 'pf-relic-t');
-      t.append(text('b', '', r.held.item ? `Echo · ${item.name}` : item.name), text('small', '', `${r.worn ? 'Worn' : r.lend ? 'Lent to' : 'Held by'} ${r.holder}`));
+      t.append(text('b', '', r.held.item ? `Echo · ${item.name}` : item.name), text('small', '', `${r.worn ? 'Worn by' : r.lend ? 'Lent to' : 'Held by'} ${r.holder}`));
       b.append(t);
       b.addEventListener('click', () => { ctx.audio.sfx('page'); ctx.services.cardPreview(item, { heldBy: r.holder }); });
       row.append(b);

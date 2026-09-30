@@ -5,6 +5,7 @@ import { STATUSES } from '../../data/statuses.js';
 import { RELICS } from '../../data/relics.js';
 import { PAGES } from '../../data/codex.js';
 import { familyData } from '../../rules/ai.js';
+import { holdPhrase } from '../../rules/util.js';
 
 const clone = x => (x == null ? x : structuredClone(x));
 
@@ -125,15 +126,9 @@ export function holdInfo(u, nameOf = () => '') {
   return { id: st.id, label, by, turns, text: [holdPhrase(label, by, false), left].filter(Boolean).join(', ') };
 }
 
-// A hold in a sentence (M6): a label that is a doing takes "by" ("held under by the Rime-Abbot", "led away by the
-// Lantern Mother"); a label that is a place says who put the hero there ("in the river, put there by Hodge").
-// lower: the label as it reads mid-sentence.
-const PLACE_LABEL = /^(in|into|under|on|at) /i;
-export function holdPhrase(label, by = '', lower = true) {
-  const l = lower ? String(label || '').toLowerCase() : String(label || '');
-  if (!by) return l;
-  return PLACE_LABEL.test(l) ? `${l}, put there by ${by}` : `${l} by ${by}`;
-}
+// A hold in a sentence: the rules' holdPhrase ("in the river, put there by Hodge"), which the engine's own
+// lost-turn line uses too.
+export { holdPhrase };
 
 // What a status event lacks for the plate (the engine's `add` event names neither the source nor the
 // label): filled in from the unit's entry in the engine state the events lead to, when it is still there.
@@ -189,4 +184,12 @@ export function afflictions(u) {
 // A foe that goes down into water rather than under a floor (the Blackwater Leviathan's Sound): a tide foe.
 export function divesUnderWater(u) {
   try { return familyData(u).aspect === 'tide'; } catch { return false; }
+}
+// A unit's statuses for a screen reader, by name and mid-sentence ("poisoned x2, guarding"; a foe gone under the
+// water is "dived"). worded: leave out what a hero card's label already says in full (a hold, a charm, Hexed and
+// Rotting), so no status is named twice.
+export function statusWords(u, { worded = false } = {}) {
+  return (u?.statuses || [])
+    .filter(s => { const d = STATUSES[s.id] || {}; return !(worded && (d.held || d.charm || d.hex || (d.healMult ?? 1) < 1)); })
+    .map(s => `${STATUSES[s.id]?.untargetable && divesUnderWater(u) ? 'dived' : statusName(s.id).toLowerCase()}${s.stacks > 1 ? ` x${s.stacks}` : ''}`);
 }

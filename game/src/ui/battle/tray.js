@@ -87,11 +87,12 @@ export class Tray {
     return ev.result;
   }
 
-  // damage dice as chips: [d6 4][d6 3] + 3 = 10 (x1.5 weak)
+  // damage dice as chips: [d6 4][d6 3] + 3 = 10 (x1.5 weak). The row stays on one line so the total never drops out of
+  // the dock: a narrow tray (a phone) shows fewer chips before "+N" (M6: a high-level foe's hit rolls 11 to 14 dice)
   damage(ev, { eff }) {
     if (this.box.hidden) return;
     const dice = ev.dice || [];
-    const shown = dice.slice(0, 10);
+    const shown = dice.slice(0, this.box.clientWidth && this.box.clientWidth < 420 ? 5 : 10);
     const chips = shown.map(d => el('span.bt-dchip', null, pixelIcon(diceIcon(d.sides, { value: d.value, size: 12, mat: DIE_MAT[d.aspect] || 'bone' }), 2)));
     const parts = [el('span.bt-dlist', null, ...chips, dice.length > shown.length ? el('span.more', { text: `+${dice.length - shown.length}` }) : null)];
     if (ev.flat) parts.push(el('span.flat', { text: `${ev.flat > 0 ? '+' : '-'} ${Math.abs(ev.flat)}` }));
