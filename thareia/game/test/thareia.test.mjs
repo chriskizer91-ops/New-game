@@ -22,8 +22,17 @@ function reach(map, [x0, y0], { through = [] } = {}) {
   const block = map.entities.filter(e => !['trigger'].includes(e.kind) && !(e.kind === 'sign' && e.look === 'painted') && !through.includes(e.id) && e.at && !e.area);
   const blocked = (x, y) => block.some(e => covers(e, x, y));
   const seen = new Set([`${x0},${y0}`]), q = [[x0, y0]];
+  // an exit into this same map (the docks' tower stair) joins its tile to its anchor
+  const links = (map.exits || []).filter(ex => ex.to === map.id);
   while (q.length) {
     const [x, y] = q.pop();
+    for (const ex of links) {
+      const [ax, ay, bx, by] = ex.area;
+      if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => x + dx >= ax && x + dx <= bx && y + dy >= ay && y + dy <= by)) {
+        const [tx, ty] = map.anchors[ex.anchor], k = `${tx},${ty}`;
+        if (!seen.has(k)) { seen.add(k); q.push([tx, ty]); }
+      }
+    }
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const nx = x + dx, ny = y + dy, k = `${nx},${ny}`;
       if (!seen.has(k) && walkable(map, nx, ny) && !blocked(nx, ny)) { seen.add(k); q.push([nx, ny]); }

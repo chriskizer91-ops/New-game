@@ -99,6 +99,7 @@ export function newGame({ name = 'Wren', starter = 'hearthbrand', seed = 1, base
     },
     settings: { sound: true, battleSpeed: 1, reducedMotion: false },
     bag: { ...STARTING_BAG },
+    ...(at !== START_AT ? { world: 'thareia' } : {}), // Thareia (T1): not the old game's world (its bounties and Ladder)
     ending: null, // M7: the ending chosen at the Worldforge's heart (rules/migrate.js ENDINGS)
   };
 }

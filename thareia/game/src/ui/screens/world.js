@@ -61,6 +61,7 @@ import { reliquaryLine } from './codex.js';
 import { playBrandBanner, playCrownwalls, showLetter, playCouncil, showToBeContinued, showRegionCard, hasRegionCard, showOpening, playEnding, showCut } from '../world/story-fx.js';
 import { HEROES } from '../../data/heroes.js';
 import { createLoop } from '../world/loop.js';
+import { createMinimap } from '../world/minimap.js';
 import {
   TILE, STEP_MS, RUN_MS, IDLE_TICK_MS, HOLD_MS, FADE_MS, SAVE_EVERY_STEPS, NEAR_TILES, MAP_ZOOM, TAP_TURN_MS, IDLE_FPS, MAX_SPRITES, SHOWOFF_MS, MAX_PATH,
 } from '../world/constants.js';
@@ -181,7 +182,8 @@ export function mount(root, ctx, params = {}) {
   const stagePrompt = el('p', { class: 'w-stage-prompt', 'aria-hidden': 'true' });
   const frame = el('div', 'w-frame');
   frame.append(canvas, plates);
-  stage.append(frame, stagePrompt);
+  const minimap = createMinimap({ onToggle: () => { ctx.audio.sfx('map-open'); } });
+  stage.append(frame, stagePrompt, minimap.el);
   const controls = createControls(root, {
     onA: () => pressA(), onB: () => pressB(), onMenu: () => openMenu(),
     onJournal: () => leave('journal', { tab: 'quests' }), onTouch: () => { touched = true; syncDeck(); },
@@ -354,6 +356,7 @@ export function mount(root, ctx, params = {}) {
   }
 
   // ---- UI refresh after game changes ------------------------------------------------------------------
+  let lastObjective = null;
   function refreshWorld() {
     view.refresh(game);
     actors.refresh(game, walk, performance.now());
@@ -365,6 +368,8 @@ export function mount(root, ctx, params = {}) {
     try { nx = Story.nextObjective(game); } catch { nx = null; }
     hud.update(game, walk, nx);
     side.update(game, nx);
+    lastObjective = nx;
+    minimap.update(game, walk, nx);
     updateFacing();
     updateNear();
     updateDark();
@@ -556,6 +561,16 @@ export function mount(root, ctx, params = {}) {
     const before = walk;
     let r;
     try { r = W.move(game, walk, dir, { run }); } catch (err) { console.error(err); M.path = null; return; }
+    // Thareia: corner slip. Held into a plain wall, the walker slides one tile sideways when that opens the way on
+    // (so a diagonal boardwalk, traced as a staircase of tiles, walks with one direction held)
+    if (!fromPath && r.events.length && r.events.every(e => e.t === 'turn' || (e.t === 'bump' && !e.id))) {
+      const side = slipDir(dir);
+      if (side) {
+        let r2 = null;
+        try { r2 = W.move(game, { ...walk, face: side }, side, { run }); } catch { r2 = null; }
+        if (r2 && r2.events.some(e => e.t === 'step')) { M.slip = side; r = { ...r2, walk: { ...r2.walk, face: dir } }; }
+      }
+    }
     apply(r);
     const stepped = r.events.some(e => e.t === 'step');
     const dur = run ? RUN_MS : STEP_MS;
@@ -574,6 +589,19 @@ export function mount(root, ctx, params = {}) {
     actors.syncRoamers(walk, now, dur);
     runEvents(r.events, { stepEnd: stepped ? M.end : 0, before });
   }
+  // the side a blocked walker may slip to: the tile beside it is open and so is the one beyond it, going on; when both
+  // sides are, the side it slipped to last (a staircase keeps its direction), else neither
+  function slipDir(dir) {
+    const [fx, fy] = DIRS[dir], map = walk.map;
+    const open = (x, y) => { try { return W.canWalk(game, map, x, y); } catch { return false; } };
+    const sides = (fx ? ['n', 's'] : ['e', 'w']).filter(sd => {
+      const [sx, sy] = DIRS[sd];
+      return open(walk.x + sx, walk.y + sy) && open(walk.x + sx + fx, walk.y + sy + fy);
+    });
+    if (sides.length === 1) return sides[0];
+    if (sides.length === 2 && sides.includes(M.slip)) return M.slip;
+    return null;
+  }
   function onStepped() {
     M.steps++; M.sinceSave++;
     if (!M.firstStep) {
@@ -586,6 +614,7 @@ export function mount(root, ctx, params = {}) {
   }
   function onStepEnd(now) {
     M.idleAt = now;
+    minimap.update(game, walk, lastObjective);
     updateFacing();
     updateNear();
   }

@@ -40,6 +40,7 @@ import { DIALOGUE, AFTER, RESTS } from '../data/dialogue.js';
 import { LETTERS } from '../data/letters.js';
 import { QUESTS, BOUNTIES } from '../data/quests.js';
 import { LADDER } from '../data/ladder.js';
+import { TH_OBJECTIVES } from '../data/thareia/objectives.js';
 import { HEROES } from '../data/heroes.js';
 import { DOMAINS } from '../data/domains.js';
 import { check, questState, bountyState, flagsOf, storyOf, canAfford } from './cond.js';
@@ -284,7 +285,10 @@ export function questLog(game) {
 
 export function nextObjective(game) {
   const q = questLog(game).find(x => x.kind === 'main' && x.state === 'active') || questLog(game).find(x => x.state === 'active');
-  return q ? { text: q.step.text, map: q.step.target.map, entity: q.step.target.entity } : null;
+  if (q) return { text: q.step.text, map: q.step.target.map, entity: q.step.target.entity };
+  // Thareia (T1): the Prologue's steps
+  const t = game?.world === 'thareia' ? TH_OBJECTIVES.find(o => check(game, o.if)) : null;
+  return t ? { text: t.text, map: t.map, entity: t.entity } : null;
 }
 
 function claimInto(g, id, rng, events) {
@@ -319,10 +323,12 @@ export function claimQuest(game, id) {
 }
 
 export function bounties(game) {
+  if (game?.world === 'thareia') return []; // Thareia (T1): the old game's bounties are not Thareia's
   return Object.values(BOUNTIES).map(b => ({ ...b, state: bountyState(game, b.id) }));
 }
 
 export function ladder(game) {
+  if (game?.world === 'thareia') return [];
   const scouted = flagsOf(game).scouted || {};
   return LADDER.filter(p => check(game, p.if)).map(p => ({
     id: p.id, name: p.name, act: p.act, enc: p.enc || null, spawn: p.spawn ?? null,

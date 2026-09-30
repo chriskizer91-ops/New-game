@@ -89,7 +89,7 @@ await W('step', 'n', 1); await page.waitForTimeout(600); await shot('sedrin'); a
 await W('teleport', 'th-bogmire', 21, 9, 'e'); await page.waitForTimeout(400); await W('interact'); await page.waitForTimeout(400); await shot('board'); await talk();
 
 // ---- hired, the crate, both fights ----
-await W('teleport', 'bogmire-docks', 27, 13, 'n'); await page.waitForTimeout(500);
+await W('teleport', 'bogmire-docks', 26, 13, 'n'); await page.waitForTimeout(500);
 await W('face', 'n'); await W('interact'); await page.waitForTimeout(400); await shot('yara'); await talk(['I can lift.']);
 await page.waitForTimeout(500); await shot('yara-joined');
 await W('teleport', 'bogmire-docks', 27, 13, 'e'); await page.waitForTimeout(400); await W('interact'); await page.waitForTimeout(400);
