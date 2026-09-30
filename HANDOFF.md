@@ -1,11 +1,11 @@
 # Handoff: Aethermoor: Hearth & Heirloom
 
-This is for a fresh session with none of the earlier conversation. Read it top to bottom, then read `CLAUDE.md`, and you can start the next step without re-exploring (§3.3).
+This is for a fresh session with none of the earlier conversation. Read it top to bottom, then read `CLAUDE.md`, and you can start the next step without re-exploring (§3.4).
 
 - **Branch:** `claude/cool-ptolemy-uc93gg`. It contains the whole history of the earlier branch `claude/dnd-game-prototype-bsv3xb`. If your session names a different branch, use that one and carry this history over. Never create a PR unless the player asks for one.
-- **State at handoff:** **Milestone 6, the Gloomfen, is done and delivered** as the download `game/dist/aethermoor-m6.html` (Milestone 5 before it as `game/dist/aethermoor-m5.html`). Mossfall's fen stair opens after the third council onto twelve Gloomfen maps: Hodge's toll, two Champions, Codex Page IV, the rotting and hexed statuses, the fog, Tamsin's fall to the Unsmith, and the fourth council, which ends Act II. Every map in the game now draws from the player's own paintings; the Gloomfen's are traced from them. Every gate is green: 506/506 tests, lint, build (the game 2.6 MB and the paintings 28.2 MB: 30.8 MB in all), `e2e-world` (39 scenarios), `e2e-flow`, `e2e-battle` (28) and `e2e-codes` at both sizes, the balance sim on target. Two independent reviews found one must-fix (in content); every finding is fixed. The full record is `game/docs/M6-STATUS.md`.
-- **Next: Milestone 7, Act III** (§3.4): the spec first.
-- **Waiting on the player:** nothing blocks. Open offers: a new, separate claude.ai page for phone play (an iPhone's Files preview does not run the game; a page holds 16 MB, so it needs a lighter copy of the paintings). Never republish the M2 page.
+- **State at handoff:** **Milestone 7, Act III (the Hearth Below), is done and delivered** as `game/dist/aethermoor-m7.html`, sent zipped (`aethermoor-m7.zip`, 21.7 MiB: the HTML is 30.4 MiB, past the 30 MiB a sent file may be). After the fourth council the fifth opens the four gifts; the Hollow Council is fought back to back below the Keep; the road goes down the Ash Stair and the Chained Deep (Tamsin rejoins) to the Worldforge, where Tamsin fights beside the party against the Unsmith, Harrow Ironvein; then the Warden chooses one of three endings at the Worldforge's heart (Kindle Anew needs No. 000, the Masterpiece Hilda forges, and every Codex page). Every gate is green on the delivered file: 623/623 tests, lint, build (the game 2.9 MB and the paintings 28.2 MB: 31.8 MB in all), `e2e-world` (47 scenarios, 741 checks), `e2e-flow`, `e2e-battle` (30) and `e2e-codes` (30 codes) at both sizes, and the balance sim on target (every earlier mode re-run after the review's Stagger fix; the Unsmith and three lead lairs retuned). Two independent reviews found one must-fix (the Masterpiece could be melted down); every finding is fixed. The full record is `game/docs/M7-STATUS.md`.
+- **Next:** the **post-game** milestone (the player's choice: Act III first, the post-game next; M7 spec A15): the Heat ladder, the Awakened Champions' rematches, the Emberless Reach, the relics he took going back into the world, the Sleepers at full power and the First Smith. The spec first, as for M7 (§3.4).
+- **Waiting on the player:** **batch 4**, the four Act III maps painted from written descriptions (`art-requests/batch-4.md`). Until they come the Hearth Below draws from its tiles; when they come, trace each map from its painting (§3.4). Open offer: a new, separate claude.ai page for phone play (an iPhone's Files preview does not run the game; a page holds 16 MB, so it needs a lighter copy of the paintings). Never republish the M2 page.
 
 ---
 
@@ -52,7 +52,8 @@ The roadmap is in `docs/DESIGN-BRIEF.md` §13. Status:
 | Milestone 4.5 "The Road" | ✅ **done, delivered as a download** | The M4 playtest: M2's pacing on the walkable maps. Road gates held by every route fight, no Routs, Auto off. Its own file and save. See `game/docs/M45-STATUS.md` |
 | M5 "The Ironspire Peaks" | ✅ **done, delivered as a download** | 11 mountain maps and the painted East Road, Mother Anvil and the Rime-Abbot, Codex Page III, the burrowed, swallowed and charmed statuses, Tamsin's kits, save v4, the player's paintings as map ground. See `game/docs/M5-STATUS.md` |
 | M6 "The Gloomfen Marsh" | ✅ **done, delivered as a download** | 12 fen maps, every map painted, Hodge, the Lantern Mother and the Leviathan, Codex Page IV, rotting, hexed and the fog, Tamsin's fall, the end of Act II, save v5. See `game/docs/M6-STATUS.md` |
-| **M7** | ⬜ **next** | The Hollow Council, the Unsmith, 3 endings, the Heat ladder |
+| M7 "The Hearth Below" (Act III) | ✅ **done, delivered as a zip** | 4 maps below the Keep, the Hollow Council back to back, Tamsin as a guest, the Unsmith (two dice, three phases, his Stolen Arts), Codex Page V and No. 000, the Masterpiece, 3 endings and the credits, save v6. See `game/docs/M7-STATUS.md` |
+| **The post-game** | ⬜ **next** | The Heat ladder (moved here from M7), the Awakened Champions' rematches, the Emberless Reach, the stolen relics' return, the Sleepers at full power, the First Smith |
 | M8 | ⬜ | The optional Hearthteller (AI DM) and cloud saves |
 
 ## 3. Where things stand
@@ -141,45 +142,40 @@ The player, after their testers played M4: "the way the game progressed at m2 wa
 2. **Tracing a batch of paintings in parallel:** seven builders, each in a private copy of `game/` (a `tar` copy, `node_modules` and `../art-in` linked), one or two maps each, with a written brief and a trace-sheet tool (the painting at the map's size with a labelled tile grid) and `paint-import --grid` to check rows against the picture. The lead merged each builder's maps, its Hearthfire lines in `world.js` and its notes, re-imported every painting (byte-identical to the builder's), and looked at every overlay.
 3. A picture's layout can differ from the request's references (the player's image tool may not take them); read the batch's README before fitting pictures to maps.
 
-### 3.4 In progress: Milestone 7, Act III (the Hearth Below)
+### 3.4 Done: Milestone 7, Act III (the Hearth Below)
 
-The contract is `game/docs/M7-SPEC.md`. The player's answers are built into its Part A: Act III now and the post-game
-next; batch 4 painted from written descriptions; Tamsin fights beside the party as a guest; Kindle Anew needs No. 000,
-the Masterpiece and every page.
+**M7 in one breath** (details and numbers in `game/docs/M7-STATUS.md`; the contract is `game/docs/M7-SPEC.md`):
+- **Places:** the fifth council opens the vault stair onto a new region, `below`: the Hollow Hall (the Council's
+  First-Age chamber), the Ash Stair, the Chained Deep (the First Sleeper, the chains, Tamsin, the Chain Fire) and the
+  Worldforge. 35 Hearthfires in all. The maps draw from their tiles until batch 4 is painted.
+- **Content:** the Hollow Council (tier `hollow`: d20 +4 while the gift holds), 3 road families, the Unsmith (tier
+  `unsmith`: two d20s, three phases, three pieces, up to six Stolen Arts from relics never claimed), Tamsin as a guest
+  in the finale, 9 relics (Page V with No. 000: 75 in all), the Masterpiece at Hilda's, the three endings (Rekindle,
+  Release, Kindle Anew), the credits and the last card, 3 quests, 5 posters, 1 letter.
+- **Systems:** a guest (`side: 'ally'`, played by the engine), two-dice foes (`intent2`, a Stagger breaks the next),
+  the Stolen Arts (`stolenFor`), `wakeAt`, a sign that opens a scene, prices in gems, the `unmade` and `hearthlit`
+  statuses and the `save` stat, the conditions `{ ending }`, `{ pages: 'all' }` and `{ masterpiece }`, the effect
+  `{ ending }`; save version 6 (`AETH6.`).
+- **Saves:** its own key `aethermoor.save.m7` (+ `.bak`, `aethermoor.m7.started`); the M6, M5, M4.5, M4, M3 and M2
+  saves are carry-overs, newest first; `toV6` adds only `ending: null`.
+- **Known issues:** `M7-STATUS.md` §3.
 
-**Done and pushed:**
-- **The spec.**
-- **Batch 4's painting request:** `art-requests/batch-4.md` and `batch-4/places.md`. It was sent to the player. When
-  the pictures come, trace each map from its painting as batch 3's were (M6-STATUS §2.4, `tools/paint-sheet.mjs`).
-- **Step 0:** its own save `aethermoor.save.m7` (version 6, `AETH6.`, the M6 save offered first); `dist/aethermoor-m6.html`
-  is frozen, and the download is `dist/aethermoor-m7.html`.
-- **P1, the rules:**
-  - the hollow and Unsmith tiers;
-  - the guest (`side: 'ally'`);
-  - the Stolen Arts;
-  - the Masterpiece;
-  - Page V's `nos`, and the conditions and the effect for the endings;
-  - the Unmade and Hearthlit statuses and the `save` stat;
-  - a sign that opens a scene;
-  - `wakeAt`.
-  - See the headers of `rules/battle.js`, `ai.js`, `foe.js`, `codex.js`, `cond.js`, `story.js` and `forge.js`.
-- **The scaffold:** every Act III id stubbed, marked `STUB from the M7 scaffold` (`game/notes/M7-scaffold.md`).
-- **The delivery zip:** `tools/zip.mjs` (spec A6). M7's HTML will pass the 30 MiB a sent file may be, so it goes out
-  zipped. M6's file zips from 29.85 to 21.56 MiB.
+**How M7 was built** (as M6, plus):
+1. The lead wrote the spec, then step 0 (the save and file) and P1 (the rules) itself, then a scaffold with every Act III
+   id stubbed, before six packages ran in parallel (P2 maps, P3 story, P4 foes, relics and balance, P5 overworld art,
+   P6 battle and item art, P7 UI). Each worked in a `tar` copy of the base with `node_modules` linked, never ran git,
+   and wrote `game/notes/M7-<pkg>.md`. Each was landed as a branch cut from the base (only the project's paths copied
+   in) and merged, after listing the assertions its tests lost against the base.
+2. **The merged build's browser gates come before the reviews:** they found a real rules bug (a pried gift's +4 kept on
+   rolls already made) and three test-harness races. `e2e-battle`'s pauses now arm the next one before resuming.
+3. Two reviews in parallel, as in M6, each told what the gates had already found. One must-fix (the Masterpiece could
+   be salvaged); every finding is fixed with a test, and the balance sim re-run from scratch.
+4. **Delivery:** past 30 MiB, the download is `tools/zip.mjs` of the dist file; `--check` compares the bytes.
 
-**Running:** six packages in parallel (P2 maps, P3 story, P4 foes, relics and balance, P5 overworld art, P6 battle and
-item art, P7 UI).
-- Each works in a private copy of the base `e86320f`, with the briefs in the lead's scratch folder.
-- Each package writes `game/notes/M7-<pkg>.md`.
-- A lost package is rebuilt from the spec §7 and its brief.
-
-**Then:**
-1. Merge each package (a branch cut from the base, merged into the M7 work).
-2. Tune with `tools/sim.mjs` to the spec's §8 bands.
-3. Two independent reviews.
-4. The gates: unit, e2e-world, -battle, -flow and -codes, performance and size.
-5. Deliver `dist/aethermoor-m7.html` zipped.
-6. Write `game/docs/M7-STATUS.md`, and update this file and `CLAUDE.md`.
+**Batch 4, when the paintings come:** trace each Act III map from its painting as batch 3's were (M6-STATUS §2.4,
+`tools/paint-sheet.mjs`, `paint-import --grid`), in `art-in/batch-4/` with a `panels.json`. Keep every id, road and
+gate order; read the batch's README first (the pictures may not follow the requested layouts). The heart's look turns
+from `heart-step` to `painted`. The optional stills go in `CUTS` (the Hearth Below's card, the three endings).
 
 ## 4. Architecture and key decisions
 
@@ -187,8 +183,8 @@ item art, P7 UI).
 - `tools/build.mjs` inlines the JS and CSS into `src/index.html` (split at `<!--BODY-->`). It writes, into `dist/` or `--out <dir>`:
   - `aethermoor.html`: a full document, for local play
   - `aethermoor.artifact.html`: a fragment with no doctype/html/head/body, for claude.ai pages
-  - `aethermoor-m5.html`: the delivery copy (`dist/aethermoor-m2.html`, `-m3.html`, `-m4.html`, `-m4.5.html` and `-m5.html` are committed as delivered; all but the newest are pinned by a test)
-  - For the game it warns above 2.5 MB and fails above 3.2 MB (M5 spec A6), counting the player's paintings apart: they fail above 8 MB. M5's game is about 2.2 MB and its paintings 5.9 MB; `--minify` saves about 10% of the game if it needs room.
+  - `aethermoor-m7.html`: the delivery copy (`dist/aethermoor-m2.html` to `-m7.html` are committed as delivered; all but the newest are pinned by a test)
+  - For the game it warns above 2.5 MB and fails above 3.2 MB (M5 spec A6), counting the player's paintings apart: they fail above 32 MB (the player chose full detail, M6 spec A6). M7's game is about 2.9 MB and its paintings 28.2 MB; `--minify` saves about 10% of the game if it needs room.
 - The only outside request allowed is Google Fonts. All art, music and data are generated or embedded.
 - `game/ARCHITECTURE.md` is the technical contract: the state shape (v4), the battle API, the world engine, the event table and the shared vocabulary.
 
@@ -252,6 +248,9 @@ node tools/map-draft.mjs --all   # ASCII preview of every map with entities
 - **Frame-rate checks:** the world loop idles at 12 fps only while nothing on screen changes. A pack stepping in view legitimately runs at full rate, so the e2e idle check stuns the packs near the view first.
 - **Entering a map is a visit:** `enterMap` counts `visits[map]` (it seeds the roamers) and marks the map's arrival lines seen. So loading a save and walking in always changes the save a little; compare saves before the world mounts.
 - Performance gates are noisy in headless runs; the hard fail is p95 33 ms and 60 `drawImage` calls per frame (A7). M3 measured about 2 ms and 17 calls. Always print the numbers.
+- **e2e-battle pauses: arm the next pause before resuming** (M7). A pause armed after `__btResume()` misses what comes in the same breath: the Unsmith's Stolen Arts right after his phase, a roll right after a snap. Arm it (`armPause`) while still paused, then resume.
+- **Measure layout at rest** (M7): headless Chromium can stall 300-800 ms before starting a CSS animation (the dice tray slides up 14 px as it opens). Wait for the element's finite `getAnimations()` to finish before reading its rect.
+- **A rules fix that changes when the battle RNG is drawn moves every sim table** (M7: a broken-off move no longer rolled again by a pry): the dice cascade through each run. Re-run every mode from scratch (about 25 minutes with `--jobs 3`), then retune only what crosses its band. A lead's lair can be re-run alone from the caches (`--sun-cache`, `--iron-cache`, `--gloom-cache`); `first-lead` and `sun-first-lead` recompute the M2 road first.
 
 **Security:**
 - `ui/lib/dom.js` `el()` sets **innerHTML when given a string**. Every user-provided or saved string must go through `esc()` or `textContent` (`el(tag, { text })`, or the `text()` helper in `ui/world/sheets.js`).
@@ -279,8 +278,8 @@ node tools/map-draft.mjs --all   # ASCII preview of every map with entities
 - **Killing a run:** `pgrep -f <pattern>` also matches your own shell's command line (the kill ends your shell). Look up the node processes' PIDs and kill those.
 - **Packages that work in private copies** and copy files back can overwrite another package's fixes. Before committing a package, list the assertions its test files lost against the base (M5 lost three M4.5 review tests this way).
 
-**Delivery** (how M3 to M6 went out; repeat it for M7):
+**Delivery** (how M3 to M7 went out; repeat it):
 1. `npm run build`, then audit the delivery file before sending it: the only URLs are Google Fonts (and the SVG namespace); no `fetch`/XHR/WebSocket/`eval`, no local paths, no AI model names (scan with the base64 image data stripped: a long base64 run can spell anything); look at its HTML shell. Publishing it as a claude.ai page is different: the Artifact rules require reading the whole file first.
 2. Commit it (`dist/` is tracked; check nothing in `game/.gitignore` hides it), push.
-3. Send it with SendUserFile, `display: 'attach'`. **A file sent that way must be under 30 MiB.** M6's was 30.1 MiB, so it went out fully minified (`node tools/build.mjs --minify`: 29.85 MiB), after world, flow and codes passed on that exact file. Milestone 7's paintings will push past even that: plan its delivery in its spec (a zip of the HTML, lighter paintings, or the paintings in a second file).
+3. Send it with SendUserFile, `display: 'attach'`. **A file sent that way must be under 30 MiB.** M6's was 30.1 MiB, so it went out fully minified (`node tools/build.mjs --minify`: 29.85 MiB). M7's is 30.4 MiB even minified, so it went out as a zip: `node tools/zip.mjs dist/aethermoor-m7.html --out=<scratch>/aethermoor-m7.zip` (21.7 MiB), checked with `--check=<zip> --against=<html>` and `unzip -t`, after every gate passed on that exact file. Tell the player to unzip it (a phone's Files app does it with a tap) and open the HTML.
 4. Tell the player how to move their save (old version: Settings → Make a save code; new version: Settings → Load a code), the iPhone caveat, and offer a new, separate page for phone play. Never republish the M2 URL.

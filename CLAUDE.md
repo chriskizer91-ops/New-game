@@ -8,7 +8,7 @@ This is a browser JRPG built into **one self-contained HTML file** that plays on
 - Milestone 4.5 ("the Road") contract: `game/docs/M45-SPEC.md` (its Part A overrides Part B); what shipped: `game/docs/M45-STATUS.md`.
 - Milestone 5 ("the Ironspire Peaks") contract: `game/docs/M5-SPEC.md` (its Part A overrides Part B); what shipped: `game/docs/M5-STATUS.md`.
 - Milestone 6 ("the Gloomfen Marsh": Hodge, Tamsin's fall, the end of Act II) contract: `game/docs/M6-SPEC.md` (its Part A overrides Part B); what shipped: `game/docs/M6-STATUS.md`.
-- Milestone 7 ("the Hearth Below": Act III, the Hollow Council, the Unsmith and the three endings) contract: `game/docs/M7-SPEC.md` (its Part A overrides Part B). Batch 4 of the player's paintings is requested in `art-requests/batch-4.md`.
+- Milestone 7 ("the Hearth Below": Act III, the Hollow Council, the Unsmith and the three endings) contract: `game/docs/M7-SPEC.md` (its Part A overrides Part B); what shipped: `game/docs/M7-STATUS.md`. Batch 4 of the player's paintings is requested in `art-requests/batch-4.md`. A download past 30 MiB goes out zipped (`node tools/zip.mjs`).
 - Design intent: `docs/DESIGN-BRIEF.md`.
 
 ## Commands (run in `game/`)
