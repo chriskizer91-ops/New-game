@@ -227,6 +227,8 @@ export function musicStop(fade = .8) {
   setTimeout(() => { try { c.bus.disconnect(); c.rev.disconnect(); c.echoIn.disconnect(); } catch { /* gone */ } }, (fade + 3) * 1000);
 }
 export function musicPlaying() { return cur ? cur.id : null; }
+// the playing piece's own gain (the game ducks it under big sound effects)
+export function musicGain() { return cur ? cur.bus.gain : null; }
 // musicPlay(id, { ctx, at, until }) plays live; with an OfflineAudioContext it schedules from `at` up to `until` seconds
 // in one go (for checking), instead of running a timer.
 export function musicPlay(id, o = {}) {

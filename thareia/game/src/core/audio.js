@@ -1,487 +1,87 @@
-// Audio facade. Screens call these names; the WebAudio synth lives behind them.
-// Until audio is unlocked by a user gesture every call is silent (music requests are
-// remembered and start on unlock). Sound effects and music switch on and off separately.
+// Audio facade. Screens call these names; Thareia's sound library (../../../sfx/sounds.js, 182 sounds made in code)
+// and its music (../../../sfx/music.js, 9 pieces made in code) live behind them.
+// Until audio is unlocked by a user gesture every call is silent (music requests are remembered and start on
+// unlock). Sound effects and music switch on and off separately.
 //
-// sfx names: select confirm back dice hit graze miss crit heal status disarm ko surge legend
-//            victory defeat phase chest reveal equip levelup hearth
-//            (extra: beam tick stamp coin page identify slam error)
-//            world (M3 §5.8): bump alert door blip unlock chime
-//   opts: { tier } for rarity-scaled sounds (reveal, equip, beam: 0 worn .. 7 primal)
+// sfx names: any id in the library (see the sound board, thareia/sfx/dist/sound-board.html), or one of the old
+//            game's names, which map onto the library below (select confirm back dice hit graze miss crit heal
+//            status disarm ko surge legend victory defeat phase chest reveal equip levelup hearth beam tick stamp
+//            coin page identify slam error bump alert door blip unlock chime)
+//   opts: { tier } for rarity-scaled sounds (reveal, beam: 0 worn .. 7 primal)
 //         { voice } 0-7 (or { pitch } in Hz) for blip, the dialogue typewriter: one voice per speaker
-// music tracks: title road battle boss victory hearth, and for the world's maps (MAPS[id].music):
-//               wilds town dungeon, (M4) desert, (M5) peaks and (M6) fen (null stops music; victory does not loop).
-//               A change of track crossfades (the old one fades out over 0.9 s while the new one fades in).
+// music tracks: the pieces (travel battle flight title boss town ruins marsh desert), or the old game's track
+//               names, which map onto them (MAPS[id].music). null stops the music; 'victory' plays the victory
+//               cue and lets the music rest. A change of track crossfades.
 //
 // API: unlock() setEnabled(on) setMusicEnabled(on) enabled musicEnabled sfx(name, opts)
 //      music(track) track duck(amount, seconds)
 
-const NOTE_INDEX = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
-const freqOf = name => {
-  const m = /^([A-G])(#|b)?(-?\d)$/.exec(name);
-  if (!m) return 0;
-  const n = NOTE_INDEX[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0) + (+m[3] + 1) * 12;
-  return 440 * Math.pow(2, (n - 69) / 12);
-};
+import { SFX, sfxInit, sfxContext, playSfx, tone } from '../../../sfx/sounds.js';
+import { MUSIC, musicPlay, musicStop, musicPlaying, musicGain } from '../../../sfx/music.js';
 
-// ---- the tracks ------------------------------------------------------------------------------
-// Each part is a string of step tokens: a note ("D5"), a chord ("D4+F#4"), "-" to hold the
-// previous note one more step, "." for a rest. Drum parts use k (kick) s (snare) h (hat)
-// c (ember crackle), for the hand drum (M4) d (doum, the low stroke) t (tek) a (ka, the soft
-// tek), (M5) w, a gust of wind over the peaks, and (M6) the fen's frogs: f (a croak) and p (a peeper's
-// whistle). Parts loop independently over their own length.
-// Long parts are spelled with hold(note, steps) and rest(steps).
-const hold = (tok, n) => [tok, ...Array(Math.max(0, n - 1)).fill('-')].join(' ');
-const rest = n => Array(n).fill('.').join(' ');
-const TRACKS = {
-  // the Ironspire (M5): a slow horn call in D minor over a low drone, its echo coming back off the
-  // peaks a bar later, a far monastery bell in the quiet bar, and the wind (a looped gust part whose odd
-  // length drifts against the call, so no two passes blow the same)
-  peaks: {
-    bpm: 56, sub: 2, loop: true, gain: .85,
-    parts: [
-      // the call and its answer: 8 bars of 16 steps
-      { v: 'horn', g: .07, s: [
-        'A3 - D4 - - - A4 - - - - - - - . .', rest(16),
-        'G4 - A4 - C5 - A4 - - - G4 - F4 - - -', 'D4 - - - - - - - - - - - . . . .',
-        rest(16),
-        'A3 - D4 - F4 - A4 - - - C5 - D5 - - -', '- - - - C5 - A4 - - - G4 - A4 - - -', 'D4 - - - - - - - - - - - . . . .',
-      ].join(' ') },
-      // the echo: the first call, two steps late and softer, in the bar the horn leaves quiet
-      { v: 'horn', g: .026, s: [rest(18), 'A3 - D4 - - - A4 - - - - - . .', rest(96)].join(' ') },
-      // the drone under it all: D, a lift to Bb and C in the second half, home to D
-      { v: 'pad', g: .018, s: [hold('D2+A2', 64), hold('Bb1+F2', 16), hold('C2+G2', 16), hold('D2+A2', 32)].join(' ') },
-      { v: 'tri', g: .1, s: [hold('D2', 16), hold('D2', 16), hold('D2', 16), hold('A1', 16), hold('Bb1', 16), hold('C2', 16), hold('D2', 16), hold('D2', 16)].join(' ') },
-      // Peak's Veil's bell, far off, in the quiet bar before the second call
-      { v: 'bell', g: .022, s: [rest(64), 'D5 . . . A4 . . .', rest(56)].join(' ') },
-      { v: 'drum', g: .5, s: ['w', rest(10), 'w', rest(14), 'w', rest(8), 'w', rest(2)].join(' ') },
-    ],
-  },
-  // the Sunscorch (M4): a slow reed melody in the Hijaz mode on D (D Eb F# G A Bb C) over a held
-  // drone, a walking low string, an oud-like pluck and a maqsum on the hand drum
-  desert: {
-    bpm: 76, sub: 2, loop: true, gain: .8,
-    parts: [
-      { v: 'flute', g: .055, s: 'D5 - - - - - Eb5 D5 C5 - Bb4 - A4 - - - Bb4 - A4 G4 F#4 - G4 - A4 - - - - - . . A4 - Bb4 - C5 - D5 - Eb5 - D5 C5 Bb4 - A4 - G4 - F#4 - Eb4 - F#4 G4 D4 - - - - - . .' },
-      { v: 'pad', g: .02, s: 'D3+A3 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - D3+A3 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -' },
-      { v: 'tri', g: .12, s: 'D2 - - - - - - - - - - - - - - - D2 - - - - - - - - - - - - - - - C2 - - - - - - - D2 - - - - - - - Bb1 - - - A1 - - - D2 - - - - - - -' },
-      { v: 'pluck', g: .03, s: '. . D4 . . A3 . D4 Eb4 . D4 . . . A3 . . . D4 . . A3 . D4 F#4 . G4 . F#4 . Eb4 .' },
-      { v: 'drum', g: .5, s: 'd t . t d . t . d t a t d . t a' },
-    ],
-  },
-  // warm, hearth-lit: music-box arpeggios over a slow bass, the melody arrives on the second pass
-  title: {
-    bpm: 84, sub: 2, loop: true, gain: .9,
-    parts: [
-      { v: 'bell', g: .07, s: 'D5 A5 F#5 A5 D6 A5 F#5 A5 B4 F#5 D5 F#5 B5 F#5 D5 F#5 G4 D5 B4 D5 G5 D5 B4 D5 A4 E5 C#5 E5 A5 E5 C#5 E5 D5 A5 F#5 A5 D6 A5 F#5 A5 B4 F#5 D5 F#5 B5 F#5 D5 F#5 E5 B5 G5 B5 E6 B5 G5 B5 A4 E5 C#5 E5 G5 E5 C#5 A4' },
-      { v: 'tri', g: .16, s: 'D3 - - - A2 - - - B2 - - - F#2 - - - G2 - - - D3 - - - A2 - - - E2 - - - D3 - - - A2 - - - B2 - - - F#2 - - - E2 - - - B2 - - - A2 - - - C#3 - - -' },
-      { v: 'pulse', g: .065, lp: 1800, s: '. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . F#5 - - - E5 - D5 - D5 - - - C#5 - B4 - B4 - - - E5 - G5 - F#5 - - - E5 - - -' },
-    ],
-  },
-  // adventurous: a marching pulse lead, octave bass, light drums
-  road: {
-    bpm: 116, sub: 2, loop: true, gain: .8,
-    parts: [
-      { v: 'pulse', g: .085, lp: 2600, s: 'G4 - B4 - D5 - - B4 A4 - - - F#4 - A4 - B4 - G4 - E5 - D5 - C5 - - - E5 - D5 C5 B4 - D5 - G5 - - F#5 E5 - D5 - A4 - - - C5 - E5 - G5 - E5 - D5 - - - F#5 - A5 -' },
-      { v: 'tri', g: .15, s: 'G2 . G3 . G2 . G3 . D2 . D3 . D2 . D3 . E2 . E3 . E2 . E3 . C3 . C4 . C3 . C4 . G2 . G3 . G2 . G3 . D2 . D3 . D2 . D3 . C3 . C4 . C3 . C4 . D2 . D3 . D2 . F#2 .' },
-      { v: 'pluck', g: .04, s: 'B4 D5 G5 D5 . . . . F#4 A4 D5 A4 . . . . G4 B4 E5 B4 . . . . G4 C5 E5 C5 . . . .' },
-      { v: 'drum', g: .5, s: 'k . h . s . h h k . h . s . h h k . h . s . h h k . h k s . h h' },
-    ],
-  },
-  // driving: sixteenth-note bass and a minor-key lead
-  battle: {
-    bpm: 144, sub: 4, loop: true, gain: .8,
-    parts: [
-      { v: 'pulse', g: .08, lp: 2800, s: 'A4 - C5 - E5 - A5 - G5 - E5 - C5 - D5 - C5 - - - A4 - C5 - F5 - E5 - D5 - C5 - B4 - D5 - G5 - - - F5 - D5 - B4 - D5 - E5 - - - G#4 - B4 - E5 - - - D5 - B4 -' },
-      { v: 'tri', g: .17, s: 'A2 . A2 . A3 . A2 . A2 . A3 . G2 . A2 . F2 . F2 . F3 . F2 . F2 . F3 . E2 . F2 . G2 . G2 . G3 . G2 . G2 . G3 . F2 . G2 . E2 . E2 . E3 . E2 . E2 . E3 . D2 . E2 .' },
-      { v: 'square', g: .022, lp: 1600, s: 'A4 C5 E5 C5 A4 C5 E5 C5 A4 C5 E5 C5 A4 C5 E5 C5 F4 A4 C5 A4 F4 A4 C5 A4 F4 A4 C5 A4 F4 A4 C5 A4 G4 B4 D5 B4 G4 B4 D5 B4 G4 B4 D5 B4 G4 B4 D5 B4 E4 G#4 B4 G#4 E4 G#4 B4 G#4 E4 G#4 B4 G#4 E4 G#4 B4 G#4' },
-      { v: 'drum', g: .55, s: 'k . h . s . h . k k h . s . h h' },
-    ],
-  },
-  // intense: chromatic bass, stabbed chords, a lead that climbs
-  boss: {
-    bpm: 156, sub: 4, loop: true, gain: .85,
-    parts: [
-      { v: 'pulse', g: .085, lp: 3000, s: 'D5 - - - A4 - - - D5 - E5 - F5 - - - E5 - D5 - C#5 - D5 - A4 - - - - - - - F5 - - - D5 - Bb4 - F5 - G5 - A5 - - - G#5 - A5 - - - E5 - C#5 - - - A4 - - -' },
-      { v: 'tri', g: .18, s: 'D2 . D2 . D3 . D2 . C3 . D2 . A2 . D2 . D2 . D2 . D3 . D2 . F2 . E2 . D2 . C#2 . Bb1 . Bb1 . Bb2 . Bb1 . Bb1 . Bb2 . A1 . Bb1 . A1 . A1 . A2 . A1 . C#3 . A2 . E2 . A1 .' },
-      { v: 'pad', g: .035, s: 'D4+F4+A4 - - - . . . . D4+F4+A4 - . . . . . . D4+F4+A4 - - - . . . . D4+G4+Bb4 - . . C#4+E4+A4 - . . Bb3+D4+F4 - - - . . . . Bb3+D4+F4 - . . . . . . A3+C#4+E4 - - - . . . . A3+C#4+E4 - . . A3+C#4+G4 - . .' },
-      { v: 'drum', g: .6, s: 'k . h k s . h . k k h . s . h s' },
-    ],
-  },
-  // calm campfire: slow bell arpeggios, a whole-note bass and the odd ember crackle
-  hearth: {
-    bpm: 66, sub: 2, loop: true, gain: .9,
-    parts: [
-      { v: 'bell', g: .06, s: 'F4 A4 C5 A4 F5 C5 A4 C5 E4 G4 C5 G4 E5 C5 G4 C5 D4 F4 A4 F4 D5 A4 F4 A4 Bb3 D4 F4 D4 Bb4 F4 D4 F4 F4 A4 C5 A4 F5 C5 A4 C5 C4 E4 G4 E4 C5 G4 E4 G4 Bb3 D4 F4 D4 Bb4 F4 D4 F4 C4 E4 G4 E4 C5 G4 E4 G4' },
-      { v: 'tri', g: .13, s: 'F2 - - - - - - - E2 - - - - - - - D2 - - - - - - - Bb1 - - - - - - - F2 - - - - - - - C2 - - - - - - - Bb1 - - - - - - - C2 - - - - - - -' },
-      { v: 'flute', g: .055, s: '. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . A5 - - - G5 - F5 - G5 - - - E5 - C5 - D5 - - - F5 - Bb5 - A5 - - - G5 - - -' },
-      { v: 'drum', g: .5, s: 'c . . . . c . . . . c . . . . . . c . . . . . c . . . c . . . .' },
-    ],
-  },
-  // the open Wilds: a pastoral flute over walking bass and offbeat plucks (E minor)
-  wilds: {
-    bpm: 104, sub: 2, loop: true, gain: .8,
-    parts: [
-      { v: 'flute', g: .06, s: 'B4 - E5 - G5 - F#5 E5 G5 - - - E5 - C5 - D5 - G5 - B5 - A5 G5 F#5 - - - D5 - . . E5 - G5 - B5 - C6 B5 A5 - G5 - E5 - G5 - A5 - C6 - B5 - A5 G5 F#5 - - - D#5 - . .' },
-      { v: 'tri', g: .15, s: 'E2 . B2 . E2 . B2 . C2 . G2 . C2 . G2 . G2 . D3 . G2 . D3 . D2 . A2 . D2 . A2 . E2 . B2 . E2 . B2 . C2 . G2 . C2 . G2 . A2 . E3 . A2 . E3 . B1 . F#2 . B1 . D#2 .' },
-      { v: 'pluck', g: .035, s: '. G4 . B4 . G4 . B4 . E4 . G4 . E4 . G4 . B4 . D5 . B4 . D5 . A4 . D5 . A4 . F#4 . G4 . B4 . G4 . B4 . E4 . G4 . E4 . G4 . C5 . E5 . C5 . E5 . D#4 . F#4 . B4 . F#4' },
-      { v: 'drum', g: .4, s: 'k . h . . . h . k . h . . . h h' },
-    ],
-  },
-  // the Gloomfen (M6): a slow lullaby in A minor on a low reed, over a reed drone that breathes every two bars
-  // and leans to F and G under the tune's second half; a drowned bell rings once, far off under the water;
-  // and the frogs, a croak and the peepers on odd lengths of their own, so no two passes of the fen agree.
-  // 16 bars of 3/4 (six steps a bar): four bars of the fen alone, the tune with its two turns, four again.
-  fen: {
-    bpm: 58, sub: 2, loop: true, gain: .85,
-    parts: [
-      { v: 'reed', g: .05, s: [rest(24),
-        'E4 - - D4 C4 -', 'D4 - - C4 B3 -', 'C4 - B3 A3 G#3 A3', 'B3 - - - - -',
-        'E4 - - D4 C4 -', 'D4 - - E4 F4 -', 'E4 D4 C4 B3 C4 -', 'A3 - - - - -',
-        rest(24)].join(' ') },
-      { v: 'reed', g: .022, s: [hold('A2+E3', 12), hold('A2+E3', 12), hold('A2+E3', 12), hold('A2+E3', 12), hold('F2+C3', 12), hold('G2+D3', 6), hold('A2+E3', 12), hold('A2+E3', 18)].join(' ') },
-      { v: 'tri', g: .09, s: [hold('A1', 24), hold('A1', 24), hold('F1', 12), hold('G1', 6), hold('A1', 30)].join(' ') },
-      { v: 'bell', g: .018, s: [rest(84), 'A4 . . . E4 . . . . . . .'].join(' ') },
-      { v: 'drum', g: .5, s: ['f', rest(6), 'f', rest(12), 'f', rest(8)].join(' ') },
-      { v: 'drum', g: .4, s: [rest(5), 'p . p', rest(9), 'p', rest(5)].join(' ') },
-    ],
-  },
-  // a town: music-box bells over a bouncing bass (C major)
-  town: {
-    bpm: 96, sub: 2, loop: true, gain: .85,
-    parts: [
-      { v: 'bell', g: .06, s: 'E5 - G5 - C6 - G5 - A5 - - - E5 - C5 - F5 - A5 - C6 - A5 - G5 - - - D5 - B4 - C5 - E5 - G5 - E5 C5 A4 - C5 - E5 - D5 C5 D5 - F5 - A5 - G5 F5 E5 - D5 - C5 - - -' },
-      { v: 'tri', g: .15, s: 'C3 - . . G2 - . . A2 - . . E2 - . . F2 - . . C3 - . . G2 - . . D3 - . . C3 - . . G2 - . . A2 - . . E2 - . . D3 - . . A2 - . . G2 - . . B2 - D3 -' },
-      { v: 'pluck', g: .03, s: '. E4+G4 . . . E4+G4 . . . C4+E4 . . . C4+E4 . . . A3+C4 . . . A3+C4 . . . B3+D4 . . . B3+D4 . . . E4+G4 . . . E4+G4 . . . C4+E4 . . . C4+E4 . . . D4+F4 . . . D4+F4 . . . B3+D4 . . . B3+F4 . .' },
-      { v: 'drum', g: .38, s: 'k . h . s . h .' },
-    ],
-  },
-  // under the earth: a held minor drone, a far bell and a slow heartbeat (D minor)
-  dungeon: {
-    bpm: 76, sub: 2, loop: true, gain: .85,
-    parts: [
-      { v: 'pad', g: .028, s: 'D3+A3+F4 - - - - - - - - - - - - - - - Bb2+F3+D4 - - - - - - - - - - - - - - - C3+G3+E4 - - - - - - - - - - - - - - - A2+E3+C#4 - - - - - - - - - - - - - - -' },
-      { v: 'bell', g: .05, s: 'D5 . . . . . A4 . . . F5 . . . E5 . D5 . . . . . Bb4 . . . . . A4 . . . C5 . . . E5 . . . G5 . . . F5 . E5 . E5 . . . . . C#5 . . . A4 . . . . .' },
-      { v: 'tri', g: .15, s: 'D2 - - - . . . . D2 - - - . . . . Bb1 - - - . . . . Bb1 - - - . . . . C2 - - - . . . . C2 - - - . . . . A1 - - - . . . . A1 - - - . . C#2 -' },
-      { v: 'drum', g: .45, s: 'k . k . . . . . . . . . . . . .' },
-    ],
-  },
-  // the fanfare: plays once
-  victory: {
-    bpm: 132, sub: 4, loop: false, gain: 1,
-    parts: [
-      { v: 'pulse', g: .1, lp: 3200, s: 'G4 . G4 . G4 . C5 - - - - - E5 - G5 - E5 - - - G5 - - - C6 - - - - - - - - - - - - - - -' },
-      { v: 'square', g: .03, lp: 2000, s: 'E4 . E4 . E4 . G4 - - - - - C5 - E5 - C5 - - - E5 - - - G5 - - - - - - - - - - - - - - -' },
-      { v: 'tri', g: .17, s: 'C3 - - - - - - - - - - - G2 - - - C3 - - - G2 - - - C3 - - - - - - - - - - - - - - -' },
-      { v: 'bell', g: .05, s: '. . . . . . . . . . . . . . . . . . . . . . . . C5+E5+G5+C6 - - - - - - - - - - - - - - -' },
-      { v: 'drum', g: .5, s: 'k . . . k . s . . . . . k . s . k . . . s . . . k . . . . . . . . . . . . . . .' },
-    ],
-  },
+const PIECES = MUSIC.map(m => m.id);
+// the old game's track names, and what plays for them now
+const OLD_TRACKS = {
+  title: 'title', road: 'travel', wilds: 'travel', battle: 'battle', boss: 'boss', victory: null,
+  hearth: 'town', town: 'town', dungeon: 'ruins', desert: 'desert', peaks: 'travel', fen: 'marsh',
 };
+const pieceFor = name => (PIECES.includes(name) ? name : OLD_TRACKS[name] ?? null);
 
-// Parse a part string into per-step events: { step, notes:[freq], dur (steps), drum }
-function parsePart(p) {
-  const toks = p.s.trim().split(/\s+/);
-  const ev = new Array(toks.length).fill(null);
-  let last = null;
-  toks.forEach((t, i) => {
-    if (t === '-') { if (last) last.dur++; return; }
-    if (t === '.') { last = null; return; }
-    if (p.v === 'drum') { ev[i] = { drum: t, dur: 1 }; last = null; return; }
-    last = { notes: t.split('+').map(freqOf).filter(Boolean), dur: 1 };
-    ev[i] = last;
-  });
-  return { ...p, ev, len: toks.length };
-}
-const PARSED = Object.fromEntries(Object.entries(TRACKS).map(([k, T]) => [k, { ...T, parts: T.parts.map(parsePart), len: Math.max(...T.parts.map(p => p.s.trim().split(/\s+/).length)) }]));
-// Every music track name, and the notes each track plays that do not parse (for the tests: always []).
-export const TRACK_NAMES = Object.freeze(Object.keys(TRACKS));
-export const badNotes = () => Object.entries(TRACKS).flatMap(([k, T]) => T.parts.filter(p => p.v !== 'drum')
-  .flatMap(p => p.s.trim().split(/\s+/).filter(t => t !== '-' && t !== '.').flatMap(t => t.split('+')).filter(n => !freqOf(n)).map(n => `${k}:${n}`)));
+export const TRACK_NAMES = Object.freeze([...new Set([...PIECES, ...Object.keys(OLD_TRACKS)])]);
+// the old sequencer's note check; the new pieces are checked by thareia/sfx/tools
+export const badNotes = () => [];
+
+const IDS = new Set(SFX.map(s => s.id));
+// the old game's sound names, and the library sound each plays
+const OLD_SFX = {
+  select: 'ui-cursor', tick: 'ui-cursor', confirm: 'ui-confirm', back: 'ui-back', error: 'ui-error', page: 'ui-page',
+  dice: 'dice-roll', hit: 'hit-slash', graze: 'graze', miss: 'miss', crit: 'crit', heal: 'heal', status: 'hex',
+  disarm: 'grip-crack', ko: 'ko', surge: 'surge-release', legend: 'reveal-primal', victory: 'victory', defeat: 'defeat',
+  phase: 'boss', chest: 'chest', equip: 'equip', levelup: 'levelup', hearth: 'hearthfire', stamp: 'ui-save',
+  coin: 'coins', identify: 'identify', slam: 'shield-bash', bump: 'bump', alert: 'alert', door: 'door',
+  unlock: 'secret', chime: 'resonance',
+};
+const clampTier = t => Math.max(0, Math.min(7, t | 0));
+const VOICES = [660, 520, 780, 440, 880, 590, 700, 370];
+const soundFor = (name, o) => {
+  if (name === 'reveal') { const t = clampTier(o.tier); return t >= 5 ? 'reveal-primal' : t >= 3 ? 'reveal-heirloom' : 'reveal-common'; }
+  if (name === 'beam') return clampTier(o.tier) >= 2 ? 'relic-drop' : null;
+  return IDS.has(name) ? name : OLD_SFX[name] ?? null;
+};
+const MUSIC_LEVEL = .6;
 
 export function createAudio() {
-  let enabled = true, musicOn = true, unlocked = false;
-  let AC = null, master = null, sfxBus = null, musicBus = null, noiseBuf = null, pulseWave = null;
-  let wanted = null, playing = null;
-
-  function ctx() {
-    if (!unlocked) return null;
-    if (!AC) {
-      try {
-        const C = window.AudioContext || window.webkitAudioContext;
-        if (!C) return null;
-        AC = new C();
-        master = AC.createGain(); master.gain.value = .6;
-        const comp = AC.createDynamicsCompressor();
-        master.connect(comp); comp.connect(AC.destination);
-        sfxBus = AC.createGain(); sfxBus.gain.value = 1; sfxBus.connect(master);
-        musicBus = AC.createGain(); musicBus.gain.value = .5; musicBus.connect(master);
-        const n = AC.sampleRate * 1.5; noiseBuf = AC.createBuffer(1, n, AC.sampleRate);
-        const d = noiseBuf.getChannelData(0); for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
-        // a 25% pulse: the NES lead colour
-        const N = 32, re = new Float32Array(N), im = new Float32Array(N);
-        for (let k = 1; k < N; k++) im[k] = (2 / (k * Math.PI)) * Math.sin(k * Math.PI * .25);
-        pulseWave = AC.createPeriodicWave(re, im);
-      } catch { AC = null; return null; }
-    }
-    if (AC.state === 'suspended' && !document.hidden) AC.resume().catch(() => {});
+  let enabled = true, musicOn = true, unlocked = false, wanted = null;
+  let AC = null;
+  const ctx = () => {
+    if (AC) { if (AC.state === 'suspended') AC.resume().catch(() => {}); return AC; }
+    try { AC = sfxInit(); } catch { AC = null; }
     return AC;
-  }
-
-  // ---- synth primitives (ported from the Loot Forge prototype) ----
-  function env(g, t, peak, a, dur, sustain = 1) {
-    g.gain.setValueAtTime(0, t);
-    g.gain.linearRampToValueAtTime(peak, t + a);
-    if (sustain < 1) g.gain.linearRampToValueAtTime(peak * sustain, t + Math.max(a + .01, dur * .5));
-    g.gain.exponentialRampToValueAtTime(.0001, t + dur);
-  }
-  function tone(f, t, dur, o = {}, out = sfxBus) {
-    const osc = AC.createOscillator(), g = AC.createGain();
-    if (o.type === 'pulse') osc.setPeriodicWave(pulseWave); else osc.type = o.type || 'sine';
-    osc.frequency.setValueAtTime(f, t);
-    if (o.to) osc.frequency.exponentialRampToValueAtTime(o.to, t + dur * .8);
-    if (o.det) osc.detune.value = o.det;
-    if (o.vib) { const l = AC.createOscillator(), lg = AC.createGain(); l.frequency.value = o.vib; lg.gain.value = f * .012; l.connect(lg); lg.connect(osc.frequency); l.start(t); l.stop(t + dur + .05); }
-    env(g, t, o.g || .15, o.a || .006, dur, o.sus ?? 1);
-    let node = g;
-    if (o.lp) { const f2 = AC.createBiquadFilter(); f2.type = 'lowpass'; f2.frequency.value = o.lp; g.connect(f2); node = f2; }
-    osc.connect(g); node.connect(out); osc.start(t); osc.stop(t + dur + .05);
-  }
-  function bell(f, t, dur, g = .12, lp, out = sfxBus, ratio = 2.76) {
-    const c = AC.createOscillator(), m = AC.createOscillator(), mg = AC.createGain(), a = AC.createGain();
-    c.frequency.value = f; m.frequency.value = f * ratio;
-    mg.gain.setValueAtTime(f * 1.6, t); mg.gain.exponentialRampToValueAtTime(f * .02, t + dur);
-    m.connect(mg); mg.connect(c.frequency);
-    a.gain.setValueAtTime(0, t); a.gain.linearRampToValueAtTime(g, t + .004); a.gain.exponentialRampToValueAtTime(.0001, t + dur);
-    c.connect(a); let node = a;
-    if (lp) { const fl = AC.createBiquadFilter(); fl.type = 'lowpass'; fl.frequency.value = lp; a.connect(fl); node = fl; }
-    node.connect(out); c.start(t); m.start(t); c.stop(t + dur + .05); m.stop(t + dur + .05);
-  }
-  function noise(t, dur, o = {}, out = sfxBus) {
-    const src = AC.createBufferSource(); src.buffer = noiseBuf;
-    const f = AC.createBiquadFilter(); f.type = o.type || 'bandpass'; f.frequency.setValueAtTime(o.f || 1000, t);
-    if (o.to) f.frequency.exponentialRampToValueAtTime(o.to, t + dur);
-    f.Q.value = o.q || 1;
-    const g = AC.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(o.g || .2, t + (o.a || .01)); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
-    src.connect(f); f.connect(g); g.connect(out);
-    const off = Math.random() * .5; src.start(t, off, dur + .05);
-  }
-  const rnd = (a, b) => a + Math.random() * (b - a);
-
-  // ---- sound effects ----
-  const CHIME = [[659], [587, 880], [523, 659, 784, 1047], [587, 740, 880, 1109, 1480], [523, 659, 784, 1047, 1319, 1568], [698, 880, 1047, 1319, 1480, 1760, 2093], [622, 784, 932, 1245, 1568, 1865, 2489], [784, 988, 1175, 1568, 1976, 2349, 3136]];
-  const clampTier = t => Math.max(0, Math.min(7, t | 0));
-  const VOICES = [660, 520, 740, 440, 880, 590, 390, 980]; // blip pitch per speaker voice 0-7
-  const SFX = {
-    select(t) { tone(1400, t, .05, { type: 'square', g: .025 }); },
-    tick(t) { SFX.select(t); },
-    confirm(t) { tone(660, t, .08, { type: 'triangle', g: .09 }); tone(990, t + .06, .14, { type: 'triangle', g: .09 }); },
-    back(t) { tone(700, t, .07, { type: 'triangle', g: .07 }); tone(470, t + .05, .12, { type: 'triangle', g: .07 }); },
-    error(t) { tone(150, t, .18, { type: 'square', g: .05, lp: 800 }); tone(140, t + .1, .2, { type: 'square', g: .05, lp: 800 }); },
-    dice(t) { for (let k = 0; k < 6; k++) { const s = t + k * rnd(.035, .07); noise(s, .05, { type: 'bandpass', f: rnd(1800, 3200), q: 3, g: .32 }); tone(rnd(700, 1100), s, .05, { type: 'triangle', g: .07 }); } },
-    hit(t) { noise(t, .14, { type: 'lowpass', f: 1600, g: .32 }); tone(170, t, .16, { to: 70, g: .28, type: 'triangle' }); },
-    graze(t) { noise(t, .1, { type: 'highpass', f: 2400, g: .12 }); tone(240, t, .08, { to: 150, g: .08, type: 'triangle' }); },
-    miss(t) { noise(t, .22, { type: 'bandpass', f: 2200, to: 500, q: 1.4, g: .1 }); },
-    crit(t) { SFX.hit(t); bell(1568, t + .02, .6, .07); bell(2093, t + .06, .5, .05); tone(90, t, .3, { to: 45, g: .35 }); },
-    heal(t) { [523, 659, 784, 1047].forEach((f, k) => tone(f, t + k * .06, .45, { type: 'sine', g: .07 })); for (let k = 0; k < 5; k++) tone(rnd(2200, 3600), t + .15 + k * .05, .1, { g: .015 }); },
-    status(t) { tone(330, t, .32, { type: 'square', g: .04, lp: 1200, vib: 9 }); tone(311, t + .04, .3, { type: 'triangle', g: .05, vib: 7 }); },
-    disarm(t) { bell(520, t, .5, .1, null, sfxBus, 3.7); noise(t, .05, { type: 'highpass', f: 3000, g: .2 }); [880, 760, 640, 700].forEach((f, k) => bell(f, t + .18 + k * .11, .25, .05, null, sfxBus, 3.1)); },
-    ko(t) { tone(420, t, .45, { to: 80, type: 'triangle', g: .14 }); noise(t + .3, .2, { type: 'lowpass', f: 400, g: .3 }); },
-    surge(t) { noise(t, .6, { type: 'bandpass', f: 400, to: 5000, q: 3, g: .08, a: .5 }); tone(220, t, .6, { to: 880, type: 'pulse', g: .04, lp: 2400 }); },
-    legend(t) { tone(55, t, .7, { to: 38, g: .45 }); [130.8, 196, 261.6, 329.6, 392].forEach(f => tone(f, t, 1.6, { type: 'sawtooth', g: .03, lp: 1500 })); [523, 784, 1047, 1568].forEach((f, k) => bell(f, t + .1 + k * .07, 1.2, .05)); noise(t, .8, { type: 'highpass', f: 6000, g: .05 }); },
-    slam(t) { tone(70, t, .45, { to: 40, g: .45 }); noise(t, .25, { type: 'lowpass', f: 900, g: .35 }); bell(784, t + .03, .8, .04); },
-    victory(t) { [523, 659, 784, 1047].forEach((f, k) => tone(f, t + k * .09, .5, { type: 'pulse', g: .06, lp: 3000 })); bell(1047, t + .36, 1, .05); },
-    defeat(t) { [392, 349, 311, 262].forEach((f, k) => tone(f, t + k * .22, .5, { type: 'triangle', g: .09 })); tone(98, t + .7, 1.2, { type: 'sine', g: .12 }); },
-    phase(t) { bell(98, t, 2.4, .2, 700); bell(146.8, t + .35, 2, .14, 800); noise(t, 1.2, { type: 'lowpass', f: 300, g: .12, a: .6 }); },
-    chest(t) { noise(t, .16, { type: 'lowpass', f: 500, g: .35 }); tone(120, t, .2, { to: 60, g: .3, type: 'triangle' }); },
-    beam(t, o) { const tier = clampTier(o.tier), lead = o.lead || .4; if (tier < 2) return; noise(t, lead, { f: 300, to: 4200, q: 2.5, g: .05 + Math.min(5, tier) * .025, a: lead * .8 }); if (tier >= 5) { bell(98, t, 3.2, .22, 700); bell(146.8, t + .45, 3, .16, 800); } },
-    reveal(t, o) {
-      const tier = clampTier(o.tier), seq = CHIME[tier], step = tier >= 4 ? .085 : .07, tt = t + .02;
-      seq.forEach((f, k) => { tone(f, tt + k * step, .5 + Math.min(tier, 5) * .15, { type: 'triangle', g: .1 }); tone(f * 2, tt + k * step, .3, { g: .025 }); });
-      if (tier >= 3) { const ch = tier >= 5 ? [174.6, 261.6, 349.2, 440] : [130.8, 196, 261.6, 329.6]; ch.forEach(f => tone(f, tt, 1.6 + tier * .2, { type: 'sawtooth', g: .035, lp: 1400 })); noise(tt, .6, { type: 'highpass', f: 6000, g: .05 }); }
-      if (tier >= 4) tone(55, tt, .5, { to: 40, g: .4 });
-      if (tier >= 5) seq.forEach((f, k) => bell(f, tt + .5 + k * .12, 1.4, .05));
-      if (tier >= 2) for (let k = 0; k < 4 + Math.min(tier, 6) * 2; k++) tone(2000 + Math.random() * 2500, tt + .15 + k * .06, .12, { g: .018 });
-      if (tier >= 4) duck(.35, 2.2);
-    },
-    equip(t, o) { const tier = clampTier(o.tier); noise(t, .22, { type: 'highpass', f: 5000, g: .12 }); tone(1760, t, .25, { to: 2640, g: .06 }); tone(880, t + .03, .35, { type: 'triangle', g: .08 }); if (tier >= 4) tone(1320, t + .12, .6, { type: 'triangle', g: .06 }); },
-    stamp(t) { tone(95, t, .18, { to: 55, g: .35 }); noise(t, .09, { type: 'lowpass', f: 1200, g: .28 }); },
-    coin(t) { bell(1976, t, .35, .05, null, sfxBus, 2.01); bell(2637, t + .07, .45, .045, null, sfxBus, 2.01); },
-    page(t) { noise(t, .18, { type: 'bandpass', f: 2600, to: 1400, q: .8, g: .06, a: .06 }); },
-    identify(t) { for (let k = 0; k < 10; k++) tone(880 * Math.pow(2, k / 7), t + k * .07, .25, { type: 'triangle', g: .04 }); noise(t, 1, { type: 'highpass', f: 5000, g: .04, a: .8 }); },
-    levelup(t) { [392, 523, 659, 784, 1047].forEach((f, k) => tone(f, t + k * .07, .4, { type: 'pulse', g: .05, lp: 3200 })); bell(1568, t + .4, .9, .05); bell(2093, t + .5, .8, .04); },
-    hearth(t) { for (let k = 0; k < 9; k++) noise(t + rnd(0, 1.1), rnd(.02, .05), { type: 'bandpass', f: rnd(1200, 3200), q: 3, g: rnd(.05, .14) }); [174.6, 220, 261.6].forEach(f => tone(f, t, 1.8, { type: 'triangle', g: .05, a: .4 })); },
-    // ---- the world (M3 §5.8) ----
-    // walking into something solid: a soft thud
-    bump(t) { tone(120, t, .09, { to: 70, type: 'triangle', g: .12 }); noise(t, .05, { type: 'lowpass', f: 600, g: .1 }); },
-    // a pack spots you: the "!" beat
-    alert(t) { tone(880, t, .07, { type: 'square', g: .045, lp: 3200 }); tone(1320, t + .07, .16, { type: 'square', g: .055, lp: 3200 }); },
-    // a weak pack scatters: a whoosh, running feet and a coin
-    // a door, a stair or a map edge: a creak and a thunk
-    door(t) { noise(t, .26, { type: 'bandpass', f: 520, to: 900, q: 6, g: .1, a: .08 }); tone(92, t + .22, .16, { to: 60, g: .24, type: 'triangle' }); },
-    // one typed character of dialogue; opts.pitch gives each speaker a voice
-    blip(t, o) { tone(Math.max(120, Math.min(2400, o.pitch || VOICES[(o.voice | 0) & 7] || 660)), t, .035, { type: 'square', g: .022, lp: 2400 }); },
-    // a lock opens (a key, a map power or a Domain): a click and a rising bell
-    unlock(t) { noise(t, .05, { type: 'highpass', f: 4000, g: .15 }); tone(600, t, .06, { type: 'square', g: .035, lp: 2000 }); [784, 988, 1175].forEach((f, k) => bell(f, t + .08 + k * .07, .55, .05)); },
-    // a map power at work, a lookout's Longwatch, a hearth kindled: a bright sparkle
-    chime(t) { [1047, 1319, 1568, 2093].forEach((f, k) => bell(f, t + k * .05, .8, .045)); noise(t, .5, { type: 'highpass', f: 6000, g: .03, a: .2 }); },
   };
 
   function duck(amount, secs) {
-    if (!musicBus) return;
-    const t = AC.currentTime, base = .5;
-    musicBus.gain.cancelScheduledValues(t);
-    musicBus.gain.setValueAtTime(musicBus.gain.value, t);
-    musicBus.gain.linearRampToValueAtTime(base * amount, t + .08);
-    musicBus.gain.linearRampToValueAtTime(base, t + secs);
-  }
-
-  // ---- the step sequencer ----
-  // a horn (M5 peaks): a sawtooth that scoops up into the note through a lowpass that blooms open as the
-  // breath comes, over a sine for body; a slow vibrato comes in on the long notes
-  function horn(f, t, dur, g, out) {
-    const o = AC.createOscillator(), s = AC.createOscillator(), sg = AC.createGain(), lp = AC.createBiquadFilter(), a = AC.createGain();
-    o.type = 'sawtooth';
-    o.frequency.setValueAtTime(f * .97, t); o.frequency.exponentialRampToValueAtTime(f, t + .09);
-    s.frequency.setValueAtTime(f, t); sg.gain.value = .7;
-    lp.type = 'lowpass'; lp.Q.value = .7;
-    lp.frequency.setValueAtTime(f * 1.3, t); lp.frequency.linearRampToValueAtTime(f * 3.6, t + .2); lp.frequency.linearRampToValueAtTime(f * 2.4, t + Math.max(.35, dur * .6));
-    if (dur > .8) {
-      const l = AC.createOscillator(), lg = AC.createGain();
-      l.frequency.value = 4.6; lg.gain.setValueAtTime(0, t); lg.gain.linearRampToValueAtTime(f * .007, t + .7);
-      l.connect(lg); lg.connect(o.frequency); lg.connect(s.frequency); l.start(t); l.stop(t + dur + .05);
-    }
-    env(a, t, g, .11, dur, .85);
-    o.connect(lp); s.connect(sg); sg.connect(lp); lp.connect(a); a.connect(out);
-    o.start(t); s.start(t); o.stop(t + dur + .05); s.stop(t + dur + .05);
-  }
-  // a gust of wind (M5 peaks): looped noise through a band that rises and falls, swelling in and out
-  function wind(t, dur, g, out) {
-    const src = AC.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
-    const f = AC.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 1.3;
-    f.frequency.setValueAtTime(300, t); f.frequency.linearRampToValueAtTime(rnd(760, 1100), t + dur * .45); f.frequency.linearRampToValueAtTime(360, t + dur);
-    const a = AC.createGain();
-    a.gain.setValueAtTime(0, t); a.gain.linearRampToValueAtTime(g, t + dur * .4); a.gain.linearRampToValueAtTime(g * .45, t + dur * .7); a.gain.linearRampToValueAtTime(0, t + dur);
-    src.connect(f); f.connect(a); a.connect(out);
-    src.start(t, Math.random() * 1.2); src.stop(t + dur + .05);
-  }
-  // a reed (M6 fen): a hollow square through a low, soft band (a clarinet's odd harmonics; down low, a drone
-  // pipe's buzz), a slow breath in with a little air on the reed as the note speaks, and a gentle vibrato
-  // that comes in late on the long notes
-  function reed(f, t, dur, g, out) {
-    const o = AC.createOscillator(), lp = AC.createBiquadFilter(), a = AC.createGain();
-    o.type = 'square';
-    o.frequency.setValueAtTime(f, t);
-    lp.type = 'lowpass'; lp.Q.value = 1.2;
-    lp.frequency.setValueAtTime(Math.min(2200, f * 2.2), t); lp.frequency.linearRampToValueAtTime(Math.min(2600, f * 3.4), t + .25);
-    if (dur > 1.2) {
-      const l = AC.createOscillator(), lg = AC.createGain();
-      l.frequency.value = 4.2; lg.gain.setValueAtTime(0, t); lg.gain.linearRampToValueAtTime(f * .006, t + 1);
-      l.connect(lg); lg.connect(o.frequency); l.start(t); l.stop(t + dur + .05);
-    }
-    env(a, t, g, .14, dur, .8);
-    o.connect(lp); lp.connect(a); a.connect(out);
-    o.start(t); o.stop(t + dur + .05);
-    noise(t, .12, { type: 'bandpass', f: Math.min(4000, f * 5), q: 3, g: g * .5, a: .03 }, out);
-  }
-  // a frog (M6 fen): a low croak, a buzz chopped into quick pulses, twice ("rib-bit"), lower the second time
-  function frog(t, g, out) {
-    const f0 = rnd(140, 210), rate = rnd(28, 40);
-    for (const [dt, len, k] of [[0, .1, 1], [.16, .13, .88]]) {
-      const s = t + dt;
-      const o = AC.createOscillator(), lp = AC.createBiquadFilter(), chop = AC.createGain(), lfo = AC.createOscillator(), depth = AC.createGain(), a = AC.createGain();
-      o.type = 'sawtooth';
-      o.frequency.setValueAtTime(f0 * k * 1.08, s); o.frequency.linearRampToValueAtTime(f0 * k, s + len);
-      lp.type = 'lowpass'; lp.frequency.value = f0 * 5; lp.Q.value = 3;
-      chop.gain.value = .5; lfo.type = 'square'; lfo.frequency.value = rate; depth.gain.value = .5;
-      lfo.connect(depth); depth.connect(chop.gain);
-      env(a, s, g, .008, len, .9);
-      o.connect(lp); lp.connect(chop); chop.connect(a); a.connect(out);
-      o.start(s); lfo.start(s); o.stop(s + len + .05); lfo.stop(s + len + .05);
-    }
-  }
-  // a peeper (M6 fen): a small frog's high whistle, rising
-  function peep(t, g, out) { const f = rnd(2500, 3100); tone(f, t, .06, { to: f * 1.18, g: g * .05, type: 'sine', a: .004 }, out); }
-  function musicVoice(p, freqs, t, dur, out) {
-    const g = p.g;
-    for (const f of freqs) {
-      switch (p.v) {
-        case 'horn': horn(f, t, dur * .97, g, out); break;
-        case 'reed': reed(f, t, dur * .96, g, out); break;
-        case 'bell': bell(f, t, Math.max(.6, dur * 1.4), g, 3200, out); break;
-        case 'tri': tone(f, t, dur * .95, { type: 'triangle', g, a: .01, sus: .8 }, out); break;
-        case 'pulse': tone(f, t, dur * .92, { type: 'pulse', g, a: .006, sus: .7, lp: p.lp || 2400 }, out); break;
-        case 'square': tone(f, t, dur * .8, { type: 'square', g, a: .004, sus: .5, lp: p.lp || 1800 }, out); break;
-        case 'pluck': tone(f, t, .16, { type: 'triangle', g, a: .003 }, out); break;
-        case 'flute': tone(f, t, dur * .95, { type: 'sine', g, a: .06, sus: .85, vib: 5 }, out); break;
-        case 'pad': tone(f, t, dur, { type: 'sawtooth', g, a: .02, sus: .6, lp: 900 }, out); tone(f, t, dur, { type: 'sawtooth', g: g * .7, a: .02, sus: .6, lp: 900, det: 9 }, out); break;
-      }
-    }
-  }
-  function drum(kind, t, g, out) {
-    if (kind === 'k') { tone(130, t, .16, { to: 45, g: g * .35, type: 'sine', a: .002 }, out); }
-    else if (kind === 's') noise(t, .12, { type: 'bandpass', f: 1800, q: .9, g: g * .3, a: .002 }, out);
-    else if (kind === 'h') noise(t, .04, { type: 'highpass', f: 7000, g: g * .12, a: .001 }, out);
-    else if (kind === 'c') { noise(t + Math.random() * .08, .025, { type: 'bandpass', f: 2000 + Math.random() * 1800, q: 3, g: g * .25, a: .001 }, out); }
-    // the hand drum (M4 desert): a round doum in the middle of the skin, a dry tek on the rim, a soft ka
-    else if (kind === 'd') { tone(104, t, .3, { to: 62, g: g * .42, type: 'sine', a: .003 }, out); noise(t, .06, { type: 'lowpass', f: 380, g: g * .16, a: .002 }, out); }
-    else if (kind === 't') { noise(t, .07, { type: 'bandpass', f: 2600, q: 1.6, g: g * .26, a: .001 }, out); tone(540, t, .05, { type: 'triangle', g: g * .05, a: .002 }, out); }
-    else if (kind === 'a') noise(t, .05, { type: 'bandpass', f: 3400, q: 2.2, g: g * .13, a: .001 }, out);
-    // the wind over the peaks (M5): a gust that swells and falls away over three seconds
-    else if (kind === 'w') wind(t, 3.2, g * .16, out);
-    // the fen (M6): a frog's croak, and a peeper's whistle
-    else if (kind === 'f') frog(t, g * .3, out);
-    else if (kind === 'p') peep(t, g, out);
-  }
-
-  function startTrack(name) {
-    const T = PARSED[name];
-    if (!T || !ctx()) return;
-    const bus = AC.createGain(); bus.connect(musicBus);
-    const t0 = AC.currentTime + .06, fade = playing ? .9 : .35;
-    bus.gain.setValueAtTime(0, AC.currentTime); bus.gain.linearRampToValueAtTime(T.gain, t0 + fade);
-    const stepDur = 60 / T.bpm / T.sub;
-    const st = { name, bus, step: 0, next: t0, timer: 0, done: false };
-    const tick = () => {
-      if (!AC || st.done) return;
-      while (st.next < AC.currentTime + .15) {
-        if (!T.loop && st.step >= T.len) { st.done = true; clearInterval(st.timer); if (wanted === name) wanted = null; setTimeout(() => { try { bus.disconnect(); } catch { /* gone */ } if (playing === st) playing = null; }, 3000); return; }
-        for (const p of T.parts) {
-          if (!T.loop && st.step >= p.len) continue;
-          const e = p.ev[st.step % p.len];
-          if (!e) continue;
-          if (e.drum) drum(e.drum, st.next, p.g, bus);
-          else musicVoice(p, e.notes, st.next, e.dur * stepDur, bus);
-        }
-        st.next += stepDur; st.step++;
-      }
-    };
-    st.timer = setInterval(tick, 30); tick();
-    if (playing) stopTrack(playing, .9);
-    playing = st;
-  }
-  function stopTrack(st, fade = .6) {
-    if (!st || st.done) return;
-    st.done = true; clearInterval(st.timer);
-    if (AC) {
-      const t = AC.currentTime;
-      st.bus.gain.cancelScheduledValues(t); st.bus.gain.setValueAtTime(st.bus.gain.value, t); st.bus.gain.linearRampToValueAtTime(0, t + fade);
-    }
-    setTimeout(() => { try { st.bus.disconnect(); } catch { /* gone */ } }, (fade + .3) * 1000);
-    if (playing === st) playing = null;
+    const g = musicGain();
+    if (!g || !AC) return;
+    const t = AC.currentTime;
+    g.cancelScheduledValues(t); g.setValueAtTime(g.value, t);
+    g.linearRampToValueAtTime(MUSIC_LEVEL * amount, t + .08); g.linearRampToValueAtTime(MUSIC_LEVEL, t + secs);
   }
   function sync() {
-    if (!unlocked) return;
+    if (!unlocked || !ctx()) return;
     const want = musicOn ? wanted : null;
-    if (!want) { if (playing) stopTrack(playing); return; }
-    if (playing && playing.name === want) return;
-    startTrack(want);
+    if (!want) { if (musicPlaying()) musicStop(.8); return; }
+    if (musicPlaying() === want) return;
+    musicPlay(want);
+    const g = musicGain();
+    if (g) { const t = AC.currentTime; g.cancelScheduledValues(t); g.setValueAtTime(0, t); g.linearRampToValueAtTime(MUSIC_LEVEL, t + .9); }
   }
 
   if (typeof document !== 'undefined') {
     document.addEventListener('visibilitychange', () => {
-      if (!AC) return;
-      if (document.hidden) AC.suspend().catch(() => {});
-      else AC.resume().catch(() => {});
+      const c = sfxContext();
+      if (!c) return;
+      if (document.hidden) c.suspend().catch(() => {});
+      else c.resume().catch(() => {});
     });
   }
 
@@ -489,7 +89,7 @@ export function createAudio() {
     unlock() {                   // call from a click/tap handler
       if (unlocked) { ctx(); return; }
       unlocked = true;
-      if (ctx()) sync();
+      sync();
     },
     setEnabled(on) { enabled = !!on; },
     get enabled() { return enabled; },
@@ -497,13 +97,20 @@ export function createAudio() {
     get musicEnabled() { return musicOn; },
     get unlocked() { return unlocked; },
     get track() { return wanted; },
-    sfx(name, opts = {}) {       // opts: { tier } for rarity-scaled sounds
-      if (!enabled || !unlocked || !SFX[name] || !ctx()) return;
-      try { SFX[name](AC.currentTime + .005, opts); } catch (err) { console.warn('[audio]', name, err); /* never let sound break the game */ }
+    sfx(name, opts = {}) {
+      if (!enabled || !unlocked || !ctx()) return;
+      try {
+        const t = AC.currentTime + .01;
+        if (name === 'blip') { tone(t, { f: Math.max(120, Math.min(2400, opts.pitch || VOICES[(opts.voice | 0) & 7])), d: .04, g: .05, type: 'square', lp: 2400 }); return; }
+        const id = soundFor(name, opts);
+        if (!id) return;
+        playSfx(id, t);
+        if (id === 'reveal-primal' || id === 'reveal-heirloom' || id === 'levelup' || id === 'victory') duck(.35, 2.2);
+      } catch (err) { console.warn('[audio]', name, err); /* never let sound break the game */ }
     },
     music(track) {
-      wanted = track && PARSED[track] ? track : null;
-      if (track === 'victory' && playing && playing.name === 'victory') { stopTrack(playing, .1); }
+      if (track === 'victory') { wanted = null; sync(); return; }
+      wanted = track ? pieceFor(track) : null;
       sync();
     },
     duck(amount = .4, secs = 1.5) { if (AC && unlocked) duck(amount, secs); },
