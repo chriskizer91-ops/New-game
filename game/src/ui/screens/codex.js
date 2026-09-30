@@ -14,11 +14,13 @@
 //     not choose stay in the Keep (Tamsin only ever lends hers): their pockets say so, and the page
 //     does not count them. Tap a pocket for its card (a silhouette, the grey held card, or yours)
 //   - the footer keeps M3's stamp legend
+// M7: Page V, "The Hearth Below", lists its numbers (`nos`: No. 000, Fenwick's Poker, first, then Nos. 67-74) and says
+// what opens its road until the fifth council; every label counts to the highest number ("No. 000 / 074").
 // Pure helpers for tests (node): binderPage(game, pageId) (M5: with its road note), defaultPage(game),
-// RIDDLES, HOLDER, ROAD_NOTE.
+// RIDDLES, HOLDER, ROAD_NOTE, reliquaryLine(game) (M7: the world's reliquary line).
 // Test hooks: .cx-tab[data-page][aria-selected]; .cx-head[data-page]; .cx-prog; .cx-reward[data-earned];
 //   .cx-sealed; .pocket[data-relic][data-state] (+ .is-awakened, .is-spare).
-// Owner: WP8; M4 P7b (the binder); M5 P7 (Page III: its riddles and holders, the road notes); M6 P7 (Page IV).
+// Owner: WP8; M4 P7b (the binder); M5 P7 (Page III: its riddles and holders, the road notes); M6 P7 (Page IV); M7 P7 (Page V).
 import { RELICS } from '../../data/relics.js';
 import { PAGES } from '../../data/codex.js';
 import { STARTERS } from '../../data/heroes.js';
@@ -102,16 +104,16 @@ export const RIDDLES = Object.freeze({
   'corvus-harpoon': 'A diver lost it in something on his last dive. Whatever it struck still carries it in its side, in the deep off the Tidal Flats.',
   'deep-pearl': 'Grown in a brow over a thousand years in the dark, and it glows. The thing the Tallymen have chained in the Blackwater wears it.',
   'hexbane-shawl': 'Knotted from bog-cotton and a hag’s hair. Nettie of Bogmire makes one for whoever puts Mother Grue to rest.',
-  // M7: Page V (STUB from the M7 scaffold: P7 writes the real riddles)
-  'fenwicks-poker': 'Worn thin at the grip by one hand over nine hundred years. The one who keeps the Keep’s fire has never set it down.',
-  'hollow-wreath': 'A wreath of grey wood, sent in a box sealed with soot to the chair of the oldest grove.',
-  'hollow-chalice': 'A cup of black glass that is never full, sent in a box sealed with soot to the chair of the cistern.',
-  'hollow-gauntlet': 'A gauntlet of dark iron that closes on its own, sent in a box sealed with soot to the chair under the mountain.',
+  // Page V: the Hearth Below (M7): No. 000 first, then the four gifts, Tamsin's relic and the Unsmith's three pieces
+  'fenwicks-poker': 'Worn thin at the grip by one hand over nine hundred years. The one who keeps the Keep’s fire has never once set it down.',
+  'hollow-wreath': 'Grey wood that was never green, sent in a box sealed with soot to the chair of the oldest grove.',
+  'hollow-chalice': 'A cup of black glass that is never full, sent in a box sealed with soot to the chair that keeps the water.',
+  'hollow-gauntlet': 'Dark iron that closes on its own, sent in a box sealed with soot to the chair under the mountain.',
   'hollow-chain': 'A chain of office in black links, a little too tight, sent in a box sealed with soot to the chair of the fen town.',
   'tamsins-bargain': 'Bought with the wrong thing, from a man on a black barge. She would give it back if she could.',
-  'unmaking-hammer': 'The second hammer of a smith who gave his first to his first daughter. It unmakes.',
+  'unmaking-hammer': 'A smith’s second hammer. The first one made things. This one takes them apart.',
   'ironvein-apron': 'A smith’s leather apron with a family’s mark on the bib, scorched black and never burned through.',
-  'worldforge-heart': 'The hottest thing in the world, small enough to wear, and beating. It is at the bottom of the world.',
+  'worldforge-heart': 'The hottest thing in the world, small enough to wear, and beating. It waits at the bottom of the world.',
 });
 
 // Who holds each relic, short enough for a pocket ("Held by ...") and the grey card's stamp.
@@ -134,19 +136,35 @@ export const HOLDER = Object.freeze({
   'hag-stone': 'Mother Grue', 'lamplighters-lantern': 'the Lantern Mother', 'mourning-veil': 'the Lantern Mother', 'salvagers-helm': 'the Salvage-Master',
   'cantors-staff': 'the Drowned Cantor', 'gar-tooth': 'Old Jaws', 'barge-gauntlets': 'the Bargemaster', 'corvus-harpoon': 'the Blackwater Leviathan',
   'deep-pearl': 'the Blackwater Leviathan', 'hexbane-shawl': 'Nettie the Swamp Witch',
-  // M7: Page V (STUB from the M7 scaffold: P7 words them)
+  // M7: Page V
   'fenwicks-poker': 'Fenwick', 'hollow-wreath': 'Hollow Miravel', 'hollow-chalice': 'Hollow Qasim', 'hollow-gauntlet': 'Hollow Brundar',
   'hollow-chain': 'Hollow Gretch', 'tamsins-bargain': 'Tamsin', 'unmaking-hammer': 'the Unsmith', 'ironvein-apron': 'the Unsmith',
   'worldforge-heart': 'the Unsmith',
 });
 
 const PAGE_IDS = PAGES.map(p => p.id);
+
+// M7: the relics that stand on a pedestal in the Keep's galleries (Page V's nine have none: they are carried, or
+// still below the Keep)
+const PEDESTALED = new Set(Object.values(MAPS).flatMap(m => (m.entities || []).filter(e => e.kind === 'pedestal' && RELICS[e.relic]).map(e => e.relic)));
+// The reliquary's line on the world's nearby list (pure; node tests use it): "12 of 66 relics home", out of the
+// relics its galleries hold; from the fourth council on (or once one is carried), Page V's nine, carried or below
+export function reliquaryLine(game) {
+  const claimed = id => !!game?.codex?.[id]?.claimed;
+  const home = [...PEDESTALED].filter(claimed).length;
+  const V = relicsOn('below').filter(id => !PEDESTALED.has(id));
+  const carried = V.filter(claimed).length;
+  const named = V.length && (carried || game?.progress?.flags?.story?.['council-4-done']);
+  return `${home} of ${PEDESTALED.size} relics home${named ? ` · Page V: ${carried} carried, ${V.length - carried} below` : ''}`;
+}
 // What opens the road to a region whose page is open but whose road is not (yet).
 export const ROAD_NOTE = Object.freeze({
   sunscorch: 'The road to the Sunscorch opens once both Brands of the Wilds are yours.',
   ironspire: 'The road to the Ironspire opens once the Council has sat a second time: the Keep’s east postern.',
   // M6: the fen stair below Mossfall opens with the third council
   gloomfen: 'The road to the Gloomfen opens once the Council has sat a third time: the fen stair below Mossfall.',
+  // M7: the stair under the vault opens with the fifth council
+  below: 'The road to the Hearth Below opens once the Council has sat a fifth time: the stair under the vault.',
 });
 // M7: Page V lists its numbers (`nos`) where the others give a range
 const isSealed = P => !P || (P.from == null && !P.nos?.length);
@@ -213,6 +231,7 @@ export function mount(root, ctx, params = {}) {
   const top = el('header', 'topbar');
   top.append(button('‹ Back', 'btn ghost back', () => { ctx.audio.sfx('back'); leave(); }), el('div', 'tb-title', '<span class="realm">The Hearth Codex</span><h1 class="title-display">Every legend has a holder</h1>'));
   const tabs = el('div', { class: 'tabs cx-tabs', role: 'tablist', 'aria-label': 'Codex pages' });
+  tabs.style.setProperty('--n', String(PAGES.length)); // M7: five pages, one row
   const head = el('section', { class: 'codex-sum cx-head panel', 'aria-live': 'polite' });
   const binder = el('div', { class: 'binder', role: 'tabpanel', id: 'cx-panel' });
   const foot = el('p', 'codex-foot');

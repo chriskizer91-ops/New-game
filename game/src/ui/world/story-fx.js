@@ -12,8 +12,18 @@
 //   showRegionCard(ctx, regionId) and hasRegionCard(regionId) (M6 spec A10: the player's painting of a region,
 //   under its name, the first time the party comes down into it),
 //   crownSeals() -> [{ id, x, y, to }], loreAt(map, tx, ty) -> [x, y], ATLAS_SRC
+// M7 (spec §5, A14, A15):
+//   showOpening(ctx, game)          the Opening's title card, "Act III: The Hollow Council" (P3's council-5 ends with
+//                                   { end: 'act3-open' }); openingCard(game) is its pure view model
+//   showRegionCard(ctx, 'below')    the Hearth Below's card, the first time down the vault stair (CUTS['hearth-below']
+//                                   if painted, else its drawn scene)
+//   chapterEnd(game, 'gloomfen')    the fourth council's card: "Act III begins.", its Act III chip open
+//   playEnding(ctx, game, id)       an ending's card (CUTS['ending-<id>'] if painted, else a drawn scene), the credits
+//                                   and the last card ("The post-game opens in the next chapter"); endingCard(game, id),
+//                                   creditsOf(game) and LAST_CARD are the pure view models
+// Every saved string (the Warden's name, the Masterpiece's) is set as text.
 // Owner: WP7; M4 P7b (the second council, the end of Act II); M5 P7 (the Ironspire card, the third council);
-// M6 P7 (the Gloomfen card, the fourth council, the end of Act II).
+// M6 P7 (the Gloomfen card, the fourth council, the end of Act II); M7 P7 (Act III's cards, the endings, the credits).
 
 import * as atlasImage from '../assets/atlas-image.js';
 import { CUTS } from '../assets/cuts/index.js';
@@ -24,6 +34,8 @@ import { PAGES } from '../../data/codex.js';
 import { LETTERS } from '../../data/letters.js';
 import { RELICS } from '../../data/relics.js';
 import { CROWNWALL } from '../../data/locks.js';
+import { ENDINGS } from '../../data/endings.js';
+import { NPCS } from '../../data/npcs.js';
 import { uniqueBrands } from '../../rules/gauntlet.js';
 import { pageProgress } from '../../rules/codex.js';
 import { loreAt as geoLoreAt, regionOpen } from '../lib/atlas-geo.js';
@@ -178,6 +190,11 @@ const REGION_CARD = {
     cut: 'region-gloomfen', backdrop: 'murkway', fallback: 'mossfall',
     text: 'Mist on black water, and lights where nobody lives. Somewhere below the stair, Willowmurk’s elders are waiting for the Warden.',
   },
+  // M7 (spec §5): the first time down the vault stair; the player's still if painted (batch 4), else the Hollow Hall
+  below: {
+    cut: 'hearth-below', backdrop: 'hollow-hall', fallback: 'scorchgate-vaults',
+    text: 'The stair goes down past the vault, past the Keep’s own cellars, into a hall the First Age built and nobody remembered. Four great chairs wait along it. The hearth’s roots go on down through the ash, into the dark.',
+  },
 };
 const ACT_NO = ['', 'I', 'II', 'III', 'IV'];
 export const hasRegionCard = id => !!REGION_CARD[id] && !!REGIONS[id];
@@ -229,13 +246,14 @@ const andList = names => (names.length > 1 ? `${names.slice(0, -1).join(', ')} a
 //                (M6) the fen stair below Mossfall stands open onto the Gloomfen (the council opened it); before
 //                that, the Gloomfen Marsh is the next chapter
 //   'gloomfen'   after the fourth (M6): the Gloomfen is yours and Act II ends: all eight coals lit, the Hollow
-//                Council waiting, Act III named and nothing opened
+//                Council waiting; M7: "Act III begins.", its chip open (the fifth council follows at once)
 // -> { act, cls, label, kick, title, sub, stats: [[k, v]], chips: [{ id, name, open }], lines: [text] }
+// The Pages stat counts every page of the Codex (M7: Page V, which lists its numbers, among them).
 export function chapterEnd(game, act = 'act1') {
   const relics = Object.keys(RELICS).filter(id => game?.codex?.[id]?.claimed).length;
   const stats = [['Day', game?.progress?.flags?.day || 1], ['Relics', `${relics}/${Object.keys(RELICS).length}`], ['Brands', `${game ? uniqueBrands(game) : 0}/${BRAND_TOTAL}`]];
   const pages = () => {
-    const open = PAGES.filter(p => p.from != null);
+    const open = PAGES.filter(p => p.from != null || p.nos?.length);
     const done = open.filter(p => game?.progress?.flags?.pages?.[p.id] || pageProgress(game, p.id).done).length;
     return ['Pages', `${done}/${open.length}`];
   };
@@ -251,11 +269,12 @@ export function chapterEnd(game, act = 'act1') {
     return { chips: regions.map(r => ({ id: r.id, name: r.name, open: now.includes(r) })), lines };
   };
   if (act === 'gloomfen') {
-    // M6: the eight coals lit, and the end of Act II; nothing opens here: Act III is the next chapter
+    // M6: the eight coals lit, and the end of Act II. M7: Act III begins (the fifth council, the Opening, opens its road
+    // down the vault stair), so its chip is open and the card says so; no road opens on this card itself
     return {
       act, cls: 'tbc tbc-act2 tbc-gloomfen', label: 'End of Act II', kick: 'The Gloomfen is yours', title: 'End of Act II', sub: 'Eight coals in the Eternal Hearth',
-      stats: [...stats, pages()], chips: [{ id: 'act3', name: 'Act III', open: false }],
-      lines: ['All eight coals are lit. The Hollow Council waits.', 'Act III begins in the next chapter.'],
+      stats: [...stats, pages()], chips: [{ id: 'act3', name: 'Act III', open: true }],
+      lines: ['All eight coals are lit. The Hollow Council waits.', 'Act III begins.'],
     };
   }
   if (act === 'ironspire') {
@@ -296,4 +315,207 @@ export function showToBeContinued(ctx, game, { act = 'act1' } = {}) {
   P.append(C.go);
   ctx.audio.sfx('victory');
   return C.wait();
+}
+
+// ---- Act III (M7 spec §5, A14, A15) ---------------------------------------------------------------------
+
+const claimedCount = game => Object.keys(RELICS).filter(id => game?.codex?.[id]?.claimed).length;
+const pagesDoneCount = game => PAGES.filter(p => game?.progress?.flags?.pages?.[p.id] || pageProgress(game, p.id).done).length;
+const masterpieceOf = game => (game?.inventory || []).find(i => i.masterpiece === true && !i.shattered) || null;
+const wardenName = game => String(game?.party?.roster?.warden?.name || 'the Warden');
+
+// The Opening's title card (P3's council-5 ends with { end: 'act3-open' }): the fifth council, the four boxes opened
+// together, the stair in the vault floor. Pure: node tests use it.
+export function openingCard(game) {
+  const lit = Math.min(BRAND_TOTAL, game ? uniqueBrands(game) : BRAND_TOTAL);
+  return {
+    kick: 'Act III', title: 'The Hollow Council', label: 'Act III: The Hollow Council', coals: lit,
+    lines: [
+      'Four gifts, opened together. Four chairs, empty. Elder Miravel, Cistern Lord Qasim, Thane Brundar and Mayor Gretch walked down a stair that was never there.',
+      'The stair under the vault stands open. The Hollow Council waits below the Keep.',
+    ],
+  };
+}
+
+export function showOpening(ctx, game) {
+  const V = openingCard(game);
+  const C = card(ctx, { cls: 'act3 act3-open', label: V.label, button: 'Go down' });
+  const P = C.panel;
+  const coals = el('div', { class: 'brand-coals', role: 'img', 'aria-label': `The Hearth Clock: ${V.coals} of ${BRAND_TOTAL} coals lit` });
+  for (let i = 0; i < BRAND_TOTAL; i++) coals.append(el('i', 'coal' + (i < V.coals ? ' lit' : '')));
+  P.append(text('p', 'kick', V.kick), text('h2', 'title-display', V.title), coals);
+  for (const line of V.lines) P.append(text('p', 'act3-text', line));
+  P.append(C.go);
+  ctx.audio.sfx('phase');
+  return C.wait();
+}
+
+// The endings (data/endings.js): each one's card, its still (the player's painting, CUTS['ending-<id>']) or its own
+// drawn scene, and its words. Kindle Anew names the Warden's Masterpiece, as text.
+const ENDING_CARD = {
+  rekindle: { kick: 'The first ending', lines: ['The chains take the Sleepers’ weight again. The Eternal Hearth burns as it always has, warm and paid for, and the realm sleeps easy.'] },
+  release: { kick: 'The second ending', lines: ['The chains break. The Sleepers wake and go, and for the first time in nine hundred years the Eternal Hearth goes out. The Keep is cold tonight, and free.'] },
+  anew: { kick: 'The true ending', lines: ['The chains break, and the Sleepers go free. Stirred with Fenwick’s Poker, the hearth takes a fire the Warden made: a legend of their own.'] },
+};
+export function endingCard(game, id) {
+  const E = ENDINGS[id] || ENDINGS.rekindle;
+  const Q = ENDING_CARD[E.id];
+  const mp = E.id === 'anew' ? masterpieceOf(game) : null;
+  return {
+    id: E.id, name: E.name, kick: Q.kick, sub: E.text, cut: `ending-${E.id}`, still: !!CUTS[`ending-${E.id}`],
+    lines: [...Q.lines, ...(mp ? [`${mp.name} burns in the Eternal Hearth.`] : [])],
+  };
+}
+
+// The credits: who stood in the story, then this journey's own numbers (every saved string is set as text).
+const CAST = [
+  ['isolde', 'Warden-Commander of Hearthstone Keep'], ['fenwick', 'who kept the hearth'], ['hilda', 'smith of Ironhold'],
+  ['tamsin', 'who came back'], ['miravel', 'Elder of Eldergrove'], ['qasim', 'of the Sandspire cistern'], ['brundar', 'of Ironhold'], ['gretch', 'of Bogmire'],
+];
+export function creditsOf(game) {
+  const roster = game?.party?.roster || {};
+  const party = (game?.party?.active || ['warden', 'pip', 'bryn', 'alondra']).filter(id => id !== 'warden').map(id => String(roster[id]?.name || id));
+  const E = ENDINGS[game?.ending] || null;
+  const mp = masterpieceOf(game);
+  return {
+    title: 'Aethermoor: Hearth & Heirloom',
+    rows: [
+      ['The Warden', wardenName(game)],
+      ['Beside the Warden', party.join(', ')],
+      ...CAST.map(([id, role]) => [String(NPCS[id]?.name || id), role]),
+      [String(NPCS.unsmith?.name || 'Harrow Ironvein'), 'the Unsmith'],
+    ],
+    journey: [
+      ['Days on the road', String(game?.progress?.flags?.day || 1)],
+      ['Relics claimed', `${claimedCount(game)} of ${Object.keys(RELICS).length}`],
+      ['Brands', `${game ? uniqueBrands(game) : 0} of ${BRAND_TOTAL}`],
+      ['Codex pages', `${pagesDoneCount(game)} of ${PAGES.length}`],
+      ...(mp ? [['The Masterpiece', String(mp.name)]] : []),
+      ...(E ? [['The ending', E.name]] : []),
+    ],
+    thanks: 'Thank you for playing.',
+  };
+}
+
+// The last card (spec A15): the game goes on at the Keep; the post-game is the next chapter's.
+export const LAST_CARD = Object.freeze({
+  kick: 'The story goes on', title: 'The post-game opens in the next chapter',
+  lines: Object.freeze([
+    'The Keep is yours to walk, and the realm remembers what you chose.',
+    'The Heat ladder, the Champions awake again, the relics he took going back into the world, the Emberless Reach and the First Smith: all of it waits for the next chapter.',
+  ]),
+});
+
+// an ending's own scene, drawn (180x120, pixel for pixel) when the player's still is missing or will not load
+function drawEndingScene(id, w = 180, h = 120) {
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  const g = cv.getContext('2d');
+  const hash = (x, y) => { let q = Math.imul(x, 374761393) + Math.imul(y, 668265263) | 0; q = Math.imul(q ^ (q >>> 13), 1274126177); return ((q ^ (q >>> 16)) >>> 0) / 4294967296; };
+  const px = (x, y, c) => { g.fillStyle = c; g.fillRect(x, y, 1, 1); };
+  const rect = (x, y, rw, rh, c) => { g.fillStyle = c; g.fillRect(x, y, rw, rh); };
+  const warm = id === 'rekindle', anew = id === 'anew';
+  // the hall: dithered stone, lit from the hearth (or, released, from a pale dawn above)
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const d = Math.hypot((x - w / 2) / w, (y - h * 0.62) / h);
+    const lit = (warm ? 0.9 : anew ? 0.8 : 0.35) - d * 1.3 + (hash(x >> 1, y >> 1) - 0.5) * 0.18 + (id === 'release' ? (1 - y / h) * 0.25 : 0);
+    const pal = warm ? ['#140c08', '#2a170e', '#4a2614', '#6e3a18'] : anew ? ['#0b0d15', '#131826', '#1d2438', '#293350'] : ['#0c0c10', '#16161c', '#22222a', '#34343e'];
+    px(x, y, pal[Math.max(0, Math.min(3, Math.floor(lit * 4)))]);
+  }
+  // stone courses across the back wall
+  for (let y = 8; y < h * 0.7; y += 9) for (let x = (y / 9) % 2 ? 0 : 6; x < w; x += 12) rect(x, y, 1, 9, 'rgba(0,0,0,0.25)');
+  for (let y = 8; y < h * 0.7; y += 9) rect(0, y, w, 1, 'rgba(0,0,0,0.3)');
+  // the floor
+  rect(0, Math.round(h * 0.78), w, h, '#0e0b0a');
+  for (let x = 0; x < w; x += 2) px(x, Math.round(h * 0.78), '#3a2e26');
+  // the great hearth: a stone arch, its mouth, and what burns in it
+  const cx = Math.round(w / 2), top = Math.round(h * 0.3), bot = Math.round(h * 0.8), hw = Math.round(w * 0.2);
+  for (let y = top - 6; y < bot; y++) {
+    const inner = y < top + hw ? Math.round(Math.sqrt(Math.max(0, hw * hw - (top + hw - y) ** 2))) : hw;
+    rect(cx - inner - 6, y, 6, 1, '#4a4038'); rect(cx + inner, y, 6, 1, '#4a4038');
+    rect(cx - inner, y, inner * 2, 1, '#07060a');
+  }
+  const flame = warm ? ['#7a2a0e', '#ee8e31', '#ffcb66', '#fff4c0'] : anew ? ['#28304a', '#6a7eb0', '#c4d6f4', '#ffffff'] : null;
+  if (flame) {
+    for (let i = 0; i < 260; i++) {
+      const u = hash(i, 3), v = hash(i, 7), fx = cx + Math.round((u - 0.5) * hw * 1.6 * (1 - v * 0.6)), fy = bot - 2 - Math.round(v * v * hw * 1.5);
+      px(fx, fy, flame[Math.min(3, Math.floor((1 - v) * 3 + hash(i, 11)))]);
+    }
+  } else {
+    // released: cold ash in the hearth's mouth
+    for (let i = 0; i < 90; i++) px(cx + Math.round((hash(i, 5) - 0.5) * hw * 1.8), bot - 1 - Math.round(hash(i, 9) * 4), hash(i, 2) < 0.5 ? '#5a5a62' : '#8a8a92');
+  }
+  if (anew) {
+    // the Masterpiece standing in the new fire, and the poker leaning on the arch
+    rect(cx - 1, bot - hw - 8, 2, hw + 4, '#eef4ff'); rect(cx - 4, bot - hw + 2, 8, 2, '#c4d6f4');
+    for (let y = 0; y < 20; y++) px(cx + hw + 2 - Math.round(y / 3), bot - 1 - y, '#8a8a92');
+  }
+  // the chains: hung whole over the fire (rekindle), or broken on the floor (release, anew)
+  const chain = warm ? '#c9a878' : '#6a6a72';
+  if (warm) {
+    for (const side of [-1, 1]) for (let k = 0; k < 16; k++) { const x = cx + side * (hw + 8 + k * 3), y = top + 4 + Math.round(Math.sin(k / 15 * Math.PI) * 10); rect(x - 1, y, 3, 2, chain); px(x, y + 1, '#000'); }
+  } else {
+    for (let k = 0; k < 7; k++) { const x = Math.round(w * 0.15) + k * 4, y = Math.round(h * 0.84) + (k % 2); rect(x, y, 3, 2, chain); }
+    for (let k = 0; k < 6; k++) { const x = Math.round(w * 0.7) + k * 4, y = Math.round(h * 0.86) - (k % 2); rect(x, y, 3, 2, chain); }
+  }
+  // sparks going up
+  for (let i = 0; i < (flame ? 16 : 5); i++) px(cx + Math.round((hash(i, 21) - 0.5) * hw * 3), Math.round(hash(i, 23) * top), flame ? flame[3] : '#c8c8d0');
+  return cv;
+}
+
+export function showEnding(ctx, game, id) {
+  const V = endingCard(game, id);
+  const reduced = ctx.reduced();
+  const C = card(ctx, { cls: `ending ending-${V.id}`, label: `The ending: ${V.name}`, button: 'The credits' });
+  const P = C.panel;
+  P.append(text('p', 'kick', V.kick), text('h2', 'title-display', V.name));
+  const view = el('div', { class: `region-view ending-view${reduced ? '' : ' drift'}`, role: 'img', 'aria-label': `${V.name}: ${V.sub}` });
+  const drawn = () => { view.classList.add('drawn'); view.replaceChildren(); try { const cv = drawEndingScene(V.id); cv.classList.add('region-drawn'); view.append(cv); } catch { /* the words alone */ } };
+  const still = CUTS[V.cut];
+  if (still) {
+    const img = el('img', { class: 'region-still', src: still.src, alt: '', width: still.w, height: still.h, draggable: 'false', decoding: 'async' });
+    img.addEventListener('error', drawn);
+    view.append(img);
+  } else drawn();
+  P.append(view, text('p', 'ending-sub', V.sub));
+  for (const line of V.lines) P.append(text('p', 'ending-text', line));
+  P.append(C.go);
+  ctx.audio.sfx('legend');
+  return C.wait();
+}
+
+export function showCredits(ctx, game) {
+  const V = creditsOf(game);
+  const reduced = ctx.reduced();
+  const C = card(ctx, { cls: 'credits', label: 'The credits', button: 'Onward' });
+  const P = C.panel;
+  const roll = el('div', { class: `credits-roll${reduced ? '' : ' rolling'}` });
+  roll.append(text('p', 'kick', 'The end of Act III'), text('h2', 'title-display', V.title));
+  const cast = el('dl', 'credits-cast');
+  for (const [k, v] of V.rows) cast.append(text('dt', '', k), text('dd', '', v));
+  const mine = el('dl', 'credits-journey');
+  for (const [k, v] of V.journey) mine.append(text('dt', '', k), text('dd', '', v));
+  roll.append(cast, text('p', 'label credits-k', 'Your journey'), mine, text('p', 'credits-thanks', V.thanks));
+  P.append(roll, C.go);
+  ctx.audio.sfx('victory');
+  return C.wait();
+}
+
+export function showLastCard(ctx) {
+  const V = LAST_CARD;
+  const C = card(ctx, { cls: 'last-card', label: V.title, button: 'Back to the Great Hall' });
+  const P = C.panel;
+  P.append(text('p', 'kick', V.kick), text('h2', 'title-display', V.title));
+  for (const line of V.lines) P.append(text('p', 'last-text', line));
+  P.append(C.go);
+  ctx.audio.sfx('page');
+  return C.wait();
+}
+
+// An ending, after its scene: its card, the credits, the last card (the world then walks the party back to the Great
+// Hall)
+export async function playEnding(ctx, game, id) {
+  await showEnding(ctx, game, id);
+  await showCredits(ctx, game);
+  await showLastCard(ctx);
 }

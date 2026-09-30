@@ -9,10 +9,15 @@
 //                                                          Salvage, Gems, Awaken, every change through
 //                                                          rules/forge.js; resolves with the new game
 //   previewRelic(game, held, holder) -> ItemInstance   the grey card's item for a held relic or an Echo
-// Every user-visible string goes in through textContent (or esc() for the few html fragments).
-// Owner: WP7 (M3); openShop and openForge: P7a (M4); M5 P7 (a soft lock's cost from its data); M6 P7 (the bog, the fog).
+//   (M7: the pure view models of the pre-fight card's new parts and of the Masterpiece tab are in ui/lib/act3.js)
+// Every user-visible string goes in through textContent (or esc() for the few html fragments). M7: the Masterpiece's
+// name is typed into an <input>, scrubbed by the rules (rules/forge.js masterpieceName), and shown only as text.
+// Owner: WP7 (M3); openShop and openForge: P7a (M4); M5 P7 (a soft lock's cost from its data); M6 P7 (the bog, the fog);
+// M7 P7 (the new tiers on the pre-fight card, the Unsmith's stolen relics and Tamsin beside you; the Masterpiece tab).
 
 import { ENCOUNTERS, BRANDS } from '../../data/encounters.js';
+import { tierAs } from '../../data/foes.js';
+import { ITEMS } from '../../data/items.js';
 import { HEARTHS } from '../../data/world.js';
 import { LOCKS, CROWNWALL } from '../../data/locks.js';
 import { OMENS } from '../../data/omens.js';
@@ -26,6 +31,7 @@ import { RARITY_ORDER } from '../../data/rarity.js';
 import { createRng } from '../../core/rng.js';
 import { threat } from '../../rules/world.js';
 import { familyOf, buildFoe } from '../../rules/foe.js';
+import { prefightView, masterpieceView, masterpieceTabShown } from '../lib/act3.js';
 import { relicItem, affixText, affixQuality } from '../../rules/loot.js';
 import { itemProfile } from '../../rules/stats.js';
 import * as partyRules from '../../rules/party.js';
@@ -42,7 +48,10 @@ import {
 } from '../lib/items.js';
 import '../forge.css';
 
-const TIER_WORD = { rabble: 'Rabble', veteran: 'Veteran', 'relic-bearer': 'Relic-Bearer', champion: 'Champion' };
+// M7: the new tiers by their own names (the hollow and the Unsmith read the Champion's rows everywhere else)
+const TIER_WORD = { rabble: 'Rabble', veteran: 'Veteran', 'relic-bearer': 'Relic-Bearer', champion: 'Champion', hollow: 'Hollow Council', unsmith: 'The Unsmith' };
+const TIER_ORDER = ['rabble', 'veteran', 'relic-bearer', 'champion', 'hollow', 'unsmith'];
+const tierRank = t => TIER_ORDER.indexOf(t) >= 0 ? TIER_ORDER.indexOf(t) : TIER_ORDER.indexOf(tierAs(t));
 const RATING_WORD = { easy: 'Easy', fair: 'Fair', hard: 'Hard', deadly: 'Deadly' };
 const RATING_FILL = { easy: 22, fair: 46, hard: 72, deadly: 96 };
 const text = (tag, cls, t) => { const n = el(tag, cls); n.textContent = t ?? ''; return n; };
@@ -107,7 +116,8 @@ export function openPrefight(ctx, { game, encId } = {}) {
   P.dataset.rating = T.rating;
   const grudges = game.progress?.flags?.grudges || {};
   const nameOf = s => (s.grudge && grudges[s.grudge]?.name) || s.name || familyOf(s).name;
-  const lead = T.spawns.slice().sort((a, b) => ['rabble', 'veteran', 'relic-bearer', 'champion'].indexOf(familyOf(b).tier) - ['rabble', 'veteran', 'relic-bearer', 'champion'].indexOf(familyOf(a).tier))[0];
+  const lead = T.spawns.slice().sort((a, b) => tierRank(familyOf(b).tier) - tierRank(familyOf(a).tier))[0];
+  const V = prefightView(game, encId);
 
   P.append(text('p', 'kick', `${enc.place || MAPS[game.progress?.pos?.map]?.name || ''} · ${TIER_WORD[T.tier] || 'Foes'}`));
   P.append(text('h2', 'title-display pf-title', enc.name));
@@ -134,13 +144,20 @@ export function openPrefight(ctx, { game, encId } = {}) {
   P.append(top);
 
   const list = el('ul', 'pf-foes');
-  for (const s of T.spawns) {
+  T.spawns.forEach((s, si) => {
     const F = familyOf(s);
     const li = el('li', `tier-${F.tier}`);
-    const die = INTENT_DIE[F.tier] || INTENT_DIE.rabble;
-    try { const dc = toCanvas(diceIcon(die.sides, { size: 20, mat: die.mat }), null, 1); dc.setAttribute('aria-hidden', 'true'); li.append(dc); } catch { /* icon optional */ }
+    const die = INTENT_DIE[F.tier] || INTENT_DIE[tierAs(F.tier)] || INTENT_DIE.rabble;
+    // M7: the Unsmith rolls two dice; a hollow foe's one d20 adds +4 while the gift holds
+    const D = V.dice[si] || { dice: 1, bonus: 0 };
+    const dice = el('span', { class: 'pf-dice', 'aria-hidden': 'true' });
+    for (let k = 0; k < D.dice; k++) { try { dice.append(toCanvas(diceIcon(die.sides, { size: 20, mat: die.mat }), null, 1)); } catch { /* icon optional */ } }
+    if (D.bonus) dice.append(text('b', 'pf-bonus', `+${D.bonus}`));
+    li.append(dice);
     const info = el('span', 'pf-foe');
-    info.append(text('b', '', nameOf(s)), text('small', '', ` ${TIER_WORD[F.tier] || F.tier} · Lv ${s.level}`));
+    const dieWords = D.dice > 1 ? ` · ${D.dice} d${die.sides}s, ${D.dice} moves a turn`
+      : D.bonus ? ` · d${die.sides} +${D.bonus}${D.giftName ? ` while the ${D.giftName.replace(/^The /, '')} holds` : ''}` : '';
+    info.append(text('b', '', nameOf(s)), text('small', '', ` ${TIER_WORD[F.tier] || F.tier} · Lv ${s.level}${dieWords}`));
     if (s.title && !grudges[s.grudge]?.name) info.append(text('em', 'pf-grudge', ` ${s.title}`));
     const om = el('span', 'pf-omens');
     for (const o of s.omens || []) {
@@ -152,7 +169,7 @@ export function openPrefight(ctx, { game, encId } = {}) {
     if (om.childElementCount) info.append(om);
     li.append(info);
     list.append(li);
-  }
+  });
   P.append(list);
   if (T.grudge) {
     // a Grudge is born from a wipe (wins) or from running (flees); say which
@@ -179,6 +196,43 @@ export function openPrefight(ctx, { game, encId } = {}) {
     }
     P.append(text('p', 'label', 'Glinting on them'), row);
   }
+  // M7 (spec §4.4): what the Unsmith will take at the phase that steals: the relics this game never claimed
+  if (V.stolen) {
+    const box = el('section', { class: 'pf-stolen', 'aria-label': 'What he will take' });
+    box.append(text('p', 'label', 'What he will take'));
+    if (V.stolen.relics.length) {
+      const row = el('ul', 'pf-stolen-list');
+      for (const id of V.stolen.relics) {
+        const li = el('li', { 'data-relic': id });
+        try { const c = iconCanvas(id, 1); li.append(c); } catch { /* icon optional */ }
+        li.append(text('span', '', RELICS[id]?.name || id));
+        row.append(li);
+      }
+      const at = ['first', 'second', 'third', 'fourth', 'fifth'][V.stolen.phase - 1];
+      box.append(row, text('p', 'pf-stolen-note', `${at ? `At his ${at} phase` : 'Once he is hurt'} he takes up the ${V.stolen.relics.length === 1 ? 'relic' : `${V.stolen.relics.length} relics`} you never claimed: a Stolen Art and +${TUNING.unsmith?.stolen?.guard ?? 1} Guard for each. Claim them first, and he takes less.`));
+    } else box.append(text('p', 'pf-stolen-note', 'You claimed every relic he could reach for. He will take up nothing.'));
+    P.append(box);
+  }
+  // M7 (spec A12, §4.3): who fights beside the party (Tamsin): her art, turned to face the foes, and her name
+  if (V.allies.length) {
+    const box = el('section', { class: 'pf-allies', 'aria-label': 'Beside you' });
+    box.append(text('p', 'label', 'Beside you'));
+    for (const a of V.allies) {
+      const row = el('div', 'pf-ally');
+      try {
+        const u = buildFoe(a.spawn, { id: 'pf-ally' });
+        const img = renderFoe(FOE_ART[u.art] ? u.art : 'cutpurse', { ...foeLook(u), pose: 'idle', t: 1.3, reduced: true, flip: true });
+        const cv = toCanvas(img, null, 1);
+        cv.setAttribute('aria-hidden', 'true');
+        row.append(cv);
+      } catch { /* art is optional here */ }
+      const t = el('span', 'pf-ally-t');
+      t.append(text('b', '', `${a.name} fights beside you`), text('small', '', 'She acts on her own: you do not command her. If she falls, the fight goes on.'));
+      row.append(t);
+      box.append(row);
+    }
+    P.append(box);
+  }
   const brand = enc.brand && BRANDS[enc.brand];
   if (brand) {
     const held = (game.progress?.brands || []).includes(brand.id);
@@ -186,7 +240,9 @@ export function openPrefight(ctx, { game, encId } = {}) {
   }
   if (enc.duel) P.append(text('p', 'pf-duel', 'Losing is a yield.'));
   if (enc.text) P.append(text('p', 'pf-text', enc.text));
-  const fight = btn(T.tier === 'champion' ? 'Face the Champion' : 'Fight', 'btn primary big pf-fight', () => { ctx.audio.sfx('confirm'); S.close('fight'); }, { 'data-primary': '' });
+  // M7: the Hollow Council and the Unsmith by name ("Face Hollow Miravel", "Face the Unsmith")
+  const faceWho = T.tier === 'hollow' || T.tier === 'unsmith' ? `Face ${nameOf(lead).replace(/^The /, 'the ')}` : null;
+  const fight = btn(faceWho || (T.tier === 'champion' ? 'Face the Champion' : 'Fight'), 'btn primary big pf-fight', () => { ctx.audio.sfx('confirm'); S.close('fight'); }, { 'data-primary': '' });
   const notYet = btn('Not yet', 'btn big pf-not-yet', () => { ctx.audio.sfx('back'); S.close('not-yet'); });
   P.append(foot(notYet, fight));
   focusFirst(P);
@@ -442,6 +498,8 @@ const FORGE_TABS = Object.freeze([
   { id: 'salvage', name: 'Salvage', line: 'Whatever nobody wears goes in the crucible. Scrap, silver or embers come out, and any gems in it go back in your pouch.' },
   { id: 'gems', name: 'Gems', line: 'Pick a socket, then a stone from your pouch. Whatever was in it goes back in the pouch.' },
   { id: 'awaken', name: 'Awaken', line: 'Three deeds wake a relic. Then my rite, and the one who carries it decides what it wakes into.' },
+  // M7 (spec §4.5): the one weapon Hilda forges at the end, from her brother's Worldforge page
+  { id: 'masterpiece', name: 'Masterpiece', line: 'One weapon, with my brother\'s page to guide the hammer. You choose what it is, and you give it its name.' },
 ]);
 const EMPTY = {
   temper: 'Nothing to temper.',
@@ -449,7 +507,9 @@ const EMPTY = {
   salvage: 'Nothing in the bag to melt down. Relics never go in the crucible, and neither does anything someone is wearing.',
   gems: 'Nothing with a socket yet. Runed and storied pieces have one, and so do most relics.',
   awaken: 'No relics yet. Pry one loose from its holder.',
+  masterpiece: '',
 };
+
 const FIRST_SILVER = TUNING.temper.silver.findIndex(n => n > 0) + 1;
 const FIRST_EMBERS = TUNING.temper.embers.findIndex(n => n > 0) + 1;
 const stars = n => '★'.repeat(n) + '☆'.repeat(Math.max(0, 5 - n));
@@ -471,14 +531,17 @@ export function openForge(ctx, { game, tab = 'temper' } = {}) {
   const S = sheet(ctx, { cls: 'ov-forge', label: 'Hilda\'s forge', onBack: () => S.close(g) });
   const P = S.panel;
   P.classList.add('forge');
+  // M7: the Masterpiece tab once Act III has begun (or when a scene opens it: { open: 'masterpiece' })
+  const TABS = FORGE_TABS.filter(t => t.id !== 'masterpiece' || tab === 'masterpiece' || masterpieceTabShown(game));
   // sel: the piece; trait/sock/branch: what is picked on it; roll: the last reroll (it slides in);
-  // confirm: the piece Salvage is asking about; gone: what the crucible just took; lit: a new flame
-  const st = { tab: FORGE_TABS.some(t => t.id === tab) ? tab : 'temper', sel: null, trait: null, sock: null, branch: null, roll: null, confirm: null, gone: null, lit: null };
+  // confirm: the piece Salvage is asking about; gone: what the crucible just took; lit: a new flame;
+  // mpBase/mpName (M7): the Masterpiece's weapon and the name typed for it
+  const st = { tab: TABS.some(t => t.id === tab) ? tab : 'temper', sel: null, trait: null, sock: null, branch: null, roll: null, confirm: null, gone: null, lit: null, mpBase: null, mpName: '' };
   const kick = text('p', 'kick', '');
   P.append(kick, text('h2', 'title-display', 'Hilda\'s forge'));
   const tabs = el('div', { class: 'forge-tabs', role: 'tablist', 'aria-label': 'What Hilda can do' });
   const tabBtns = {};
-  for (const T of FORGE_TABS) {
+  for (const T of TABS) {
     const b = el('button', { type: 'button', class: 'forge-tab', role: 'tab', id: `forge-tab-${T.id}`, 'aria-controls': 'forge-panel', 'data-tab': T.id, 'data-f': `tab:${T.id}` });
     b.append(text('span', 'ft-name', T.name), el('i', { class: 'ft-dot', 'aria-hidden': 'true' }));
     b.addEventListener('click', () => { if (st.tab === T.id) return; ctx.audio.sfx('page'); setTab(T.id); });
@@ -516,6 +579,7 @@ export function openForge(ctx, { game, tab = 'temper' } = {}) {
     salvage: it => !!Forge.salvageYield(it) && !wearer(it.uid),
     gems: it => !it.shattered && Forge.socketsOf(it) > 0,
     awaken: it => !it.shattered && !!Forge.stageOf(it),
+    masterpiece: () => false, // M7: the Masterpiece tab has no list of pieces
   };
   const ready = it => !!Forge.stageOf(it) && !it.shattered && Forge.awakenOptions(g, it.uid).ready;
 
@@ -539,19 +603,20 @@ export function openForge(ctx, { game, tab = 'temper' } = {}) {
     const f = document.activeElement && P.contains(document.activeElement) ? document.activeElement.dataset.f : null;
     const T = FORGE_TABS.find(t => t.id === st.tab);
     kick.textContent = `${T.name} · Hilda Ironvein`;
-    for (const t of FORGE_TABS) tabBtns[t.id].setAttribute('aria-selected', String(t.id === st.tab));
+    for (const t of TABS) tabBtns[t.id].setAttribute('aria-selected', String(t.id === st.tab));
     const anyReady = g.inventory.some(ready);
     tabBtns.awaken.classList.toggle('has-dot', anyReady);
     tabBtns.awaken.setAttribute('aria-label', anyReady ? 'Awaken: a relic is ready' : 'Awaken');
     purse.replaceChildren(purseChips(g));
     line.textContent = T.line;
+    body.classList.toggle('is-master', st.tab === 'masterpiece');
     const items = pieces().filter(p => ELIGIBLE[st.tab](p.it));
     if (!items.some(p => p.it.uid === st.sel)) {
       st.sel = (st.tab === 'awaken' && items.find(p => ready(p.it))?.it.uid) || items[0]?.it.uid || null;
       Object.assign(st, { trait: null, sock: null, branch: null, confirm: null });
     }
     list.replaceChildren();
-    if (!items.length) list.append(text('li', 'forge-none', EMPTY[st.tab]));
+    if (!items.length && EMPTY[st.tab]) list.append(text('li', 'forge-none', EMPTY[st.tab]));
     for (const p of items) list.append(row(p));
     if (st.tab === 'salvage' && g.inventory.some(i => Forge.salvageYield(i) && wearer(i.uid))) list.append(text('li', 'forge-none small', 'What the party wears is not listed here: take it off first.'));
     paintDetail();
@@ -616,15 +681,19 @@ export function openForge(ctx, { game, tab = 'temper' } = {}) {
     if (box.childElementCount) card.append(box);
     return card;
   }
-  // "Costs 120 gold + 1 silver", each part with what you have of it
+  // "Costs 120 gold + 1 silver", each part with what you have of it (M7: and gems, for the Masterpiece's bog amber)
   function costBlock(cost, label = 'Costs') {
     const p = el('div', 'forge-cost');
     p.append(text('span', 'fcost-k', label));
-    const parts = [['gold', cost?.gold || 0, g.gold || 0], ...Object.entries(cost?.materials || {}).map(([k, n]) => [k, n, g.materials?.[k] || 0])].filter(([, n]) => n > 0);
+    const parts = [['gold', cost?.gold || 0, g.gold || 0], ...Object.entries(cost?.materials || {}).map(([k, n]) => [k, n, g.materials?.[k] || 0]),
+      ...Object.entries(cost?.gems || {}).map(([k, n]) => [`gem:${k}`, n, g.gems?.[k] || 0])].filter(([, n]) => n > 0);
     if (!parts.length) p.append(text('span', 'fcost-part', 'Free'));
     for (const [k, n, have] of parts) {
       const c = el('span', `fcost-part${have < n ? ' short' : ''}`);
-      c.append(k === 'gold' ? el('i', { class: 'coin', 'aria-hidden': 'true' }) : matIconEl(k, 16), text('b', '', `${n} ${k === 'gold' ? 'gold' : matWord(k, n)}`), text('small', '', `you have ${have}`));
+      const gem = k.startsWith('gem:') ? k.slice(4) : null;
+      const icon = k === 'gold' ? el('i', { class: 'coin', 'aria-hidden': 'true' }) : gem ? gemIconEl(gem, 16) : matIconEl(k, 16);
+      const word = k === 'gold' ? 'gold' : gem ? `${GEMS[gem]?.name || gem}${n === 1 ? '' : 's'}` : matWord(k, n);
+      c.append(icon, text('b', '', `${n} ${word}`), text('small', '', `you have ${have}`));
       p.append(c);
     }
     return p;
@@ -641,6 +710,7 @@ export function openForge(ctx, { game, tab = 'temper' } = {}) {
 
   function paintDetail() {
     detail.replaceChildren();
+    if (st.tab === 'masterpiece') { masterpieceDetail(); return; }
     if (st.gone) {
       const n = el('p', 'forge-gone');
       n.append(text('b', '', st.gone.name), text('span', '', ` went in the crucible: ${[countsText(st.gone.y.materials), countsText(st.gone.y.gems, { gems: true })].filter(Boolean).join(', ') || 'nothing came back'}.`));
@@ -861,6 +931,74 @@ export function openForge(ctx, { game, tab = 'temper' } = {}) {
       render();
       await ctx.services.cardInspect(live(it.uid), { game: g, stamps: [{ kind: 'awakened', text: 'Awakened' }] });
     }, reason));
+  }
+
+  // M7 (spec §4.5): the Masterpiece. What Hilda needs (the reasons, while she cannot forge it yet), the weapon to
+  // forge (one of the bases), its name (an <input>: the rules scrub it, and the tab shows it only as text), the price,
+  // and the forging, which ends on the card reveal (as it is, with its primal frame). One per save: once it is
+  // forged, the tab shows it.
+  function masterpieceDetail() {
+    const V = masterpieceView(g, { base: st.mpBase, name: st.mpName });
+    if (V.forged) {
+      detail.append(fcard(V.forged, text('p', 'fc-k', 'Your Masterpiece'), text('p', 'mp-note', 'Hilda forges one Masterpiece in a lifetime, and this is it. It is yours for good.')));
+      return;
+    }
+    if (!V.offer.ok) {
+      const ul = el('ul', { class: 'mp-why', 'aria-label': 'What Hilda needs first' });
+      for (const r of V.offer.reasons) ul.append(text('li', '', r));
+      detail.append(text('p', 'fc-k', 'Not yet'), ul);
+    }
+    // the weapon to forge: the finest of each kind
+    const bases = el('div', { class: 'mp-bases', role: 'radiogroup', 'aria-label': 'The weapon Hilda forges' });
+    for (const b of V.offer.bases) {
+      const I = ITEMS[b];
+      if (!I) continue;
+      const on = st.mpBase === b;
+      const bt = el('button', { type: 'button', class: `mp-base${on ? ' on' : ''}`, role: 'radio', 'aria-checked': String(on), 'data-base': b, 'data-f': `base:${b}` });
+      try { bt.append(iconCanvas({ base: b, kind: I.kind, slot: I.slot, rarity: 'primal', aspect: null, seed: 7, affixes: [] }, 2)); } catch { bt.append(el('span', 'fi-noart')); }
+      const t = el('span', 'mp-base-t');
+      t.append(text('b', '', I.name), text('small', '', I.text || ''));
+      bt.append(t);
+      bt.addEventListener('click', () => { ctx.audio.sfx('select'); st.mpBase = b; render(); });
+      bases.append(bt);
+    }
+    detail.append(text('p', 'fc-k', 'The weapon'), bases);
+    // its name: typed, scrubbed by the rules, and shown back only as text
+    const field = el('div', 'mp-field');
+    const label = el('label', { class: 'fc-k mp-label', for: 'mp-name' });
+    label.textContent = 'Its name';
+    const input = el('input', { type: 'text', class: 'mp-name', id: 'mp-name', maxlength: '24', autocomplete: 'off', autocapitalize: 'words', spellcheck: 'false', 'aria-describedby': 'mp-name-say', 'data-f': 'name', placeholder: 'Name it' });
+    input.value = st.mpName || '';
+    const say = el('p', { class: 'mp-say', id: 'mp-name-say', 'aria-live': 'polite' });
+    field.append(label, input, say);
+    detail.append(field, text('p', 'mp-rule', '1 to 24 letters, numbers, spaces, apostrophes and hyphens. It is carved into the blade as you write it.'));
+    detail.append(costBlock(V.offer.cost, 'Hilda asks'));
+    const goBtn = btn('Forge the Masterpiece', 'btn primary big forge-go mp-go', () => forge(), { 'data-f': 'go' });
+    const why = text('p', 'forge-why mp-why-now', '');
+    const act = el('div', 'forge-act');
+    act.append(goBtn, why);
+    detail.append(act);
+    const refresh = () => {
+      const W = masterpieceView(g, { base: st.mpBase, name: st.mpName });
+      // the name as it will read (the scrubbed one), or why it will not take: text only
+      say.textContent = W.name ? `It will read: ${W.name}` : W.typed ? 'That name will not take.' : '';
+      say.classList.toggle('bad', !W.name && W.typed);
+      goBtn.disabled = !W.ready;
+      why.textContent = W.why || '';
+    };
+    input.addEventListener('input', () => { st.mpName = input.value; refresh(); });
+    input.addEventListener('keydown', e => { if (e.key === 'Enter' && !goBtn.disabled) { e.preventDefault(); forge(); } });
+    refresh();
+    async function forge() {
+      const res = Forge.forgeMasterpiece(g, { base: st.mpBase, name: st.mpName });
+      if (!res.ok) { fail(res); return; }
+      g = res.game;
+      ctx.audio.sfx('legend');
+      ctx.toast(`Hilda forges ${res.item.name}.`, 3200);
+      render();
+      // the reveal, as it is (its primal frame): a read-only look at the forge's game until the forge closes
+      await ctx.services.cardReveal(res.item, { game: g, title: { kick: 'Your Masterpiece', main: res.item.name }, backdrop: 'harrows-forge' });
+    }
   }
 
   render();

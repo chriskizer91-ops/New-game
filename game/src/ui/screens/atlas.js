@@ -29,7 +29,11 @@
 // Test hooks: markers are .atlas-mk[data-key] (hearths also [data-hearth]); list rows are
 // .atlas-hf[data-hearth] (grouped in .atlas-grp[data-region]); view buttons are
 // .atlas-view[data-view]; the frame carries data-view and data-art ('image' | 'parchment').
-// Owner: WP8; M4 P7b (the Sunscorch); M5 P7 (the Ironspire); M6 P7 (the Gloomfen).
+// M7 (spec §5): the Hearth Below lies under the Keep, with no place of its own on the painting. Once the vault stair
+// opens (the fifth council), a "Below the Keep" marker stands on the Keep in the Wilds and Realm views (on a phone's
+// Realm, the region's own marker), and opens the Below view: its two fires, "you are here", and its four maps listed
+// (belowMaps: where you are, walked, or not yet). The realm keeps its 33 fires and leaves the two below to that view.
+// Owner: WP8; M4 P7b (the Sunscorch); M5 P7 (the Ironspire); M6 P7 (the Gloomfen); M7 P7 (Below the Keep).
 import ATLAS_IMAGE, { ATLAS_PLACEHOLDER } from '../assets/atlas-image.js';
 import { HEARTHS, HEARTH_IDS, REGIONS, LORE, BRAND_TOTAL } from '../../data/world.js';
 import { MAPS, MAP_IDS } from '../../data/maps/index.js';
@@ -44,7 +48,7 @@ import { createRng } from '../../core/rng.js';
 import { el, esc, button } from '../lib/dom.js';
 import { screenNav } from '../lib/keys.js';
 import { LOOKOUTS } from '../../data/dialogue.js';
-import { VIEWS, REGION_VIEW, regionOpen, placeOf, loreAt, entityLore, toFrame, relax, RELIC_SITE } from '../lib/atlas-geo.js';
+import { VIEWS, REGION_VIEW, regionOpen, placeOf, loreAt, entityLore, toFrame, relax, RELIC_SITE, belowMaps } from '../lib/atlas-geo.js';
 
 // Small inline icons (static markup, 16x16).
 const ICON = {
@@ -59,8 +63,11 @@ const ICON = {
   ironspire: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M0.5 14.5L6 4.2l2.6 4.6 1.9-3 5 8.7z"/><path d="M6 4.2l1.9 3.4-1.1-.6-.8 1.2-.9-1.1-1 .5z" fill="#f5ecd0"/></svg>',
   // three bulrushes over black water (M6)
   gloomfen: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.3 12.6V6.8h1.1v5.8zM7.6 12.6V4.6h1.1v8zM10.9 12.6V6h1.1v6.6z"/><rect x="3.9" y="3" width="1.9" height="4.4" rx=".95"/><rect x="7.2" y="1" width="1.9" height="4.4" rx=".95"/><rect x="10.5" y="2.6" width="1.9" height="4" rx=".95"/><path d="M.8 14.6c1.2-.9 2.4-.9 3.6 0s2.4.9 3.6 0 2.4-.9 3.6 0 2.4.9 3.6 0" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>',
+  // a stair going down through a floor (M7: below the Keep)
+  below: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1 3.5h14v1.6H1z"/><path d="M3 6.4h3.2v2.2H9v2.2h2.8V13H15v1.6H10.2v-2.2H7.4v-2.2H4.6V8H3z"/></svg>',
 };
-const REGION_ICON = { verdant: ICON.wilds, sunscorch: ICON.sunscorch, ironspire: ICON.ironspire, gloomfen: ICON.gloomfen };
+const REGION_ICON = { verdant: ICON.wilds, sunscorch: ICON.sunscorch, ironspire: ICON.ironspire, gloomfen: ICON.gloomfen, below: ICON.below };
+const BELOW_LABEL = 'Below the Keep';
 // What opens a sealed region's road, for its padlock's note (else its entry gate's own hint)
 const SEALED_NOTE = {
   sunscorch: 'The Keep\'s south-east gate opens once both Brands of the Wilds are yours.',
@@ -163,7 +170,7 @@ export function mount(root, ctx, params = {}) {
 
   // a region is sealed until one of its roads opens (the Sunscorch: the Keep's south-east gate, after
   // Act I); REGIONS.open alone says only that its maps exist. M7: Act III's region lies under the Keep, with no place of
-  // its own on the painting, so it has no padlock (STUB from the M7 scaffold: P7 draws its "Below the Keep" marker)
+  // its own on the painting, so it has no padlock: its "Below the Keep" marker stands on the Keep once its stair opens
   const sealed = Object.values(REGIONS).filter(r => !open.has(r.id) && r.act < 3).map(r => {
     const texts = [], hints = [];
     // the roads into it from outside (a gate inside the region, like Stormwatch's north gate, is not its road)
@@ -250,8 +257,13 @@ export function mount(root, ctx, params = {}) {
     const region = VIEW_REGION[view];
     // a region's view shows its own fires; the Realm shows them all where there is room (a laptop),
     // and one marker per open region on a phone. M7: the Hearth Below's fires lie under the Keep, so the Realm
-    // leaves them to their own view (STUB from the M7 scaffold: P7 draws the "Below the Keep" marker, spec §5)
+    // leaves them to their own view, and marks the Keep "Below the Keep" (spec §5)
     const showHearths = !!region || ppu >= 0.6;
+    // M7: "Below the Keep", on the Keep, once the vault stair is open: it opens the Below view (the phone's Realm
+    // shows it as the region's own marker, below)
+    if (open.has('below') && (view === 'wilds' || (view === 'realm' && showHearths))) {
+      out.push({ key: 'below', kind: 'below', at: REGIONS.below.lore, cls: 'mk-below', icon: ICON.below, label: BELOW_LABEL, place: true, aria: `${BELOW_LABEL}: ${REGIONS.below.name}. Show it` });
+    }
     if (showHearths) {
       for (const x of region ? inRegion(region) : hearths.filter(y => REGIONS[y.region]?.act !== 3)) {
         const st = hfState(x);
@@ -264,7 +276,9 @@ export function mount(root, ctx, params = {}) {
     } else {
       for (const r of Object.keys(REGION_VIEW).filter(id => open.has(id))) {
         const R = REGIONS[r], fires = inRegion(r), lit = fires.filter(x => x.kindled).length;
-        out.push({ key: `region:${r}`, kind: 'region', region: r, at: R.lore, cls: `mk-region rg-${r}`, icon: REGION_ICON[r] || ICON.wilds, label: R.name, aria: `${R.name}: ${lit} of ${fires.length} Hearthfires kindled. Show ${inSentence(R.name)}` });
+        // M7: the Hearth Below's marker is "Below the Keep"
+        const label = r === 'below' ? BELOW_LABEL : R.name;
+        out.push({ key: `region:${r}`, kind: 'region', region: r, at: R.lore, cls: `mk-region rg-${r}${r === 'below' ? ' mk-below' : ''}`, icon: REGION_ICON[r] || ICON.wilds, label, aria: `${label}: ${lit} of ${fires.length} Hearthfires kindled. Show ${inSentence(R.name)}` });
       }
     }
     for (const r of sealed) out.push({ key: `sealed:${r.id}`, kind: 'sealed', at: r.at, cls: 'mk-sealed', icon: ICON.lock, label: r.place, aria: `${r.name}: sealed` });
@@ -424,10 +438,17 @@ export function mount(root, ctx, params = {}) {
     info.replaceChildren();
     const head = (k, t, sub) => info.append(el('p', { class: 'kick', text: k }), el('h2', { class: 'title-display', text: t }), sub && sub !== t ? el('p', { class: 'ai-sub', text: sub }) : '');
     if (!n || n.kind === 'here') {
-      head('You are here', hereMap ? hereMap.name : 'Somewhere in the Realm', hereMap ? placeOf(pos.map) : null);
+      head('You are here', hereMap ? hereMap.name : 'Somewhere in the Realm', hereMap ? (hereMap.region === 'below' ? BELOW_LABEL : placeOf(pos.map)) : null);
       const next = safeNext();
       if (next) info.append(el('p', { class: 'ai-next', text: `Next: ${next.text}` }));
+      if (hereMap?.region === 'below') belowList();
       if (mode === 'travel') info.append(el('p', { class: 'ai-note', text: underground ? 'Underground, the Atlas is only for looking. Walk back up to a Hearthfire to travel.' : 'Tap a lit Hearthfire to travel there.' }));
+      return;
+    }
+    if (n.kind === 'below') {
+      head(BELOW_LABEL, REGIONS.below.name, 'Down the stair under the vault');
+      belowList();
+      if (view !== 'below' && views.includes('below')) info.append(button('Show the Hearth Below', 'btn ai-go', () => setView('below')));
       return;
     }
     if (n.kind === 'hearth') {
@@ -460,6 +481,17 @@ export function mount(root, ctx, params = {}) {
     }
   }
   const safeNext = () => { try { return nextObjective(game); } catch { return null; } };
+  // M7: the four maps below the Keep, where you are, walked or not yet
+  function belowList() {
+    const ul = el('ul', { class: 'atlas-below', 'aria-label': 'The maps below the Keep' });
+    const word = { here: 'You are here', walked: 'Walked', unwalked: 'Not yet' };
+    for (const m of belowMaps(game)) {
+      const li = el('li', { class: `ab-${m.state}`, 'data-map': m.id });
+      li.append(el('b', { text: m.name }), el('small', { text: word[m.state] }));
+      ul.append(li);
+    }
+    info.append(ul);
+  }
 
   function pick(n) {
     if (n.kind === 'hearth' && canTravel) {
@@ -469,7 +501,8 @@ export function mount(root, ctx, params = {}) {
     ctx.audio.sfx('select');
     selected = n.key;
     for (const [k, b] of markerEls) b.classList.toggle('sel', k === selected);
-    if (n.kind === 'region') { setView(REGION_VIEW[n.region] || 'wilds'); showInfo(null); return; }
+    if (n.kind === 'region') { setView(REGION_VIEW[n.region] || 'wilds'); showInfo(n.region === 'below' ? { kind: 'below', key: 'below' } : null); return; }
+    if (n.kind === 'below') { if (views.includes('below')) setView('below'); showInfo(n); return; }
     showInfo(n);
   }
 

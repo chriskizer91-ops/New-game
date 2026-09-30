@@ -1,9 +1,14 @@
 // The display model: what the screen currently shows for each combatant. Events mutate it one
 // by one while they animate; after a sequence it is re-synced from the engine's returned state,
 // which stays the single source of truth.
+// M7 (spec §4.2-§4.4, §5): a guest on the party's side (`side: 'ally'`, `guest: true`: Tamsin against the Unsmith) is
+// shown with the party (inParty), in her foe art; a two-dice foe keeps its second intent (`intent2`, slot 1); a hollow
+// foe's intent carries its natural roll and the +4 (dieText); the Unsmith's Stolen Arts are the relic ids he took
+// (`stolen`).
 import { STATUSES } from '../../data/statuses.js';
 import { RELICS } from '../../data/relics.js';
 import { PAGES } from '../../data/codex.js';
+import { tierAs } from '../../data/foes.js';
 import { familyData } from '../../rules/ai.js';
 import { holdPhrase } from '../../rules/util.js';
 
@@ -19,14 +24,42 @@ export function shortName(name) {
 
 function dunit(u, label) {
   return {
-    id: u.id, side: u.side, name: u.name, label: label || (u.side === 'hero' ? shortName(u.name) : u.name), level: u.level, heroId: u.heroId || null,
+    id: u.id, side: u.side, name: u.name, label: label || (u.side === 'hero' || u.side === 'ally' ? shortName(u.name) : u.name), level: u.level, heroId: u.heroId || null,
     tier: u.tier || null, art: u.art || null, family: u.family || null, variant: u.variant || null, gearTier: u.gearTier || 0, wears: u.wears || null,
     hp: u.hp, maxHp: u.maxHp, mp: u.mp ?? 0, maxMp: u.maxMp ?? 0, surge: u.surge ?? 0,
     statuses: clone(u.statuses) || [], ko: !!u.ko, gone: !!u.gone, phase: u.phase || 1,
     held: clone(u.held) || [], intent: clone(u.intent), queue: clone(u.queue) || [], analyzed: !!u.analyzed,
     omens: [...(u.omens || [])], summonedBy: u.summonedBy || null, weaponItem: u.weaponItem || null,
+    // M7: the second die's intent (the Unsmith), the relics he took (his Stolen Arts), and the guest
+    ...(u.dice > 1 ? { dice: u.dice, intent2: clone(u.intent2) } : {}),
+    ...(u.stolen ? { stolen: [...(u.stolen.ids || [])] } : {}),
+    // (the guest keeps her look's tier, uncapped: Tamsin's finale kit is drawn at 5; a foe's stays as it shipped)
+    ...(u.guest ? { guest: true, artTier: u.artTier ?? u.gearTier ?? 0 } : {}), ...(u.kit ? { kit: u.kit } : {}),
   };
 }
+
+// ---- M7 (spec §4.2-§4.4, §5): the guest, the two dice, the hollow +4, the Stolen Arts ---------------------------
+// Pure, for the party row, the plates, the ribbon and the log (node tests use them).
+
+// On the party's side of the field: a hero, or a guest who fights beside them (the engine plays her; she takes no
+// command). Every "not a hero means a foe" test goes through this.
+export const inParty = u => u?.side === 'hero' || u?.side === 'ally';
+export const isGuest = u => u?.side === 'ally';
+// A tier the lookups (dice looks, words, ranks) know, or the tier it reads as (the hollow and the Unsmith: the
+// Champion's, data/foes.js tierAs)
+export const tierKey = (table, tier) => (tier && table?.[tier] ? tier : tierAs(tier));
+// The intents a unit shows, in the order they are played: its own, then (a two-dice foe) its second
+export const intentsOf = u => [u?.intent, u?.dice > 1 ? u?.intent2 : null].filter(Boolean);
+// An intent's roll as words: "d20 17", a hollow foe's "d20 13 +4 = 17" (the natural roll, the bonus, the face that
+// picks the move), an opener's "first move"
+export function dieText(it) {
+  if (!it) return '';
+  if (it.face == null) return 'first move';
+  if (it.bonus) return `d${it.die} ${it.natural} +${it.bonus} = ${it.face}`;
+  return `d${it.die} ${it.face}`;
+}
+// The Stolen Arts a unit shows: [{ id, name }] for each relic he took (the move is "Stolen: <name>")
+export const stolenOf = u => (Array.isArray(u?.stolen) ? u.stolen : []).filter(id => RELICS[id]).map(id => ({ id, name: RELICS[id].name, move: `Stolen: ${RELICS[id].name}` }));
 
 // Foes that share a name get letters (Cutpurse A, B, C), kept stable for the whole battle.
 export class Labels {
@@ -145,13 +178,19 @@ export function pieceIndex(u, relic) {
 
 // The grip bar's word for a relic: its name's first word after "The " ("Thornsplitter", "Cinderfang"). M6: from Page
 // IV on, a name that starts with whose it is ("Hodge's Unfair Toll", "The Gar's Tooth") goes by the thing itself, its
-// last word ("Toll", "Tooth"); the older relics keep the words they shipped with ("Warden's").
+// last word ("Toll", "Tooth"); the older relics keep the words they shipped with ("Warden's"). M7: Page V's pieces
+// always go by the thing ("Poker", "Wreath", "Chalice", "Gauntlet", "Chain", "Bargain", "Hammer", "Apron", "Heart"):
+// the four gifts all start "Hollow", and No. 000 would read "Fenwick's".
 const PAGE_IV = PAGES.find(p => p.id === 'gloomfen')?.from ?? Infinity;
 // A relic of Page IV (Codex No. 53 on): the M6 looks and words apply to it, so the older relics stay as they shipped.
 export const ofPageIV = relic => (RELICS[relic]?.codex ?? 0) >= PAGE_IV;
+// M7: a relic of Page V, the Hearth Below (the page lists its numbers: No. 000 and 67 to 74)
+const PAGE_V = new Set(PAGES.find(p => p.id === 'below')?.nos || []);
+export const ofPageV = relic => !!RELICS[relic] && PAGE_V.has(RELICS[relic].codex);
 const WHOSE = /['\u2019]s?$/;
 export function gripWord(name, relic = null) {
   const words = String(name || 'relic').replace(/^The /, '').split(' ');
+  if (words.length > 1 && ofPageV(relic)) return words[words.length - 1];
   if (words.length > 1 && WHOSE.test(words[0]) && ofPageIV(relic)) return words[words.length - 1];
   return words[0];
 }
@@ -165,6 +204,10 @@ export function relicLabel(relic, u) {
 // what a foe's move is aimed at, for the intent bubble
 export function moveTargetKind(u, moveId) {
   try { return familyData(u).moves[moveId]?.target || 'enemy'; } catch { return 'enemy'; }
+}
+// M7: does a move of a foe (or of the guest) strike with an attack roll? (the guest's figure casts otherwise)
+export function moveAttacks(u, moveId) {
+  try { return !!familyData(u).moves[moveId]?.effects?.some(e => e.type === 'attack'); } catch { return false; }
 }
 
 // ---- M6 (spec §4.2, §5): the fen's two statuses, and a dive under water --------------------------------------

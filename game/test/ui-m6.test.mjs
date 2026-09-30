@@ -53,7 +53,7 @@ test('M6: the third council\'s card opens the fen stair; before it the Gloomfen 
   assert.ok(!V.lines.some(l => /next chapter/.test(l)), 'nothing is left for the next chapter');
 });
 
-test('M6: the fourth council\'s card ends Act II, names Act III and opens nothing', () => {
+test('M6: the fourth council\'s card ends Act II, names Act III and opens nothing (M7: "Act III begins.", its chip open)', () => {
   const g = councilGame(3);
   g.progress.brands.push('brand-of-lanterns', 'brand-of-the-deep');
   const V = chapterEnd(g, 'gloomfen');
@@ -62,19 +62,23 @@ test('M6: the fourth council\'s card ends Act II, names Act III and opens nothin
   assert.match(V.cls, /tbc-gloomfen/);
   assert.deepEqual(V.stats.map(r => r[0]), ['Day', 'Relics', 'Brands', 'Pages']);
   assert.equal(V.stats[2][1], `${BRAND_TOTAL}/${BRAND_TOTAL}`);
-  assert.equal(V.stats[3][1], `0/${PAGES.filter(p => p.from != null).length}`);
+  // M7: the Pages stat counts every page, Page V (which lists its numbers) among them
+  assert.equal(V.stats[3][1], `0/${PAGES.filter(p => p.from != null || p.nos?.length).length}`);
   assert.ok(V.lines.includes('All eight coals are lit. The Hollow Council waits.'));
   assert.ok(V.lines.some(l => /Act III/.test(l)));
-  assert.ok(V.chips.every(c => !c.open) && V.chips.some(c => /Act III/.test(c.name)), 'Act III is named, and nothing opens');
+  // M7 (spec §2.4): its line is "Act III begins." and its Act III chip opens (no road opens on the card itself)
+  assert.ok(V.chips.length === 1 && V.chips.every(c => c.open) && V.chips.some(c => /Act III/.test(c.name)), 'Act III is named, and its chip is open');
+  assert.equal(V.lines[V.lines.length - 1], 'Act III begins.');
   assert.ok(!V.lines.some(l => /stands open/.test(l)));
   // odd input never throws
   assert.ok(chapterEnd(null, 'gloomfen').lines.length >= 1);
   assert.ok(chapterEnd({}, 'gloomfen').stats.length === 4);
 });
 
-test('M6: the Gloomfen has its card; the other regions have none', () => {
+test('M6: the Gloomfen has its card; the other regions have none (M7: the Hearth Below has its card too)', () => {
   assert.equal(hasRegionCard('gloomfen'), true);
-  for (const r of Object.keys(REGIONS).filter(id => id !== 'gloomfen')) assert.equal(hasRegionCard(r), false, r);
+  assert.equal(hasRegionCard('below'), true, 'M7: the Hearth Below\'s card, the first time down the vault stair');
+  for (const r of Object.keys(REGIONS).filter(id => id !== 'gloomfen' && id !== 'below')) assert.equal(hasRegionCard(r), false, r);
   assert.equal(hasRegionCard('nowhere'), false);
 });
 
@@ -164,14 +168,19 @@ test('M6: a price reads as it costs ("120 gold", "2 Hearth Tonics", "1 silver")'
   assert.equal(priceText(), '');
 });
 
-test('M6 battle UI: a grip bar names a Page IV relic by the thing, not whose it is; the older relics keep their words', () => {
+test('M6 battle UI: a grip bar names a Page IV relic by the thing, not whose it is; the older relics keep their words (M7: Page V\'s by the thing too)', () => {
   const shipped = name => name.replace(/^The /, '').split(' ')[0];
   const WHOSE = /['\u2019]s?$/;
   const IV = PAGES.find(p => p.id === 'gloomfen');
+  // M7: Page V (No. 000 and 67-74) goes by the thing, its last word: the four gifts all start "Hollow", and No. 000
+  // would read "Fenwick's"
+  const V = PAGES.find(p => p.id === 'below');
+  const ofV = r => (V?.nos || []).includes(r.codex);
   let whose = 0;
   for (const r of Object.values(RELICS)) {
-    const w = gripWord(r.name, r.id), older = r.codex < IV.from;
-    if (older) assert.equal(w, shipped(r.name), `${r.id} keeps "${shipped(r.name)}"`);
+    const w = gripWord(r.name, r.id), older = r.codex < IV.from && !ofV(r);
+    if (ofV(r)) assert.equal(w, r.name.split(' ').at(-1), `${r.id}: "${r.name}" goes by the thing (M7: Page V)`);
+    else if (older) assert.equal(w, shipped(r.name), `${r.id} keeps "${shipped(r.name)}"`);
     else if (WHOSE.test(shipped(r.name))) { whose++; assert.equal(w, r.name.split(' ').at(-1), `${r.id}: "${r.name}" goes by the thing`); }
     else assert.equal(w, shipped(r.name), `${r.id}: "${r.name}" goes by its first word`);
     assert.equal(WHOSE.test(w), older && WHOSE.test(shipped(r.name)), `${r.id}: "${w}" says whose only on an older relic`);

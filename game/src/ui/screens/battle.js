@@ -15,11 +15,16 @@
 // and a tap on it say so); the hero cards show Hexed and Rotting, and the new holds ("Led away", "In the river");
 // a fight on a foggy map's backdrop lies in drifting mist (the backdrop's own, or else the stage's `fog`); the
 // harness can read the stage (hooks.stage: which pose a foe is drawn in).
+// M7 (spec §4.2-§4.4, §5): a guest (`side: 'ally'`, Tamsin against the Unsmith) stands with the party, in her own
+// narrower card and her foe art; the engine plays her turn (every unit that is not a hero goes to foeTurn, which is
+// allyTurn), and every "not a hero" test that meant "a foe" asks where the unit stands (model.js inParty). The new
+// tiers (the hollow, the Unsmith) are a foe of note, as a Champion is (data/foes.js tierAs).
 import '../battle.css';
 import { current, act, foeTurn, outcome, commands, targets, timeline, inspect } from '../../rules/battle.js';
 import { autoCommand } from '../../rules/autoplay.js';
 import { ENCOUNTERS } from '../../data/encounters.js';
 import { MAPS } from '../../data/maps/index.js';
+import { tierAs } from '../../data/foes.js';
 import { BACKDROPS, renderBackdrop } from '../../art/scenes.js';
 import { Stage } from '../battle/stage.js';
 import { Party } from '../battle/party.js';
@@ -27,7 +32,7 @@ import { Hud } from '../battle/hud.js';
 import { Tray } from '../battle/tray.js';
 import { CommandInput, inspectSheet } from '../battle/menu.js';
 import { Player, intentTarget } from '../battle/player.js';
-import { Labels, makeDisp, syncDisp, isSunk, holdInfo, holdPhrase, untargetable, divesUnderWater } from '../battle/model.js';
+import { Labels, makeDisp, syncDisp, isSunk, holdInfo, holdPhrase, untargetable, divesUnderWater, inParty } from '../battle/model.js';
 import { runJobs, foeLook } from '../battle/sprites.js';
 import { familyData } from '../../rules/ai.js';
 import { heldByPreview, pieceItem } from '../battle/slam.js';
@@ -56,7 +61,7 @@ export function mount(root, ctx, { battle, returnTo = 'world', auto: startAuto =
   const backdrop = state.ctx.backdrop || node?.backdrop || 'hearth-road';
   const place = state.ctx.where || node?.place || BACKDROPS[backdrop]?.name || '';
   const foes0 = state.order.map(id => state.units[id]).filter(u => u.side === 'foe');
-  const boss = foes0.some(f => f.tier === 'champion' || f.tier === 'relic-bearer');
+  const boss = foes0.some(f => tierAs(f.tier) === 'champion' || f.tier === 'relic-bearer');
   const sfx = (name, opts) => { try { ctx.audio.sfx(name, opts); } catch { /* audio is optional */ } };
   const hooks = globalThis.__btHooks || null; // dev/e2e harness only
 
@@ -108,7 +113,12 @@ export function mount(root, ctx, { battle, returnTo = 'world', auto: startAuto =
   const hud = new Hud({ stageHost, ribbonHost, onFoe: id => tapUnit(id), onGrip: (id, i) => tapGrip(id, i) });
   hud.targetText = (u, it) => intentTarget(u, it, nameOf);
   const heroes = disp.order.map(id => disp.units[id]).filter(u => u.side === 'hero');
-  const party = new Party(partyHost, heroes, { game: ctx.game, reduced, onTap: id => tapUnit(id), nameOf });
+  // M7: a guest fights beside the party (her card after theirs); the engine plays her
+  const guests = disp.order.map(id => disp.units[id]).filter(u => u.side === 'ally');
+  const party = new Party(partyHost, heroes, { game: ctx.game, reduced, onTap: id => tapUnit(id), nameOf, guests });
+  if (guests.length) shell.classList.add('has-guest');
+  // M7: a two-dice foe's bubble stands two rows tall, up to the stage's top edge (battle.css keeps the hint off it)
+  if (foes0.some(f => f.dice > 1)) shell.classList.add('two-dice');
   const tray = new Tray(body);
   const input = new CommandInput({ root: dock, cmds: cmdsEl, sub: subEl, aim: aimEl }, {
     sfx,
@@ -154,7 +164,7 @@ export function mount(root, ctx, { battle, returnTo = 'world', auto: startAuto =
   function refreshUnit(id) {
     const u = disp.units[id];
     if (!u) return;
-    if (u.side === 'hero') party.update(u);
+    if (inParty(u)) party.update(u);
     else {
       hud.update(u);
       stage.setLook(id, u);
@@ -176,7 +186,7 @@ export function mount(root, ctx, { battle, returnTo = 'world', auto: startAuto =
   }
   function setActor(id) {
     const u = disp.units[id];
-    party.setActor(u?.side === 'hero' ? id : null);
+    party.setActor(inParty(u) ? id : null);
     hud.setActor(u?.side === 'foe' ? id : null);
     stage.actorId = u?.side === 'foe' ? id : null;
     whoEl.textContent = u ? (u.side === 'hero' ? `${u.label}` : u.label) : '';
@@ -184,7 +194,7 @@ export function mount(root, ctx, { battle, returnTo = 'world', auto: startAuto =
   }
   function setTargets(ids, focus) {
     const foeIds = ids.filter(id => disp.units[id]?.side === 'foe');
-    const heroIds = ids.filter(id => disp.units[id]?.side === 'hero');
+    const heroIds = ids.filter(id => inParty(disp.units[id]));
     stage.targets = new Set(foeIds);
     stage.focusId = focus;
     hud.setTargets(foeIds, focus);
@@ -207,7 +217,8 @@ export function mount(root, ctx, { battle, returnTo = 'world', auto: startAuto =
     captionEl.textContent = text;
     captionEl.dataset.kind = kind;
     fitCaption(String(text));
-    captionEl.classList.remove('flash'); void captionEl.offsetWidth; captionEl.classList.add('flash');
+    // (bt-flash, not flash: the card's own .flash, card.css, is a white sheet over its stage, and would cover the dock)
+    captionEl.classList.remove('bt-flash'); void captionEl.offsetWidth; captionEl.classList.add('bt-flash');
     clearTimeout(captionTimer);
   }
   // A caption longer than its two lines ends on a whole word and "…" (the clamp alone cut "2d10" to "2d1…"). A
@@ -254,17 +265,20 @@ export function mount(root, ctx, { battle, returnTo = 'world', auto: startAuto =
     shakeTimer = setTimeout(() => stageHost.classList.remove(cls), 520);
   }
   let moveTimer = 0;
+  // (M7: while the banner is up the shell says so, .ban-up: a two-dice foe's tall bubble gives way under it)
   function moveBanner(name, side, text) {
     moveBan.replaceChildren(...[el('b', { text: name }), text ? el('small', { text }) : null].filter(Boolean));
     moveBan.dataset.side = side;
     moveBan.hidden = false;
+    shell.classList.add('ban-up');
     moveBan.classList.remove('in'); void moveBan.offsetWidth; moveBan.classList.add('in');
     clearTimeout(moveTimer);
-    moveTimer = setTimeout(() => { moveBan.hidden = true; }, Math.max(450, 1300 / speed));
+    moveTimer = setTimeout(() => { moveBan.hidden = true; shell.classList.remove('ban-up'); }, Math.max(450, 1300 / speed));
   }
   let bigTimer = 0;
   function bigBanner(title, sub, kind = '') {
     moveBan.hidden = true;
+    shell.classList.remove('ban-up');
     bigBan.replaceChildren(...[el('b', { text: title }), sub ? el('small', { text: sub }) : null].filter(Boolean));
     bigBan.dataset.kind = kind;
     bigBan.hidden = false;
@@ -273,7 +287,7 @@ export function mount(root, ctx, { battle, returnTo = 'world', auto: startAuto =
     bigTimer = setTimeout(() => { bigBan.hidden = true; }, Math.max(700, 2000 / speed));
   }
   function pulseStatus(id, status) {
-    const host = disp.units[id]?.side === 'hero' ? party.v.get(id)?.card : hud.foes.get(id)?.box;
+    const host = inParty(disp.units[id]) ? party.v.get(id)?.card : hud.foes.get(id)?.box;
     const chip = host?.querySelector(`[data-st="${status}"]`);
     if (chip) { chip.classList.remove('tick'); void chip.offsetWidth; chip.classList.add('tick'); }
   }
@@ -293,7 +307,7 @@ export function mount(root, ctx, { battle, returnTo = 'world', auto: startAuto =
   }
   function portraitOf(id) {
     const u = disp.units[id];
-    if (u?.side === 'hero') return party.v.get(id).sprite.portrait(18);
+    if (inParty(u)) return party.v.get(id).sprite.portrait(18);
     const v = stage.foes.get(id);
     return v ? v.sprite.portrait(18) : new ImageData(18, 18);
   }
@@ -366,7 +380,7 @@ export function mount(root, ctx, { battle, returnTo = 'world', auto: startAuto =
   }
 
   // ---- layout ------------------------------------------------------------------------------------------------
-  const extraSlots = foes0.some(f => f.tier === 'champion') ? 2 : foes0.some(f => (f.omens || []).includes('twinned')) ? 1 : 0;
+  const extraSlots = foes0.some(f => tierAs(f.tier) === 'champion') ? 2 : foes0.some(f => (f.omens || []).includes('twinned')) ? 1 : 0;
   function relayout() {
     if (dead) return;
     stage.layout(extraSlots);
@@ -496,7 +510,7 @@ export function mount(root, ctx, { battle, returnTo = 'world', auto: startAuto =
       await new Promise(r => setTimeout(r, 0)); // one cold raster per task
       if (dead) return;
     }
-    for (const h of heroes) party.update(h);
+    for (const h of [...heroes, ...guests]) party.update(h);
     relayout();
     if (ro) { ro.observe(stageHost); ro.observe(partyHost); }
     ctx.audio.music?.(boss ? 'boss' : 'battle');
@@ -523,7 +537,8 @@ export function mount(root, ctx, { battle, returnTo = 'world', auto: startAuto =
       const id = current(state);
       const u = state.units[id];
       let r;
-      if (u.side === 'foe') {
+      if (u.side !== 'hero') {
+        // a foe's turn, or (M7) the guest's: the engine plays both (allyTurn is foeTurn)
         await clock.wait(180);
         r = foeTurn(state);
       } else {

@@ -25,8 +25,11 @@
 //                              node: { x0, y0, weight? } in, { x, y } out. Deterministic.
 //   RELIC_SITE                 { [relicId]: encounterId } where each relic is held or worn (data only;
 //                              '$rival' and gifts are left out)
+//   belowMaps(game)            -> [{ id, name, state: 'here' | 'walked' | 'unwalked' }]   M7: the Hearth Below's maps,
+//                              in the order the road goes down, for the "Below the Keep" marker (they have no place of
+//                              their own on the painting: every one lies under the Keep)
 // Owner: WP8; M4 P7b (the Sunscorch view, regionOpen, placeOf); M6 P7 (the Gloomfen view).
-import { MAPS } from '../../data/maps/index.js';
+import { MAPS, MAP_IDS } from '../../data/maps/index.js';
 import { ENCOUNTERS } from '../../data/encounters.js';
 import { FOES } from '../../data/foes.js';
 import { REGIONS, LORE, HEARTHS } from '../../data/world.js';
@@ -55,8 +58,8 @@ export const VIEWS = Object.freeze({
   ironspire: Object.freeze({ x: 520, y: 60, w: 600, h: 400 }),
   // M6: the Gloomfen, from Mossfall's fen stair down to the Tidal Flats, framed from its data
   gloomfen: framed('gloomfen') || Object.freeze({ x: 0, y: 280, w: 726, h: 484 }),
-  // M7: the Hearth Below lies under the Keep, so its view is the Keep's island (STUB from the M7 scaffold: P7 draws
-  // its "Below the Keep" marker, spec §5)
+  // M7: the Hearth Below lies under the Keep, so its view is the Keep's island; the Wilds and Realm views mark it with
+  // "Below the Keep" (ui/screens/atlas.js), which opens this view
   below: Object.freeze({ x: 390, y: 290, w: 300, h: 200 }),
   realm: Object.freeze({ x: 0, y: 0, w: 1200, h: 800 }),
 });
@@ -174,3 +177,10 @@ function relicSites() {
   return Object.freeze(out);
 }
 export const RELIC_SITE = relicSites();
+
+// M7: the Hearth Below's maps, in the order the road goes down (MAP_IDS), each where the party stands, walked, or not yet
+export function belowMaps(game) {
+  const pos = game?.progress?.pos?.map, visits = game?.progress?.flags?.visits || {};
+  return MAP_IDS.filter(id => MAPS[id].region === 'below')
+    .map(id => ({ id, name: MAPS[id].name, state: id === pos ? 'here' : visits[id] ? 'walked' : 'unwalked' }));
+}

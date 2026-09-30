@@ -12,8 +12,9 @@ import { RELICS } from '../../data/relics.js';
 import { ENCOUNTERS } from '../../data/encounters.js';
 import { partyLevel } from '../../rules/gauntlet.js';
 
-// M7 (spec §4.6): relics are counted out of the highest Codex number, as the Codex label counts them ("No. 000 / 074")
-export const RELIC_TOTAL = Math.max(...Object.values(RELICS).map(r => r.codex));
+// The title's line and the carry-over card count the relics out of how many there are (75 with Page V, as the count
+// was before M7); the Codex's labels count to the highest number instead ("No. 000 / 074": ui/lib/items.js codexNo)
+export const RELIC_TOTAL = Object.keys(RELICS).length;
 export const inSentence = name => String(name || '').replace(/^The /, 'the ');
 const shortName = (id, h) => (id === 'alondra' ? 'Alondra' : String(h?.name || id).split(' ')[0]);
 const claimedOf = game => Object.keys(RELICS).filter(id => game.codex?.[id]?.claimed).length;

@@ -236,3 +236,35 @@ canvas.gem-i, canvas.mat-i, canvas.flame { display: block; flex: none; image-ren
 @media (prefers-reduced-motion: reduce) {
   .flame.lit-now, .rr-trait.rolled .rr-text, .rr-trait.rolled .rr-q, .rr-trait.rolled .rr-was { animation: none; }
 }
+
+/* ---------- M7 (spec §4.5): the Masterpiece tab ---------- */
+/* no list of pieces: the tab is its own panel, the width of the sheet */
+.forge-body.is-master { grid-template-columns: minmax(0, 1fr) !important; }
+.forge-body.is-master .forge-pieces { display: none; }
+.forge-tab[data-tab="masterpiece"] { color: #eef4ff; }
+.forge-tab[data-tab="masterpiece"][aria-selected="true"] { color: #10131e; background: linear-gradient(180deg, #ffffff 0, #c4d6f4 60%, #6a7eb0 100%); }
+.mp-why { margin: 0; padding: 0 0 0 18px; display: grid; gap: 4px; font-size: 14px; color: #ffb4a4; }
+.mp-note { margin: 0; font-size: 14px; color: var(--parchment-2); }
+.mp-bases { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+@media (min-width: 700px) { .mp-bases { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.mp-base {
+  display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 6px; align-items: center; min-height: var(--tap); padding: 4px 8px 4px 4px;
+  text-align: left; cursor: pointer; color: var(--parchment); background: var(--iron); border: 0; box-shadow: 0 0 0 2px var(--ink), inset 0 -2px 0 var(--seam);
+}
+.mp-base canvas { width: 32px; height: 32px; image-rendering: pixelated; }
+.mp-base-t { display: grid; min-width: 0; }
+.mp-base-t b { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mp-base-t small { font-size: 11px; color: var(--ash); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.mp-base:hover, .mp-base:focus-visible { box-shadow: 0 0 0 2px var(--ink), 0 0 0 3px var(--seam-2); }
+.mp-base.on { background: #1d2438; box-shadow: 0 0 0 2px var(--ink), 0 0 0 3px #c4d6f4; }
+.mp-base.on .mp-base-t b { color: #eef4ff; }
+.mp-field { display: grid; gap: 4px; }
+.mp-label { margin: 0; }
+.mp-name {
+  width: 100%; min-height: var(--tap); padding: 6px 10px; font: inherit; font-family: var(--f-display); font-size: 20px; font-weight: 700;
+  color: #fffaf0; background: #0b0d15; border: 0; box-shadow: 0 0 0 2px var(--ink), inset 0 0 0 1px #6a7eb0;
+}
+.mp-name:focus { outline: none; box-shadow: 0 0 0 2px var(--ink), inset 0 0 0 2px #c4d6f4; }
+.mp-say { margin: 0; min-height: 1.2em; font-size: 14px; color: #c4d6f4; overflow-wrap: anywhere; }
+.mp-say.bad { color: #ffb4a4; }
+.mp-rule { margin: 0; font-size: 13px; color: var(--ash); }

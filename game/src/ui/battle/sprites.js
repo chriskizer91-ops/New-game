@@ -1,11 +1,15 @@
 // Sprite management for the battle screen: turns battle units into art options, caches the
 // composed frame per sprite (recomposed only when its visual key changes), measures figure
 // bounds once, and prewarms every pose raster in small chunks so the forge never hitches mid-fight.
+// M7: a foe sprite may be drawn facing the other way (`flip`): the guest, in her foe art on the party's side, turned
+// to face the foes as the heroes do; the new tiers (the hollow, the Unsmith) are drawn as the tier they read as (the
+// Champion's, data/foes.js tierAs), so the art needs no new tier of its own.
 import { renderFoe, FOE_ART } from '../../art/foes.js';
 import { renderHero, heroBust, HERO_SIZE } from '../../art/hero-looks.js';
 import { RELIC_ART } from '../../art/item-looks.js';
 import { ITEMS } from '../../data/items.js';
 import { RELICS } from '../../data/relics.js';
+import { tierAs } from '../../data/foes.js';
 import { toCanvas, crop, alphaBox } from './util.js';
 import { ofPageIV } from './model.js';
 import { gearArt } from '../lib/art.js';
@@ -19,7 +23,11 @@ import { gearArt } from '../lib/art.js';
 export function foeLook(u) {
   const def = FOE_ART[u.art] || FOE_ART.cutpurse;
   const held = u.held || [];
-  const o = { tier: u.tier, gearTier: u.artTier ?? u.gearTier ?? 0, phase: u.phase || 1 };
+  const o = { tier: u.tier ? tierAs(u.tier) : u.tier, gearTier: u.artTier ?? u.gearTier ?? 0, phase: u.phase || 1 };
+  // M7: what the Unsmith took (his Stolen Arts' relic ids, at most six: a display unit's list, or an engine unit's
+  // { ids }); the art hangs those very relics on him in his Thief phase (art/foes.js, def.stolen)
+  const took = Array.isArray(u.stolen) ? u.stolen : u.stolen?.ids;
+  if (took?.length) o.stolen = took.slice(0, 6);
   if (def.relics) {
     // multi-relic champion: pieces snap off one by one
     o.broken = held.filter(p => !p.held).map(p => p.relic || p.echoOf).filter(Boolean);
@@ -46,7 +54,9 @@ export function foeLook(u) {
 const RIM = 'rgba(236, 223, 195, 0.26)';
 
 // (a worn piece only lengthens the key, so every earlier foe's key is as it was)
-const lookKey = o => [o.tier, o.gearTier, o.phase, o.relic || '-', o.relicHeld ? 1 : 0, (o.broken || []).join('+')].join('|') + (o.wears ? `|${o.wears}` : '');
+// (M7: so does what the Unsmith took)
+const lookKey = o => [o.tier, o.gearTier, o.phase, o.relic || '-', o.relicHeld ? 1 : 0, (o.broken || []).join('+')].join('|') + (o.wears ? `|${o.wears}` : '')
+  + (o.stolen?.length ? `|s:${o.stolen.join('+')}` : '');
 
 // The art animates from t: idle breath (1.6 Hz), blinks, a relic glint and shine window, and
 // emissive flicker. Composing is the per-frame cost (a 96px boss is ~12 ms on a slow phone), so t
@@ -67,16 +77,19 @@ const NOW_HERO = [['idle', 0], ['idle', 0.7]];
 const LATER_HERO = [['attack', 0.1], ['attack', 0.6], ['cast', 0], ['hurt', 0], ['guard', 0], ['ko', 0]];
 
 export class FoeSprite {
-  constructor(unit, reduced) {
-    this.key = unit.art;
-    this.def = FOE_ART[unit.art] || FOE_ART.cutpurse;
+  // flip (M7): face the other way (the guest on the party's side faces the foes, as the heroes do)
+  constructor(unit, reduced, { flip = false } = {}) {
+    this.key = FOE_ART[unit.art] ? unit.art : 'cutpurse';
+    this.def = FOE_ART[this.key];
     this.reduced = reduced;
+    this.flip = !!flip;
     this.canvas = document.createElement('canvas');
     this.setUnit(unit);
   }
   setUnit(unit) {
     const o = foeLook(unit);
-    const lk = lookKey(o);
+    if (this.flip) o.flip = true;
+    const lk = lookKey(o) + (this.flip ? '|L' : '');
     if (lk === this.lk) return false;
     this.o = o;
     this.lk = lk;
@@ -86,6 +99,9 @@ export class FoeSprite {
     this.box = alphaBox(idle);
     this.w = idle.width;
     this.h = idle.height;
+    // where the figure stands (the party row draws it by its foot, as it draws a hero); the art's foot, turned with it
+    const f = this.def.foot || [this.w >> 1, this.h - 8];
+    this.foot = this.flip ? [this.w - f[0], f[1]] : [f[0], f[1]];
     return true;
   }
   // -> canvas with the composed frame
@@ -119,13 +135,14 @@ export class FoeSprite {
   }
   // prewarm jobs (each one cold raster): `now` before the fight starts, `later` in idle time
   jobs(unit) {
-    const base = foeLook(unit);
+    const base = unit ? { ...foeLook(unit), ...(this.flip ? { flip: true } : {}) } : this.o;
     const f = list => list.map(([pose, t]) => () => renderFoe(this.key, { ...base, pose, t, reduced: this.reduced }));
     return { now: f(NOW_FOE), later: f(this.def.dive ? [...LATER_FOE, ['dive', 0]] : LATER_FOE) }; // M6: a diver's dive pose too
   }
   // every pose of a look the foe is about to change into (disarmed, broken piece, next phase)
   lookJobs(o) {
-    return [...NOW_FOE, ...LATER_FOE].map(([pose, t]) => () => renderFoe(this.key, { ...o, pose, t, reduced: this.reduced }));
+    const look = this.flip ? { ...o, flip: true } : o;
+    return [...NOW_FOE, ...LATER_FOE].map(([pose, t]) => () => renderFoe(this.key, { ...look, pose, t, reduced: this.reduced }));
   }
   // small head portrait for the Initiative Ribbon
   portrait(size = 18) {
