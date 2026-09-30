@@ -1,0 +1,13 @@
+{
+  "name": "thareia-walk-test",
+  "private": true,
+  "type": "module",
+  "description": "Phone test for the Thareia game: walking and flying on a painted region map, and the hero sprites at higher detail.",
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "assets": "node tools/prep-assets.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}

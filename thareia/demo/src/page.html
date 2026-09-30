@@ -1,0 +1,79 @@
+<title>Thareia Walk Test</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700&family=Alegreya+Sans:wght@400;500;700&display=swap">
+<style>
+/* Layout: a one-screen game test; the canvas stage fills the top, controls sit in a scrolling tray below. Single dark
+   look on purpose (a game screen), set explicitly so it reads the same on either host theme. */
+:root {
+  --ink: #0e181a;        /* ground */
+  --panel: #152326;      /* control tray */
+  --line: #2a3e42;       /* hairlines, idle chips */
+  --text: #ebe4d2;       /* parchment-white text */
+  --muted: #9fb2ac;      /* secondary text */
+  --amber: #eaa53e;      /* sunstone: the one accent */
+  --amber-ink: #1d1406;  /* text on amber */
+  --display: 'Alegreya SC', 'Palatino Linotype', Palatino, Georgia, serif;
+  --body: 'Alegreya Sans', 'Gill Sans', 'Segoe UI', system-ui, sans-serif;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--ink); color: var(--text); font: 15px/1.45 var(--body); overflow: hidden; }
+.app { height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }
+header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 16px; border-bottom: 1px solid var(--line); }
+h1 { margin: 0; font: 700 1.15rem/1.1 var(--display); letter-spacing: .04em; text-wrap: balance; }
+h1 small { display: block; font: 500 .72rem/1.2 var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.tabs { display: flex; gap: 4px; }
+.stage { position: relative; min-height: 0; background: #0a1214; touch-action: none; }
+.stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.hud { position: absolute; left: 10px; top: 8px; right: 10px; display: flex; justify-content: space-between; gap: 8px; pointer-events: none; font: 500 .75rem/1.3 var(--body); color: var(--text); text-shadow: 0 1px 2px #000, 0 0 6px #000; font-variant-numeric: tabular-nums; }
+.tray { background: var(--panel); border-top: 1px solid var(--line); padding: 10px 16px calc(12px + env(safe-area-inset-bottom, 0px)); max-height: 42vh; overflow-y: auto; display: grid; gap: 9px; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.row > .label { font: 500 .7rem/1 var(--body); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); min-width: 4.6em; }
+button, select { font: 500 .88rem/1 var(--body); color: var(--text); background: transparent; border: 1px solid var(--line); border-radius: 6px; min-height: 36px; padding: 0 12px; cursor: pointer; }
+select { background: var(--ink); padding: 0 8px; max-width: 100%; }
+.gear select { width: 100%; min-width: 0; }
+button[aria-pressed="true"] { background: var(--amber); color: var(--amber-ink); border-color: var(--amber); }
+button:focus-visible, select:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.gear { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px 10px; }
+.gear label { display: grid; gap: 3px; font: 500 .7rem/1 var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); min-width: 0; }
+.note { margin: 0; color: var(--muted); font-size: .84rem; max-width: 65ch; }
+.note b { color: var(--text); font-weight: 500; }
+[data-view="battle"] .only-map, [data-view="map"] .only-battle { display: none; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+
+<div class="app" id="app" data-view="map">
+  <header>
+    <h1>Thareia <small>Walk and sprite test · the Gloomfen</small></h1>
+    <div class="tabs" role="group" aria-label="View">
+      <button id="tab-map" aria-pressed="true">Map</button>
+      <button id="tab-battle" aria-pressed="false">Battle</button>
+    </div>
+  </header>
+
+  <div class="stage" id="stage">
+    <canvas id="view"></canvas>
+    <div class="hud"><span id="hud-left"></span><span id="hud-right"></span></div>
+  </div>
+
+  <div class="tray">
+    <div class="row only-map"><span class="label">Zoom</span><span class="row" id="zooms"></span></div>
+    <div class="row only-map"><span class="label">Travel</span>
+      <button id="mode-walk" aria-pressed="true">Walk</button><button id="mode-fly" aria-pressed="false">Fly the skiff</button></div>
+    <div class="row only-map"><span class="label">Walker</span>
+      <button id="spr-new" aria-pressed="true">New · battle rig</button><button id="spr-old" aria-pressed="false">Old · 16×24</button></div>
+
+    <div class="row only-battle"><span class="label">Detail</span><span class="row" id="scales"></span></div>
+    <div class="row only-battle"><span class="label">Pose</span><span class="row" id="poses"></span></div>
+    <div class="row only-battle"><span class="label">Music</span><button id="music" aria-pressed="false">Play Herbal Decay</button></div>
+
+    <div class="row"><span class="label">Hero</span><select id="hero" aria-label="Hero"></select></div>
+    <div class="gear" id="gear"></div>
+
+    <p class="note only-map"><b>Tap or drag on the map</b> to move; arrow keys and WASD work too. Try each zoom on your phone: the question is how close the walking view can get before the painting looks soft.</p>
+    <p class="note only-battle"><b>Gear shows on the sprite</b> at every detail level, because the game draws weapons and armour from recipes, not fixed pictures. At 2× and 3× the art is sharper but not yet richer: new detail such as faces and cloth folds is art we would add.</p>
+  </div>
+</div>
+<script>/*ASSETS*/</script>
+<script>/*APP*/</script>
