@@ -36,11 +36,12 @@ import { playOut } from './helpers.mjs';
 
 class Stuck extends Error {}
 
-// A forced win: every foe at 1 HP, every hero at 500 HP, then the autoplay policy plays it out.
+// A forced win: every foe at 1 HP (M7: and Guard 0, so a low-level walking party can land a blow on the Hollow Council,
+// and a Council member who heals cannot outlast it), every hero at 500 HP, then the autoplay policy plays it out.
 function forceWin(game, where) {
   const { game: g, battle } = startBattle(game, where.nodeId ? { nodeId: where.nodeId } : { patrol: where.patrol }, where.opts || {});
   const b = structuredClone(battle);
-  for (const u of Object.values(b.units)) if (u.side === 'foe') u.hp = 1;
+  for (const u of Object.values(b.units)) if (u.side === 'foe') { u.hp = 1; u.guard = 0; }
   for (const u of Object.values(b.units)) if (u.side === 'hero') { u.hp = u.maxHp = 500; }
   const played = playOut(b).state;
   if (played.ended?.result !== 'victory') throw new Stuck(`a forced win was not a win (${played.ended?.result})`);
