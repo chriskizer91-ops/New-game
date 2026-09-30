@@ -35,12 +35,18 @@ Nothing here is built yet.
 
 **The continent (2026-09-30)**
 - The player's continent painting is in `../art-in/continent/`. Its six crops set the **six regions**: the Verdant
-  Wilds, Mirrordeep and the Keep, the Ironspire, the Gloomfen, the Southern Reaches (new, name to settle) and the
+  Wilds, Mirrordeep and the Keep, the Ironspire, the Gloomfen, the Southern Lowlands and the
   Sunscorch. Each region gets its own 1536 × 1024 painting (see `02-art-and-budget.md`).
 
+**Delivery, detail, music and the airship (2026-09-30)**
+- **One single file** (about 30 MB), as detailed as it can be made within that.
+- **Music:** the player makes the songs (Suno) and sends them labelled. Sound effects are made in code, as in the current
+  game. See `03-airship-and-music.md`.
+- **The airship** is a small painted image in a few views, brought to life with code. See `03-airship-and-music.md`.
+- **The six region paintings** arrived (`../art-in/regions/`); the south-centre region is the **Southern Lowlands**.
+
 ## Open
-- **The Southern Reaches:** its name and what lives there (the canon has no named places on the south shore).
-- **Delivery:** one ~30 MB file you keep, or a page whose images load separately (no size limit, needs a connection).
+- **The Southern Lowlands:** what lives there (the canon has no named places on the south shore).
 - **How hard are the level gates?** A hard lock, or a warning you can ignore? What keeps the party out: a dock permit, a
   ship that can't yet climb, guarded roads?
 - **Level bands:** how levels 1–50 spread across the six regions, the crossing to Auros, and Auros itself.
