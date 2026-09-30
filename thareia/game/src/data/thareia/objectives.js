@@ -6,5 +6,5 @@ export const TH_OBJECTIVES = Object.freeze([
   { if: { flag: 'th-crate-cracked' }, text: 'Defend the dock and the crate.', map: 'bogmire-docks', entity: 'dock-crate' },
   { if: { flag: 'th-hired' }, text: 'Load Aldric Fernshaw\'s crate into the skiff.', map: 'bogmire-docks', entity: 'dock-crate' },
   { if: { flag: 'th-read-notice' }, text: 'Ask Captain Yara Dustwind for the deckhand job.', map: 'bogmire-docks', entity: 'yara' },
-  { if: { flag: 'th-arrived' }, text: 'Find work: read the job board in Bogmire\'s square.', map: 'th-bogmire', entity: 'th-board' },
+  { if: { flag: 'th-arrived' }, text: 'Board the skiff with your ticket, or find work on the town\'s job board first.', map: 'bogmire-docks', entity: 'skiff' },
 ]);

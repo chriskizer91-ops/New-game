@@ -14,10 +14,11 @@ export const TH_DIALOGUE = {
   'th-intro': {
     lines: [
       ['narrator', 'Bogmire. Fog sits on the water like wet wool, and the water under it is warm. It should not be warm.'],
-      ['narrator', 'You came up the fen on a peat barge with two silver coins and a borrowed coat. You need work, and you need it today.'],
-      ['warden', 'Every town has a job board. Up the stair, then.'],
+      ['narrator', 'You came up the fen on a peat barge with two silver coins, a borrowed coat and one paid passage north.'],
+      ['narrator', 'The ticket says: BOGMIRE TO THORNHOLLOW, CAPTAIN Y. DUSTWIND, THE TOWER DOCK. The skiff is riding at its ropes just there.'],
+      ['warden', 'Board now, or look for a day\'s work in town first. Every town has a job board.'],
     ],
-    do: [{ set: 'th-arrived' }],
+    do: [{ set: 'th-arrived' }, { set: 'th-ticket' }, { note: 'You have a passage ticket: Bogmire to Thornhollow, on the skiff at the tower dock.' }],
   },
   'th-yara-first': {
     lines: [
@@ -25,9 +26,11 @@ export const TH_DIALOGUE = {
       ['narrator', 'She goes back to her ropes. Above her, the skiff\'s four sunstone crystals glow like lamps in the fog.'],
     ],
     do: [{ set: 'met-yara' }],
+    choices: [{ text: 'Show her your ticket and board.', if: { all: [{ flag: 'th-ticket' }, { not: { flag: 'th-shard' } }] }, next: 'th-board-early' }, LEAVE],
   },
   'th-yara-again': {
     lines: [['yara', 'Board. Town square. Up the stair. I will be here, not hiring you.']],
+    choices: [{ text: 'Show her your ticket and board.', if: { all: [{ flag: 'th-ticket' }, { not: { flag: 'th-shard' } }] }, next: 'th-board-early' }, LEAVE],
   },
   'th-yara-hire': {
     lines: [
@@ -106,8 +109,18 @@ export const TH_DIALOGUE = {
     ],
     choices: [
       { text: 'Climb aboard and cast off.', if: { flag: 'th-shard' }, do: [{ open: 'sky:first-flight' }] },
+      { text: 'Show your ticket and board.', if: { all: [{ flag: 'th-ticket' }, { not: { flag: 'th-shard' } }] }, next: 'th-board-early' },
       LEAVE,
     ],
+  },
+  // the ticket: board at once, and the crate splits in the hold as the skiff lifts (the Prologue's fights are skipped)
+  'th-board-early': {
+    lines: [
+      ['yara', 'A paid fare. Good. The cargo can wait for the next run. I do not like the way Fernshaw\'s crate is humming anyway.'],
+      ['narrator', 'The skiff lifts off its ropes. Down in the hold, the crate splits along one seam, and gold light spills out across the planks.'],
+      ['narrator', 'A small shard rolls to your boots. When you pick it up, it hums back at you. You keep it.'],
+    ],
+    do: [{ set: 'th-shard' }, { set: 'th-early' }, { cut: 'crate-cracks', text: 'The crate splits in the hold as the skiff lifts.' }, { note: 'You keep the humming shard.' }, { open: 'sky:first-flight' }],
   },
   'th-fisher': {
     lines: [['th-fisher', 'The eels have gone deep, or gone. Water is too warm for them. Too warm for me, some nights. Never used to be.']],
@@ -160,7 +173,7 @@ export const TH_DIALOGUE = {
     lines: [
       ['narrator', 'The skiff sets down in the clearing outside Thornhollow\'s south gate, in a storm of leaves.'],
       ['yara', 'Thornhollow. Fernshaw\'s shop is on the square. Tell him his crate sang, and watch what his face does.'],
-      ['yara', 'Me, I have a hold to patch. Your pay. If you are ever at a dock with money in your pocket, I rent.'],
+      ['yara', 'Me, I have a hold to patch. Here, for the trouble. If you are ever at a dock with money in your pocket, I rent.'],
       ['narrator', 'Captain Yara Dustwind goes back to her skiff. The shard in your pocket hums, and it hums louder when you face the west road.'],
     ],
     do: [{ set: 'th-landed' }, { gold: 12 }, { leave: 'yara' }, { end: 'prologue' }],

@@ -80,6 +80,15 @@ await shot('docks-intro');
 await talk();
 await shot('docks');
 
+if (args.ticket) {
+  // the ticket: straight from the docks to the skiff
+  await W('teleport', 'bogmire-docks', 28, 12, 'n'); await page.waitForTimeout(400); await W('interact'); await page.waitForTimeout(400);
+  await shot('ticket-skiff'); await talk(['Show your ticket']);
+  await page.waitForSelector('.screen-sky', { timeout: 15000, state: 'attached' }); await page.waitForTimeout(1500);
+  await shot('ticket-sky');
+  console.log(errors.length ? 'ERRORS:\n' + errors.join('\n') : 'no errors');
+  await browser.close(); process.exit(errors.length ? 1 : 0);
+}
 // ---- the town: the Sedrin crossing, the board ----
 await W('teleport', 'bogmire-docks', 24, 1, 'n'); await page.waitForTimeout(300);
 await W('step', 'n', 1); await page.waitForTimeout(1200); await talk();

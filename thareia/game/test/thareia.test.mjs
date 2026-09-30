@@ -123,6 +123,12 @@ test('the Prologue plays through the rules: hired, the crate, both fights, the s
   const r = W.enterMap(g, { map: 'bogmire-docks', at: [TH_START_AT.x, TH_START_AT.y], face: 'n' });
   assert.ok(r.events.some(e => e.t === 'trigger' && e.dialogue === 'th-intro'));
   g = St.enterDialogue(r.game, 'th-intro').game;
+  // the ticket: the skiff takes you at once, and the shard comes with it
+  assert.ok(St.dialogueView(g, 'th-skiff').choices.some(c => c.text.startsWith('Show your ticket')));
+  const early = St.enterDialogue(g, 'th-board-early');
+  assert.deepEqual(early.events.map(e => e.t), ['cut', 'note', 'open']);
+  assert.equal(early.events[2].screen, 'sky:first-flight');
+  assert.ok(early.game.progress.flags.story['th-shard']);
   assert.equal(St.talkTo(g, 'yara'), 'th-yara-first');
   g = St.enterDialogue(g, 'th-board').game;
   assert.equal(St.talkTo(g, 'yara'), 'th-yara-hire');
