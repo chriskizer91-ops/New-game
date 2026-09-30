@@ -15,7 +15,7 @@
 //   Domain ids); an unknown kind draws a plain token
 // markIcon(ok, { size=12 }) -> ImageData        a green check (ok) or a red cross
 // statusIcon draws a neutral token for a status key it has no icon for. (M5 adds burrowed, swallowed, charmed; M6 rotting and hexed;
-// M7 unmade and hearthlit.)
+// M7 unmade and hearthlit.) INTENT_DIE (M7) also has the hollow tier's die and the Unsmith's.
 // M4 (Hilda's forge, the Sunscorch locks):
 // gemIcon(id, { size=12 }) -> ImageData       ids: GEM_ICON_KEYS (data/gems.js); an unknown id draws a plain stone
 //   in its GEMS colour, or grey
@@ -23,7 +23,7 @@
 // lockIcon also draws the four Sunscorch locks: 'dune-glass', 'mirage', 'quicksand', 'vault-seal' (M5: and 'chasm', 'ice', 'rune-seal', 'drift';
 // gemIcon: 'frost-opal'). Their keys are
 // relic powers ('power') and the Craft, Knowledge and Survival Domains, which keyIcon already draws.
-import { MAT, hx, mix } from './forge.js';
+import { MAT, hx, mix, ramp } from './forge.js';
 import { lru } from './cache.js';
 import { GEMS } from '../data/gems.js';
 
@@ -91,8 +91,12 @@ const DIE = {
   20: { faces: [[[[10, .6], [18.6, 5.4], [18.6, 14.6], [10, 19.4], [1.4, 14.6], [1.4, 5.4]], 1], [[[1.4, 5.4], [10, 2.4], [2.4, 15.2], [1.4, 14.6]], 3], [[[1.4, 5.4], [10, .6], [18.6, 5.4], [10, 2.4]], 2], [[[2.4, 15.2], [17.6, 15.2], [18.6, 14.6], [10, 19.4], [1.4, 14.6]], 0]], m: [[10, 2.4], [17.6, 15.2], [2.4, 15.2]], mc: [10, 11], mTri: 1 },
 };
 export const DICE = [4, 6, 8, 10, 12, 20];
-// suggested intent-die look per foe tier (the die grows with the foe's rank)
-export const INTENT_DIE = Object.freeze({ rabble: { sides: 6, mat: 'iron' }, veteran: { sides: 8, mat: 'bronze' }, 'relic-bearer': { sides: 12, mat: 'gold' }, champion: { sides: 20, mat: 'amethyst' } });
+// M7: the dice of the two new tiers: the Hollow Council's d20 in a smoky, ash-grey violet (drained, and apart from a
+// Champion's bright amethyst; its pale face keeps the number legible), and the Unsmith's pair of forge-iron d20s with
+// an ember face. Registered here, so the dice never wait on the item recipes to load
+for (const [k, s] of Object.entries({ 'm7.hollowdie': '#06040a #14101e #262036 #40365a #9a8cc0 #e0d6f6', 'm7.forgedie': '#120806 #2e140c #52241a #7e3a22 #f0aa68 #fff0d4' })) if (!MAT[k]) MAT[k] = { pal: ramp(s), gem: 1 };
+// suggested intent-die look per foe tier (the die grows with the foe's rank; M7: the hollow tier and the Unsmith's)
+export const INTENT_DIE = Object.freeze({ rabble: { sides: 6, mat: 'iron' }, veteran: { sides: 8, mat: 'bronze' }, 'relic-bearer': { sides: 12, mat: 'gold' }, champion: { sides: 20, mat: 'amethyst' }, hollow: { sides: 20, mat: 'm7.hollowdie' }, unsmith: { sides: 20, mat: 'm7.forgedie' } });
 const diceCache = lru(400);
 export function diceIcon(sides, o = {}) {
   const size = o.size || 20, spin = (o.spin || 0) & 3, state = o.state || '', v = o.value;

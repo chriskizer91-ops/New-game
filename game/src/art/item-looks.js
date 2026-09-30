@@ -127,6 +127,9 @@ const coinWear = ({ x, y, nx, ny }) => (vnoise(x * .5, y * .5, 151) > .7 && (nx 
 const copperGreen = ({ x, y, nx, ny }) => { const n = vnoise(x * .35, y * .35, 155); return n > .7 && (nx + ny) > -.3 ? { m: 'verdigris', dd: n > .8 ? 1 : 0 } : hash(x, y, 156) < .04 ? -1 : 0; };
 const linkRust = ({ x, y }) => (vnoise(x * .45, y * .45, 157) > .72 ? { m: 'rust', dd: hash(x, y, 158) < .4 ? -1 : 0 } : hash(x, y, 159) < .06 ? -1 : 0);
 const bogPits = ({ x, y }) => (hash(x, y, 162) < .12 ? -1 : vnoise(x * .5, y * .5, 163) > .74 ? { m: 'rust', dd: 0 } : 0);
+// textures for the M7 relics: violet-black clouding in a blade like ink in water; cracks of violet light in iron
+const inkBleed = ({ x, y, u, v }) => { const n = vnoise(u * .16 + v * .3, v * .5 - u * .05, 171); return n > .7 ? { m: 'm7.violet', dd: n > .8 ? -1.4 : -2.2 } : hash(x, y, 172) < .04 ? -1 : 0; };
+const unmakeCracks = TX2.cracks(173, 'm7.violet', .018);
 export const RELIC_ART = Object.freeze({
   hearthbrand: { r: 'sword', relic: true, fx: 'rise', aspect: 'ember', p: { heat: 1, gripEnd: 15.5, guardT: 4.2, bladeW: 4.2, bladeL: 50, tipL: 9, taper: .86, blade: 'steel', bladeTex: emberVeins, fuller: 'ember', fullerR: 1.15, guard: 'flame', guardMat: 'gold', gem: 'ruby', grip: 'leatherRed', gripR: 2.15, pommel: 'gold', pommelR: 3.6, pommelGem: 'ember' } },
   'stillwater-lance': { r: 'spear', relic: true, fx: 'fall', aspect: 'frost', p: { headT: 58, headL: 24, headW: 4.6, wings: 2.6, haft: 'bone', butt: 'silver', wrap: 'clothBlue', wrapA: 25, wrapB: 37, bands: [21, 40, 51], bandMat: 'silver', socket: 'silver', head: 'steel', headTex: rimeTex, fuller: 'frost', gem: 'sapphire', ribbon: 'clothBlue', haftR: 1.8 } },
@@ -252,17 +255,34 @@ export const RELIC_ART = Object.freeze({
   // Nettie's shawl, knotted from bog-cotton and hag's hair over a bark-brown robe: an open net of knots, tassels and a
   // few charms on its edges, one thread through it that glows
   'hexbane-shawl': { r: 'robe', relic: true, fx: 'rise', aspect: 'blight', p: { mat: 'robeBark', tex: TX2.folds(66), trim: 'moss', sash: 'clothGrey', shawl: 'bogCotton', hexline: 'blight', charms: 'bone', pauldrons: 'bogCotton', gem: 'amethyst' } },
-  // ---- M7: Codex Page V, the Hearth Below (No. 000 and Nos. 67-74). STUB from the M7 scaffold, all nine (stub: true): stand-ins, each
-  // its own look; P6 draws the real ones (STUB from the M7 scaffold). ----
-  'fenwicks-poker': { r: 'mace', relic: true, stub: true, fx: 'rise', aspect: 'ember', p: { style: 'knob', headT: 52, headW: 6.5, haft: 'blackiron', haftR: 1.8, wrap: 'leatherDark', wrapEnd: 16, bands: [40], bandMat: 'iron', headMat: 'blackiron', pommelR: 2.4, gem: 'ember', trim: 'iron', spike: 0 } },
-  'hollow-wreath': { r: 'circlet', relic: true, stub: true, fx: 'rise', aspect: 'verdant', p: { look: 'circlet', style: 'rotwood', mat: 'bark', mat2: 'rotwood', thorn: 'thorn', gem: 'amethyst', leaves: 'bark' } },
-  'hollow-chalice': { r: 'focus', relic: true, stub: true, fx: 'rise', aspect: 'ember', p: { style: 'censer', metal: 'blackiron', trim: 'bronze', glow: 'ember', gem: 'amethyst' } },
-  'hollow-gauntlet': { r: 'gauntlets', relic: true, stub: true, fx: 'dust', aspect: 'stone', p: { mat: 'blackiron', plate: 1, cuffMat: 'blackiron', trim: 'iron', cuffBand: 'iron', knuckles: 'blackiron', cuffGem: 'amethyst' } },
-  'hollow-chain': { r: 'amulet', relic: true, stub: true, fx: 'rise', aspect: 'blight', p: { style: 'coin', chain: 'blackiron', metal: 'blackiron', gem: 'amethyst' } },
-  'tamsins-bargain': { r: 'sword', relic: true, stub: true, fx: 'rise', aspect: 'blight', p: { gripEnd: 15, guardT: 3.4, bladeW: 3.8, bladeL: 48, tipL: 9, taper: .88, blade: 'blackiron', fuller: 'blight', fullerR: 1, guard: 'oath', guardMat: 'blackiron', guardW: 10, gem: 'amethyst', grip: 'leatherDark', gripR: 2.1, pommel: 'blackiron', pommelR: 3.2, pommelGem: 'amethyst' } },
-  'unmaking-hammer': { r: 'hammer', relic: true, stub: true, fx: 'rise', aspect: 'ember', k: .4, p: { headT: 52, headH: 15, headW: 17, peen: 1, haft: 'blackiron', haftR: 2.6, wrap: 'leatherDark', wrapEnd: 18, bands: [24, 34], bandMat: 'blackiron', headMat: 'blackiron', pommelMat: 'blackiron', pommelR: 3.3, faces: 1, langets: 1, seam: 'blight', spike: 0 } },
-  'ironvein-apron': { r: 'leather', relic: true, stub: true, fx: 'rise', aspect: 'stone', p: { mat: 'leatherDark', shirt: 'wool', pauldrons: 'leatherDark', trim: 'blackiron', belt: 'leather', buckle: 'blackiron', gem: 'ember' } },
-  'worldforge-heart': { r: 'ring', relic: true, stub: true, fx: 'rise', aspect: 'ember', p: { style: 'signet', metal: 'blackiron', face: 'ruby', seal: 'gold', runes: 'ember', gem: 'ruby' } },
+  // ---- M7: Codex Page V, the Hearth Below (No. 000 and Nos. 67-74). The Unsmith's gifts are violet-black regalia
+  // (m7.violet light in m7.voidiron and m7.voidglass); No. 000 and the Worldforge Heart are primal ----
+  // Fenwick's hearth poker: a ring handle worn bright by one hand over nine hundred years, a twisted shank, the rod black
+  // with soot toward the point, a hooked spur for turning logs, the point still faintly hot
+  'fenwicks-poker': { r: 'mace', relic: true, fx: 'rise', aspect: 'ember', p: { style: 'poker', headT: 64, rod: 'iron', rodR: 1.45, collar: 'iron', soot: 'char', glow: 'ember' } },
+  // the Hollow Wreath: two strands of living wood gone grey, twisted into a circlet of black thorns, a stone of
+  // violet-black glass in the knot at the front and the gift's light running out along the grain
+  'hollow-wreath': { r: 'circlet', relic: true, fx: 'rise', aspect: 'verdant', p: { look: 'circlet', style: 'hollow', mat: 'm7.deadwood', mat2: 'rotwood', thorn: 'm7.blackthorn', gem: 'm7.voidglass', glow: 'm7.violet', leaves: 'm7.husk' } },
+  // the Hollow Chalice: a goblet of black glass with an iron rim and knop; the dark inside goes down further than the
+  // cup, and the gift's light is far down in it
+  'hollow-chalice': { r: 'focus', relic: true, fx: 'rise', aspect: 'ember', p: { style: 'chalice', metal: 'm7.voidiron', glass: 'm7.voidglass', glow: 'm7.violet', gem: 'amethyst' } },
+  // the Hollow Gauntlet: dark iron plate flaring at the cuff, the gift's light in the veins of the metal, black talons at
+  // the fingertips (it closes on its own)
+  'hollow-gauntlet': { r: 'gauntlets', relic: true, fx: 'dust', aspect: 'stone', p: { mat: 'm7.voidiron', plate: 1, flare: 1, cuffMat: 'm7.voidiron', veins: 'm7.violet', trim: 'blackiron', cuffBand: 'blackiron', knuckles: 'm7.voidiron', talons: 'm7.blackthorn', cuffGem: 'm7.voidglass', cuffSet: 'm7.voidiron' } },
+  // the Hollow Chain: a mayor's chain of office in heavy black links, its badge a stone of violet-black glass with the
+  // gift's light in it, a ring of tally-cuts round it for every favour owed
+  'hollow-chain': { r: 'amulet', relic: true, fx: 'rise', aspect: 'blight', p: { style: 'office', metal: 'm7.voidiron', chain: 'm7.voidiron', gem: 'm7.voidglass', glow: 'm7.violet', tally: 'm7.violet' } },
+  // Tamsin's Bargain: Hearthbrand's darker twin: the same flame guard and blade in violet-black iron, the fuller lit
+  // violet, and the dark bleeding off it into the air like ink into water
+  'tamsins-bargain': { r: 'sword', relic: true, fx: 'rise', aspect: 'blight', p: { gripEnd: 15.5, guardT: 4.2, bladeW: 4.2, bladeL: 50, tipL: 9, taper: .86, blade: 'm7.voidiron', bladeTex: inkBleed, fuller: 'm7.violet', fullerR: 1.1, guard: 'flame', guardMat: 'm7.voidiron', gem: 'm7.voidglass', grip: 'leatherDark', gripR: 2.15, pommel: 'm7.voidiron', pommelR: 3.6, pommelGem: 'amethyst', bleed: 'm7.ink' } },
+  // the Unmaking Hammer: the hammer Harrow made after he gave the first away: a black iron head with cracks of violet
+  // light through it and a seam of it across the face, a black iron haft, his broken ring in silver
+  'unmaking-hammer': { r: 'hammer', relic: true, fx: 'rise', aspect: 'ember', k: .4, p: { headT: 51, headH: 16, headW: 17.4, peen: 1, haft: 'm7.voidiron', haftR: 2.6, wrap: 'leatherDark', wrapEnd: 18, bands: [23, 33], bandMat: 'm7.voidiron', headMat: 'blackiron', headTex: unmakeCracks, pommelMat: 'm7.voidiron', pommelR: 3.4, faces: 1, langets: 1, seam: 'm7.violet', mark: 'silver' } },
+  // the Ironvein Apron: a smith's heavy apron, scorched to black and never once burned through, the family's mark on the
+  // bib: an anvil with a vein of fire through it
+  'ironvein-apron': { r: 'leather', relic: true, fx: 'dust', aspect: 'stone', p: { style: 'apron', mat: 'm7.scorched', strap: 'leatherDark', trim: 'leatherDark', rivet: 'brass', mark: 'brass', vein: 'ember', scorch: 'char' } },
+  // the Worldforge Heart: a heart of molten metal, white-hot at its core, shut in a cage of black iron on a heavy band
+  'worldforge-heart': { r: 'ring', relic: true, fx: 'rise', aspect: 'ember', p: { style: 'heartcage', metal: 'blackiron', heart: 'm7.molten', core: 'radiant', drip: 1, gem: 'm7.molten' } },
 });
 export const RELIC_IDS = Object.keys(RELIC_ART);
 

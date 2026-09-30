@@ -17,6 +17,9 @@
 // M6 adds the twelve Gloomfen places; 'mothers-hollow:dark' and 'drowned-belfry:dark' are their dark listings (the
 // moon and the water-light go out; the Mother's lamps and the Sleeper's light stay lit). A listing with mist: true
 // (the Lanternfen, the Misthollow Ruins: the foggy maps) draws banks of mist drifting across it in renderBackdrop.
+// M7 adds the Hearth Below's four places (the Hollow Hall, the Ash Stair, the Chained Deep, the Worldforge; the Ash
+// Stair is its zone's backdrop too). None is dark; each has an ambient of its own (cold ash and the gift's violet; ash
+// coming down and embers going up; the Sleeper's slow red motes; the forge's sparks and heat).
 import { hx, ramp, bayer, hash, vnoise, mix } from './forge.js';
 import { lru } from './cache.js';
 
@@ -74,6 +77,11 @@ export const BACKDROPS = Object.freeze({
   causeway: { name: 'The Blackwater Causeway', horizon: .6, floor: [.68, 1], fx: 'wisp' },
   'mothers-hollow:dark': { name: "The Mother's Hollow, by lamplight", horizon: .56, floor: [.64, 1], fx: 'moth', dark: true },
   'drowned-belfry:dark': { name: 'The Drowned Belfry, where the Sleeper lies', horizon: .56, floor: [.64, 1], fx: 'bubble', dark: true },
+  // M7: the Hearth Below
+  'hollow-hall': { name: 'The Hollow Hall', horizon: .56, floor: [.64, 1], fx: 'hollow' },
+  'ash-stair': { name: 'The Ash Stair', horizon: .6, floor: [.68, 1], fx: 'ashfall' },
+  'chained-deep': { name: 'The Chained Deep', horizon: .56, floor: [.64, 1], fx: 'deep' },
+  worldforge: { name: 'The Worldforge', horizon: .56, floor: [.64, 1], fx: 'forge' },
 });
 export const BACKDROP_KEYS = Object.keys(BACKDROPS);
 // the listed dark variant of a backdrop key ('mosswatch' -> 'mosswatch:dark'), or the key itself when none is listed
@@ -1814,6 +1822,223 @@ Object.assign(PAINT, {
   },
 });
 
+/* ---------- M7: the Hearth Below's four places (they are what batch 4 asks the player to paint) ---------- */
+// a round stone pillar from y0 to y1, w wide: a lit left flank, a shadowed right, a plinth and a capital
+function stonePillar(L, x, w, y0, y1, cols) {
+  const C = cols.map(hx), n = C.length - 1;
+  for (let y = Math.floor(y0); y < y1; y++) for (let xx = Math.floor(x - w / 2); xx < x + w / 2; xx++) { const u = (xx + .5 - (x - w / 2)) / w; L.set(xx, y, C[clampI(Math.round((u < .3 ? n : u > .78 ? 0 : n - 1 - (u - .3) * 2) + bayer(xx, y) * .5 - .25 - (hash(xx >> 1, y >> 2, 811) < .06 ? 1 : 0)), n)]); }
+  L.rect(x - w / 2 - w * .18, y0, w * 1.36, Math.max(1, w * .22), C[n]); L.rect(x - w / 2 - w * .12, y0 + Math.max(1, w * .22), w * 1.24, Math.max(1, w * .12), C[1]);
+  L.rect(x - w / 2 - w * .2, y1 - Math.max(1, w * .3), w * 1.4, Math.max(1, w * .3), C[1]); L.rect(x - w / 2 - w * .2, y1 - Math.max(1, w * .3), w * 1.4, 1, C[n]);
+}
+// a smooth, round-shaded tube through control points (Catmull-Rom), r0 to r1 thick, banded every `band` px: the hearth's
+// iron roots. cols run dark to light; the lit flank is the left
+function tube(L, pts, r0, r1, cols, band = 9, seed = 0) {
+  const C = cols.map(hx), n = C.length - 1, P = [pts[0], ...pts, pts[pts.length - 1]], S = [];
+  for (let i = 1; i < P.length - 2; i++) for (let k = 0; k < 12; k++) { const t = k / 12, [a, b, c, d] = [P[i - 1], P[i], P[i + 1], P[i + 2]], f = (q0, q1, q2, q3) => .5 * (2 * q1 + (q2 - q0) * t + (2 * q0 - 5 * q1 + 4 * q2 - q3) * t * t + (3 * q1 - q0 - 3 * q2 + q3) * t * t * t); S.push([f(a[0], b[0], c[0], d[0]), f(a[1], b[1], c[1], d[1])]); }
+  S.push(pts[pts.length - 1]);
+  let run = 0;
+  for (let i = 0; i < S.length - 1; i++) {
+    const [ax, ay] = S[i], [bx, by] = S[i + 1], len = Math.hypot(bx - ax, by - ay) || 1, nx = -(by - ay) / len, ny = (bx - ax) / len, steps = Math.ceil(len * 2);
+    for (let j = 0; j < steps; j++) {
+      const u = (i + j / steps) / (S.length - 1), r = r0 + (r1 - r0) * u, x = ax + (bx - ax) * j / steps, y = ay + (by - ay) * j / steps; run += len / steps;
+      const bandHere = (run % band) < 1.1;
+      for (let o = -Math.ceil(r); o <= Math.ceil(r); o++) { const e = o / r; if (Math.abs(e) > 1) continue; const lit = -e * Math.sign(nx || 1); L.set(x + nx * o, y + ny * o, C[clampI(Math.round(n * .5 + lit * n * .45 - (bandHere ? 1 : 0) + bayer(Math.round(x + nx * o), Math.round(y + ny * o)) * .5 - .25 - (hash(Math.round(x + nx * o) >> 1, Math.round(y + ny * o) >> 1, seed) < .05 ? 1 : 0)), n)]); }
+    }
+  }
+  return S;
+}
+// the outline of a hearth-flame (for carving): a tall flame with two tongues, centred on x, standing on y, h tall
+const flamePts = (x, y, h) => [[x, y], [x - h * .34, y - h * .16], [x - h * .4, y - h * .42], [x - h * .22, y - h * .62], [x - h * .14, y - h * .5], [x - h * .08, y - h * .78], [x, y - h], [x + h * .1, y - h * .7], [x + h * .2, y - h * .8], [x + h * .36, y - h * .5], [x + h * .38, y - h * .22]];
+// a heart shape (the Worldforge's furnace), centred on x, its top lobes at y, w half-wide, h tall
+const heartPts = (x, y, w, h) => { const P = []; for (let k = 0; k <= 12; k++) { const a = Math.PI * (.85 + k / 12 * 1.15); P.push([x - w * .5 + Math.cos(a) * w * .5, y + w * .5 + Math.sin(a) * w * .5]); } for (let k = 0; k <= 12; k++) { const a = Math.PI * (1 + k / 12 * 1.15); P.push([x + w * .5 + Math.cos(a) * w * .5, y + w * .5 + Math.sin(a) * w * .5]); } P.push([x, y + h]); return P; };
+// a great chain link, as big as a cart, seen side-on (ring: a thick ellipse) or edge-on (a bar)
+function bigLink(L, x, y, rx, ry, cols, edge) {
+  const [D, M, Lt] = cols.map(hx);
+  if (edge) { L.thick(x - rx, y, x + rx, y, ry * .45, ry * .45, D); L.line(x - rx, y - ry * .3, x + rx, y - ry * .3, M); return; }
+  for (let a = 0; a < 40; a++) { const t = a / 40 * Math.PI * 2, px = x + Math.cos(t) * rx, py = y + Math.sin(t) * ry; L.disc(px, py, Math.max(1, ry * .32), Math.sin(t) < -.3 ? Lt : Math.cos(t) < 0 ? M : D); }
+}
+Object.assign(PAINT, {
+  // the Hollow Hall: the Council's First-Age chamber under the Keep: old granite with a violet cast, a worn hearth-flame
+  // carved on the far wall, the pillars going back down the nave, the marks of the four regions cut in them, and at the
+  // end of the nave a great stone chair on its dais glowing violet-black, as if something dark sat in it a moment ago;
+  // braziers burning low; dust and cold ash over everything. Ancient, solemn and wrong
+  'hollow-hall'(W, H, gy) {
+    const sky = layer(W, H), far = layer(W, H), mid = layer(W, H), gnd = layer(W, H), lights = [];
+    masonry(sky, 0, 0, W, gy + 3, ['#08070b', '#0d0b11', '#131018', '#19151f', '#211b28'], '#050407', 12, 6, 801, (x, y) => .8 + y / gy * 1.6 - Math.abs(x + .5 - W / 2) / W * 1.2);
+    // the carved hearth-flame on the far wall, worn smooth, a little light still caught in its grooves
+    const fx0 = W / 2, fy0 = gy - 36, fh = Math.min(17, gy * .32), F = flamePts(fx0, fy0, fh);
+    for (let k = 0; k < F.length; k++) { const a = F[k], b = F[(k + 1) % F.length]; sky.line(a[0], a[1], b[0], b[1], hx('#3a2f44'), .9); sky.line(a[0] + 1, a[1] + 1, b[0] + 1, b[1] + 1, hx('#050407'), .8); }
+    lights.push({ x: fx0, y: fy0 - fh * .5, r: fh * .7, c: '#6a4a8a', a: .12, pulse: 1, flick: .2 });
+    // the vault: ribs springing from the pillars, meeting over the nave
+    const VR = hx('#15111b'), VL = hx('#2a2334');
+    for (const s of [-1, 1]) for (const [x0, top] of [[W / 2 + s * 24, 2], [W / 2 + s * 44, -4], [W / 2 + s * 78, -12]]) for (let k = 0; k <= 24; k++) { const u = k / 24, x = x0 + (W / 2 - x0) * u, y = top + 10 - Math.sin(u * Math.PI / 2) * 10; far.disc(x, y, 1.4, VR); far.set(x, y - 1, VL, .7); }
+    // the great chair at the end of the nave, on its dais: a high stone back, arms, the violet-black on it
+    const cx = W / 2, cb = gy + 1, CS = ['#0c0a10', '#17131d', '#241e2c', '#352c40'].map(hx);
+    far.rect(cx - 14, cb - 3, 28, 3, CS[1]); far.rect(cx - 14, cb - 3, 28, 1, CS[3]); far.rect(cx - 11, cb - 6, 22, 3, CS[2]); far.rect(cx - 11, cb - 6, 22, 1, CS[3]);
+    far.poly([[cx - 7, cb - 6], [cx - 7, cb - 27], [cx - 5, cb - 31], [cx, cb - 33], [cx + 5, cb - 31], [cx + 7, cb - 27], [cx + 7, cb - 6]], CS[2]);
+    far.line(cx - 7, cb - 27, cx - 7, cb - 7, CS[3]); far.line(cx - 5, cb - 31, cx, cb - 33, CS[3]);
+    far.rect(cx - 10, cb - 13, 3, 7, CS[1]); far.rect(cx + 7, cb - 13, 3, 7, CS[0]); far.rect(cx - 10, cb - 14, 20, 2, CS[2]);
+    for (const [a, b] of [[[cx - 8, cb - 7], [cx - 8, cb - 28]], [[cx - 8, cb - 28], [cx, cb - 34.4]], [[cx, cb - 34.4], [cx + 8, cb - 28]], [[cx + 8, cb - 28], [cx + 8, cb - 7]]]) far.line(a[0], a[1], b[0], b[1], hx('#a060f0'), .85);
+    far.poly([[cx - 4, cb - 14], [cx + 4, cb - 14], [cx + 3, cb - 26], [cx, cb - 29], [cx - 3, cb - 26]], hx('#0a0610'));
+    for (let y = cb - 26; y < cb - 14; y += 2) far.set(cx + (y % 4 ? -1 : 1), y, hx('#7a3ac8'), .8);
+    lights.push({ x: cx, y: cb - 20, r: 18, c: '#9a52e8', a: .34, pulse: 1, flick: .35 }, { x: cx, y: cb - 22, r: 5, c: '#c89af8', a: .2, pulse: 1, flick: .6 });
+    // the pillars down both sides of the nave, the nearest the biggest, the four marks cut in the near ones
+    const PC = ['#0b0a0f', '#131018', '#1c1823', '#28222f', '#352d3e'];
+    for (const [d, w, y0] of [[22, 5, gy - 30], [36, 8, gy - 38], [58, 12, gy - 52], [84, 18, -4]]) for (const s of [-1, 1]) stonePillar(mid, W / 2 + s * d, w, y0, gy + (d > 40 ? (d - 30) * .3 : 1), PC);
+    const MK = hx('#4a3e58');
+    const mark = (x, y, kind) => {
+      if (kind === 'tree') { mid.line(x, y + 3, x, y - 1, MK); mid.disc(x, y - 3, 2.2, MK); }
+      else if (kind === 'sun') { mid.disc(x, y, 1.6, MK); for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2; mid.set(x + Math.cos(a) * 3, y + Math.sin(a) * 3, MK); } }
+      else if (kind === 'anvil') { mid.poly([[x - 3, y - 1], [x + 3, y - 1], [x + 1, y + 1], [x + 1, y + 3], [x - 1, y + 3], [x - 1, y + 1]], MK); mid.poly([[x - 3, y - 2], [x, y - 5], [x + 3, y - 2]], MK, .6); }
+      else { mid.rect(x - 1, y - 2, 3, 4, MK); mid.set(x, y - 3, MK); for (const dx of [-3, 3]) mid.line(x + dx, y + 3, x + dx * .6, y - 1, MK, .7); }
+    };
+    mark(W / 2 - 58, gy - 26, 'tree'); mark(W / 2 + 58, gy - 26, 'sun'); mark(W / 2 - 36, gy - 18, 'anvil'); mark(W / 2 + 36, gy - 18, 'lantern');
+    // braziers burning low between the pillars
+    for (const s of [-1, 1]) {
+      const bx = W / 2 + s * 64, by = gy + 12;
+      for (const dx of [-5, 0, 5]) mid.line(bx + dx * .5, by, bx + dx, by + 12, hx('#241c1a'));
+      mid.poly([[bx - 7, by - 2], [bx + 7, by - 2], [bx + 4.4, by + 2.4], [bx - 4.4, by + 2.4]], hx('#2e2420')); mid.line(bx - 7, by - 2, bx + 7, by - 2, hx('#5a4a40'));
+      for (let k = -5; k <= 5; k++) mid.set(bx + k, by - 3 + (hash(k, s, 802) < .4 ? -1 : 0), hx(k % 2 ? '#8a2a10' : '#d85a1a'));
+      lights.push({ x: bx, y: by - 4, r: 14, c: '#ff7a2a', a: .32, flick: 1.1 + s * .3, torch: 1 });
+    }
+    // the floor: great old flagstones down the nave, dust and cold ash drifted against everything
+    paving(gnd, gy, gy - 30, ['#0c0a0f', '#131018', '#1a1620', '#221d29'], '#060508', 18, 6, 803, (x, y) => 1 + (y - gy) / (H - gy) * 1.4 - Math.abs(x - W / 2) / W * .6);
+    const ASH = hx('#6c6670'), ASHD = hx('#403c46');
+    for (let y = gy; y < H; y++) for (let x = 0; x < W; x++) { const n = vnoise(x * .16, y * .36, 804); if (n > .72) gnd.set(x, y, n > .8 ? ASH : ASHD, .3 + (y - gy) / (H - gy) * .15); }
+    for (const s of [-1, 1]) for (let y = gy; y < H; y++) { const x0 = W / 2 + s * (20 + (y - gy) * 2.4); for (let k = 0; k < 6; k++) gnd.set(x0 + s * k, y, ASHD, .5 - k * .07); }
+    return { layers: [sky, far, mid, gnd], lights, fx: 'hollow', darkAmb: .12 };
+  },
+  // the Ash Stair: the hearth's roots going down through the world: a shaft of grey rock wrapped in roots of black iron
+  // as thick as towers, ember running through the rock like veins, grey ash drifted on every step like snow; the stair
+  // cut into the wall going down, and beside it the open drop, red from far below. Hot, hushed, going down
+  'ash-stair'(W, H, gy) {
+    const sky = layer(W, H), far = layer(W, H), mid = layer(W, H), gnd = layer(W, H), lights = [];
+    hewn(sky, 0, 0, W, gy + 3, ['#0c0b0c', '#141213', '#1c1a1a', '#262322', '#322e2c', '#3e3936'], 821, (x, y) => 1 + y / gy * 1.6 + Math.max(0, 1 - Math.hypot(x - W * .8, y - gy) / 46) * 1.8);
+    // ember seams winding through the rock like veins, pulsing
+    const veins = [];
+    for (let k = 0; k < 5; k++) { let x = hash(k, 1, 822) * W * .8, y = 6 + hash(k, 2, 822) * (gy - 16), a = hash(k, 3, 822) * 2 - 1; const pts = [[x, y]]; for (let s2 = 0; s2 < 7; s2++) { a += (hash(k, s2, 823) - .5) * 1.2; x += Math.cos(a) * 4; y += Math.sin(a) * 3; pts.push([x, y]); } veins.push(pts); for (const [px, py] of pts) sky.set(px, py, hx('#3a1a0e')); }
+    lights.push({ cracks: veins, c: '#ff6a24' });
+    // the stair: rough-cut steps going down the far wall from the upper left, grey ash drifted on every tread
+    const ST = ['#141211', '#221f1d', '#302c29', '#403b37'].map(hx), AS = ['#5e5a55', '#7e7872', '#a09a92'].map(hx);
+    for (let k = 0; k < 11; k++) { const x0 = -4 + k * 8.6, y0 = gy - 30 + k * 2.6; mid.poly([[x0, y0], [x0 + 9.4, y0], [x0 + 9.4, y0 + 5], [x0, y0 + 5]], ST[1]); mid.line(x0, y0 + 4.6, x0 + 9.4, y0 + 4.6, ST[0]); mid.line(x0, y0, x0, y0 + 5, ST[2]); for (let x = x0; x < x0 + 9.4; x++) { mid.set(x, y0, AS[hash(x | 0, k, 826) < .3 ? 2 : 1]); if (hash(x | 0, k, 825) < .5) mid.set(x, y0 - 1, AS[0]); } }
+    for (let x = -4; x < 92; x++) { const y = gy - 25 + (x + 4) * .3; for (let d = 0; d < 9; d++) if (!mid.d[(Math.round(y + d) * W + x) * 4 + 3]) mid.set(x, y + d, ST[0], .8); }
+    // the drop beside it, red from far below, and its lip
+    // (one dithered ramp from the dark above the lip, where its heat thins out unevenly, down to the red far below)
+    const DR = ['#1a0604', '#2e0a06', '#4a1208', '#6a1c0a'].map(hx);
+    for (let y = gy - 36; y < H; y++) for (let x = Math.max(0, Math.floor(W * .66 + (y - gy) * .45)); x < W; x++) {
+      const top = gy - 20 - vnoise(x * .07, 0, 833) * 14, v = (y - top) / (H - top) * 4 - .7 + (x - W * .66) / W, l = Math.round(v + bayer(x, y) * .9 - .45);
+      if (l >= 0) mid.set(x, y, DR[Math.min(3, l)]);
+    }
+    for (let y = gy - 8; y < H; y++) { const x = W * .66 + (y - gy) * .45; mid.set(x, y, hx('#8a8078')); mid.set(x - 1, y, hx('#4a4440')); }
+    lights.push({ x: W * .88, y: H - 6, r: 34, c: '#ff4a14', a: .45, pulse: 1, flick: .45 }, { x: W * .84, y: gy - 6, r: 26, c: '#ff6a2a', a: .24, pulse: 1, flick: .8 });
+    // the hearth's roots: black iron as thick as towers, twisting down the shaft
+    const RT = ['#050405', '#0c0a0d', '#161319', '#231f28', '#35303c', '#4c4656'];
+    tube(far, [[W * .02, -10], [W * .1, gy * .25], [W * .06, gy * .55], [W * .14, gy * .85], [W * .08, gy + 8]], 12, 8, RT, 8, 827);
+    tube(far, [[W * .5, -12], [W * .46, gy * .3], [W * .56, gy * .62], [W * .52, gy - 2]], 7, 5, RT, 7, 828);
+    tube(far, [[W * 1.02, -6], [W * .92, gy * .3], [W * .97, gy * .66], [W * .9, gy + 4]], 10, 7, RT, 8, 829);
+    // the landing: rough stone, grey ash drifted on it like snow, a seam of ember through it
+    const GF = ['#161413', '#211e1c', '#2c2826', '#3a3531'].map(hx), AD = ['#48443f', '#5c5752', '#736d67', '#8c867e'].map(hx);
+    for (let y = gy; y < H; y++) for (let x = 0; x < W * .66 + (y - gy) * .45 - 1; x++) {
+      const drift = vnoise(x * .05, y * .14, 830) + (y - gy) / (H - gy) * .1, n = vnoise(x * .2, y * .3, 831);
+      if (drift > .62) gnd.set(x, y, AD[clampI(Math.round((drift - .62) * 9 + n * .8 + bayer(x, y) * .6 - .3), 3)]);
+      else gnd.set(x, y, GF[clampI(Math.round(1 + (y - gy) / (H - gy) * 1.4 + (n - .5) * 1.4 + bayer(x, y) * .6 - .3), 3)]);
+    }
+    const seam = []; let sx = 6, sy = gy + 14; for (let s2 = 0; s2 < 9; s2++) { seam.push([sx, sy]); sx += 6 + hash(s2, 1, 832) * 5; sy += (hash(s2, 2, 832) - .45) * 4; }
+    for (let s2 = 0; s2 < seam.length - 1; s2++) gnd.thick(seam[s2][0], seam[s2][1], seam[s2 + 1][0], seam[s2 + 1][1], .8, .6, hx('#2a0c06'));
+    lights.push({ cracks: [seam], c: '#ff5a1a' }, { x: seam[4][0], y: seam[4][1], r: 9, c: '#ff5a1a', a: .16, pulse: 1, flick: .5 });
+    return { layers: [sky, far, mid, gnd], lights, fx: 'ashfall', darkAmb: .14 };
+  },
+  // the Chained Deep: the cavern at the roots of the world. The First Sleeper lies curled in its hollow like a low hill of
+  // dark stone and old ember, one enormous eye shut, its heart glowing slow and red through its hide; a web of chains
+  // with links the size of carts pins it down, staked into the rock; the Eternal Hearth's black iron roots come down
+  // out of the dark and sink into its back. The fight is on the iron walkway above the hollow, by its chain rail
+  'chained-deep'(W, H, gy) {
+    const sky = layer(W, H), far = layer(W, H), mid = layer(W, H), gnd = layer(W, H), lights = [];
+    skyFill(sky, ['#030204', '#060407', '#0a0709', '#0f0b0c', '#150f0f'], 0, gy + 3);
+    hewn(sky, 0, 0, W, 12, ['#060506', '#0d0b0c', '#151213'], 841, (x, y) => (y > 6 + vnoise(x * .1, 0, 842) * 6 ? null : 1.4 - y / 12));
+    // the First Sleeper: a vast curled hump of dark stone plates, old ember in the seams between them; its heart's red
+    // coming through the plates in the middle
+    const top = gy - 34, sc = W * .56, SL = ['#07050a', '#0e0a0e', '#161013', '#1f1718', '#2a1f1e', '#3e2e29'].map(hx);
+    const hump = x => { const u = (x - W * .2) / (W * .78); if (u < 0 || u > 1) return null; return top + Math.pow(1 - Math.sin(u * Math.PI), 1.4) * 30 + (vnoise(x * .05, 0, 843) - .5) * 3; };
+    const cell = (x, y) => { const cx = Math.floor(x / 9), cy = Math.floor(y / 6); let best = 1e9, second = 1e9, id = 0; for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) { const px = (cx + i + hash(cx + i, cy + j, 844)) * 9, py = (cy + j + hash(cx + i, cy + j, 845)) * 6, d = Math.hypot((x - px) / 1.2, y - py); if (d < best) { second = best; best = d; id = (cx + i) * 131 + cy + j; } else if (d < second) second = d; } return [second - best, id]; };
+    const seams = [];
+    for (let x = 0; x < W; x++) { const t = hump(x); if (t === null) continue; for (let y = Math.floor(t); y < gy + 2; y++) { const [edge, id] = cell(x, y), heat = Math.max(0, 1 - Math.hypot(x - sc, (y - gy + 12) * 1.6) / 34); if (edge < .9) { far.set(x, y, heat > .3 && hash(id, 1, 846) < .7 ? hx('#5a1a0c') : SL[0]); if (heat > .45 && hash(x, y, 847) < .35) seams.push([x, y]); } else far.set(x, y, SL[clampI(Math.round(1.6 + (y - t) / 16 * 1.4 - (x - sc) / W * 1.2 + (hash(id, 2, 848) - .5) * 1.2 + heat * 1.6 + bayer(x, y) * .5 - .25), 5)]); } far.set(x, Math.floor(t), SL[5], .7); }
+    lights.push({ x: sc, y: gy - 12, r: 26, c: '#e83a1a', a: .32, pulse: 1, flick: .14 }, { x: sc, y: gy - 12, r: 8, c: '#ff8a4a', a: .2, pulse: 1, flick: .14 });
+    // its head at the left, laid on the floor of its hollow, the one enormous eye shut, a line of red under the lid
+    const HX = W * .15, HY = gy - 11;
+    far.poly([[HX - 25, HY + 12], [HX - 21, HY - 4], [HX - 7, HY - 12], [HX + 10, HY - 13], [HX + 24, HY - 6], [HX + 26, HY + 12]], SL[3]);
+    far.poly([[HX - 21, HY - 4], [HX - 7, HY - 12], [HX + 10, HY - 13], [HX + 8, HY - 9], [HX - 6, HY - 8], [HX - 18, HY - 1]], SL[4]);
+    far.line(HX - 21, HY - 4, HX - 7, HY - 12, SL[5]); far.line(HX - 7, HY - 12, HX + 10, HY - 13, SL[5]);
+    for (let k = 0; k <= 16; k++) { const u = k / 16, x = HX - 13 + u * 20, y = HY - 3 + Math.sin(u * Math.PI) * 3; far.set(x, y, SL[0]); far.set(x, y + 1, hx('#7a2410')); }
+    for (let k = 0; k <= 16; k += 2) { const u = k / 16; far.set(HX - 13 + u * 20, HY - 5 + Math.sin(u * Math.PI) * 1.2, SL[5]); }
+    lights.push({ x: HX - 3, y: HY - 1, r: 7, c: '#ff3a1a', a: .18, pulse: 1, flick: .11 });
+    // the roots out of the dark roof, bent down into its back
+    const RT = ['#040304', '#0a090b', '#141216', '#211e25', '#302b36'];
+    tube(far, [[W * .36, -8], [W * .42, 10], [W * .46, top + 3]], 5, 4, RT, 7, 849);
+    tube(far, [[W * .6, -8], [W * .56, 12], [W * .6, top - 1]], 7, 5, RT, 7, 850);
+    tube(far, [[W * .86, -8], [W * .8, 14], [W * .76, top + 6]], 4, 3.4, RT, 6, 851);
+    // the chains: great links, each the size of a cart, over its back and down to their stakes
+    const CH = ['#0c0b0d', '#24222a', '#44404c'];
+    const swag = (x0, y0, x1, y1, n, sag) => { for (let k = 0; k < n; k++) { const u = (k + .5) / n, x = x0 + (x1 - x0) * u, y = y0 + (y1 - y0) * u + Math.sin(u * Math.PI) * sag; bigLink(far, x, y, 4.4, 3, CH, k % 2 === 1); } far.rect(x1 - 2, y1, 4, 5, hx('#2a262e')); far.rect(x1 - 3, y1 - 1, 6, 1.6, hx('#4a4450')); };
+    swag(W * .44, top + 2, W * .34, gy + 1, 5, 2); swag(W * .66, top + 1, W * .82, gy + 1, 5, 2); swag(W * .56, top - 1, W * .98, gy - 6, 6, 5);
+    // the walkway's chain rail in the near dark
+    for (const x of [W * .12, W * .5, W * .88]) { mid.rect(x - 1, gy + 1, 2, 9, hx('#1c1a1e')); mid.rect(x - 1, gy + 1, 1, 9, hx('#3e3a42')); }
+    for (let x = 0; x < W; x++) { const u = ((x - W * .12) % (W * .38) + W * .38) % (W * .38) / (W * .38), y = gy + 3 + Math.sin(u * Math.PI) * 3; mid.set(x, y, hx(x % 3 === 0 ? '#4a4652' : '#26242a')); }
+    // the floor: iron plates riveted into black slag, the slag cracked with faint red at the edges
+    const PL = ['#0e0d10', '#151418', '#1d1b21', '#26242b'].map(hx), SG = ['#070506', '#0c0808', '#120c0b'].map(hx);
+    for (let y = gy; y < H; y++) { const hw = W * .3 + (y - gy) * 1.6; for (let x = 0; x < W; x++) { if (Math.abs(x + .5 - W / 2) > hw) { gnd.set(x, y, SG[clampI(Math.round((y - gy) / (H - gy) * 2 + (vnoise(x * .15, y * .3, 852) - .5) * 1.4), 2)]); continue; } const z = (H - (gy - 20)) / (y - (gy - 20)), row = Math.floor(z * 5), col = Math.floor((x - W / 2) * z / 22 + row * .5); gnd.set(x, y, (z * 5) % 1 < .12 * z || ((x - W / 2) * z / 22 + row * .5) % 1 < .05 * z ? PL[0] : PL[clampI(Math.round(1.6 + (hash(col, row, 853) - .5) * .9 + bayer(x, y) * .6 - .3), 3)]); } }
+    const slagCracks = []; for (let k = 0; k < 6; k++) { const sd = k & 1 ? 1 : -1; let x = W / 2 + sd * (W * .34 + hash(k, 1, 854) * 30), y = gy + 6 + hash(k, 2, 854) * (H - gy - 10); const pts = [[x, y]]; for (let j = 0; j < 4; j++) { x += sd * (2 + hash(k, j, 855) * 4); y += (hash(k, j, 856) - .5) * 4; pts.push([x, y]); } slagCracks.push(pts); }
+    lights.push({ cracks: slagCracks, c: '#8a2210' });
+    return { layers: [sky, far, mid, gnd], lights, fx: 'deep', darkAmb: .1 };
+  },
+  // the Worldforge: the Unsmith's forge at the bottom of the world, a colossal hall hewn into the rock and plated with
+  // black iron; the Worldforge itself against the far wall, a furnace as big as a house shaped like a great heart of
+  // black iron and firebrick, its mouth blazing white-gold; molten metal running from it across the floor; chains and
+  // hooks hung with broken relics waiting for the fire; racks of giant tongs and hammers; a great anvil; slag; sparks,
+  // and the air shaking with the heat. Terrible and magnificent
+  worldforge(W, H, gy) {
+    const sky = layer(W, H), far = layer(W, H), mid = layer(W, H), gnd = layer(W, H), lights = [];
+    const fx0 = W / 2, glowAt = (x, y) => Math.max(0, 1 - Math.hypot(x - fx0, (y - gy) * 1.3) / (W * .55));
+    masonry(sky, 0, 0, W, gy + 3, ['#08070a', '#0e0c0f', '#151215', '#1d1818', '#2a1e1a', '#3a2418'], '#040304', 14, 8, 861, (x, y) => .8 + glowAt(x, y) * 3.6 + y / gy * .6);
+    for (let y = 7; y < gy; y += 8) for (let x = 3; x < W; x += 7) sky.set(x + ((y >> 3) & 1) * 3, y, hx('#4a3a32'), .8);
+    // the Worldforge: a heart of black iron bands and firebrick, its mouth an arch blazing white-gold
+    const top = 4, hw = 30, hh = gy - top + 2, HP = heartPts(fx0, top, hw, hh);
+    const FB = ['#1a0c0a', '#2e1410', '#4a1e14', '#6a2c1a'].map(hx), IB = hx('#141116'), IBL = hx('#3a3238');
+    for (let y = 0; y < gy + 3; y++) for (let x = Math.floor(fx0 - hw * 1.3); x < fx0 + hw * 1.3; x++) { if (!inPoly(x + .5, y + .5, HP)) continue; const row = Math.floor(y / 3), brick = y % 3 === 0 || (x + (row & 1) * 3) % 6 === 0; far.set(x, y, brick ? FB[0] : FB[clampI(Math.round(1 + glowAt(x, y) * 1.4 + bayer(x, y) * .5 - .25), 3)]); }
+    for (const a of [.28, .55, .8]) { const y = top + hh * a; for (let x = Math.floor(fx0 - hw * 1.2); x < fx0 + hw * 1.2; x++) if (inPoly(x + .5, y + .5, HP)) { far.set(x, y, IB); far.set(x, y + 1, IB); far.set(x, y - 1, IBL, .6); } }
+    for (let k = 0; k < HP.length - 1; k++) far.line(HP[k][0], HP[k][1], HP[k + 1][0], HP[k + 1][1], IB);
+    const mw = 10, my = gy - 1, mt = gy - 20;
+    far.poly([[fx0 - mw, my], [fx0 - mw, mt + mw], [fx0 - mw * .7, mt + 3], [fx0, mt], [fx0 + mw * .7, mt + 3], [fx0 + mw, mt + mw], [fx0 + mw, my]], hx('#ffb040'));
+    far.poly([[fx0 - mw + 3, my], [fx0 - mw + 3, mt + mw + 2], [fx0, mt + 5], [fx0 + mw - 3, mt + mw + 2], [fx0 + mw - 3, my]], hx('#fff0c0'));
+    lights.push({ x: fx0, y: my - 8, r: 34, c: '#ffae3a', a: .55, flick: 1.3, core: [[fx0 - 1, my - 6], [fx0 + 1, my - 9], [fx0, my - 12]] }, { x: fx0, y: my - 6, r: 12, c: '#fff4d0', a: .35, flick: 2.1 });
+    // chains from the dark roof, hooks hung with broken relics waiting for the fire
+    const RL = ['#b89a60', '#8a8e9a', '#c8a040', '#7a6aa0'].map(hx);
+    for (const [x, len, kind] of [[W * .14, 26, 0], [W * .24, 18, 1], [W * .76, 22, 2], [W * .88, 30, 3]]) {
+      chainDown(far, x, 0, len, '#3a3438'); far.line(x, len, x + 2, len + 2, hx('#4a4448')); far.line(x + 2, len + 2, x + 1, len + 4, hx('#4a4448'));
+      const c = RL[kind], y = len + 5;
+      if (kind === 0) { far.line(x - 1, y - 2, x + 5, y + 6, c); far.line(x - 2, y, x + 1, y - 3, c); }
+      else if (kind === 1) { far.disc(x + 1, y + 1, 2.4, c); far.disc(x + 1, y + 1, 1.2, hx('#0c0a0c')); }
+      else if (kind === 2) { far.rect(x - 2, y, 7, 2, c); for (const dx of [-2, 0.5, 3]) far.line(x + dx, y, x + dx, y - 2, c); }
+      else { far.line(x, y - 2, x, y + 8, c); far.line(x - 2, y + 1, x + 2, y + 1, c); }
+      lights.push({ x: x + 1, y, r: 4, c: '#ffae3a', a: .1, flick: .5 + x * .01 });
+    }
+    // the racks of giant tongs and hammers on the walls; slag heaps; the great anvil to one side
+    for (const x0 of [W * .04, W * .9]) { mid.rect(x0, gy - 30, 12, 2, hx('#2a1e18')); for (let k = 0; k < 3; k++) { const x = x0 + 2 + k * 4; if (k % 2) { mid.line(x, gy - 28, x, gy - 10, hx('#2a262a')); mid.rect(x - 1.5, gy - 12, 4, 4, hx('#2a262a')); mid.set(x - 1, gy - 12, hx('#6a5a50')); } else { mid.line(x - .6, gy - 28, x - 1.8, gy - 10, hx('#2a262a')); mid.line(x + .6, gy - 28, x + 1.8, gy - 10, hx('#2a262a')); } } }
+    const AN = ['#0e0c0e', '#2a2426', '#6a5a52'].map(hx), ax = W * .2, ay = gy + 8;
+    mid.poly([[ax - 12, ay - 10], [ax + 8, ay - 10], [ax + 18, ay - 8.6], [ax + 8, ay - 6.4], [ax + 4, ay - 6], [ax + 3, ay - 3], [ax + 7, ay], [ax - 8, ay], [ax - 4, ay - 3], [ax - 5, ay - 6], [ax - 12, ay - 7.6]], AN[1]);
+    mid.line(ax - 12, ay - 10, ax + 8, ay - 10, AN[2]); mid.line(ax + 8, ay - 10, ax + 18, ay - 8.6, AN[2]); mid.rect(ax - 8, ay - 1, 15, 1, AN[0]);
+    for (const [x, r] of [[W * .9, 7], [W * .78, 5]]) for (let y = Math.floor(gy + 6 - r); y < gy + 7; y++) for (let xx = Math.floor(x - r * 1.4); xx < x + r * 1.4; xx++) { const d = Math.hypot((xx - x) / 1.4, y - (gy + 6)) / r; if (d < 1) mid.set(xx, y, hx(['#0c0808', '#1a1210', '#2a1c16'][clampI(Math.round((1 - d) * 2 + bayer(xx, y) * .6 - .3), 2)])); }
+    // the floor: iron plates and hammered stone, and the molten channels running across it from the forge
+    paving(gnd, gy, gy - 24, ['#0c0a0b', '#141011', '#1c1616', '#261c1a'], '#050304', 14, 6, 862, (x, y) => 1 + glowAt(x, y) * 2.2 + (y - gy) / (H - gy) * .6);
+    const chan = (pts, w) => { for (let s = 0; s < pts.length - 1; s++) { gnd.thick(pts[s][0], pts[s][1], pts[s + 1][0], pts[s + 1][1], w + 1.2, w + 1.2, hx('#1a0e0a')); gnd.thick(pts[s][0], pts[s][1], pts[s + 1][0], pts[s + 1][1], w, w, hx('#ff8a24')); gnd.line(pts[s][0], pts[s][1], pts[s + 1][0], pts[s + 1][1], hx('#fff0b0'), .8); } return pts; };
+    const c1 = chan([[fx0 - 4, gy + 1], [fx0 - 14, gy + 8], [fx0 - 34, gy + 14], [fx0 - 70, gy + 24], [fx0 - 96, gy + 30]], 1.1);
+    const c2 = chan([[fx0 + 4, gy + 1], [fx0 + 16, gy + 10], [fx0 + 40, gy + 22], [fx0 + 84, gy + 44]], 1.3);
+    lights.push({ cracks: [c1, c2], c: '#ffd070' });
+    for (const p of [c1[2], c2[2], c2[3]]) lights.push({ x: p[0], y: p[1], r: 10, c: '#ff8a24', a: .22, pulse: 1, flick: .7 + p[0] * .01 });
+    return { layers: [sky, far, mid, gnd], lights, fx: 'forge', darkAmb: .16 };
+  },
+});
+
 // the dark treatment: everything falls toward a violet-black, except around the lights that stay lit
 // (a light with out: true goes out in the dark) and inside beams of moonlight
 function inPoly(px, py, pts) { let ins = false; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [xi, yi] = pts[i], [xj, yj] = pts[j]; if ((yi > py) !== (yj > py) && px < (xj - xi) * (py - yi) / (yj - yi) + xi) ins = !ins; } return ins; }
@@ -1887,6 +2112,12 @@ export function ambient(key, t, o = {}) {
       case 'moth': { const cx = (hash(k % 4, 4, 8) * .7 + .15) * w, cy = gy - 14 + hash(k % 4, 5, 8) * 16; out.push({ x: cx + Math.cos(t * 2.2 * sp + k * 1.9) * 7 + Math.sin(t * 9 + k) * 1, y: cy + Math.sin(t * 1.7 * sp + k * 2.7) * 5, c: k % 2 ? [236, 226, 196] : [255, 236, 170], a: .75 }); break; }
       case 'bubble': { const ph = (t * .07 * sp + r3) % 1; out.push({ x: r1 * w + Math.sin(t * 2 + k) * 1.2, y: h - ph * (h - gy * .4), c: k % 3 ? [150, 214, 196] : [214, 250, 236], a: Math.min(1, ph * 6) * (1 - ph) * .75 }); break; }
       case 'spray': { const ph = (t * .28 * sp + r3) % 1; out.push({ x: (r1 * w + ph * 18) % w, y: gy + r2 * (h - gy) * .3 - Math.sin(ph * Math.PI) * 9, c: [206, 222, 226], a: Math.sin(ph * Math.PI) * .6 }); break; }
+      // M7: cold ash hanging in the Hollow Hall with the gift's violet in it; ash coming down the Ash Stair and embers
+      // going up it; the Sleeper's slow red motes in the Chained Deep; the Worldforge's sparks and the shimmer of its heat
+      case 'hollow': { const ph = (t * .02 * sp + r3) % 1; out.push(k % 4 === 0 ? { x: r1 * w + Math.sin(t * .6 + k) * 5, y: gy - 6 - ph * gy * .7, c: [176, 118, 240], a: Math.sin(ph * Math.PI) * .7 } : { x: (r1 * w + Math.sin(t * .4 + k * 1.3) * 4) % w, y: r3 * h * .95 + Math.sin(t * .3 + k) * 2, c: r2 > .5 ? [128, 122, 132] : [92, 88, 98], a: .35 + .2 * Math.sin(t * .7 + k) }); break; }
+      case 'ashfall': { const ph = (t * .04 * sp + r3) % 1; out.push(k % 5 === 0 ? { x: r1 * w + Math.sin(t * 1.2 + k) * 3, y: h - ph * h, c: [255, 140, 60], a: Math.min(1, (1 - ph) * 2) * .8 } : { x: (r1 * w + Math.sin(t * .8 + k * 1.3) * 6) % w, y: ph * h, c: r2 > .5 ? [178, 172, 164] : [130, 124, 118], a: .7 }); break; }
+      case 'deep': { const ph = (t * .018 * sp + r3) % 1; out.push({ x: r1 * w + Math.sin(t * .4 + k * 1.7) * 6, y: gy + 8 - ph * (gy + 4), c: k % 3 ? [200, 70, 40] : [255, 130, 80], a: Math.sin(ph * Math.PI) * (.5 + .3 * Math.sin(t * .8 + k)) }); break; }
+      case 'forge': { const ph = (t * .12 * sp + r3) % 1; out.push(k % 3 === 0 ? { x: w * .5 + (r1 - .5) * w * .5 + Math.sin(t * 2 + k) * 2, y: gy - ph * gy * .9, c: [255, 236, 170], a: (1 - ph) * .9 } : { x: r1 * w + Math.sin(t * 1.6 + k) * 3 + ph * 5, y: h - ph * h, c: r2 > .5 ? [255, 160, 60] : [255, 110, 40], a: Math.min(1, (1 - ph) * 2.2) * .85 }); break; }
     }
   }
   if (S.dark) for (const p of out) p.a *= .55;
