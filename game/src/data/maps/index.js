@@ -12,6 +12,8 @@
 // id; stand:[x,y,face]; cold?), npc, gate, lock, chest, sign, board, table, pedestal, lookout,
 // bellframe, prop, trigger, light. Entity ids are unique within a map; lock, gate, chest and
 // trigger ids are unique across all maps (flags.unlocked / opened / seen are keyed by them).
+// A prop is drawn on every tile of its `area` (a gate's look, the vault's boxes); a large one (Hush, the black barge,
+// the First Sleeper, the Worldforge) is one entity at its sprite's foot (`at`), drawn once, with solid tiles round it.
 // Map rules that test/maps.test.mjs enforces (so new maps, e.g. M4's, keep the world playable):
 //   - a Hearthfire touches its stand, so `interact` from the stand reaches it;
 //   - every CRITICAL_PATH target is reachable with only the starter relic at the worst-case levels,

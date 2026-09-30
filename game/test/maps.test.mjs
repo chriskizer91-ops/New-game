@@ -22,7 +22,10 @@
 // M7: the same for the Hearth Below: it opens down the vault stair in the Great Hall once the fifth council is sat, the
 // stair back is shut from the first Council fight until the last, every ACT3_PATH target is reachable from a
 // Gloomfen-complete party with only its starter relic, no lock stands below, every entity is reachable with every key,
-// the maps hold what spec §2.3 puts on them, and the roads are spec §2.2's gate by gate.
+// the maps hold what spec §2.3 puts on them, the roads are spec §2.2's gate by gate, the layouts are batch 4's words
+// place by place (the nave and its chairs, the landings and the narrows, the floors round the Sleeper that never meet,
+// the moat and the bridge, the heart only past the Unsmith), the large props are drawn once and stand in solid ground,
+// every edge is closed but for the exits, and the Ash Stair's patrols keep to its landings.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { MAPS, MAP_IDS, ENTITY_OF, anchor, v1Anchor } from '../src/data/maps/index.js';
@@ -1474,13 +1477,15 @@ test('every Hearth Below entity is reachable with every key', () => {
 
 // What spec §2.3 (with §2.5, §2.6, §3.1, §3.3) puts on each map: its biome and backdrop, its Hearthfires (true = cold), its
 // fights and their modes, and its people. Road-first (A3): every route fight stands still (a block or a lair); only the
-// zone's packs roam. STUB from the M7 scaffold: the biomes and backdrops here are the scaffold's stand-ins; P2 and P5 give
-// the maps the spec's biomes (council, ash, chains and forge), and P6 each map its own backdrop (spec §6.2, §8).
+// zone's packs roam. Each map fights on its own backdrop (spec §6.2, P6's). STUB (M7 P2): the biomes are drawn stand-ins
+// (Ironhold's, Scorchgate's and Harrow's Forge's tiles) until art/tiles.js draws the spec's four (council, hearth-roots,
+// chains and worldforge, P5's): test/world-art.test.mjs wants every map's biome drawn. The lead switches the maps and
+// these four values together.
 const ACT3_SPEC = {
-  'hollow-hall': { biome: 'vault', backdrop: 'scorchgate-vaults', fires: {}, fights: { 'hollow-miravel': 'block', 'hollow-qasim': 'block', 'hollow-brundar': 'block', 'hollow-gretch': 'block' }, npcs: [] },
-  'ash-stair': { biome: 'ash', backdrop: 'scorchgate', fires: { 'under-coal': true }, fights: { 'as-thralls': 'block', 'as-patrol': 'pack' }, npcs: [] },
-  'chained-deep': { biome: 'ice-cave', backdrop: 'frostmere-below', fires: { 'chain-fire': false }, fights: { 'cd-unmade': 'block' }, npcs: ['tamsin'] },
-  worldforge: { biome: 'forge', backdrop: 'harrows-forge', fires: {}, fights: { 'wf-warden': 'block', unsmith: 'lair' }, npcs: [] },
+  'hollow-hall': { biome: 'dwarf-hall', backdrop: 'hollow-hall', fires: {}, fights: { 'hollow-miravel': 'block', 'hollow-qasim': 'block', 'hollow-brundar': 'block', 'hollow-gretch': 'block' }, npcs: [] },
+  'ash-stair': { biome: 'ash', backdrop: 'ash-stair', fires: { 'under-coal': true }, fights: { 'as-thralls': 'block', 'as-patrol': 'pack' }, npcs: [] },
+  'chained-deep': { biome: 'forge', backdrop: 'chained-deep', fires: { 'chain-fire': false }, fights: { 'cd-unmade': 'block' }, npcs: ['tamsin'] },
+  worldforge: { biome: 'forge', backdrop: 'worldforge', fires: {}, fights: { 'wf-warden': 'block', unsmith: 'lair' }, npcs: [] },
 };
 
 test('the Hearth Below maps hold what spec §2.3 puts on them', () => {
@@ -1536,8 +1541,14 @@ test('the Hearth Below maps hold what spec §2.3 puts on them', () => {
   assert.deepEqual(on('chained-deep', 'cd-chain-gate').open, { beaten: 'cd-unmade' });
   assert.equal(on('chained-deep', 'cd-chain-gate').guard, 'cd-unmade');
   assert.ok(on('chained-deep', 'chain-fire').at[0] > on('chained-deep', 'cd-chain-gate').area[2], 'the Chain Fire is past the narrows');
+  // the First Sleeper: one solid prop, drawn once at its foot (M6's rule for a large sprite: the view draws a prop on every
+  // tile of an `area`), deep in its solid hollow: every tile within 3 of its foot is solid, so it is large and nobody
+  // walks under it
   const sleeper = on('chained-deep', 'sleeper-first');
-  assert.ok(sleeper.kind === 'prop' && sleeper.solid && cellsOf(sleeper).length >= 9, 'the First Sleeper, large and solid');
+  assert.ok(sleeper.kind === 'prop' && sleeper.prop === 'sleeper-first' && sleeper.solid && sleeper.at && !sleeper.area, 'the First Sleeper, one solid prop at its foot');
+  const [sx, sy] = sleeper.at, deep = MAPS['chained-deep'];
+  const hollow = cellsOf({ area: [sx - 3, sy - 3, sx + 3, sy + 3] }).filter(([x, y]) => x !== sx || y !== sy);
+  assert.ok(hollow.length === 48 && hollow.every(([x, y]) => solidTile(deep, x, y)), 'the First Sleeper, large and solid: its hollow is solid all round it');
   for (const chain of ['cd-chain-lull', 'cd-chain-ash', 'cd-chain-hush']) assert.equal(on('chained-deep', chain)?.kind, 'sign', chain);
   const tamsin = on('chained-deep', 'cd-tamsin');
   assert.equal(tamsin.npc, 'tamsin');
@@ -1589,6 +1600,181 @@ test('the Hearth Below roads are spec §2.2\'s, gate by gate, and every gate bel
       assert.ok((MAPS[id].roads || []).some(r => r.gates.includes(e.id)), `${id}/${e.id} holds one of ${id}'s roads`);
     }
   }
+});
+
+// ---- M7: the layouts batch 4 describes (art-requests/batch-4/places.md), place by place ---------------------------
+
+// The tiles a party can walk to on one map from (x, y), through the engine's canWalk (the walk stops on an exit).
+function reachOn(g, mapId, [x, y]) {
+  const m = MAPS[mapId], seen = new Set([`${x},${y}`]), q = [[x, y]];
+  while (q.length) {
+    const [cx, cy] = q.pop();
+    if ((cx !== x || cy !== y) && m.exits.some(ex => covers(ex, cx, cy))) continue;
+    for (const [d, [dx, dy]] of Object.entries(DIRS)) {
+      const nx = cx + dx, ny = cy + dy, k = `${nx},${ny}`;
+      if (seen.has(k) || !canWalk(g, mapId, nx, ny, { dir: d })) continue;
+      seen.add(k);
+      q.push([nx, ny]);
+    }
+  }
+  return seen;
+}
+// you can stand beside it (and face it)
+const besideIn = (set, e) => cellsOf(e).some(([x, y]) => Object.values(DIRS).some(([dx, dy]) => set.has(`${x + dx},${y + dy}`)));
+const fromAnchor = (map, name) => { const a = anchor(map, name); return [a.x, a.y]; };
+
+test('the Hearth Below is laid out as batch 4 describes it: the ways in and on, the nave and its chairs, the landings and the narrows, the floors round the Sleeper, the moat and the bridge', () => {
+  const ent = (map, id) => MAPS[map].entities.find(e => e.id === id);
+  const exit = (map, id) => MAPS[map].exits.find(e => e.id === id);
+  const midOf = e => { const [x0, y0, x1, y1] = areaOf(e); return [(x0 + x1) / 2, (y0 + y1) / 2]; };
+
+  // The Hollow Hall: the stair in (three wide) at the bottom edge near the west end, the stair down (three wide) at the
+  // east end by the east wall; each soot line and its keeper fill the nave, five wide, the same five rows all along; the
+  // chairs alternate sides (the tree north, the sun south, the anvil north, the lantern south), west to east, each
+  // behind its line; the alms chest in the north wall past the fourth chair
+  const hall = MAPS['hollow-hall'];
+  const hhUp = exit('hollow-hall', 'hh-up'), hhDown = exit('hollow-hall', 'hh-down');
+  assert.ok(hhUp.area[3] === hall.h - 1 && hhUp.area[2] < hall.w / 3 && hhUp.area[2] - hhUp.area[0] + 1 === 3, 'the stair in: three wide, at the bottom edge near the west end');
+  assert.ok(hhDown.area[0] >= hall.w - 5 && hhDown.area[3] - hhDown.area[1] + 1 === 3, 'the stair down: three wide, at the east end by the east wall');
+  const nave = COUNCIL.map((enc, k) => {
+    const gate = ent('hollow-hall', `hh-gate-${k + 1}`), who = ent('hollow-hall', enc);
+    const cells = [...cellsOf(gate), who.at];
+    assert.ok(cells.every(([x]) => x === gate.area[0]), `hh-gate-${k + 1} and ${enc} stand across the nave`);
+    return cells.map(([, y]) => y).sort((a, b) => a - b);
+  });
+  for (const ys of nave) assert.deepEqual(ys, nave[0], 'the nave keeps its five rows all along');
+  assert.deepEqual(nave[0], [0, 1, 2, 3, 4].map(k => nave[0][0] + k), 'each soot line and its keeper fill the nave, five wide');
+  const [naveTop, naveBottom] = [nave[0][0], nave[0][4]];
+  const chairs = ['hh-chair-verdant', 'hh-chair-sunscorch', 'hh-chair-ironspire', 'hh-chair-gloomfen'].map(id => ent('hollow-hall', id));
+  chairs.forEach((c, k) => {
+    assert.ok(k % 2 === 0 ? c.at[1] < naveTop - 1 : c.at[1] > naveBottom + 1, `${c.id}: in a bay behind the ${k % 2 === 0 ? 'north' : 'south'} pillars`);
+    assert.ok(Math.abs(c.at[0] - ent('hollow-hall', `hh-gate-${k + 1}`).area[0]) <= 2, `${c.id}: its soot line crosses the nave before it`);
+    const who = ent('hollow-hall', COUNCIL[k]);
+    assert.ok(k % 2 === 0 ? who.at[1] === naveTop : who.at[1] === naveBottom, `${COUNCIL[k]} stands at the soot line's end on the side of the chair`);
+  });
+  const alms = ent('hollow-hall', 'hh-alms');
+  assert.ok(alms.at[0] > ent('hollow-hall', 'hh-gate-4').area[0] && alms.at[1] < naveTop, 'the alms chest: in the north wall, past the fourth chair');
+
+  // The Ash Stair: in at the top edge left of centre, on at the bottom edge; the Under-Coal on the first landing (the
+  // top third, east); the narrows three wide between two iron roots; two wide landings, one west in the middle third and
+  // one east in the lower third; the cache off the middle landing, below the narrows (the way on reaches it with the
+  // ash gate shut, the way in does not)
+  const st = MAPS['ash-stair'];
+  const asUp = exit('ash-stair', 'as-up'), asDown = exit('ash-stair', 'as-down');
+  assert.ok(asUp.area[1] === 0 && midOf(asUp)[0] < st.w / 2, 'the way in: the top edge, left of centre');
+  assert.ok(asDown.area[3] === st.h - 1, 'the way on: the bottom edge');
+  const coal = ent('ash-stair', 'under-coal');
+  assert.ok(coal.at[1] < st.h / 3 && coal.at[0] > st.w / 2, 'the Under-Coal: on the first landing, in the top third, east');
+  const ash = ent('ash-stair', 'as-ash-gate'), [ax0, ay, ax1] = ash.area;
+  assert.ok(ay === ash.area[3] && ax1 - ax0 + 1 === 3, 'the narrows: three wide');
+  assert.ok(st.rows[ay][ax0 - 1] === 'Y' && st.rows[ay][ax1 + 1] === 'Y', 'the narrows: between two great iron roots');
+  const [west, east] = [...st.roam.rects].sort((a, b) => a[0] - b[0]);
+  assert.equal(st.roam.rects.length, 2, 'two wide landings');
+  assert.ok((west[0] + west[2]) / 2 < st.w / 2 && (west[1] + west[3]) / 2 >= st.h / 3 && (west[1] + west[3]) / 2 < (2 * st.h) / 3, 'one landing west, in the middle third');
+  assert.ok((east[0] + east[2]) / 2 > st.w / 2 && (east[1] + east[3]) / 2 >= (2 * st.h) / 3, 'the other east, in the lower third');
+  for (const r of st.roam.rects) assert.ok(r[2] - r[0] + 1 >= 8, `landing [${r}] is about ten across`);
+  const before = belowStage('hearthbrand', AP.indexOf('as-thralls'));
+  assert.ok(present(before, 'ash-stair').some(e => e.id === 'as-ash-gate' && e.state === 'closed'), 'the ash gate is shut before the thralls fall');
+  const cache = ent('ash-stair', 'as-cache');
+  assert.ok(!besideIn(reachOn(before, 'ash-stair', fromAnchor('ash-stair', 'from-hall')), cache), 'the cache lies below the narrows');
+  assert.ok(besideIn(reachOn(before, 'ash-stair', fromAnchor('ash-stair', 'from-deep')), cache), 'the cache is off the middle landing');
+
+  // The Chained Deep: in by the stair at the north-west corner, on through the forge door in the middle of the east
+  // edge; the narrows three wide; the Sleeper in the middle; the chain to the south-west read in the west, the chain to
+  // the south-east in the east, the chain to the south edge from the middle; Tamsin on the paving before the door. The
+  // floors round the Sleeper never meet: with the chain gate shut, the way in reaches only the west chain, and the way
+  // back from the forge door only the east one and Tamsin
+  const deep = MAPS['chained-deep'];
+  const cdUp = exit('chained-deep', 'cd-up'), cdForge = exit('chained-deep', 'cd-forge');
+  assert.ok(cdUp.area[1] === 0 && cdUp.area[2] < deep.w / 4, 'the way in: the stair at the north-west corner');
+  assert.ok(cdForge.area[0] === deep.w - 1 && cdForge.area[1] <= deep.h / 2 && cdForge.area[3] >= deep.h / 2, 'the forge door: the middle of the east edge');
+  const chainGate = ent('chained-deep', 'cd-chain-gate');
+  assert.equal(cellsOf(chainGate).length, 3, 'the narrows: three wide');
+  const [fx, fy] = ent('chained-deep', 'sleeper-first').at;
+  assert.ok(fx >= deep.w / 3 && fx < (2 * deep.w) / 3 && fy >= deep.h / 3 && fy < (2 * deep.h) / 3, 'the First Sleeper: in the middle');
+  const [lull, ashChain, hush] = ['cd-chain-lull', 'cd-chain-ash', 'cd-chain-hush'].map(id => ent('chained-deep', id));
+  assert.ok(lull.at[0] < deep.w / 2 && hush.at[0] > deep.w / 2 && ashChain.at[0] >= deep.w / 3 && ashChain.at[0] < (2 * deep.w) / 3, 'the chains: south-west, south-east, and the one down the middle');
+  for (const c of [lull, ashChain, hush]) assert.equal(c.look, 'chain', `${c.id} looks like a chain`);
+  const tamsin = ent('chained-deep', 'cd-tamsin');
+  assert.ok(Math.abs(tamsin.at[0] - cdForge.area[0]) <= 4 && tamsin.at[1] >= cdForge.area[1] && tamsin.at[1] <= cdForge.area[3], 'Tamsin waits on the paving before the forge door');
+  const shut = belowStage('hearthbrand', AP.indexOf('cd-unmade'));
+  assert.ok(present(shut, 'chained-deep').some(e => e.id === 'cd-chain-gate' && e.state === 'closed'), 'the chain gate is shut before the unmade fall');
+  const inWest = reachOn(shut, 'chained-deep', fromAnchor('chained-deep', 'from-stair'));
+  const inEast = reachOn(shut, 'chained-deep', fromAnchor('chained-deep', 'from-forge'));
+  assert.ok(besideIn(inWest, lull) && !besideIn(inWest, hush) && !besideIn(inWest, tamsin), 'from the way in: the west floor and its chain, and nothing past the narrows');
+  assert.ok(besideIn(inEast, hush) && besideIn(inEast, tamsin) && !besideIn(inEast, lull), 'from the forge door: the east floor and its chain, and Tamsin');
+  assert.ok(besideIn(inEast, ashChain), 'the chain down the middle is read from the walkway past the narrows');
+
+  // The Worldforge: in by the iron door in the middle of the west edge; the molten moat three wide from the north edge
+  // to the south, about a third of the way in; the bridge three wide in line with the door, its gate at the near end;
+  // the heart's step behind the Unsmith, and nobody reaches it past him while he stands
+  const wf = MAPS.worldforge;
+  const wfOut = exit('worldforge', 'wf-out');
+  assert.ok(wfOut.area[0] === 0 && wfOut.area[1] <= wf.h / 2 && wfOut.area[3] >= wf.h / 2 - 1, 'the way in: the middle of the west edge');
+  const moat = [];
+  for (let x = 0; x < wf.w; x++) if (wf.rows.every(r => r[x] === '~' || r[x] === 'b')) moat.push(x);
+  assert.deepEqual(moat, [moat[0], moat[0] + 1, moat[0] + 2], 'the moat: one channel, three wide, from the north edge to the south');
+  assert.ok(moat[0] >= wf.w / 4 && moat[0] < wf.w / 2, 'the moat: about a third of the way in');
+  const bridgeRows = [...new Set(wf.rows.flatMap((r, y) => (r[moat[0]] === 'b' ? [y] : [])))];
+  assert.equal(bridgeRows.length, 3, 'the bridge: three wide');
+  assert.deepEqual(bridgeRows, cellsOf(wfOut).map(([, y]) => y), 'the bridge: in line with the door');
+  for (const x of moat) for (const y of bridgeRows) assert.equal(wf.rows[y][x], 'b', `the bridge spans the moat at (${x},${y})`);
+  assert.deepEqual(ent('worldforge', 'wf-bridge-gate').area, [moat[0], bridgeRows[0], moat[0], bridgeRows[2]], 'the bridge gate: across the bridge\'s near end');
+  const heart = ent('worldforge', 'wf-heart');
+  const facing = belowStage('hearthbrand', AP.indexOf('unsmith'));
+  assert.ok(!besideIn(reachOn(facing, 'worldforge', fromAnchor('worldforge', 'from-deep')), heart), 'the heart: only past the Unsmith, while he stands');
+  assert.ok(besideIn(reachOn(belowStage('hearthbrand', AP.length), 'worldforge', fromAnchor('worldforge', 'from-deep')), heart), 'the heart: open once he is beaten');
+});
+
+test('the Hearth Below\'s large props are each drawn once, at their foot, and stand in solid ground (the Sleeper, the Worldforge, the great anvil)', () => {
+  // the view draws a prop on every tile of an `area` (M6's rule: a large sprite is one entity at its foot, as the
+  // Belfry's Lull and Rotbridge's barge are); the tiles beside and above the foot are solid, so the sprite never stands
+  // over open floor
+  for (const [map, id, prop] of [['chained-deep', 'sleeper-first', 'sleeper-first'], ['worldforge', 'wf-furnace', 'worldforge'], ['worldforge', 'wf-anvil', 'great-anvil']]) {
+    const m = MAPS[map], e = m.entities.find(x => x.id === id);
+    assert.ok(e && e.kind === 'prop' && e.prop === prop && e.solid, `${map}/${id}: a solid ${prop}`);
+    assert.ok(e.at && !e.area, `${map}/${id}: one entity at its foot, drawn once`);
+    const [x, y] = e.at;
+    assert.ok(!solidTile(m, x, y), `${map}/${id} stands on ground`);
+    for (const [cx, cy] of [[x - 1, y], [x + 1, y], [x - 1, y - 1], [x, y - 1], [x + 1, y - 1]]) assert.ok(solidTile(m, cx, cy), `${map}/${id}: (${cx},${cy}) beside or above its foot is solid`);
+  }
+});
+
+test('every Hearth Below map is closed at its edges but for its exits, and the Ash Stair\'s patrols keep to its landings', () => {
+  for (const id of BELOW) {
+    const m = MAPS[id];
+    for (let y = 0; y < m.h; y++) {
+      for (let x = 0; x < m.w; x++) {
+        if (x > 0 && y > 0 && x < m.w - 1 && y < m.h - 1) continue;
+        assert.ok(solidTile(m, x, y) || m.exits.some(ex => covers(ex, x, y)), `${id} (${x},${y}): the edge is open`);
+      }
+    }
+  }
+  // the stair's steps are never roamed (rules/world.js roamMask), so each landing is an island: no patrol can wander
+  // onto the stair, into the narrows or to an exit
+  const st = MAPS['ash-stair'], mask = roamMask(st);
+  const gate = st.entities.find(e => e.id === 'as-ash-gate');
+  for (const [x0, y0, x1, y1] of st.roam.rects) {
+    const seen = new Set(), q = [];
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (mask[y * st.w + x]) { seen.add(`${x},${y}`); q.push([x, y]); }
+    assert.ok(q.length >= 24, 'a roomy landing');
+    while (q.length) {
+      const [x, y] = q.pop();
+      for (const [dx, dy] of Object.values(DIRS)) {
+        const nx = x + dx, ny = y + dy, k = `${nx},${ny}`;
+        if (nx < 0 || ny < 0 || nx >= st.w || ny >= st.h || seen.has(k) || !mask[ny * st.w + nx]) continue;
+        seen.add(k);
+        q.push([nx, ny]);
+      }
+    }
+    for (const k of seen) {
+      const [x, y] = k.split(',').map(Number);
+      assert.ok(x >= x0 && x <= x1 && y >= y0 && y <= y1, `the landing [${x0},${y0},${x1},${y1}]'s patrols stay on it (they could reach ${k})`);
+    }
+    assert.ok(!cellsOf(gate).some(([x, y]) => seen.has(`${x},${y}`)), 'no patrol reaches the narrows');
+  }
+  const pack = st.entities.find(e => e.id === 'as-patrol');
+  assert.ok(st.roam.rects.some(([x0, y0, x1, y1]) => pack.at[0] >= x0 && pack.at[0] <= x1 && pack.at[1] >= y0 && pack.at[1] <= y1), 'the pack is at home on a landing');
 });
 
 test('every gated exit carries its sealed text: the rules shut only a sealed exit, so a gate alone would stand open', () => {

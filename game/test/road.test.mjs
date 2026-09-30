@@ -167,3 +167,26 @@ test('no fight on the route or a lead roams, and every route fight holds a gate,
   assert.deepEqual(route.filter(id => ENCOUNTERS[id].finale), ['unsmith']);
   assert.equal(ACT3_PATH.at(-1), 'unsmith');
 });
+
+// M7 (spec §2.2, A3): Act III's road is one road. It starts where the Great Hall's vault stair lands, each map's road
+// ends at the exit whose anchor starts the next map's road, and the last one ends at the finale.
+test('the Act III road runs unbroken from the vault stair to the finale (M7)', () => {
+  const down = MAPS['keep-hall'].exits.find(x => x.id === 'hall-down');
+  let next = { map: down.to, anchor: down.anchor };
+  const walked = [];
+  for (let hop = 0; hop < 8; hop++) {
+    const map = MAPS[next.map];
+    assert.equal(map.region, 'below', `${map.id} lies below the Keep`);
+    assert.equal(map.roads?.length, 1, `${map.id}: one road`);
+    const road = map.roads[0];
+    assert.equal(road.from, next.anchor, `${map.id}'s road starts where the way down lands (${next.anchor})`);
+    walked.push(map.id);
+    const exit = map.exits.find(x => x.id === road.to);
+    if (!exit) {
+      assert.equal(ENCOUNTERS[road.to]?.finale, true, `${map.id}'s road ends at the finale`);
+      break;
+    }
+    next = { map: exit.to, anchor: exit.anchor };
+  }
+  assert.deepEqual(walked, ['hollow-hall', 'ash-stair', 'chained-deep', 'worldforge']);
+});

@@ -84,10 +84,10 @@ export default deepFreeze({
     { id: 'hall-s', area: [12, 13, 12, 13], to: 'keep', anchor: 'from-hall' },
     // M4: the door to the Sunscorch Gallery, the reliquary's second room
     { id: 'hall-e', area: [23, 11, 23, 11], to: 'keep-gallery', anchor: 'from-hall' },
-    // M7 (spec A5, §2.2): the vault floor opens onto the stair down to the Hollow Hall once the fifth council has sat.
-    // STUB from the M7 scaffold: its sealed words are a first draft (P2 and P3 word them).
+    // M7 (spec A5, §2.2): the vault floor opens onto the stair down to the Hollow Hall once the fifth council has sat (the
+    // vault-stair prop above is drawn on the same two tiles); until then its words say only that something is under it.
     { id: 'hall-down', area: [21, 8, 22, 8], to: 'hollow-hall', anchor: 'from-vault', gate: { flag: 'council-5-done' },
-      sealed: { region: 'below', text: 'The vault floor is old stone, cold as a well. Something under it is colder.', hint: 'It opens once the Council has sat a fifth time.' } },
+      sealed: { region: 'below', text: 'The vault floor is old stone, and cold air comes up between the slabs. It smells of ash.', hint: 'The floor opens once the Council has sat a fifth time.' } },
   ],
   anchors: { start: [12, 6, 'n'], 'from-court': [12, 12, 'n'], 'v1:hearthstone-keep': [12, 6, 'n'], 'v1:keep-vault': [18, 7, 'e'], 'from-gallery': [22, 11, 'w'], 'from-below': [21, 7, 'w'] },
   roam: null,
