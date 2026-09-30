@@ -292,6 +292,11 @@ function offhandParts(F, o, J, anchors) {
     F.add({ mat: mt(o.metal, 'iron'), prof: 'round', bw: .6, grp: 'focus', shapes: [C(add(h, [0, .4]), add(h, [0, 1.3]), .4), RECT(h[0] - 1.3, h[1] + 1.3, h[0] + 1.3, h[1] + 4)] });
     F.add({ mat: glow || 'ember', prof: 'flat', grp: 'focus', noShadow: true, shapes: [RECT(h[0] - .6, h[1] + 2, h[0] + .6, h[1] + 3.4)] });
     anchors.g_offhand = [h[0] - .9, h[1] + 1.6];
+  } else if (o.look === 'chalice') { // M7: a chalice held up, a light standing over its rim (the Hollow Chalice)
+    const c = [h[0] + (dir === 'e' ? -.4 : 0), h[1] - 1.2], m = mt(o.metal, 'gold');
+    F.add({ mat: m, prof: 'round', bw: .6, grp: 'chalice', shapes: [P([[c[0] - 1.8, c[1] - 2.3], [c[0] + 1.8, c[1] - 2.3], [c[0] + .8, c[1] - .2], [c[0] - .8, c[1] - .2]]), C([c[0], c[1] - .2], [c[0], c[1] + 1.4], .42), RECT(c[0] - 1.1, c[1] + 1.2, c[0] + 1.1, c[1] + 1.9)] });
+    if (glow) F.add({ mat: glow, prof: 'flat', grp: 'chalicelight', noShadow: true, noOutline: true, shapes: [E([c[0], c[1] - 2.7], 1.5, .8)] });
+    anchors.g_offhand = [c[0] - 1, c[1] - 2];
   } else if (o.look === 'clipboard') { // a board with a sheet clipped to it, held up to be written on
     const c = [h[0] + (dir === 'e' ? -.8 : 0), h[1] - 1.4];
     F.add({ mat: mt(o.mat, 'wood'), prof: 'bevel', bw: .6, grp: 'board', shapes: [RECT(c[0] - 1.6, c[1] - 2, c[0] + 1.6, c[1] + 2.2)] });
@@ -620,6 +625,8 @@ function rigFrame(H, L, M, dir, f) {
   }
   const hg = hgLook ? headInfo(hgLook) : null;
   hairParts(F, H, J, 'front', hg);
+  if (H.temples && !n && !(hg && (hg.hood || hg.helm || hg.wrap))) F.add({ mat: mt(H.temples, 'hairSilver'), prof: 'round', bw: .4, grp: 'temples', noShadow: true, // M7: hair grey at the temples
+    shapes: e ? [O([cx - .8, cy - .2], .85)] : [O([cx - J.hrx + .7, cy - .1], .75), O([cx + J.hrx - .7, cy - .1], .75)] });
   if (hgLook) headgear(F, hgLook, J, H);
   if (H.goggles) { // brass goggles pushed up on the brow
     const gy = cy - 2.5, fr = mt(H.goggles, 'bronze'), lens = mt(H.lens, 'seaglass');

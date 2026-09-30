@@ -116,6 +116,14 @@ export const NPC_LOOKS = Object.freeze({
   // the Lantern Mother as she speaks after her fight: a young woman in black lace, her mourning veil open at the face, her lantern held out
   'lantern-mother': { H: { build: 'human', skin: 'skinPale', hairMat: 'hairBlack', hair: 'long', eye: '#f8c85a', gloves: 'skinPale', boots: 'w.mourning' },
     gear: { head: { look: 'veil', mat: 'w.mourning', trim: 'clothGrey' }, body: { kind: 'robe', mat: 'w.mourning', trim: 'clothGrey', sash: 'w.char' }, offhand: { look: 'lantern', metal: 'bronze', glow: 'w.lamplight' } } },
+  // M7: Harrow Ironvein, the Unsmith, as he speaks (his battle art is a 96 px Champion, so he needs a face of his own, as the
+  // Lantern Mother did): Hilda's twin, a tall, broad smith, copper hair cut short and grey at the temples, a copper beard, a
+  // tarred boatman's cloak over his leather smith's apron, the clasp at his throat (a hammer in a broken ring), the Unmaking
+  // Hammer in his hand, its head edged with the violet-black light. The same look as his map sprite (mapFoeSheet 'unsmith')
+  unsmith: { H: { build: 'brute', skin: 'skin', hairMat: 'hairCopper', hair: 'crop', temples: 'hairSilver', beard: true, eye: '#3a1a10', cloak: 'w.boatcloak', tunic: 'w.char',
+    apron: 'leatherDark', gloves: 'skin', pants: 'leatherDark', boots: 'leatherDark' },
+    gear: { body: { kind: 'leather', mat: 'w.char', shirt: 'w.char', belt: 'leatherDark' }, amulet: { metal: 'bronze', gem: 'bronze' },
+      weapon: A('hammer', { headMat: 'blackiron', haft: 'blackiron', headW: 13, bandMat: 'w.hollowlight' }) } },
 });
 const SKINS = ['skin', 'skinPale', 'skinTan', 'skinDeep'], HAIRS = ['hairBrown', 'hairBlack', 'hairAuburn', 'hairBlond', 'hairSilver', 'hairCopper'], STYLES = ['short', 'crop', 'long', 'pony', 'bun'];
 const TUNICS = ['wool', 'gambeson', 'rags', 'clothBlue', 'hoodGreen', 'robeRed'];
@@ -149,6 +157,7 @@ export const MAP_FOE_SIZE = Object.freeze({
   'rime-wolf': [24, 16], rockling: [16, 16], 'forge-spark': [16, 16], 'peak-troll': [24, 24], 'old-horn': [32, 32], 'thunder-roc': [48, 40], 'mother-anvil': [48, 40], 'rime-abbot': [32, 48],
   'mire-leech': [16, 12], 'marsh-light': [16, 20], 'lamp-moth': [16, 16], 'blackwater-gar': [24, 16], 'old-jaws': [32, 24], 'willow-wight': [16, 24], 'grandfather-willow': [32, 40],
   'lantern-mother': [32, 40], 'blackwater-leviathan': [48, 40], // M6
+  'forge-warden': [24, 32], unsmith: [32, 48], // M7
 });
 // a relic's look for the walker rig, in its slot (relics without RELIC_ART fall back to their kind's art)
 function relicLook(relic) {
@@ -173,6 +182,7 @@ function resolveFoeKey(artKey, variant) {
   if (variant && SUN_VARIANT[artKey + ':' + variant]) return SUN_VARIANT[artKey + ':' + variant];
   if (variant && IRON_VARIANT[artKey + ':' + variant]) return IRON_VARIANT[artKey + ':' + variant];
   if (variant && GLOOM_VARIANT[artKey + ':' + variant]) return GLOOM_VARIANT[artKey + ':' + variant];
+  if (variant && BELOW_VARIANT[artKey + ':' + variant]) return BELOW_VARIANT[artKey + ':' + variant]; // M7
   if (variant && FOES[artKey] && FOES[artKey].variants && FOES[artKey].variants[variant]) {
     const a = FOES[artKey].variants[variant].art;
     if (a && (FOE_ART[a] || MAP_FOE_SIZE[a])) return a;
@@ -347,12 +357,61 @@ const GLOOM_FOES = {
     H: NPC_LOOKS.hodge.H, gear: [0, 1, 2, 3].map(t => Object.assign({}, NPC_LOOKS.hodge.gear, t >= 1 ? { head: { look: 'kettle', mat: 'leatherDark', trim: 'leather' } } : {},
       t >= 2 ? { body: { kind: 'leather', mat: 'leatherDark', shirt: 'wool', belt: 'leather', studs: 'iron' } } : {})) },
 };
+/* M7: the Hearth Below's walker-rig foes, one kit per gearTier (spec §3.2, §6.1), taking precedence over foeLooks() as the
+   earlier kits do.
+   - The cinder-thralls are the hearth's ash made to walk, a coal for a heart (the ember at the chest), the fire showing in
+     their cracks as they harden (tier 1), a slag maul (tier 2), a helm of slag with ember eyes (tier 3). The Thrall-Overseer is
+     a bigger one, a coil of hot wire slung over it, a goad of hot iron in its fist.
+   - The unmade are grey husks in grey rags, hooded, pale eyes in the hood, each still holding the ghost of the relic that was
+     unmade (a blade, a spear, a blade and a shield, a staff, by tier), which glows.
+   - The Hollow Council are the same four folk as their town walkers (NPC_LOOKS), gone grey, violet in the eyes, each wearing
+     the gift sent to their chair, glowing violet-black: Miravel's Hollow Wreath, Qasim's Hollow Chalice, Brundar's Hollow
+     Gauntlet, Gretch's Hollow Chain. Taken (relic null), the gift is gone. */
+const ASHMAN = { build: 'human', skin: 'w.ash', hairMat: 'w.ash', hair: 'none', eye: '#f08a14', tunic: 'w.ash', pants: 'w.ash', boots: 'w.char', gloves: 'w.ash', shade: true, shadeEyes: 'amber' };
+const HUSK = { build: 'human', skin: 'w.unmade', hairMat: 'w.unmade', hair: 'none', eye: '#bcb6dc', tunic: 'w.unmade', pants: 'w.unmade', boots: 'w.unmade', gloves: 'w.unmade', shade: true, shadeEyes: 'frost' };
+const HOLLOW_EYE = '#b27ae0';
+const ghostOf = t => [
+  { weapon: A('sword', { blade: 'w.ghost', guardMat: 'w.ghost', grip: 'w.unmade', pommel: 'w.ghost', bladeL: 44 }) },
+  { weapon: A('spear', { head: 'w.ghost', haft: 'w.ghost', socket: 'w.unmade' }) },
+  { weapon: A('sword', { blade: 'w.ghost', guardMat: 'w.ghost', grip: 'w.unmade', pommel: 'w.ghost', bladeL: 44 }), offhand: { look: 'round', face: 'w.ghost', rim: 'w.unmade', boss: 'w.ghost' } },
+  { weapon: A('staff', { style: 'orb', haft: 'w.ghost', metal: 'w.unmade', glow: 'w.ghost' }) },
+][t];
+const BELOW_FOES = {
+  'cinder-thrall': { H: ASHMAN, gear: [0, 1, 2, 3].map(t => ({ amulet: { metal: 'w.char', gem: 'ember' },
+    body: { kind: 'leather', mat: 'w.ash', shirt: 'w.ash', belt: 'w.char', trim: t >= 1 ? 'ember' : null },
+    weapon: t >= 2 ? A('hammer', { headMat: 'w.slag', haft: 'w.char', headW: 12, bandMat: 'ember' }) : null,
+    head: t >= 3 ? { look: 'helm', mat: 'w.slag', eyes: 'ember', glowEyes: 1, crest: null } : null, H: t >= 3 ? { mantle: 'w.char' } : null })) },
+  'thrall-overseer': { H: Object.assign({}, ASHMAN, { build: 'brute', slungChain: 'ember', mantle: 'w.char' }), gear: [0, 1, 2, 3].map(t => ({ amulet: { metal: 'w.char', gem: 'ember' },
+    body: { kind: 'plate', mat: t >= 2 ? 'w.slag' : 'w.ash', trim: 'ember' }, weapon: A('spear', { head: 'w.molten', haft: 'blackiron', socket: 'iron' }),
+    head: t >= 1 ? { look: 'helm', mat: 'w.slag', eyes: 'ember', glowEyes: 1, crest: t >= 3 ? 'ember' : null } : null })) },
+  unmade: { H: HUSK, gear: [0, 1, 2, 3].map(t => Object.assign({ body: { kind: 'robe', mat: 'w.unmade', trim: 'w.unmade', sash: 'string' },
+    head: { look: 'hood', mat: 'w.unmade', tip: 1, trim: t >= 2 ? 'w.ghost' : null } }, ghostOf(t))) },
+  // Miravel: the Elder's robe and gnarled staff, grey; the Hollow Wreath, a thorned circlet of dark iron with the light in it
+  'hollow-miravel': { relic: 'hollow-wreath', relicSlot: 'head', relicLook: { look: 'circlet', style: 'rotwood', mat: 'w.hollowlight', gem: 'w.hollowiron' }, own: true,
+    H: { build: 'human', skin: 'w.hollowskin', hairMat: 'w.hollowpale', hair: 'long', ears: 'long', eye: HOLLOW_EYE, mantle: 'w.hollowgrey', gloves: 'w.hollowskin', boots: 'w.hollowgrey' },
+    gear: [0, 1, 2, 3].map(() => ({ weapon: A('staff', { style: 'gnarl', haft: 'w.soot', leaves: 'w.hollowgrey', glow: 'w.hollowlight' }), body: { kind: 'robe', mat: 'w.hollowgrey', trim: 'w.hollowpale', sash: 'w.soot' } })) },
+  // Qasim: the Cistern Lord's white robe and turban, grey; the Hollow Chalice held up in his off hand, the light over its rim
+  'hollow-qasim': { relic: 'hollow-chalice', relicSlot: 'offhand', relicLook: { look: 'chalice', metal: 'w.hollowiron', glow: 'w.hollowlight' }, own: true, glintAt: ['offhand'],
+    H: { build: 'brute', skin: 'w.hollowskin', hairMat: 'w.hollowgrey', hair: 'short', beard: true, eye: HOLLOW_EYE, cloak: 'w.hollowgrey', mantle: 'w.hollowgrey', gloves: 'w.hollowskin', boots: 'w.hollowgrey' },
+    gear: [0, 1, 2, 3].map(() => ({ head: { look: 'wrap', mat: 'w.hollowpale', gem: 'w.hollowiron', tail: false }, body: { kind: 'robe', mat: 'w.hollowpale', trim: 'w.pewter', sash: 'w.hollowgrey' } })) },
+  // Brundar: the Thane's plate, crown and axe, grey iron; the Hollow Gauntlet on his hands
+  'hollow-brundar': { relic: 'hollow-gauntlet', relicSlot: 'hands', relicLook: { kind: 'gauntlets', mat: 'w.hollowlight', plate: 1 }, own: true,
+    H: { build: 'dwarf', skin: 'w.hollowskin', hairMat: 'w.hollowgrey', hair: 'long', beard: 'braid', clasp: 'w.pewter', eye: HOLLOW_EYE, cloak: 'w.hollowgrey', mantle: 'w.hollowpale', gloves: 'w.hollowskin', boots: 'w.hollowiron' },
+    gear: [0, 1, 2, 3].map(() => ({ head: { look: 'crown', style: 'regal', metal: 'w.pewter', gem: 'w.hollowiron' }, body: { kind: 'plate', mat: 'w.pewter', trim: 'w.hollowgrey' }, weapon: A('axe', { blade: 'w.pewter', haft: 'w.soot', socket: 'w.hollowgrey' }) })) },
+  // Gretch: the Mayor's robe, fur and keys, grey; the Hollow Chain round her neck (its links over her too), its light at her chest
+  'hollow-gretch': { relic: 'hollow-chain', relicSlot: 'amulet', relicLook: { metal: 'w.hollowiron', gem: 'w.hollowlight' }, relicH: { slungChain: 'w.hollowlight' }, own: true, glintAt: ['amulet'],
+    H: { build: 'brute', skin: 'w.hollowskin', hairMat: 'w.hollowpale', hair: 'bun', eye: HOLLOW_EYE, cloak: 'w.hollowgrey', mantle: 'w.pewter', gloves: 'w.hollowgrey', boots: 'w.hollowgrey', trinket: { kind: 'key', mat: 'w.pewter' } },
+    gear: [0, 1, 2, 3].map(() => ({ body: { kind: 'robe', mat: 'w.hollowgrey', trim: 'w.pewter', sash: 'w.soot' } })) },
+};
+// M7: the Thrall-Overseer is a cinder-thrall variant with no art key of its own in the foe data; on the map it is its own sprite
+const BELOW_VARIANT = { 'cinder-thrall:thrall-overseer': 'thrall-overseer' };
 // the M5 humanoids P6 rigged: a relic on the feet or in the off hand glints there (as the M4 holders' do)
 const IRON_RIGGED = new Set(['brigand', 'rhune', 'cutter-chief', 'sawyer']);
 function sunFoeSheet(key, gT, rel, S = SUN_FOES[key]) {
   const kit = S.gear[gT] || S.gear[0], H = Object.assign({}, S.H, kit.H || {}), gear = Object.assign({}, kit);
   delete gear.H;
   const mine = rel && rel === S.relic, real = mine && !S.own && typeof rel === 'string' ? itemArt(rel) : null;
+  if (mine && S.relicH) Object.assign(H, S.relicH); // M7: a relic that shows on the body too (the Hollow Chain's links)
   if (mine && S.relicLook && !real) gear[S.relicSlot] = S.relicLook;
   const { L, M } = resolveGear(gear);
   if (mine && !real) { if (S.relicSlot !== 'trinket') M[S.relicSlot] = { heirloom: true, relic: true }; if (S.glintAt) M.glintAt = S.glintAt; }
@@ -362,16 +421,16 @@ function sunFoeSheet(key, gT, rel, S = SUN_FOES[key]) {
 }
 const foeCache = lru(64);
 export function mapFoeSheet(artKey, { gearTier = 0, variant = null, relic } = {}) {
-  const key = resolveFoeKey(artKey, variant), gT = Math.max(0, Math.min(3, gearTier | 0)), kitted = SUN_FOES[key] || IRON_FOES[key] || GLOOM_FOES[key];
+  const key = resolveFoeKey(artKey, variant), gT = Math.max(0, Math.min(3, gearTier | 0)), kitted = SUN_FOES[key] || IRON_FOES[key] || GLOOM_FOES[key] || BELOW_FOES[key];
   if (kitted) {
     const rel = relic !== undefined ? relic : kitted.relic || null;
     const img = foeCache.get(`s|${key}|${gT}|${rel || '-'}`, () => sunFoeSheet(key, gT, rel, kitted));
     return { img, w: WALKER_W, h: WALKER_H, foot: WALKER_FOOT.slice(), frames: 2, rows: 4, head: [8, 3] };
   }
   const def = FOE_ART[key], beast = BEASTS[key] || (def && def.kind === 'beast' && BEASTS[def.aliasOf]);
-  if (beast && (SUN_BEASTS.has(key) || IRON_BEASTS.has(key) || GLOOM_BEASTS.has(key) || !(def && def.kind === 'humanoid'))) {
+  if (beast && (SUN_BEASTS.has(key) || IRON_BEASTS.has(key) || GLOOM_BEASTS.has(key) || BELOW_BEASTS.has(key) || !(def && def.kind === 'humanoid'))) {
     const [w, h] = MAP_FOE_SIZE[key] || MAP_FOE_SIZE[def && def.aliasOf] || [16, 16];
-    const rel = relic === undefined ? SUN_BEAST_RELIC[key] || IRON_BEAST_RELIC[key] || GLOOM_BEAST_RELIC[key] || (def && def.relic) || null : relic;
+    const rel = relic === undefined ? SUN_BEAST_RELIC[key] || IRON_BEAST_RELIC[key] || GLOOM_BEAST_RELIC[key] || BELOW_BEAST_RELIC[key] || (def && def.relic) || null : relic;
     const img = foeCache.get(`b|${key}|${gT}|${rel || '-'}`, () => beastSheet(beast, w, h, { gT, relic: rel }));
     return { img, w, h, foot: [w >> 1, h - 1], frames: 2, rows: 4, head: [w >> 1, 1] };
   }
@@ -393,9 +452,9 @@ export function mapFoeSheet(artKey, { gearTier = 0, variant = null, relic } = {}
 // battle stand-in: the foe's art is not drawn yet), 'npc' (an NPC look) or 'villager' (a hashed face: no look at all)
 export function mapFoeLook(artKey, variant = null) {
   const key = resolveFoeKey(artKey, variant), def = FOE_ART[key];
-  if (SUN_FOES[key] || IRON_FOES[key] || GLOOM_FOES[key]) return 'kit';
+  if (SUN_FOES[key] || IRON_FOES[key] || GLOOM_FOES[key] || BELOW_FOES[key]) return 'kit';
   const beast = BEASTS[key] || (def && def.kind === 'beast' && BEASTS[def.aliasOf]);
-  if (beast && (SUN_BEASTS.has(key) || IRON_BEASTS.has(key) || GLOOM_BEASTS.has(key) || !(def && def.kind === 'humanoid'))) return 'beast';
+  if (beast && (SUN_BEASTS.has(key) || IRON_BEASTS.has(key) || GLOOM_BEASTS.has(key) || BELOW_BEASTS.has(key) || !(def && def.kind === 'humanoid'))) return 'beast';
   if (def && foeLooks(key, { gearTier: 0 }).H) return def.standIn ? 'stand-in' : 'rig';
   return NPC_LOOKS[key] ? 'npc' : 'villager';
 }
@@ -1307,6 +1366,99 @@ Object.assign(BEASTS, { 'mire-leech': mireLeech, 'marsh-light': marshLight, 'lam
 // the Gloomfen's beasts and lairs draw their own sprites whatever FOE_ART says, and carry their relics by default
 const GLOOM_BEASTS = new Set(['mire-leech', 'marsh-light', 'lamp-moth', 'blackwater-gar', 'old-jaws', 'willow-wight', 'grandfather-willow', 'lantern-mother', 'blackwater-leviathan']);
 const GLOOM_BEAST_RELIC = { 'old-jaws': 'gar-tooth', 'grandfather-willow': 'weeping-bow', 'lantern-mother': 'lamplighters-lantern', 'blackwater-leviathan': 'corvus-harpoon' };
+/* M7: the Hearth Below's two big walkers, drawn whole (as M5's Rime Abbot is) */
+// the Forge-Warden (24 x 32): a bellows-and-anvil construct as tall as a door: an anvil for a body on two thick iron legs, the
+// anvil's face its shoulders and its horn its brow, two coals for eyes under it, a grate in its chest with the fire behind, arms
+// of chain ending in anvil-block fists, and a great leather bellows on its back that breathes (the two frames: drawn, pressed; it
+// blows sparks from its nozzle as it presses)
+function forgeWarden(F, st) {
+  const { dir, f, gT, anchors } = st, e = dir === 'e', n = dir === 'n', br = f ? -1 : 0, hot = gT >= 2;
+  anchors.halo = true;
+  const iron = q => (q.y % 5 === 0 ? { m: 'iron', dd: -.4 } : 0) + (hash(q.x, q.y, 10180) < .05 ? -.7 : 0);
+  F.add({ mat: 'dark', prof: 'flat', grp: 'shade', noOutline: true, noShadow: true, shapes: [E([12, 30.6], 9, 1.6)], tex: () => -1.2 });
+  const st1 = f ? .8 : -.8;
+  // the legs: iron columns, stepping
+  F.add({ mat: 'blackiron', prof: 'round', bw: 1.2, grp: 'legs', shapes: e ? [RECT(8.6 - st1, 23, 12 - st1, 30.4), RECT(12 + st1, 23, 15.4 + st1, 30.6)] : [RECT(6, 23, 10, 30.4 + (f ? -.4 : 0)), RECT(14, 23, 18, 30.4 + (f ? 0 : -.4))], tex: iron });
+  // the bellows: leather boards and pleats on the back, full in the back view
+  const pleats = q => (q.y % 3 === 0 ? -1 : 0);
+  if (n) F.add({ mat: 'leather', prof: 'round', bw: 1.4, grp: 'bellows', shapes: [P([[5, 7.4], [19, 7.4], [20 - br, 19], [4 + br, 19]])], tex: pleats });
+  else if (e) F.add({ mat: 'leather', prof: 'round', bw: 1.2, grp: 'bellows', shapes: [P([[3.6 + br, 8], [8, 7.6], [8, 19.4], [2.4 + br, 18.6]])], tex: pleats });
+  else F.add({ mat: 'leather', prof: 'round', bw: 1.2, grp: 'bellows', shapes: [P([[3.4 + br, 7], [20.6 - br, 7], [21.4 - br, 17], [2.6 + br, 17]])], tex: pleats });
+  F.add({ mat: 'bronze', prof: 'round', bw: .6, grp: 'nozzle', shapes: [e ? C([4, 8], [2.6, 3.6], .9, .6) : C([12, 7.4], [12, 2.6], 1, .7)] });
+  // the anvil: its face across the shoulders, its waist, its foot on the legs; the horn forward in profile
+  const body = e ? P([[6, 8], [17, 8], [23.6, 9.6], [17, 11.4], [15.6, 14], [15.6, 21.4], [18, 24.4], [6.4, 24.4], [8.8, 21.4], [8.8, 14], [7, 12]])
+    : P([[1.6, 8], [22.4, 8], [20.4, 12], [16.4, 14], [16.4, 21.4], [19.4, 24.6], [4.6, 24.6], [7.6, 21.4], [7.6, 14], [3.6, 12]]);
+  F.add({ mat: 'blackiron', prof: 'round', bw: 2, grp: 'anvil', shapes: [body], tex: q => (q.y <= 9 ? .9 : q.y === 10 ? .2 : 0) + (hash(q.x, q.y, 10181) < .05 ? -.8 : 0) });
+  if (!n) { // the chest grate, the fire behind it
+    const g = e ? [10, 15, 14.4, 21] : [9.4, 15, 14.6, 21];
+    F.add({ mat: 'ember', prof: 'flat', grp: 'fire', noShadow: true, shapes: [RECT(...g)], tex: q => (hot ? .4 : 0) + (f ? .3 : -.2) + (q.y > 18 ? .3 : 0) });
+    F.add({ mat: 'iron', prof: 'round', bw: .4, grp: 'grate', noShadow: true, shapes: [0, 1, 2].map(i => RECT(g[0] + .6 + i * 1.6, g[1], g[0] + 1.3 + i * 1.6, g[3])).concat([RECT(g[0], g[1], g[2], g[1] + .8)]) });
+    anchors.eyes = e ? [[19.4, 10.6, EYE.ember]] : [[8.4, 10.4, EYE.ember], [15.6, 10.4, EYE.ember]];
+  }
+  // the arms: chains down from the shoulders, the anvil-block fists
+  const links = (a, b) => { const L = []; for (let i = 0; i < 4; i++) { const t = (i + .5) / 4, c = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]; L.push(i % 2 ? E(c, .7, 1.3) : E(c, 1.2, .8)); } return L; };
+  const arms = e ? [[[14, 11], [18.6, 18]]] : [[[3, 10], [2, 17.6]], [[21, 10], [22, 17.6]]];
+  arms.forEach(([a, b], i) => {
+    F.add({ mat: 'iron', prof: 'round', bw: .5, grp: 'arm' + i, shapes: links(a, b), tex: q => (hash(q.x, q.y, 10182) < .2 ? { m: 'rust', dd: -.6 } : 0) });
+    F.add({ mat: 'blackiron', prof: 'bevel', bw: 1, grp: 'fist' + i, shapes: [RECT(b[0] - 2.6, b[1], b[0] + 2.6, b[1] + 4.6)], tex: q => (q.y === Math.round(b[1]) ? .7 : 0) });
+  });
+  // sparks blown from the nozzle as the bellows press
+  if (f || gT >= 3) F.add({ mat: 'ember', prof: 'flat', grp: 'sparks', noShadow: true, noOutline: true, shapes: (e ? [[1.6, 1.4], [3.6, .6]] : [[10.6, 1.2], [13.6, .6], [12.4, 2]]).map(([x, y]) => O([x, y], .5)), tex: () => .5 });
+}
+// the Unsmith (32 x 48): Harrow Ironvein, Hilda's twin, tall: a boatman's cloak of black oilcloth over a smith's leather apron
+// (the Ironvein Apron, iron veined through it), its clasp a hammer in a broken ring; copper hair and beard gone grey at the
+// temples; the Worldforge Heart a ring glowing on his left hand; the Unmaking Hammer in his right, its head edged with the
+// violet-black light (it is gone when `relic` is null)
+function unsmithBeast(F, st) {
+  const { dir, f, anchors, relic } = st, e = dir === 'e', n = dir === 'n', sw = f ? .6 : -.6;
+  anchors.halo = true;
+  F.add({ mat: 'dark', prof: 'flat', grp: 'shade', noOutline: true, noShadow: true, shapes: [E([16, 46.6], 9.4, 1.4)], tex: () => -1.2 });
+  const hammer = hx => { // the Unmaking Hammer, head down at his side, its haft in his hand
+    const [x, y] = hx;
+    F.add({ mat: 'blackiron', prof: 'round', bw: .5, grp: 'haft', relic: true, shapes: [C([x, y - 2], [x + 1.4, y + 13], .75)] });
+    F.add({ mat: 'blackiron', prof: 'bevel', bw: 1, grp: 'hammerhead', relic: true, shapes: [P([[x - 3.2, y + 12], [x + 5.6, y + 11.2], [x + 6, y + 16], [x - 2.8, y + 16.6]])], tex: q => (q.y <= y + 12.6 ? .6 : 0) });
+    F.add({ mat: 'w.hollowlight', prof: 'flat', grp: 'unmaking', relic: true, noShadow: true, noOutline: true, shapes: [C([x - 3, y + 16.2], [x + 5.8, y + 15.6], .5)], tex: () => (f ? -.4 : -1) });
+    anchors.glint = [x + 5, y + 12];
+  };
+  const cloak = q => ((q.x + (q.y >> 2)) % 4 === 0 ? -.8 : 0) + (q.y > 40 ? -.4 : 0);
+  // boots under the cloak, stepping
+  F.add({ mat: 'leatherDark', prof: 'round', bw: .8, grp: 'boots', shapes: e ? [RECT(13 - sw, 41, 16.4 - sw, 46.4), RECT(16 + sw, 41, 19.6 + sw, 46.6)] : [RECT(11, 41, 14.6, 46.4 + (f ? -.4 : 0)), RECT(17.4, 41, 21, 46.4 + (f ? 0 : -.4))] });
+  if (n) { // from behind: the cloak hangs to his heels, his hair over its collar, the hammer's head at his side
+    F.add({ mat: 'w.boatcloak', prof: 'round', bw: 2.6, grp: 'cloak', shapes: [P([[9, 12.4], [23, 12.4], [26 + sw, 44.4], [16, 45], [6 - sw, 44.4]])], tex: cloak });
+    F.add({ mat: 'w.boatcloak', prof: 'round', bw: 1.2, grp: 'collar', shapes: [C([10, 13], [22, 13], 1.8)] });
+    F.add({ mat: 'hairCopper', prof: 'round', bw: 2, grp: 'head', shapes: [E([16, 8.4], 4.4, 4.8)], tex: q => ((q.x + q.y) % 3 === 0 ? -.8 : 0) + (q.y > 10 ? { m: 'hairSilver', dd: -.4 } : 0) });
+    if (relic) hammer([8, 27]);
+    return;
+  }
+  // the cloak behind him, open at the front on the apron
+  F.add({ mat: 'w.boatcloak', prof: 'round', bw: 2.4, grp: 'cloakback', shapes: [P(e ? [[9.4, 12.4], [18, 12.4], [16.8, 44], [11, 45], [4.6 - sw, 44]] : [[8.4, 12.4], [23.6, 12.4], [26.6 + sw, 44.6], [16, 45.2], [5.4 - sw, 44.6]])], tex: cloak });
+  // the body in a dark shirt, and over it the Ironvein Apron: leather, a vein of iron down it, studs at its edge
+  F.add({ mat: 'w.char', prof: 'round', bw: 1.4, grp: 'shirt', shapes: [P(e ? [[12, 13], [19, 13], [19.6, 40], [12.4, 40]] : [[11.2, 13], [20.8, 13], [21.4, 40], [10.6, 40]])], tex: q => (q.x % 3 === 0 ? -.6 : 0) });
+  F.add({ mat: 'leatherDark', prof: 'round', bw: 1, grp: 'apron', shapes: [P(e ? [[15, 17], [20, 17], [21, 41.4], [15.4, 41.4]] : [[12.4, 17], [19.6, 17], [20.6, 41.6], [11.4, 41.6]])],
+    tex: q => (Math.abs(q.x - (e ? 18 : 16) - Math.sin(q.y / 3) * .8) < .6 ? { m: 'iron', dd: .2 } : (q.y % 5 === 0 && (q.x === (e ? 20 : 12) || q.x === (e ? 15 : 19)) ? { m: 'iron', dd: .6 } : 0)) });
+  F.add({ mat: 'leatherDark', prof: 'round', bw: .4, grp: 'apronstrap', noShadow: true, shapes: e ? [C([15.4, 17], [13.4, 13.4], .5)] : [C([12.6, 17], [11.4, 13.4], .5), C([19.4, 17], [20.6, 13.4], .5)] });
+  // the cloak's fronts falling either side of the apron
+  if (!e) F.add({ mat: 'w.boatcloak', prof: 'round', bw: 1.4, grp: 'cloakfront', shapes: [P([[8.4, 12.6], [11.4, 13.4], [10.2, 43.4], [5.6 - sw, 44.2]]), P([[23.6, 12.6], [20.6, 13.4], [21.8, 43.4], [26.4 + sw, 44.2]])], tex: cloak });
+  F.add({ mat: 'w.boatcloak', prof: 'round', bw: 1.2, grp: 'collar', shapes: [e ? C([10, 13], [18.4, 13.2], 1.8) : C([9.6, 13], [22.4, 13], 1.8)] });
+  // the arms in the cloak's sleeves, the hands
+  const lh = e ? null : [7.6, 29.4], rh = e ? [20.6, 28.6] : [24.4, 29];
+  F.add({ mat: 'w.boatcloak', prof: 'round', bw: 1.2, grp: 'arms', shapes: e ? [C([15.6, 15], [20.2, 27.4], 2.6, 2.2)] : [C([10, 15], [7.8, 28], 2.6, 2.2), C([22, 15], [24.2, 27.6], 2.6, 2.2)], tex: cloak });
+  if (relic) hammer(rh);
+  F.add({ mat: 'skinTan', prof: 'round', bw: .8, grp: 'hands', shapes: (lh ? [O(lh, 1.8)] : []).concat([O(rh, 1.8)]) });
+  if (lh) { F.add({ mat: 'w.whitegold', prof: 'round', bw: .4, grp: 'ring', noShadow: true, shapes: [O([lh[0] + .6, lh[1] - .2], .75)], tex: () => (f ? .4 : 0) }); anchors.glint2 = [lh[0] + .6, lh[1] - .8]; }
+  // the head: copper hair and beard, grey at the temples, soot on his brow; the clasp at his throat
+  const hc = e ? [18, 8.6] : [16, 8.6];
+  F.add({ mat: 'skinTan', prof: 'round', bw: 2, grp: 'head', shapes: [e ? E(hc, 3.8, 4.4) : E(hc, 4, 4.6)] });
+  F.add({ mat: 'hairCopper', prof: 'round', bw: 1.4, grp: 'hair', shapes: e ? [P([[13.6, 8], [14, 4.4], [17, 3.4], [21.4, 4.6], [21, 6.4], [17.4, 5.6], [15.6, 9.6]])] : [P([[11.8, 8.4], [12.2, 4.8], [16, 3.4], [19.8, 4.8], [20.2, 8.4], [19, 6.2], [13, 6.2]])], tex: q => ((q.x + q.y) % 3 === 0 ? -.8 : 0) + ((e ? q.x < 15 : q.x < 13 || q.x > 19) ? { m: 'hairSilver', dd: -.3 } : 0) });
+  F.add({ mat: 'hairCopper', prof: 'round', bw: 1.2, grp: 'beard', shapes: [e ? P([[17, 10.4], [21.6, 10.2], [20.6, 14.4], [18, 14.6]]) : P([[12.6, 10.4], [19.4, 10.4], [18.4, 14.4], [16, 15.4], [13.6, 14.4]])], tex: q => (q.y % 2 ? -.7 : 0) });
+  F.add({ mat: 'w.soot', prof: 'flat', grp: 'soot', noShadow: true, noOutline: true, shapes: [e ? C([18, 6.8], [21, 7], .5) : C([13.4, 6.8], [18.6, 6.8], .5)], tex: () => -.4 });
+  anchors.eyes = e ? [[20.4, 8.6, EYE.dark]] : [[14.4, 8.8, EYE.dark], [17.6, 8.8, EYE.dark]];
+  const cc = e ? [15.2, 14.2] : [16, 14.6];
+  F.add({ mat: 'bronze', prof: 'round', bw: .5, grp: 'clasp', shapes: [O(cc, 1.6)], cuts: [O(cc, .7), RECT(cc[0] + .2, cc[1] - 1.8, cc[0] + 1.8, cc[1] - .4)] });
+}
+Object.assign(BEASTS, { 'forge-warden': forgeWarden, unsmith: unsmithBeast });
+const BELOW_BEASTS = new Set(['forge-warden', 'unsmith']);
+const BELOW_BEAST_RELIC = { unsmith: 'unmaking-hammer' };
 
 function beastSheet(build, w, h, { gT = 0, relic = null } = {}) {
   const out = new ImageData(w * 2, h * 4), d = out.data;
@@ -1343,12 +1495,15 @@ export const OBJECT_KINDS = Object.freeze(['chest', 'hearth', 'gate', 'chain', '
   'chasm', 'ice', 'rune-seal', 'drift', 'prayer-flags', 'hush', 'ice-blocks', 'frozen-door',
   // M6: the Gloomfen's gate looks, its two hard locks, and its props
   'toll-bar', 'leech-ford', 'ward-gate', 'hung-lanterns', 'hag-fence', 'barge-planks', 'water-gate', 'choir-screen', 'blackwater', 'witch-ward',
-  'wreck', 'marsh-lights', 'black-barge', 'lantern', 'sleeping-child', 'crane', 'diving-bell', 'sealed-chest', 'barge', 'bell', 'sleeper']);
+  'wreck', 'marsh-lights', 'black-barge', 'lantern', 'sleeping-child', 'crane', 'diving-bell', 'sealed-chest', 'barge', 'bell', 'sleeper',
+  // M7: the Hearth Below's gate look and its props
+  'hollow-gate', 'vault-stair', 'vault-boxes', 'vault-boxes-open', 'sleeper-first', 'worldforge', 'great-anvil']);
 // states each kind draws (the first is the default); any other state string falls back to the default
 export const OBJECT_STATES = Object.freeze({
   chest: ['closed', 'open', 'locked', 'sealed'], hearth: ['lit', 'cold'], gate: ['closed', 'open'], chain: ['closed', 'post', 'open'],
   crownwall: ['closed', 'open'], thornwall: ['closed', 'open'], bramble: ['closed', 'open'], boulder: ['closed', 'open'],
-  'ford-ice': ['ice', 'stream', 'roots'], pedestal: ['unlit', 'lit'], board: ['bounties', 'ladder'], sign: ['post', 'stone', 'plaque', 'cradle', 'cradle-full', 'monolith', 'spire', 'bell-rope', 'throne', 'frozen-monk', 'altar', 'ward-stone', 'ward-stone-dark', 'bootprints'],
+  'ford-ice': ['ice', 'stream', 'roots'], pedestal: ['unlit', 'lit'], board: ['bounties', 'ladder'], sign: ['post', 'stone', 'plaque', 'cradle', 'cradle-full', 'monolith', 'spire', 'bell-rope', 'throne', 'frozen-monk', 'altar', 'ward-stone', 'ward-stone-dark', 'bootprints',
+    'chain', 'chair-tree', 'chair-sun', 'chair-anvil', 'chair-lantern', 'heart-step'],
   bellframe: ['empty', 'rung'], lookout: ['closed'], rope: ['closed', 'open'], deer: ['graze', 'alert'], ichor: ['closed'],
   door: ['closed', 'open'], table: ['closed'], 'tally-seal': ['closed', 'open'], 'barred-gate': ['closed', 'open'], 'rot-knot': ['closed', 'open'], stream: ['closed'],
   'dune-glass': ['closed', 'open'], mirage: ['closed', 'open'], quicksand: ['closed', 'open'], 'vault-seal': ['closed', 'open'], 'glass-spire': ['closed'], 'vault-door': ['closed', 'open'],
@@ -1358,6 +1513,8 @@ export const OBJECT_STATES = Object.freeze({
   'barge-planks': ['closed', 'open'], 'water-gate': ['closed', 'open'], 'choir-screen': ['closed', 'open'], blackwater: ['closed', 'open'], 'witch-ward': ['closed', 'open'],
   wreck: ['closed'], 'marsh-lights': ['closed'], 'black-barge': ['closed'], lantern: ['closed'], 'sleeping-child': ['closed'], crane: ['closed'], 'diving-bell': ['closed'],
   'sealed-chest': ['closed'], barge: ['closed'], bell: ['closed'], sleeper: ['closed'],
+  'hollow-gate': ['closed', 'open'], 'vault-stair': ['closed'], 'vault-boxes': ['closed'], 'vault-boxes-open': ['closed'], 'sleeper-first': ['closed'],
+  worldforge: ['closed'], 'great-anvil': ['closed'],
 });
 // hearthfire id -> look (pass { id } to objectSprite('hearth', state, { id }))
 export const HEARTH_LOOKS = Object.freeze({
@@ -1369,9 +1526,8 @@ export const HEARTH_LOOKS = Object.freeze({
   // M6: the Gloomfen's eight
   'reed-shrine': 'reedshrine', 'willow-hearth': 'mootring', 'toll-lamp': 'tollpost', 'stilt-hearth': 'firebasket', 'fen-cairn': 'fencairn',
   'bell-hearth': 'bellbowl', 'wreck-fire': 'painted', 'flats-beacon': 'painted', // batch 3: the beached hull and the beacon are in their maps' paintings
-  // M7: the Hearth Below's two. STUB from the M7 scaffold: the Last Green Coal's coal and the Signal Fire's brazier stand
-  // in until P5 draws `undercoal` (a coal the size of a cart) and `chainfire` (a brazier hung from a broken chain)
-  'under-coal': 'coal', 'chain-fire': 'brazier',
+  // M7: the Hearth Below's two: the Under-Coal (a coal the size of a cart) and the Chain Fire (a brazier hung from a broken chain)
+  'under-coal': 'undercoal', 'chain-fire': 'chainfire',
 });
 const OBJ_SIZE = { gate: [16, 24], crownwall: [16, 24], thornwall: [16, 24], pedestal: [16, 24], board: [16, 24], bellframe: [16, 24], lookout: [16, 32], door: [16, 24], 'barred-gate': [16, 24] };
 Object.assign(OBJ_SIZE, { 'dune-glass': [16, 24], 'vault-seal': [16, 24], 'glass-spire': [16, 24], 'vault-door': [16, 24] });
@@ -1379,8 +1535,13 @@ Object.assign(OBJ_SIZE, { ice: [16, 24], 'rune-seal': [16, 24], 'prayer-flags': 
 Object.assign(OBJ_SIZE, { 'toll-bar': [16, 24], 'leech-ford': [16, 24], 'ward-gate': [16, 24], 'hung-lanterns': [16, 24], 'hag-fence': [16, 24], 'barge-planks': [16, 24],
   'water-gate': [16, 24], 'choir-screen': [16, 24], blackwater: [16, 20], 'witch-ward': [16, 24], wreck: [32, 20], 'marsh-lights': [16, 24], 'black-barge': [64, 36],
   lantern: [16, 32], crane: [32, 40], 'diving-bell': [16, 32], barge: [48, 28], bell: [16, 32], sleeper: [96, 56] }); // M6
+Object.assign(OBJ_SIZE, { 'hollow-gate': [16, 24], 'vault-boxes': [16, 20], 'vault-boxes-open': [16, 20], 'sleeper-first': [240, 152], worldforge: [112, 240],
+  'great-anvil': [48, 40] }); // M7
+// M7: a big prop whose foot is not at its bottom edge (the First Sleeper lies round its foot, in the middle of its hollow)
+const FOOT_UP = { 'sleeper-first': 44 };
 const OBJ_STATE_SIZE = { 'sign:monolith': [16, 24], 'sign:spire': [16, 32], 'sign:bell-rope': [16, 24], 'sign:throne': [16, 24], 'sign:frozen-monk': [16, 24] };
 Object.assign(OBJ_STATE_SIZE, { 'sign:ward-stone': [16, 24], 'sign:ward-stone-dark': [16, 24] }); // M6
+Object.assign(OBJ_STATE_SIZE, { 'sign:chain': [16, 24], 'sign:chair-tree': [24, 32], 'sign:chair-sun': [24, 32], 'sign:chair-anvil': [24, 32], 'sign:chair-lantern': [24, 32] }); // M7
 const TALL_HEARTH = new Set(['hall', 'sunbrazier', 'lamp', 'watch', 'shrine', 'cloister', 'dwarfhall', 'furnace', 'beacon']);
 const ANIM = new Set(['crownwall', 'ichor', 'stream']);
 const SUN_ANIM = new Set(['mirage', 'quicksand', 'vault-seal']); // two frames while shut
@@ -1393,6 +1554,7 @@ const flame = (F, cx, base, f, s = 1, mat = 'ember') => {
 const logs = (F, cx, y, charred) => F.add({ mat: charred ? 'rot' : 'wood', prof: 'round', bw: .8, grp: 'logs', shapes: [C([cx - 4, y + .6], [cx + 3.6, y - 1], .95), C([cx - 3.6, y - 1], [cx + 4, y + .6], .95)] });
 function hearthParts(F, look, lit, f) {
   if (GLOOM_HEARTH.has(look)) return gloomHearth(F, look, lit, f); // M6
+  if (BELOW_HEARTH.has(look)) return belowHearth(F, look, lit, f); // M7
   if (look === 'painted') { // M5: the fire alone, in the middle of a painted ring a tile above the entity (16 x 32)
     logs(F, 8, 10.4, !lit);
     if (lit) flame(F, 8, 9.8, f, 1.1, 'ember'); else F.add({ mat: 'clothGrey', prof: 'round', bw: .8, grp: 'ash', shapes: [E([8, 11], 3.8, 1.3)] });
@@ -1600,6 +1762,7 @@ function objectParts(F, kind, st, f, o, W, H) {
     }
     case 'sign': {
       if (GLOOM_SIGNS.has(st)) return gloomSign(F, st, f); // M6
+      if (BELOW_SIGNS.has(st)) return belowSign(F, st, f); // M7
       if (st === 'cradle' || st === 'cradle-full') { // Zara's crate cradle: a rope-slung frame on straw; full, the humming crate is home
         F.add({ mat: 'thorn', prof: 'flat', grp: 'straw', noShadow: true, shapes: [E([8, B - 1.2], 7, 2)], tex: q => ((q.x + q.y * 2) % 3 === 0 ? -1 : 0) });
         F.add({ mat: 'wood', prof: 'round', bw: .7, grp: 'frame', shapes: [C([1.6, B], [3.4, 6.6], .7), C([5.2, B], [3.4, 6.6], .7), C([14.4, B], [12.6, 6.6], .7), C([10.8, B], [12.6, 6.6], .7), C([3.4, 7.2], [12.6, 7.2], .6)] });
@@ -1897,6 +2060,7 @@ function objectParts(F, kind, st, f, o, W, H) {
     return 'halo';
   }
   if (GLOOM_OBJ.has(kind)) return gloomObjectParts(F, kind, st, f, o, W, H); // M6
+  if (BELOW_OBJ.has(kind)) return belowObjectParts(F, kind, st, f, o, W, H); // M7
   // unknown kind: a neutral marker stone
   F.add({ mat: 'granite', prof: 'round', bw: 1.6, grp: 'x', shapes: [E([8, 12], 4, 3)] });
 }
@@ -2248,6 +2412,253 @@ function gloomHearth(F, look, lit, f) {
   logs(F, 8, 8.6, !lit);
   if (lit) flame(F, 8, 7.6, f, 1.15); else F.add({ mat: 'w.ash', prof: 'round', bw: .6, grp: 'ash', shapes: [E([8, 7.8], 3.4, .9)] });
 }
+/* ---- M7: the Hearth Below's gate, props, signs and Hearthfires (spec §6.1; the names the maps use, spec §2.3-§2.5).
+   A big prop (the First Sleeper, the Worldforge, the great anvil) is one sprite, drawn once at its foot: place it with `at` (not
+   `area`: an area draws its sprite on every tile) and make the tiles under it solid in the rows. Each is drawn to the footprint the
+   maps give it (notes/M7-P2-maps.md): the Sleeper fills its hollow round its foot, the Worldforge stands up the forge's east wall
+   from its foot with its mouth on its west side two rows above the step, and the anvil stands over its footing. ---- */
+const BELOW_OBJ = new Set(['hollow-gate', 'vault-stair', 'vault-boxes', 'vault-boxes-open', 'sleeper-first', 'worldforge', 'great-anvil']);
+const BELOW_ANIM = new Set(['hollow-gate', 'sleeper-first', 'worldforge', 'great-anvil']); // two frames while shut (a prop is always 'closed')
+const BELOW_SIGNS = new Set(['chain', 'chair-tree', 'chair-sun', 'chair-anvil', 'chair-lantern', 'heart-step']);
+const BELOW_HEARTH = new Set(['undercoal', 'chainfire']);
+Object.assign(HEARTH_SIZE, { undercoal: [28, 28], chainfire: [16, 32] });
+// a great chain from a to b: flat rings and links on edge in turn (the Deep's chains, the web over the Sleeper, the Chain Fire's)
+function chainLinks(F, a, b, { n = 0, r = 2.2, mat = 'iron', grp = 'chain', rust = .12, tex = null } = {}) {
+  const L = Math.hypot(b[0] - a[0], b[1] - a[1]), k = n || Math.max(2, Math.round(L / (r * 2.1))), u = [(b[0] - a[0]) / L, (b[1] - a[1]) / L];
+  const flat = [], edge = [];
+  for (let i = 0; i < k; i++) {
+    const t = (i + .5) / k, c = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t], s = L / k * .62;
+    if (i % 2) edge.push(C([c[0] - u[0] * s, c[1] - u[1] * s], [c[0] + u[0] * s, c[1] + u[1] * s], r * .42));
+    else flat.push(P([0, 1, 2, 3, 4, 5, 6, 7].map(j => { const q = j * Math.PI / 4, px = Math.cos(q) * s * 1.05, py = Math.sin(q) * r * .85; return [c[0] + u[0] * px - u[1] * py, c[1] + u[1] * px + u[0] * py]; })));
+  }
+  const rt = tex || (q => (hash(q.x, q.y, 10100) < rust ? { m: 'rust', dd: -.6 } : 0));
+  if (flat.length) F.add({ mat, prof: 'round', bw: r * .55, grp: grp + 'f', shapes: flat, cuts: flat.map(p => { const cx = p.pts.reduce((s2, q) => s2 + q[0], 0) / 8, cy = p.pts.reduce((s2, q) => s2 + q[1], 0) / 8; return E([cx, cy], Math.max(.6, r * .5), Math.max(.4, r * .32)); }), tex: rt });
+  if (edge.length) F.add({ mat, prof: 'round', bw: r * .4, grp: grp + 'e', shapes: edge, tex: q => rt(q) || -.2 });
+}
+function belowObjectParts(F, kind, st, f, o, W, H) {
+  const B = H - 1, open = st === 'open';
+  switch (kind) {
+    case 'hollow-gate': { // a line of soot across the floor, and the gift's violet-black light standing up out of it that will not let you
+      // cross; laid a tile at a time across an east-west way, so each piece is a length of the line running down the tile. Open, the
+      // soot is scuffed through and the light is gone
+      const T0 = H - 16;
+      if (open) { F.add({ mat: 'w.soot', prof: 'flat', grp: 'soot', noShadow: true, noOutline: true, shapes: [E([7, T0 + 3], 2.2, 1.6), E([9.4, T0 + 7.6], 1.6, 1.2), E([6.6, T0 + 12.4], 2, 1.3)], tex: q => (hash(q.x, q.y, 10110) < .3 ? -1.2 : -.4) }); return; }
+      F.add({ mat: 'w.soot', prof: 'flat', grp: 'soot', noShadow: true, noOutline: true, shapes: [P([[4.4, T0 - .6], [11.6, T0 - .6], [12, T0 + 5], [11.4, T0 + 10], [11.8, B + 1], [4.2, B + 1], [4.6, T0 + 11], [4, T0 + 5]])],
+        tex: q => (Math.abs(q.x + .5 - 8) < 1.6 ? -1.6 : -.5) + (hash(q.x, q.y, 10111) < .2 ? -.8 : 0) });
+      // the curtain: a sheet of the light over the line, thickest at its foot, thinning upward in dithered strands
+      F.add({ mat: 'w.hollowlight', prof: 'flat', grp: 'sheet', noShadow: true, noOutline: true, shapes: [RECT(5, -1, 11, B + 1)], tex: q => {
+        const up = (B - q.y) / (B + 1), strand = Math.abs(((q.x + Math.round(Math.sin((q.y + (f ? 3 : 0)) / 2.6))) % 3)) === 1;
+        if (hash(q.x, q.y + (f ? 7 : 0), 10112) < up * (strand ? .35 : .75)) return -9;
+        return (strand ? .1 : -.9) - up * 1.2 + (q.y > T0 + 8 ? .3 : 0);
+      } });
+      F.add({ mat: 'w.hollowlight', prof: 'flat', grp: 'motes', noShadow: true, noOutline: true, shapes: (f ? [[3.6, 7], [12.4, 11.6], [8.4, 1.4]] : [[12.4, 5], [3.6, 13], [7.4, 4]]).map(([x, y]) => O([x, y], .6)), tex: () => .4 });
+      return 'halo';
+    }
+    case 'vault-stair': { // a stair going down through the vault's floor: the cut edge of the stone, the steps falling into the dark, the
+      // hollow light far down (no side walls, so the stair's two tiles make one wide stair)
+      F.add({ mat: 'w.firstage', prof: 'flat', grp: 'lip', noShadow: true, noOutline: true, shapes: [RECT(-1, 0, 17, 2)], tex: q => (q.y === 0 ? .4 : -1.2) });
+      for (let k = 0; k < 4; k++) { const y0 = 2 + k * 3.4; F.add({ mat: 'w.firstage', prof: 'flat', grp: 'step' + k, noShadow: true, noOutline: true, shapes: [RECT(-1, y0, 17, y0 + 3.4)], tex: q => (q.y === Math.ceil(y0) ? .7 : q.y === Math.ceil(y0) + 2 ? -2 : -.9) - k * .5 + bayer(q.x, q.y) * .15 }); }
+      F.add({ mat: 'dark', prof: 'flat', grp: 'below', noShadow: true, noOutline: true, shapes: [RECT(-1, 15.2, 17, 17)], tex: () => -1 });
+      F.add({ mat: 'w.hollowlight', prof: 'flat', grp: 'far', noShadow: true, noOutline: true, shapes: [RECT(3, 14, 13, 15)], tex: q => ((q.x & 1) ? -2.2 : -1.8) });
+      return;
+    }
+    case 'vault-boxes': case 'vault-boxes-open': { // two of the four gift boxes on the vault's back row (the prop's two tiles hold four): old
+      // wood bound with black iron, each sealed with a smear of soot, a violet-black thread of light at the seam; opened, their lids
+      // stand back, they are empty, and the soot lies broken on the floor
+      const opened = kind === 'vault-boxes-open';
+      F.add({ mat: 'w.soot', prof: 'flat', grp: 'floor', noShadow: true, noOutline: true, shapes: [E([8, B - .8], 7.4, 1.6)], tex: q => (hash(q.x, q.y, 10120) < .4 ? -1.4 : -.8) });
+      for (const [x0, y0, w, h, i] of [[1, 9.4, 7, 7.2, 0], [8.6, 10.8, 6.4, 6.6, 1]]) {
+        const x1 = x0 + w, y1 = y0 + h;
+        F.add({ mat: 'bogwood', prof: 'bevel', bw: .8, grp: 'box' + i, shapes: [RECT(x0, y0, x1, y1)], tex: q => ((q.y - Math.floor(y0)) % 3 === 0 ? -.8 : 0) });
+        F.add({ mat: 'blackiron', prof: 'round', bw: .4, grp: 'bands' + i, noShadow: true, shapes: [RECT(x0, y0, x0 + 1, y1), RECT(x1 - 1, y0, x1, y1)] });
+        if (opened) {
+          F.add({ mat: 'dark', prof: 'flat', grp: 'inside' + i, noShadow: true, shapes: [RECT(x0 + 1, y0, x1 - 1, y0 + 1.8)] });
+          F.add({ mat: 'bogwood', prof: 'bevel', bw: .6, grp: 'lid' + i, shapes: [P([[x0 + .4, y0], [x1 - .4, y0], [x1 - 1, y0 - 3.6], [x0 + 1, y0 - 3.6]])], tex: q => (q.y % 2 ? -.6 : 0) });
+        } else {
+          F.add({ mat: 'bogwood', prof: 'bevel', bw: .6, grp: 'lid' + i, shapes: [RECT(x0 - .3, y0 - 1.6, x1 + .3, y0 + .6)] });
+          F.add({ mat: 'w.soot', prof: 'round', bw: .6, grp: 'seal' + i, shapes: [E([(x0 + x1) / 2, y0 + 2.2], 1.8, 1.4), C([(x0 + x1) / 2 - 1.4, y0 + .2], [(x0 + x1) / 2 + 1.2, y0 + 3.8], .5)], tex: () => -.6 });
+          F.add({ mat: 'w.hollowlight', prof: 'flat', grp: 'seam' + i, noShadow: true, noOutline: true, shapes: [RECT(x0 + 1.4, y0 + .2, x0 + 3, y0 + .9)], tex: () => -.8 });
+        }
+      }
+      if (opened) F.add({ mat: 'w.soot', prof: 'flat', grp: 'broken', noShadow: true, noOutline: true, shapes: [O([3.4, B - .4], .8), O([12.6, B - .2], .7), O([7.6, B + .1], .6)], tex: () => -.6 });
+      return;
+    }
+    case 'sleeper-first': return firstSleeper(F, f, W, H);
+    case 'worldforge': return worldforge(F, f, W, H);
+    case 'great-anvil': { // the great anvil: black iron on a stepped plinth, its face worn bright, a bar of metal glowing on it
+      F.add({ mat: 'w.firebrick', prof: 'bevel', bw: 1, grp: 'plinth', shapes: [RECT(8, B - 5.4, 40, B + .4)], tex: q => ((q.y & 1) === 0 || (q.x + ((q.y >> 1) & 1) * 2) % 5 === 0 ? -1.1 : -.2) });
+      F.add({ mat: 'blackiron', prof: 'round', bw: 1.6, grp: 'waist', shapes: [P([[15, B - 5], [17, 21], [31, 21], [33, B - 5]])], tex: q => (q.y % 4 === 0 ? -.6 : 0) });
+      F.add({ mat: 'blackiron', prof: 'round', bw: 2, grp: 'body', shapes: [P([[1, 12.4], [6, 10.6], [9, 9], [42, 9], [46, 12], [44, 15.6], [37, 17.4], [33, 21.6], [15, 21.6], [11, 17.6], [6, 15]])], tex: q => (q.y <= 10 ? .9 : q.y === 11 ? .2 : 0) + (hash(q.x, q.y, 10130) < .05 ? -.8 : 0) });
+      F.add({ mat: 'iron', prof: 'round', bw: .5, grp: 'hardy', noShadow: true, shapes: [RECT(37.4, 9.4, 39.4, 10.8)] });
+      F.add({ mat: 'w.molten', prof: 'round', bw: 1, grp: 'bar', noShadow: true, shapes: [C([15, 7.6], [29, 7.9], 1.2)], tex: q => (q.x < 19 ? .4 : 0) + (f ? .3 : -.2) });
+      F.add({ mat: 'w.molten', prof: 'flat', grp: 'sparks', noShadow: true, noOutline: true, shapes: (f ? [[30.6, 4.4], [33.4, 2.4], [27, 1.6]] : [[31.6, 5.2], [26, 3], [34, 4]]).map(([x, y]) => O([x, y], .5)), tex: () => .6 });
+      return 'halo';
+    }
+  }
+}
+// the First Sleeper (240 x 152, its foot 44 px above its bottom edge, so that at its `at` it lies in the middle of its hollow): the
+// oldest thing in Aethermoor, asleep, curled like a low hill of dark stone and old ember, its back to the roof, its head laid low at
+// the front with one enormous eye shut, its tail wrapped round; its heart glows slow and red through its flank (2 frames). A web of
+// great chains pins it down, made fast to stakes all round the hollow: the long chain down its back runs on out of its bottom edge
+// to the south tunnel, and two more run out of its lower corners to the south-west and south-east ones (where the chains' 'Y'
+// tiles take them on). The Eternal Hearth's black iron roots come down out of the dark and are sunk in its back, like a tap in a
+// tree. Kin to Hush and Lull, but whole, in the open
+function firstSleeper(F, f, W, H) {
+  const hide = q => ((q.x * 3 + q.y * 7) % 37 === 0 ? .7 : (q.x + q.y * 2) % 19 === 0 ? -.8 : 0) + (q.y > 112 ? -.5 : 0);
+  F.add({ mat: 'dark', prof: 'flat', grp: 'shade', noOutline: true, noShadow: true, shapes: [E([124, 132], 108, 18)], tex: () => -1.4 });
+  // the tail, wrapped round the front from the haunch
+  F.add({ mat: 'w.sleeperhide', prof: 'round', bw: 6, grp: 'tail', shapes: [C([206, 96], [186, 128], 14, 12), C([186, 128], [134, 140], 12, 10), C([134, 140], [88, 138], 10, 7), C([88, 138], [48, 130], 7, 3)], tex: hide });
+  // the back and the haunch, the neck going down to the head
+  F.add({ mat: 'w.sleeperhide', prof: 'round', bw: 18, grp: 'body', shapes: [E([138, 78], 78, 46), E([190, 82], 34, 38), C([102, 86], [68, 102], 28, 20)], tex: hide });
+  // old ember in the stone of its back: seams glowing faintly
+  F.add({ mat: 'w.heartglow', prof: 'flat', grp: 'seams', noShadow: true, noOutline: true, shapes: [C([108, 52], [122, 60], .6), C([122, 60], [130, 56], .55), C([160, 46], [168, 58], .6), C([168, 58], [182, 62], .55), C([196, 72], [204, 88], .6), C([146, 116], [160, 120], .55)], tex: () => (f ? -1.9 : -2.3) });
+  // plates along the spine, over the curve of the back
+  F.add({ mat: 'w.sleeperhide', prof: 'round', bw: 2.6, grp: 'ridge', noShadow: true, shapes: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(i => { const a = Math.PI * (1.08 + i * .09); return E([140 + Math.cos(a) * 72, 82 + Math.sin(a) * 46], 5 - Math.abs(i - 4.5) * .3, 3); }), tex: () => .9 });
+  // a forelimb folded under the chin, its claws
+  F.add({ mat: 'w.sleeperhide', prof: 'round', bw: 4.5, grp: 'limb', shapes: [C([90, 110], [74, 124], 11, 8), E([64, 126], 14, 6)], tex: hide });
+  F.add({ mat: 'w.sleeperhide', prof: 'ridge', grp: 'claws', shapes: [[48, 128], [53.6, 130.4], [59, 131.6]].map(([x, y]) => P([[x + 2, y - 2], [x - 3, y + .6], [x + 1.4, y + 1.8]])), tex: () => .6 });
+  // the head, laid low on the forelimb: a great wedge of a skull, horns swept back over the neck, a heavy brow over the enormous
+  // eye, shut, the long lid lit along its fold; the nostril, the line of the jaw
+  const head = P([[6, 114], [7, 104], [18, 94], [40, 86], [66, 82], [86, 88], [94, 100], [88, 116], [66, 124], [36, 125], [14, 122]]);
+  F.add({ mat: 'dark', prof: 'flat', grp: 'headshade', noOutline: true, noShadow: true, shapes: [P(head.pts.map(([x, y]) => [x + 2, y + 3]))], tex: () => -.8 });
+  F.add({ mat: 'w.sleeperhide', prof: 'round', bw: 3.6, grp: 'horns', shapes: [C([74, 88], [100, 70], 6.4, 3), C([100, 70], [118, 66], 3, .8), C([60, 86], [80, 66], 4.6, 2), C([80, 66], [92, 60], 2, .6)], tex: q => (((q.x + q.y * 2) >> 1) % 3 === 0 ? -.6 : .5) });
+  F.add({ mat: 'w.sleeperhide', prof: 'round', bw: 8, grp: 'head', shapes: [head], tex: q => hide(q) + .35 - (q.y > 112 ? .3 : 0) });
+  F.add({ mat: 'w.sleeperhide', prof: 'round', bw: 2.6, grp: 'brow', shapes: [C([22, 97], [50, 89], 4.2, 3.6), C([50, 89], [74, 91], 3.6, 2.4)], tex: () => .9 });
+  F.add({ mat: 'dark', prof: 'flat', grp: 'socket', noShadow: true, noOutline: true, shapes: [C([30, 101], [52, 96.4], 2.4, 2.8), C([52, 96.4], [70, 99], 2.8, 1.6)], tex: () => -.6 });
+  F.add({ mat: 'w.sleeperhide', prof: 'flat', grp: 'lid', noShadow: true, noOutline: true, shapes: [C([31, 101.4], [52, 97.2], 1.3), C([52, 97.2], [69, 99.6], 1.3)], tex: () => 1.5 });
+  F.add({ mat: 'dark', prof: 'flat', grp: 'eye', noShadow: true, noOutline: true, shapes: [C([30, 103], [52, 99.4], .9), C([52, 99.4], [70, 101.4], .8)] });
+  F.add({ mat: 'dark', prof: 'flat', grp: 'wrinkles', noShadow: true, noOutline: true, shapes: [C([36, 108], [50, 106], .6), C([56, 107], [66, 109], .6), C([72, 94], [80, 100], .6)] });
+  F.add({ mat: 'dark', prof: 'flat', grp: 'nostril', noShadow: true, noOutline: true, shapes: [E([13, 106], 2.2, 1.4), C([10, 116], [44, 119], .8)] });
+  // the heart, slow and red, glowing through the flank, a little of its light along the veins near it
+  const hc = [148, 96];
+  F.add({ mat: 'w.heartglow', prof: 'flat', grp: 'veins', noShadow: true, noOutline: true, shapes: [C(hc, [132, 86], .7), C([132, 86], [122, 90], .6), C(hc, [168, 102], .7), C([168, 102], [174, 112], .6), C(hc, [150, 112], .6)], tex: () => (f ? -.9 : -1.7) });
+  F.add({ mat: 'w.heartglow', prof: 'round', bw: 4.5, grp: 'heart', noShadow: true, noOutline: true, shapes: [O(hc, f ? 9.6 : 7.6)], tex: q => (Math.hypot(q.x - hc[0], q.y - hc[1]) < 3.6 ? .9 : .1) + (f ? .3 : -.4) });
+  // the hearth's black iron roots come down out of the dark and are sunk in its back, embers where they go in
+  const roots = [[[102, -2], [108, 18], [112, 40]], [[146, -2], [142, 14], [146, 34]], [[192, -2], [186, 24], [180, 48]]];
+  roots.forEach((pts, i) => F.add({ mat: 'w.ironroot', prof: 'round', bw: 3.4, grp: 'root' + i, shapes: [C(pts[0], pts[1], 8, 6.6), C(pts[1], pts[2], 6.6, 4.2)], tex: q => ((q.x * 2 + (q.y >> 1)) % 5 === 0 ? -.9 : 0) }));
+  F.add({ mat: 'ember', prof: 'flat', grp: 'wounds', noShadow: true, noOutline: true, shapes: roots.map(pts => E([pts[2][0], pts[2][1] + 3], 4.6, 2)), tex: () => (f ? .1 : -.6) });
+  // the web of great chains over it, each made fast to a stake at the hollow's rim
+  const web = [
+    [[136, -2], [138, 34], [132, 74], [124, 116], [120, 153]], // down its back, and on out to the south tunnel
+    [[-2, 6], [58, 42], [130, 36], [200, 44], [242, 58]], // over its back, rim to rim
+    [[-2, 78], [48, 72], [100, 60], [150, 58]], // from a stake on the west rim, over its neck
+    [[-2, 142], [34, 136], [76, 120], [104, 100]], // from a stake at the west rim's foot, over its limb
+    [[-2, 153], [40, 146], [92, 132], [150, 104]], // on out to the south-west tunnel
+    [[242, 126], [214, 112], [196, 76], [170, 54]], // from the stake on the east rim
+    [[242, 153], [210, 140], [178, 116]], // on out to the south-east tunnel
+  ];
+  web.forEach((pts, i) => { for (let j = 0; j < pts.length - 1; j++) chainLinks(F, pts[j], pts[j + 1], { r: 4.4, grp: 'web' + i + '-' + j, rust: .08 }); });
+  return 'halo';
+}
+// the Worldforge (112 x 240): against the forge's east wall, a furnace as big as a house in the shape of a great heart, black iron
+// plates riveted over firebrick, its point set in a pedestal of firebrick; its open mouth blazes white-gold low on its west side (2
+// frames), over the step where the forge's heart is kept, the fire licking out toward it; a flue goes up out of its cleft into the
+// dark, and molten metal runs away from it: out of its pedestal to the south, and from its west lobe to the north, where the forge
+// floor's channels take it on
+function worldforge(F, f, W, H) {
+  const B = H - 1, flow = q => (((q.y + (f ? 3 : 0)) % 7) < 2 ? .5 : 0) + ((q.x + q.y) % 5 === 0 ? -.4 : 0);
+  F.add({ mat: 'w.molten', prof: 'flat', grp: 'channels', noShadow: true, noOutline: true, shapes: [RECT(36, 196, 60, B + 1), RECT(20, -1, 40, 76)], tex: flow });
+  F.add({ mat: 'w.firebrick', prof: 'bevel', bw: .8, grp: 'banks', shapes: [RECT(32, 196, 36, B + 1), RECT(60, 196, 64, B + 1), RECT(16, -1, 20, 76), RECT(40, -1, 44, 70)], tex: q => (q.y % 3 === 0 ? -1 : -.3) });
+  // the pedestal of firebrick the heart's point is set in
+  F.add({ mat: 'w.firebrick', prof: 'bevel', bw: 1.4, grp: 'pedestal', shapes: [P([[22, 212], [30, 174], [104, 174], [110, 212]])], tex: q => ((q.y & 1) === 0 || (q.x + ((q.y >> 1) & 1) * 2) % 5 === 0 ? -1.1 : -.3) + (q.y > 204 ? -.6 : 0) });
+  F.add({ mat: 'blackiron', prof: 'bevel', bw: 1, grp: 'pedtop', shapes: [RECT(28, 170, 106, 176)], tex: q => (q.x % 6 === 0 ? { m: 'iron', dd: .4 } : 0) });
+  // the flue out of the cleft, up into the dark
+  F.add({ mat: 'blackiron', prof: 'round', bw: 2.4, grp: 'flue', shapes: [RECT(60, -1, 78, 76)], tex: q => (q.y % 8 === 0 ? { m: 'iron', dd: -.3 } : q.x === 63 ? .4 : 0) });
+  // the heart: black iron plates riveted over firebrick, a course of the brick showing, vents glowing in the east lobe
+  F.add({ mat: 'blackiron', prof: 'round', bw: 8, grp: 'heart', shapes: [O([52, 96], 27), O([86, 96], 27), P([[25, 102], [113, 102], [76, 182], [69, 190], [62, 182]])], tex: q => {
+    if (q.y % 16 === 7) return { m: 'iron', dd: -.2 };
+    if (q.y % 16 === 8 && q.x % 5 === 0) return { m: 'iron', dd: .6 };
+    if (q.y > 150 && q.y < 160) return { m: 'w.firebrick', dd: ((q.x + (q.y >> 1)) % 4 === 0 || q.y % 2 === 0 ? -1.2 : -.2) };
+    return (q.x % 22 === 0 ? -.8 : 0) + (hash(q.x >> 2, q.y >> 2, 10150) < .08 ? -.6 : 0);
+  } });
+  F.add({ mat: 'w.molten', prof: 'flat', grp: 'vents', noShadow: true, noOutline: true, shapes: [RECT(80, 88, 102, 90), RECT(80, 95, 104, 97), RECT(82, 102, 102, 104)], tex: () => (f ? -.6 : -1.2) });
+  F.add({ mat: 'dark', prof: 'flat', grp: 'cleft', noShadow: true, noOutline: true, shapes: [C([69, 72], [69, 88], 1)] });
+  // the mouth, low on the west side: an arch of firebrick open on the fire, blazing white-gold, flames standing in it
+  F.add({ mat: 'w.firebrick', prof: 'bevel', bw: 1.4, grp: 'arch', shapes: [P([[28, 150], [28, 118], [35, 106], [50, 101], [62, 108], [66, 124], [64, 150]])], tex: q => ((q.x + q.y) % 3 === 0 ? -1 : 0) });
+  F.add({ mat: 'w.whitegold', prof: 'flat', grp: 'mouth', noShadow: true, shapes: [P([[31, 148], [31, 120], [37, 110], [49, 106], [58, 112], [61, 126], [60, 148]])], tex: q => (q.y > 132 ? .8 : .3) + (f ? .3 : 0) + ((q.x + q.y + (f ? 1 : 0)) % 5 === 0 ? -.5 : 0) });
+  F.add({ mat: 'w.molten', prof: 'round', bw: 2.2, grp: 'flames', noShadow: true, shapes: (f ? [[37, 132, 4], [46, 124, 5], [54, 130, 4]] : [[38, 128, 4], [47, 126, 4.6], [55, 127, 4.2]]).map(([x, y, r]) => P([[x - r, 148], [x - r * .6, y + r], [x, y - r * 1.4], [x + r * .6, y + r], [x + r, 148]])), tex: q => (q.y > 140 ? .6 : -.2) });
+  // the fire licks out of the mouth to the west, over the step
+  F.add({ mat: 'w.molten', prof: 'round', bw: 1.2, grp: 'lick', noShadow: true, shapes: (f ? [[30, 128, 16, 124, 4], [30, 142, 12, 144, 3.4]] : [[30, 132, 14, 131, 3.6], [30, 144, 18, 147, 3]]).map(([a, b, c, d, w]) => P([[a, b - w], [(a + c) / 2, b - w * .5 + (d - b) * .4], [c, d], [(a + c) / 2 + 2, b + w * .4 + (d - b) * .5], [a, b + w]])), tex: q => (q.x > 24 ? .5 : -.3) });
+  return 'halo';
+}
+// the Hearth Below's sign looks: a great chain made fast in the rock at a tunnel's mouth, running off toward the web; the four
+// First-Age chairs, each on its dais, its back carved with its region's mark; the step before the Worldforge's mouth
+function belowSign(F, st, f) {
+  const B = 23;
+  if (st === 'heart-step') { // 16 x 16: a step of firebrick with an iron nosing, the furnace's heat in its cracks
+    F.add({ mat: 'w.firebrick', prof: 'bevel', bw: 1, grp: 'step', shapes: [RECT(.4, 5, 15.6, 15.6)], tex: q => ((q.y & 1) === 0 || (q.x + ((q.y >> 1) & 1) * 3) % 6 === 0 ? -1.1 : -.2) });
+    F.add({ mat: 'iron', prof: 'bevel', bw: .6, grp: 'nosing', shapes: [RECT(0, 3.6, 16, 5.8)] });
+    F.add({ mat: 'w.molten', prof: 'flat', grp: 'heat', noShadow: true, noOutline: true, shapes: [C([4, 9], [7, 11], .4), C([10.6, 12], [12.4, 9.6], .4)], tex: () => -1.4 });
+    return;
+  }
+  if (st === 'chain') { // 16 x 24
+    F.add({ mat: 'w.fused', prof: 'bevel', bw: 1, grp: 'block', shapes: [P([[2, B + .4], [3, 17.4], [13, 17], [14, B + .4]])], tex: q => (q.y === 19 ? -1 : 0) });
+    F.add({ mat: 'blackiron', prof: 'round', bw: .8, grp: 'staple', shapes: [O([8, 17.6], 2.6)], cuts: [O([8, 17.6], 1.3)] });
+    chainLinks(F, [8, 15.8], [8.6, -3], { n: 3, r: 3.6, grp: 'chain' });
+    return;
+  }
+  // the chairs (24 x 32): a great stone chair on its dais, its high back carved with its region's mark, a violet-black light
+  // clinging to the seat as if someone rose from it a moment ago
+  const b = 31;
+  F.add({ mat: 'w.firstage', prof: 'bevel', bw: 1, grp: 'dais', shapes: [RECT(0, 26, 24, b + .4)], tex: q => (q.y === 27 ? .4 : -.4) });
+  F.add({ mat: 'w.firstage', prof: 'bevel', bw: 1.4, grp: 'back', shapes: [P([[3.6, 22], [3.6, 5], [7.4, 1], [16.6, 1], [20.4, 5], [20.4, 22]])], tex: q => (q.x === 4 || q.y === 2 ? .3 : 0) + (q.y > 17 ? -.3 : 0) });
+  F.add({ mat: 'w.firstage', prof: 'bevel', bw: 1, grp: 'seat', shapes: [RECT(2, 20, 22, 26.6)], tex: q => (q.y === 20 ? .5 : -.2) });
+  F.add({ mat: 'w.firstage', prof: 'bevel', bw: .9, grp: 'arms', shapes: [RECT(.4, 14.6, 4.4, 26.6), RECT(19.6, 14.6, 23.6, 26.6)], tex: q => (q.y === 15 ? .4 : 0) });
+  F.add({ mat: 'w.hollowlight', prof: 'flat', grp: 'light', noShadow: true, noOutline: true, shapes: [E([12, 21.6], 7.6, 1.6), E([12, 18.6], 5, 2.4)], tex: q => (q.y > 20 ? -1.3 : -2.1) + (hash(q.x, q.y, 10170) < .3 ? -.6 : 0) });
+  const c = [12, 11], k = 1.45, at = ([x, y]) => [c[0] + (x - 8) * k, c[1] + (y - 8) * k];
+  const mark = st === 'chair-tree' ? [C(at([8, 13]), at([8, 7.4]), .7), C(at([8, 9.6]), at([5.6, 7.4]), .55), C(at([8, 9.2]), at([10.4, 7]), .55), O(at([8, 5.6]), 3.2)]
+    : st === 'chair-sun' ? [O(c, 3.2)].concat([0, 1, 2, 3, 4, 5, 6, 7].map(i => { const a = i * Math.PI / 4; return C([c[0] + Math.cos(a) * 4.6, c[1] + Math.sin(a) * 4.6], [c[0] + Math.cos(a) * 6.6, c[1] + Math.sin(a) * 6.6], .55); }))
+      : st === 'chair-anvil' ? [P([at([4, 8.4]), at([8, 3.4]), at([12, 8.4])]), P([at([4.6, 10]), at([11.6, 10]), at([10.4, 11.4]), at([9.2, 11.4]), at([9.6, 12.8]), at([6.4, 12.8]), at([6.8, 11.4]), at([5.4, 11.4])])]
+        : [RECT(...at([6.6, 6]), ...at([9.4, 10.6])), P([at([6, 6.2]), at([8, 4.6]), at([10, 6.2])]), C(at([4, 13]), at([4.6, 5.4]), .55), C(at([12, 13]), at([11.4, 6]), .55), C(at([3, 13]), at([2.8, 8.4]), .5)]; // the lantern among reeds
+  const cuts = st === 'chair-sun' ? [O(c, 1.7)] : st === 'chair-lantern' ? [RECT(...at([7.4, 7]), ...at([8.6, 9.6]))] : undefined;
+  F.add({ mat: 'w.firstage', prof: 'flat', grp: 'marklit', noShadow: true, noOutline: true, shapes: mark.map(sh => shiftShape(sh, .9, .9)), cuts: cuts && cuts.map(sh => shiftShape(sh, .9, .9)), tex: () => .45 });
+  F.add({ mat: 'w.firstdark', prof: 'flat', grp: 'mark', noShadow: true, noOutline: true, shapes: mark, cuts, tex: () => -1.4 });
+}
+// a shape moved by (dx, dy) (a carving's lit lip is the carving itself, a pixel down and right, drawn under it)
+const shiftShape = (sh, dx, dy) => (sh.k === 'p' ? P(sh.pts.map(([x, y]) => [x + dx, y + dy])) : sh.k === 'c' ? C([sh.a[0] + dx, sh.a[1] + dy], [sh.b[0] + dx, sh.b[1] + dy], sh.ra, sh.rb)
+  : sh.k === 'o' ? O([sh.c[0] + dx, sh.c[1] + dy], sh.r) : E([sh.c[0] + dx, sh.c[1] + dy], sh.rx, sh.ry));
+// the Hearth Below's Hearthfires: the Under-Coal (28 x 28), a coal the size of a cart in its niche, the hearth's iron roots gripping
+// it, cracked right through and glowing when lit (cold, it is black and its cracks are dead); the Chain Fire (16 x 32), a fire in an iron
+// brazier hung from a broken chain over its platform
+function belowHearth(F, look, lit, f) {
+  if (look === 'undercoal') { // 28 x 28: a lump of coal the size of a cart in its niche, all facets like anthracite, the hearth's iron
+    // roots gripping it from the rock behind; lit, fire lives in its cracks and licks up out of them; cold, the cracks are dead and ash
+    // lies on its shoulders
+    F.add({ mat: 'dark', prof: 'flat', grp: 'shade', noOutline: true, noShadow: true, shapes: [E([14, 25.8], 13.4, 2.4)], tex: () => -1 });
+    const grip = q => ((q.x + q.y) % 3 === 0 ? -.8 : 0);
+    F.add({ mat: 'w.ironroot', prof: 'round', bw: 1.4, grp: 'rootsback', shapes: [C([-1, 3], [5, 9], 2.2, 1.8), C([5, 9], [5.4, 21], 1.8, 1.1), C([29, 2], [23, 8], 2.2, 1.8), C([23, 8], [23.6, 20], 1.8, 1.1)], tex: grip });
+    const lump = P([[2, 25.6], [1.6, 19], [3.8, 13], [7.4, 8.6], [12.8, 5.4], [18.8, 5.8], [23.6, 9], [26.4, 14.6], [26.8, 20.4], [25.8, 25.6], [14, 27.4]]);
+    const S = [[8, 11], [15, 9], [21, 12], [6, 19], [12.6, 16.4], [19.6, 19], [10, 24], [22.6, 24.4]]; // the facets, each flat like a cut face
+    const cracks = [[[6.4, 13.4], [10.6, 16.2], [9.6, 21.6], [11, 26.4]], [[10.6, 16.2], [16.4, 13.6], [21.6, 17.4], [23.4, 25.4]], [[16.4, 13.6], [15.6, 7.4]], [[4, 21], [9.6, 21.6]], [[21.6, 17.4], [25.6, 15.6]]];
+    F.add({ mat: 'w.soot', prof: 'bevel', bw: 1.6, grp: 'coal', shapes: [lump], tex: q => {
+      let d1 = 99, d2 = 99, i1 = 0; S.forEach(([sx, sy], i) => { const d = Math.hypot(q.x + .5 - sx, q.y + .5 - sy); if (d < d1) { d2 = d1; d1 = d; i1 = i; } else if (d < d2) d2 = d; });
+      const [sx, sy] = S[i1], face = [1.3, 1.7, .6, .2, 1, 0, -.6, -.5][i1];
+      if (d2 - d1 < .9 && q.x + .5 < sx) return face + .9; // a glossy edge where two facets meet
+      return face + (q.x + .5 < sx && q.y + .5 < sy ? .3 : 0) + (hash(q.x, q.y, 10161) < .04 ? 1 : 0) - (q.y > 23 ? .5 : 0) + (lit ? .2 : 0);
+    } });
+    const sh = []; cracks.forEach(pts => { for (let i = 0; i < pts.length - 1; i++) sh.push(C(pts[i], pts[i + 1], .75, .55)); });
+    F.add({ mat: 'dark', prof: 'flat', grp: 'cracks', noShadow: true, noOutline: true, shapes: sh.map(c => C([c.a[0] + .4, c.a[1] + .5], [c.b[0] + .4, c.b[1] + .5], c.ra + .3, c.rb + .3)), tex: () => -1.2 });
+    F.add({ mat: 'w.ironroot', prof: 'round', bw: 1, grp: 'rootfront', shapes: [C([27, 6], [23.4, 10.4], 1.4, 1.1), C([23.4, 10.4], [19.6, 10], 1.1, .7)], tex: grip });
+    if (!lit) { // cold: the cracks dead and black, grey ash on its shoulders
+      F.add({ mat: 'dark', prof: 'flat', grp: 'deadcracks', noShadow: true, noOutline: true, shapes: sh, tex: () => -1.6 });
+      F.add({ mat: 'w.ash', prof: 'round', bw: .6, grp: 'ash', shapes: [E([12.4, 6.6], 4.4, 1.2), E([19.4, 7.2], 3, 1), E([5.4, 11.8], 1.6, .8)], tex: () => -.2 });
+      return;
+    }
+    F.add({ mat: 'ember', prof: 'flat', grp: 'fire', noShadow: true, noOutline: true, shapes: sh, tex: q => (f ? .4 : -.1) + ((q.x + q.y + f) % 4 === 0 ? .5 : 0) });
+    F.add({ mat: 'w.molten', prof: 'flat', grp: 'core', noShadow: true, noOutline: true, shapes: [O([10.6, 16.2], .9), O([16.4, 13.6], .9), O([21.6, 17.4], .8)], tex: () => (f ? .5 : 0) });
+    flame(F, 16, 13.2, f, .75); flame(F, 10.4, 15.8, 1 - f, .6); flame(F, 21.4, 16.8, f, .5);
+    return 'halo';
+  }
+  // chainfire: the chain from above, the brazier hung crooked from it (its other chain broken and hanging), its shadow on the platform
+  F.add({ mat: 'dark', prof: 'flat', grp: 'shadow', noOutline: true, noShadow: true, shapes: [E([8, 29.6], 5.2, 1.6)], tex: () => -1.2 });
+  chainLinks(F, [9, -1], [9.2, 12.4], { n: 4, r: 1.7, grp: 'hang' });
+  chainLinks(F, [3.4, 15], [2.4, 22.4], { n: 2, r: 1.4, grp: 'broken' });
+  F.add({ mat: 'blackiron', prof: 'round', bw: .8, grp: 'bowl', shapes: [P([[2, 14.6], [15, 13.4], [12.8, 19.4], [4.6, 20]])], tex: q => (q.x % 3 === 0 ? -.6 : 0) });
+  F.add({ mat: 'iron', prof: 'round', bw: .4, grp: 'rim', noShadow: true, shapes: [C([2, 14.6], [15, 13.4], .5)] });
+  logs(F, 8.6, 14.6, !lit);
+  if (lit) { flame(F, 8.6, 14, f, 1); return 'halo'; }
+  F.add({ mat: 'w.ash', prof: 'round', bw: .6, grp: 'ash', shapes: [E([8.6, 14], 3.4, .9)] });
+}
 // Hush lies under the floor: its dark body thins out (dithered) toward its edge so the floor shows through; the glow, the
 // ridges and the eye stay whole
 function underIce(R) {
@@ -2271,7 +2682,7 @@ export function objectSprite(kind, state = null, { frame = 0, relic = null, id =
   const st = states.includes(state) ? state : states[0];
   const lit = kind === 'hearth' && st === 'lit';
   const frames = ANIM.has(kind) || lit || (kind === 'ford-ice' && st === 'stream') || (kind === 'deer' && st !== 'alert') || ((SUN_ANIM.has(kind) || IRON_ANIM.has(kind)) && st === 'closed')
-    || (GLOOM_ANIM.has(kind) && st === 'closed') || GLOOM_ANIM_ANY.has(kind) || (kind === 'sign' && st === 'ward-stone') ? 2 : 1;
+    || (GLOOM_ANIM.has(kind) && st === 'closed') || GLOOM_ANIM_ANY.has(kind) || (kind === 'sign' && st === 'ward-stone') || (BELOW_ANIM.has(kind) && st === 'closed') ? 2 : 1;
   const f = frames > 1 ? frame & 1 : 0;
   const hl = kind === 'hearth' ? look || HEARTH_LOOKS[id] || 'ring' : look || '';
   const rk = relic && typeof relic === 'object' ? `${relic.uid || relic.base || relic.id || '?'}:${relic.temper || 0}` : relic || '';
@@ -2288,7 +2699,7 @@ export function objectSprite(kind, state = null, { frame = 0, relic = null, id =
       const icon = itemIcon(relic, { size: 12 });
       if (icon) for (let y = 0; y < 12; y++) for (let x = 0; x < 12; x++) { const i = (y * 12 + x) * 4; if (!icon.data[i + 3]) continue; const X = x + 2, Y = y; const j = (Y * W + X) * 4; img.data[j] = icon.data[i]; img.data[j + 1] = icon.data[i + 1]; img.data[j + 2] = icon.data[i + 2]; img.data[j + 3] = 255; }
     }
-    img.anchors = { foot: [W >> 1, deep ? Hh - 8 : Hh - 1] };
+    img.anchors = { foot: [W >> 1, deep ? Hh - 8 : Hh - 1 - (FOOT_UP[kind] || 0)] };
     img.frames = frames;
     return img;
   });
