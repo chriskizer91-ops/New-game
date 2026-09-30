@@ -14,12 +14,16 @@
 // Brands, the third council sat, at the Keep, level 8 with only its starter relic and the purse the Ironspire left
 // it) down Mossfall's fen stair, pays Hodge the day's price at his bar, earns both Gloomfen Brands and comes home
 // across the causeway and through the Keep's south-west gate to the Great Hall for the fourth council.
+// M7 (spec §2.2, §8; owner M7 P2): the same bot walks ACT3_PATH from a Gloomfen-complete save (all eight Brands, the four
+// councils sat, at the Keep, level 8 with only its starter relic): the fifth council plays as it enters the Great Hall,
+// then it goes down the vault stair, through the Hollow Council back to back, down the Ash Stair and across the Chained
+// Deep (where Tamsin joins), to the Unsmith at the Worldforge, and climbs home to the Great Hall.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { newGame, startBattle, resolveBattle, rest } from '../src/rules/gauntlet.js';
 import { enterMap, move, interact, findPath, present, lockStatus, openLock, afterBattle } from '../src/rules/world.js';
 import { enterDialogue, choose, dialogueView } from '../src/rules/story.js';
-import { START_AT, CRITICAL_PATH, SUN_PATH, IRON_PATH, GLOOM_PATH, HEARTHS } from '../src/data/world.js';
+import { START_AT, CRITICAL_PATH, SUN_PATH, IRON_PATH, GLOOM_PATH, ACT3_PATH, HEARTHS } from '../src/data/world.js';
 import { MAPS, ENTITY_OF } from '../src/data/maps/index.js';
 import { ENCOUNTERS } from '../src/data/encounters.js';
 import { DIALOGUE } from '../src/data/dialogue.js';
@@ -482,5 +486,51 @@ for (const starter of ['hearthbrand', 'stillwater-lance', 'cairnmaul']) {
     assert.equal(s.game.progress.flags.story['council-4-done'], true, 'the fourth council plays in the Great Hall');
     assert.ok(s.steps > 300, `${s.steps} steps`);
     assert.ok(s.held >= 13, `the road held before ${s.held} fights and Hodge's bar (M4.5)`);
+  });
+}
+
+// ---- M7: the Act III walk (spec §2.2, §8) ------------------------------------------------------------
+
+// A Gloomfen-complete save: the M3 to M6 critical paths behind it (all eight Brands, the Waking at 8, the four councils
+// sat, Tamsin fallen at Rotbridge), standing in the Keep's courtyard, every hero at level 8 (the worst case the map tests
+// allow) and only the starter relic in the pack.
+function gloomfenSave(starter) {
+  const g = ironspireSave(starter);
+  g.progress.brands.push('brand-of-lanterns', 'brand-of-the-deep');
+  g.progress.waking = 8;
+  const f = g.progress.flags;
+  for (const id of GLOOM_PATH) {
+    const e = ENCOUNTERS[id];
+    if (e.type === 'hearthfire') { f.kindled[id] = true; continue; }
+    f.beaten[id] = 1;
+    if (e.once) f.done[id] = true;
+    if (e.opens) f.unlocked[e.opens] = true;
+  }
+  Object.assign(f.story, { 'toll-paid': true, 'tamsin-yielded-4': true, 'tamsin-fallen': true, 'gloomfen-complete': true, 'council-4-done': true });
+  return g;
+}
+
+// ACT3_PATH as a player walks it: Tamsin, waiting before the forge door, is spoken to (and joins) past the Chain Fire
+const ACT3_WALK = ACT3_PATH.flatMap(id => (id === 'chain-fire' ? [id, 'npc:tamsin'] : [id]));
+
+for (const starter of ['hearthbrand', 'stillwater-lance', 'cairnmaul']) {
+  test(`the Act III walk (${starter}): from a Gloomfen-complete save down the vault stair, ACT3_PATH to the Unsmith, then home`, () => {
+    const bot = makeBot(starter, { game: gloomfenSave(starter), path: ACT3_WALK, start: { map: 'keep', anchor: 'from-hall' } });
+    const s = bot.run();
+    const f = s.game.progress.flags;
+    assert.equal(f.story['council-5-done'], true, 'the fifth council played in the Great Hall');
+    assert.ok(s.exits.has('hall-down'), 'down the vault stair');
+    for (const id of ACT3_PATH) {
+      if (HEARTHS[id]) assert.ok(f.kindled[id], `${id} kindled`);
+      else assert.ok(f.beaten[id], `${id} fought`);
+    }
+    assert.equal(f.story['tamsin-returned'], true, 'Tamsin joined in the Chained Deep');
+    assert.ok(!present(s.game, 'chained-deep').some(e => e.id === 'cd-tamsin'), 'and left her place before the forge door');
+    // the way home: the last chair is empty, so the stair back to the vault is open again
+    bot.home('keep-hall');
+    assert.equal(s.walk.map, 'keep-hall');
+    assert.ok(s.exits.has('hh-up'), 'home up the Hollow Hall\'s stair');
+    assert.ok(s.steps > 300, `${s.steps} steps`);
+    assert.ok(s.held >= 7, `the road held before ${s.held} fights (M4.5)`);
   });
 }

@@ -252,6 +252,17 @@ export const RELIC_ART = Object.freeze({
   // Nettie's shawl, knotted from bog-cotton and hag's hair over a bark-brown robe: an open net of knots, tassels and a
   // few charms on its edges, one thread through it that glows
   'hexbane-shawl': { r: 'robe', relic: true, fx: 'rise', aspect: 'blight', p: { mat: 'robeBark', tex: TX2.folds(66), trim: 'moss', sash: 'clothGrey', shawl: 'bogCotton', hexline: 'blight', charms: 'bone', pauldrons: 'bogCotton', gem: 'amethyst' } },
+  // ---- M7: Codex Page V, the Hearth Below (No. 000 and Nos. 67-74). STUB from the M7 scaffold, all nine (stub: true): stand-ins, each
+  // its own look; P6 draws the real ones (STUB from the M7 scaffold). ----
+  'fenwicks-poker': { r: 'mace', relic: true, stub: true, fx: 'rise', aspect: 'ember', p: { style: 'knob', headT: 52, headW: 6.5, haft: 'blackiron', haftR: 1.8, wrap: 'leatherDark', wrapEnd: 16, bands: [40], bandMat: 'iron', headMat: 'blackiron', pommelR: 2.4, gem: 'ember', trim: 'iron', spike: 0 } },
+  'hollow-wreath': { r: 'circlet', relic: true, stub: true, fx: 'rise', aspect: 'verdant', p: { look: 'circlet', style: 'rotwood', mat: 'bark', mat2: 'rotwood', thorn: 'thorn', gem: 'amethyst', leaves: 'bark' } },
+  'hollow-chalice': { r: 'focus', relic: true, stub: true, fx: 'rise', aspect: 'ember', p: { style: 'censer', metal: 'blackiron', trim: 'bronze', glow: 'ember', gem: 'amethyst' } },
+  'hollow-gauntlet': { r: 'gauntlets', relic: true, stub: true, fx: 'dust', aspect: 'stone', p: { mat: 'blackiron', plate: 1, cuffMat: 'blackiron', trim: 'iron', cuffBand: 'iron', knuckles: 'blackiron', cuffGem: 'amethyst' } },
+  'hollow-chain': { r: 'amulet', relic: true, stub: true, fx: 'rise', aspect: 'blight', p: { style: 'coin', chain: 'blackiron', metal: 'blackiron', gem: 'amethyst' } },
+  'tamsins-bargain': { r: 'sword', relic: true, stub: true, fx: 'rise', aspect: 'blight', p: { gripEnd: 15, guardT: 3.4, bladeW: 3.8, bladeL: 48, tipL: 9, taper: .88, blade: 'blackiron', fuller: 'blight', fullerR: 1, guard: 'oath', guardMat: 'blackiron', guardW: 10, gem: 'amethyst', grip: 'leatherDark', gripR: 2.1, pommel: 'blackiron', pommelR: 3.2, pommelGem: 'amethyst' } },
+  'unmaking-hammer': { r: 'hammer', relic: true, stub: true, fx: 'rise', aspect: 'ember', k: .4, p: { headT: 52, headH: 15, headW: 17, peen: 1, haft: 'blackiron', haftR: 2.6, wrap: 'leatherDark', wrapEnd: 18, bands: [24, 34], bandMat: 'blackiron', headMat: 'blackiron', pommelMat: 'blackiron', pommelR: 3.3, faces: 1, langets: 1, seam: 'blight', spike: 0 } },
+  'ironvein-apron': { r: 'leather', relic: true, stub: true, fx: 'rise', aspect: 'stone', p: { mat: 'leatherDark', shirt: 'wool', pauldrons: 'leatherDark', trim: 'blackiron', belt: 'leather', buckle: 'blackiron', gem: 'ember' } },
+  'worldforge-heart': { r: 'ring', relic: true, stub: true, fx: 'rise', aspect: 'ember', p: { style: 'signet', metal: 'blackiron', face: 'ruby', seal: 'gold', runes: 'ember', gem: 'ruby' } },
 });
 export const RELIC_IDS = Object.keys(RELIC_ART);
 

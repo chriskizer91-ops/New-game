@@ -1,4 +1,4 @@
-// Quests and bounties (M3 spec §3.6, §4.4; M4 spec §3.6; M5 spec §3.6; M6 spec §3.6). Quest state is derived from
+// Quests and bounties (M3 spec §3.6, §4.4; M4 spec §3.6; M5 spec §3.6; M6 spec §3.6; M7 spec §3.6). Quest state is derived from
 // conditions; only flags.quests[id] = 'claimed' is stored.
 //
 // QUESTS[id] = { id, name, kind: 'main'|'side', giver, start: cond,
@@ -222,6 +222,33 @@ export const QUESTS = deepFreeze({
       step('Tell Corvus what the chest says.', { flag: 'chest-told' }, 'misthollow', 'corvus'),
     ],
     reward: { gold: 250, gems: { 'bog-amber': 1 }, set: 'worldforge-page' },
+  },
+  // ---- M7: the Hearth Below (spec §3.6). STUB from the M7 scaffold, all three: the spec's steps as far as today's
+  // conditions go, on the flags the stub scenes set. P1 adds `{ masterpiece: true }` and `{ ending }` (spec §4.8), and
+  // P3 adds the steps that read them, words the steps and finishes the rewards. ----
+  'hollow-council': {
+    id: 'hollow-council', name: 'The Hollow Council', kind: 'main', giver: 'isolde', start: { flag: 'council-5-done' },
+    steps: [
+      step('Go down the vault stair and free the Hollow Council, all four.', { beaten: 'hollow-gretch' }, 'hollow-hall', 'hollow-gretch'),
+      step('Go down the Ash Stair to the Chained Deep.', { flag: 'met-tamsin-below' }, 'chained-deep', 'cd-tamsin'),
+      step('Face the Unsmith at the Worldforge.', { beaten: 'unsmith' }, 'worldforge', 'unsmith'),
+    ],
+    reward: {}, // the ending is its reward (spec §3.6)
+  },
+  masterpiece: {
+    id: 'masterpiece', name: 'The Masterpiece', kind: 'side', giver: 'hilda', start: { all: [{ beaten: 'hollow-gretch' }, { flag: 'worldforge-page' }] },
+    steps: [
+      // the price as far as a condition can say it (spec §4.5: the page, 5 embers, 5 silver, 2 bog amber, 2000 gold)
+      step('Bring Hilda what she asks for the Masterpiece.', { afford: { gold: 2000, materials: { embers: 5, silver: 5 } } }, 'keep', 'hilda'),
+    ],
+    reward: {}, // the Masterpiece itself (P1's forge)
+  },
+  'fenwicks-truth': {
+    id: 'fenwicks-truth', name: 'Fenwick\'s Truth', kind: 'side', giver: 'fenwick', start: { beaten: 'hollow-gretch' },
+    steps: [
+      step('Hear Fenwick out at the Eternal Hearth.', { owns: 'fenwicks-poker' }, 'keep-hall', 'fenwick'),
+    ],
+    reward: {}, // No. 000: Fenwick gives it himself (data/dialogue.js fenwick-truth)
   },
 });
 

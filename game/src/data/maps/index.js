@@ -21,7 +21,8 @@
 // tools/map-draft.mjs draws any map as ASCII or PNG (--png, --art for the real tiles) with a lint.
 // Owner: WP3 (index, keep, keep-hall, hearth-road, thornhollow, thornway, briarmaw-den, mossfall);
 // WP3B (mosswatch-1, mosswatch-2, hindwood, fawnrest, eldergrove, heartroot-1, heartroot-2); M4 P2 (the
-// Sunscorch maps); M5 P2 (the Ironspire maps and the Ironspire Gallery); M6 P2 (the Gloomfen maps and the Gloomfen Gallery).
+// Sunscorch maps); M5 P2 (the Ironspire maps and the Ironspire Gallery); M6 P2 (the Gloomfen maps and the Gloomfen Gallery);
+// M7 P2 (the Hearth Below's four maps).
 
 import keep from './keep.js';
 import keepHall from './keep-hall.js';
@@ -83,11 +84,17 @@ import blackwaterReach from './blackwater-reach.js';
 import tidalFlats from './tidal-flats.js';
 import causeway from './causeway.js';
 import keepGallery3 from './keep-gallery-3.js';
+// M7: the Hearth Below (spec §2.1), under the Keep's vault
+import hollowHall from './hollow-hall.js';
+import ashStair from './ash-stair.js';
+import chainedDeep from './chained-deep.js';
+import worldforge from './worldforge.js';
 
 const LIST = [keep, keepHall, hearthRoad, thornhollow, thornway, briarmawDen, mossfall, mosswatch1, mosswatch2, hindwood, fawnrest, eldergrove, heartroot1, heartroot2,
   sunRoad, sandspire, dustTrail, dusthaven, deepShaft1, deepShaft2, glassFlats, miragewell, scorchgate, scorchgateVaults, keepGallery,
   oldBridge, drystoneLea, plankford, shrinewood, silverfall, lastCamp, rockslidePass, peaksVeil, highfold, ironStair, ironhold, ironholdDeeps, harrowsForge, stormwatch, frostRoad, frostmere, frostmereBelow, keepGallery2,
-  murkway, willowmurk, rotbridge, bogmire, lanternfen, mothersHollow, longBoardwalk, misthollow, drownedBelfry, blackwaterReach, tidalFlats, causeway, keepGallery3];
+  murkway, willowmurk, rotbridge, bogmire, lanternfen, mothersHollow, longBoardwalk, misthollow, drownedBelfry, blackwaterReach, tidalFlats, causeway, keepGallery3,
+  hollowHall, ashStair, chainedDeep, worldforge];
 
 export const MAPS = Object.freeze(Object.fromEntries(LIST.map(m => [m.id, m])));
 export const MAP_IDS = Object.freeze(LIST.map(m => m.id));

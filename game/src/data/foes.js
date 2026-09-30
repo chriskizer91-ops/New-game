@@ -1,4 +1,4 @@
-// Foe families of the Verdant Wilds (M2, M3), the Sunscorch Wastes (M4), the Ironspire Peaks (M5) and the Gloomfen Marsh (M6). Art keys match the shared vocabulary.
+// Foe families of the Verdant Wilds (M2, M3), the Sunscorch Wastes (M4), the Ironspire Peaks (M5), the Gloomfen Marsh (M6) and the Hearth Below (M7). Art keys match the shared vocabulary.
 //
 // Stats are for level 1; rules/foe.js scales them by level, gear tier, Omens and the Waking.
 // Each family has a MOVE TABLE read like a D&D random table: the foe rolls its intent die
@@ -1215,6 +1215,51 @@ const TALLY_GLOOM = {
   },
 };
 
-export const FOES = deepFreeze({ ...VERDANT, ...TALLY_SUN, ...SUNSCORCH, ...TALLY_IRON, ...IRONSPIRE, ...TALLY_GLOOM, ...GLOOMFEN });
+// ---- M7: the Hearth Below (spec §3.2; owner P4). STUB from the M7 scaffold, all of them: each borrows an earlier family's
+// numbers, moves and look until P4 writes the real family in its place (with `art: <its id>`, which P6 draws;
+// art-keys.test.mjs fails for a new key until both have landed). The kind and aspect are the spec's.
+const stub = (id, name, from, o = {}) => ({ ...from, id, name, stub: true, variants: {}, ...o });
+// a borrowed move table stretched onto a bigger die, for a stand-in whose tier rolls one
+const stretch = (table, from, to) => table.map(([lo, hi, m]) => [Math.floor((lo - 1) * to / from) + 1, Math.floor(hi * to / from), m]);
+// STUB from the M7 scaffold: the Hollow Council fights on the `champion` tier (a d20, its borrowed table stretched onto
+// it) until P1 adds the `hollow` tier (a d20, +4 while the gift is held; spec §4.2) and moves them onto it. Each one is
+// unique, never flees, and holds the gift sent to their chair (spec A11, §3.5).
+const hollow = (id, name, from, relic, aspect, koText, text) => stub(id, name, from, {
+  tier: 'champion', kind: 'human', aspect, unique: true, noFlee: true, relics: [relic], table: stretch(from.table, 8, 20), koText, text,
+});
+const HEARTH_BELOW = {
+  // STUB from the M7 scaffold: an ember construct (the forge-spark) until P4 writes the cinder-thralls
+  'cinder-thrall': stub('cinder-thrall', 'Cinder-Thrall', IRONSPIRE['forge-spark'], { kind: 'construct', aspect: 'ember',
+    variants: { 'thrall-overseer': { name: 'Thrall-Overseer', tier: 'veteran', hp: 26, table: stretch(IRONSPIRE['forge-spark'].table, 6, 8) } },
+    text: 'One of the Unsmith\'s ash-men, shaped from the hearth\'s own ash. It remembers being a fire.' }),
+  // STUB from the M7 scaffold: an undead (the ash-wight) with the spec's blight, until P4 writes the unmade
+  unmade: stub('unmade', 'The Unmade', SUNSCORCH['ash-wight'], { kind: 'undead', aspect: 'blight',
+    text: 'A relic-bearer the Worldforge unmade: a husk still carrying the shape of the thing it held.' }),
+  // STUB from the M7 scaffold: an ember construct (the forgeborn) until P4 writes the forge-warden
+  'forge-warden': stub('forge-warden', 'Forge-Warden', IRONSPIRE.forgeborn, { kind: 'construct', aspect: 'ember',
+    text: 'A bellows-and-anvil construct that holds the Worldforge\'s bridge, breathing like a forge.' }),
+  // STUB from the M7 scaffold, all four: the Hollow Council, each a human family of their own region, until P4 writes them
+  'hollow-miravel': hollow('hollow-miravel', 'Hollow Miravel', VERDANT['feral-druid'], 'hollow-wreath', 'verdant',
+    'The Hollow Wreath goes dark, and Miravel looks at her own hands as if she has never seen them.',
+    'The Elder of Eldergrove, wearing the Hollow Wreath the Unsmith sent her chair. It has hollowed her.'),
+  'hollow-qasim': hollow('hollow-qasim', 'Hollow Qasim', SUNSCORCH['dune-raider'], 'hollow-chalice', 'ember',
+    'The Hollow Chalice runs dry, and Qasim sits down on the steps of his chair like a man after a long walk.',
+    'The Cistern Lord of Sandspire, holding the Hollow Chalice the Unsmith sent his chair. It has hollowed him.'),
+  'hollow-brundar': hollow('hollow-brundar', 'Hollow Brundar', VERDANT.bandit, 'hollow-gauntlet', 'stone',
+    'The Hollow Gauntlet opens, and Brundar lets go of whatever it was holding for him.',
+    'The Thane of Ironhold, in the Hollow Gauntlet the Unsmith sent his chair. It has hollowed him.'),
+  'hollow-gretch': hollow('hollow-gretch', 'Hollow Gretch', GLOOMFEN['bog-hag'], 'hollow-chain', 'blight',
+    'The Hollow Chain slips from her neck, and Gretch says, very quietly, that she knew she should not have opened it.',
+    'The Mayor of Bogmire, wearing the Hollow Chain the Unsmith sent her chair. It has hollowed her.'),
+  // STUB from the M7 scaffold: a Champion (the Ashen Warden: three phases, at 1, 0.66 and 0.33) on the `champion` tier
+  // until P1 adds the `unsmith` tier (two d20s, two moves a turn; spec §4.2) and P4 writes his three phases, his
+  // pieces' Arts and his stolen Arts (spec §3.5, §4.4)
+  unsmith: stub('unsmith', 'The Unsmith', SUNSCORCH['ashen-warden'], { kind: 'human', aspect: 'ember',
+    relics: ['unmaking-hammer', 'ironvein-apron', 'worldforge-heart'],
+    koText: 'The hammer drops. Harrow Ironvein looks up at the Worldforge, and then at you, and for a moment he looks like his sister.',
+    text: 'Harrow Ironvein, Hilda\'s twin, the smith who drew the Worldforge\'s plans: the Unsmith. He has kept the fire in.' }),
+};
+
+export const FOES = deepFreeze({ ...VERDANT, ...TALLY_SUN, ...SUNSCORCH, ...TALLY_IRON, ...IRONSPIRE, ...TALLY_GLOOM, ...GLOOMFEN, ...HEARTH_BELOW });
 
 export const FOE_IDS = Object.freeze(Object.keys(FOES));

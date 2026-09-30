@@ -20,4 +20,7 @@ export const LETTERS = deepFreeze({
   // M6: the Gloomfen. After the Lantern Mother (and after Rotbridge: he has Tamsin now), and after Lull's scene.
   'brand-of-lanterns': { text: 'Seven. You carried the fen\'s children home, little Warden. I only needed the one, and she came to me on her own. — U.' },
   'brand-of-the-deep': { text: 'Eight. Every coal lit, and the fen has stopped singing. I sent your Council four gifts. Tell them to open them together. — U.' },
+  // M7 (spec §3.6): not a Brand's: the Hollow Council's last after-scene shows it ({ letter: 'hollow' }, P3's), signed
+  // with his own initial at last
+  hollow: { text: 'Four chairs empty. You are very thorough, little Warden. Come down. I have kept the fire in for you. — H.' },
 });

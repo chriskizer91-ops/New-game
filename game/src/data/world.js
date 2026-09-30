@@ -1,9 +1,10 @@
-// The world above the maps (M3 spec §2, §3.3, §4.2; M4 spec §2; M5 spec §2): regions, Brands, patrol zones,
+// The world above the maps (M3 spec §2, §3.3, §4.2; M4 spec §2; M5 spec §2; M7 spec §2): regions, Brands, patrol zones,
 // Hearthfires, the start position, the 17 places on the illustrated map, the critical paths and the
 // optional leads.
 // Coordinates: tiles for maps, viewBox 1200x800 for the illustrated map (`lore`).
 // Owner: WP3; M4 P2 (the Sunscorch stands, SUN_PATH, SUN_LEADS); M5 P2 (the Ironspire stands, IRON_PATH,
-// IRON_LEADS); M6 P2 (the Gloomfen stands, GLOOM_PATH, GLOOM_LEADS). Imports nothing from rules/.
+// IRON_LEADS); M6 P2 (the Gloomfen stands, GLOOM_PATH, GLOOM_LEADS); M7 P2 (the Hearth Below, ACT3_PATH, ACT3_LEADS).
+// Imports nothing from rules/.
 
 import { deepFreeze } from '../core/freeze.js';
 
@@ -13,6 +14,9 @@ export const REGIONS = deepFreeze({
   sunscorch: { id: 'sunscorch', name: 'The Sunscorch Wastes', act: 2, lore: [870, 470], entries: ['keep-se'], brands: ['brand-of-glass', 'brand-of-ash'], open: true },
   ironspire: { id: 'ironspire', name: 'The Ironspire Peaks', act: 2, lore: [870, 160], entries: ['keep-e', 'fr-highfold'], brands: ['brand-of-iron', 'brand-of-frost'], open: true },
   gloomfen: { id: 'gloomfen', name: 'The Gloomfen Marsh', act: 2, lore: [280, 530], entries: ['keep-sw', 'mf-fen-stair'], brands: ['brand-of-lanterns', 'brand-of-the-deep'], open: true },
+  // M7 (spec §2.1): Act III, under the Keep (its Atlas point is the Keep's). No Brand is left to win in it; the vault
+  // stair (keep-hall hall-down) opens once the fifth council has sat.
+  below: { id: 'below', name: 'The Hearth Below', act: 3, lore: [540, 390], entries: ['hall-down'], brands: [], open: true },
 });
 export const REGION_IDS = Object.freeze(Object.keys(REGIONS));
 
@@ -49,9 +53,13 @@ export const ZONES = deepFreeze({
   blackwater: { id: 'blackwater', level: 18, sets: 'blackwater', backdrop: 'blackwater-reach' },
   'tidal-flats': { id: 'tidal-flats', level: 18, sets: 'tidal-flats', backdrop: 'tidal-flats' },
   causeway: { id: 'causeway', level: 16, sets: 'causeway', backdrop: 'causeway' },
+  // M7 (spec §2.6): the Ash Stair. A Waking-0 level like every zone's: at Waking 8 (no Brand is left to raise it) its
+  // rabble stand at about 38. STUB from the M7 scaffold: the backdrop is Scorchgate's until P6 paints `ash-stair`, and
+  // P4 tunes the level.
+  'ash-stair': { id: 'ash-stair', level: 22, sets: 'ash-stair', backdrop: 'scorchgate' },
 });
 
-// The Hearthfires (ten in the Wilds, seven in the Sunscorch, eight in the Ironspire, eight in the Gloomfen). x, y, face is the STAND (where the party wakes, rests and arrives by
+// The Hearthfires (ten in the Wilds, seven in the Sunscorch, eight in the Ironspire, eight in the Gloomfen, two below the Keep). x, y, face is the STAND (where the party wakes, rests and arrives by
 // travel), facing the fire. `cold` fires start unlit (the cold-hearth lock).
 const H = (map, x, y, lore, name, o = {}) => ({ map, x, y, face: 'n', lore, name, cold: false, ...o });
 export const HEARTHS = deepFreeze({
@@ -94,6 +102,11 @@ export const HEARTHS = deepFreeze({
   'bell-hearth': H('misthollow', 38, 14, [340, 689], 'The Belltower Fire', { cold: true }),
   'wreck-fire': H('blackwater-reach', 27, 9, [245, 727], 'The Wreck Fire', { cold: true }),
   'flats-beacon': H('tidal-flats', 18, 9, [124, 754], 'The Flats Beacon'),
+  // M7 (spec §2.5): the Hearth Below's two (STUB from the M7 scaffold: first places; M7 P2 lays them out). Their maps lie
+  // under the Keep, so both share the Keep's Atlas point, "below the Keep": the Below view shows them, and the realm
+  // view leaves them out (a phone's realm has no room for a 34th and 35th fire 43 px apart, test/shell.test.mjs).
+  'under-coal': H('ash-stair', 21, 7, [540, 390], 'The Under-Coal', { cold: true }),
+  'chain-fire': H('chained-deep', 26, 2, [540, 390], 'The Chain Fire'),
 });
 export const HEARTH_IDS = Object.freeze(Object.keys(HEARTHS));
 
@@ -151,6 +164,13 @@ export const GLOOM_PATH = Object.freeze(['mk-leeches', 'reed-shrine', 'mk-reedcu
 export const GLOOM_LEADS = deepFreeze({
   willow: ['wm-willow'], grue: ['grue-hollow'], cantor: ['db-choir', 'cantor'], jaws: ['old-jaws'], hodge: ['hodge'],
 });
+
+// M7: the Act III critical path (spec §2.2), road-first: the Eternal Hearth (the fifth council plays in the Great Hall),
+// the Hollow Council back to back, the Ash Stair, the Chained Deep, and the Unsmith at the Worldforge (the finale).
+// There are no leads in Act III.
+export const ACT3_PATH = Object.freeze(['hearthstone-keep', 'hollow-miravel', 'hollow-qasim', 'hollow-brundar', 'hollow-gretch', 'under-coal',
+  'as-thralls', 'cd-unmade', 'chain-fire', 'wf-warden', 'unsmith']);
+export const ACT3_LEADS = deepFreeze({});
 
 // The optional leads after the Brand (and the early optional fights), by name.
 export const LEADS = deepFreeze({

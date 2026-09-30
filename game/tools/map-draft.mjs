@@ -108,6 +108,8 @@ async function reachGame(mode) {
   Object.assign(f.story, { 'sunscorch-complete': true, 'council-2-done': true, 'highfold-open': true, 'tamsin-yielded-3': true });
   // M6: the third council opens the fen stair; Hodge's toll paid, the fourth duel yielded
   Object.assign(f.story, { 'ironspire-complete': true, 'council-3-done': true, 'toll-paid': true, 'tamsin-yielded-4': true });
+  // M7: the fourth council ends Act II and the fifth opens the vault stair down to the Hearth Below
+  Object.assign(f.story, { 'gloomfen-complete': true, 'council-4-done': true, 'council-5-done': true });
   for (const m of Object.values(MAPS)) for (const e of m.entities) if (e.kind === 'lock' || e.kind === 'gate') f.unlocked[e.id] = true;
   return g;
 }

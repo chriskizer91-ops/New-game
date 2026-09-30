@@ -70,6 +70,11 @@ const ACT2_POSTERS = [
   ['hodge', 'hodge'], ['grandfather-willow', 'wm-willow'], ['mother-grue', 'grue-hollow'], ['lantern-mother', 'lantern-mother'],
   ['salvage-master', 'mh-salvage'], ['drowned-cantor', 'cantor'], ['old-jaws', 'old-jaws'], ['blackwater-leviathan', 'blackwater-leviathan'],
 ];
+// M7 (spec §3.6): the Hearth Below's five, the Hollow Council and the Unsmith
+const ACT3_POSTERS = [
+  ['hollow-miravel', 'hollow-miravel'], ['hollow-qasim', 'hollow-qasim'], ['hollow-brundar', 'hollow-brundar'], ['hollow-gretch', 'hollow-gretch'],
+  ['unsmith', 'unsmith'],
+];
 
 test('quests, bounties, shops, the Ladder and letters name real things', () => {
   for (const q of Object.values(QUESTS)) {
@@ -95,12 +100,15 @@ test('quests, bounties, shops, the Ladder and letters name real things', () => {
   // M4: the Act I rumour of a glass scorpion is Kharzul's poster now; Gloomfen stays a rumour, and so does
   // Harrow (M5 finds his forge, not him)
   assert.deepEqual(LADDER.filter(p => p.act === 2 && !p.silhouette).map(p => [p.id, p.enc]), ACT2_POSTERS);
+  assert.deepEqual(LADDER.filter(p => p.act === 3 && !p.silhouette).map(p => [p.id, p.enc]), ACT3_POSTERS);
   // M6: the Lantern Mother has her poster; Harrow is still a rumour
   assert.deepEqual(LADDER.filter(p => p.silhouette).map(p => p.id), ['missing-smith', 'man-on-the-barge']);
   for (const p of LADDER) cond(p.if, `ladder ${p.id}`); // M6: an entry that shows only once its condition holds
   assert.equal(new Set(LADDER.map(p => p.id)).size, LADDER.length, 'poster ids are unique');
   for (const p of LADDER) if (p.enc) assert.ok(ENCOUNTERS[p.enc]?.spawns?.[p.spawn], p.id);
   for (const b of Object.keys(BRANDS)) assert.ok(LETTERS[b]?.text, `letter for ${b}`);
+  // M7 (spec §3.6): the Hollow Council's letter, signed with his own initial at last
+  assert.equal(LETTERS.hollow?.text, 'Four chairs empty. You are very thorough, little Warden. Come down. I have kept the fire in for you. — H.');
 });
 
 test('every condition in the story data parses', () => {

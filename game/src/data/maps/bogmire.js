@@ -58,7 +58,10 @@ export default deepFreeze({
   entities: [
     { id: 'stilt-hearth', kind: 'hearthfire', at: [20, 12], stand: [20, 13, 'n'] },
     { id: 'bm-board', kind: 'board', at: [22, 9], opens: 'bounties' },
-    { id: 'gretch', kind: 'npc', npc: 'gretch', at: [9, 7], face: 's' },
+    { id: 'gretch', kind: 'npc', npc: 'gretch', at: [9, 7], face: 's', if: { not: { flag: 'council-5-done' } } },
+    // M7 (spec §3.1): Gretch goes down with the Hollow Council at the fifth council, and comes home freed, to stand
+    // beside where she stood
+    { id: 'gretch-freed', kind: 'npc', npc: 'gretch', at: [10, 7], face: 's', if: { beaten: 'hollow-gretch' } },
     { id: 'nettie', kind: 'npc', npc: 'nettie', at: [4, 22], face: 'e' },
     { id: 'pell', kind: 'npc', npc: 'pell', at: [2, 12], face: 'w' },
     { id: 'bm-watch', kind: 'npc', npc: 'bm-watch', at: [32, 4], face: 's' },

@@ -27,8 +27,11 @@ import { TUNING } from '../data/tuning.js';
 // A relic whose data names no deeds (only test fixtures): the plainest three.
 const DEFAULT_DEEDS = Object.freeze(['first-blood', 'fell-holder', 'brand']);
 
-const ON_PAGE = Object.freeze(Object.fromEntries(PAGES.map(p => [p.id, p.from == null ? []
-  : Object.values(RELICS).filter(r => r.codex >= p.from && r.codex <= p.to).sort((a, b) => a.codex - b.codex).map(r => r.id)])));
+// M7: a page lists its numbers (`nos`: Page V, No. 000 among them) or gives its range (`from`, `to`); a Codex number is
+// always compared as a number, never tested for truth (No. 000 is 0)
+const onPage = p => (Array.isArray(p.nos) ? r => p.nos.includes(r.codex) : p.from == null ? () => false : r => r.codex >= p.from && r.codex <= p.to);
+const ON_PAGE = Object.freeze(Object.fromEntries(PAGES.map(p => [p.id,
+  Object.values(RELICS).filter(onPage(p)).sort((a, b) => a.codex - b.codex).map(r => r.id)])));
 
 export const relicsOn = pageId => ON_PAGE[pageId] || [];
 

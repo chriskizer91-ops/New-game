@@ -1148,7 +1148,12 @@ export const DIALOGUE = deepFreeze({
       ['isolde', 'When the Gloomfen is won, you\'ll tell it to the Council, properly. Until then I don\'t trust my face.'],
     ],
   },
-  'isolde-boxes': { lines: [['isolde', 'The boxes are in the vault, under the Seal. Some nights I sit with them. They\'re warm. Boxes shouldn\'t be warm.']] },
+  'isolde-boxes': {
+    lines: [['isolde', 'The boxes are in the vault, under the Seal. Some nights I sit with them. They\'re warm. Boxes shouldn\'t be warm.']],
+    // M7 (spec §3.6): Isolde gives Act III's main quest, so her talk can start it: the Opening, as the keep-hall trigger
+    // plays it (STUB from the M7 scaffold: P3 decides whether she keeps offering it)
+    choices: [{ text: 'Open them together, as the letter said.', if: { not: { flag: 'council-5-done' } }, next: 'council-5' }, LEAVE],
+  },
   'notice-isolde-boots': { lines: [['isolde', 'Tamsin\'s boots. She hated boots as a girl; she said they made her slow. She\'d have hated these most of all.']] },
   'fenwick-seven': { lines: [['fenwick', 'Seven coals, and the flame\'s gone soft and gold, like a lamp left in a window for somebody. I don\'t trust it.']] },
   'fenwick-eight': {
@@ -1701,6 +1706,51 @@ export const DIALOGUE = deepFreeze({
     ],
     do: [{ end: 'gloomfen' }],
   },
+
+  // ==== M7: the Hearth Below (spec §3.1, §3.5, §3.6, §4.7). STUB from the M7 scaffold, all of them: a line or two each, and the
+  // effects the rest of the data reads (the flags, the gifts). P3 writes the real scenes (the Opening's title card and
+  // the Act III card are P7's, spec §5); P1 adds the `ending` effect to the heart's choice (§4.7). ==========
+  // ---- the fifth council, the Opening (keep-hall trigger `council-5`, guarded by the flag it sets): the boxes open
+  // together, and the four go down to their chairs (their Ladder posters are scouted, spec §3.6) ----
+  'council-5': {
+    lines: [
+      ['narrator', 'Eight coals, four chairs, four boxes. The Council opens them together, as the Unsmith\'s letter said.'],
+      ['isolde', 'Something is wrong with them, {warden}. And there is a stair in the vault floor that was never there.'],
+    ],
+    do: [{ set: 'council-5-done' }, { scout: 'hollow-miravel' }, { scout: 'hollow-qasim' }, { scout: 'hollow-brundar' }, { scout: 'hollow-gretch' }],
+  },
+  // ---- the Hollow Council freed (spec §3.1): each one's line, back in their own town ----
+  'freed-miravel': { lines: [['miravel', 'The wreath showed me every tree I ever let fall, and made me feel each one. I still do, Warden. Thank you.']] },
+  'freed-qasim': { lines: [['qasim', 'The chalice was never full. It showed me every cup I sold that I should have given. I have stopped selling.']] },
+  'freed-brundar': { lines: [['brundar', 'The gauntlet held on to everything for me. You made it let go. Ironhold will not forget that.']] },
+  'freed-gretch': { lines: [['gretch', 'I told you I didn\'t open it. I lied. I always pay my favours, Warden, and I owe you a big one.']] },
+  // ---- Fenwick's truth (his talk once the Hollow Council is freed): he gives the Warden his poker, No. 000 ----
+  'fenwick-truth': {
+    lines: [
+      ['fenwick', 'The hearth never burned wood, {warden}. It burned the Sleepers\' warmth, and I kept it. Nine hundred years.'],
+      ['fenwick', 'Take my poker. You\'ll need something to stir what comes next.'],
+    ],
+    do: [{ give: 'fenwicks-poker' }, { claim: 'fenwicks-truth' }],
+  },
+  // ---- Hilda's offer (spec §4.5): the Masterpiece, once the Council is freed and the Worldforge page is yours. A line
+  // only: P7's Masterpiece tab and P1's forge do the rest ----
+  'hilda-masterpiece': {
+    lines: [['hilda', 'That page is my brother\'s hand. Bring me what I ask, and I\'ll forge you something Harrow never could.']],
+    choices: FORGE,
+  },
+  // ---- Tamsin in the Chained Deep (spec A12): she joins for the one fight; after it she gives up her relic ----
+  'tamsin-return': {
+    lines: [['tamsin', 'I followed the barge to the bottom of the world. I saw what he\'s making. I\'m sorry. Let me stand with you.']],
+    do: [{ set: 'tamsin-returned' }, { set: 'met-tamsin-below' }, { scout: 'unsmith' }],
+  },
+  'tamsin-after': {
+    lines: [['tamsin', 'Take it. I bought it with the wrong thing. It\'s yours now. It was always going to be.']],
+    do: [{ give: 'tamsins-bargain' }, { set: 'tamsin-gave' }],
+  },
+  // ---- the Worldforge's heart (spec §4.7): a stand-in; the choice comes later ----
+  'the-heart': {
+    lines: [['narrator', 'The heart of the Worldforge beats in its furnace. What it burns now is yours to choose, but not yet.']],
+  },
 });
 
 export const ARRIVALS = deepFreeze({
@@ -1788,6 +1838,8 @@ export const AFTER = deepFreeze({
   'grue-hollow': [{ on: 'victory', if: { not: { flag: 'grue-told' } }, d: 'grue-rest' }],
   'mh-salvage': [{ on: 'victory', if: { not: { flag: 'chest-read' } }, d: 'salvage-chest' }],
   cantor: [{ on: 'victory', if: { not: { flag: 'cantor-fell' } }, d: 'cantor-rest' }],
+  // M7 (spec A12): after the Unsmith, Tamsin gives up the relic she bought (STUB from the M7 scaffold: P3 writes it)
+  unsmith: [{ on: 'victory', if: { not: { flag: 'tamsin-gave' } }, d: 'tamsin-after' }],
 });
 
 export const RESTS = deepFreeze([

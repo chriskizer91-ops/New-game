@@ -77,8 +77,8 @@ const holderName = s => {
   const base = s.name || F?.variants?.[s.variant]?.name || F?.name || s.family;
   return s.title ? `${base} ${s.title}` : base;
 };
-const VIEW_NAME = { wilds: 'The Verdant Wilds', sunscorch: 'The Sunscorch Wastes', ironspire: 'The Ironspire Peaks', gloomfen: 'The Gloomfen Marsh', realm: 'The Realm of Aethermoor' };
-const VIEW_BUTTON = { wilds: 'Wilds', sunscorch: 'Sunscorch', ironspire: 'Ironspire', gloomfen: 'Gloomfen', realm: 'Realm' };
+const VIEW_NAME = { wilds: 'The Verdant Wilds', sunscorch: 'The Sunscorch Wastes', ironspire: 'The Ironspire Peaks', gloomfen: 'The Gloomfen Marsh', below: 'The Hearth Below', realm: 'The Realm of Aethermoor' };
+const VIEW_BUTTON = { wilds: 'Wilds', sunscorch: 'Sunscorch', ironspire: 'Ironspire', gloomfen: 'Gloomfen', below: 'Below', realm: 'Realm' };
 const VIEW_REGION = Object.fromEntries(Object.entries(REGION_VIEW).map(([r, v]) => [v, r]));
 const shortRegion = r => String(REGIONS[r]?.name || r).replace(/^The /, '');
 // The keys that light a cold Hearthfire, from the lock itself ("Kindle, Lamplight or Attunement 3").
@@ -162,8 +162,9 @@ export function mount(root, ctx, params = {}) {
   }).filter(x => x && x.at);
 
   // a region is sealed until one of its roads opens (the Sunscorch: the Keep's south-east gate, after
-  // Act I); REGIONS.open alone says only that its maps exist
-  const sealed = Object.values(REGIONS).filter(r => !open.has(r.id)).map(r => {
+  // Act I); REGIONS.open alone says only that its maps exist. M7: Act III's region lies under the Keep, with no place of
+  // its own on the painting, so it has no padlock (STUB from the M7 scaffold: P7 draws its "Below the Keep" marker)
+  const sealed = Object.values(REGIONS).filter(r => !open.has(r.id) && r.act < 3).map(r => {
     const texts = [], hints = [];
     // the roads into it from outside (a gate inside the region, like Stormwatch's north gate, is not its road)
     for (const m of MAP_IDS) {
@@ -248,10 +249,11 @@ export function mount(root, ctx, params = {}) {
     const out = [];
     const region = VIEW_REGION[view];
     // a region's view shows its own fires; the Realm shows them all where there is room (a laptop),
-    // and one marker per open region on a phone
+    // and one marker per open region on a phone. M7: the Hearth Below's fires lie under the Keep, so the Realm
+    // leaves them to their own view (STUB from the M7 scaffold: P7 draws the "Below the Keep" marker, spec §5)
     const showHearths = !!region || ppu >= 0.6;
     if (showHearths) {
-      for (const x of region ? inRegion(region) : hearths) {
+      for (const x of region ? inRegion(region) : hearths.filter(y => REGIONS[y.region]?.act !== 3)) {
         const st = hfState(x);
         out.push({
           key: `hf:${x.id}`, kind: 'hearth', at: x.h.lore, cls: `mk-hearth is-${st}`, icon: st === 'kindled' ? ICON.fire : ICON.coal,

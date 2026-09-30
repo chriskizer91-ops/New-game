@@ -102,6 +102,16 @@ export const RIDDLES = Object.freeze({
   'corvus-harpoon': 'A diver lost it in something on his last dive. Whatever it struck still carries it in its side, in the deep off the Tidal Flats.',
   'deep-pearl': 'Grown in a brow over a thousand years in the dark, and it glows. The thing the Tallymen have chained in the Blackwater wears it.',
   'hexbane-shawl': 'Knotted from bog-cotton and a hag’s hair. Nettie of Bogmire makes one for whoever puts Mother Grue to rest.',
+  // M7: Page V (STUB from the M7 scaffold: P7 writes the real riddles)
+  'fenwicks-poker': 'Worn thin at the grip by one hand over nine hundred years. The one who keeps the Keep’s fire has never set it down.',
+  'hollow-wreath': 'A wreath of grey wood, sent in a box sealed with soot to the chair of the oldest grove.',
+  'hollow-chalice': 'A cup of black glass that is never full, sent in a box sealed with soot to the chair of the cistern.',
+  'hollow-gauntlet': 'A gauntlet of dark iron that closes on its own, sent in a box sealed with soot to the chair under the mountain.',
+  'hollow-chain': 'A chain of office in black links, a little too tight, sent in a box sealed with soot to the chair of the fen town.',
+  'tamsins-bargain': 'Bought with the wrong thing, from a man on a black barge. She would give it back if she could.',
+  'unmaking-hammer': 'The second hammer of a smith who gave his first to his first daughter. It unmakes.',
+  'ironvein-apron': 'A smith’s leather apron with a family’s mark on the bib, scorched black and never burned through.',
+  'worldforge-heart': 'The hottest thing in the world, small enough to wear, and beating. It is at the bottom of the world.',
 });
 
 // Who holds each relic, short enough for a pocket ("Held by ...") and the grey card's stamp.
@@ -124,6 +134,10 @@ export const HOLDER = Object.freeze({
   'hag-stone': 'Mother Grue', 'lamplighters-lantern': 'the Lantern Mother', 'mourning-veil': 'the Lantern Mother', 'salvagers-helm': 'the Salvage-Master',
   'cantors-staff': 'the Drowned Cantor', 'gar-tooth': 'Old Jaws', 'barge-gauntlets': 'the Bargemaster', 'corvus-harpoon': 'the Blackwater Leviathan',
   'deep-pearl': 'the Blackwater Leviathan', 'hexbane-shawl': 'Nettie the Swamp Witch',
+  // M7: Page V (STUB from the M7 scaffold: P7 words them)
+  'fenwicks-poker': 'Fenwick', 'hollow-wreath': 'Hollow Miravel', 'hollow-chalice': 'Hollow Qasim', 'hollow-gauntlet': 'Hollow Brundar',
+  'hollow-chain': 'Hollow Gretch', 'tamsins-bargain': 'Tamsin', 'unmaking-hammer': 'the Unsmith', 'ironvein-apron': 'the Unsmith',
+  'worldforge-heart': 'the Unsmith',
 });
 
 const PAGE_IDS = PAGES.map(p => p.id);
@@ -134,7 +148,8 @@ export const ROAD_NOTE = Object.freeze({
   // M6: the fen stair below Mossfall opens with the third council
   gloomfen: 'The road to the Gloomfen opens once the Council has sat a third time: the fen stair below Mossfall.',
 });
-const isSealed = P => !P || P.from == null;
+// M7: Page V lists its numbers (`nos`) where the others give a range
+const isSealed = P => !P || (P.from == null && !P.nos?.length);
 const shortRegion = P => String(P?.name || '').replace(/^The /, '').split(' ')[0];
 
 // Every sealed road into a region (the Keep's postern guards, the Wilds' edges): the sealed page's text.
