@@ -44,7 +44,7 @@ export function mount(root, ctx, params = {}) {
       ctx.setGame(game);
     } catch (err) {
       console.error(err);
-      root.append(el('p', 'panel', 'That battle never finished. Back to the Wilds.'));
+      root.append(el('p', 'panel', 'That battle never finished. Back to the map.'));
       setTimeout(() => ctx.go('world'), 900);
       return {};
     }
@@ -255,12 +255,12 @@ export function mount(root, ctx, params = {}) {
     const closed = chests.find(c => !c.st.opened);
     if (closed) closed.b.click(); else next();
   }, { 'data-primary': '' });
-  const skip = button('Back to the Wilds', 'btn ghost', next);
+  const skip = button('Back to the map', 'btn ghost', next);
   foot.append(cta, skip);
   wrap.append(foot);
   function updateCta() {
     const left = chests.filter(c => !c.st.opened).length;
-    cta.textContent = left ? (left === chests.length ? 'Open the chests' : `Open the next chest (${left} left)`) : report.brand ? 'Walk on' : res === 'defeat' ? 'Get back up' : 'Back to the Wilds';
+    cta.textContent = left ? (left === chests.length ? 'Open the chests' : `Open the next chest (${left} left)`) : report.brand ? 'Walk on' : res === 'defeat' ? 'Get back up' : 'Back to the map';
     skip.hidden = !left;
   }
   updateCta();

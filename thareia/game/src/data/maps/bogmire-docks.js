@@ -61,7 +61,7 @@ export default deepFreeze({
     { id: 'dock-fisher', kind: 'npc', npc: 'th-fisher', at: [4, 14], face: 'e' },
     { id: 'dock-widow', kind: 'npc', npc: 'th-netmender', at: [13, 17], face: 's' },
     { id: 'island-cache', kind: 'chest', at: [40, 4], loot: { gold: 25, bag: { 'hearth-tonic': 1 } } },
-    { id: 'docks-sign', kind: 'sign', at: [20, 18], look: 'post', text: 'BOGMIRE DOCKS. Up the stair to the town. Mind the planks: some of them are only pretending.' },
+    { id: 'docks-sign', kind: 'sign', at: [21, 17], look: 'post', text: 'BOGMIRE DOCKS. Up the stair to the town. Mind the planks: some of them are only pretending.' },
   ],
   exits: [
     { id: 'dk-town', area: [23, 0, 24, 0], to: 'th-bogmire', anchor: 'from-docks' },

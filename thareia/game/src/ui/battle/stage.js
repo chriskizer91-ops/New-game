@@ -9,6 +9,7 @@
 // ({ fog: true }) has mist lying low over the ground, drifting behind the foes, unless its backdrop draws its own
 // (a listing with mist: true: the Lanternfen, the Misthollow Ruins). posed(id): the pose a foe was last drawn in.
 import { renderBackdrop, BACKDROPS } from '../../art/scenes.js';
+import { PAINTED_BACKDROPS } from '../../art/painted-backdrops.js';
 import { itemIcon, RELIC_ART, ASPECT_LOOK } from '../../art/item-looks.js';
 import { FoeSprite } from './sprites.js';
 import { clamp, lerp, easeOut, hexRgb } from './util.js';
@@ -413,7 +414,7 @@ export class Stage {
     const bq = this.reduced ? 0 : Math.floor(clockT * 8);
     if (bq !== this.bdT) {
       this.bdT = bq;
-      const img = renderBackdrop(this.backdropKey, { w: lw, h: lh, t: this.reduced ? 0 : clockT, reduced: this.reduced, dark: this.dark });
+      const img = renderBackdrop(this.backdropKey, { w: lw, h: lh, t: this.reduced ? 0 : clockT, reduced: this.reduced, dark: this.dark, painted: !!PAINTED_BACKDROPS[this.backdropKey] });
       if (this.bd.width !== lw || this.bd.height !== lh) { this.bd.width = lw; this.bd.height = lh; }
       this.bd.getContext('2d').putImageData(img, 0, 0);
     }

@@ -40,7 +40,7 @@ const FLEE_TITLES = ['the Once-Fled', 'the Twice-Fled', 'the Thrice-Fled', 'the 
 
 // ---- new game -----------------------------------------------------------------------------------
 
-function startingHero(id, rng, inventory, { name, starter, base }) {
+function startingHero(id, rng, inventory, { name, starter, base, origin = null }) {
   const data = HEROES[id];
   const hero = {
     id, name: id === 'warden' ? name : data.name, level: 1, xp: 0, hp: null, mp: null, surge: 0,
@@ -52,7 +52,7 @@ function startingHero(id, rng, inventory, { name, starter, base }) {
   };
   const spec = { ...data.gear };
   if (id === 'warden') { spec.weapon = 'starter'; spec.offhand = STARTERS[starter].offhand; }
-  const prov = { from: id === 'warden' ? 'the Keep reliquary' : `${data.name}'s pack`, where: 'Hearthstone Keep', day: 1 };
+  const prov = origin && id === 'warden' ? { ...origin, day: 1 } : { from: id === 'warden' ? 'the Keep reliquary' : `${data.name}'s pack`, where: origin?.where || 'Hearthstone Keep', day: 1 };
   for (const [slot, g] of Object.entries(spec)) {
     if (!g) continue;
     const item = g === 'starter' ? relicItem(starter, rng, prov) : generateItem(rng, { base: g.base, rarity: g.rarity, ilvl: 1, provenance: prov });
@@ -77,12 +77,12 @@ export function recruit(game, id, rng, { level = 1 } = {}) {
 // kindled and is the last Hearthfire, and story.starter remembers the starter relic.
 // Thareia (T1): `heroes` (the starting line: THAREIA_START), `at` (where they stand: TH_START_AT) and `hearth` (the
 // last Hearthfire, kindled) start a Thareia game; left out, the old game's new game (the four heroes in the Great Hall).
-export function newGame({ name = 'Wren', starter = 'hearthbrand', seed = 1, base = null, heroes = HERO_IDS, at = START_AT, hearth = START } = {}) {
+export function newGame({ name = 'Wren', starter = 'hearthbrand', seed = 1, base = null, heroes = HERO_IDS, at = START_AT, hearth = START, origin = null } = {}) {
   if (!STARTERS[starter]) throw new Error(`Unknown starter relic ${starter}`);
   const rng = createRng(seed);
   const inventory = [];
   const roster = {};
-  for (const id of heroes) roster[id] = startingHero(id, rng, inventory, { name, starter, base });
+  for (const id of heroes) roster[id] = startingHero(id, rng, inventory, { name, starter, base, origin });
   const codex = {};
   for (const r of Object.keys(STARTERS)) codex[r] = { sighted: true, claimed: r === starter, awakened: false };
   return {

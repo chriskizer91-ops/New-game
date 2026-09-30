@@ -9,7 +9,7 @@
 //   - the milestone tag (TAG)
 // Owner: WP8; M6 P7 (the painted backdrop).
 import { renderBackdrop, renderHero } from '../../art/index.js';
-import { CUTS } from '../assets/cuts/index.js';
+import continentSrc from '../assets/sky/continent.webp';
 import { el, esc, button, toCanvas } from '../lib/dom.js';
 import { animate, isReduced } from '../lib/anim.js';
 import { gearOf, customOf } from '../lib/art.js';
@@ -17,7 +17,7 @@ import { screenNav } from '../lib/keys.js';
 import { openCarryCard } from '../lib/carry.js';
 import { saveLine } from '../lib/carry-facts.js';
 
-const TAG = '<span>M7</span> · Hearth Below';
+const TAG = '<span>T1</span> · The Prologue';
 // where a carried-over save comes from (ctx.carryFrom): the button, the card's kind, the old home
 const FROM = {
   m6: { label: 'Continue from Milestone 6', kind: 'm6', who: 'Milestone 6', home: 'file' },
@@ -37,11 +37,11 @@ export function mount(root, ctx) {
   scene.append(cv, el('div', 'title-fade'));
   const card = el('div', 'title-card');
   card.append(
-    el('p', 'realm', 'A pixel JRPG of stolen legends'),
-    el('h1', 'title-display game-title', 'Aethermoor'),
-    el('p', 'title-sub', 'Hearth &amp; Heirloom'),
+    el('p', 'realm', 'A pixel JRPG of airships and sunstone'),
+    el('h1', 'title-display game-title', 'Thareia'),
+    el('p', 'title-sub', 'Above Aethermoor'),
     el('p', 'title-ver', TAG),
-    el('p', 'title-tag', 'The Eternal Hearth has flickered. Every legend in the land is in someone else’s hands. Go and take them back, one fight at a time.'),
+    el('p', 'title-tag', 'The water in the Gloomfen runs warm, and the crystals under Aethermoor have begun to sing. An airship is waiting at the Bogmire docks.'),
   );
   const menu = el('div', 'title-menu');
   const go = (name, p) => () => { ctx.audio.unlock(); ctx.audio.sfx('confirm'); ctx.go(name, p); };
@@ -68,8 +68,8 @@ export function mount(root, ctx) {
     const ng = button('New game', 'btn big title-new', () => { ctx.audio.unlock(); ctx.audio.sfx('select'); ng.hidden = true; ask.hidden = false; ask.querySelector('.btn').focus(); });
     ask.append(
       el('p', '', game
-        ? `A new Hearthwarden replaces ${esc(w.name)}’s journey on this device once you begin. It is kept as a backup, and Settings can bring it back.`
-        : `A new Hearthwarden starts fresh instead of carrying ${esc(w.name)}’s journey over. The old save itself is never touched, and Settings can still carry it over later.`),
+        ? `A new hero replaces ${esc(w.name)}’s journey on this device once you begin. It is kept as a backup, and Settings can bring it back.`
+        : `A new hero starts fresh instead of carrying ${esc(w.name)}’s journey over. The old save itself is never touched, and Settings can still carry it over later.`),
       el('div', 'row-btns', [button('Start fresh', 'btn danger', go('newgame')), button('Keep my journey', 'btn', () => { ctx.audio.sfx('back'); ask.hidden = true; ng.hidden = false; ng.focus(); })]),
     );
     menu.append(ng, ask);
@@ -78,14 +78,14 @@ export function mount(root, ctx) {
   }
   menu.append(button('Settings', 'btn big', go('settings', { from: 'title' })));
   card.append(menu);
-  const hint = el('p', 'tap-hint', 'Tap anywhere to wake the hearth');
+  const hint = el('p', 'tap-hint', 'Tap anywhere to wake the sunstone');
   card.append(hint);
   card.append(el('p', 'title-foot', 'Plays on a phone or a laptop. Arrows or WASD to move, Enter or Z to confirm, Esc or X to go back.'));
   root.append(scene, card);
 
   // the painted scene: the Keep at dusk, the party on the road. M6: the player's world painting behind a dark
   // rise the party stands on (the canvas draws only the rise and the party over it)
-  const still = CUTS['title-world'];
+  const still = { src: continentSrc, w: 1536, h: 1024 }; // Thareia: the continent painting
   let painted = !!still;
   if (painted) {
     scene.classList.add('painted');
@@ -93,7 +93,7 @@ export function mount(root, ctx) {
     img.addEventListener('error', () => { if (!painted) return; painted = false; img.remove(); scene.classList.remove('painted'); draw(performance.now() / 1000); });
     scene.prepend(img);
   }
-  const heroes = ['alondra', 'bryn', 'pip', 'warden'];
+  const heroes = shown ? [...shown.party.active].reverse() : ['warden'];
   const tmp = document.createElement('canvas');
   let W = 0, H = 0, k = 3, rise = null;
   const wideMQ = matchMedia('(min-width: 1000px) and (min-aspect-ratio: 5/4)');

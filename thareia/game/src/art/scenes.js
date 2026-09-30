@@ -2123,8 +2123,20 @@ export function ambient(key, t, o = {}) {
   if (S.dark) for (const p of out) p.a *= .55;
   return out;
 }
-// renderBackdrop(key, { w, h, t, reduced, dark }) -> ImageData
+// Thareia: over a painted backdrop the stage draws only the key's ambient drift, on a clear canvas
+function paintedDrift(key, o) {
+  const w = o.w || 160, h = o.h || 96, img = new ImageData(w, h), d = img.data;
+  if (o.reduced) return img;
+  for (const p of ambient(key, o.t || 0, { w, h, dark: o.dark })) {
+    const x = Math.round(p.x), y = Math.round(p.y);
+    if (p.a <= .05 || x < 0 || y < 0 || x >= w || y >= h) continue;
+    const i = (y * w + x) * 4; d[i] = p.c[0]; d[i + 1] = p.c[1]; d[i + 2] = p.c[2]; d[i + 3] = Math.round(Math.min(1, p.a) * 255);
+  }
+  return img;
+}
+// renderBackdrop(key, { w, h, t, reduced, dark, painted }) -> ImageData (painted: the drift only, for a painted backdrop)
 export function renderBackdrop(key, o = {}) {
+  if (o.painted) return paintedDrift(key, o);
   const w = o.w || 160, h = o.h || 96, t = o.reduced ? 0 : (o.t || 0), P = painted(key, w, h, o.dark);
   const L = layer(w, h); L.d.set(composite(key, w, h, o.dark));
   for (const g of P.lights) {

@@ -16,9 +16,10 @@ import * as settings from './ui/screens/settings.js';
 import * as world from './ui/screens/world.js';
 import * as atlas from './ui/screens/atlas.js';
 import * as journal from './ui/screens/journal.js';
+import * as sky from './ui/screens/sky.js';
 import { startBattle } from './rules/gauntlet.js';
 
-const screens = { title, newgame, world, battle, aftermath, party, codex, settings, atlas, journal };
+const screens = { title, newgame, world, battle, aftermath, party, codex, settings, atlas, journal, sky };
 const aliases = { road: 'world' };
 
 const app = createApp(document.getElementById('app'), screens, { aliases });

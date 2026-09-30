@@ -226,6 +226,31 @@ export function showRegionCard(ctx, regionId) {
   return C.wait();
 }
 
+// ---- Thareia (T1): a painted event -------------------------------------------------------------------------
+// showCut(ctx, id, { text, backdrop }): CUTS[id] (a painted still of what happens) under its line; until the painting
+// arrives, the map's drawn battle backdrop stands in for it.
+export function showCut(ctx, id, { text: line = '', backdrop = 'bogmire' } = {}) {
+  const C = card(ctx, { cls: 'region cut', label: line || 'A scene', button: 'Onward' });
+  const P = C.panel;
+  const view = el('div', { class: `region-view${ctx.reduced() ? '' : ' drift'}`, role: 'img', 'aria-label': line || 'A painted scene' });
+  const drawn = () => {
+    view.classList.add('drawn');
+    view.replaceChildren();
+    try { const cv = toCanvas(renderBackdrop(BACKDROPS[backdrop] ? backdrop : 'bogmire', { w: 180, h: 120, t: 0, reduced: true })); cv.classList.add('region-drawn'); view.append(cv); } catch { /* the line alone */ }
+  };
+  const still = CUTS[id];
+  if (still) {
+    const img = el('img', { class: 'region-still', src: still.src, alt: '', width: still.w, height: still.h, draggable: 'false', decoding: 'async' });
+    img.addEventListener('error', drawn);
+    view.append(img);
+  } else drawn();
+  P.append(view);
+  if (line) P.append(text('p', 'region-text', line));
+  P.append(C.go);
+  ctx.audio.sfx('crystal-flare');
+  return C.wait();
+}
+
 // ---- to be continued -----------------------------------------------------------------------------------
 
 // The roads a chapter's end opens at once (a region whose entry gate the council itself unbars), and how

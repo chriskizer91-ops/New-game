@@ -26,6 +26,7 @@ import { ENCOUNTERS } from '../../data/encounters.js';
 import { MAPS } from '../../data/maps/index.js';
 import { tierAs } from '../../data/foes.js';
 import { BACKDROPS, renderBackdrop } from '../../art/scenes.js';
+import { PAINTED_BACKDROPS } from '../../art/painted-backdrops.js';
 import { Stage } from '../battle/stage.js';
 import { Party } from '../battle/party.js';
 import { Hud } from '../battle/hud.js';
@@ -104,6 +105,8 @@ export function mount(root, ctx, { battle, returnTo = 'world', auto: startAuto =
   root.append(shell);
   shell.style.setProperty('--spd', speed);
   if (reduced) shell.classList.add('reduced');
+  // Thareia: the player's painting of this place fills the battle screen
+  if (PAINTED_BACKDROPS[backdrop]) { shell.classList.add('bt-painted'); shell.style.setProperty('--bt-paint', `url(${PAINTED_BACKDROPS[backdrop].src})`); }
 
   // ---- components ---------------------------------------------------------------------------------------
   const stage = new Stage(stageHost, { backdrop, reduced, dark: !!state.ctx.dark, fog: FOGGY.has(backdrop) });
@@ -514,7 +517,7 @@ export function mount(root, ctx, { battle, returnTo = 'world', auto: startAuto =
     relayout();
     if (ro) { ro.observe(stageHost); ro.observe(partyHost); }
     ctx.audio.music?.(boss ? 'boss' : 'battle');
-    const now = [() => renderBackdrop(backdrop, { w: stage.lw, h: stage.lh, t: 0, reduced, dark: !!state.ctx.dark })], later = [];
+    const now = [() => renderBackdrop(backdrop, { w: stage.lw, h: stage.lh, t: 0, reduced, dark: !!state.ctx.dark, painted: !!PAINTED_BACKDROPS[backdrop] })], later = [];
     for (const v of stage.foes.values()) { const j = v.sprite.jobs(disp.units[v.id]); now.push(...j.now); later.push(...j.later); }
     for (const v of party.v.values()) { const j = v.sprite.jobs(); now.push(...j.now); later.push(...j.later); }
     const t0i = performance.now();

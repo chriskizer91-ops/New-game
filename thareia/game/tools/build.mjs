@@ -36,6 +36,21 @@ const tpl = await readFile(path.join(root, 'src/index.html'), 'utf8');
 const [head, body] = tpl.split('<!--BODY-->');
 if (body === undefined) throw new Error('src/index.html needs a <!--BODY--> marker');
 
+// Thareia (T1): only the paintings of the maps Thareia's players can reach go into the file (the old game's other
+// paintings stay in src/ for the chapters that will use them). ui/world/view.js draws any other map from its tiles.
+const TH_PAINTINGS = ['bogmire-docks', 'bogmire', 'thornhollow'];
+const PAINT_INDEX = path.join(root, 'src/ui/assets/paint/index.js');
+const onlyThareia = {
+  name: 'thareia-paintings',
+  setup(b) {
+    b.onLoad({ filter: /[\\/]ui[\\/]assets[\\/]paint[\\/]index\.js$/ }, () => ({
+      loader: 'js', resolveDir: path.dirname(PAINT_INDEX),
+      contents: TH_PAINTINGS.map((id, i) => `import p${i} from './${id}.js';`).join('\n')
+        + `\nexport const PAINTINGS = Object.freeze({ ${TH_PAINTINGS.map((id, i) => `'${id}': p${i}`).join(', ')} });\n`,
+    }));
+  },
+};
+
 async function bundle(minifyAll) {
   const result = await build({
     entryPoints: [path.join(root, 'src/main.js')],
@@ -49,11 +64,12 @@ async function bundle(minifyAll) {
     legalComments: 'none',
     loader: { '.png': 'dataurl', '.webp': 'dataurl' },
     metafile: true,
+    plugins: [onlyThareia],
   });
   // what the player's paintings add to the output
   let painted = 0;
   for (const o of Object.values(result.metafile.outputs)) {
-    for (const [file, v] of Object.entries(o.inputs)) if (/src\/ui\/assets\/(paint|cuts)\//.test(file.split(path.sep).join('/'))) painted += v.bytesInOutput;
+    for (const [file, v] of Object.entries(o.inputs)) if (/src\/ui\/assets\/(paint|cuts|sky)\//.test(file.split(path.sep).join('/'))) painted += v.bytesInOutput;
   }
   let js = '', css = '';
   for (const f of result.outputFiles) {

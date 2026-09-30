@@ -1,6 +1,5 @@
-// New game: name your Hearthwarden, pick a look, roll ability scores, choose a starter heirloom,
-// then the prologue and the Great Hall (M3: go('world', { arrive: 'new' }); "Skip to the Keep"
-// skips the prologue text). Begin writes the new game through ctx.replaceGame, which backs the old
+// New game: name your hero, pick a look, roll ability scores, choose what you carry, then the opening lines and the
+// Bogmire docks (Thareia T1: go('world', { arrive: 'new' }) on the docks; "Skip" skips the opening text). Begin writes the new game through ctx.replaceGame, which backs the old
 // save up to .bak first and marks an M2 save declined.
 // Owner: WP8.
 import { renderHero, HERO_ART, WARDEN_PRESETS, MAT, diceIcon, aspectIcon, renderBackdrop } from '../../art/index.js';
@@ -8,13 +7,14 @@ import { newGame } from '../../rules/gauntlet.js';
 import { relicItem } from '../../rules/loot.js';
 import { createRng } from '../../core/rng.js';
 import { RELICS } from '../../data/relics.js';
-import { STARTERS } from '../../data/heroes.js';
+import { STARTERS, THAREIA_START } from '../../data/heroes.js';
+import { TH_START_AT, TH_START_HEARTH } from '../../data/world.js';
+import { PAINTINGS } from '../assets/paint/index.js';
 import { el, esc, button, toCanvas, modText, sleep } from '../lib/dom.js';
 import { animate, isReduced } from '../lib/anim.js';
 import { portraitCanvas } from '../lib/art.js';
 import { mainStat, ABIL, ABIL_NAME } from '../lib/items.js';
 import { screenNav } from '../lib/keys.js';
-import { CUTS } from '../assets/cuts/index.js';
 
 const STEPS = ['Name', 'Look', 'Abilities', 'Heirloom', 'Prologue'];
 const NAMES = ['Wren', 'Tess', 'Bram', 'Rowan', 'Maren', 'Corin', 'Ada', 'Hale', 'Isla', 'Odo'];
@@ -24,10 +24,10 @@ const MAX_ROLLS = 3;
 const HAIR_NAME = { short: 'Short', crop: 'Cropped', long: 'Long', pony: 'Ponytail', braid: 'Braid', none: 'Shaved' };
 const BEATS = { hearthbrand: 'stillwater-lance', 'stillwater-lance': 'cairnmaul', cairnmaul: 'hearthbrand' };
 const BEATEN_BY = { hearthbrand: 'cairnmaul', 'stillwater-lance': 'hearthbrand', cairnmaul: 'stillwater-lance' };
-const TAMSIN = {
-  hearthbrand: 'Tamsin Vale hefts Cairnmaul off its hooks like it weighs nothing. “Stone smothers fire, Warden. Try to keep up.”',
-  'stillwater-lance': 'Tamsin Vale has Hearthbrand out of its scabbard before Fenwick can object. “Fire melts ice. Nothing personal.”',
-  cairnmaul: 'Tamsin Vale spins the Stillwater Lance once and grins at you over the point. “Frost splits stone. You’ll want to remember that.”',
+const CARRY = {
+  hearthbrand: 'Your grandmother\'s sword. The blade has been warm in its wrappings since spring, and it has never once been cold since.',
+  'stillwater-lance': 'A fisher-king\'s spear from the drowned coast. Frost forms on its head on the warmest night.',
+  cairnmaul: 'A dwarven hammer you won at dice. The dwarf was very drunk, and then very sorry.',
 };
 const KIT = { hearthbrand: 'Sword and shield', 'stillwater-lance': 'Spear and buckler', cairnmaul: 'Two-handed hammer' };
 
@@ -52,7 +52,7 @@ export function mount(root, ctx) {
     const back = button('‹ Back', 'btn ghost back', () => goBack());
     const dots = el('ol', { class: 'ng-steps', 'aria-label': 'Steps' });
     STEPS.forEach((n, i) => dots.append(el('li', { class: i === S.step ? 'on' : i < S.step ? 'done' : '', 'aria-current': i === S.step ? 'step' : null }, [el('span', 'n', String(i + 1)), el('span', 'l', n)])));
-    head.append(back, el('div', 'ng-title', `<span class="realm">A new Hearthwarden</span><h1 class="title-display">${esc(['Name your Hearthwarden', 'How do they look?', 'Roll your ability scores', 'Choose a starter heirloom', 'The night the hearth flickered'][S.step])}</h1>`), dots);
+    head.append(back, el('div', 'ng-title', `<span class="realm">Thareia · a new hero</span><h1 class="title-display">${esc(['Name your hero', 'How do they look?', 'Roll your ability scores', 'Choose what you carry', 'Bogmire, the first morning'][S.step])}</h1>`), dots);
     if (S.step === 4) back.hidden = true;
   }
   function goBack() {
@@ -73,7 +73,7 @@ export function mount(root, ctx) {
   // ---- 1. name ----
   function stepName() {
     const form = el('form', 'ng-name panel');
-    const label = el('label', { for: 'wname', class: 'label' }, 'Your Hearthwarden’s name');
+    const label = el('label', { for: 'wname', class: 'label' }, 'Your hero’s name');
     const input = el('input', { id: 'wname', class: 'ng-input', type: 'text', maxlength: '18', autocomplete: 'off', spellcheck: 'false', placeholder: 'Wren', value: S.name });
     const nextBtn = button('Next: how they look', 'btn primary big', null, { type: 'submit', 'data-primary': '' });
     const upd = () => { nextBtn.disabled = !input.value.trim(); };
@@ -147,7 +147,7 @@ export function mount(root, ctx) {
     const acts = el('div', 'ng-acts');
     const rollBtn = button('Roll 4d6', 'btn primary big', () => doRoll(), { 'data-primary': '' });
     const arrBtn = button('Use the standard array', 'btn', () => useArray());
-    const nextBtn = button('Next: your heirloom', 'btn primary big', next);
+    const nextBtn = button('Next: what you carry', 'btn primary big', next);
     acts.append(rollBtn, arrBtn, nextBtn);
     sheet.append(note, acts);
     body.append(sheet);
@@ -231,7 +231,7 @@ export function mount(root, ctx) {
     const wrap = el('div', 'ng-heir');
     const tri = el('section', 'triangle panel');
     const ic = a => toCanvas(aspectIcon(a, { size: 12 }), null, 3);
-    tri.append(el('p', 'lede', 'Fenwick unlocks the reliquary. Three heirlooms have slept on its hooks since the Keep was built. One of them will wake for you, and the aspects hold each other in check:'));
+    tri.append(el('p', 'lede', 'Everything you own is on your back. The one thing worth anything is the weapon wrapped in oilcloth, and it has been strange since the water turned warm. The aspects hold each other in check:'));
     const t = el('div', 'tri');
     const NAMES_A = { ember: 'Fire', frost: 'Frost', stone: 'Stone' };
     for (const [a, verb, b] of [['ember', 'melts', 'frost'], ['frost', 'splits', 'stone'], ['stone', 'smothers', 'ember']]) {
@@ -266,11 +266,11 @@ export function mount(root, ctx) {
       S.starter = id;
       ctx.audio.sfx('reveal', { tier: 5 });
       for (const [k, c] of Object.entries(cardEls)) {
-        c.classList.toggle('chosen', k === id); c.classList.toggle('taken', k === BEATEN_BY[id]); c.classList.toggle('left', k !== id && k !== BEATEN_BY[id]);
+        c.classList.toggle('chosen', k === id); c.classList.toggle('left', k !== id);
         c.querySelector('.take').textContent = k === id ? `${RELICS[k].name} is yours` : `Take ${RELICS[k].name}`;
       }
       tamsin.hidden = false;
-      tamsin.innerHTML = `<p class="label">Tamsin Vale, Warden Isolde’s ward</p><p class="line">${esc(TAMSIN[id])}</p><p class="small">${esc(RELICS[id].name)} wakes in your hand. ${esc(RELICS[BEATEN_BY[id]].name)} goes over Tamsin’s shoulder. You will see it again.</p>`;
+      tamsin.innerHTML = `<p class="label">${esc(RELICS[id].name)}</p><p class="line">${esc(CARRY[id])}</p>`;
       nextBtn.hidden = false;
       nextBtn.textContent = `Begin with ${RELICS[id].name}`;
       setTimeout(() => tamsin.scrollIntoView({ behavior: isReduced() ? 'auto' : 'smooth', block: 'center' }), 60);
@@ -278,7 +278,7 @@ export function mount(root, ctx) {
     function begin() {
       if (!S.starter) return;
       const seed = ((Date.now() % 2147483647) ^ Math.floor(Math.random() * 2147483647)) >>> 0;
-      const g = newGame({ name: S.name.trim() || 'Wren', starter: S.starter, seed, base: { ...S.scores } });
+      const g = newGame({ name: S.name.trim() || 'Wren', starter: S.starter, seed, base: { ...S.scores }, heroes: THAREIA_START, at: TH_START_AT, hearth: TH_START_HEARTH, origin: { from: 'your own pack', where: 'Bogmire' } });
       const warden = { ...g.party.roster.warden, look: { ...S.look } };
       ctx.replaceGame({ ...g, party: { ...g.party, roster: { ...g.party.roster, warden } } });
       ctx.audio.sfx('confirm');
@@ -288,13 +288,12 @@ export function mount(root, ctx) {
 
   // ---- 5. prologue ----
   function stepPrologue() {
-    const starter = RELICS[S.starter] || RELICS.hearthbrand, taken = RELICS[BEATEN_BY[S.starter] || 'cairnmaul'];
+    const starter = RELICS[S.starter] || RELICS.hearthbrand;
     const LINES = [
-      { t: 'Hearthstone Keep, the Council hall. The Elders have argued about grain tithes since noon, and the Eternal Hearth has burned behind them for nine hundred years without once being asked for its opinion.' },
-      { t: 'Mid-sentence, it gutters. Every torch in the hall goes blue. Nobody finishes the sentence.', blue: true },
-      { t: 'Fenwick the hearthkeeper is on his feet first. He does not look surprised. He looks caught.', blue: true },
-      { t: `He unlocks the reliquary and puts ${starter.name} in your hands. “It woke up a little just now. So did everything else.” Tamsin already has ${taken.name} over her shoulder.` },
-      { t: 'Then the vault door bangs. A Tallyman thief is backing out of the vault with the Warden’s Seal swinging on his belt. You can see it glint from here.' },
+      { t: 'The Gloomfen, at the south-west edge of Aethermoor. The water has crept higher all season, and this spring it began to run warm.' },
+      { t: 'Nobody in Bogmire can say why. The eels have gone deep. The nets come up hot. Things that live in the mud are coming up out of it.' },
+      { t: `You came up the fen on a peat barge with two silver coins, a borrowed coat and ${starter.name} wrapped in oilcloth. You need work.` },
+      { t: 'Above the Bogmire docks an airship rides at its mooring ropes, its four sunstone crystals glowing in the fog. That is where it starts.' },
     ];
     let i = 0;
     const wrap = el('section', 'prologue');
@@ -302,21 +301,20 @@ export function mount(root, ctx) {
     const cv = el('canvas', { class: 'px', 'aria-hidden': 'true' });
     // The painted Council hall (M5 spec A10): gold until the hearth turns, then blue to the end. Without
     // both stills (or when one fails to load) the drawn scene plays as before.
-    const gold = CUTS['hearth-gold'], blue = CUTS['hearth-blue'];
-    let painted = !!(gold && blue);
+    // Thareia: the Bogmire docks painting (the map the game starts on)
+    const docks = PAINTINGS['bogmire-docks'];
+    let painted = !!docks;
     if (painted) {
       scene.classList.add('painted');
-      for (const [c, k] of [[gold, 'gold'], [blue, 'blue']]) {
-        const still = el('img', { class: `pro-still ${k}`, src: c.src, alt: '', 'aria-hidden': 'true', width: c.w, height: c.h, draggable: 'false' });
-        still.addEventListener('error', () => { if (painted) { painted = false; scene.classList.remove('painted'); drawn(); scene.classList.toggle('blue', !!LINES[i].blue); } });
-        scene.append(still);
-      }
+      const still = el('img', { class: 'pro-still gold', src: docks.src, alt: '', 'aria-hidden': 'true', width: docks.w, height: docks.h, draggable: 'false' });
+      still.addEventListener('error', () => { if (painted) { painted = false; scene.classList.remove('painted'); drawn(); } });
+      scene.append(still);
     }
     scene.append(cv);
     const text = el('p', { class: 'pro-text', 'aria-live': 'polite' });
     const btn = button('Continue', 'btn primary big', () => step(), { 'data-primary': '' });
     const enter = () => ctx.go('world', { arrive: 'new' });
-    const skip = button('Skip to the Keep', 'btn ghost', () => { ctx.audio.sfx('confirm'); enter(); });
+    const skip = button('Skip', 'btn ghost', () => { ctx.audio.sfx('confirm'); enter(); });
     wrap.append(scene, text, el('div', 'ng-acts', [btn, skip]));
     body.append(wrap);
     let W = 0, H = 80;
@@ -328,16 +326,14 @@ export function mount(root, ctx) {
     const drawn = () => {
       size();
       requestAnimationFrame(size);
-      animate(cv, t => toCanvas(renderBackdrop('hearth-road', { w: W, h: H, t, reduced: isReduced() }), cv), 10);
+      animate(cv, t => toCanvas(renderBackdrop('bogmire', { w: W, h: H, t, reduced: isReduced() }), cv), 10);
     };
     if (!painted) drawn();
     const show = async () => {
       const L = LINES[i];
-      scene.classList.toggle('blue', painted ? i > 0 : !!L.blue);
-      if (L.blue && i === 1) ctx.audio.sfx('phase');
       text.classList.remove('in'); await sleep(isReduced() ? 0 : 60);
       text.textContent = L.t; text.classList.add('in');
-      btn.textContent = i === LINES.length - 1 ? 'Into the Great Hall' : 'Continue';
+      btn.textContent = i === LINES.length - 1 ? 'Onto the docks' : 'Continue';
       skip.hidden = i === LINES.length - 1;
     };
     function step() {

@@ -1,0 +1,23 @@
+/* Thareia (T1): the airship screen (ui/screens/sky.js) */
+.screen-sky { max-width: none; padding: 0; }
+.sky-stage { position: fixed; inset: 0; background: #0a1214; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
+.sky-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: crosshair; }
+.sky-top {
+  position: absolute; left: 0; right: 0; top: 0; padding: max(10px, env(safe-area-inset-top)) var(--gutter) 10px;
+  display: flex; justify-content: space-between; align-items: baseline; gap: 12px; pointer-events: none;
+  background: linear-gradient(rgba(11,9,16,.78), rgba(11,9,16,0));
+}
+.sky-where { margin: 0; font-family: var(--f-display); font-weight: 700; font-size: 22px; color: var(--parchment); text-shadow: 0 2px 0 var(--ink); }
+.sky-aim { margin: 0; font-family: var(--f-pixel); font-size: 11px; letter-spacing: .06em; color: var(--hearth-hot); text-shadow: 0 1px 0 var(--ink); text-align: right; }
+.sky-say {
+  position: absolute; left: var(--gutter); right: var(--gutter); bottom: calc(76px + env(safe-area-inset-bottom)); max-width: 620px; margin: 0 auto;
+  padding: 10px 14px; background: rgba(11,9,16,.9); border: 2px solid var(--seam-2); box-shadow: 0 0 0 2px var(--ink); cursor: pointer;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.sky-say b { font-family: var(--f-pixel); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--hearth-hot); font-weight: 400; }
+.sky-say span { font-size: 15px; line-height: 1.35; }
+.sky-acts {
+  position: absolute; left: 0; right: 0; bottom: 0; padding: 10px var(--gutter) max(12px, env(safe-area-inset-bottom));
+  display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;
+}
+.sky-acts .btn { min-width: 132px; }

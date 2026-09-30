@@ -642,3 +642,11 @@
 .bt-foe[data-tier="hollow"] .bt-foe-name, .bt-foe[data-tier="unsmith"] .bt-foe-name { color: #d8b8ff; }
 .bt-ins-intent.second b { color: #d8bcff; }
 .bt-ins-stolen b { color: #e2c8ff; }
+
+/* Thareia: a painted backdrop fills the whole battle screen; the bands over it are see-through */
+.bt.bt-painted { background: #0b0908 var(--bt-paint) 50% bottom / cover no-repeat; }
+.bt.bt-painted .bt-stage { background: transparent; box-shadow: none; }
+.bt.bt-painted .bt-top { background: linear-gradient(180deg, rgba(12, 9, 8, .72), rgba(12, 9, 8, .35)); box-shadow: none; }
+.bt.bt-painted .bt-ribbon { background: rgba(12, 9, 8, .38); }
+.bt.bt-painted .bt-party { background: linear-gradient(180deg, rgba(12, 9, 8, 0), rgba(12, 9, 8, .35)); box-shadow: none; }
+.bt.bt-painted .bt-dock { background: rgba(12, 9, 8, .62); }

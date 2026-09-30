@@ -58,7 +58,8 @@ import { createHud, createSidePanel } from '../world/hud.js';
 import { openDialogue, openMessage, priceText } from '../world/dialogue.js';
 import { openPrefight, openLockPrompt, openHearthMenu, openPauseMenu, openShop, openForge, previewRelic } from '../world/sheets.js';
 import { reliquaryLine } from './codex.js';
-import { playBrandBanner, playCrownwalls, showLetter, playCouncil, showToBeContinued, showRegionCard, hasRegionCard, showOpening, playEnding } from '../world/story-fx.js';
+import { playBrandBanner, playCrownwalls, showLetter, playCouncil, showToBeContinued, showRegionCard, hasRegionCard, showOpening, playEnding, showCut } from '../world/story-fx.js';
+import { HEROES } from '../../data/heroes.js';
 import { createLoop } from '../world/loop.js';
 import {
   TILE, STEP_MS, RUN_MS, IDLE_TICK_MS, HOLD_MS, FADE_MS, SAVE_EVERY_STEPS, NEAR_TILES, MAP_ZOOM, TAP_TURN_MS, IDLE_FPS, MAX_SPRITES, SHOWOFF_MS, MAX_PATH,
@@ -716,6 +717,13 @@ export function mount(root, ctx, params = {}) {
       if (e.t === 'open') { const r = await openFlow(e.screen); if (r) return r; }
       else if (e.t === 'item') await cards(() => ctx.services.cardReveal(e.item, { source: RELICS[e.item.base] ? 'claimed' : 'drop', backdrop: mapNow()?.backdrop }));
       else if (e.t === 'letter') await showLetter(ctx, e.id);
+      // Thareia (T1): a painted event, a line for the toast, a companion joining or leaving
+      else if (e.t === 'cut') await showCut(ctx, e.id, { text: e.text, backdrop: mapNow()?.backdrop });
+      else if (e.t === 'note') { ctx.toast(e.text, 3200); announce(e.text); }
+      else if (e.t === 'join' || e.t === 'leave') {
+        const who = HEROES[e.hero]?.name || e.hero, line = e.t === 'join' ? `${who} joins you.` : `${who} leaves the party.`;
+        ctx.audio.sfx(e.t === 'join' ? 'quest' : 'page'); ctx.toast(line, 3000); announce(line); refreshWorld();
+      }
       else if (e.t === 'page') {
         // a gift finished a Codex page: its reward is for good (the Codex shows it in gold)
         const line = pageWords(e.id);
@@ -741,6 +749,8 @@ export function mount(root, ctx, params = {}) {
       return null;
     }
     if (s === 'atlas') { leave('atlas', { mode: 'view' }); return 'stop'; }
+    // Thareia (T1): the airship: 'sky:<flight>' (ui/screens/sky.js)
+    if (s.startsWith('sky:')) { leave('sky', { flight: s.slice(4) }); return 'stop'; }
     if (s === 'journal') { leave('journal', { tab: 'quests' }); return 'stop'; }
     if (s === 'ladder') { leave('journal', { tab: 'ladder' }); return 'stop'; }
     if (s === 'bounties') { leave('journal', { tab: 'bounties' }); return 'stop'; }
