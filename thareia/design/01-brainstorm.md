@@ -33,9 +33,14 @@ Nothing here is built yet.
 - **Enemies wear loot, and so do the players.** You see the gear on the foe, win it, and see it on your hero. This is
   one of the best parts of the original game.
 
+**The continent (2026-09-30)**
+- The player's continent painting is in `../art-in/continent/`. Its six crops set the **six regions**: the Verdant
+  Wilds, Mirrordeep and the Keep, the Ironspire, the Gloomfen, the Southern Reaches (new, name to settle) and the
+  Sunscorch. Each region gets its own 1536 × 1024 painting (see `02-art-and-budget.md`).
+
 ## Open
-- **Which six regions?** The four biomes plus Mirrordeep and the Keep make five. The sixth might be the western coast
-  (Mosswatch and the Drowned Fjords) or the Tidal Flats.
+- **The Southern Reaches:** its name and what lives there (the canon has no named places on the south shore).
+- **Delivery:** one ~30 MB file you keep, or a page whose images load separately (no size limit, needs a connection).
 - **How hard are the level gates?** A hard lock, or a warning you can ignore? What keeps the party out: a dock permit, a
   ship that can't yet climb, guarded roads?
 - **Level bands:** how levels 1–50 spread across the six regions, the crossing to Auros, and Auros itself.

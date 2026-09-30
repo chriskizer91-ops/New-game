@@ -1,0 +1,24 @@
+Tool: built-in image generation.
+
+Use case: stylized-concept.
+Asset: a continuous high-resolution terrain painting for SIX precisely adjoining fantasy RPG map tiles.
+Create ONE unbroken full-bleed 3:2 landscape image, at 3456 x 2304 pixels if available, with maximum real landscape detail. Do NOT draw six panels, do not draw dividing lines, do not draw borders. The image will be cut mechanically into three columns and two rows afterward.
+
+REFERENCE IMAGE 1 is the authoritative world geography: the continent of Aethermoor. REFERENCE IMAGE 2 is supporting reference for the closer view, the forest/mountain/desert/marsh regional landscape and the island keep. Preserve the overall continent silhouette and regional relationships of IMAGE 1, not the cropped shape of IMAGE 2.
+
+Primary request: Move the viewer much closer to Aethermoor and to a somewhat lower oblique aerial elevation, rendering the terrain as an expansive traversable painted fantasy game overworld. Retain enough downward viewing angle to see the entire main continent. Remove all decorative parchment, title, sky, distant horizon, surrounding cloud frame, compass and outlying distant continents. Zoom the main continent to almost fill the canvas, with only a narrow surrounding ocean margin; its northern shore comes close to the top, its southern shore close to the bottom. Use a consistent parallel oblique projection and constant visual scale across the whole canvas so every crop becomes a convincing local region. This must be a newly detailed closer rendering, not a blurry enlarged copy.
+
+Geography invariants from image 1:
+- One broad connected roughly rounded continent surrounding a large irregular blue inland basin.
+- A small rocky island with a many-towered medieval keep at the center of that basin, recognizably Hearthstone Keep; do not join the island to the mainland with a landmass. A modest narrow stone bridge toward the southwest may connect it as in image 2.
+- Dense lush forest and wooded hills dominate the west and northwest; green gentler highlands across the north.
+- A rugged high snow-capped mountain range dominates the northeast, descending into dark jagged foothills on the east.
+- Ochre and warm gold desert with rocky ridges, dunes and dry ravines dominates the east and southeast.
+- Wet forest, winding dark channels, mossy lowland and marshes in the southwest, gradually transitioning to meadows along the south and desert in the southeast.
+- Preserve the coastline's major lobes, bays, headlands, relative basin size and center-island position. Do not rotate, mirror, split the continent, introduce another major island, or redesign the biome layout.
+
+Closer-scale details consistent with image 2 and the game: individually readable tree groups and forest trails, little roof clusters among ancient trees in the west, a mossy lookout tower, a secluded shrine clearing, a restrained stone fortress integrated into the northeast mountain slopes, a tiny ridge monastery and alpine lake, scattered adobe settlement clusters in the desert and a palm oasis, occasional ruined stonework, wooden bridges and stilt-house clusters in the southwest marsh. Landscape should dominate; settlements are miniature grounded details, not large icons. Paths follow terrain and water crossings plausibly. Continuous natural geography all the way across where the future tile cuts will fall.
+
+Style: beautifully detailed hand-painted high-fantasy adventure map, gouache and oil-paint landscape illustration, sculpted believable terrain, lush nuanced foliage, craggy stone, clear turquoise shallows and deep blue water. Maintain the original's warm late-afternoon light from upper left with consistent shadows. Rich natural greens, cool blue-gray peaks, honey sandstone. Clean readable forms and natural painterly detail without distressed paper texture, excessive engraving hatching or speckled noise. The map should feel like one cohesive world seen closer, with abundant discoverable paths and terrain.
+
+Absolutely no text, labels, legend, grid, tile numbers, frame, UI, separate vignettes, sky, horizon line, heavy fog or foreground clouds obscuring usable terrain.

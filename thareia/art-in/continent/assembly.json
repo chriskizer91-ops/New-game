@@ -1,0 +1,77 @@
+{
+  "name": "Aethermoor closer-view map",
+  "layout": {
+    "columns": 3,
+    "rows": 2,
+    "width": 1536,
+    "height": 1024,
+    "tile_width": 512,
+    "tile_height": 512,
+    "origin": "top-left",
+    "overlap": 0,
+    "gap": 0
+  },
+  "complete_image": "Aethermoor-Complete-Map.png",
+  "tiles": [
+    {
+      "file": "Aethermoor-01-Northwest.png",
+      "column": 0,
+      "row": 0,
+      "x": 0,
+      "y": 0,
+      "width": 512,
+      "height": 512,
+      "contents": "Western forest and coast"
+    },
+    {
+      "file": "Aethermoor-02-North-Center.png",
+      "column": 1,
+      "row": 0,
+      "x": 512,
+      "y": 0,
+      "width": 512,
+      "height": 512,
+      "contents": "Northern highlands, inner basin, and Hearthstone Keep"
+    },
+    {
+      "file": "Aethermoor-03-Northeast.png",
+      "column": 2,
+      "row": 0,
+      "x": 1024,
+      "y": 0,
+      "width": 512,
+      "height": 512,
+      "contents": "Ironspire mountains and eastern foothills"
+    },
+    {
+      "file": "Aethermoor-04-Southwest.png",
+      "column": 0,
+      "row": 1,
+      "x": 0,
+      "y": 512,
+      "width": 512,
+      "height": 512,
+      "contents": "Gloomfen marsh and southwest coast"
+    },
+    {
+      "file": "Aethermoor-05-South-Center.png",
+      "column": 1,
+      "row": 1,
+      "x": 512,
+      "y": 512,
+      "width": 512,
+      "height": 512,
+      "contents": "Southern basin, meadows, and coast"
+    },
+    {
+      "file": "Aethermoor-06-Southeast.png",
+      "column": 2,
+      "row": 1,
+      "x": 1024,
+      "y": 512,
+      "width": 512,
+      "height": 512,
+      "contents": "Sunscorch desert and southeast coast"
+    }
+  ]
+}
