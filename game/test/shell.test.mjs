@@ -367,7 +367,8 @@ test('M5: the second council opens the Ironspire: the Atlas, the Codex\'s road n
   assert.equal(V.sub, 'End of Act II');
   assert.deepEqual(V.chips.map(c => [c.id, c.open]), [['ironspire', true], ['gloomfen', false]]);
   assert.deepEqual(V.lines, ['The Keep’s east postern stands open. The Rockslide Pass climbs to Peak’s Veil.', 'Gloomfen opens in the next chapter.']);
-  // the third council: the Ironspire is yours; the Blackwater still bars the Gloomfen Marsh, the next chapter
+  // the third council's card for a game whose fen stair is still shut (M5's wording, kept as a pin: the council itself
+  // sets council-3-done, so the card a player sees is the M6 one below)
   V = chapterEnd(g2, 'ironspire');
   assert.equal(V.kick, 'The Ironspire is yours');
   assert.match(V.cls, /tbc-ironspire/);

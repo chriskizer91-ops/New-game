@@ -687,7 +687,7 @@ export const ENCOUNTERS = deepFreeze({
   },
   'old-jaws': {
     id: 'old-jaws', type: 'fight', name: 'Old Jaws', place: 'The Blackwater Reach', backdrop: 'blackwater-reach', region: 'gloomfen',
-    spawns: [GLOOM('blackwater-gar', 6, { variant: 'old-jaws', relic: 'gar-tooth', name: 'Old Jaws', omens: ['frenzied', 'thornskinned'], wakeOmenCap: 0 }), GLOOM_R('blackwater-gar', 18), GLOOM_R('blackwater-gar', 18)],
+    spawns: [GLOOM('blackwater-gar', 5, { variant: 'old-jaws', relic: 'gar-tooth', name: 'Old Jaws', omens: ['frenzied', 'thornskinned'], wakeOmenCap: 0 }), GLOOM_R('blackwater-gar', 17), GLOOM_R('blackwater-gar', 17)],
     text: 'The oldest gar in the Blackwater, in a pool behind the drowned mill. He has a tooth missing. You can have one of the others.',
   },
   'tf-bargemaster': {

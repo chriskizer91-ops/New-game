@@ -219,7 +219,10 @@ export class Player {
     if (t.side === 'hero') S.party.flashColor(t.id, [140, 255, 150, 0.35], 260);
     S.sfx('heal');
     this.refresh(t.id);
-    await this.wait(420);
+    // the harness pauses while the number (and a rot's "halved by rot") is still up, as on a hit
+    await this.wait(140);
+    await this.peak(ev);
+    await this.wait(280);
   }
 
   async on_status(ev) {

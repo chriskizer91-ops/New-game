@@ -11,6 +11,8 @@ import { talkTo, dialogueView, choose, enterDialogue, ladder } from '../src/rule
 import { DIALOGUE } from '../src/data/dialogue.js';
 import { DOMAINS } from '../src/data/domains.js';
 import { CONSUMABLES } from '../src/data/items.js';
+import { SHOPS } from '../src/data/shops.js';
+import { MAPS } from '../src/data/maps/index.js';
 
 const fresh = () => migrate(newGame({ name: 'Tess', seed: 12 }));
 const onDay = (game, day) => ({ ...game, progress: { ...game.progress, flags: { ...game.progress.flags, day } } });
@@ -57,11 +59,18 @@ function tollChoices(game) {
 
 test('Hodge\'s price changes daily over three days, always one price a day, and something a party can come by', () => {
   const prices = new Set();
+  // before the bar: Sedge's shop in Willowmurk, and the chests of the Murkway and Willowmurk
+  const chests = ['murkway', 'willowmurk'].flatMap(m => MAPS[m].entities.filter(e => e.kind === 'chest'));
   for (const day of [1, 2, 3, 4]) {
     const { pays } = tollChoices(rich(onDay(fresh(), day)));
     assert.equal(pays.length, 1, `day ${day}: one price`);
     assert.ok(!pays[0].disabled, `day ${day}: a party with the means can pay`);
-    prices.add(JSON.stringify(pays[0].price));
+    const p = pays[0].price;
+    for (const id of Object.keys(p.bag || {})) assert.ok(SHOPS.sedge.items.includes(id), `day ${day}: ${id} is sold in Willowmurk, before the bar`);
+    for (const [id, n] of Object.entries(p.materials || {})) {
+      assert.ok(chests.reduce((a, c) => a + (c.loot?.materials?.[id] || 0), 0) >= n, `day ${day}: ${n} ${id} lie in a chest before the bar`);
+    }
+    prices.add(JSON.stringify(p));
   }
   assert.equal(prices.size, 3, 'three prices, round again on the fourth day');
 });
@@ -87,7 +96,7 @@ test('paying takes the price and lifts the bar; a price you cannot meet is shown
   }
 });
 
-test('a check names an ability and a label: the toll game reads "Deception DC 14", not a bare ability', () => {
+test('a check names an ability and a label: the toll game reads "Deception DC n", not a bare ability', () => {
   const game = fresh();
   const { id } = tollChoices(game);
   const idx = DIALOGUE[id].choices.findIndex(c => c.contest);

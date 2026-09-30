@@ -1000,3 +1000,14 @@ test('M6 encounters: the twenty-five Gloomfen fights hold the spec\'s spawns and
     assert.ok(lvl >= 26 && lvl <= 34, `${k}: patrols at level ${lvl}`);
   }
 });
+
+test('M6: a relic won only in the last Brand\'s fight never asks for the Branded deed (no Brand is left to earn after it)', async () => {
+  const { BRANDS } = await import('../src/data/encounters.js');
+  const { BRAND_TOTAL } = await import('../src/data/world.js');
+  assert.equal(Object.keys(BRANDS).length, BRAND_TOTAL, 'every Brand is in the game');
+  const last = ENCOUNTERS[BRANDS['brand-of-the-deep'].from]; // the Gloomfen's second, the eighth and last (spec A4)
+  // what its foes carry: a Champion's pieces (its family's relics), a spawn's held, worn or given relic
+  const pieces = last.spawns.flatMap(s => [...(FOES[s.family].relics || []), ...(s.held || []).map(h => h.relic), s.relic, s.wears]).filter(Boolean);
+  assert.deepEqual([...new Set(pieces)].sort(), ['corvus-harpoon', 'deep-pearl']);
+  for (const r of pieces) assert.ok(!RELICS[r].deeds.includes('brand'), `${r}: its deeds can all be done after the last Brand`);
+});

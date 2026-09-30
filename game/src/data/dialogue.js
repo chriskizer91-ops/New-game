@@ -1299,6 +1299,15 @@ export const DIALOGUE = deepFreeze({
     do: [{ set: 'tamsin-fallen' }, { set: 'hodge-heavier' }],
     choices: TOLL,
   },
+  // the same, when her yield scene was lost before she could leave you the Bogstriders (Page IV stays open)
+  'hodge-heavier-boots': {
+    lines: [
+      ['hodge', 'Your friend went downriver on that barge. Black as my boots, no lamp, no oars. Paid no toll. Water never does.'],
+      ['hodge', 'She left these on my bridge. Boots. Good ones. I\'d charge you for them, but they\'d never fit me.'],
+    ],
+    do: [{ give: 'bogstriders' }, { set: 'tamsin-fallen' }, { set: 'hodge-heavier' }],
+    choices: TOLL,
+  },
   'notice-hodge-coin': { lines: [['hodge', 'That\'s my coin round your neck. It always comes up Hodge. See how you like it coming up you.']], choices: TOLL },
   'notice-hodge-boots': { lines: [['hodge', 'Her boots. She paid me in exact change, every day, and said thank you. I\'ve never been so insulted.']], choices: TOLL },
   // after the terrible fight (AFTER hodge): he never dies; at the end he sits down on his stool and says so
@@ -1354,6 +1363,15 @@ export const DIALOGUE = deepFreeze({
       ['narrator', 'Downstream, something moves in the fog: long and black, with no lamp on it.'],
     ],
     do: [{ set: 'tamsin-yielded-4' }, { give: 'bogstriders' }],
+    choices: [{ text: 'Look downstream.', next: 'tamsin-fall' }],
+  },
+  // a yield again, the boots already yours (her first yield's scene closed before she went): no second pair
+  'tamsin-rb-yield-again': {
+    lines: [
+      ['tamsin', 'Stay down. You\'ve had my boots already. Where I\'m going, I won\'t need them.'],
+      ['narrator', 'Downstream, something moves in the fog: long and black, with no lamp on it.'],
+    ],
+    do: [{ set: 'tamsin-yielded-4' }],
     choices: [{ text: 'Look downstream.', next: 'tamsin-fall' }],
   },
   // her fall (A12): the black barge, the tall man with a hammer in a broken ring on his clasp, the trade, her word
@@ -1763,6 +1781,7 @@ export const AFTER = deepFreeze({
   ],
   'tamsin-rotbridge': [
     { on: 'victory', if: { not: { flag: 'tamsin-fallen' } }, d: 'tamsin-rb-win' },
+    { on: 'yield', if: { all: [{ not: { flag: 'tamsin-fallen' } }, { owns: 'bogstriders' }] }, d: 'tamsin-rb-yield-again' },
     { on: 'yield', if: { not: { flag: 'tamsin-fallen' } }, d: 'tamsin-rb-yield' },
   ],
   'wm-willow': [{ on: 'victory', if: { not: { flag: 'wards-mended' } }, d: 'willow-rest' }],

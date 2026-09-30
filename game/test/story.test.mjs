@@ -852,6 +852,21 @@ test('Tamsin at Rotbridge: her talk starts the duel; a win or a yield leads into
   assert.ok(flag(h, 'tamsin-fallen'));
   assert.equal(talkTo(h, 'hodge'), 'hodge-paid');
   assert.equal(talkTo(wear(h, 'bogstriders'), 'hodge'), 'notice-hodge-boots');
+  // a yield whose scene was lost (the page closed on the aftermath): Hodge's word hands over the boots she left, so
+  // Page IV stays open; a second yield after a scene that did give them gives no second pair
+  const lost = story(g, { 'tamsin-yielded-4': true });
+  assert.ok(!owns(lost, 'bogstriders'));
+  assert.equal(talkTo(lost, 'hodge'), 'hodge-heavier-boots');
+  const handed = enterDialogue(lost, 'hodge-heavier-boots');
+  assert.ok(owns(handed.game, 'bogstriders'), 'the boots are yours');
+  assert.ok(flag(handed.game, 'tamsin-fallen'));
+  assert.equal(talkTo(handed.game, 'hodge'), 'hodge-paid', 'once');
+  assert.equal(talkTo(story(y.game, { 'tamsin-fallen': true }), 'hodge'), 'hodge-heavier', 'with the boots already given, the plain word');
+  assert.equal(talkTo(story(won, { 'tamsin-fallen': true }), 'hodge'), 'hodge-heavier', 'a win dropped them in the fight');
+  assert.equal(afterDialogue(y.game, 'tamsin-rotbridge', 'yield'), 'tamsin-rb-yield-again');
+  const again = enterDialogue(y.game, 'tamsin-rb-yield-again');
+  assert.equal(again.game.inventory.filter(i => i.base === 'bogstriders').length, 1, 'one pair only');
+  assert.equal(pick(again.game, 'tamsin-rb-yield-again', /Look downstream/).next, 'tamsin-fall');
   // and sits at your fire that night, once
   assert.equal(restDialogue(h, 'toll-lamp'), 'toll-lamp-night');
   assert.equal(restDialogue(enterDialogue(h, 'toll-lamp-night').game, 'toll-lamp'), null);

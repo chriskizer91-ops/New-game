@@ -26,7 +26,7 @@
 // takes the price (event { t: 'paid', price });
 // a choice whose `do` pays is refused (and shown disabled) while the party cannot afford it (cond.js canAfford).
 // A check or a contest's check may name an `ability` as well as (or instead of) a `domain`, and a `name` for its
-// label (Hodge's toll game: "Deception DC 13").
+// label (Hodge's toll game: "Deception DC 16").
 // Import direction (A6): world -> story -> cond -> gauntlet. Never import world here.
 // Owner: WP1.
 

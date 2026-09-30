@@ -218,17 +218,19 @@ const GLOOM_ROUTE = [...GLOOM_WEST, 'patrol:lanternfen', 'lf-moths', 'fen-cairn'
   'patrol:lanternfen@back', 'stilt-hearth', 'patrol:boardwalk', 'lb-drowned', 'patrol:misthollow', 'bell-hearth', 'mh-salvage', 'mh-ringers',
   'patrol:blackwater', 'wreck-fire', 'br-barge', 'patrol:tidal-flats', 'flats-beacon', 'tf-bargemaster', 'flats-beacon', 'blackwater-leviathan'];
 checkRoute(GLOOM_ROUTE, GLOOM_PATH, 'GLOOM_ROUTE');
-// Each lead's lair as the first thing done once the road reaches it: Grandfather Willow past Willowmurk's wards, Hodge on
-// arrival at Rotbridge (his toll refused), Mother Grue from the Fen Cairn; the Drowned Cantor (his choir first) from the
-// Belltower Fire and Old Jaws from the Wreck Fire, once the Brand of Lanterns has opened the long boardwalk.
+// Each lead's lair as the first thing done once the road reaches it, after the road fight that guards its way in and a
+// rest at the nearest fire (the review's finding: every lair stands past a road gate): Grandfather Willow past
+// Willowmurk's ward-gate (the wights), Hodge on arrival at Rotbridge (his toll refused), Mother Grue from the Fen Cairn
+// past the moths; the Drowned Cantor (his choir first) past the salvage chain, from the Belltower Fire, and Old Jaws
+// past the barge, from the Wreck Fire, once the Brand of Lanterns has opened the long boardwalk.
 const GLOOM_MISTHOLLOW = GLOOM_ROUTE.slice(0, GLOOM_ROUTE.indexOf('bell-hearth') + 1);
 const GLOOM_REACH = GLOOM_ROUTE.slice(0, GLOOM_ROUTE.indexOf('wreck-fire') + 1);
 const GLOOM_LEAD_ROUTES = {
-  willow: { from: GLOOM_START.slice(0, GLOOM_START.indexOf('willow-hearth') + 1), route: ['wm-willow'] },
+  willow: { from: [...GLOOM_START.slice(0, GLOOM_START.indexOf('wm-wights') + 1), 'willow-hearth'], route: ['wm-willow'] },
   hodge: { from: GLOOM_START, route: ['hodge'] },
   grue: { from: GLOOM_WEST, route: ['patrol:lanternfen', 'lf-moths', 'fen-cairn', 'grue-hollow'] },
-  cantor: { from: GLOOM_MISTHOLLOW, route: ['db-choir', 'cantor'] },
-  jaws: { from: GLOOM_REACH, route: ['old-jaws'] },
+  cantor: { from: [...GLOOM_MISTHOLLOW, 'mh-salvage', 'bell-hearth'], route: ['db-choir', 'cantor'] },
+  jaws: { from: [...GLOOM_REACH, 'br-barge', 'wreck-fire'], route: ['old-jaws'] },
 };
 const GLOOM_LAIRS = { willow: 'wm-willow', grue: 'grue-hollow', cantor: 'cantor', jaws: 'old-jaws' };
 for (const [k, fights] of Object.entries(GLOOM_LEADS)) {

@@ -337,7 +337,9 @@ export const NPCS = deepFreeze({
   // (data/dialogue.js TOLL): the day's price while the bar is down, his toll game, and the fight.
   hodge: N('hodge', 'Hodge', 'Toll-keeper', [
     { if: { not: { flag: 'met-hodge' } }, d: 'hodge' },
-    // after Tamsin's fall, once (it sets tamsin-fallen too, should the scene have been cut short)
+    // after Tamsin's fall, once (it sets tamsin-fallen too, should the scene have been cut short); and should her
+    // yield scene have been lost with it (the page closed first), the boots she left on his bridge come with it
+    { if: { all: [FALLEN, { not: { flag: 'hodge-heavier' } }, { flag: 'tamsin-yielded-4' }, { not: { beaten: 'tamsin-rotbridge' } }, { not: { owns: 'bogstriders' } }] }, d: 'hodge-heavier-boots' },
     { if: { all: [FALLEN, { not: { flag: 'hodge-heavier' } }] }, d: 'hodge-heavier' },
     { if: { wears: 'unfair-toll' }, d: 'notice-hodge-coin' },
     { if: { wears: 'bogstriders' }, d: 'notice-hodge-boots' },

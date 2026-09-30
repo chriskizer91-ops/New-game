@@ -587,14 +587,22 @@ test('the Gloomfen beats: arrivals, Tamsin\'s duel and her fall, the Champions, 
   const talk = DIALOGUE[ENCOUNTERS['tamsin-rotbridge'].talk];
   assert.ok(talk.choices.some(c => c.text === 'Try again.' && c.do.some(e => e.fight === 'tamsin-rotbridge')));
   assert.ok(talk.choices.some(c => c.text === 'Not yet.' && !c.do));
+  // (a yield has a second scene, for a rematch after a first yield's scene that gave the boots but closed early)
   for (const on of ['victory', 'yield']) {
     const list = after('tamsin-rotbridge', on);
-    assert.equal(list.length, 1, on);
-    assert.deepEqual(list[0].if, { not: { flag: 'tamsin-fallen' } }, `${on}: once; she is gone after it`);
-    assert.ok(DIALOGUE[list[0].d].choices.length === 1 && reachable(list[0].d).has('tamsin-fall'), `${on} leads into her fall`);
+    assert.equal(list.length, on === 'yield' ? 2 : 1, on);
+    for (const a of list) {
+      assert.ok((a.if.all || [a.if]).some(c => JSON.stringify(c) === JSON.stringify({ not: { flag: 'tamsin-fallen' } })), `${on}: once; she is gone after it`);
+      assert.ok(DIALOGUE[a.d].choices.length === 1 && reachable(a.d).has('tamsin-fall'), `${on} leads into her fall`);
+    }
   }
-  const yieldNode = DIALOGUE[after('tamsin-rotbridge', 'yield')[0].d];
+  const [again, first] = after('tamsin-rotbridge', 'yield');
+  assert.deepEqual(again.if, { all: [{ not: { flag: 'tamsin-fallen' } }, { owns: 'bogstriders' }] }, 'the boots already yours: the second scene, first');
+  assert.deepEqual(first.if, { not: { flag: 'tamsin-fallen' } });
+  const yieldNode = DIALOGUE[first.d];
   assert.ok(yieldNode.do.some(e => e.set === ENCOUNTERS['tamsin-rotbridge'].yields));
+  assert.ok(DIALOGUE[again.d].do.some(e => e.set === ENCOUNTERS['tamsin-rotbridge'].yields));
+  assert.ok(!DIALOGUE[again.d].do.some(e => e.give === 'bogstriders'), 'no second pair of boots');
   // the Bogstriders are never lost: a win drops them from the fight (she wears them), a yield leaves them on the bridge
   assert.equal(ENCOUNTERS['tamsin-rotbridge'].spawns[0].wears, 'bogstriders');
   assert.ok(yieldNode.do.some(e => e.give === 'bogstriders'));

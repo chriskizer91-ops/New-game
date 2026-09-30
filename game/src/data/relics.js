@@ -1029,7 +1029,7 @@ export const RELICS = deepFreeze({
       effects: [st('warded', { value: { dice: '3d6', diceEvery: 5 } }), { type: 'cleanse', statuses: ['hexed', 'charmed'] }],
     },
     mapPower: { id: 'ward-song', name: 'Ward-Song', text: 'A witch-ward knows the Willow-Ward, and goes quiet.' },
-    lore: 'A willow-wood shield with a ward-stone set in its boss. Willowmurk made three when the wards were young; Elder Moss has kept the last of them under her bed for forty years.',
+    lore: 'A willow-wood shield with a ward-stone set in its boss. Willowmurk made three when the wards were young; Elder Moss has kept the last of them under his bed for forty years.',
     sockets: 1, deeds: ['untouched', 'brand', 'settle'],
     awaken: {
       a: hand('Warding', 'The ward holds the line. +1 Guard and +8 HP.', { guard: 1, hp: 8 }),
@@ -1186,7 +1186,7 @@ export const RELICS = deepFreeze({
     },
     mapPower: { id: 'pearl-light', name: 'Pearl-Light', text: 'It glows green in the dark, as it did at the bottom of the channel.' },
     lore: 'Grown in the Leviathan\'s brow over a thousand years in the dark, as big as a fist. It is warm, it glows green, and in your hand it beats very slowly, like the tide.',
-    sockets: 2, deeds: ['fell-champion', 'brand', 'surge'],
+    sockets: 2, deeds: ['fell-champion', 'untouched', 'surge'],
     awaken: {
       a: { name: 'The Deep-Eye', text: 'You see the blow coming up out of the dark. +1 to hit, +1 speed and +8 HP.', stats: { hit: 1, speed: 1, hp: 8 } },
       b: { name: 'The Drowned Moon', text: 'It lights the whole line from below. +8 MP, +10% healing and 15% tide resist.', stats: { mp: 8, healBonus: 10, resist: { tide: 15 } } },

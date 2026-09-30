@@ -150,9 +150,11 @@ async function waitPaused(page, name, { timeout = 300000, hurry = false, probe =
   } finally { if (stop) await stop(); }
   if (!(await page.evaluate(() => window.__btPaused))) { await page.evaluate(() => { window.__btPauseWhen = null; }); return null; }
   await page.waitForTimeout(80);
-  const p = name ? await shot(page, name) : null;
+  // the probe reads the page before the screenshot: a float (a number, "halved by rot") lives on its own clock while
+  // the fight is paused, and a slow screenshot could outlast it
   const ev = await page.evaluate(() => window.__btPausedEvent);
   const info = probe ? await page.evaluate(probe, ev) : null;
+  const p = name ? await shot(page, name) : null;
   await page.evaluate(() => window.__btResume());
   return { path: p, ev, info };
 }
