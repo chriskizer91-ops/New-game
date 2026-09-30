@@ -819,6 +819,48 @@ test('the Hollow Council: each rolls a d20 +4 while the gift is held, with its A
   }
 });
 
+test('the Hollow Council: pried loose, the gift takes its +4 from the rolls she has already made too (her readied move and the ones Analyze foresaw)', async () => {
+  const { FOES } = await import('../src/data/foes.js');
+  const { rollIntent, foeTable, resolveMoveId } = await import('../src/rules/ai.js');
+  for (const [family, gift] of Object.entries(GIFTS)) {
+    const moves = FOES[family].moves;
+    const needs = it => moves[it.move].requires === gift;
+    // readied: a move that does not need the gift, so it is read again without the +4 (not rolled again)
+    const s = sturdy(structuredClone(battleWith([{ family, level: 38 }], { seed: 6 })));
+    const f = s.units.f1;
+    const rng = createRng(`foreseen:${family}`);
+    let it = rollIntent(s, f, rng);
+    for (let i = 0; i < 400 && needs(it); i++) it = rollIntent(s, f, rng);
+    f.intent = it;
+    f.queue = [rollIntent(s, f, rng), rollIntent(s, f, rng), rollIntent(s, f, rng)];
+    const made = [f.intent, ...f.queue];
+    assert.ok(made.every(x => x.bonus === 4 && x.face === Math.min(20, x.natural + 4)), `${family}: rolled while the gift held`);
+    const naturals = made.map(x => x.natural);
+    const ev = await pry(s, 'f1', gift);
+    const now = [f.intent, ...f.queue];
+    assert.deepEqual(now.map(x => [x.face, 'bonus' in x, 'natural' in x]), naturals.map(n => [n, false, false]), `${family}: each face drops back to its natural roll`);
+    for (const x of now) {
+      const row = foeTable(f).find(([lo, hi]) => x.face >= lo && x.face <= hi);
+      assert.equal(x.move, resolveMoveId(s, f, row[2]), `${family}: ${x.face} reads the table's move again`);
+      assert.equal(x.name, moves[x.move].name);
+      assert.ok(!needs(x), `${family}: never a gift Art once the gift is gone`);
+    }
+    const shown = ev.filter(e => e.t === 'intent' && e.foe === 'f1');
+    assert.deepEqual(shown.map(e => [e.face, e.bonus ?? null]), [[naturals[0], null]], `${family}: the readied roll is shown again, without the +4`);
+    // readied: a gift Art is rolled again, and the new roll has no +4
+    const t = sturdy(structuredClone(battleWith([{ family, level: 38 }], { seed: 7 })));
+    const g = t.units.f1;
+    const rng2 = createRng(`gift-art:${family}`);
+    let art = rollIntent(t, g, rng2);
+    for (let i = 0; i < 400 && !needs(art); i++) art = rollIntent(t, g, rng2);
+    assert.ok(needs(art), `${family}: a gift Art comes up`);
+    g.intent = art;
+    const ev2 = await pry(t, 'f1', gift);
+    assert.ok(!('bonus' in g.intent) && !needs(g.intent), `${family}: rolled again, a plain d20 (${g.intent.face}: ${g.intent.name})`);
+    assert.equal(ev2.filter(e => e.t === 'intent' && e.foe === 'f1' && e.bonus).length, 0);
+  }
+});
+
 test('the Unsmith: two d20s and two moves a turn; at 66% the Thief takes up at most six relics the Warden never claimed, the highest first, with +1 Guard each; at 33% the Worldforge', async () => {
   const { RELICS } = await import('../src/data/relics.js');
   const { TUNING } = await import('../src/data/tuning.js');

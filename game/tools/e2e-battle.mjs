@@ -931,9 +931,13 @@ await scenario('tray', async rec => {
   if (stubbed('hodge').length) { blocked(rec, 'Hodge is still the scaffold stand-in (P4: data/foes.js)'); return; }
   const s = await open(PHONE360, 'node=hodge&level=30&speed=4&auto=1&starter=hearthbrand&seed=2');
   const { page } = s;
-  const trayProbe = () => {
+  // (measured where the tray comes to rest: it slides up 14 px as it opens, and a busy test machine may not have
+  // started that slide 80 ms after the pause)
+  const trayProbe = async () => {
     const t = document.querySelector('.bt-tray'), d = document.querySelector('.bt-tray-dmg'), tot = d?.querySelector('.total');
     if (!t || t.hidden || !tot) return null;
+    const finite = t.getAnimations({ subtree: true }).filter(a => a.effect?.getComputedTiming().iterations !== Infinity);
+    await Promise.race([Promise.all(finite.map(a => a.finished.catch(() => {}))), new Promise(r => setTimeout(r, 3000))]);
     const tr = t.getBoundingClientRect(), dr = d.getBoundingClientRect(), br = tot.getBoundingClientRect(), line = parseFloat(getComputedStyle(d).lineHeight) || 26;
     return { chips: d.querySelectorAll('.bt-dchip').length, more: d.querySelector('.more')?.textContent || '', total: tot.textContent, trayBottom: Math.round(tr.bottom), totalBottom: Math.round(br.bottom), totalRight: Math.round(br.right), vw: innerWidth, vh: innerHeight, rowH: Math.round(dr.height), line: Math.round(line) };
   };
@@ -1164,10 +1168,14 @@ await scenario('hollow', async rec => {
   check(first.info.aria.includes(`(d20 ${it.natural} +4 = ${it.face})`), `her label reads the roll ("${first.info.aria}")`);
   await layoutChecks(page, 'hollow/d20 +4');
   if (gift) {
-    const snap = await pauseWhen(page, (ev, [i, g]) => ev.t === 'disarm' && ev.target === i && ev.relic === g, 'phone360-hollow-gift-snapped', { hurry: true, arg: [id, gift] });
+    const snap = await catchNext(page, (ev, [i, g]) => ev.t === 'disarm' && ev.target === i && ev.relic === g, { arg: [id, gift] });
     check(snap, `her gift (${RELICS[gift]?.name || gift}) never came loose (the rules said it would)`);
-    rec.shots.push(snap.path);
-    const after = await pauseWhen(page, (ev, i) => ev.t === 'intent' && ev.foe === i && ev.face != null, 'phone360-hollow-plus4-gone', { hurry: true, arg: id, probe: m7Probe });
+    rec.shots.push(await shot(page, 'phone360-hollow-gift-snapped'));
+    // her roll comes in the same breath as the snap (read again without the +4), so the next pause is armed before
+    // the fight goes on
+    await armPause(page, (ev, i) => ev.t === 'intent' && ev.foe === i && ev.face != null, id);
+    await resume(page);
+    const after = await waitPaused(page, 'phone360-hollow-plus4-gone', { hurry: true, probe: m7Probe });
     check(after && !after.ev.bonus && !after.info.bonus1 && !/\+4/.test(after.info.aria), `with the gift gone her die rolls without the +4 (${after ? `d${after.ev.die} ${after.ev.face}, "${after.info.bonus1}"` : 'no intent'})`);
     rec.shots.push(after.path);
   } else blocked(rec, `${FOES[fam].name} is still the scaffold's stand-in (no gift named, bonusWhile): the gift snapped and the +4 gone wait for P4's family`);
@@ -1242,9 +1250,10 @@ await scenario('unsmith', async rec => {
   await page.click('.bt-auto');
   // then, as they come: her move, his second die's move, his second and third phases, and what he takes
   const seen = { guest: false, slot1: false, p2: false, p3: false, stolen: !steals };
+  const next = (ev, [i, g, sn]) => (!sn.guest && ev.t === 'move' && ev.actor === g) || (!sn.slot1 && ev.t === 'move' && ev.actor === i && ev.slot === 1)
+    || (ev.t === 'phase' && ev.foe === i && ((ev.phase === 2 && !sn.p2) || (ev.phase === 3 && !sn.p3))) || (!sn.stolen && ev.t === 'stolen' && ev.foe === i);
   for (let n = 0; n < 12 && Object.values(seen).some(v => !v); n++) {
-    const c = await catchNext(page, (ev, [i, g, sn]) => (!sn.guest && ev.t === 'move' && ev.actor === g) || (!sn.slot1 && ev.t === 'move' && ev.actor === i && ev.slot === 1)
-      || (ev.t === 'phase' && ev.foe === i && ((ev.phase === 2 && !sn.p2) || (ev.phase === 3 && !sn.p3))) || (!sn.stolen && ev.t === 'stolen' && ev.foe === i), { arg: [id, guest.id, seen], probe: m7Probe });
+    const c = await catchNext(page, next, { arg: [id, guest.id, seen], probe: m7Probe });
     if (!c) break;
     const { ev, info } = c;
     if (ev.t === 'move' && ev.actor === guest.id) {
@@ -1268,6 +1277,8 @@ await scenario('unsmith', async rec => {
       check(info.big.includes(k ? 'He takes what you never claimed' : 'Nothing left to take'), `his banner says what he took ("${info.big}")`);
       check(JSON.stringify(info.stolen) === JSON.stringify(ev.relics || []), `his plate shows the ${k} relics he took (${info.stolen.length})`);
     }
+    // what he takes comes in the same breath as his phase: the next pause is armed before the fight goes on
+    if (Object.values(seen).some(v => !v)) await armPause(page, next, [id, guest.id, seen]);
     await resume(page);
   }
   check(seen.guest, 'Tamsin never moved on her own (the rules said she would)');

@@ -131,8 +131,10 @@ export class Player {
       if (ev.face != null) any = true; // an opener is not rolled: no dice sound for it
     }
     for (const u of rolled) {
-      if (u.side === 'ally') S.party.setIntent(u, u.intent, { roll: !(S.reduced || S.clock.skipping) });
-      else S.hud.tumbleIntent(u, u.intent, 560 / S.clock.speed, S.reduced || S.clock.skipping);
+      if (u.side === 'ally') {
+        S.party.setIntent(u, u.intent, { roll: !(S.reduced || S.clock.skipping) });
+        this.refresh(u.id); // her card's label names the new move at once
+      } else S.hud.tumbleIntent(u, u.intent, 560 / S.clock.speed, S.reduced || S.clock.skipping);
     }
     if (any) { S.sfx('dice'); await this.wait(600); }
     for (const ev of batch) await this.peak(ev);

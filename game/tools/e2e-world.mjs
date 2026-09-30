@@ -2817,8 +2817,12 @@ async function run(V) {
         check((await track()) === 'boss', `${P} 42: the Worldforge plays the boss track (${await track()})`);
         await W(() => window.__world.roam([]));
         await pressA();
-        for (let i = 0; i < 12 && !(await page.$('.ov-prefight')); i++) {
-          if (await page.$('.dlg-choice')) await page.click('.dlg-choice').catch(() => {}); else await page.click('.dlg-next').catch(() => {});
+        // his word before the fight (data/dialogue.js 'unsmith'): every line may take two taps, and the first choice,
+        // "Ask him why.", is a longer scene; "Face him." opens the card
+        for (let i = 0; i < 40 && !(await page.$('.ov-prefight')); i++) {
+          const face = await W(() => { const b = [...document.querySelectorAll('.dlg-choice:not([disabled])')].find(x => /Face him/i.test(x.innerText)); return b ? b.dataset.pick : null; });
+          if (face) await page.click(`.dlg-choice[data-pick="${face}"]`).catch(() => {});
+          else if (await page.$('.dlg-choice')) await page.click('.dlg-choice').catch(() => {}); else await page.click('.dlg-next').catch(() => {});
           await page.waitForTimeout(200);
         }
         await page.waitForSelector('.ov-prefight', { timeout: 3000 });
@@ -2832,7 +2836,8 @@ async function run(V) {
         if ((FOES.unsmith.phases || []).some(p => p.steals)) {
           const want2 = stolenFor(await W(() => window.__world.game())).map(id => RELICS[id].name);
           const got = await W(() => [...document.querySelectorAll('.ov-prefight .pf-stolen-list li')].map(l => l.innerText.trim()));
-          check(/What he will take/.test(pf) && got.join('|') === want2.join('|'), `${P} 42: the card lists what he will take (${got.length}: ${got.join(', ')})`);
+          // (innerText reads the label as drawn: capitals)
+          check(/What he will take/i.test(pf) && got.join('|') === want2.join('|'), `${P} 42: the card lists what he will take (${got.length}: ${got.join(', ')})`);
         } else block(`${P} 42: the Unsmith's phases do not steal yet: what he will take waits for P4's family`);
         await shot('unsmith-card');
         await noScroll('42 the Unsmith\'s card');

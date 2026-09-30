@@ -315,7 +315,9 @@ long boardwalk at Waking 7, after the Brand of Lanterns):
 `foe.js` and `codex.js`):
 - **hollow** (the Hollow Council): a d20 that adds **+4** to the natural roll while the family's `bonusWhile` relic (the
   gift sent to their chair) is still held; the face is `min(20, d20 + 4)` and the intent carries `natural` and `bonus`
-  ("d20 +4"). Pried loose, the gift takes the +4 with it. The die itself never steps down.
+  ("d20 +4"). Pried loose, the gift takes the +4 with it, from the rolls already made too: her readied intent (a gift
+  Art is rolled again) and any Analyze foresaw drop back to their natural roll and read the table again
+  (`rules/ai.js dropBonus`). The die itself never steps down.
 - **unsmith** (the Unsmith): **two d20s**. He shows two intents (`slot` 0 and 1) at the end of his turn and makes both
   moves on his next, in that order; a Stagger breaks the next of the two still coming. He never steps down.
 - Both read the Champion's rows in every table keyed by tier (XP, gold, loot, flee, spoils, Grudges, the Champion Felled

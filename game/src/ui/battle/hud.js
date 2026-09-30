@@ -178,6 +178,15 @@ export class Hud {
     }
     // intent bubble
     this.setIntent(u, u.intent, analyzedQueue ?? (u.analyzed ? u.queue : []));
+    this.label(u);
+  }
+
+  // what a screen reader hears for the foe: who, HP, statuses, what it intends (a hollow foe's roll with its +4) and
+  // what it took. Kept with the bubble: a new roll (tumbleIntent) is read out at once, not at the next refresh.
+  label(u) {
+    const f = this.foes.get(u.id);
+    if (!f) return;
+    const stolen = stolenOf(u);
     const said = it => `${it.name}${it.charging && !it.cancelled ? ' (charging)' : ''}${it.cancelled ? ' (broken off)' : ''}${it.bonus ? ` (${dieText(it)})` : ''}`;
     const its = [u.intent, u.dice > 1 ? u.intent2 : null].filter(Boolean);
     const intentTxt = its.length ? `, intends ${its.map(said).join(', then ')}` : '';
@@ -245,6 +254,7 @@ export class Hud {
     clearInterval(f.dieTimer);
     f.intentKey = '';
     this.setIntent(u, intent, u.analyzed ? u.queue : []);
+    this.label(u);
     const rows = [[f.die, intent, f.bonus]];
     if (u.dice > 1 && u.intent2 && !f.two.hidden) rows.push([f.die2, u.intent2, f.bonus2]);
     const rolled = rows.filter(([, it]) => it.face != null);

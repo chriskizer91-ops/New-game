@@ -135,6 +135,23 @@ export function rollIntent(s, foe, rng, slot = null) {
   };
 }
 
+// M7 (spec §4.2): a roll made while the gift held, read again once the gift is pried loose: the +4 goes with it, so
+// the face drops back to the natural roll and the move is the table's for that face (her readied intent and the ones
+// Analyze foresaw). A roll without the bonus is returned as it is.
+export function dropBonus(s, foe, it, rng) {
+  if (!it?.bonus) return it;
+  const face = it.natural;
+  const row = foeTable(foe).find(([lo, hi]) => face >= lo && face <= hi) || foeTable(foe)[0];
+  const moveId = resolveMoveId(s, foe, tableMove(foe, row[2], face));
+  const move = familyData(foe).moves[moveId];
+  const target = chooseTarget(s, foe, move, rng);
+  const targetName = target && target !== foe.id ? s.units[target]?.name : null;
+  return {
+    die: it.die, face, ...(it.slot != null ? { slot: it.slot } : {}), move: moveId, name: move.name, target, charging: !!move.charge,
+    text: intentText(face, move, targetName),
+  };
+}
+
 // M5: a move's `then` forces the foe's next intent (a Burrow's eruption): the same die face, the named move.
 // M6: a family's `opener` passes face null: its first move is not rolled, so it shows no face.
 export function intentFor(s, foe, moveId, rng, face = foe.die) {

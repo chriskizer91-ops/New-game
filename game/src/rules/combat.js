@@ -10,7 +10,7 @@ import { RELICS } from '../data/relics.js';
 import { TUNING } from '../data/tuning.js';
 import { tierRow } from '../data/foes.js';
 import { scaledTerms, rollTerms, rollExpr, clamp } from './util.js';
-import { alive, targetable, unitsOf, familyData, rollIntent, refreshIntent, intentEvent, stepDownDie } from './ai.js';
+import { alive, targetable, unitsOf, familyData, rollIntent, refreshIntent, intentEvent, stepDownDie, dropBonus } from './ai.js';
 import { buildFoe, stolenMoves } from './foe.js';
 
 const T = TUNING;
@@ -295,15 +295,20 @@ function disarm(B, src, t, piece) {
   const arts = Object.values(moves).filter(m => m.requires === relic).map(m => m.name);
   B.ev.push({ t: 'text', text: `${pieceName(piece)} clatters loose!${arts.length ? ` ${t.name} loses ${arts.join(' and ')}.` : ''}` });
   if (t.tier === 'relic-bearer') t.die = stepDownDie(t.die);
+  // M7: a hollow foe's gift takes its +4 with it, from the rolls she has already made too
+  const gift = familyData(t).bonusWhile === relic;
   if (t.intent && moves[t.intent.move]?.requires === relic) {
     t.intent = rollIntent(B.s, t, B.rng, t.dice > 1 ? 0 : null);
+    B.ev.push(intentEvent(t));
+  } else if (gift && t.intent?.bonus) {
+    t.intent = dropBonus(B.s, t, t.intent, B.rng);
     B.ev.push(intentEvent(t));
   }
   if (t.intent2 && moves[t.intent2.move]?.requires === relic) { // M7: the Unsmith's second die
     t.intent2 = rollIntent(B.s, t, B.rng, 1);
     B.ev.push(intentEvent(t, t.intent2));
   }
-  t.queue = t.queue.map(q => refreshIntent(B.s, t, q, B.rng));
+  t.queue = t.queue.map(q => refreshIntent(B.s, t, gift ? dropBonus(B.s, t, q, B.rng) : q, B.rng));
 }
 
 // ---- attacks ---------------------------------------------------------------------------------------
