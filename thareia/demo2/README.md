@@ -7,7 +7,7 @@ The finished Aethermoor game (commit `49195c1`, branch `claude/cool-ptolemy-uc93
 - **Rhune the Pass-Warden** standing in the square, wearing the Windstep Boots: walk into him to fight;
 - **the real battle screen** with the player's forest-ruins painting filling the whole screen behind it, stored small
   (480 px, WebP 70) and scaled up pixelated like the sprites; the menus and party panels are see-through over it;
-- **the player's song** ("Herbal Decay", AAC 96 kbps) for battles and boss fights; the old synth music elsewhere;
+- **the game's own synth music** (made in code, no recordings: the player's choice);
 - its own save slot, and a start straight into the square with a level 12 party.
 
 Build: `node tools/build.mjs` writes `dist/thareia-demo-2.html` (a full page) and `dist/thareia-demo-2.page.html` (for a

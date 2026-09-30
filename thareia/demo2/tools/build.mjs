@@ -1,12 +1,11 @@
 // Builds Thareia demo 2: the finished Aethermoor game (commit GAME_COMMIT) with the 16 x 24 party walking the player's
-// town-square painting, and its real battles fought in front of the player's forest-ruins painting, to the player's song.
+// town-square painting, and its real battles fought in front of the player's forest-ruins painting.
 //
 //   node tools/build.mjs      ->  dist/thareia-demo-2.html (full document) and dist/thareia-demo-2.page.html (for a claude.ai page)
 //
 // Steps: copy the game into .game/ (git archive), add the map (src/town-square.js) and the encounter, patch in the
-// painted battle backdrop, the song and a save slot of its own, boot straight into the square, import the painting with
-// the game's own tools/paint-import.mjs (keeping only this map's painting), build with the game's tools/build.mjs, then
-// put the song into the page. Needs git, npm (esbuild) and the machine's Playwright Chromium.
+// painted battle backdrop and a save slot of its own, boot straight into the square, import the painting with
+// the game's own tools/paint-import.mjs (keeping only this map's painting), then build with the game's tools/build.mjs. Needs git, npm (esbuild) and the machine's Playwright Chromium.
 import { execSync } from 'node:child_process';
 import { readFile, writeFile, mkdir, rm, copyFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -101,31 +100,6 @@ await patch('src/ui/screens/battle.js', [
 `);
 }
 
-// 5. the player's song for battles and boss fights (window.__THAREIA_SONGS, put into the page in step 9)
-await patch('src/core/audio.js', [
-  ['  function sync() {\n    if (!unlocked) return;\n    const want = musicOn ? wanted : null;', `  // Thareia demo 2: tracks with a recorded song play it (an <audio> element) in place of the synth
-  const SONGS = (typeof globalThis !== 'undefined' && globalThis.__THAREIA_SONGS) || {};
-  let songEl = null, songName = null;
-  const songAudio = () => { if (!songEl && typeof Audio !== 'undefined') { songEl = new Audio(); songEl.loop = true; songEl.preload = 'auto'; } return songEl; };
-  function songSync(want) {
-    const src = want ? SONGS[want] : null;
-    if (!src) { if (songEl && !songEl.paused) songEl.pause(); songName = null; return false; }
-    const a = songAudio(); if (!a) return false;
-    if (songName !== want) { if (a.src !== src) a.src = src; if (!songName || SONGS[songName] !== src) a.currentTime = 0; songName = want; }
-    if (a.paused) a.play().catch(() => {});
-    return true;
-  }
-  function sync() {
-    if (!unlocked) return;
-    const want = musicOn ? wanted : null;
-    if (songSync(want)) { if (playing) stopTrack(playing); return; }`],
-  ['      if (document.hidden) AC.suspend().catch(() => {});', "      if (songEl) { if (document.hidden) songEl.pause(); else if (songName) songEl.play().catch(() => {}); }\n      if (document.hidden) AC.suspend().catch(() => {});"],
-  ['      unlocked = true;', `      unlocked = true;
-      // prime the song inside the tap that unlocked sound, so a battle that starts later may play it (iOS)
-      const a = songAudio(), first = SONGS.battle;
-      if (a && first && !songName) { a.src = first; a.muted = true; a.play().then(() => { if (!songName) a.pause(); a.muted = false; }).catch(() => { a.muted = false; }); }`],
-]);
-
 // 6. a save slot of its own
 await patch('src/core/save.js', [
   ["const KEY_LIVE = 'aethermoor.save.m7';", "const KEY_LIVE = 'thareia.demo2.save';"],
@@ -165,16 +139,12 @@ sh(`node tools/paint-import.mjs --map=town-square --src=../art/town-square.png -
 await writeFile(path.join(game, 'src/ui/assets/paint/index.js'),
   "// Thareia demo 2: only the town square is painted.\nimport townSquare from './town-square.js';\nexport const PAINTINGS = Object.freeze({ 'town-square': townSquare });\n");
 
-// 9. build with the game's own build, then put the song into both pages
+// 9. build with the game's own build (its music is the game's own synth: the player chose code music over recorded songs)
 const out = path.join(work, 'dist');
 sh(`node tools/build.mjs --out "${out}"`);
-const song = 'data:audio/mp4;base64,' + (await readFile(path.join(root, 'assets/herbal-decay-battle.m4a'))).toString('base64');
-const songTag = `<script>(function(s){window.__THAREIA_SONGS={battle:s,boss:s};})(${JSON.stringify(song)});</script>`;
 await mkdir(path.join(root, 'dist'), { recursive: true });
 for (const [src, dst] of [['aethermoor.html', 'thareia-demo-2.html'], ['aethermoor.artifact.html', 'thareia-demo-2.page.html']]) {
   let html = await readFile(path.join(out, src), 'utf8');
-  const i = html.indexOf('<script'); if (i < 0) throw new Error(`no script in ${src}`);
-  html = html.slice(0, i) + songTag + html.slice(i);
   html = html.replace(/<title>[^<]*<\/title>/, '<title>Thareia Demo Two</title>');
   await writeFile(path.join(root, 'dist', dst), html);
   console.log(dst, (html.length / 1048576).toFixed(2), 'MB');

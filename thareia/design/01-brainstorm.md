@@ -46,7 +46,7 @@ Nothing here is built yet.
 - **The six region paintings** arrived (`../art-in/regions/`); the south-centre region is the **Southern Lowlands**.
 
 **Music, the airship's systems and the quality bar (2026-09-30)**
-- **Two songs**: one for battle, one for everything else. Compressed only lightly, so they sound as supplied.
+- ~~**Two songs**: one for battle, one for everything else.~~ Replaced below: music is made in code.
 - **The airship does all of it**: upgrades in the four canon parts (hull, sunstone array, heat source, steering; the array
   carries the level gates), sunstone charge recharged at docks, sky battles on deck with the same battle system (the ship
   adds one action a round; sky raiders, Aether serpents), the ship as home (rest, save, swap party, store gear), cargo
@@ -73,6 +73,11 @@ Nothing here is built yet.
   3. **Closer walking views:** new, closer paintings for walking the wilds with the 16 × 24 walker (beasts, bandits).
      The region paintings alone are too far away for walking.
   4. **Towns and dungeons:** top-down maps with the 16 × 24 walker.
+
+**Music (2026-09-30): code only**
+- **No recorded songs.** All music is made in code, as in the old game, and made richer (see
+  `03-airship-and-music.md`). The old game's whole sound system, every effect and all 12 songs, is 36 KB; one recorded
+  song costs about 3.3 MB inside the file.
 
 ## Open
 - **The walking views:** how many per region, and how they connect (they cost the most space; see below).

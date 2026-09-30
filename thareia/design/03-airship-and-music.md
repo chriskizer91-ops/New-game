@@ -74,34 +74,36 @@ Plain flat light grey background (#d8d8d8) behind every view, with no shadows ca
 No text, labels, borders or frames. Landscape 3:2, 1536 x 1024.
 ```
 
-## Music
+## Music: made in code
 
-The player makes the songs with Suno and sends them labelled. Sound effects are made in code, as in the current game.
+**Decided (2026-09-30): no recorded songs.** The music is synthesized in code, as in the old game, and made richer.
 
-**What helps most:**
-- **Instrumental only, no vocals.**
-- **About 1.5 to 2.5 minutes each.** The game loops them; a clean ending helps, and the loop point can be found and
-  smoothed here.
-- **Name each file by its use** (for example `03-flight.mp3`) and send the best quality you have. It gets compressed here.
+**What it costs (measured in the old game):**
 
-**Tracks, in order of priority:**
+| | Size |
+|---|---|
+| One synth song | about 0.9 KB (0.7–1.5 KB) |
+| All 12 synth songs | 11 KB |
+| The whole sound system: every effect and all 12 songs | 36 KB |
+| One recorded song ("Herbal Decay", 3 min 20 s) | 4.8 MB as MP3, 2.5 MB as AAC, about 3.3 MB inside the file |
 
-| # | Use | Mood |
-|---|---|---|
-| 1 | Title and main theme | Wonder, the Moon overhead |
-| 2 | Walking the wilds | Calm but interesting (the player has one) |
-| 3 | Airship flight | Soaring, open, the best moment of travel |
-| 4 | Battle | High energy (the player has one) |
-| 5 | Boss battle | Bigger and darker |
-| 6 | Town | Warm, lived-in |
-| 7 | Ruins and the Ember Line | Tense, a deep hum beneath |
-| 8 | Auros | Light, strange, golden |
+So one recorded song takes the room of about 3,500 synth songs.
 
-Later, if the size allows: a theme per region's towns, the crossing, Sedrin's theme, the Warming.
+**Why the old songs feel simple:** each is one short loop (8–16 bars, 20–40 seconds) with a few thin instruments and no
+room sound. None of that is a size limit.
 
-**The size cost of music:** music is the most expensive thing per minute. Compressed for the game, a minute of music is
-roughly 0.4 MB, so eight tracks of about 1.5 minutes cost about 5 MB of the 30 MB file. The budget in
-`02-art-and-budget.md` is revised below.
+**Ways to make it richer (each costs a few KB at most):**
+- **Space:** a reverb and an echo generated in code (no sound files), and each instrument placed left or right.
+- **Better instruments:** strings of several detuned voices, a plucked harp or lute, bells, a choir-like pad, a fuller
+  drum kit, notes that are louder or softer (accents).
+- **Longer songs with sections:** an intro, the theme, a contrasting section, a build and a return, with a
+  countermelody, instead of one short loop.
+- **Music that reacts to play** (only code music can): battle music that grows urgent in a boss's last phase, a layer
+  that joins when a relic is pried loose, a flight theme that swells with altitude, and one main melody that returns in
+  each region's style.
+
+**Checking it:** the music can be rendered offline to check that it plays, stays in level and loops cleanly. Whether it
+sounds good is for the player's ears, so new songs come with a page to play and compare them.
 
 ## Revised size budget (one 30 MB file)
 
@@ -111,8 +113,8 @@ Pictures and sound stored inside the file grow by a third, so about 22 MB of rea
 |---|---|
 | Code and game data | 3–4 MB |
 | Continent views (Aethermoor, Auros) and six region paintings | about 4.5 MB (measured) |
-| Music, about 8 tracks | about 5 MB |
+| Music, made in code | under 0.1 MB |
 | Town, dungeon and Auros maps (about 20–25) | about 6–7 MB |
 | The airship, portraits, cut-scenes, title art | about 2 MB |
 
-The trade-off to watch: every extra minute of music costs about one painted town map.
+With music made in code, the room it would have taken (about 5 MB) goes to painted maps: about 12 more.
