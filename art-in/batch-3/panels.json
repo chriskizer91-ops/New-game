@@ -1,0 +1,320 @@
+{
+ "murkway": {
+  "w": 45,
+  "h": 36,
+  "panels": [
+   {
+    "painting": "map-murkway-a.png",
+    "rect": [
+     0,
+     0,
+     24,
+     36
+    ],
+    "pad": [
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   {
+    "painting": "map-murkway-b.png",
+    "rect": [
+     21,
+     0,
+     24,
+     36
+    ],
+    "pad": [
+     0,
+     0,
+     0,
+     0
+    ]
+   }
+  ]
+ },
+ "willowmurk": {
+  "w": 42,
+  "h": 28,
+  "panels": [
+   {
+    "painting": "map-willowmurk.png",
+    "rect": [
+     0,
+     0,
+     42,
+     28
+    ],
+    "pad": [
+     0,
+     0,
+     0,
+     0
+    ]
+   }
+  ]
+ },
+ "rotbridge": {
+  "w": 42,
+  "h": 28,
+  "panels": [
+   {
+    "painting": "map-rotbridge.png",
+    "rect": [
+     0,
+     0,
+     42,
+     28
+    ],
+    "pad": [
+     0,
+     0,
+     0,
+     0
+    ]
+   }
+  ]
+ },
+ "bogmire": {
+  "w": 42,
+  "h": 28,
+  "panels": [
+   {
+    "painting": "map-bogmire.png",
+    "rect": [
+     0,
+     0,
+     42,
+     28
+    ],
+    "pad": [
+     0,
+     0,
+     0,
+     0
+    ]
+   }
+  ]
+ },
+ "lanternfen": {
+  "w": 45,
+  "h": 30,
+  "panels": [
+   {
+    "painting": "map-lanternfen.png",
+    "rect": [
+     0,
+     0,
+     45,
+     30
+    ],
+    "pad": [
+     0,
+     0,
+     0,
+     0
+    ]
+   }
+  ]
+ },
+ "mothers-hollow": {
+  "w": 30,
+  "h": 20,
+  "panels": [
+   {
+    "painting": "map-mothers-hollow.png",
+    "rect": [
+     0,
+     0,
+     30,
+     20
+    ],
+    "pad": [
+     0,
+     0,
+     0,
+     0
+    ]
+   }
+  ]
+ },
+ "long-boardwalk": {
+  "w": 74,
+  "h": 20,
+  "panels": [
+   {
+    "painting": "map-long-boardwalk-a.png",
+    "rect": [
+     0,
+     0,
+     30,
+     20
+    ],
+    "pad": [
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   {
+    "painting": "map-long-boardwalk-b.png",
+    "rect": [
+     24,
+     0,
+     30,
+     20
+    ],
+    "pad": [
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   {
+    "painting": "map-long-boardwalk-c.png",
+    "rect": [
+     44,
+     0,
+     30,
+     20
+    ],
+    "pad": [
+     0,
+     0,
+     0,
+     0
+    ]
+   }
+  ]
+ },
+ "misthollow": {
+  "w": 42,
+  "h": 28,
+  "panels": [
+   {
+    "painting": "map-misthollow.png",
+    "rect": [
+     0,
+     0,
+     42,
+     28
+    ],
+    "pad": [
+     0,
+     0,
+     0,
+     0
+    ]
+   }
+  ]
+ },
+ "drowned-belfry": {
+  "w": 22,
+  "h": 33,
+  "panels": [
+   {
+    "painting": "map-drowned-belfry.png",
+    "rect": [
+     0,
+     0,
+     22,
+     33
+    ],
+    "pad": [
+     0,
+     0,
+     0,
+     0
+    ]
+   }
+  ]
+ },
+ "blackwater-reach": {
+  "w": 45,
+  "h": 30,
+  "panels": [
+   {
+    "painting": "map-blackwater-reach.png",
+    "rect": [
+     0,
+     0,
+     45,
+     30
+    ],
+    "pad": [
+     0,
+     0,
+     0,
+     0
+    ]
+   }
+  ]
+ },
+ "tidal-flats": {
+  "w": 45,
+  "h": 30,
+  "panels": [
+   {
+    "painting": "map-tidal-flats.png",
+    "rect": [
+     0,
+     0,
+     45,
+     30
+    ],
+    "pad": [
+     0,
+     0,
+     0,
+     0
+    ]
+   }
+  ]
+ },
+ "causeway": {
+  "w": 36,
+  "h": 24,
+  "panels": [
+   {
+    "painting": "map-causeway.png",
+    "rect": [
+     0,
+     0,
+     36,
+     24
+    ],
+    "pad": [
+     0,
+     0,
+     0,
+     0
+    ]
+   }
+  ]
+ },
+ "keep-gallery-3": {
+  "w": 18,
+  "h": 12,
+  "panels": [
+   {
+    "painting": "map-keep-gallery-3.png",
+    "rect": [
+     0,
+     0,
+     18,
+     12
+    ],
+    "pad": [
+     0,
+     0,
+     0,
+     0
+    ]
+   }
+  ]
+ }
+}
