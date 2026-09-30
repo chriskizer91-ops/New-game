@@ -5,26 +5,28 @@
 // rule, M4): each earlier milestone's key is read only here, never written, never removed.
 // This module imports nothing game-specific: the migration to the current save version is injected
 // (loadGame(migrate), importCode(code, migrate), restoreBackup(migrate)).
-//   aethermoor.save.m6         the live save (Milestone 6)
-//   aethermoor.save.m6.bak     backup of the previous live save
-//   aethermoor.m6.started      '1' once this milestone has a journey of its own (carried over, new,
+//   aethermoor.save.m7         the live save (Milestone 7)
+//   aethermoor.save.m7.bak     backup of the previous live save
+//   aethermoor.m7.started      '1' once this milestone has a journey of its own (carried over, new,
 //                              loaded or started over): the older saves are then no longer offered
+//   aethermoor.save.m6         the Milestone 6 save: read only (the M6 file still plays from it)
 //   aethermoor.save.m5         the Milestone 5 save: read only (the M5 file still plays from it)
 //   aethermoor.save.m4.5       the Milestone 4.5 save: read only (the M4.5 file still plays from it)
 //   aethermoor.save.m4         the Milestone 4 save: read only (the M4 file still plays from it)
 //   aethermoor.save.v2         the Milestone 3 save: read only (the M3 file still plays from it)
 //   aethermoor.save.v1         the M2 save: read only (the M2 page still plays from it)
-// M6's saves are version 5, so its codes are AETH5. (M5's are version 4 and AETH4; M4 and Milestone 4.5 share
-// version 3 and AETH3.)
+// M7's saves are version 6, so its codes are AETH6. (M6's are version 5 and AETH5; M5's are version 4 and AETH4;
+// M4 and Milestone 4.5 share version 3 and AETH3.)
 
 const KEY_V1 = 'aethermoor.save.v1';
 const KEY_V2 = 'aethermoor.save.v2';
 const KEY_M4 = 'aethermoor.save.m4';
 const KEY_M45 = 'aethermoor.save.m4.5';
 const KEY_M5 = 'aethermoor.save.m5';
-const KEY_LIVE = 'aethermoor.save.m6';
-const KEY_BAK = 'aethermoor.save.m6.bak';
-const KEY_MARK = 'aethermoor.m6.started';
+const KEY_M6 = 'aethermoor.save.m6';
+const KEY_LIVE = 'aethermoor.save.m7';
+const KEY_BAK = 'aethermoor.save.m7.bak';
+const KEY_MARK = 'aethermoor.m7.started';
 const SETTINGS_KEY = 'aethermoor.settings.v1';
 
 function safeGet(key) { try { return localStorage.getItem(key); } catch { return null; } }
@@ -37,17 +39,17 @@ function parse(raw) {
 
 const same = g => g;
 
-// loadGame(migrate) -> { game, from: 'live' | 'm5' | 'm45' | 'm4' | 'v2' | 'v1' } | null
+// loadGame(migrate) -> { game, from: 'live' | 'm6' | 'm5' | 'm45' | 'm4' | 'v2' | 'v1' } | null
 //   The live save if present. Otherwise, until this milestone has a journey of its own, the newest
 //   earlier save, migrated in memory (nothing written: the world commits it on the first step):
-//   the Milestone 5 save (m5), else the Milestone 4.5 save (m45), else the Milestone 4 save (m4), else the
-//   Milestone 3 save (v2), else the M2 save (v1).
+//   the Milestone 6 save (m6), else the Milestone 5 save (m5), else the Milestone 4.5 save (m45), else the
+//   Milestone 4 save (m4), else the Milestone 3 save (v2), else the M2 save (v1).
 export function loadGame(migrate = same) {
   if (typeof migrate !== 'function') migrate = same;
   const live = parse(safeGet(KEY_LIVE));
   if (live) { try { return { game: migrate(live), from: 'live' }; } catch { return null; } }
   if (safeGet(KEY_MARK) === '1') return null;
-  for (const [from, raw] of [['m5', safeGet(KEY_M5)], ['m45', safeGet(KEY_M45)], ['m4', safeGet(KEY_M4)], ['v2', safeGet(KEY_V2)], ['v1', safeGet(KEY_V1)]]) {
+  for (const [from, raw] of [['m6', safeGet(KEY_M6)], ['m5', safeGet(KEY_M5)], ['m45', safeGet(KEY_M45)], ['m4', safeGet(KEY_M4)], ['v2', safeGet(KEY_V2)], ['v1', safeGet(KEY_V1)]]) {
     const old = parse(raw);
     if (!old) continue;
     try { return { game: migrate(old), from }; } catch { /* a broken old save: try the next */ }
@@ -64,7 +66,7 @@ export function saveGame(game) {
 }
 // Removes the live save only: the earlier milestones' saves and the backup stay.
 export const clearGame = () => { safeDel(KEY_LIVE); };
-// A live save exists. An earlier save waiting to be carried over is (hasM5() || hasM45() || hasM4() || hasV2() || hasV1()) && !isStarted().
+// A live save exists. An earlier save waiting to be carried over is (hasM6() || hasM5() || hasM45() || hasM4() || hasV2() || hasV1()) && !isStarted().
 export const hasSave = () => !!parse(safeGet(KEY_LIVE));
 
 // The previous live save, kept before a New Game, an import or a restore.
@@ -82,7 +84,8 @@ export function restoreBackup(migrate) {
   return game;
 }
 
-// The untouched earlier saves: M2 (v1), Milestone 3 (v2), Milestone 4 (m4), Milestone 4.5 (m4.5) and Milestone 5 (m5).
+// The untouched earlier saves: M2 (v1), Milestone 3 (v2), Milestone 4 (m4), Milestone 4.5 (m4.5), Milestone 5 (m5) and
+// Milestone 6 (m6).
 export const hasV1 = () => !!parse(safeGet(KEY_V1));
 export const readV1 = () => parse(safeGet(KEY_V1));
 export const hasV2 = () => !!parse(safeGet(KEY_V2));
@@ -93,6 +96,8 @@ export const hasM45 = () => !!parse(safeGet(KEY_M45));
 export const readM45 = () => parse(safeGet(KEY_M45));
 export const hasM5 = () => !!parse(safeGet(KEY_M5));
 export const readM5 = () => parse(safeGet(KEY_M5));
+export const hasM6 = () => !!parse(safeGet(KEY_M6));
+export const readM6 = () => parse(safeGet(KEY_M6));
 export const markStarted = () => safeSet(KEY_MARK, '1');
 export const isStarted = () => safeGet(KEY_MARK) === '1';
 
@@ -112,7 +117,7 @@ export function exportCode(game) {
   return `AETH${game?.version || 1}.` + b64(JSON.stringify(game));
 }
 // The stored earlier saves exactly as they are on disk (byte for byte), as codes, or null:
-// M2 as AETH1, Milestone 3 as AETH2, Milestone 4 and Milestone 4.5 as AETH3, Milestone 5 as AETH4.
+// M2 as AETH1, Milestone 3 as AETH2, Milestone 4 and Milestone 4.5 as AETH3, Milestone 5 as AETH4, Milestone 6 as AETH5.
 export function exportV1Code() {
   const raw = safeGet(KEY_V1);
   return raw && parse(raw) ? 'AETH1.' + b64(raw) : null;
@@ -133,6 +138,10 @@ export function exportM5Code() {
   const raw = safeGet(KEY_M5);
   return raw && parse(raw) ? 'AETH4.' + b64(raw) : null;
 }
+export function exportM6Code() {
+  const raw = safeGet(KEY_M6);
+  return raw && parse(raw) ? 'AETH5.' + b64(raw) : null;
+}
 const DAMAGED = 'The save code is damaged. Copy the whole code and try again.';
 
 // A pasted code may come from anyone, and screens put save values into markup. No string in a
@@ -145,13 +154,13 @@ function scrub(v) {
 }
 
 // importCode(code, migrate?) accepts the codes of every milestone so far (AETH1. M2, AETH2. M3,
-// AETH3. M4 and Milestone 4.5, AETH4. M5, AETH5. M6); scrub(), then migrate() when given. A code from a newer
-// milestone is named as such.
+// AETH3. M4 and Milestone 4.5, AETH4. M5, AETH5. M6, AETH6. M7); scrub(), then migrate() when given. A code from a
+// newer milestone is named as such.
 export function importCode(code, migrate) {
   const newer = String(code).trim().match(/^AETH(\d+)\./);
-  if (newer && +newer[1] > 5) throw new Error(`That code comes from a newer Aethermoor (AETH${+newer[1]}). Load it in the version that made it.`);
-  const m = String(code).trim().match(/^AETH[1-5]\.([A-Za-z0-9+/=\s]+)$/);
-  if (!m) throw new Error('That is not an Aethermoor save code. Codes start with AETH and a number, like AETH5.');
+  if (newer && +newer[1] > 6) throw new Error(`That code comes from a newer Aethermoor (AETH${+newer[1]}). Load it in the version that made it.`);
+  const m = String(code).trim().match(/^AETH[1-6]\.([A-Za-z0-9+/=\s]+)$/);
+  if (!m) throw new Error('That is not an Aethermoor save code. Codes start with AETH and a number, like AETH6.');
   let game;
   try {
     const bin = atob(m[1].replace(/\s+/g, ''));

@@ -6,8 +6,8 @@
 //
 //   node tools/build.mjs                 # into dist/
 //   node tools/build.mjs --out /tmp/x    # into a private folder (parallel builders; A5)
-//   node tools/build.mjs --minify        # full minification (identifiers renamed): M6's delivery, to fit a
-//                                        # 30 MiB upload (gate the minified file itself before sending it)
+//   node tools/build.mjs --minify        # full minification (identifiers renamed): the delivery when that is
+//                                        # what fits (M6's was; gate the minified file itself before sending it)
 //
 // The bundle is an IIFE, whitespace-minified (esbuild minifyWhitespace: identifiers and structure
 // are kept), so the delivered file's format never changes between builds.
@@ -28,8 +28,8 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const argv = process.argv.slice(2);
 const outArg = argv.find(a => a.startsWith('--out='))?.slice(6) ?? (argv.includes('--out') ? argv[argv.indexOf('--out') + 1] : null);
 const out = outArg ? path.resolve(outArg) : path.join(root, 'dist');
-const DELIVERY = 'aethermoor-m6.html';
-const FROZEN = ['aethermoor-m2.html', 'aethermoor-m3.html', 'aethermoor-m4.html', 'aethermoor-m4.5.html', 'aethermoor-m5.html'];
+const DELIVERY = 'aethermoor-m7.html';
+const FROZEN = ['aethermoor-m2.html', 'aethermoor-m3.html', 'aethermoor-m4.html', 'aethermoor-m4.5.html', 'aethermoor-m5.html', 'aethermoor-m6.html'];
 if (FROZEN.includes(DELIVERY)) throw new Error(`${DELIVERY} is an earlier milestone's frozen file`);
 
 const tpl = await readFile(path.join(root, 'src/index.html'), 'utf8');

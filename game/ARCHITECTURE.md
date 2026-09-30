@@ -284,33 +284,36 @@ canWalk, findPath (A*, 4-way), threat, keys, lockStatus, openLock, openChest, si
 Import direction inside `rules/`: `world -> story -> cond -> gauntlet`; `gauntlet` never imports
 the other three, and `migrate` imports data only.
 
-## Saves (`core/save.js`, `rules/migrate.js`; M3 spec §4.8, M4 spec §4.1, M5 spec §4.1, M6 spec §4.1)
+## Saves (`core/save.js`, `rules/migrate.js`; M3 spec §4.8, M4 spec §4.1, M5 spec §4.1, M6 spec §4.1, M7 spec §4.1)
 
 Every milestone keeps its own save and its own file (the player's rule): this one writes only its own
 keys and reads the earlier ones, newest first, without ever writing or removing them.
 
 | Key | Use |
 |---|---|
-| `aethermoor.save.m6` | the live save (version 5) |
-| `aethermoor.save.m6.bak` | the previous live save (before a New Game, an import or a restore) |
-| `aethermoor.m6.started` | `'1'` once this milestone has a journey of its own: the older saves are then no longer offered |
+| `aethermoor.save.m7` | the live save (version 6) |
+| `aethermoor.save.m7.bak` | the previous live save (before a New Game, an import or a restore) |
+| `aethermoor.m7.started` | `'1'` once this milestone has a journey of its own: the older saves are then no longer offered |
+| `aethermoor.save.m6` | the Milestone 6 save (version 5): read only; the M6 file still plays from it |
 | `aethermoor.save.m5` | the Milestone 5 save (version 4): read only; the M5 file still plays from it |
 | `aethermoor.save.m4.5` | the Milestone 4.5 save (version 3): read only; the M4.5 file still plays from it |
 | `aethermoor.save.m4` | the Milestone 4 save (version 3): read only |
 | `aethermoor.save.v2` | the Milestone 3 save (version 2): read only |
 | `aethermoor.save.v1` | the M2 save: read only, never written or removed (the M2 page still plays from it) |
 
-- `loadGame(migrate) -> { game, from: 'live'|'m5'|'m45'|'m4'|'v2'|'v1' } | null`: the live save if present;
+- `loadGame(migrate) -> { game, from: 'live'|'m6'|'m5'|'m45'|'m4'|'v2'|'v1' } | null`: the live save if present;
   else, until the started marker, the newest earlier save migrated in memory (nothing is written until
   the world's first step: `ctx.commitAdopted()`).
 - `saveGame` writes the live key (and the marker); `clearGame` removes the live key only.
-- Codes: `exportCode` gives `AETH<version>.` + base64 JSON (`AETH5.` now); `importCode(code, migrate)`
-  takes AETH1 to AETH5, names a newer code as newer, scrubs every string (`scrub`), then migrates.
-  `exportV1Code`, `exportV2Code`, `exportM4Code`, `exportM45Code`, `exportM5Code` give the earlier saves byte for byte.
-- `migrate(save)` = `toV5(toV4(toV3(toV2(save))))`, pure and idempotent: `toV2` keeps every M2 field verbatim
+- Codes: `exportCode` gives `AETH<version>.` + base64 JSON (`AETH6.` now); `importCode(code, migrate)`
+  takes AETH1 to AETH6, names a newer code as newer, scrubs every string (`scrub`), then migrates.
+  `exportV1Code`, `exportV2Code`, `exportM4Code`, `exportM45Code`, `exportM5Code`, `exportM6Code` give the earlier saves byte
+  for byte.
+- `migrate(save)` = `toV6(toV5(toV4(toV3(toV2(save)))))`, pure and idempotent: `toV2` keeps every M2 field verbatim
   and places the party on the map anchor `v1:<node>`; `toV3` adds M4's purse, pouch, pages and settled
   Grudges and counts every won fight as beaten (M4.5's road gates); `toV4` only marks the save as M5's, and
-  `toV5` as M6's.
+  `toV5` as M6's; `toV6` marks it as M7's and adds `ending: null` (the ending chosen at the Worldforge's heart:
+  `rekindle`, `release` or `anew`, final for the save).
 
 ## Painted maps and stills (`ui/world/view.js`, `ui/assets/paint/`, `ui/assets/cuts/`; M5 spec A10)
 

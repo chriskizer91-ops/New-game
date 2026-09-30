@@ -2,7 +2,7 @@
 // the player's world painting (CUTS['title-world']) is the backdrop, and the party stands on a dark rise in
 // front of it, looking out over the realm; without the still (or when it fails to load) the drawn scene plays.
 //   - a live save: "Continue", sub-line "Wren · Thornhollow · Day 4 · Lv 5 · 9/24 relics"
-//   - no live save yet, but an earlier milestone's: "Continue from Milestone 5" (or 4.5, 4 or 3; with only an M2
+//   - no live save yet, but an earlier milestone's: "Continue from Milestone 6" (or 5, 4.5, 4 or 3; with only an M2
 //     save, "Continue from the Gauntlet") -> the carry-over card -> "Walk on" -> ctx.adopt(game) (held
 //     in memory; the world writes it, to this milestone's own key, on the first step)
 //   - "New game" over any journey asks first; newgame's Begin backs the old save up (ctx.replaceGame)
@@ -17,9 +17,10 @@ import { screenNav } from '../lib/keys.js';
 import { openCarryCard } from '../lib/carry.js';
 import { saveLine } from '../lib/carry-facts.js';
 
-const TAG = '<span>M6</span> · Gloomfen';
+const TAG = '<span>M7</span> · Hearth Below';
 // where a carried-over save comes from (ctx.carryFrom): the button, the card's kind, the old home
 const FROM = {
+  m6: { label: 'Continue from Milestone 6', kind: 'm6', who: 'Milestone 6', home: 'file' },
   m5: { label: 'Continue from Milestone 5', kind: 'm5', who: 'Milestone 5', home: 'file' },
   m45: { label: 'Continue from Milestone 4.5', kind: 'm45', who: 'Milestone 4.5', home: 'file' },
   m4: { label: 'Continue from Milestone 4', kind: 'm4', who: 'Milestone 4', home: 'file' },

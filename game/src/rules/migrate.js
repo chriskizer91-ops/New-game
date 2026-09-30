@@ -5,6 +5,7 @@
 //   toV3(save)   v2 (M3) -> v3 (M4, and Milestone 4.5)
 //   toV4(save)   v3 -> v4 (M5)
 //   toV5(save)   v4 -> v5 (M6)
+//   toV6(save)   v5 -> v6 (M7)
 // Imports data only (A6): encounters, heroes, world, relics, maps/index.
 // Owner: WP2.
 
@@ -25,7 +26,7 @@ export function starterOf(g) {
   return STARTERS[it?.base] ? it.base : (claimed[0] || 'hearthbrand');
 }
 
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 
 export function toV2(save) {
   if (!save || typeof save !== 'object' || !save.version) throw new Error('Not an Aethermoor save');
@@ -102,8 +103,19 @@ export function toV5(save) {
   return v;
 }
 
+// M7 (spec §4.1): the ending the Warden chose at the Worldforge's heart, final for the save: null until then, else
+// 'rekindle', 'release' or 'anew'. Nothing else changes, so an M6 save carries over whole; the M6 file stops at AETH5
+// and names an AETH6 code as newer. Idempotent: an ending already chosen is kept.
+export const ENDINGS = ['rekindle', 'release', 'anew'];
+export function toV6(save) {
+  const v = toV5(save);
+  if (v.version < 6) v.version = 6;
+  if (!('ending' in v)) v.ending = null;
+  return v;
+}
+
 // Any save, of any version so far, as the current version.
-export const migrate = save => toV5(save);
+export const migrate = save => toV6(save);
 
 // A pasted code is untrusted: before it replaces the journey on this device, check that the migrated
 // save has the shape the game walks on (not its balance). Returns what is wrong, [] when it is sound.
@@ -143,6 +155,7 @@ export function saveProblems(g) {
   const counts = v => obj(v) && Object.values(v).every(n => num(n) && n >= 0);
   if (!counts(g.materials)) out.push('its forge materials');
   if (!counts(g.gems)) out.push('its gems');
+  if (!(g.ending === null || ENDINGS.includes(g.ending))) out.push('its ending');
   const p = g.progress, f = p?.flags;
   if (!obj(p) || !obj(f)) out.push('its progress');
   else {

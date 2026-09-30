@@ -5,7 +5,7 @@
 // Every milestone keeps its own save: nothing here ever writes an earlier milestone's.
 // mount(root, ctx, { from }): Back returns to `from` ('world' with a journey, else 'title').
 // Owner: WP8.
-import { exportCode, importCode, exportV1Code, exportV2Code, exportM4Code, exportM45Code, exportM5Code, readV1, hasV1, readV2, hasV2, readM4, hasM4, readM45, hasM45, readM5, hasM5, hasBackup, backupGame, restoreBackup, saveGame } from '../../core/save.js';
+import { exportCode, importCode, exportV1Code, exportV2Code, exportM4Code, exportM45Code, exportM5Code, exportM6Code, readV1, hasV1, readV2, hasV2, readM4, hasM4, readM45, hasM45, readM5, hasM5, readM6, hasM6, hasBackup, backupGame, restoreBackup, saveGame } from '../../core/save.js';
 import { el, esc, button } from '../lib/dom.js';
 import { screenNav } from '../lib/keys.js';
 import { openCarryCard } from '../lib/carry.js';
@@ -164,6 +164,13 @@ export function mount(root, ctx, params = {}) {
     sec.append(el('div', 'row-btns', [exp, carryOver]), box.box);
     root.append(sec);
   };
+  if (hasM6()) {
+    earlier({
+      cls: 'set-m6', title: 'Your Milestone 6 save', who: 'Milestone 6', kind: 'm6', read: readM6, exportOld: exportM6Code,
+      blurb: 'Gloomfen journey is still on this device, untouched: the Milestone 6 file keeps playing it. You can copy it out as an AETH5 code, or carry it into this milestone.',
+      codeLabel: 'Your Milestone 6 save code', codeCls: 'code-m6', exportLabel: 'Export M6 backup (AETH5)', carryLabel: 'Carry over my M6 save',
+    });
+  }
   if (hasM5()) {
     earlier({
       cls: 'set-m5', title: 'Your Milestone 5 save', who: 'Milestone 5', kind: 'm5', read: readM5, exportOld: exportM5Code,

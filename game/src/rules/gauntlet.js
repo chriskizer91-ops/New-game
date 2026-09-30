@@ -2,7 +2,7 @@
 // duel yield, Grudges, Brands and the Waking.
 //
 // M3 (spec §4.6; owner WP2) keeps this file name for import stability. newGame makes games at the
-// current save version (5 since M6, rules/migrate.js SAVE_VERSION) that start in the Great Hall (START_AT); where you are is progress.pos, and the world
+// current save version (6 since M7, rules/migrate.js SAVE_VERSION) that start in the Great Hall (START_AT); where you are is progress.pos, and the world
 // (rules/world.js) decides what you can reach. progress.node is only kept on migrated M2 saves,
 // verbatim, and never read.
 //   newGame, spawnsFor, startBattle(game, { nodeId } | { patrol: { spawns, where, backdrop, dark } },
@@ -75,7 +75,7 @@ export function newGame({ name = 'Wren', starter = 'hearthbrand', seed = 1, base
   const codex = {};
   for (const r of Object.keys(STARTERS)) codex[r] = { sighted: true, claimed: r === starter, awakened: false };
   return {
-    version: 5, seed, rngState: rng.getState(), // SAVE_VERSION (rules/migrate.js; test/gauntlet.test.mjs holds them equal)
+    version: 6, seed, rngState: rng.getState(), // SAVE_VERSION (rules/migrate.js; test/gauntlet.test.mjs holds them equal)
     party: { active: [...HERO_IDS], roster },
     inventory, gold: 50, codex, materials: { scrap: 0, silver: 0, embers: 0 }, gems: {},
     progress: {
@@ -88,6 +88,7 @@ export function newGame({ name = 'Wren', starter = 'hearthbrand', seed = 1, base
     },
     settings: { sound: true, battleSpeed: 1, reducedMotion: false },
     bag: { ...STARTING_BAG },
+    ending: null, // M7: the ending chosen at the Worldforge's heart (rules/migrate.js ENDINGS)
   };
 }
 
