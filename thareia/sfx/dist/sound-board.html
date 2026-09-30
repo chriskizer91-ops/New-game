@@ -1,0 +1,410 @@
+<title>Thareia Sound Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700&family=Alegreya+Sans:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: a single scrolling column of sound rows grouped by where they play in the game, under a sticky tally bar.
+   One deliberate dark look (a game's sound room), set explicitly so it reads the same on either host theme. */
+:root {
+  --ink: #101719;       /* ground */
+  --panel: #172225;     /* rows */
+  --line: #2a3b3f;      /* hairlines, idle controls */
+  --text: #ece5d3;      /* parchment white */
+  --muted: #9cb0aa;     /* descriptions */
+  --amber: #eba43c;     /* sunstone: play and focus */
+  --amber-ink: #1f1406;
+  --yes: #6fcf7f; --yes-ink: #07210c;
+  --no: #ef7a64; --no-ink: #2a0a05;
+  --display: 'Alegreya SC', 'Palatino Linotype', Palatino, Georgia, serif;
+  --body: 'Alegreya Sans', 'Gill Sans', 'Segoe UI', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+body { background: var(--ink); color: var(--text); font: 16px/1.45 var(--body); }
+.wrap { max-width: 860px; margin: 0 auto; padding-inline: 16px; padding-block: 0 48px; }
+header.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--ink); border-bottom: 1px solid var(--line); padding-block: 12px 10px; display: grid; gap: 8px; }
+h1 { margin: 0; font: 700 1.5rem/1.1 var(--display); letter-spacing: .03em; text-wrap: balance; }
+.tally { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; font-size: .9rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tally b { color: var(--text); font-weight: 700; }
+.tally .y b { color: var(--yes); } .tally .n b { color: var(--no); }
+.meter { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; display: flex; }
+.meter i { display: block; height: 100%; }
+.controls { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+button { font: 500 .92rem/1 var(--body); color: var(--text); background: transparent; border: 1px solid var(--line); border-radius: 7px; min-height: 40px; padding: 0 12px; cursor: pointer; }
+button:focus-visible, textarea:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.chip[aria-pressed="true"] { background: var(--text); color: var(--ink); border-color: var(--text); }
+.next { border-color: var(--amber); color: var(--amber); }
+.save-note { margin: 0; font-size: .82rem; color: var(--muted); }
+section { margin-top: 26px; }
+h2 { margin: 0 0 8px; font: 700 1.1rem/1.2 var(--display); letter-spacing: .04em; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+h2 small { font: 500 .8rem var(--body); color: var(--muted); letter-spacing: 0; font-variant-numeric: tabular-nums; }
+ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+li.row { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: grid; grid-template-columns: 2.6em minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; }
+li.row[data-vote="yes"] { border-color: color-mix(in srgb, var(--yes) 55%, var(--line)); }
+li.row[data-vote="no"] { border-color: color-mix(in srgb, var(--no) 55%, var(--line)); }
+.num { font: 500 .8rem var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.what { min-width: 0; }
+.what b { display: block; font-weight: 700; }
+.what span { display: block; color: var(--muted); font-size: .9rem; }
+.acts { display: flex; gap: 6px; }
+.play { background: var(--amber); color: var(--amber-ink); border-color: var(--amber); min-width: 64px; font-weight: 700; }
+.play.on { box-shadow: 0 0 0 3px color-mix(in srgb, var(--amber) 40%, transparent); }
+.yes[aria-pressed="true"] { background: var(--yes); color: var(--yes-ink); border-color: var(--yes); }
+.no[aria-pressed="true"] { background: var(--no); color: var(--no-ink); border-color: var(--no); }
+.note { grid-column: 2 / -1; }
+.note textarea { box-sizing: border-box; width: 100%; min-height: 2.6em; resize: vertical; font: .9rem/1.35 var(--body); color: var(--text); background: var(--ink); border: 1px solid var(--line); border-radius: 7px; padding: 6px 8px; }
+@media (max-width: 560px) {
+  li.row { grid-template-columns: 2.2em minmax(0, 1fr); }
+  .acts { grid-column: 1 / -1; }
+  .acts .play { flex: 1; }
+  .note { grid-column: 1 / -1; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+
+<div class="wrap">
+  <header class="bar">
+    <h1>Thareia Sound Board</h1>
+    <div class="tally" id="tally"></div>
+    <div class="meter" id="meter" aria-hidden="true"></div>
+    <div class="controls" role="group" aria-label="Show">
+      <button class="chip" data-f="all" aria-pressed="true">All</button>
+      <button class="chip" data-f="open" aria-pressed="false">Not rated</button>
+      <button class="chip" data-f="yes" aria-pressed="false">Yes</button>
+      <button class="chip" data-f="no" aria-pressed="false">No</button>
+      <button class="next" id="next">Play next unrated</button>
+    </div>
+    <p class="save-note" id="save-note">Every sound here is made in code, with no sound files. Tap Play, then Yes or No.</p>
+  </header>
+  <main id="list"></main>
+</div>
+
+<script>
+(function () {
+// Thareia sound library: 100 sound effects made entirely in code (Web Audio), no sound files.
+// SFX = [{ id, cat, name, desc, play(t) }]; call sfxInit() from a tap, then SFX[i].play(ctx.currentTime + .02).
+// Shared: a compressor on the master bus and one code-generated reverb (no impulse file).
+
+const NOTE_I = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+const hz = f => {
+  if (typeof f !== 'string') return f;
+  const m = /^([A-G])(#|b)?(-?\d)$/.exec(f);
+  const n = NOTE_I[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0) + (+m[3] + 1) * 12;
+  return 440 * Math.pow(2, (n - 69) / 12);
+};
+const rnd = (a, b) => a + Math.random() * (b - a);
+
+let AC = null, OUT = null, REV = null, NOISE = null, BUS = null, BUSREV = null;
+function sfxInit(given) {
+  if (AC && !given) { if (AC.state === 'suspended') AC.resume(); return AC; }
+  AC = given || new (window.AudioContext || window.webkitAudioContext)();
+  const comp = AC.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 4; comp.attack.value = .003; comp.release.value = .2;
+  OUT = AC.createGain(); OUT.gain.value = .85; OUT.connect(comp); comp.connect(AC.destination);
+  const n = AC.sampleRate * 2.4, ir = AC.createBuffer(2, n, AC.sampleRate);
+  for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 2.8); }
+  REV = AC.createConvolver(); REV.buffer = ir; const rg = AC.createGain(); rg.gain.value = .4; REV.connect(rg); rg.connect(OUT);
+  const nn = AC.sampleRate * 2; NOISE = AC.createBuffer(1, nn, AC.sampleRate);
+  const nd = NOISE.getChannelData(0); for (let i = 0; i < nn; i++) nd[i] = Math.random() * 2 - 1;
+  return AC;
+}
+const sfxContext = () => AC;
+
+// the output of one voice: panned, with a reverb send
+function route(pan = 0, rv = 0) {
+  const g = AC.createGain();
+  const out = BUS || OUT, rev = BUSREV || REV;
+  if (AC.createStereoPanner) { const p = AC.createStereoPanner(); p.pan.value = Math.max(-1, Math.min(1, pan)); g.connect(p); p.connect(out); } else g.connect(out);
+  if (rv) { const s = AC.createGain(); s.gain.value = rv; g.connect(s); s.connect(rev); }
+  return g;
+}
+// attack to g over a, hold, then an exponential fall to silence at d
+function envelope(t, o) {
+  const a = AC.createGain(), A = o.a ?? .004, G = o.g ?? .3, D = Math.max(o.d, A + .01);
+  a.gain.setValueAtTime(.0001, t); a.gain.exponentialRampToValueAtTime(G, t + A);
+  if (o.hold) a.gain.setValueAtTime(G, t + A + o.hold);
+  a.gain.exponentialRampToValueAtTime(.0001, t + D);
+  if (o.am) { // tremolo
+    const l = AC.createOscillator(), lg = AC.createGain(), m = AC.createGain();
+    l.frequency.value = o.am; lg.gain.value = o.amd ?? .6; m.gain.value = 1 - (o.amd ?? .6) / 2;
+    l.connect(lg); lg.connect(m.gain); l.start(t); l.stop(t + D + .1);
+    a.connect(m); a.out = m; return a;
+  }
+  a.out = a; return a;
+}
+function filter(t, o, node) {
+  if (!o.lp && !o.bp && !o.hp) return node;
+  const f = AC.createBiquadFilter(), D = o.d;
+  f.type = o.bp ? 'bandpass' : o.hp ? 'highpass' : 'lowpass';
+  const f0 = o.bp || o.hp || o.lp; f.frequency.setValueAtTime(f0, t);
+  if (o.f2) f.frequency.exponentialRampToValueAtTime(o.f2, t + (o.fg ?? D));
+  f.Q.value = o.q ?? (o.bp ? 2 : .8); node.connect(f); return f;
+}
+// a pitched voice: { f, to, glide, type, d, g, a, hold, lp|bp|hp, f2, q, pan, rv, vib, vibd, detune, am, amd }
+function tone(t, o) {
+  const osc = AC.createOscillator(); osc.type = o.type || 'sine';
+  const f = hz(o.f); osc.frequency.setValueAtTime(f, t);
+  if (o.to) osc.frequency.exponentialRampToValueAtTime(Math.max(1, hz(o.to)), t + (o.glide ?? o.d));
+  if (o.detune) osc.detune.value = o.detune;
+  if (o.vib) { const l = AC.createOscillator(), lg = AC.createGain(); l.frequency.value = o.vib; lg.gain.value = o.vibd ?? f * .02; l.connect(lg); lg.connect(osc.frequency); l.start(t); l.stop(t + o.d + .1); }
+  const e = envelope(t, o); filter(t, o, osc).connect(e); e.out.connect(route(o.pan, o.rv));
+  osc.start(t); osc.stop(t + o.d + .05);
+}
+// filtered noise: { d, g, a, hold, lp|bp|hp, f2, fg, q, pan, rv, am }
+function noise(t, o) {
+  const s = AC.createBufferSource(); s.buffer = NOISE; if (o.rate) s.playbackRate.value = o.rate;
+  const e = envelope(t, o); filter(t, o, s).connect(e); e.out.connect(route(o.pan, o.rv));
+  s.start(t, Math.random() * 1.5); s.stop(t + o.d + .05);
+}
+// a bell or metal strike by frequency modulation: { f, ratio, index, d, g, pan, rv }
+function fm(t, o) {
+  const c = AC.createOscillator(), m = AC.createOscillator(), mg = AC.createGain(), f = hz(o.f);
+  c.frequency.value = f; m.frequency.value = f * (o.ratio ?? 3.5);
+  mg.gain.setValueAtTime(f * (o.index ?? 2), t); mg.gain.exponentialRampToValueAtTime(f * .01 + 1, t + o.d);
+  m.connect(mg); mg.connect(c.frequency);
+  const e = envelope(t, { a: .002, ...o }); c.connect(e); e.out.connect(route(o.pan, o.rv));
+  c.start(t); m.start(t); c.stop(t + o.d + .05); m.stop(t + o.d + .05);
+}
+const arp = (t, notes, step, o) => notes.forEach((n, i) => { if (n) tone(t + i * step, { ...o, f: n, pan: (o.pan ?? 0) + (o.spread ? (i / Math.max(1, notes.length - 1) - .5) * o.spread : 0) }); });
+const bells = (t, notes, step, o) => notes.forEach((n, i) => { if (n) fm(t + i * step, { ...o, f: n }); });
+const chord = (t, notes, o) => notes.forEach((n, i) => tone(t, { ...o, f: n, pan: (o.pan ?? 0) + (i - (notes.length - 1) / 2) * (o.spread ?? .25) }));
+const thump = (t, g = .6, f = 120, d = .25) => tone(t, { f, to: 40, d, g, type: 'sine' });
+const click = (t, f = 2500, g = .2, d = .03, pan = 0) => noise(t, { bp: f, q: 6, d, g, pan });
+const crackle = (t, dur, n, g = .12) => { for (let i = 0; i < n; i++) click(t + Math.random() * dur, rnd(1500, 5000), g * rnd(.4, 1), rnd(.01, .03), rnd(-.5, .5)); };
+const creak = (t, d = .5, g = .08, f = 150) => tone(t, { f, to: f * 1.5, d, g, type: 'sawtooth', bp: 900, q: 4, vib: 18, vibd: 20, a: .05 });
+const whoosh = (t, d = .3, g = .3, f = 400, f2 = 2500, pan = 0) => noise(t, { bp: f, f2, d, g, q: 1.2, a: d * .4, pan });
+const rumble = (t, d = 1.5, g = .5) => { noise(t, { lp: 180, f2: 60, d, g, a: .05 }); tone(t, { f: 48, to: 32, d, g: g * .6 }); };
+
+const S = [];
+const add = (cat, id, name, desc, play) => S.push({ id, cat, name, desc, play });
+
+/* ---- menus and interface ---- */
+const UI = 'Menus and interface';
+add(UI, 'ui-cursor', 'Cursor move', 'A tiny soft tick as the cursor moves between menu items.', t => tone(t, { f: 1760, d: .045, g: .07, type: 'square', lp: 3000 }));
+add(UI, 'ui-confirm', 'Confirm', 'Two bright rising notes: yes, do it.', t => arp(t, ['E5', 'B5'], .06, { type: 'triangle', d: .2, g: .2, rv: .15 }));
+add(UI, 'ui-back', 'Cancel or back', 'The confirm notes turned downward: never mind.', t => arp(t, ['B5', 'E5'], .06, { type: 'triangle', d: .16, g: .17, rv: .1 }));
+add(UI, 'ui-error', "Can't do that", 'A short low double buzz.', t => { tone(t, { f: 170, d: .1, g: .13, type: 'square', lp: 900 }); tone(t + .11, { f: 160, d: .12, g: .13, type: 'square', lp: 900 }); });
+add(UI, 'ui-open', 'Menu opens', 'A quick upward swish with a soft rising tone.', t => { whoosh(t, .18, .16, 700, 3200); tone(t, { f: 520, to: 880, d: .16, g: .08, type: 'triangle' }); });
+add(UI, 'ui-close', 'Menu closes', 'The same swish, downward.', t => { whoosh(t, .18, .16, 3200, 700); tone(t, { f: 880, to: 520, d: .16, g: .08, type: 'triangle' }); });
+add(UI, 'ui-page', 'Page turn', 'Paper flicking over, as in the journal or the Codex.', t => { noise(t, { hp: 2500, d: .12, g: .16, a: .03 }); noise(t + .08, { hp: 4000, d: .08, g: .08 }); });
+add(UI, 'ui-blip', 'Dialogue text blip', 'The tick of each letter as someone speaks.', t => { for (let i = 0; i < 6; i++) tone(t + i * .07, { f: rnd(480, 560), d: .03, g: .06, type: 'square', lp: 2200 }); });
+add(UI, 'ui-save', 'Game saved', 'A warm four-note chime up the major chord.', t => arp(t, ['C5', 'E5', 'G5', 'C6'], .07, { type: 'triangle', d: .5, g: .12, rv: .3, spread: .6 }));
+add(UI, 'ui-buy', 'Purchase', 'Two quick coin pings: sold.', t => { fm(t, { f: 1320, ratio: 2.4, index: 1.2, d: .25, g: .1 }); fm(t + .07, { f: 1760, ratio: 2.4, index: 1.2, d: .35, g: .1 }); });
+
+/* ---- battle: striking ---- */
+const HIT = 'Battle: striking';
+add(HIT, 'hit-slash', 'Sword slash', 'A sharp airy slice with a metal edge.', t => { noise(t, { bp: 2500, f2: 6500, d: .16, g: .35, q: 2 }); tone(t, { f: 900, to: 300, d: .1, g: .05, type: 'sawtooth' }); });
+add(HIT, 'hit-blunt', 'Heavy blunt hit', 'A maul or hammer landing: a deep thud.', t => { thump(t, .75, 140, .3); noise(t, { lp: 900, d: .14, g: .5 }); });
+add(HIT, 'hit-thrust', 'Spear thrust', 'A narrow, fast stab.', t => { noise(t, { bp: 1200, f2: 3500, d: .1, g: .32, q: 3 }); tone(t, { f: 400, to: 200, d: .08, g: .15, type: 'triangle' }); });
+add(HIT, 'bow-shot', 'Arrow loosed', 'A bowstring twang, then the arrow hissing away.', t => { tone(t, { f: 190, to: 130, d: .14, g: .22, type: 'triangle' }); whoosh(t + .02, .25, .12, 2000, 5000, .3); });
+add(HIT, 'arrow-hit', 'Arrow lands', 'A short thock as the arrow strikes.', t => { noise(t, { bp: 1800, d: .05, g: .32 }); tone(t, { f: 320, to: 150, d: .07, g: .1, type: 'square', lp: 1200 }); });
+add(HIT, 'dagger', 'Quick dagger stabs', 'Two fast, light stabs.', t => { noise(t, { bp: 4000, d: .05, g: .25, q: 3 }); noise(t + .08, { bp: 4400, d: .05, g: .22, q: 3 }); });
+add(HIT, 'crit', 'Critical hit', 'A heavy impact with a ringing high note: a natural 20.', t => { thump(t, .8, 150, .35); noise(t, { bp: 2000, f2: 7000, d: .2, g: .4 }); fm(t + .02, { f: 2600, ratio: 1.5, index: 1, d: .8, g: .08, rv: .4 }); });
+add(HIT, 'graze', 'Graze', 'A glancing scrape that still does half damage.', t => { noise(t, { bp: 3000, d: .08, g: .16 }); tone(t, { f: 600, to: 480, d: .06, g: .04, type: 'sawtooth' }); });
+add(HIT, 'miss', 'Miss', 'A swing that whooshes through empty air.', t => whoosh(t, .28, .28, 450, 1800, -.3));
+add(HIT, 'parry', 'Block or parry', 'Steel meeting steel: a bright clang.', t => { fm(t, { f: 1400, ratio: 2.76, index: 3, d: .6, g: .14, rv: .3 }); noise(t, { hp: 5000, d: .05, g: .2 }); });
+add(HIT, 'shield-bash', 'Shield bash', 'A wooden-and-iron shield slammed forward.', t => { thump(t, .6, 110, .22); noise(t, { lp: 1500, d: .09, g: .3 }); tone(t, { f: 280, d: .06, g: .15, type: 'triangle' }); });
+add(HIT, 'dice-roll', 'Dice rolling', 'The d20 tumbling across the tray.', t => { let x = 0; for (let i = 0; i < 8; i++) { x += rnd(.04, .11); click(t + x, rnd(2400, 4200), .18, .02, rnd(-.4, .4)); } });
+add(HIT, 'dice-land', 'Dice lands', 'The die settles with a final clack and a tiny ding.', t => { click(t, 2800, .25, .03); click(t + .05, 3200, .12, .02); fm(t + .07, { f: 2093, ratio: 2, index: .6, d: .3, g: .06 }); });
+add(HIT, 'turn', 'Your turn', 'A short, clear two-note cue.', t => arp(t, ['G5', 'D6'], .05, { type: 'sine', d: .28, g: .13, rv: .2 }));
+
+/* ---- battle: statuses ---- */
+const ST = 'Battle: statuses';
+add(ST, 'burn', 'Set on fire', 'A whoosh of flame catching, then crackling.', t => { noise(t, { lp: 500, f2: 3500, d: .5, g: .3, a: .08 }); crackle(t + .1, .6, 10); });
+add(ST, 'chill', 'Chilled or frozen', 'Glassy ice tinkles and a cold hiss.', t => { bells(t, ['E7', 'B6', 'G#6', 'E6'], .05, { ratio: 3.5, index: 1.5, d: .5, g: .05, rv: .5 }); noise(t, { hp: 6000, d: .6, g: .06, a: .05 }); });
+add(ST, 'poison', 'Poisoned', 'Sickly little bubbles rising.', t => { for (let i = 0; i < 7; i++) tone(t + i * .08 + rnd(0, .03), { f: rnd(250, 450), to: rnd(600, 900), d: .07, g: .09 }); });
+add(ST, 'rot', 'Rotting', 'A low, wet, spreading sound.', t => { noise(t, { lp: 420, d: .7, g: .3, a: .1 }); tone(t, { f: 90, to: 60, d: .7, g: .12, type: 'sawtooth', lp: 300 }); });
+add(ST, 'stagger', 'Staggered', 'A dazed wobble.', t => tone(t, { f: 220, to: 130, d: .45, g: .1, type: 'square', lp: 900, vib: 11, vibd: 25 }));
+add(ST, 'fear', 'Frightened', 'A creeping, uneasy swell of two clashing notes.', t => { chord(t, ['C4', 'F#4'], { a: .25, d: .9, g: .08, vib: 6, vibd: 4, rv: .4 }); rumble(t, .9, .15); });
+add(ST, 'charm', 'Charmed', 'A sweet, dreamy sparkle.', t => arp(t, ['E6', 'G#6', 'B6', 'E7'], .05, { type: 'triangle', d: .45, g: .08, rv: .5, vib: 7, vibd: 8, spread: .8 }));
+add(ST, 'hex', 'Hexed', 'A sour minor phrase falling away.', t => arp(t, ['B4', 'G4', 'E4', 'C#4'], .09, { type: 'sawtooth', d: .35, g: .06, lp: 1400, rv: .3 }));
+add(ST, 'ward', 'Ward raised', 'A calm, open chord swelling up: protected.', t => { chord(t, ['C5', 'G5', 'C6'], { a: .12, d: .9, g: .07, rv: .45 }); noise(t, { hp: 7000, d: .8, g: .03, a: .2 }); });
+add(ST, 'haste', 'Hasted', 'A quick upward rush.', t => { tone(t, { f: 400, to: 1600, d: .25, g: .08, type: 'square', lp: 3000 }); arp(t + .05, ['C6', 'E6', 'G6'], .04, { type: 'triangle', d: .15, g: .06 }); });
+add(ST, 'regen', 'Regenerating', 'Gentle plucked notes, like a slow breath back in.', t => arp(t, ['F5', 'A5', 'C6'], .12, { type: 'triangle', d: .6, g: .09, rv: .5, lp: 3000 }));
+add(ST, 'ko', 'Knocked out', 'A falling tone and a body hitting the ground.', t => { tone(t, { f: 420, to: 80, d: .55, g: .12, type: 'sawtooth', lp: 900 }); thump(t + .45, .5, 90, .3); });
+
+/* ---- magic: the aspects ---- */
+const MAG = 'Magic: the aspects';
+add(MAG, 'ember', 'Ember spell', 'A roaring burst of fire.', t => { noise(t, { lp: 300, f2: 4000, fg: .25, d: .7, g: .45, a: .05 }); tone(t, { f: 80, d: .6, g: .2, type: 'sawtooth', lp: 500 }); crackle(t + .2, .5, 8, .1); });
+add(MAG, 'frost', 'Frost spell', 'A cold rush and crystals cracking into place.', t => { noise(t, { hp: 3000, f2: 9000, d: .6, g: .12, a: .1 }); bells(t + .1, ['B6', 'F#7', 'D7', 'A7', 'E7'], .06, { ratio: 3.2, index: 2, d: .6, g: .05, rv: .5 }); for (let i = 0; i < 4; i++) click(t + .35 + i * .06, 6000, .15); });
+add(MAG, 'storm', 'Storm spell', 'A lightning crack, electric buzz and rolling thunder.', t => { noise(t, { hp: 1200, d: .08, g: .6 }); tone(t, { f: 60, d: .45, g: .12, type: 'sawtooth', vib: 30, vibd: 30, lp: 2500 }); rumble(t + .1, 1.4, .4); });
+add(MAG, 'stone', 'Stone spell', 'The ground shakes and rocks grind and clatter.', t => { rumble(t, 1.2, .6); for (let i = 0; i < 10; i++) click(t + .1 + Math.random() * .8, rnd(500, 1500), .15, .05); });
+add(MAG, 'verdant', 'Verdant spell', 'Leaves rustling and a bright rising call of growth.', t => { noise(t, { bp: 3000, d: .6, g: .12, am: 14, amd: .8 }); arp(t + .05, ['D5', 'E5', 'G5', 'A5', 'D6'], .07, { type: 'triangle', d: .35, g: .09, rv: .35, spread: .7 }); });
+add(MAG, 'tide', 'Tide spell', 'A wave rising and crashing.', t => { noise(t, { lp: 300, f2: 2800, fg: .6, d: 1.3, g: .45, a: .5, pan: -.4 }); noise(t + .6, { hp: 1500, d: .7, g: .15, pan: .4 }); });
+add(MAG, 'radiant', 'Radiant spell', 'A choir-like swell of holy light.', t => { chord(t, ['C5', 'E5', 'G5', 'C6'], { type: 'triangle', a: .25, d: 1.5, g: .06, rv: .6, vib: 5, vibd: 2 }); noise(t, { hp: 8000, d: 1.4, g: .03, a: .4 }); });
+add(MAG, 'blight', 'Blight spell', 'A dark, rotten, sagging chord.', t => { chord(t, ['C3', 'C#3', 'G3'], { type: 'sawtooth', a: .1, d: 1, g: .05, lp: 700, f2: 250, rv: .3 }); noise(t, { lp: 600, d: .8, g: .1 }); });
+add(MAG, 'heal', 'Heal', 'A soft sparkling rise up the major chord.', t => arp(t, ['C5', 'E5', 'G5', 'C6', 'E6'], .07, { type: 'sine', d: .6, g: .12, rv: .5, spread: .8 }));
+add(MAG, 'revive', 'Revive', 'A longer rising phrase and a warm chord: back on their feet.', t => { arp(t, ['G4', 'C5', 'E5', 'G5', 'C6', 'E6', 'G6'], .08, { type: 'triangle', d: .5, g: .09, rv: .5, spread: 1 }); chord(t + .55, ['C5', 'E5', 'G5'], { a: .15, d: 1.2, g: .06, rv: .6 }); });
+add(MAG, 'surge-charge', 'Legend Surge charging', 'A rising, building roar of power.', t => { tone(t, { f: 90, to: 700, d: 1.3, g: .12, type: 'sawtooth', lp: 400, f2: 5000, a: .2 }); noise(t, { bp: 500, f2: 5000, d: 1.3, g: .15, a: .9 }); });
+add(MAG, 'surge-release', 'Legend Surge unleashed', 'A huge hit and a brass chord: the relic\'s ultimate.', t => { thump(t, .9, 130, .5); noise(t, { lp: 5000, f2: 300, d: .9, g: .45 }); chord(t + .02, ['C4', 'G4', 'C5', 'E5'], { type: 'sawtooth', a: .02, d: 1.4, g: .05, lp: 3200, f2: 1200, rv: .5 }); });
+
+/* ---- loot and relics ---- */
+const LOOT = 'Loot and relics';
+add(LOOT, 'grip-crack', 'Relic grip breaks', 'A crack and a rattle of chain as the holder loses its grip.', t => { noise(t, { hp: 1500, d: .07, g: .5 }); for (let i = 0; i < 5; i++) fm(t + .06 + i * .045, { f: rnd(1800, 2600), ratio: 2.1, index: 1.5, d: .12, g: .06, pan: rnd(-.5, .5) }); });
+add(LOOT, 'relic-drop', 'Relic clatters to the floor', 'Metal bouncing three times and settling.', t => { [0, .22, .36, .44].forEach((x, i) => fm(t + x, { f: 1500 - i * 80, ratio: 2.7, index: 2.2, d: .3 - i * .05, g: .12 - i * .025 })); });
+add(LOOT, 'reveal-common', 'Item card: common', 'A simple two-note chime.', t => arp(t, ['G5', 'C6'], .08, { type: 'triangle', d: .4, g: .12, rv: .3 }));
+add(LOOT, 'reveal-heirloom', 'Item card: heirloom', 'A bell arpeggio for a gold-framed legend.', t => bells(t, ['C6', 'E6', 'G6', 'C7', 'E7'], .09, { ratio: 3.01, index: 1.4, d: 1.1, g: .07, rv: .55 }));
+add(LOOT, 'reveal-primal', 'Item card: primal', 'The grandest reveal: a boom, a swell and bells.', t => { thump(t, .7, 90, .8); chord(t, ['C4', 'G4', 'C5', 'E5', 'G5'], { type: 'triangle', a: .3, d: 2, g: .05, rv: .7 }); bells(t + .3, ['G6', 'C7', 'E7', 'G7'], .1, { ratio: 3, index: 1.5, d: 1.4, g: .05, rv: .6 }); });
+add(LOOT, 'equip', 'Equip', 'Leather straps and a metal clink as gear goes on.', t => { noise(t, { bp: 1400, d: .09, g: .2 }); fm(t + .07, { f: 1900, ratio: 2.3, index: 1, d: .2, g: .07 }); });
+add(LOOT, 'levelup', 'Level up', 'A short bright fanfare.', t => { arp(t, ['G4', 'C5', 'E5', 'G5'], .09, { type: 'square', d: .2, g: .06, lp: 3500 }); chord(t + .36, ['C5', 'E5', 'G5', 'C6'], { type: 'square', d: .8, g: .04, lp: 3500, rv: .4 }); });
+add(LOOT, 'chest', 'Chest opens', 'Old hinges creaking, a latch, and a little chime.', t => { creak(t, .45, .07, 140); click(t + .45, 1800, .2, .04); arp(t + .55, ['E6', 'A6'], .07, { type: 'triangle', d: .4, g: .08, rv: .3 }); });
+add(LOOT, 'coins', 'Gold coins', 'A handful of coins clinking.', t => { for (let i = 0; i < 7; i++) fm(t + i * .045 + rnd(0, .03), { f: rnd(2400, 3600), ratio: 2.4, index: 1, d: .18, g: .05, pan: rnd(-.5, .5) }); });
+add(LOOT, 'identify', 'Identify ritual', 'A mysterious shimmer as an unknown card develops.', t => { noise(t, { hp: 3000, f2: 9000, d: 1.4, g: .06, a: .6 }); arp(t + .1, ['D5', 'F5', 'A5', 'C6', 'E6'], .18, { type: 'sine', d: .7, g: .07, rv: .6, vib: 5, vibd: 3 }); });
+
+/* ---- walking the world ---- */
+const WALK = 'Walking the world';
+add(WALK, 'step-grass', 'Footsteps on grass', 'Soft brushing steps.', t => { for (let i = 0; i < 4; i++) noise(t + i * .28, { bp: 1500, q: .7, d: .09, g: .12, a: .01 }); });
+add(WALK, 'step-stone', 'Footsteps on cobbles', 'Hard, clicky steps on stone.', t => { for (let i = 0; i < 4; i++) { click(t + i * .28, 2400, .14, .04); tone(t + i * .28, { f: 190, d: .04, g: .08 }); } });
+add(WALK, 'step-wood', 'Footsteps on a boardwalk', 'Hollow wooden knocks.', t => { for (let i = 0; i < 4; i++) tone(t + i * .28, { f: 170, d: .1, g: .22, type: 'triangle', lp: 700 }); });
+add(WALK, 'step-water', 'Splashing through water', 'Wading steps in the marsh.', t => { for (let i = 0; i < 3; i++) { noise(t + i * .35, { bp: 1200, f2: 500, d: .22, g: .22 }); tone(t + i * .35 + .05, { f: 500, to: 900, d: .06, g: .04 }); } });
+add(WALK, 'door', 'Door opens', 'A latch lifts and a wooden door creaks open.', t => { click(t, 1600, .25, .04); creak(t + .08, .55, .08, 170); });
+add(WALK, 'bump', 'Bump into a wall', 'A dull little bonk.', t => tone(t, { f: 95, d: .12, g: .3, type: 'square', lp: 300 }));
+add(WALK, 'alert', 'A foe spots you', 'The "!" moment: a sharp two-note alarm.', t => arp(t, ['E6', 'B6'], .07, { type: 'square', d: .15, g: .08, lp: 4000 }));
+add(WALK, 'stairs', 'Taking the stairs', 'Footsteps stepping down a flight of stairs.', t => { for (let i = 0; i < 5; i++) tone(t + i * .12, { f: 300 - i * 25, d: .06, g: .15, type: 'triangle', lp: 900 }); });
+add(WALK, 'hearthfire', 'Rest at a Hearthfire', 'A warm chord, a crackling fire and a lullaby phrase: healed and saved.', t => { chord(t, ['F4', 'A4', 'C5'], { a: .3, d: 2, g: .05, rv: .5 }); crackle(t, 1.8, 14, .07); arp(t + .4, ['C5', 'A4', 'F5', 'C5'], .3, { type: 'triangle', d: .6, g: .06, rv: .4 }); });
+add(WALK, 'sign', 'Read a sign', 'A knock on a wooden post.', t => { tone(t, { f: 240, d: .08, g: .2, type: 'triangle', lp: 900 }); tone(t + .1, { f: 260, d: .08, g: .15, type: 'triangle', lp: 900 }); });
+
+/* ---- the airship ---- */
+const SHIP = 'The airship';
+add(SHIP, 'ship-takeoff', 'Skiff lifts off', 'The sunstone crystals hum up in pitch as the ship rises, with wind swelling.', t => { chord(t, [110, 165, 220], { to: 2, a: .3, d: 2.2, g: .07, rv: .4, vib: 4, vibd: 2 }); [110, 165, 220].forEach((f, i) => tone(t, { f, to: f * 2, d: 2.2, g: .05, a: .4, glide: 1.8, pan: (i - 1) * .4 })); noise(t + .4, { bp: 500, f2: 1200, d: 1.8, g: .15, a: .9 }); });
+add(SHIP, 'ship-land', 'Skiff lands at the dock', 'The hum settles down, a wooden bump, and ropes creak.', t => { [220, 330].forEach((f, i) => tone(t, { f, to: f / 2, d: 1.2, g: .06, pan: i ? .3 : -.3 })); thump(t + 1, .5, 110, .3); creak(t + 1.15, .5, .06, 160); });
+add(SHIP, 'sails', 'Sails fill and flap', 'Canvas snapping in the wind.', t => { for (let i = 0; i < 4; i++) noise(t + i * .32 + rnd(0, .06), { bp: rnd(600, 900), d: .14, g: .3, q: 1.2, pan: rnd(-.4, .4) }); });
+add(SHIP, 'wind', 'High-altitude wind', 'A steady, whistling wind above the land.', t => { noise(t, { bp: 450, f2: 900, fg: 1.5, d: 3, g: .25, a: .8, q: 2 }); noise(t + .5, { bp: 1400, f2: 900, d: 2.4, g: .06, a: .6, q: 6, pan: .5 }); });
+add(SHIP, 'crystal-flare', 'Crystal flare', "The ship's attack: a bright zap of focused sunstone light.", t => { tone(t, { f: 2000, to: 200, d: .35, g: .12, type: 'sawtooth', lp: 5000 }); fm(t, { f: 1760, ratio: 1.5, index: 2, d: .6, g: .06, rv: .5 }); });
+add(SHIP, 'recharge', 'Sunstone recharging', 'A pulsing hum climbing to full.', t => tone(t, { f: 220, to: 660, d: 1.8, g: .12, type: 'triangle', a: .2, am: 8, amd: .9, rv: .3 }));
+add(SHIP, 'aether-storm', 'Aether storm', 'Rolling thunder with an unnatural ringing shimmer.', t => { rumble(t, 2.6, .5); noise(t + .2, { hp: 1000, d: .1, g: .3 }); chord(t + .3, ['A5', 'Bb5'], { a: .6, d: 2, g: .03, vib: 3, vibd: 6, rv: .7 }); });
+add(SHIP, 'rope-creak', 'Rigging creaks', 'Wooden joints and ropes straining.', t => { creak(t, .6, .07, 150); creak(t + .7, .5, .06, 190); });
+add(SHIP, 'spyglass', 'Spyglass', 'Brass tubes sliding out, then a click.', t => { noise(t, { bp: 1500, f2: 4000, d: .35, g: .12, q: 4 }); click(t + .38, 3000, .2, .03); });
+add(SHIP, 'serpent', 'Aether serpent', 'A huge, echoing, breathy call from something vast in the sky.', t => { tone(t, { f: 75, to: 55, d: 2, g: .2, type: 'sawtooth', bp: 600, q: 3, vib: 5, vibd: 6, a: .3, rv: .6 }); noise(t, { bp: 800, d: 1.8, g: .1, a: .4, rv: .5 }); });
+
+/* ---- creatures ---- */
+const MON = 'Creatures and foes';
+add(MON, 'wolf', 'Wolf growl', 'A low, rumbling growl.', t => { noise(t, { lp: 450, d: 1, g: .35, am: 28, amd: .9, a: .1 }); tone(t, { f: 90, d: 1, g: .1, type: 'sawtooth', lp: 500, vib: 6, vibd: 5, a: .1 }); });
+add(MON, 'boar', 'Boar squeal', 'A shrill, angry squeal.', t => tone(t, { f: 700, to: 1100, glide: .15, d: .45, g: .12, type: 'sawtooth', bp: 1500, q: 2, vib: 25, vibd: 60 }));
+add(MON, 'bandit', 'Bandit battle cry', 'A rough shouted "Hey!"', t => { tone(t, { f: 180, to: 230, glide: .15, d: .5, g: .2, type: 'sawtooth', bp: 750, q: 3, vib: 6, vibd: 6 }); tone(t, { f: 180, to: 230, glide: .15, d: .5, g: .08, type: 'sawtooth', bp: 1250, q: 4 }); });
+add(MON, 'slime', 'Slime squelch', 'A wet, bouncy squish.', t => { tone(t, { f: 180, to: 650, d: .12, g: .25 }); noise(t, { lp: 700, d: .15, g: .2 }); });
+add(MON, 'skeleton', 'Skeleton rattle', 'Bones clattering.', t => { for (let i = 0; i < 12; i++) click(t + i * .04 + rnd(0, .02), rnd(1600, 2600), .16, .02, rnd(-.3, .3)); });
+add(MON, 'bird', 'Bird of prey screech', 'A piercing screech from above.', t => tone(t, { f: 2400, to: 1700, d: .6, g: .08, type: 'sawtooth', bp: 3000, q: 3, vib: 22, vibd: 150 }));
+add(MON, 'frog', 'Marsh frog croak', 'A deep double croak.', t => { tone(t, { f: 110, d: .3, g: .25, type: 'square', lp: 500, am: 30, amd: .9 }); tone(t + .38, { f: 105, d: .3, g: .25, type: 'square', lp: 500, am: 30, amd: .9 }); });
+add(MON, 'insect', 'Insect swarm', 'A cloud of buzzing wings.', t => { tone(t, { f: 220, d: 1.5, g: .06, type: 'sawtooth', lp: 1500, am: 45, amd: .7, a: .3 }); tone(t, { f: 227, d: 1.5, g: .06, type: 'sawtooth', lp: 1500, am: 38, amd: .7, a: .3, pan: .4 }); });
+add(MON, 'beast', 'Great beast roar', 'A deep, massive roar: a boss creature.', t => { tone(t, { f: 62, to: 46, d: 2, g: .25, type: 'sawtooth', bp: 400, f2: 900, q: 2, a: .15, vib: 7, vibd: 4, rv: .5 }); tone(t, { f: 63, to: 47, d: 2, g: .2, type: 'sawtooth', lp: 300, a: .15 }); noise(t, { bp: 700, d: 1.6, g: .2, a: .2 }); });
+add(MON, 'ghost', 'Ghost wail', 'A hollow, drifting wail.', t => { tone(t, { f: 480, to: 760, glide: .7, d: 1.8, g: .08, vib: 5, vibd: 15, a: .4, rv: .7 }); noise(t, { hp: 3000, d: 1.6, g: .04, a: .5 }); });
+
+/* ---- music cues and places ---- */
+const CUE = 'Music cues and places';
+add(CUE, 'victory', 'Victory', 'A short triumphant fanfare.', t => { arp(t, ['C5', 'C5', 'C5', 'C5'], .11, { type: 'square', d: .1, g: .06, lp: 3500 }); arp(t + .44, ['Ab4', 'Bb4', 'C5'], .15, { type: 'square', d: .2, g: .06, lp: 3500 }); chord(t + .9, ['C5', 'E5', 'G5', 'C6'], { type: 'square', d: 1, g: .035, lp: 3500, rv: .4 }); });
+add(CUE, 'defeat', 'Defeat', 'A slow, sad falling phrase.', t => { arp(t, ['C5', 'Ab4', 'F4', 'D4'], .35, { type: 'triangle', d: .6, g: .09, rv: .5 }); chord(t + 1.4, ['D3', 'F3', 'Ab3'], { a: .2, d: 1.8, g: .06, rv: .5 }); });
+add(CUE, 'boss', 'A boss appears', 'A dark brass stab, timpani and a crash.', t => { chord(t, ['C3', 'Eb3', 'G3', 'C4'], { type: 'sawtooth', a: .02, d: 1.2, g: .06, lp: 2000, f2: 600, rv: .4 }); for (let i = 0; i < 6; i++) thump(t + i * .06, .25 + i * .06, 90, .3); noise(t + .4, { hp: 4000, d: 1.2, g: .15, rv: .3 }); });
+add(CUE, 'flee', 'Run away', 'A quick whoosh and scampering feet.', t => { whoosh(t, .3, .25, 2000, 400); for (let i = 0; i < 6; i++) click(t + .25 + i * .07, 1800, .1, .02, i % 2 ? .3 : -.3); });
+add(CUE, 'quest', 'Quest complete', 'A bright rising phrase and a chime.', t => { arp(t, ['E5', 'G5', 'C6', 'E6'], .1, { type: 'triangle', d: .4, g: .09, rv: .3 }); fm(t + .45, { f: 2093, ratio: 3, index: 1.4, d: 1, g: .06, rv: .5 }); });
+add(CUE, 'new-area', 'Entering a new area', 'A soft chord swelling in with a distant bell.', t => { chord(t, ['D4', 'A4', 'E5'], { a: .5, d: 2.2, g: .05, rv: .6 }); fm(t + .4, { f: 'A5', ratio: 2.4, index: 1.2, d: 1.6, g: .05, rv: .6 }); });
+add(CUE, 'rain', 'Rain', 'Steady rain with scattered drops (a short sample of a looping sound).', t => { noise(t, { hp: 1800, d: 3, g: .12, a: .4 }); for (let i = 0; i < 40; i++) click(t + Math.random() * 2.8, rnd(3000, 7000), .05, .012, rnd(-.8, .8)); });
+add(CUE, 'thunder', 'Thunderclap', 'A close crack and a long rumble.', t => { noise(t, { hp: 800, d: .12, g: .6 }); noise(t + .05, { lp: 1200, f2: 80, d: 2.4, g: .5, rv: .3 }); rumble(t + .1, 2.4, .4); });
+add(CUE, 'campfire', 'Campfire', 'Crackling logs and a low warm hiss (a short sample of a loop).', t => { noise(t, { lp: 600, d: 3, g: .08, a: .3 }); crackle(t, 2.8, 30, .1); });
+add(CUE, 'river', 'River', 'Running water (a short sample of a loop).', t => { noise(t, { lp: 1400, d: 3, g: .2, a: .5, am: 1.3, amd: .3 }); noise(t, { bp: 3000, d: 3, g: .05, a: .5, am: 2.1, amd: .5, pan: .4 }); });
+add(CUE, 'bell', 'Town bell', 'A big bell tolling twice across the rooftops.', t => { fm(t, { f: 196, ratio: 2.4, index: 3, d: 2.5, g: .12, rv: .6 }); fm(t + 1.2, { f: 196, ratio: 2.4, index: 3, d: 2.5, g: .1, rv: .6 }); });
+add(CUE, 'auros', 'Auros overhead', "The Moon's deep, slowly beating hum, heard on quiet nights.", t => { [55, 82.5, 110, 110.6].forEach((f, i) => tone(t, { f, d: 4, g: .07, a: 1.5, hold: 1, rv: .7, pan: (i - 1.5) * .3 })); noise(t, { hp: 6000, d: 4, g: .02, a: 1.5 }); });
+
+const SFX = S;
+
+// Play one sound at its measured level (LEVEL, written by tools/level.mjs from offline renders), on a bus of its own.
+function playSfx(sound, t) {
+  const e = typeof sound === 'string' ? S.find(x => x.id === sound) : sound;
+  if (!e || !AC) return;
+  const k = LEVEL[e.id] ?? 1;
+  BUS = AC.createGain(); BUS.gain.value = k; BUS.connect(OUT);
+  BUSREV = AC.createGain(); BUSREV.gain.value = k; BUSREV.connect(REV);
+  try { e.play(t ?? AC.currentTime + .02); } finally { BUS = null; BUSREV = null; }
+}
+
+// LEVEL: GENERATED
+const LEVEL = {'ui-cursor': 7.83, 'ui-confirm': 2.07, 'ui-back': 2.49, 'ui-error': 2.54, 'ui-open': 6.92, 'ui-close': 6.17, 'ui-page': 3, 'ui-blip': 3.56, 'ui-save': 1.68, 'ui-buy': 3.61, 'hit-slash': 6.15, 'hit-blunt': 1.59, 'hit-thrust': 9.43, 'bow-shot': 4.91, 'arrow-hit': 7.62, 'dagger': 8.78, 'crit': 2.13, 'graze': 16, 'miss': 5.05, 'parry': 3.79, 'shield-bash': 1.76, 'dice-roll': 9.2, 'dice-land': 9.75, 'turn': 4.02, 'burn': 6.72, 'chill': 4.39, 'poison': 5.45, 'rot': 5.26, 'stagger': 9.95, 'fear': 3.12, 'charm': 3.76, 'hex': 7.06, 'ward': 2.63, 'haste': 8.02, 'regen': 4.4, 'ko': 1.08, 'ember': 3.89, 'frost': 2.45, 'storm': 3.07, 'stone': 3.61, 'verdant': 3.88, 'tide': 1.26, 'radiant': 2.96, 'blight': 4.6, 'heal': 2.04, 'revive': 3.01, 'surge-charge': 3.93, 'surge-release': 1.52, 'grip-crack': 2.3, 'relic-drop': 5.12, 'reveal-common': 3.95, 'reveal-heirloom': 3.5, 'reveal-primal': 2.42, 'equip': 8.37, 'levelup': 3.07, 'chest': 4.9, 'coins': 6.95, 'identify': 4.14, 'step-grass': 3.81, 'step-stone': 2.76, 'step-wood': 1.83, 'step-water': 6.15, 'door': 15.68, 'bump': 3.24, 'alert': 4.96, 'stairs': 2.79, 'hearthfire': 2.83, 'sign': 3, 'ship-takeoff': 2.21, 'ship-land': 1.09, 'sails': 3.82, 'wind': 4.15, 'crystal-flare': 7.03, 'recharge': 3.91, 'aether-storm': 1.95, 'rope-creak': 16, 'spyglass': 11.91, 'serpent': 5.56, 'wolf': 4.25, 'boar': 16, 'bandit': 10.61, 'slime': 5.11, 'skeleton': 11.33, 'bird': 16, 'frog': 1.29, 'insect': 3.59, 'beast': 2.31, 'ghost': 4.4, 'victory': 3.41, 'defeat': 3.08, 'boss': 1.22, 'flee': 7.33, 'quest': 4.95, 'new-area': 3.02, 'rain': 1.27, 'thunder': 2.03, 'campfire': 6.13, 'river': 2.72, 'bell': 5.01, 'auros': 0.78};
+// LEVEL: END
+
+
+const votes = {};           // id -> { vote: 'yes' | 'no', note? }
+let db = null, show = 'all';
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const cats = [...new Set(SFX.map(s => s.cat))];
+
+function render() {
+  const host = $('list'); host.innerHTML = '';
+  cats.forEach(cat => {
+    const items = SFX.map((s, i) => ({ s, n: i + 1 })).filter(({ s }) => s.cat === cat)
+      .filter(({ s }) => show === 'all' || (show === 'open' ? !votes[s.id] : votes[s.id]?.vote === show));
+    if (!items.length) return;
+    const all = SFX.filter(s => s.cat === cat), done = all.filter(s => votes[s.id]).length;
+    const sec = document.createElement('section');
+    sec.innerHTML = `<h2>${esc(cat)} <small>${done} of ${all.length} rated</small></h2><ol></ol>`;
+    const ol = sec.querySelector('ol');
+    for (const { s, n } of items) {
+      const v = votes[s.id]?.vote || '';
+      const li = document.createElement('li'); li.className = 'row'; li.dataset.vote = v; li.id = 'row-' + s.id;
+      li.innerHTML = `<span class="num">${String(n).padStart(3, '0')}</span>
+        <div class="what"><b>${esc(s.name)}</b><span>${esc(s.desc)}</span></div>
+        <div class="acts"><button class="play" aria-label="Play ${esc(s.name)}">Play</button>
+          <button class="yes" aria-pressed="${v === 'yes'}">Yes</button><button class="no" aria-pressed="${v === 'no'}">No</button></div>`;
+      li.querySelector('.play').onclick = e => play(s, e.currentTarget);
+      li.querySelector('.yes').onclick = () => vote(s.id, 'yes');
+      li.querySelector('.no').onclick = () => vote(s.id, 'no');
+      if (v === 'no') {
+        const note = document.createElement('div'); note.className = 'note';
+        note.innerHTML = `<textarea id="note-${s.id}" placeholder="What's off? (optional): too loud, too long, sounds like something else..."></textarea>`;
+        const ta = note.querySelector('textarea'); ta.value = votes[s.id]?.note || '';
+        ta.onchange = () => save(s.id, { vote: 'no', note: ta.value.trim().slice(0, 500) });
+        li.appendChild(note);
+      }
+      ol.appendChild(li);
+    }
+    host.appendChild(sec);
+  });
+  if (!host.children.length) host.innerHTML = '<p class="save-note" style="margin-top:24px">Nothing here yet.</p>';
+  tally();
+}
+function tally() {
+  const y = SFX.filter(s => votes[s.id]?.vote === 'yes').length, n = SFX.filter(s => votes[s.id]?.vote === 'no').length, t = SFX.length;
+  $('tally').innerHTML = `<span><b>${y + n}</b> of ${t} rated</span><span class="y"><b>${y}</b> yes</span><span class="n"><b>${n}</b> no</span>`;
+  $('meter').innerHTML = `<i style="width:${y / t * 100}%;background:var(--yes)"></i><i style="width:${n / t * 100}%;background:var(--no)"></i>`;
+}
+function play(s, btn) {
+  sfxInit(); playSfx(s);
+  if (btn) { btn.classList.add('on'); setTimeout(() => btn.classList.remove('on'), 400); }
+}
+function vote(id, v) {
+  const cur = votes[id]?.vote;
+  save(id, cur === v ? null : { vote: v, note: v === 'no' ? votes[id]?.note || '' : '' });
+}
+async function save(id, data) {
+  if (data) votes[id] = data; else delete votes[id];
+  const y = scrollY; render(); scrollTo(0, y);
+  if (db) {
+    try { const ref = db.collection('votes').doc(id); if (data) await ref.set({ ...data, at: Date.now() }); else await ref.delete(); }
+    catch (e) { $('save-note').textContent = 'Could not save that answer (' + (e.code || 'error') + '). It is kept on this page until you close it.'; }
+  } else {
+    try { localStorage.setItem('thareia-sfx-votes', JSON.stringify(votes)); } catch { /* storage blocked */ }
+  }
+}
+document.querySelectorAll('.chip').forEach(b => b.onclick = () => {
+  show = b.dataset.f; document.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(c === b))); render();
+});
+$('next').onclick = () => {
+  const s = SFX.find(x => !votes[x.id]); if (!s) { $('save-note').textContent = 'Every sound is rated. Thank you.'; return; }
+  if (show !== 'all' && show !== 'open') { show = 'all'; document.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(c.dataset.f === 'all'))); render(); }
+  const row = $('row-' + s.id); row?.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  play(s, row?.querySelector('.play'));
+};
+
+try { Object.assign(votes, JSON.parse(localStorage.getItem('thareia-sfx-votes') || '{}')); } catch { /* none */ }
+render();
+(async () => {
+  try { db = window.claude?.use ? await window.claude.use('db') : null; } catch { db = null; }
+  if (!db) { $('save-note').textContent = 'Every sound here is made in code, with no sound files. Answers are saved on this device only.'; return; }
+  $('save-note').textContent = 'Every sound here is made in code, with no sound files. Your answers save to this page, and Claude can read them.';
+  db.collection('votes').onSnapshot(snap => {
+    for (const k of Object.keys(votes)) delete votes[k];
+    for (const d of snap.docs) { const v = d.data(); if (v && (v.vote === 'yes' || v.vote === 'no')) votes[d.id] = { vote: v.vote, note: v.note || '' }; }
+    const y = scrollY; render(); scrollTo(0, y);
+  }, e => { $('save-note').textContent = 'Could not load saved answers (' + (e.code || 'error') + ').'; });
+})();
+})();
+</script>

@@ -1,0 +1,172 @@
+<title>Thareia Sound Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700&family=Alegreya+Sans:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: a single scrolling column of sound rows grouped by where they play in the game, under a sticky tally bar.
+   One deliberate dark look (a game's sound room), set explicitly so it reads the same on either host theme. */
+:root {
+  --ink: #101719;       /* ground */
+  --panel: #172225;     /* rows */
+  --line: #2a3b3f;      /* hairlines, idle controls */
+  --text: #ece5d3;      /* parchment white */
+  --muted: #9cb0aa;     /* descriptions */
+  --amber: #eba43c;     /* sunstone: play and focus */
+  --amber-ink: #1f1406;
+  --yes: #6fcf7f; --yes-ink: #07210c;
+  --no: #ef7a64; --no-ink: #2a0a05;
+  --display: 'Alegreya SC', 'Palatino Linotype', Palatino, Georgia, serif;
+  --body: 'Alegreya Sans', 'Gill Sans', 'Segoe UI', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+body { background: var(--ink); color: var(--text); font: 16px/1.45 var(--body); }
+.wrap { max-width: 860px; margin: 0 auto; padding-inline: 16px; padding-block: 0 48px; }
+header.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--ink); border-bottom: 1px solid var(--line); padding-block: 12px 10px; display: grid; gap: 8px; }
+h1 { margin: 0; font: 700 1.5rem/1.1 var(--display); letter-spacing: .03em; text-wrap: balance; }
+.tally { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; font-size: .9rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tally b { color: var(--text); font-weight: 700; }
+.tally .y b { color: var(--yes); } .tally .n b { color: var(--no); }
+.meter { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; display: flex; }
+.meter i { display: block; height: 100%; }
+.controls { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+button { font: 500 .92rem/1 var(--body); color: var(--text); background: transparent; border: 1px solid var(--line); border-radius: 7px; min-height: 40px; padding: 0 12px; cursor: pointer; }
+button:focus-visible, textarea:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.chip[aria-pressed="true"] { background: var(--text); color: var(--ink); border-color: var(--text); }
+.next { border-color: var(--amber); color: var(--amber); }
+.save-note { margin: 0; font-size: .82rem; color: var(--muted); }
+section { margin-top: 26px; }
+h2 { margin: 0 0 8px; font: 700 1.1rem/1.2 var(--display); letter-spacing: .04em; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+h2 small { font: 500 .8rem var(--body); color: var(--muted); letter-spacing: 0; font-variant-numeric: tabular-nums; }
+ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+li.row { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: grid; grid-template-columns: 2.6em minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; }
+li.row[data-vote="yes"] { border-color: color-mix(in srgb, var(--yes) 55%, var(--line)); }
+li.row[data-vote="no"] { border-color: color-mix(in srgb, var(--no) 55%, var(--line)); }
+.num { font: 500 .8rem var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.what { min-width: 0; }
+.what b { display: block; font-weight: 700; }
+.what span { display: block; color: var(--muted); font-size: .9rem; }
+.acts { display: flex; gap: 6px; }
+.play { background: var(--amber); color: var(--amber-ink); border-color: var(--amber); min-width: 64px; font-weight: 700; }
+.play.on { box-shadow: 0 0 0 3px color-mix(in srgb, var(--amber) 40%, transparent); }
+.yes[aria-pressed="true"] { background: var(--yes); color: var(--yes-ink); border-color: var(--yes); }
+.no[aria-pressed="true"] { background: var(--no); color: var(--no-ink); border-color: var(--no); }
+.note { grid-column: 2 / -1; }
+.note textarea { box-sizing: border-box; width: 100%; min-height: 2.6em; resize: vertical; font: .9rem/1.35 var(--body); color: var(--text); background: var(--ink); border: 1px solid var(--line); border-radius: 7px; padding: 6px 8px; }
+@media (max-width: 560px) {
+  li.row { grid-template-columns: 2.2em minmax(0, 1fr); }
+  .acts { grid-column: 1 / -1; }
+  .acts .play { flex: 1; }
+  .note { grid-column: 1 / -1; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+
+<div class="wrap">
+  <header class="bar">
+    <h1>Thareia Sound Board</h1>
+    <div class="tally" id="tally"></div>
+    <div class="meter" id="meter" aria-hidden="true"></div>
+    <div class="controls" role="group" aria-label="Show">
+      <button class="chip" data-f="all" aria-pressed="true">All</button>
+      <button class="chip" data-f="open" aria-pressed="false">Not rated</button>
+      <button class="chip" data-f="yes" aria-pressed="false">Yes</button>
+      <button class="chip" data-f="no" aria-pressed="false">No</button>
+      <button class="next" id="next">Play next unrated</button>
+    </div>
+    <p class="save-note" id="save-note">Every sound here is made in code, with no sound files. Tap Play, then Yes or No.</p>
+  </header>
+  <main id="list"></main>
+</div>
+
+<script>
+(function () {
+/*SOUNDS*/
+
+const votes = {};           // id -> { vote: 'yes' | 'no', note? }
+let db = null, show = 'all';
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const cats = [...new Set(SFX.map(s => s.cat))];
+
+function render() {
+  const host = $('list'); host.innerHTML = '';
+  cats.forEach(cat => {
+    const items = SFX.map((s, i) => ({ s, n: i + 1 })).filter(({ s }) => s.cat === cat)
+      .filter(({ s }) => show === 'all' || (show === 'open' ? !votes[s.id] : votes[s.id]?.vote === show));
+    if (!items.length) return;
+    const all = SFX.filter(s => s.cat === cat), done = all.filter(s => votes[s.id]).length;
+    const sec = document.createElement('section');
+    sec.innerHTML = `<h2>${esc(cat)} <small>${done} of ${all.length} rated</small></h2><ol></ol>`;
+    const ol = sec.querySelector('ol');
+    for (const { s, n } of items) {
+      const v = votes[s.id]?.vote || '';
+      const li = document.createElement('li'); li.className = 'row'; li.dataset.vote = v; li.id = 'row-' + s.id;
+      li.innerHTML = `<span class="num">${String(n).padStart(3, '0')}</span>
+        <div class="what"><b>${esc(s.name)}</b><span>${esc(s.desc)}</span></div>
+        <div class="acts"><button class="play" aria-label="Play ${esc(s.name)}">Play</button>
+          <button class="yes" aria-pressed="${v === 'yes'}">Yes</button><button class="no" aria-pressed="${v === 'no'}">No</button></div>`;
+      li.querySelector('.play').onclick = e => play(s, e.currentTarget);
+      li.querySelector('.yes').onclick = () => vote(s.id, 'yes');
+      li.querySelector('.no').onclick = () => vote(s.id, 'no');
+      if (v === 'no') {
+        const note = document.createElement('div'); note.className = 'note';
+        note.innerHTML = `<textarea id="note-${s.id}" placeholder="What's off? (optional): too loud, too long, sounds like something else..."></textarea>`;
+        const ta = note.querySelector('textarea'); ta.value = votes[s.id]?.note || '';
+        ta.onchange = () => save(s.id, { vote: 'no', note: ta.value.trim().slice(0, 500) });
+        li.appendChild(note);
+      }
+      ol.appendChild(li);
+    }
+    host.appendChild(sec);
+  });
+  if (!host.children.length) host.innerHTML = '<p class="save-note" style="margin-top:24px">Nothing here yet.</p>';
+  tally();
+}
+function tally() {
+  const y = SFX.filter(s => votes[s.id]?.vote === 'yes').length, n = SFX.filter(s => votes[s.id]?.vote === 'no').length, t = SFX.length;
+  $('tally').innerHTML = `<span><b>${y + n}</b> of ${t} rated</span><span class="y"><b>${y}</b> yes</span><span class="n"><b>${n}</b> no</span>`;
+  $('meter').innerHTML = `<i style="width:${y / t * 100}%;background:var(--yes)"></i><i style="width:${n / t * 100}%;background:var(--no)"></i>`;
+}
+function play(s, btn) {
+  sfxInit(); playSfx(s);
+  if (btn) { btn.classList.add('on'); setTimeout(() => btn.classList.remove('on'), 400); }
+}
+function vote(id, v) {
+  const cur = votes[id]?.vote;
+  save(id, cur === v ? null : { vote: v, note: v === 'no' ? votes[id]?.note || '' : '' });
+}
+async function save(id, data) {
+  if (data) votes[id] = data; else delete votes[id];
+  const y = scrollY; render(); scrollTo(0, y);
+  if (db) {
+    try { const ref = db.collection('votes').doc(id); if (data) await ref.set({ ...data, at: Date.now() }); else await ref.delete(); }
+    catch (e) { $('save-note').textContent = 'Could not save that answer (' + (e.code || 'error') + '). It is kept on this page until you close it.'; }
+  } else {
+    try { localStorage.setItem('thareia-sfx-votes', JSON.stringify(votes)); } catch { /* storage blocked */ }
+  }
+}
+document.querySelectorAll('.chip').forEach(b => b.onclick = () => {
+  show = b.dataset.f; document.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(c === b))); render();
+});
+$('next').onclick = () => {
+  const s = SFX.find(x => !votes[x.id]); if (!s) { $('save-note').textContent = 'Every sound is rated. Thank you.'; return; }
+  if (show !== 'all' && show !== 'open') { show = 'all'; document.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(c.dataset.f === 'all'))); render(); }
+  const row = $('row-' + s.id); row?.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  play(s, row?.querySelector('.play'));
+};
+
+try { Object.assign(votes, JSON.parse(localStorage.getItem('thareia-sfx-votes') || '{}')); } catch { /* none */ }
+render();
+(async () => {
+  try { db = window.claude?.use ? await window.claude.use('db') : null; } catch { db = null; }
+  if (!db) { $('save-note').textContent = 'Every sound here is made in code, with no sound files. Answers are saved on this device only.'; return; }
+  $('save-note').textContent = 'Every sound here is made in code, with no sound files. Your answers save to this page, and Claude can read them.';
+  db.collection('votes').onSnapshot(snap => {
+    for (const k of Object.keys(votes)) delete votes[k];
+    for (const d of snap.docs) { const v = d.data(); if (v && (v.vote === 'yes' || v.vote === 'no')) votes[d.id] = { vote: v.vote, note: v.note || '' }; }
+    const y = scrollY; render(); scrollTo(0, y);
+  }, e => { $('save-note').textContent = 'Could not load saved answers (' + (e.code || 'error') + ').'; });
+})();
+})();
+</script>
