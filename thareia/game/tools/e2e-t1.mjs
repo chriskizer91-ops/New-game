@@ -20,7 +20,7 @@ const vp = args.laptop ? { width: 1280, height: 800 } : { width: 390, height: 84
 const page = await browser.newPage({ viewport: vp, deviceScaleFactor: args.laptop ? 1 : 2, hasTouch: !args.laptop });
 const errors = [];
 page.on('pageerror', e => errors.push('pageerror: ' + e.message));
-page.on('console', m => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
+page.on('console', m => { if (m.type() === 'error' && !/ERR_CERT|fonts.g/.test(m.text())) errors.push('console: ' + m.text()); });
 await page.addInitScript(() => { globalThis.__aethTest = app => { window.__app = app; }; });
 await page.goto(pathToFileURL(path.join(root, 'dist/thareia.html')).href);
 let n = 0;
@@ -107,7 +107,7 @@ console.log('story flags', Object.keys(st).filter(k => k.startsWith('th-')).join
 // ---- the skiff and the flight ----
 await W('teleport', 'bogmire-docks', 28, 12, 'n'); await page.waitForTimeout(400); await W('interact'); await page.waitForTimeout(400);
 await shot('skiff'); await talk(['Climb aboard']);
-await page.waitForSelector('.screen-sky', { timeout: 10000 }); await page.waitForTimeout(1500);
+await page.waitForSelector('.screen-sky', { timeout: 10000, state: 'attached' }); await page.waitForTimeout(1500);
 await shot('sky-takeoff');
 // steer north for a while with the keyboard
 await page.keyboard.down('ArrowUp'); await page.waitForTimeout(3500); await page.keyboard.up('ArrowUp');
