@@ -63,6 +63,12 @@ export const HERO_ART = Object.freeze({
     H: { build: 'human', skin: 'skinDeep', hairMat: 'hairBlack', hair: 'long', blindfold: 'clothWhite', mantle: 'clothWhite', gloves: 'skinDeep', tunic: 'clothWhite' },
     starter: { weapon: S.alondraStaff, body: S.alondraRobe, feet: S.sandals, amulet: S.prayerbeads },
   },
+  // Thareia (T1): Captain Yara Dustwind, weathered, a grey braid, a pilot's jerkin and a shortbow
+  yara: {
+    name: 'Yara Dustwind', aspect: 'storm',
+    H: { build: 'human', skin: 'skinTan', hairMat: 'hairSilver', hair: 'braid', quiver: 'leather', fletch: 'clothWhite', eye: '#3a1a10', tunic: 'gambeson', gloves: 'leather' },
+    starter: { weapon: S.yew, body: S.pipJerkin, hands: S.pipGloves, feet: S.pipBoots },
+  },
 });
 export const HERO_KEYS = Object.keys(HERO_ART);
 

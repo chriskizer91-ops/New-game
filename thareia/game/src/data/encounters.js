@@ -30,6 +30,7 @@
 // Hearthfires with `cold` start unlit (a cold-hearth lock) in data/world.js HEARTHS and on the map.
 
 import { deepFreeze } from '../core/freeze.js';
+import { TH_ENCOUNTERS } from './thareia/encounters.js';
 
 export const BACKDROPS = Object.freeze(['hearth-road', 'verdant-wood', 'thornhollow', 'briarmaw-den',
   'mossfall', 'mosswatch', 'fawnrest', 'eldergrove', 'heartroot', // M3 adds the last five
@@ -787,6 +788,7 @@ export const ENCOUNTERS = deepFreeze({
     spawns: [BELOW('unsmith', 9, { omens: ['frenzied', 'ironclad'], wakeOmenCap: 0, name: 'Harrow Ironvein' })],
     text: 'Harrow Ironvein before the Worldforge, with his hammer, his apron and the heart of the forge. Break all three.',
   },
+  ...TH_ENCOUNTERS, // Thareia (T1)
 });
 
 export const GAUNTLET = Object.freeze([

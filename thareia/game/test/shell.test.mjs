@@ -10,11 +10,11 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { migrate } from '../src/rules/migrate.js';
 import { newGame } from '../src/rules/gauntlet.js';
-import { MAPS, MAP_IDS, ENTITY_OF } from '../src/data/maps/index.js';
-import { HEARTHS, REGIONS } from '../src/data/world.js';
+import { ENTITY_OF } from '../src/data/maps/index.js';
+import { REGIONS } from '../src/data/world.js';
 import { RELICS } from '../src/data/relics.js';
 import { QUESTS } from '../src/data/quests.js';
-import { DIALOGUE } from '../src/data/dialogue.js';
+
 import { carryFacts, saveLine, inSentence, RELIC_TOTAL } from '../src/ui/lib/carry-facts.js';
 import { codexNo } from '../src/ui/lib/items.js';
 import { VIEWS, REGION_VIEW, regionOpen, placeOf, loreAt, entityLore, toFrame, relax, RELIC_SITE } from '../src/ui/lib/atlas-geo.js';
@@ -30,6 +30,7 @@ import { autoCommand } from '../src/rules/autoplay.js';
 import { addStatus } from '../src/rules/combat.js';
 import { targetable } from '../src/rules/ai.js';
 import { createRng } from '../src/core/rng.js';
+import { DIALOGUE, HEARTHS, MAPS, MAP_IDS } from './old-world.mjs'; // the old game's world, without Thareia's
 
 const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures/v1');
 const fixtures = readdirSync(dir).filter(f => f.endsWith('.json')).map(f => [f, JSON.parse(readFileSync(path.join(dir, f), 'utf8'))]);

@@ -108,11 +108,17 @@ export const HEARTHS = deepFreeze({
   // phone's realm has no room for a 34th and 35th fire 43 px apart, test/shell.test.mjs).
   'under-coal': H('ash-stair', 21, 7, [540, 390], 'The Under-Coal', { cold: true, face: 'e' }),
   'chain-fire': H('chained-deep', 25, 2, [540, 390], 'The Chain Fire'),
+  // Thareia (T1)
+  'docks-lantern': H('bogmire-docks', 26, 5, [280, 540], 'The Dock Lantern', { face: 'e' }),
+  'th-hearth': H('th-thornhollow', 12, 13, [310, 260], 'Thornhollow Hearth'),
 });
 export const HEARTH_IDS = Object.freeze(Object.keys(HEARTHS));
 
 // New game ends here (the prologue in the Great Hall).
 export const START_AT = deepFreeze({ map: 'keep-hall', x: 12, y: 6, face: 'n' });
+// Thareia (T1): the Prologue starts on the Bogmire docks, by the mooring tower; the Dock Lantern is the first fire
+export const TH_START_AT = deepFreeze({ map: 'bogmire-docks', x: 24, y: 17, face: 'n' });
+export const TH_START_HEARTH = 'docks-lantern';
 
 // The 17 places on the illustrated map (viewBox 1200x800), keyed by the map's own location ids.
 // `map` links a place to its M3 map; places in sealed regions have none yet.

@@ -17,6 +17,7 @@
 // Owner: WP3S (M3), P3 story (M4, M5, M6, M7).
 
 import { deepFreeze } from '../core/freeze.js';
+import { TH_NPCS } from './thareia/npcs.js';
 
 const N = (id, name, role, talk, art = id) => ({ id, name, art, role, talk });
 // M6: Tamsin has fallen: her Rotbridge duel is over, won or yielded (the rules record both), whether or not the
@@ -469,6 +470,7 @@ export const NPCS = deepFreeze({
   // the Unsmith speaks at the Worldforge, before and after his fight, under his own name at last (his look is his
   // battle art's, art/foes.js, until art/map-sprites.js gives him one)
   unsmith: N('unsmith', 'Harrow Ironvein', 'The Unsmith', []),
+  ...TH_NPCS, // Thareia (T1)
 });
 
 export const NPC_IDS = Object.freeze(Object.keys(NPCS));

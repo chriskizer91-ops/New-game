@@ -7,9 +7,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { newGame, startBattle } from '../src/rules/gauntlet.js';
-import { ENCOUNTERS } from '../src/data/encounters.js';
-import { MAPS, MAP_IDS } from '../src/data/maps/index.js';
-import { HEARTHS, REGIONS, BRAND_TOTAL } from '../src/data/world.js';
+
+
+import { REGIONS, BRAND_TOTAL } from '../src/data/world.js';
 import { PAGES } from '../src/data/codex.js';
 import { TRACK_NAMES, badNotes } from '../src/core/audio.js';
 import { chapterEnd, hasRegionCard } from '../src/ui/world/story-fx.js';
@@ -20,6 +20,7 @@ import { foeLook } from '../src/ui/battle/sprites.js';
 import { logLine } from '../src/ui/battle/log.js';
 import { priceText } from '../src/ui/world/dialogue.js';
 import { binderPage } from '../src/ui/screens/codex.js';
+import { ENCOUNTERS, HEARTHS, MAPS, MAP_IDS } from './old-world.mjs'; // the old game's world, without Thareia's
 
 const BRANDS6 = ['brand-of-briars', 'brand-of-the-heartroot', 'brand-of-glass', 'brand-of-ash', 'brand-of-iron', 'brand-of-frost'];
 function councilGame(n) {

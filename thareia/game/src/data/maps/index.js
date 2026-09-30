@@ -91,14 +91,21 @@ import hollowHall from './hollow-hall.js';
 import ashStair from './ash-stair.js';
 import chainedDeep from './chained-deep.js';
 import worldforge from './worldforge.js';
+// Thareia (T1): the Prologue's maps (th-bogmire and th-thornhollow draw the old game's paintings)
+import bogmireDocks from './bogmire-docks.js';
+import thBogmire from './th-bogmire.js';
+import thThornhollow from './th-thornhollow.js';
 
 const LIST = [keep, keepHall, hearthRoad, thornhollow, thornway, briarmawDen, mossfall, mosswatch1, mosswatch2, hindwood, fawnrest, eldergrove, heartroot1, heartroot2,
   sunRoad, sandspire, dustTrail, dusthaven, deepShaft1, deepShaft2, glassFlats, miragewell, scorchgate, scorchgateVaults, keepGallery,
   oldBridge, drystoneLea, plankford, shrinewood, silverfall, lastCamp, rockslidePass, peaksVeil, highfold, ironStair, ironhold, ironholdDeeps, harrowsForge, stormwatch, frostRoad, frostmere, frostmereBelow, keepGallery2,
   murkway, willowmurk, rotbridge, bogmire, lanternfen, mothersHollow, longBoardwalk, misthollow, drownedBelfry, blackwaterReach, tidalFlats, causeway, keepGallery3,
-  hollowHall, ashStair, chainedDeep, worldforge];
+  hollowHall, ashStair, chainedDeep, worldforge,
+  bogmireDocks, thBogmire, thThornhollow];
 
 export const MAPS = Object.freeze(Object.fromEntries(LIST.map(m => [m.id, m])));
+// Thareia's own maps (the old game's tests of its world leave them out; test/thareia.test.mjs checks them)
+export const TH_MAP_IDS = Object.freeze(['bogmire-docks', 'th-bogmire', 'th-thornhollow']);
 export const MAP_IDS = Object.freeze(LIST.map(m => m.id));
 
 // ENTITY_OF[id] -> { map, entity } for every placed encounter and Hearthfire (their ids are

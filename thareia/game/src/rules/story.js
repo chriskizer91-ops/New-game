@@ -45,7 +45,7 @@ import { DOMAINS } from '../data/domains.js';
 import { check, questState, bountyState, flagsOf, storyOf, canAfford } from './cond.js';
 import { deriveHero } from './stats.js';
 import { generateItem, relicItem } from './loot.js';
-import { spawnsFor } from './gauntlet.js';
+import { spawnsFor, recruit } from './gauntlet.js';
 import { pageBonus, markPages } from './codex.js';
 import { mod, ibFor, rngFrom, addCounts } from './util.js';
 
@@ -187,7 +187,31 @@ function apply(g, effects, rng, events) {
     else if ('letter' in e) { f.story[`letter:${e.letter}`] = true; events.push({ t: 'letter', id: e.letter }); }
     else if ('end' in e) events.push({ t: 'end', act: e.end });
     else if ('ending' in e) { if (g.ending == null) { g.ending = e.ending; events.push({ t: 'ending', id: e.ending }); } }
+    // Thareia (T1): a companion joins or leaves; a painted cut-scene; a short line for the toast
+    else if ('join' in e) { if (joinInto(g, e.join, rng)) events.push({ t: 'join', hero: e.join }); }
+    else if ('leave' in e) { if (leaveFrom(g, e.leave)) events.push({ t: 'leave', hero: e.leave }); }
+    else if ('cut' in e) events.push({ t: 'cut', id: e.cut, text: e.text || '' });
+    else if ('note' in e) events.push({ t: 'note', text: e.note });
   }
+}
+
+// Thareia (T1): a hero joins at the party's level (rules/gauntlet.js recruit), into the line when there is room
+function joinInto(g, id, rng) {
+  if (!HEROES[id] || g.party.roster[id]) return false;
+  const level = Math.max(1, ...g.party.active.map(h => g.party.roster[h]?.level || 1));
+  g.party.roster[id] = recruit(g, id, rng, { level: HEROES[id].guestLevel ? level + HEROES[id].guestLevel : level });
+  if (g.party.active.length < 4) g.party.active = [...g.party.active, id];
+  return true;
+}
+// a guest leaves with the gear on their back
+function leaveFrom(g, id) {
+  const h = g.party.roster[id];
+  if (!h || id === 'warden') return false;
+  const worn = new Set(Object.values(h.gear || {}).filter(Boolean));
+  g.inventory = g.inventory.filter(it => !worn.has(it.uid));
+  delete g.party.roster[id];
+  g.party.active = g.party.active.filter(x => x !== id);
+  return true;
 }
 
 // M6: an encounter scouted from talk (world.js sightEncounter does the same when you walk near its holders)

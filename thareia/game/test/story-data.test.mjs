@@ -7,15 +7,15 @@
 // Owner: WP3S (M3), P3 story (M4, M5, M6, M7).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { NPCS } from '../src/data/npcs.js';
-import { DIALOGUE, ARRIVALS, AFTER, RESTS, LOOKOUTS } from '../src/data/dialogue.js';
-import { HEARTHS } from '../src/data/world.js';
+
+import { ARRIVALS, RESTS, LOOKOUTS } from '../src/data/dialogue.js';
+
 import { QUESTS, BOUNTIES } from '../src/data/quests.js';
 import { SHOPS } from '../src/data/shops.js';
 import { LADDER } from '../src/data/ladder.js';
 import { LETTERS } from '../src/data/letters.js';
-import { MAPS } from '../src/data/maps/index.js';
-import { ENCOUNTERS, BRANDS } from '../src/data/encounters.js';
+
+import { BRANDS } from '../src/data/encounters.js';
 import { RELICS } from '../src/data/relics.js';
 import { HERO_IDS } from '../src/data/heroes.js';
 import { CONSUMABLES } from '../src/data/items.js';
@@ -24,6 +24,7 @@ import { DOMAINS } from '../src/data/domains.js';
 import { condErrors, priceErrors } from '../src/rules/cond.js';
 import { ENDINGS, ENDING_IDS } from '../src/data/endings.js';
 import { TUNING } from '../src/data/tuning.js';
+import { AFTER, DIALOGUE, ENCOUNTERS, HEARTHS, MAPS, NPCS } from './old-world.mjs'; // the old game's world, without Thareia's
 
 const SPEAKERS = new Set([...Object.keys(NPCS), ...HERO_IDS, 'narrator']);
 const conds = [];

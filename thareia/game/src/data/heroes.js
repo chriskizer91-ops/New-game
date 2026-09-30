@@ -92,9 +92,33 @@ export const HEROES = deepFreeze({
     refuses: { kinds: ['sword', 'dagger', 'axe'], text: 'Sister Alondra will not take up a blade.' },
     blurb: 'The blind priestess of Fawnrest. She dreams of four Sleepers, and she hears a lie before it is finished.',
   },
+  // Thareia (T1): Captain Yara Dustwind fights beside the hero in the Prologue, a guest until Thornhollow
+  yara: {
+    id: 'yara', name: 'Yara Dustwind', title: 'captain of the cargo skiff', race: 'human', role: 'Airship captain (guest)',
+    base: { STR: 11, DEX: 15, CON: 13, INT: 12, WIS: 14, CHA: 10 },
+    hpDie: 8, mp: { base: 6, perLevel: 2, stat: 'WIS' },
+    domain: 'survival', secondary: ['craft'],
+    prof: {
+      weapons: ['bow', 'dagger', 'sword'],
+      armor: ['robe', 'leather'],
+      offhand: [],
+    },
+    asi: [['DEX', 'WIS'], ['DEX', 'CON']],
+    skills: [{ level: 1, id: 'mark-prey' }, { level: 2, id: 'knife-work' }, { level: 4, id: 'volley' }],
+    gear: {
+      weapon: { base: 'shortbow', rarity: 'wrought' },
+      body: { base: 'jerkin', rarity: 'worn' },
+      feet: { base: 'boots', rarity: 'worn' },
+    },
+    traits: [{ id: 'sky-legs', name: 'Sky Legs', text: 'Twenty years on a pitching deck: +1 speed.', stats: { speed: 1 } }],
+    guestLevel: 1, // she joins a level above the party (rules/story.js join)
+    blurb: 'Weathered and laconic. She loves her skiff the way other people love their children, and says so.',
+  },
 });
 
 export const HERO_IDS = Object.freeze(['warden', 'pip', 'bryn', 'alondra']);
+// Thareia (T1): the new game starts with the hero alone; the others join through the story (rules/story.js `join`)
+export const THAREIA_START = Object.freeze(['warden']);
 
 // Starter relic choice decides the Warden's weapon and offhand.
 // rival (M3): the counter-starter Tamsin carries (lent) in the duel, the one whose aspect beats yours.

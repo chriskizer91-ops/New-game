@@ -42,6 +42,13 @@ const strHash = s => { let h = 2166136261; for (const c of String(s)) { h ^= c.c
    NPCs: identity layers (heroes.js vocabulary) + gear, drawn by the walker rig
    ===================================================================== */
 export const NPC_LOOKS = Object.freeze({
+  // Thareia (T1): Captain Yara Dustwind (a grey braid, a pilot's jerkin, a shortbow on her back); Sedrin, the young
+  // lizardfolk Outrider (scaled skin, bone-and-leather, a spear); Merryn Copperpot, the tiny halfling herbalist; Aldric
+  // Fernshaw, the nervous merchant
+  yara: { H: { build: 'human', skin: 'skinTan', hairMat: 'hairSilver', hair: 'braid', eye: '#3a1a10', quiver: 'leather', fletch: 'clothWhite', gloves: 'leather', boots: 'leatherDark' }, gear: { weapon: A('bow', { wood: 'yew' }), body: A('leather', { mat: 'leather', shirt: 'gambeson', belt: 'leatherDark' }) } },
+  sedrin: { H: { build: 'human', skin: 'drake', hairMat: 'drake', hair: 'none', eye: '#6a4a08', gloves: 'drake', boots: 'drake' }, gear: { weapon: A('spear', { head: 'bone', haft: 'bogwood' }), body: A('leather', { mat: 'leatherDark', shirt: 'robeBark', belt: 'leather' }) } },
+  merryn: { H: { build: 'youth', skin: 'skinPale', hairMat: 'hairBrown', hair: 'bun', eye: '#24381c', gloves: 'skinPale', boots: 'leather', bottleRow: ['emerald', 'amber'] }, gear: { body: A('robe', { mat: 'hoodGreen', trim: 'gambeson', sash: 'leather' }) } },
+  aldric: { H: { build: 'human', skin: 'skin', hairMat: 'hairBrown', hair: 'short', eye: '#1c2a48', gloves: 'skin', boots: 'leatherDark', tunic: 'wool' }, gear: { body: A('robe', { mat: 'clothBlue', trim: 'gold', sash: 'leatherDark' }) } },
   fenwick: { H: { build: 'human', skin: 'skinPale', hairMat: 'hairSilver', hair: 'crop', beard: true, eye: '#2a2030', tunic: 'wool', tabard: 'leather', pants: 'pants', boots: 'leatherDark', gloves: 'skinPale' }, gear: { offhand: { look: 'rings', glow: 'ember' } } },
   isolde: { H: { build: 'human', skin: 'skin', hairMat: 'hairBlond', hair: 'braid', eye: '#1c2a48', cloak: 'clothBlue', gloves: 'leather', boots: 'leatherDark' }, gear: { weapon: A('sword', { blade: 'steel', guardMat: 'gold', grip: 'clothBlue', pommel: 'gold', bladeL: 46 }), body: A('plate', { mat: 'steel', trim: 'gold' }), hands: A('gauntlets', { mat: 'steel', plate: 1 }) } },
   marta: { H: { build: 'brute', skin: 'skinTan', hairMat: 'hairBrown', hair: 'bun', eye: '#3a1a10', gloves: 'skinTan', boots: 'leather' }, gear: { head: A('coif', { look: 'coif', mat: 'clothWhite', band: 'paintRed' }), body: A('robe', { mat: 'robeRed', trim: 'gambeson', sash: 'clothWhite' }) } },
@@ -1528,6 +1535,8 @@ export const HEARTH_LOOKS = Object.freeze({
   'bell-hearth': 'bellbowl', 'wreck-fire': 'painted', 'flats-beacon': 'painted', // batch 3: the beached hull and the beacon are in their maps' paintings
   // M7: the Hearth Below's two: the Under-Coal (a coal the size of a cart) and the Chain Fire (a brazier hung from a broken chain)
   'under-coal': 'undercoal', 'chain-fire': 'chainfire',
+  // Thareia (T1): the docks' brazier under the mooring tower (a fire basket, as Bogmire's), Thornhollow's ring
+  'docks-lantern': 'firebasket', 'th-hearth': 'ring',
 });
 const OBJ_SIZE = { gate: [16, 24], crownwall: [16, 24], thornwall: [16, 24], pedestal: [16, 24], board: [16, 24], bellframe: [16, 24], lookout: [16, 32], door: [16, 24], 'barred-gate': [16, 24] };
 Object.assign(OBJ_SIZE, { 'dune-glass': [16, 24], 'vault-seal': [16, 24], 'glass-spire': [16, 24], 'vault-door': [16, 24] });

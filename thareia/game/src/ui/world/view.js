@@ -231,7 +231,7 @@ function makeBaked(map, { painted = true } = {}) {
   const w = map.w, h = map.h, ids = new Array(w * h);
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) ids[y * w + x] = tileOf(map.rows[y]?.[x]).id;
   const cols = Math.max(1, Math.ceil((w * TILE) / CHUNK)), rows = Math.max(1, Math.ceil((h * TILE) / CHUNK));
-  const paint = painted ? paintOf(map.id) : null;
+  const paint = painted ? paintOf(map.paint || map.id) : null; // Thareia: a map may draw another's painting (`paint`)
   return { id: map.id, map, A, w, h, ids, cols, rows, pw: w * TILE, ph: h * TILE, ground: new Array(cols * rows), over: new Array(cols * rows), ents: [], sigs: new Map(), dark: null, darkKey: '',
     fog: null, fogKey: '', fogThick: false, fogBase: '', fogAt: null, fogPattern: null,
     paint, painted: false, k: paint ? PAINT_DENSITY : 1 };
@@ -510,7 +510,7 @@ export function createView(canvas, { reduced = false, plateHost = null } = {}) {
     const map = mapOf(mapId);
     if (!map) { B = null; return null; }
     const cached = BAKED.get(mapId);
-    if (cached && cached.map === map) { B = cached; if (B.paint) B.paint = paintOf(mapId); remember(mapId, B); refresh(game); repaint(); fitDensity(); return B; }
+    if (cached && cached.map === map) { B = cached; if (B.paint) B.paint = paintOf(map.paint || mapId); remember(mapId, B); refresh(game); repaint(); fitDensity(); return B; }
     B = makeBaked(map);
     B.ents = bakedEntities(game, map);
     for (const o of B.ents) B.sigs.set(o.id, o.sig);

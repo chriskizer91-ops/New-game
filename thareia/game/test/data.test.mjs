@@ -10,8 +10,9 @@ import { STATUSES } from '../src/data/statuses.js';
 import { HEROES, HERO_IDS, STARTERS } from '../src/data/heroes.js';
 import { FOES, FOE_TIERS } from '../src/data/foes.js';
 import { OMENS } from '../src/data/omens.js';
-import { ENCOUNTERS, GAUNTLET, BACKDROPS } from '../src/data/encounters.js';
+import { GAUNTLET, BACKDROPS } from '../src/data/encounters.js';
 import { DOMAIN_IDS } from '../src/data/domains.js';
+import { ENCOUNTERS, HEARTHS } from './old-world.mjs'; // the old game's world, without Thareia's
 
 const RELIC_TABLE = {
   hearthbrand: ['sword', 'ember'], 'stillwater-lance': ['spear', 'frost'], cairnmaul: ['hammer', 'stone'],
@@ -1208,7 +1209,7 @@ test('M7 relics: Codex Page V follows the spec table, each with a Legend Surge, 
 
 test('M7 encounters: the Hearth Below\'s nine fights hold the spec\'s spawns on their maps\' backdrops, climb from Waking 8, carry chosen Omens, wake the party where the spec says, and end on the finale with Tamsin beside the party', async () => {
   const { PATROLS, BACKDROPS: BDS } = await import('../src/data/encounters.js');
-  const { ZONES, HEARTHS, ACT3_PATH } = await import('../src/data/world.js');
+  const { ZONES, ACT3_PATH } = await import('../src/data/world.js');
   const { escalateSpawn, familyOf } = await import('../src/rules/foe.js');
   // [map backdrop, spawns (as §3.3 lists them)]
   const SPEC = {

@@ -56,7 +56,7 @@ test('each painting was fitted to its map\'s rows as they are now', () => {
 
 test('overhang and overTiles belong to painted maps; a map traced from its painting has one painted at its own size', () => {
   for (const [id, map] of Object.entries(MAPS)) {
-    if (map.overhang || map.overTiles === false) assert.ok(PAINTINGS[id], `${id}: overhang and overTiles are for painted maps`);
+    if (map.overhang || map.overTiles === false) assert.ok(PAINTINGS[map.paint || id], `${id}: overhang and overTiles are for painted maps`);
     for (const r of map.overhang || []) {
       const [x0, y0, x1, y1] = r;
       assert.ok(x0 >= 0 && y0 >= 0 && x1 < map.w && y1 < map.h && x0 <= x1 && y0 <= y1, `${id}: ${r} on the map`);

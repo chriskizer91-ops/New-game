@@ -268,6 +268,15 @@ export function chapterEnd(game, act = 'act1') {
     if (later.length) lines.push(`${andList(later.map(full ? r => r.name : shortName))} ${later.length > 1 ? 'open' : 'opens'} in the next chapter.`);
     return { chips: regions.map(r => ({ id: r.id, name: r.name, open: now.includes(r) })), lines };
   };
+  // Thareia (T1): the Prologue's card, at the first landing in Thornhollow; Chapter 1 comes next (T2)
+  if (act === 'prologue') {
+    const lvl = Math.max(1, ...Object.values(game?.party?.roster || {}).map(h => h.level || 1));
+    return {
+      act, cls: 'tbc tbc-prologue', label: 'End of the Prologue', kick: 'The first flight', title: 'To be continued', sub: 'Chapter 1: The Rot\'s Roots',
+      stats: [['Day', game?.progress?.flags?.day || 1], ['Level', lvl], ['Gold', game?.gold || 0]], chips: [],
+      lines: ['The shard in your pocket is warm, and it hums when you face west.', 'Chapter 1 opens in the next part of Thareia.'],
+    };
+  }
   if (act === 'gloomfen') {
     // M6: the eight coals lit, and the end of Act II. M7: Act III begins (the fifth council, the Opening, opens its road
     // down the vault stair), so its chip is open and the card says so; no road opens on this card itself

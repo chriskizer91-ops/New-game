@@ -36,6 +36,8 @@
 
 import { deepFreeze } from '../core/freeze.js';
 
+import { TH_DIALOGUE, TH_AFTER } from './thareia/dialogue.js';
+
 const LEAVE = { text: 'Leave.' };
 // M7 (spec §4.5): Hilda forges the Warden's Masterpiece once the Hollow Council is freed and the Worldforge page is
 // yours, one to a save (rules/forge.js sets masterpiece-forged): every line of hers offers it until then
@@ -2122,6 +2124,7 @@ export const DIALOGUE = deepFreeze({
   'arrive-worldforge': {
     lines: [['pip', 'A forge the size of a church, at the bottom of the world. Hilda would cry. Then she\'d start taking notes.'], ['alondra', 'It beats. The whole place beats, like a heart pretending to be a furnace.']],
   },
+  ...TH_DIALOGUE, // Thareia (T1)
 });
 
 export const ARRIVALS = deepFreeze({
@@ -2231,6 +2234,7 @@ export const AFTER = deepFreeze({
     { on: 'defeat', if: { flag: 'woke-by-unsmith' }, d: 'unsmith-woke-again' },
     { on: 'defeat', d: 'unsmith-woke' },
   ],
+  ...TH_AFTER, // Thareia (T1)
 });
 
 export const RESTS = deepFreeze([

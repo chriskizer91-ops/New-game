@@ -21,7 +21,7 @@ import { FOE_TIERS } from '../src/data/foes.js';
 import { RELICS } from '../src/data/relics.js';
 import { ENDINGS, ENDING_IDS } from '../src/data/endings.js';
 import { MASTERPIECE_BASES } from '../src/data/masterpiece.js';
-import { MAPS, MAP_IDS } from '../src/data/maps/index.js';
+
 import { PAGES } from '../src/data/codex.js';
 import { LADDER } from '../src/data/ladder.js';
 import { BRAND_TOTAL } from '../src/data/world.js';
@@ -38,6 +38,7 @@ import { RELIC_TOTAL } from '../src/ui/lib/carry-facts.js';
 import { roadShown, rumourFound } from '../src/ui/screens/journal.js';
 import { reliquaryLine, ROAD_NOTE, binderPage } from '../src/ui/screens/codex.js';
 import { party, battleWith } from './helpers.mjs';
+import { MAPS, MAP_IDS } from './old-world.mjs'; // the old game's world, without Thareia's
 
 const BRANDS8 = ['brand-of-briars', 'brand-of-the-heartroot', 'brand-of-glass', 'brand-of-ash', 'brand-of-iron', 'brand-of-frost', 'brand-of-lanterns', 'brand-of-the-deep'];
 // a game at the end of Act II (the fourth council sat), and (fifth) once the Opening has sat too

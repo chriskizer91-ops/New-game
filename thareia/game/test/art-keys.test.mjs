@@ -16,9 +16,9 @@ globalThis.ImageData ??= class ImageData {
 };
 const { FOES } = await import('../src/data/foes.js');
 const { RELICS } = await import('../src/data/relics.js');
-const { BACKDROPS: BACKDROP_IDS, ENCOUNTERS } = await import('../src/data/encounters.js');
+const { BACKDROPS: BACKDROP_IDS } = await import('../src/data/encounters.js');
 const { ZONES } = await import('../src/data/world.js');
-const { MAPS } = await import('../src/data/maps/index.js');
+
 const { GEMS, MATERIALS } = await import('../src/data/gems.js');
 const { LOCKS } = await import('../src/data/locks.js');
 const { FOE_ART, renderFoe } = await import('../src/art/foes.js');
@@ -27,6 +27,7 @@ const { RELIC_ART, TEMPER_MAX, itemArt, itemPortrait, itemIcon, itemLookKey, art
 const { renderHero } = await import('../src/art/hero-looks.js');
 const { lockIcon, gemIcon, materialIcon, LOCK_ICON_KEYS, GEM_ICON_KEYS, MATERIAL_ICON_KEYS } = await import('../src/art/icons.js');
 const Art = await import('../src/art/index.js');
+import { ENCOUNTERS, MAPS } from './old-world.mjs'; // the old game's world, without Thareia's
 
 const PIN = !!process.env.AETH_PIN;
 const hashOf = imgs => { const h = createHash('sha256'); for (const im of imgs) { h.update(`${im.width}x${im.height}`); h.update(im.data); } return h.digest('hex').slice(0, 24); };

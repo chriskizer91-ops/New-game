@@ -14,12 +14,13 @@ globalThis.ImageData ??= class ImageData {
 };
 const { FOES } = await import('../src/data/foes.js');
 const { RELICS } = await import('../src/data/relics.js');
-const { ENCOUNTERS } = await import('../src/data/encounters.js');
+
 const { FOE_ART, renderFoe } = await import('../src/art/foes.js');
 const { BACKDROPS, renderBackdrop, ambient } = await import('../src/art/scenes.js');
 const { RELIC_ART, itemPortrait, itemIcon } = await import('../src/art/item-looks.js');
 const { renderHero } = await import('../src/art/hero-looks.js');
 const { statusIcon, lockIcon, gemIcon } = await import('../src/art/icons.js');
+import { ENCOUNTERS } from './old-world.mjs'; // the old game's world, without Thareia's
 
 const PIN = !!process.env.AETH_PIN;
 const hashOf = imgs => { const h = createHash('sha256'); for (const im of imgs) { h.update(`${im.width}x${im.height}`); h.update(im.data); } return h.digest('hex').slice(0, 24); };

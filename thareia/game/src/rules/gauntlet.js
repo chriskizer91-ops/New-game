@@ -28,7 +28,7 @@ import { SLOTS } from '../data/items.js';
 import { createBattle, outcome } from './battle.js';
 import { escalateSpawn, addOmens, familyOf } from './foe.js';
 import { deriveHero } from './stats.js';
-import { grantXp } from './progression.js';
+import { grantXp, xpForLevel } from './progression.js';
 import { generateItem, relicItem } from './loot.js';
 import { pageBonus, markPages, relicDeeds, deedsOf, stageOf, stolenFor } from './codex.js';
 import { rngFrom, indexItems, addCounts } from './util.js';
@@ -64,25 +64,36 @@ function startingHero(id, rng, inventory, { name, starter, base }) {
   return { ...hero, hp: d.maxHp, mp: d.maxMp };
 }
 
+// Thareia (T1): a hero who joins partway through the story, at `level` (levelled up as the party would be), with their
+// own starting gear added to the inventory. Mutates game.inventory; returns the HeroState.
+export function recruit(game, id, rng, { level = 1 } = {}) {
+  let h = startingHero(id, rng, game.inventory, { name: HEROES[id].name, starter: null, base: null });
+  if (level > 1) h = grantXp(h, xpForLevel(level), rng).hero;
+  const d = deriveHero(h, game.inventory);
+  return { ...h, hp: d.maxHp, mp: d.maxMp };
+}
+
 // A version 2 game (spec §4.8): the party stands in the Great Hall (START_AT), the Eternal Hearth is
 // kindled and is the last Hearthfire, and story.starter remembers the starter relic.
-export function newGame({ name = 'Wren', starter = 'hearthbrand', seed = 1, base = null } = {}) {
+// Thareia (T1): `heroes` (the starting line: THAREIA_START), `at` (where they stand: TH_START_AT) and `hearth` (the
+// last Hearthfire, kindled) start a Thareia game; left out, the old game's new game (the four heroes in the Great Hall).
+export function newGame({ name = 'Wren', starter = 'hearthbrand', seed = 1, base = null, heroes = HERO_IDS, at = START_AT, hearth = START } = {}) {
   if (!STARTERS[starter]) throw new Error(`Unknown starter relic ${starter}`);
   const rng = createRng(seed);
   const inventory = [];
   const roster = {};
-  for (const id of HERO_IDS) roster[id] = startingHero(id, rng, inventory, { name, starter, base });
+  for (const id of heroes) roster[id] = startingHero(id, rng, inventory, { name, starter, base });
   const codex = {};
   for (const r of Object.keys(STARTERS)) codex[r] = { sighted: true, claimed: r === starter, awakened: false };
   return {
     version: 6, seed, rngState: rng.getState(), // SAVE_VERSION (rules/migrate.js; test/gauntlet.test.mjs holds them equal)
-    party: { active: [...HERO_IDS], roster },
+    party: { active: [...heroes], roster },
     inventory, gold: 50, codex, materials: { scrap: 0, silver: 0, embers: 0 }, gems: {},
     progress: {
-      waking: 0, brands: [], lastHearthfire: START, pos: { ...START_AT }, act: 1,
+      waking: 0, brands: [], lastHearthfire: hearth, pos: { ...at }, act: 1,
       flags: {
         cleared: {}, done: {}, grudges: {}, day: 1, runs: 0,
-        story: { starter }, unlocked: {}, opened: {}, kindled: { [START]: true }, visits: {}, quests: {}, scouted: {}, seen: {}, worn: {}, beaten: {},
+        story: { starter }, unlocked: {}, opened: {}, kindled: { [hearth]: true }, visits: {}, quests: {}, scouted: {}, seen: {}, worn: {}, beaten: {},
         pages: {}, settled: {},
       },
     },
