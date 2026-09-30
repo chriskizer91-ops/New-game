@@ -487,7 +487,9 @@ function earnBrand(g, node, report) {
   report.brand = { ...brand, waking: p.waking, first: true, count: new Set(p.brands).size };
 }
 
-// Wake at the last Hearthfire's stand with all gear, 10% lighter in gold, and a little wiser.
+// Wake at the last Hearthfire's stand with all gear, 10% lighter in gold, and a little wiser. M7 (spec A11, §3.5): an
+// encounter's `wakeAt` names the Hearthfire a wipe in it wakes at instead, when that fire burns (lit, or kindled):
+// the Hollow Council's fights wake the party at the Eternal Hearth just above, the Unsmith's at the Chain Fire.
 function wipe(g, battle, rng, report) {
   const lost = Math.floor(g.gold * TUNING.wipe.goldLoss);
   g.gold -= lost;
@@ -495,6 +497,8 @@ function wipe(g, battle, rng, report) {
   report.xp = lessonXp(battle);
   awardXp(g, report.xp, rng, report);
   report.grudge = recordGrudge(g, battle, false);
+  const wake = ENCOUNTERS[battle.ctx?.nodeId]?.wakeAt;
+  if (wake && HEARTHS[wake] && (!HEARTHS[wake].cold || g.progress.flags.kindled?.[wake])) g.progress.lastHearthfire = wake;
   if (!HEARTHS[g.progress.lastHearthfire]) g.progress.lastHearthfire = START;
   const h = HEARTHS[g.progress.lastHearthfire];
   g.progress.pos = { map: h.map, x: h.x, y: h.y, face: h.face };
