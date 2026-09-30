@@ -18,8 +18,8 @@
 //          knowledge, influence, attunement, psionics). `stats` use the affix stat keys and apply on top
 //          of the relic's own. `power`, when given, is merged over the relic's Legend Surge
 //          ({ ...relic.power, ...branch.power }: a new text and effects under the same id, name and target).
-//          Hand-named for the starters, Cinderfang and the Champions' pieces; templated names elsewhere
-//          ("the Quick Hand", "the Counting Heart").
+//          Hand-named for the starters, Cinderfang, the Champions' pieces and every relic of Page V (M7); templated
+//          names elsewhere ("the Quick Hand", "the Counting Heart").
 
 import { deepFreeze } from '../core/freeze.js';
 
@@ -1210,104 +1210,169 @@ export const RELICS = deepFreeze({
       b: heart('Hexbound', 'You bind the hex back on its maker. +6 MP and 10% blight resist.', { mp: 6, resist: { blight: 10 } }),
     },
   },
-  // ---- M7: Codex Page V, the Hearth Below (No. 000 and Nos. 67-74; spec §3.4). STUB from the M7 scaffold, all nine: the
-  // number, slot, kind, rarity and how each comes are the spec's; the aspects, stats, powers, map powers, deeds and
-  // awakenings are stand-ins that P4 writes. No. 000 and the Worldforge Heart are primal, the rest regalia. None asks
-  // for the Branded deed: no Brand is left to win (M6 review B2). The four gifts and the Unsmith's three pieces are
-  // held with grip meters (claimed like a Champion's pieces, spec §3.5); the Poker and Tamsin's Bargain are gifts.
+  // ---- M7: Codex Page V, the Hearth Below (No. 000 and Nos. 67-74; spec §3.4, A13; owner P4). The last and best relics:
+  // No. 000 and the Worldforge Heart are primal, the rest regalia, a notch above every earlier page. None asks for the
+  // Branded deed (no Brand is left to win, M6 review B2), and the four won at or after the finale (Tamsin's Bargain and
+  // the Unsmith's three pieces) ask only for deeds the world still offers once every fight on the road is done (First
+  // Blood, Untouched, Rout, Fifty Felled, Surge, Legend Strike). The Council's four gifts and the Unsmith's three pieces
+  // are held with grip meters (claimed like a Champion's pieces, spec §3.5); the Poker and Tamsin's Bargain are gifts
+  // (`give` in `fenwick-truth` and `tamsin-after`). Every one is hand-named, with two sockets. ----
   'fenwicks-poker': {
-    id: 'fenwicks-poker', codex: 0, name: 'Fenwick\'s Poker', kind: 'mace', slot: 'weapon', aspect: 'ember', rarity: 'primal', ilvl: 38,
-    holder: 'Fenwick, at the Eternal Hearth (he gives it)',
-    weapon: { dice: '1d8', dmg: 'crush', hands: 1, weight: 5, ability: ['STR', 'WIS'], extra: [{ dice: '1d8', aspect: 'ember' }] },
-    stats: { hit: 1, dmg: 1, surgeGain: 10, resist: { ember: 10 } },
-    power: { id: 'stir-the-coals', name: 'Stir the Coals', target: 'all-allies', text: 'Nine hundred years of tending: every ally heals 2d8 and is Hasted.', effects: [{ type: 'heal', dice: '2d8', diceEvery: 5 }, st('hasted')] },
-    mapPower: { id: 'stir', name: 'Stir', text: 'Stir a cold hearth, and it remembers.' },
-    lore: 'An iron poker worn thin at the grip by one hand over nine hundred years. It is warm, and it has always been warm.',
+    id: 'fenwicks-poker', codex: 0, name: 'Fenwick\'s Poker', kind: 'mace', slot: 'weapon', aspect: 'ember', rarity: 'primal', ilvl: 40,
+    holder: 'Fenwick, at the Eternal Hearth: he gives it to you once the Hollow Council is freed',
+    weapon: { dice: '1d10', dmg: 'crush', hands: 1, weight: 5, ability: ['STR', 'WIS'], extra: [{ dice: '1d8', aspect: 'ember' }] },
+    stats: { hit: 2, dmg: 2, surgeGain: 15, resist: { ember: 15 } },
+    power: {
+      id: 'stir-the-coals', name: 'Stir the Coals', target: 'all-allies',
+      text: 'Nine hundred years of keeping one fire in, in a single stir: every ally heals 3d8, and the hearth\'s own fire is in them (Hearthlit: +1 to hit).',
+      effects: [{ type: 'heal', dice: '3d8', diceEvery: 5 }, st('hearthlit')],
+    },
+    mapPower: { id: 'stir', name: 'Stir', text: 'Stir a cold hearth with it, and the hearth remembers what it was.' },
+    lore: 'An iron poker worn thin at the grip by one hand over nine hundred years. Fenwick stirred the Eternal Hearth with it every night of them. It is warm, and it has always been warm.',
     sockets: 2, deeds: ['untouched', 'surge', 'hundred'],
-    awaken: { a: hand('Stirring', 'You stir the fight as he stirred the coals. +1 to hit and +1 damage.', { hit: 1, dmg: 1 }), b: heart('Hearthkeeping', 'You keep the fire in. +8 MP and +10% healing.', { mp: 8, healBonus: 10 }) },
+    awaken: {
+      a: { name: 'The Night Watch', text: 'You keep the fire in through the longest night, blow by blow. +1 to hit, +2 damage and +1 WIS.', stats: { hit: 1, dmg: 2, WIS: 1 } },
+      b: { name: 'The Banked Hearth', text: 'Nine hundred years of patience, in the hand. +10 MP, +15% healing and +10% Legend Surge.', stats: { mp: 10, healBonus: 15, surgeGain: 10 } },
+    },
   },
   'hollow-wreath': {
-    id: 'hollow-wreath', codex: 67, name: 'The Hollow Wreath', kind: 'circlet', slot: 'head', aspect: 'verdant', rarity: 'regalia', ilvl: 36,
-    holder: 'Worn by Hollow Miravel, in the Hollow Hall (a breakable piece)', grip: 40,
-    stats: { WIS: 1, mp: 8, resist: { verdant: 15 } },
-    power: { id: 'hollow-thorns', name: 'Hollow Thorns', target: 'all-enemies', text: 'Violet-black thorns out of the floor: every foe is Rooted.', effects: [st('rooted')] },
-    mapPower: { id: 'hollow-bloom', name: 'Hollow Bloom', text: 'Old roots part for the wreath.' },
-    lore: 'A wreath of living wood gone grey, sent to Eldergrove\'s chair in a box sealed with soot.',
+    id: 'hollow-wreath', codex: 67, name: 'The Hollow Wreath', kind: 'circlet', slot: 'head', aspect: 'verdant', rarity: 'regalia', ilvl: 38,
+    holder: 'Worn by Hollow Miravel, in the Hollow Hall (a breakable piece)', grip: 64,
+    stats: { WIS: 2, mp: 10, regen: 2, resist: { verdant: 15, blight: 10 } },
+    power: {
+      id: 'hollow-thorns', name: 'Hollow Thorns', target: 'all-enemies',
+      text: 'The wreath blooms violet-black, and thorns come up through the floor under every foe: 3d8 piercing, and they are Rooted.',
+      effects: [{ type: 'damage', dice: '3d8', kind: 'pierce', aspect: 'verdant', diceEvery: 6, riders: [st('rooted')] }],
+    },
+    mapPower: { id: 'hollow-bloom', name: 'Hollow Bloom', text: 'Old roots and bramble part for the wreath, and close again behind you.' },
+    lore: 'A wreath of black thorn, sent to Eldergrove\'s chair in a box sealed with soot and stamped with a hammer in a broken ring. Worn, it shows you every tree you ever let fall, and makes you feel each one.',
     sockets: 2, deeds: ['fell-champion', 'claim', 'untouched'],
-    awaken: { a: hand('Thorned', 'The thorns are yours now. +1 to hit and +1 WIS.', { hit: 1, WIS: 1 }), b: heart('Greening', 'The wood remembers being green. +8 HP and 10% blight resist.', { hp: 8, resist: { blight: 10 } }) },
+    awaken: {
+      a: { name: 'The Thorn-Crown', text: 'The thorns are yours now, and they point outward. +1 to hit, +1 WIS and 10% verdant resist.', stats: { hit: 1, WIS: 1, resist: { verdant: 10 } } },
+      b: { name: 'The Greening', text: 'The wood remembers being green. +10 HP, +2 regeneration and 10% blight resist.', stats: { hp: 10, regen: 2, resist: { blight: 10 } } },
+    },
   },
   'hollow-chalice': {
-    id: 'hollow-chalice', codex: 68, name: 'The Hollow Chalice', kind: 'focus', slot: 'offhand', aspect: 'ember', rarity: 'regalia', ilvl: 36,
-    holder: 'Held by Hollow Qasim, in the Hollow Hall (a breakable piece)', grip: 40,
-    stats: { mp: 10, healBonus: 10, resist: { ember: 15 } },
-    power: { id: 'hollow-drought', name: 'Hollow Drought', target: 'all-enemies', text: 'The chalice drinks the air dry: 2d8 ember to every foe, and they Burn.', effects: [{ type: 'damage', dice: '2d8', kind: 'ember', aspect: 'ember', diceEvery: 6, riders: [st('burning')] }] },
-    mapPower: { id: 'hollow-draught', name: 'Hollow Draught', text: 'The chalice never runs dry.' },
-    lore: 'A cup of black glass, sent to Sandspire\'s chair in a box sealed with soot. Whatever is poured in, it is never full.',
+    id: 'hollow-chalice', codex: 68, name: 'The Hollow Chalice', kind: 'focus', slot: 'offhand', aspect: 'ember', rarity: 'regalia', ilvl: 38,
+    holder: 'Held by Hollow Qasim, in the Hollow Hall (a breakable piece)', grip: 64,
+    stats: { INT: 1, mp: 12, healBonus: 15, resist: { ember: 15, tide: 10 } },
+    power: {
+      id: 'the-given-cup', name: 'The Given Cup', target: 'all-allies',
+      text: 'You drink from the Hollow Chalice, and for once it gives: every ally heals 3d8 and gets back 6 MP.',
+      effects: [{ type: 'heal', dice: '3d8', diceEvery: 5 }, { type: 'mp', amount: 6 }],
+    },
+    mapPower: { id: 'hollow-draught', name: 'Hollow Draught', text: 'The chalice is never full and never quite empty: a mouthful of water in the driest place.' },
+    lore: 'A chalice of black glass, sent to Sandspire\'s chair in a box sealed with soot and stamped with a hammer in a broken ring. Whatever is poured in, it is never full. It showed Qasim every cup he ever sold that he should have given.',
     sockets: 2, deeds: ['fell-champion', 'claim', 'surge'],
-    awaken: { a: hand('Brimming', 'It overflows onto the blade. +1 damage and +1 crit.', { dmg: 1, crit: 1 }), b: heart('Quenching', 'It gives back what it drank. +10 MP and 10% ember resist.', { mp: 10, resist: { ember: 10 } }) },
+    awaken: {
+      a: { name: 'The Raider\'s Cup', text: 'One drink before the charge, the way the dune-raiders take it. +1 to hit, +1 speed and +1 DEX.', stats: { hit: 1, speed: 1, DEX: 1 } },
+      b: { name: 'The Open Cistern', text: 'Every cup you give comes back. +10 MP, +10% healing and 10% ember resist.', stats: { mp: 10, healBonus: 10, resist: { ember: 10 } } },
+    },
   },
   'hollow-gauntlet': {
-    id: 'hollow-gauntlet', codex: 69, name: 'The Hollow Gauntlet', kind: 'gauntlets', slot: 'hands', aspect: 'stone', rarity: 'regalia', ilvl: 36,
-    holder: 'Worn by Hollow Brundar, in the Hollow Hall (a breakable piece)', grip: 40,
-    stats: { STR: 1, gripDmg: 4, resist: { stone: 15 } },
-    power: { id: 'hollow-grip', name: 'Hollow Grip', target: 'enemy', text: 'An iron hand that does not let go: 4d6 grip damage, and the foe Staggers.', effects: [{ type: 'grip', dice: '4d6' }, st('staggered')] },
-    mapPower: { id: 'hollow-heave', name: 'Hollow Heave', text: 'Heave aside what the rock has fallen on.' },
-    lore: 'A gauntlet of dark iron, sent to Ironhold\'s chair in a box sealed with soot. It closes on its own.',
+    id: 'hollow-gauntlet', codex: 69, name: 'The Hollow Gauntlet', kind: 'gauntlets', slot: 'hands', aspect: 'stone', rarity: 'regalia', ilvl: 38,
+    holder: 'Worn by Hollow Brundar, in the Hollow Hall (a breakable piece)', grip: 56,
+    stats: { STR: 2, guard: 1, gripDmg: 5, resist: { stone: 15, ember: 10 } },
+    power: {
+      id: 'let-go', name: 'Let Go', target: 'all-enemies',
+      text: 'The gauntlet opens, and everything it ever held lets go at once: 2d10 crushing to every foe, 4d6 grip damage to each, and they Stagger.',
+      effects: [{ type: 'damage', dice: '2d10', kind: 'crush', aspect: 'stone', diceEvery: 6, riders: [st('staggered')] }, { type: 'grip', dice: '4d6' }],
+    },
+    mapPower: { id: 'hollow-heave', name: 'Hollow Heave', text: 'An iron hand that does not tire: heave aside what the rock has fallen on.' },
+    lore: 'A gauntlet of dark iron with Harrow\'s rivets in it, sent to Ironhold\'s chair in a box sealed with soot and stamped with a hammer in a broken ring. It closed on Brundar\'s hand and held on to everything he had ever kept. It opens only when you mean it to.',
     sockets: 2, deeds: ['fell-champion', 'claim', 'legend-strike'],
-    awaken: { a: hand('Iron-Fisted', 'Your grip is iron. +1 STR and +2 grip damage.', { STR: 1, gripDmg: 2 }), b: heart('Unclenched', 'You know when to let go. +8 HP and +1 Guard.', { hp: 8, guard: 1 }) },
+    awaken: {
+      a: { name: 'The Closed Fist', text: 'Nothing it takes hold of gets away. +1 STR, +3 grip damage and +1 to hit.', stats: { STR: 1, gripDmg: 3, hit: 1 } },
+      b: { name: 'The Open Hand', text: 'You know when to let go. +12 HP, +1 Guard and 10% stone resist.', stats: { hp: 12, guard: 1, resist: { stone: 10 } } },
+    },
   },
   'hollow-chain': {
-    id: 'hollow-chain', codex: 70, name: 'The Hollow Chain', kind: 'amulet', slot: 'amulet', aspect: 'blight', rarity: 'regalia', ilvl: 36,
-    holder: 'Worn by Hollow Gretch, in the Hollow Hall (a breakable piece)', grip: 40,
-    stats: { CHA: 1, hp: 10, resist: { blight: 15 } },
-    power: { id: 'hollow-favour', name: 'Hollow Favour', target: 'all-enemies', text: 'Every favour called in at once: every foe is Frightened.', effects: [st('frightened')] },
-    mapPower: { id: 'hollow-links', name: 'Hollow Links', text: 'A chain knows other chains.' },
-    lore: 'A mayor\'s chain of office in black links, sent to Bogmire\'s chair in a box sealed with soot. It is always a little too tight.',
-    sockets: 2, deeds: ['fell-champion', 'claim', 'settle'],
-    awaken: { a: hand('Linked', 'Each link a debt collected. +1 to hit and +1 CHA.', { hit: 1, CHA: 1 }), b: heart('Unchained', 'You wear it loose. +8 MP and 10% blight resist.', { mp: 8, resist: { blight: 10 } }) },
+    id: 'hollow-chain', codex: 70, name: 'The Hollow Chain', kind: 'amulet', slot: 'amulet', aspect: 'blight', rarity: 'regalia', ilvl: 38,
+    holder: 'Worn by Hollow Gretch, in the Hollow Hall (a breakable piece)', grip: 64,
+    stats: { CHA: 2, hp: 12, resist: { blight: 15, radiant: 10 } },
+    power: {
+      id: 'called-in', name: 'Called In', target: 'all-enemies',
+      text: 'Every favour the chain ever bought, called in at once, from them: every foe is Frightened and Hexed.',
+      effects: [st('frightened'), st('hexed')],
+    },
+    mapPower: { id: 'hollow-links', name: 'Hollow Links', text: 'A chain knows other chains: a chained way lets it through.' },
+    lore: 'A mayor\'s chain of office in black links, sent to Bogmire\'s chair in a box sealed with soot and stamped with a hammer in a broken ring. It is always a little too tight. Gretch told the Council she never opened it.',
+    sockets: 2, deeds: ['fell-champion', 'untouched', 'surge'],
+    awaken: {
+      a: { name: 'The Mayor\'s Word', text: 'Everyone counts twice when you speak. +1 CHA, +1 to hit and +1 speed.', stats: { CHA: 1, hit: 1, speed: 1 } },
+      b: { name: 'The Loosened Chain', text: 'You wear it loose, and it weighs less. +10 MP, +10 HP and 10% blight resist.', stats: { mp: 10, hp: 10, resist: { blight: 10 } } },
+    },
   },
   'tamsins-bargain': {
-    id: 'tamsins-bargain', codex: 71, name: 'Tamsin\'s Bargain', kind: 'sword', slot: 'weapon', aspect: 'blight', rarity: 'regalia', ilvl: 38,
-    holder: 'Tamsin, in the Chained Deep (she gives it after the Unsmith)',
-    weapon: { dice: '1d8', dmg: 'slash', hands: 1, versatile: '1d10', weight: 0, ability: ['STR', 'DEX'], extra: [{ dice: '1d6', aspect: 'blight' }] },
-    stats: { hit: 1, DEX: 1, crit: 1 },
-    power: { id: 'bought-dear', name: 'Bought Dear', target: 'enemy', text: 'Everything she paid for it, at once: a strike that cannot miss, dice doubled, and the foe is Exposed.', effects: [{ type: 'attack', weapon: true, autoCrit: true, riders: [st('exposed')] }] },
-    mapPower: { id: 'bargain', name: 'Bargain', text: 'Some doors open for a price.' },
-    lore: 'The violet-black relic Tamsin bought with her starter, from a man on a black barge. She would like it to be yours now.',
-    sockets: 1, deeds: ['first-blood', 'legend-strike', 'claim'],
-    awaken: { a: hand('Dear-Bought', 'You know what it cost. +1 crit and +1 damage.', { crit: 1, dmg: 1 }), b: heart('Forgiving', 'You know who paid. +8 HP and +1 WIS.', { hp: 8, WIS: 1 }) },
+    id: 'tamsins-bargain', codex: 71, name: 'Tamsin\'s Bargain', kind: 'sword', slot: 'weapon', aspect: 'blight', rarity: 'regalia', ilvl: 40,
+    holder: 'Tamsin, in the Chained Deep: she gives it to you after the Unsmith',
+    weapon: { dice: '1d10', dmg: 'slash', hands: 1, versatile: '1d12', weight: 0, ability: ['STR', 'DEX'], extra: [{ dice: '1d8', aspect: 'blight' }] },
+    stats: { hit: 1, DEX: 1, crit: 1, speed: 1 },
+    power: {
+      id: 'bought-dear', name: 'Bought Dear', target: 'enemy',
+      text: 'Everything she paid for it, at once: a strike that cannot miss, dice doubled, and the foe is Exposed and Hexed.',
+      effects: [{ type: 'attack', weapon: true, autoCrit: true, riders: [st('exposed'), st('hexed')] }],
+    },
+    mapPower: { id: 'bargain', name: 'Bargain', text: 'Some doors open for a price. This one has paid it.' },
+    lore: 'The violet-black sword Tamsin bought on the black barge with the starter relic the Keep gave her: its darker twin, from the Unsmith\'s forge. She carried it to the bottom of the world, and she would like it to be yours now.',
+    sockets: 2, deeds: ['first-blood', 'legend-strike', 'rout'],
+    awaken: {
+      a: { name: 'The Better Warden', text: 'Faster, braver, and never once patient. +1 speed, +1 crit and +2 damage.', stats: { speed: 1, crit: 1, dmg: 2 } },
+      b: { name: 'The Bargain Kept', text: 'You know who paid for it, and what. +12 HP, +1 WIS and 10% blight resist.', stats: { hp: 12, WIS: 1, resist: { blight: 10 } } },
+    },
   },
   'unmaking-hammer': {
     id: 'unmaking-hammer', codex: 72, name: 'The Unmaking Hammer', kind: 'hammer', slot: 'weapon', aspect: 'ember', rarity: 'regalia', ilvl: 40,
-    holder: 'In the Unsmith\'s hand, at the Worldforge (a breakable piece)', grip: 48,
-    weapon: { dice: '2d8', dmg: 'crush', hands: 2, weight: 25, ability: ['STR'], extra: [{ dice: '1d8', aspect: 'ember' }] },
-    stats: { STR: 1, dmg: 2, gripDmg: 3 },
-    power: { id: 'unmake', name: 'Unmake', target: 'enemy', text: 'The blow that takes a made thing apart: 4d10 crushing, 3d6 grip damage, and the foe Staggers.', effects: [{ type: 'damage', dice: '4d10', kind: 'crush', aspect: 'ember', diceEvery: 6, riders: [st('staggered')] }, { type: 'grip', dice: '3d6' }] },
-    mapPower: { id: 'unmaking', name: 'Unmaking', text: 'One blow takes a boulder apart.' },
-    lore: 'Harrow Ironvein\'s hammer, the one he made after he gave the first to his first daughter. It unmakes.',
-    sockets: 2, deeds: ['fell-champion', 'legend-strike', 'hundred'],
-    awaken: { a: hand('Unmaking', 'Nothing you strike stays whole. +1 to hit and +2 damage.', { hit: 1, dmg: 2 }), b: heart('Remaking', 'You would rather make than unmake. +10 HP and +1 Guard.', { hp: 10, guard: 1 }) },
+    holder: 'In the Unsmith\'s hand, at the Worldforge (a breakable piece)', grip: 44,
+    weapon: { dice: '2d8', dmg: 'crush', hands: 2, weight: 25, ability: ['STR'], extra: [{ dice: '1d10', aspect: 'ember' }] },
+    stats: { STR: 1, dmg: 3, gripDmg: 4 },
+    power: {
+      id: 'unmake', name: 'Unmake', target: 'enemy',
+      text: 'The blow that takes a made thing apart: 5d10 crushing, 4d6 grip damage, and the foe Staggers.',
+      effects: [{ type: 'damage', dice: '5d10', kind: 'crush', aspect: 'ember', diceEvery: 6, riders: [st('staggered')] }, { type: 'grip', dice: '4d6' }],
+    },
+    mapPower: { id: 'unmaking', name: 'Unmaking', text: 'One blow takes a boulder, a wall or a chain apart.' },
+    lore: 'Harrow Ironvein\'s second hammer, bigger than the one he left in Mother Anvil\'s arm: a hammer for taking made things apart. He unmade relic-bearers with it at the Worldforge, and kept what they held.',
+    sockets: 2, deeds: ['legend-strike', 'hundred', 'untouched'],
+    awaken: {
+      a: { name: 'The Unmaker', text: 'Swung the way Harrow swung it, to finish things. +1 to hit, +2 damage and +2 grip damage.', stats: { hit: 1, dmg: 2, gripDmg: 2 } },
+      b: { name: 'The Remaker', text: 'Swung the way Hilda would, to mend things. +12 HP, +1 Guard and +10% Legend Surge.', stats: { hp: 12, guard: 1, surgeGain: 10 } },
+    },
   },
   'ironvein-apron': {
     id: 'ironvein-apron', codex: 73, name: 'The Ironvein Apron', kind: 'leather', slot: 'body', aspect: 'stone', rarity: 'regalia', ilvl: 40,
-    holder: 'On the Unsmith, at the Worldforge (a breakable piece)', grip: 44,
+    holder: 'On the Unsmith, at the Worldforge (a breakable piece)', grip: 40,
     armor: { base: 14, maxDex: 4, type: 'hide' },
-    stats: { hp: 12, guard: 1, resist: { ember: 20 } },
-    power: { id: 'forge-apron', name: 'Forge-Apron', target: 'all-allies', text: 'Nothing the forge throws gets through: every ally is Warded for 3d6.', effects: [st('warded', { value: { dice: '3d6', diceEvery: 5 } })] },
-    mapPower: { id: 'forge-proof', name: 'Forge-Proof', text: 'Walk close to the fire and come back unburnt.' },
-    lore: 'A smith\'s leather apron with the Ironvein mark on its bib, scorched to black and never once burned through.',
-    sockets: 2, deeds: ['fell-champion', 'untouched', 'claim'],
-    awaken: { a: hand('Scorched', 'The heat is on your side. +1 Guard and +1 STR.', { guard: 1, STR: 1 }), b: heart('Ironvein', 'The family trade. +10 HP and 10% stone resist.', { hp: 10, resist: { stone: 10 } }) },
+    stats: { hp: 14, guard: 1, resist: { ember: 25, stone: 10 } },
+    power: {
+      id: 'nothing-burns-through', name: 'Nothing Burns Through', target: 'all-allies',
+      text: 'The apron that has never once burned through spreads over the whole line: every ally is Warded for 3d8, and stops Burning.',
+      effects: [st('warded', { value: { dice: '3d8', diceEvery: 5 } }), { type: 'cleanse', statuses: ['burning'] }],
+    },
+    mapPower: { id: 'forge-proof', name: 'Forge-Proof', text: 'Walk close to the fire and come back unburnt: forge-heat and live embers do not touch you.' },
+    lore: 'A smith\'s leather apron with the Ironvein mark on its pocket, scorched to black and never once burned through. Hilda has one the same, and wears it every day.',
+    sockets: 2, deeds: ['untouched', 'surge', 'hundred'],
+    awaken: {
+      a: { name: 'The Smith\'s Stance', text: 'The heat is on your side. +1 Guard, +1 STR and 10% stone resist.', stats: { guard: 1, STR: 1, resist: { stone: 10 } } },
+      b: { name: 'The Twin\'s Apron', text: 'Hilda wears one the same. +12 HP, +1 CON and 10% ember resist.', stats: { hp: 12, CON: 1, resist: { ember: 10 } } },
+    },
   },
   'worldforge-heart': {
     id: 'worldforge-heart', codex: 74, name: 'The Worldforge Heart', kind: 'ring', slot: 'ring', aspect: 'ember', rarity: 'primal', ilvl: 40,
-    holder: 'Burning in the Unsmith\'s chest, at the Worldforge (a breakable piece)', grip: 52,
-    stats: { hp: 10, mp: 10, resist: { ember: 15, frost: 15 } },
-    power: { id: 'heart-of-the-world', name: 'Heart of the World', target: 'all-allies', text: 'The forge\'s heart beats once for you: every ally heals 3d8 and Regenerates 1d8 a turn.', effects: [{ type: 'heal', dice: '3d8', diceEvery: 5 }, st('regenerating', { value: { dice: '1d8', diceEvery: 6 } })] },
-    mapPower: { id: 'worldfire', name: 'Worldfire', text: 'Cold hearths catch from it.' },
-    lore: 'The heart of the Worldforge, small enough to wear. It is the hottest thing in the world, and it is beating.',
-    sockets: 2, deeds: ['fell-champion', 'surge', 'untouched'],
-    awaken: { a: hand('Beating', 'It keeps time with you. +1 to hit and +1 speed.', { hit: 1, speed: 1 }), b: heart('Hearth', 'It is only a hearth, after all. +10 MP and +10% healing.', { mp: 10, healBonus: 10 }) },
+    holder: 'Burning in the Unsmith\'s chest, at the Worldforge (a breakable piece)', grip: 72,
+    stats: { hp: 16, mp: 10, regen: 3, resist: { ember: 20, frost: 10 } },
+    power: {
+      id: 'heart-of-the-world', name: 'Heart of the World', target: 'all-allies',
+      text: 'The Worldforge\'s heart beats once for you: every ally heals 4d8, Regenerates 1d8 a turn, and is Hearthlit (+1 to hit).',
+      effects: [{ type: 'heal', dice: '4d8', diceEvery: 5 }, st('regenerating', { value: { dice: '1d8', diceEvery: 6 } }), st('hearthlit')],
+    },
+    mapPower: { id: 'worldfire', name: 'Worldfire', text: 'Cold hearths catch from it, and so does anything that ever burned.' },
+    lore: 'The heart of the Worldforge, small enough to wear on a finger: a heart of molten metal in an iron cage. It is the hottest thing in the world, and it is beating.',
+    sockets: 2, deeds: ['surge', 'untouched', 'legend-strike'],
+    awaken: {
+      a: { name: 'The Beating Heart', text: 'It keeps time with your blows. +1 to hit, +1 speed and +1 crit.', stats: { hit: 1, speed: 1, crit: 1 } },
+      b: { name: 'The Hearth Itself', text: 'It is only a hearth, after all, and a hearth keeps people warm. +12 MP, +15% healing and 10% frost resist.', stats: { mp: 12, healBonus: 15, resist: { frost: 10 } } },
+    },
   },
 });
 

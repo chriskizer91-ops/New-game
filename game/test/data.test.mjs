@@ -109,13 +109,16 @@ test('every move table covers every face of its intent die', () => {
   for (const f of Object.values(FOES)) {
     // a variant may override the tier (named holders are relic-bearers) and the moves
     const tables = f.phases
-      ? f.phases.map(p => ({ t: p.table, die: FOE_TIERS[f.tier].die, moves: f.moves, id: f.id }))
+      ? f.phases.map(p => ({ t: p.table, die: FOE_TIERS[f.tier].die, moves: f.moves, id: f.id, steals: !!p.steals }))
       : [{ t: f.table, die: FOE_TIERS[f.tier].die, moves: f.moves, id: f.id },
         ...Object.entries(f.variants || {}).filter(([, v]) => v.table).map(([k, v]) => ({ t: v.table, die: FOE_TIERS[v.tier || f.tier].die, moves: v.moves || f.moves, id: `${f.id}/${k}` }))];
-    for (const { t, die, moves, id } of tables) {
+    for (const { t, die, moves, id, steals } of tables) {
       for (let face = 1; face <= die; face++) {
         const row = t.find(([lo, hi]) => face >= lo && face <= hi);
-        assert.ok(row && moves[row[2]], `${id} face ${face}`);
+        // M7 (spec §4.4): a phase that steals may roll 'stolen' (one of its Stolen Arts), with a real fallback for a
+        // Warden who left it none
+        const stolen = row?.[2] === 'stolen' && steals && moves[f.stolenFallback] && !moves[f.stolenFallback].requires;
+        assert.ok(row && (moves[row[2]] || stolen), `${id} face ${face}`);
       }
     }
   }
@@ -352,7 +355,9 @@ test('M4, M5, M6 and M7 relics: all 75 carry sockets (0-2), three deeds from DEE
   const STAT_KEYS = new Set([...Object.values(AFFIXES).map(a => a.stat), 'resist', 'STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA']);
   const HAND_NAMED = ['hearthbrand', 'stillwater-lance', 'cairnmaul', 'cinderfang', 'thornwreath', 'briarfang', 'ichor-mask', 'first-seed', 'glass-carapace', 'ashen-aegis', 'cinder-crown',
     'anvil-heart', 'worldforge-hammer', 'rime-crozier', 'hushweave-cowl', // M5: the Ironspire Champions' pieces
-    'lamplighters-lantern', 'mourning-veil', 'corvus-harpoon', 'deep-pearl']; // M6: the Gloomfen Champions' pieces
+    'lamplighters-lantern', 'mourning-veil', 'corvus-harpoon', 'deep-pearl', // M6: the Gloomfen Champions' pieces
+    'fenwicks-poker', 'hollow-wreath', 'hollow-chalice', 'hollow-gauntlet', 'hollow-chain', 'tamsins-bargain', // M7: Page V, every one
+    'unmaking-hammer', 'ironvein-apron', 'worldforge-heart'];
   const names = new Set();
   const statusRefs = [];
   const walk = effs => { for (const e of effs || []) { if (e.status) statusRefs.push(e.status); walk(e.riders); } };
@@ -467,11 +472,8 @@ const movesWith = (moves, pred) => Object.values(moves).filter(m => m.effects.so
 
 test('M5 foes: the Ironspire families are real (no scaffold stubs left), with the spec\'s tiers, kinds, aspects and their own art', async () => {
   const { damageMult } = await import('../src/rules/combat.js');
-  // M6 (spec §8): no stand-in family is left, the Gloomfen's ten included. STUB from the M7 scaffold: the Hearth Below's
-  // eight families are the scaffold's stand-ins until M7 P4 writes them (M7 spec §7); every other family is real. P4
-  // removes this list, so the check covers every family again at M7's delivery (M7 spec §8).
-  const M7_STUBS = ['cinder-thrall', 'unmade', 'forge-warden', 'hollow-miravel', 'hollow-qasim', 'hollow-brundar', 'hollow-gretch', 'unsmith'];
-  assert.ok(Object.values(FOES).every(f => !f.stub || M7_STUBS.includes(f.id)), 'no stub family is left but the M7 scaffold\'s (M6 spec §8)');
+  // M6 and M7 (spec §8): no stand-in family is left, the Gloomfen's ten and the Hearth Below's eight included
+  assert.ok(Object.values(FOES).every(f => !f.stub), 'no stub family is left (M6 spec §8, M7 spec §8)');
   for (const [id, [tier, kind, aspect]] of Object.entries(IRON_FAMILIES)) {
     const f = FOES[id];
     assert.ok(f, id);
@@ -1022,4 +1024,252 @@ test('M6: a relic won only in the last Brand\'s fight never asks for the Branded
   const pieces = last.spawns.flatMap(s => [...(FOES[s.family].relics || []), ...(s.held || []).map(h => h.relic), s.relic, s.wears]).filter(Boolean);
   assert.deepEqual([...new Set(pieces)].sort(), ['corvus-harpoon', 'deep-pearl']);
   for (const r of pieces) assert.ok(!RELICS[r].deeds.includes('brand'), `${r}: its deeds can all be done after the last Brand`);
+});
+
+// ---- M7 data (spec §3.2-§3.5, §4.2-§4.4, §8; P4) ----------------------------------------------------------------
+
+// family -> [tier, kind, aspect] (spec §3.2)
+const BELOW_FAMILIES = {
+  'cinder-thrall': ['rabble', 'construct', 'ember'], unmade: ['veteran', 'undead', 'blight'], 'forge-warden': ['veteran', 'construct', 'ember'],
+  'hollow-miravel': ['hollow', 'human', 'verdant'], 'hollow-qasim': ['hollow', 'human', 'ember'], 'hollow-brundar': ['hollow', 'human', 'stone'],
+  'hollow-gretch': ['hollow', 'human', 'blight'], unsmith: ['unsmith', 'human', 'ember'],
+};
+// the Hollow Council, in the order they are fought (spec A4): family -> [the gift sent to their chair, its Codex number]
+const COUNCIL_GIFTS = { 'hollow-miravel': ['hollow-wreath', 67], 'hollow-qasim': ['hollow-chalice', 68], 'hollow-brundar': ['hollow-gauntlet', 69], 'hollow-gretch': ['hollow-chain', 70] };
+const UNSMITH_PIECES = ['unmaking-hammer', 'ironvein-apron', 'worldforge-heart'];
+const facesOf = table => { const m = new Map(); for (const [lo, hi, mid] of table) for (let n = lo; n <= hi; n++) m.set(n, mid); return m; };
+
+test('M7 foes: the Hearth Below\'s eight families are real, with the spec\'s tiers, kinds and aspects, their own art, and what §3.2 says they do', async () => {
+  const { damageMult } = await import('../src/rules/combat.js');
+  for (const [id, [tier, kind, aspect]] of Object.entries(BELOW_FAMILIES)) {
+    const f = FOES[id];
+    assert.ok(f && !f.stub, `${id} is real`);
+    assert.equal(f.id, id);
+    assert.deepEqual([f.tier, f.kind, f.aspect], [tier, kind, aspect], `${id}: tier, kind, aspect`);
+    assert.equal(f.art, id, `${id} draws as itself`);
+    for (const k of ['hp', 'guard', 'atk', 'dmg', 'speed']) assert.ok(Number.isFinite(f[k]) && f[k] > 0, `${id}.${k}`);
+    for (const k of ['STR', 'DEX', 'CON', 'WIS']) assert.ok(Number.isFinite(f.saves[k]), `${id} saves ${k}`);
+    assert.ok(f.name && f.text.length > 30, `${id} has a name and flavour`);
+    for (const [mid, m] of Object.entries(f.moves)) assert.ok(m.name && m.text && m.effects.length, `${id}/${mid}`);
+    for (const m of Object.values(f.moves)) if (m.fallback) assert.ok(f.moves[m.fallback] && !f.moves[m.fallback].requires, `${id}: ${m.name} falls back to a plain move`);
+  }
+  // the overseer (spec §3.3): the thralls' veteran variant, a driver of the same ash, with a look of its own
+  const o = FOES['cinder-thrall'].variants['thrall-overseer'];
+  assert.ok(o && o.name && o.moves && o.table, 'the thrall-overseer: its own moves and table');
+  assert.equal(o.art, 'thrall-overseer', 'and its own look');
+  assert.equal(o.tier, 'veteran');
+  assert.ok(Object.values(o.moves).some(m => m.target === 'all-allies' && m.effects.some(e => e.status === 'hasted')), 'he drives his thralls on');
+  const has = (id, pred, moves = FOES[id].moves) => movesWith(moves, pred).length > 0;
+  // the thralls are shaped from the hearth's own ash: their coals burn, and a thrall falls apart and stands up again
+  assert.ok(has('cinder-thrall', e => e.status === 'burning'), 'a thrall\'s coal burns');
+  assert.ok(Object.values(FOES['cinder-thrall'].moves).some(m => m.when?.hpBelow && m.effects.some(e => e.status === 'regenerating')), 'it reforms');
+  // the unmade are husks of blight: they reach with their Art, rot what they touch, and blows go through them
+  assert.ok(has('unmade', e => e.aspect === 'blight' && e.type === 'damage') && has('unmade', e => e.status === 'rotting'), 'the unmade: blight and rot');
+  // the forge-warden: bellows (fire on the whole bridge) and anvil (plate that a hammer rings, a charge that Staggers)
+  const w = FOES['forge-warden'];
+  assert.ok(Object.values(w.moves).some(m => m.target === 'all-enemies' && m.effects.some(e => e.aspect === 'ember')), 'the bellows breathe on every hero');
+  assert.ok(Object.values(w.moves).some(m => m.charge && m.effects.some(e => e.riders?.some(r => r.status === 'staggered'))), 'it holds the bridge');
+  assert.ok(damageMult({ side: 'foe', armor: w.armor, aspect: w.aspect, weak: [], resist: [], immune: [] }, 'crush', null) > 1, 'a hammer rings its plate');
+  // the five uniques (spec §3.2): unique, never flee, never Twinned (their encounters, below), and a koText each
+  for (const id of [...Object.keys(COUNCIL_GIFTS), 'unsmith']) {
+    const f = FOES[id];
+    assert.deepEqual([f.unique, f.noFlee], [true, true], id);
+    assert.ok(typeof f.koText === 'string' && f.koText.length > 40, `${id} says something at 0 HP`);
+    assert.ok(!Object.values(f.moves).some(m => m.effects.some(e => e.type === 'escape')), `${id} never runs`);
+  }
+});
+
+test('M7 the Hollow Council: the hollow tier\'s +4 while the gift is held, the gift a breakable piece whose Arts sit on the high faces, two phases, their own words and their own Grudge titles', () => {
+  // each one's second phase answers their own story (spec §3.5): Miravel's thorns, Qasim's drought, Brundar's iron,
+  // Gretch's fear and favours
+  const STORY = { 'hollow-miravel': /thorn/i, 'hollow-qasim': /drought/i, 'hollow-brundar': /iron/i, 'hollow-gretch': /fear/i };
+  const STORY_MOVE = { 'hollow-miravel': e => e.aspect === 'verdant' && e.kind === 'pierce', 'hollow-qasim': e => e.aspect === 'ember' && e.type === 'damage', 'hollow-brundar': e => e.aspect === 'stone' || e.kind === 'crush', 'hollow-gretch': e => e.status === 'frightened' || e.type === 'summon' };
+  const titles = new Set();
+  for (const [id, [gift, no]] of Object.entries(COUNCIL_GIFTS)) {
+    const f = FOES[id];
+    assert.equal(f.tier, 'hollow', `${id} rolls the hollow tier's die`);
+    assert.deepEqual([FOE_TIERS.hollow.die, FOE_TIERS.hollow.bonus], [20, 4]);
+    assert.deepEqual(f.relics, [gift], `${id} holds the gift sent to their chair`);
+    assert.equal(f.bonusWhile, gift, `${id}: the +4 holds while the gift does`);
+    assert.equal(RELICS[gift].codex, no, gift);
+    assert.ok(RELICS[gift].grip >= 40, `${gift} is held with a grip meter`);
+    assert.ok(!f.keepsRelics, `${id}: beaten, the gift comes off as a Champion's piece does`);
+    assert.deepEqual(f.phases.map(p => p.at), [1, 0.5], `${id}: two phases`);
+    const arts = Object.values(f.moves).filter(m => m.requires);
+    assert.ok(arts.length >= 2, `${id}: the gift powers an Art in each phase`);
+    for (const m of arts) {
+      assert.equal(m.requires, gift, `${id}/${m.name} needs the gift`);
+      assert.ok(f.moves[m.fallback] && !f.moves[m.fallback].requires, `${id}/${m.name} falls back to a plain move`);
+    }
+    f.phases.forEach((ph, i) => {
+      assert.ok(ph.text.length > 20, `${id} phase ${i + 1} is announced`);
+      const faces = facesOf(ph.table);
+      assert.equal(faces.size, 20, `${id} phase ${i + 1}: every d20 face`);
+      const giftFaces = [...faces].filter(([, mid]) => f.moves[mid].requires === gift).map(([n]) => n);
+      // the gift's Arts sit on the high faces, 15 to 20: a natural 11 or better reaches them while the +4 holds
+      assert.deepEqual(giftFaces, [15, 16, 17, 18, 19, 20], `${id} phase ${i + 1}: the gift's Arts on the high faces`);
+    });
+    assert.match(f.phases[1].text, STORY[id], `${id}: the second phase answers their story`);
+    const second = new Set(f.phases[1].table.map(([, , m]) => m));
+    assert.ok(movesWith(Object.fromEntries([...second].map(m => [m, f.moves[m]])), STORY_MOVE[id]).length, `${id}: and so do its moves`);
+    assert.ok(f.phases[1].table.some(([, , m]) => !f.phases[0].table.some(([, , x]) => x === m)), `${id}: the second phase brings something new`);
+    // their own words, coming back to themselves; their own Grudge titles
+    assert.match(f.koText, /"/, `${id}: says it in their own words`);
+    assert.equal(f.grudgeTitles?.win?.length, 4, `${id}: four Grudge titles of their own`);
+    for (const t of f.grudgeTitles.win) { assert.ok(!titles.has(t), `${t} is theirs alone`); titles.add(t); }
+  }
+});
+
+test('M7 the Unsmith: two d20s, three phases (the Smith, the Thief, the Worldforge), Unmake, Stolen Arts at the Thief with a fallback, the fire on every hero and the heart\'s pull; his Arts need his pieces', () => {
+  const u = FOES.unsmith;
+  assert.equal(u.tier, 'unsmith');
+  assert.deepEqual([FOE_TIERS.unsmith.die, FOE_TIERS.unsmith.dice], [20, 2], 'two d20s');
+  assert.deepEqual(u.relics, UNSMITH_PIECES, 'his three pieces, Nos. 72-74');
+  assert.deepEqual(UNSMITH_PIECES.map(r => RELICS[r].codex), [72, 73, 74]);
+  for (const r of UNSMITH_PIECES) {
+    assert.ok(RELICS[r].grip >= 40, `${r} is held with a grip meter`);
+    assert.ok(Object.values(u.moves).some(m => m.requires === r), `${r} powers one of his moves`);
+  }
+  for (const m of Object.values(u.moves).filter(x => x.requires)) {
+    assert.ok(UNSMITH_PIECES.includes(m.requires), `${m.name} needs one of his pieces`);
+    assert.ok(u.moves[m.fallback] && !u.moves[m.fallback].requires, `${m.name} falls back to a plain move`);
+  }
+  assert.deepEqual(u.phases.map(p => p.at), [1, 0.66, 0.33]);
+  assert.deepEqual(u.phases.map(p => p.text.split('.')[0]), ['The Smith', 'The Thief', 'The Worldforge']);
+  const [smith, thief, forge] = u.phases.map(p => facesOf(p.table));
+  for (const faces of [smith, thief, forge]) assert.equal(faces.size, 20, 'every d20 face');
+  // the Smith: hammer blows, and Unmake (a hero is Unmade: P1's status, 2 turns)
+  const unmake = Object.values(u.moves).find(m => movesWith({ m }, e => e.status === 'unmade').length);
+  assert.ok(unmake && unmake.requires === 'unmaking-hammer', 'Unmake is the hammer\'s');
+  assert.ok([...smith.values()].includes(Object.keys(u.moves).find(k => u.moves[k] === unmake)), 'the Smith rolls Unmake');
+  assert.ok([...smith.values()].some(mid => u.moves[mid].effects.some(e => e.type === 'attack' && e.kind === 'crush')), 'and hammer blows');
+  // the Thief: he steals, a row of his table plays one of his Stolen Arts, and a Warden who left him none gets his fallback
+  assert.equal(u.phases[1].steals, true, 'the Thief takes up the relics you never claimed');
+  assert.ok(!u.phases[0].steals && !u.phases[2].steals, 'only the Thief');
+  assert.ok([...thief.values()].filter(mid => mid === 'stolen').length >= 6, 'his Stolen Arts are on at least six faces');
+  const fb = u.moves[u.stolenFallback];
+  assert.ok(fb && !fb.requires && fb.target === 'self', 'the fallback for a full Codex: a real move of his own');
+  assert.ok(fb.effects.some(e => e.status === 'exposed'), 'and it leaves him open: a full Codex makes him weaker');
+  // the Worldforge: the forge's fire on every hero, and the heart's pull (a hero held in the furnace's mouth)
+  const forgeMoves = [...new Set(forge.values())].map(mid => u.moves[mid]);
+  assert.ok(forgeMoves.some(m => m.target === 'all-enemies' && m.effects.some(e => e.aspect === 'ember' && e.type === 'damage') && !m.requires), 'the forge\'s fire on every hero');
+  const pull = forgeMoves.find(m => movesWith({ m }, e => e.status === 'swallowed').length);
+  assert.ok(pull && pull.requires === 'worldforge-heart' && pull.charge, 'the heart\'s pull, while he has the heart, charging');
+  assert.ok(movesWith({ pull }, e => e.label === 'In the furnace').length, 'held in the furnace\'s mouth');
+  assert.ok(Object.values(u.moves).some(m => m.requires === 'ironvein-apron' && m.target === 'self' && m.effects.some(e => e.status === 'warded')), 'the apron wards him');
+});
+
+// No. -> [id, slot, kind, aspect, rarity, map power] (spec §3.4)
+const BELOW_RELICS = {
+  0: ['fenwicks-poker', 'weapon', 'mace', 'ember', 'primal', 'stir'], 67: ['hollow-wreath', 'head', 'circlet', 'verdant', 'regalia', 'hollow-bloom'],
+  68: ['hollow-chalice', 'offhand', 'focus', 'ember', 'regalia', 'hollow-draught'], 69: ['hollow-gauntlet', 'hands', 'gauntlets', 'stone', 'regalia', 'hollow-heave'],
+  70: ['hollow-chain', 'amulet', 'amulet', 'blight', 'regalia', 'hollow-links'], 71: ['tamsins-bargain', 'weapon', 'sword', 'blight', 'regalia', 'bargain'],
+  72: ['unmaking-hammer', 'weapon', 'hammer', 'ember', 'regalia', 'unmaking'], 73: ['ironvein-apron', 'body', 'leather', 'stone', 'regalia', 'forge-proof'],
+  74: ['worldforge-heart', 'ring', 'ring', 'ember', 'primal', 'worldfire'],
+};
+
+test('M7 relics: Codex Page V follows the spec table, each with a Legend Surge, lore and a holder; the gifts and the pieces are held, the Poker and the Bargain are given; deeds the world still offers', async () => {
+  const { POWERS } = await import('../src/rules/stats.js');
+  const { PAGES } = await import('../src/data/codex.js');
+  const { ASPECT_IDS: ASPECTS_ALL } = await import('../src/data/aspects.js');
+  const byFoe = id => Object.values(FOES).find(f => f.relics?.includes(id))?.id || null;
+  for (const [no, [id, slot, kind, aspect, rarity, power]] of Object.entries(BELOW_RELICS)) {
+    const r = RELICS[id];
+    assert.ok(r, id);
+    assert.equal(r.codex, +no, id);
+    assert.deepEqual([r.slot, r.kind, r.aspect, r.rarity, r.mapPower.id], [slot, kind, aspect, rarity, power], id);
+    assert.ok(r.power && POWERS[r.power.id] === r.power, `${id} has a Legend Surge the engine can fire`);
+    assert.ok(r.power.text && r.power.effects.length, id);
+    assert.ok(r.lore.length > 60 && r.holder.length > 10, `${id}: lore and a holder`);
+    assert.ok(Object.keys(r.stats).length >= 3, `${id} has stats`);
+    assert.ok(r.ilvl >= 36, `${id}: above every earlier page`);
+    assert.equal(r.sockets, 2, `${id}: two sockets`);
+    if (slot === 'weapon') assert.match(r.weapon.dice, /^\d+d\d+$/);
+    if (slot === 'body') assert.ok(r.armor?.base >= 12, `${id} is armour`);
+  }
+  // how each comes (spec §3.4): the four gifts are the Council's pieces, the three the Unsmith's; the Poker and the
+  // Bargain are given in the story, so nobody grips them
+  for (const [family, [gift]] of Object.entries(COUNCIL_GIFTS)) assert.equal(byFoe(gift), family, `${gift} is ${family}'s`);
+  for (const r of UNSMITH_PIECES) assert.equal(byFoe(r), 'unsmith', `${r} is the Unsmith's`);
+  for (const id of ['fenwicks-poker', 'tamsins-bargain']) assert.ok(!byFoe(id) && RELICS[id].grip === undefined, `${id} is given, not pried`);
+  // the four won at or after the finale ask only for deeds the world still offers once every fight on the road is done
+  // (no Brand, no Champion or holder that is sure to be left, no Grudge)
+  const ALWAYS = ['first-blood', 'untouched', 'rout', 'hundred', 'surge', 'legend-strike'];
+  for (const id of ['tamsins-bargain', ...UNSMITH_PIECES]) for (const d of RELICS[id].deeds) assert.ok(ALWAYS.includes(d), `${id}: ${d} can still be done after the finale`);
+  // Tamsin's Bargain: violet-black (blight), her old starter's darker twin
+  assert.match(RELICS['tamsins-bargain'].lore, /darker twin/);
+  // Page V's reward (spec §3.4): +1 to every save and 5% resist to every aspect
+  const oath = PAGES.find(p => p.id === 'below').reward;
+  assert.equal(oath.id, 'hearthkeepers-oath');
+  assert.equal(oath.stats.save, 1);
+  assert.deepEqual(Object.keys(oath.stats.resist).sort(), [...ASPECTS_ALL].sort());
+  for (const a of ASPECTS_ALL) assert.equal(oath.stats.resist[a], 5, a);
+});
+
+test('M7 encounters: the Hearth Below\'s nine fights hold the spec\'s spawns on their maps\' backdrops, climb from Waking 8, carry chosen Omens, wake the party where the spec says, and end on the finale with Tamsin beside the party', async () => {
+  const { PATROLS, BACKDROPS: BDS } = await import('../src/data/encounters.js');
+  const { ZONES, HEARTHS, ACT3_PATH } = await import('../src/data/world.js');
+  const { escalateSpawn, familyOf } = await import('../src/rules/foe.js');
+  // [map backdrop, spawns (as §3.3 lists them)]
+  const SPEC = {
+    'hollow-miravel': ['hollow-hall', 'hollow-miravel'], 'hollow-qasim': ['hollow-hall', 'hollow-qasim'],
+    'hollow-brundar': ['hollow-hall', 'hollow-brundar'], 'hollow-gretch': ['hollow-hall', 'hollow-gretch'],
+    'as-thralls': ['ash-stair', 'cinder-thrall', 'cinder-thrall', 'cinder-thrall', 'cinder-thrall/thrall-overseer'],
+    'as-patrol': ['ash-stair', 'cinder-thrall', 'cinder-thrall', 'cinder-thrall'],
+    'cd-unmade': ['chained-deep', 'unmade', 'unmade', 'cinder-thrall'], 'wf-warden': ['worldforge', 'forge-warden', 'cinder-thrall', 'cinder-thrall'],
+    unsmith: ['worldforge', 'unsmith'],
+  };
+  const below = Object.values(ENCOUNTERS).filter(e => e.region === 'below' && e.type === 'fight').map(e => e.id).sort();
+  assert.deepEqual(below, Object.keys(SPEC).sort());
+  for (const [id, [map, ...want]] of Object.entries(SPEC)) {
+    const e = ENCOUNTERS[id];
+    assert.deepEqual(e.spawns.map(s => `${s.family}${s.variant ? `/${s.variant}` : ''}`), want, id);
+    assert.equal(e.backdrop, map, `${id} fights on its map's backdrop (spec §6.2)`);
+    assert.ok(BDS.includes(map), `${map} is a listed backdrop`);
+    for (const s of e.spawns) {
+      assert.ok(Number.isInteger(s.level) && s.level >= 1, `${id}: a Waking-0 level of at least 1`);
+      const x = escalateSpawn(s, 8, id);
+      assert.ok(x.omens.length <= 3, `${id}: at most three Waking Omens`);
+      if (familyOf(s).tier === 'rabble') {
+        assert.equal(s.wakeLevels, undefined, `${id}: rabble climb the usual 2 a Waking`);
+        assert.ok(x.level >= 34 && x.level <= 40, `${id}: rabble at level ${x.level} at Waking 8`);
+        continue;
+      }
+      // every Hearth Below foe that is not rabble climbs 4 levels a Waking (BELOW), and meets a party of about 36.5-42
+      assert.equal(s.wakeLevels, 4, `${id}: a BELOW spawn`);
+      assert.ok(x.level >= 36 && x.level <= 42, `${id}: level ${x.level} at Waking 8`);
+    }
+  }
+  // the five uniques carry chosen Omens (the Waking adds none), never Twinned, with Frenzied among them (so a Grudge cannot add it)
+  for (const id of [...Object.keys(COUNCIL_GIFTS), 'unsmith']) {
+    const [lead] = ENCOUNTERS[id].spawns;
+    assert.equal(lead.wakeOmenCap, 0, `${id}: chosen Omens`);
+    assert.ok(lead.omens.length >= 2 && lead.omens.includes('frenzied') && !lead.omens.includes('twinned'), `${id}: ${lead.omens}`);
+    assert.deepEqual(escalateSpawn(lead, 8, id).omens, lead.omens, `${id}: the Waking adds none`);
+  }
+  // where a wipe wakes the party (the lead's rule, rules/gauntlet.js): every `wakeAt` names a real Hearthfire
+  for (const e of Object.values(ENCOUNTERS)) if (e.wakeAt) assert.ok(HEARTHS[e.wakeAt] && ENCOUNTERS[e.wakeAt]?.type === 'hearthfire', `${e.id}: wakeAt ${e.wakeAt} is a Hearthfire`);
+  for (const id of Object.keys(COUNCIL_GIFTS)) assert.equal(ENCOUNTERS[id].wakeAt, 'hearthstone-keep', `${id}: a wipe wakes the party at the Eternal Hearth above (spec A11)`);
+  assert.equal(ENCOUNTERS.unsmith.wakeAt, 'chain-fire', 'the Unsmith\'s wipe wakes the party at the Chain Fire (spec §3.5)');
+  // the finale (spec A3, A12): the Unsmith, with Tamsin beside the party in her finale kit, wearing her Bargain
+  const u = ENCOUNTERS.unsmith;
+  assert.equal(u.finale, true);
+  assert.equal(u.talk, 'unsmith', 'his word before the fight (M6\'s pattern): "Face him." or "Not yet."');
+  assert.deepEqual(Object.values(ENCOUNTERS).filter(e => e.finale).map(e => e.id), ['unsmith'], 'the one finale');
+  assert.equal(ACT3_PATH[ACT3_PATH.length - 1], 'unsmith');
+  assert.equal(u.allies.length, 1);
+  assert.deepEqual(Object.fromEntries(['family', 'variant', 'level', 'partyDelta', 'wears'].map(k => [k, u.allies[0][k]])),
+    { family: 'tamsin', variant: '$rival:finale', level: 'party', partyDelta: 2, wears: 'tamsins-bargain' });
+  // the Hearthfire entries rest on their maps' backdrops, and ACT3_PATH is these fights and fires
+  for (const id of ['under-coal', 'chain-fire']) assert.ok(ENCOUNTERS[id].type === 'hearthfire' && BDS.includes(ENCOUNTERS[id].backdrop) && ENCOUNTERS[id].region === 'below', id);
+  for (const id of ACT3_PATH.slice(1)) assert.equal(ENCOUNTERS[id]?.region, 'below', id);
+  // the Ash Stair's zone (spec §2.6): cinder-thrall packs, rabble, two or three a pack, within reach at Waking 8
+  const z = ZONES['ash-stair'];
+  assert.ok(z && PATROLS[z.sets]?.length, 'the ash-stair zone picks its patrols');
+  for (const set of PATROLS[z.sets]) {
+    assert.ok(set.length >= 2 && set.length <= 3, 'two or three a pack');
+    for (const s of set) assert.deepEqual([s.family, FOES[s.family].tier], ['cinder-thrall', 'rabble']);
+  }
+  const lvl = escalateSpawn({ ...PATROLS[z.sets][0][0], level: z.level }, 8, 'ash-stair').level;
+  assert.ok(lvl >= 34 && lvl <= 40, `ash-stair patrols at level ${lvl}`);
 });

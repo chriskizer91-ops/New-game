@@ -118,6 +118,8 @@ over time ticks at the start of the bearer's turn.
 | charmed (M5) | its next turn is played for it: a plain attack on a random ally (never itself); a hit from its own side wakes it | until that turn |
 | rotting (M6) | 1d6 blight per stack at the start of each turn, and every heal it gets is halved (rounded down: potions, moves and regeneration alike); a cleanse clears it | 3 turns, 3 stacks |
 | hexed (M6) | its attack and save d20s roll with disadvantage; advantage cancels it (one die), as in D&D | 2 turns |
+| unmade (M7) | the Unsmith's Unmake: the hero's relic powers are struck out of it, so its Legend Surge is only a Heroic Strike | 2 turns |
+| hearthlit (M7) | +1 to its attack rolls (the Masterpiece's Kindle, Fenwick's Poker and the Worldforge Heart) | 3 turns |
 
 ## 5. Foes: intent dice, move tables, phases
 
@@ -309,6 +311,70 @@ long boardwalk at Waking 7, after the Brand of Lanterns):
   Party level + 4, gear tier 4, and the Swift, Ironclad and Thornskinned Omens; she wears the Bogstriders, which drop
   when you win (and which she leaves behind when she goes, after a yield).
 
+**M7 tiers, the guest and the Stolen Arts** (M7 spec §4.2-§4.4; P1's rules in `rules/ai.js`, `battle.js`, `combat.js`,
+`foe.js` and `codex.js`):
+- **hollow** (the Hollow Council): a d20 that adds **+4** to the natural roll while the family's `bonusWhile` relic (the
+  gift sent to their chair) is still held; the face is `min(20, d20 + 4)` and the intent carries `natural` and `bonus`
+  ("d20 +4"). Pried loose, the gift takes the +4 with it. The die itself never steps down.
+- **unsmith** (the Unsmith): **two d20s**. He shows two intents (`slot` 0 and 1) at the end of his turn and makes both
+  moves on his next, in that order; a Stagger breaks the next of the two still coming. He never steps down.
+- Both read the Champion's rows in every table keyed by tier (XP, gold, loot, flee, spoils, Grudges, the Champion Felled
+  deed, the save DC): `FOE_TIERS[tier].as`.
+- **The guest** (`allies` on an encounter): a unit on the heroes' side (`side: 'ally'`, `guest: true`), built like a foe
+  and played by the engine (`foeTurn` plays her turn too). She takes no command and earns no XP; the heroes' heals and
+  revives reach her and the foes aim at her like any hero; she is not in the party, and the fight is lost when every hero
+  is down, whether or not she stands.
+- **Stolen Arts**: a phase with `steals` takes up the relics the Warden never claimed (Pages I-IV, the highest Codex
+  number first, at most six: `rules/codex.js stolenFor`, decided by the game, so the card, the fight and the sim agree).
+  Each is one move, "Stolen: <name>" (a weapon an attack of its aspect, armour a ward, a radiant or verdant ring or amulet
+  a heal, any other a Hex), and +1 Guard. A table row whose move is `'stolen'` plays one of them, picked by the face; a
+  Warden who left him none gets the family's `stolenFallback`.
+
+**M7 foes** (the Hearth Below; a party arrives at Waking 8 with every Brand held, at about level 36.5):
+- **The Hearth Below's Waking.** Every spawn that is not rabble climbs 4 levels per Waking (the `BELOW` spawns): +32. Rabble
+  climb the usual 2 (+16). At most three Waking Omens; the five uniques carry chosen Omens, Frenzied among them (so a Grudge
+  cannot add it), never Twinned.
+- The road: **cinder-thralls** (rabble, ember constructs, 17 HP: Cinder Fist burns; Ash in the Eyes, DEX or Frightened;
+  Reform, hurt, Regenerates) and their **Thrall-Overseer** at the Ash Stair's narrows (a veteran: Hot Chain burns; Drive
+  Them hastes every thrall); **the Unmade** (veteran blight undead, 28 HP: Empty Grip; Phantom Art, 2d6 blight, CON for
+  half; Grey Touch Rots; Husk Guards); the **Forge-Warden** at the Worldforge's bridge (veteran ember construct in plate,
+  40 HP, Guard 17: Hammer Arm; Bellows Breath, 1d8 ember to every hero, CON for half; Hold the Bridge, charging, 2d10 and
+  Staggered; Stoke: Hasted and Warded). All at level 38 at Waking 8.
+- **The Hollow Council** (tier hollow; level 38 at Waking 8; fought back to back in the Hollow Hall): each wears the gift
+  sent to their chair (a breakable piece: Nos. 67-70) and its Arts need it and sit on the d20's 15-20, so a natural 11 or
+  better reaches them while the +4 holds. Two phases each (at 1 and 0.5); the second answers their story.
+  - **Hollow Miravel** (verdant; 150 HP, Guard 19, atk 10, dmg 7; Frenzied, Thornskinned): *The Elder* (Rowan Staff;
+    Unheeded Advice, WIS or Hexed; Grey Bark wards her; **Hollow Bloom**, the Wreath's: 2d8 verdant to every hero, STR for
+    half, Rooted), *Every Tree That Fell* (Thornwall: every hero Bleeds; Every Fallen Tree, charging 3d8 and two Bleeds;
+    **Hollow Harvest**, the Wreath's: 2d6 to every hero and she Regenerates).
+  - **Hollow Qasim** (ember; 125 HP, Guard 19, atk 8, dmg 6, speed 11; Frenzied, Swift): *The Cistern Lord* (Scimitar;
+    Sand in the Eyes; What You Owe, a CHA save at DC 20 or a turn lost counting it; **Hollow Draught**, the Chalice's: he
+    heals 3d8 and is Hasted), *The Drought* (Drought: 2d8 ember to every hero, CON for half, Burning; Mirage, WIS or
+    Charmed; **Drink Them Dry**, the Chalice's: 2d6 ember to every hero, and he heals 2d8).
+  - **Hollow Brundar** (stone; 110 HP, Guard 18, atk 8, dmg 6, speed 8, mail; Frenzied, Ironclad): *The Thane* (Thane's
+    Hammer; Debts Paid Staggers; Sentinel's Stance, Guarding and Warded; **Iron Grip**, the Gauntlet's: 3d8 and Rooted),
+    *Iron* (Seal the Deeps: 2d6 to every hero, STR for half, Staggered; **Ironfall**, the Gauntlet's: charging, 4d10).
+  - **Hollow Gretch** (blight; 140 HP, Guard 19, atk 8, dmg 6; Frenzied, Swift): *The Mayor* (Gavel; The Mayor's Word,
+    every hero WIS or Frightened; Counted Twice Marks; **Too Tight**, the Chain's: 2d8 blight and Rotting), *Fear and
+    Favours* (Call In a Favour: a mire leech four levels down, at most two; Fear: every hero WIS or Frightened and WIS or
+    Hexed; **Every Favour Owed**, the Chain's: 3d8 blight to every hero, WIS for half, Frightened).
+  - Each says their own words at 0 HP (`koText`) and has Grudge titles of their own (Miravel the Unheeded, Qasim the
+    Unquenched, Brundar the Unforgiving, Gretch the Owed, and so on).
+- **The Unsmith** (tier unsmith; Harrow Ironvein; level 41 at Waking 8; 185 HP, Guard 19, atk 9, dmg 6, speed 9; Frenzied
+  and Ironclad; his moves add a die every 5 levels, not every 3, as he makes two a turn): *The Smith* (Hammer Blow, 2d10
+  and 1d8 more; Ring the Anvil, 1d8 to every hero, CON for half, Staggered; **Forge-Apron**, the Apron's: Guarding and
+  Warded; **Unmake**, the Hammer's: 2d8 and Unmade), at 66% *The Thief* (`steals`: his Stolen Arts on 7-14; Unmake; Ring
+  the Anvil; his fallback **Nothing Left** leaves him Exposed), at 33% *The Worldforge* (**Worldfire**: 3d8 ember to every
+  hero, DEX for half, Burning; **The Heart's Pull**, the Heart's: charging, a hero held "In the furnace" for two turns;
+  **Heart Flare**, the Heart's: 2d6 ember to every hero and he heals 2d8). His pieces: Nos. 72-74.
+- **Tamsin beside the party** (the Unsmith's guest, `variant: '$rival:finale'`, party level + 2, gear tier 5, wearing her
+  Bargain): her finale kit (`data/rivals.js`, the same for each starter but her Art) on the d12: the Bargain's Edge 1-3,
+  **Pry It Loose** 4-5 (a crushing blow and 4d6 grip damage to one of his pieces), Inside His Swing 6-7 (a Stagger: the
+  next of his moves comes to nothing), her Art 8-10 (the Bargain swung the way she swung the starter she sold: Black
+  Kindling burns, Black Stillness Chills, Black Weight charges and Staggers), On Your Feet 11 (a ward over the worst hurt of
+  the party), Not This Time 12 (her last stand). Her blows land at half weight (`mult: 0.5`) and add a die every 12 levels:
+  she fights like one more strong hero: a third of the damage in the sim (the heroes 61%, ticks 7%).
+
 **Omens** (stack on elites; the Waking and Grudges add them): emberblooded (hits Burn, resists
 ember), thornskinned (reflects 25% of melee damage), twinned (splits in two at half HP; never on
 Champions), frenzied (acts twice as often under 25%), ironclad (+2 Guard, grip ×1.5), swift
@@ -355,6 +421,16 @@ A holder shows a grip meter per relic: `max = relic grip × (1 + 0.1(L−1))` (�
   Tooth 28, the Barge-Chain Gauntlets 32.
 - **Hodge's toll comes loose only by grip** (M6 spec §3.2, §3.5): `FOES.hodge.keepsRelics`. Pried loose, the Unfair Toll
   is claimed as any held relic; beaten with it still in his hand, he keeps it (he never dies: he sits down on his stool).
+- **M7: the Hollow Council's gifts and the Unsmith's pieces** come off as a Champion's pieces do (not `keepsRelics`): pried
+  loose, claimed whole; still gripped when the wearer falls, shattered (Hilda reforges it, and then it counts). Base grip:
+  the Hollow Wreath 64, the Hollow Chalice 64, the Hollow Gauntlet 56 (Brundar is Ironclad, so half again as strong), the
+  Hollow Chain 64; the Unmaking Hammer 44, the Ironvein Apron 40, the Worldforge Heart 72 (the Unsmith is Ironclad). A
+  gift pried loose takes the hollow tier's +4 with it, and its Arts fall back to plain moves; so does each of the
+  Unsmith's pieces (without the Hammer, Unmake is a Hammer Blow; without the Apron, Forge-Apron; without the Heart, the
+  Heart's Pull and Heart Flare). A Legend Strike still jars 25% of a piece's grip loose whatever its size, so the autoplay
+  pries a gift by round 4-5 (the +4 is on a fifth of a member's intents) and the Unsmith's three by rounds 4.5, 8.6 and
+  14.6 of 38 (the Heart usually before his last phase). Tamsin's Pry It Loose adds 4d6 grip damage and a crushing blow. Her Bargain is only worn: nothing of hers is ever
+  loot.
 
 ## 7. Legend Surge
 
@@ -411,6 +487,23 @@ Harpoon: 4d10 piercing, 3d6 grip damage, Rooted) and **Pearl-Glow** (the Deep-Pe
 Champions' pieces are hand-named (the Lamplighter's Lantern: The Lamp-Bearer / The Window-Lamp; the Mourning Veil: The
 Widow's Step / The Last Lament; Corvus's Harpoon: The Leviathan-Hook / The Diver's Line; the Deep-Pearl: The Deep-Eye /
 The Drowned Moon), with two sockets.
+
+**M7 relics (Codex Page V: No. 000 and Nos. 67-74)**, the last and best, each carry a signature Surge: **Stir the Coals**
+(Fenwick's Poker, primal: every ally heals 3d8 and is Hearthlit), **Hollow Thorns** (the Hollow Wreath: 3d8 piercing to
+every foe, and Rooted), **The Given Cup** (the Hollow Chalice: every ally heals 3d8 and gets back 6 MP), **Let Go** (the
+Hollow Gauntlet: 2d10 crushing and 4d6 grip damage to every foe, and they Stagger), **Called In** (the Hollow Chain: every
+foe Frightened and Hexed), **Bought Dear** (Tamsin's Bargain: an auto-crit strike, and the foe is Exposed and Hexed),
+**Unmake** (the Unmaking Hammer: 5d10 crushing, 4d6 grip damage, Staggered), **Nothing Burns Through** (the Ironvein Apron:
+every ally Warded 3d8 and free of Burning) and **Heart of the World** (the Worldforge Heart, primal: every ally heals 4d8,
+Regenerates 1d8 and is Hearthlit). Every one has two sockets and hand-named branches (Fenwick's Poker: The Night Watch /
+The Banked Hearth; the Wreath: The Thorn-Crown / The Greening; the Chalice: The Raider's Cup / The Open Cistern; the
+Gauntlet: The Closed Fist / The Open Hand; the Chain: The Mayor's Word / The Loosened Chain; the Bargain: The Better Warden
+/ The Bargain Kept; the Hammer: The Unmaker / The Remaker; the Apron: The Smith's Stance / The Twin's Apron; the Heart: The
+Beating Heart / The Hearth Itself). None asks for the Branded deed, and the four won at or after the finale (the Bargain
+and the Unsmith's three) ask only for deeds the world still offers when every road fight is done (First Blood, Untouched,
+Rout, Fifty Felled, Surge, Legend Strike). Page V's reward, **the Hearthkeeper's Oath**: +1 to every save and 5% resist to
+every aspect for every hero. The Warden's **Masterpiece** (Hilda's, `rules/forge.js`) is a primal weapon whose Surge is
+**Kindle**: every hero Hearthlit (+1 to hit) and Warded for 20.
 
 **Toll Is Due** (M6 spec §4.4; `rules/battle.js`): while a standing hero wears Hodge's Unfair Toll, the strongest foe (the
 highest level, then the most max HP) makes a CHA save against DC 13 at the start of every fight, or its first turn comes two
@@ -497,6 +590,10 @@ veteran 1, relic-bearer 2, champion 3) + Waking + ½ per Omen + 1 for a Grudge.
 - **Gloomfen spoils** (M6): a won Gloomfen fight pays the same materials by tier, and the bogs' fights pay **Bog Amber**
   (`TUNING.forge.ambers`: the hags' pot 1, Mother Grue 1, Grandfather Willow 1, the Lantern Mother 2); bog amber is
   otherwise found only in chests (and sold by Nettie).
+- **The Hearth Below** (M7) pays no forge spoils (`rules/gauntlet.js SPOILS` lists the Act II regions only): its fights pay
+  XP, gold, drops and the Council's and the Unsmith's pieces. The sim's party reaches it with 12 embers, 20-23 silver,
+  3 Bog Amber and 29,000-46,000 gold (it never tempers), so the Masterpiece's price (5 embers, 5 silver, 2 Bog Amber and
+  2000 gold) is always in reach; none of its 200 parties holds the Worldforge page (the Dead Tongue's reward).
 - **Generated items:** base type by slot (newer bases likelier at higher item level), rarity,
   affixes (≤2 prefixes named for regions, ≤2 suffixes named for Domains, no duplicates within a
   family), value = roll × rarity multiplier + item level × per-level. Names: "Patched Leather
@@ -1196,3 +1293,113 @@ runs cleared 1000/1000 (stuck 0); end party level 33.3; grind fights/run 2.4
 hero attack rolls: hit 63%, graze 11%, crit 12%, miss 10%, fumble 4%
 random/worn-gear drops by rarity: worn 390, wrought 1228, tempered 2453, runed 5929, storied 5217; named relics dropped: 408
 party level entering the Gloomfen: 30.1
+
+### M7: the Hearth Below (Gate 7, M7 spec §8)
+
+`node tools/sim.mjs --seeds 200 --modes below,below-forged` (add `--jobs 3` to split the seeds, and `--gloom-cache
+<file>` to keep each seed's Gloomfen end state between tuning runs: valid only while nothing before the Hearth Below
+changes; `--iron-cache` still works under it). Each mode starts from the end state of a `gloomfen` run: the party that has
+just beaten the Blackwater Leviathan, at Waking 8 with every Brand held (party level 36.7 on average, the spec's "about
+36.5"). The tables are M7's, with every M7 foe, encounter and relic in.
+- `below`: home to the Eternal Hearth (the fourth and fifth councils: nothing is fought) and a rest there, then
+  `ACT3_PATH`: the Hollow Council **back to back** in the Hollow Hall (Miravel, Qasim, Brundar, Gretch; no rest between
+  them; a wipe wakes the party at the Eternal Hearth, `wakeAt`, and keeps who is beaten, and the retry is from there);
+  the Ash Stair (a rest at the Under-Coal, the thralls and their overseer at the narrows, the thralls' pack on the middle
+  landing and one zone patrol); the Chained Deep (the unmade at the narrows, a rest at the Chain Fire); the forge-warden
+  at the Worldforge's bridge, back through the forge door to rest at the Chain Fire, and **the Unsmith with Tamsin
+  beside the party** (the encounter's guest in her finale kit), his Stolen Arts decided by what the run's own party has
+  claimed (`stolenFor`: every sim party leaves him six, the Gloomfen side relics it never collects).
+- `below-forged`: the same party with every hero's weapon tempered to +10 and one gem each (a Bog Amber: 800 set, 752 in
+  the weapon), and once the Council is freed Hilda forges **the Warden's Masterpiece** (the finest base of the kind the
+  Warden carries, tempered to +10 too, `forgeMasterpiece` with the page and the price given), which the Warden takes up.
+- **The Hollow Council is measured together**: "the Hollow Council" is the share of runs that wipe anywhere in the four
+  (its first pass fails at its first wipe); each member's row is its own first-try wipe rate, met by a party that may be
+  hurt from the one before.
+- After an Act III wipe the sim's party re-arms against the foe that beat it, as after an Ironspire or Gloomfen wipe. A
+  Council wipe grinds on the Tidal Flats (the Ash Stair lies past the four); everything past them grinds on the Ash Stair.
+- The autoplay heals and revives only the heroes, never the guest; a player can heal Tamsin, so the finale is a little
+  harder in the sim than in hand.
+
+**M7 targets vs results (200 seeds, starters rotated):**
+
+| target | result |
+|---|---|
+| `below`: the Hollow Council back to back, 35-45% of runs wipe somewhere in the four | 37.5% (75 of 200) |
+| `below`: no Council member above 25% (first try) | Miravel 2.5%, Qasim 11%, Brundar 14%, Gretch 13.5% |
+| `below`: the Unsmith with Tamsin, first try 30-40% | 36% (party level 41.1; 38.2 rounds; Tamsin falls in 25% of first tries) |
+| `below-forged`: a forged party with the Masterpiece, the Unsmith <= 20% | 9% |
+| `below`: the road fights <= 10% each | the thralls 0%, their pack 2%, the zone patrol 0%, the unmade 2.5%, the forge-warden 5.5% |
+| zero stuck runs | 0 in every mode (M3's to M7's) |
+| every M3, M4, M4.5, M5 and M6 target unchanged | unchanged: every table from `m2` to `gloom-first-lead`, and the Gate 4, Gate 5 and Gate 6 checks, are the M6 release's number for number (the tables above stand; M3's first tries are still those the M5 section lists: m2 13% / 1% / 33%, direct Tamsin 66% win and Rotwarden 33%, leads2 4%, looper-w2 10%, first-lead 20% / 28% / 23% / 20%) |
+
+**What the tuning settled:**
+- The Hearth Below's spawns that are not rabble climb 4 levels per Waking (+32 at Waking 8; §5), and every road foe and
+  every Council member stands at level 38, the Unsmith at 41. Rabble climb the usual 2 (the thralls at 22: 38). The
+  party gains about three levels across the Council (36.7 -> 39.8) and meets the Unsmith at 41.1.
+- **Tamsin is one more strong hero, not a Champion.** At a foe's full scale (a die every 3 levels, and a foe's flat
+  damage) she dealt 56% of the damage to the Unsmith and the heroes 39%: she carried the finale. Her kit's blows land at
+  half weight (`mult: 0.5`) and add a die every 12 levels: about a third of the damage, with Pry It Loose, a Stagger that
+  breaks one of his two moves and a ward for the worst hurt of the party.
+- **The Unsmith's blows add a die every 5 levels** (a foe's every 3): he makes two moves a turn, and at a Champion's
+  scale each (with Tamsin brought down) he wiped 81.5% of first tries. His Hammer Blow set the band: 2d10 (29-30%), 2d12
+  (42%), 2d10 with a die every 4 levels (41%), 2d10 and 1d6 more (32%), 2d10 and 1d8 more (36%). 185 HP, Guard 19, atk 9,
+  dmg 6, Frenzied and Ironclad (a Grudge adds Swift, Thornskinned or Emberblooded, never Frenzied): a retry is about as
+  hard as the first try, and no run sticks.
+- **The gifts and the pieces come loose early.** A Legend Strike jars a quarter of a piece's grip loose, whatever its size,
+  so the autoplay pries each gift by round 4.4-5.5 (grips 40 -> 56-64 held them from round 3 to 4-5) and the Unsmith's
+  three by rounds 4.5, 8.6 and 14.6 of 38; the Worldforge Heart (72) usually comes loose before his last phase, which keeps
+  its Worldfire. The +4 is on 18-24% of a member's intents over a fight, and the gift's Arts are 8-10% of its moves.
+- **The Council**, from first guesses (110-130 HP) at 0.5-3% each but Brundar's 20.5% (group 24.5%): Miravel 150 HP, atk
+  10, dmg 7 (the first, fought fresh: she wears the party down for the next three); Qasim 125 HP, speed 11; Brundar 110
+  HP, Guard 18 (Ironclad makes it 20, and his gauntlet half again as hard to pry); Gretch 140 HP, Guard 19. Each carries
+  Frenzied and one more chosen Omen (Miravel Thornskinned, Qasim Swift, Brundar Ironclad, Gretch Swift).
+- The road: the thralls' Reform (Regenerating when hurt), the unmade's Grey Touch (Rotting) and the forge-warden's Bellows
+  Breath (every hero) keep the road honest at 0-6% wipes; the forge-warden's fight, straight after the Chain Fire's rest,
+  is the hardest of them.
+
+### below: from the gloomfen run's end (Waking 8), home to the Keep, then ACT3_PATH: the Hollow Council back to back, the road down, and the Unsmith with Tamsin beside the party
+
+| node | foes | lvl | win 1st | rounds | hp left | wipe 1st | yield | wipes | claimed | shattered | stuck |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| hollow-miravel | hollow-miravel | 36.7 | 98% | 19.8 | 49% | 3% |  | 6 | 200 |  |  |
+| hollow-qasim | hollow-qasim | 37.4 | 89% | 23.6 | 47% | 11% |  | 22 | 200 |  |  |
+| hollow-brundar | hollow-brundar | 38.3 | 86% | 24.0 | 48% | 14% |  | 28 | 200 |  |  |
+| hollow-gretch | hollow-gretch | 39.0 | 87% | 19.1 | 53% | 14% |  | 29 | 200 |  |  |
+| as-thralls | cinder-thrall+cinder-thrall+cinder-thrall+cinder-thrall | 39.8 | 100% | 10.7 | 70% | 0% |  | 0 |  |  |  |
+| as-patrol | cinder-thrall+cinder-thrall+cinder-thrall | 40.1 | 98% | 10.7 | 70% | 2% |  | 4 |  |  |  |
+| patrol:ash-stair | (zone patrol, 25% ran) | 40.4 | 100% | 7.9 | 76% | 0% |  | 0 |  |  |  |
+| cd-unmade | unmade+unmade+cinder-thrall | 40.5 | 98% | 10.5 | 63% | 3% |  | 5 |  |  |  |
+| wf-warden | forge-warden+cinder-thrall+cinder-thrall | 40.8 | 95% | 15.3 | 62% | 6% |  | 11 |  |  |  |
+| unsmith | unsmith | 41.1 | 64% | 38.2 | 41% | 36% |  | 110 | 600 |  |  |
+
+runs cleared 200/200 (stuck 0); end party level 42.1; grind fights/run 4.8
+hero attack rolls: hit 56%, graze 13%, crit 12%, miss 15%, fumble 4%
+random/worn-gear drops by rarity: worn 64, wrought 215, tempered 731, runed 1302, storied 2037; named relics dropped: 0
+party level entering the Hearth Below: 36.7
+the Hollow Council: 38% of runs wipe somewhere in the group (75 of 200)
+unsmith: Stolen Arts taken 6.0 on average (of 6.0 he could take; the Thief reached in 100% of first tries)
+unsmith: the guest falls in 25% of first tries
+
+### below-forged: the same party with weapons tempered to +10, one gem each, and the Warden's Masterpiece once the Council is freed
+
+| node | foes | lvl | win 1st | rounds | hp left | wipe 1st | yield | wipes | claimed | shattered | stuck |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| hollow-miravel | hollow-miravel | 36.7 | 99% | 13.6 | 52% | 1% |  | 2 | 200 |  |  |
+| hollow-qasim | hollow-qasim | 37.4 | 98% | 15.9 | 53% | 2% |  | 5 | 200 |  |  |
+| hollow-brundar | hollow-brundar | 38.2 | 100% | 13.9 | 57% | 0% |  | 0 | 200 |  |  |
+| hollow-gretch | hollow-gretch | 38.8 | 100% | 12.5 | 65% | 0% |  | 0 | 200 |  |  |
+| as-thralls | cinder-thrall+cinder-thrall+cinder-thrall+cinder-thrall | 39.5 | 100% | 7.9 | 73% | 0% |  | 0 |  |  |  |
+| as-patrol | cinder-thrall+cinder-thrall+cinder-thrall | 39.8 | 100% | 7.4 | 74% | 0% |  | 0 |  |  |  |
+| patrol:ash-stair | (zone patrol, 15% ran) | 40.0 | 100% | 5.3 | 80% | 0% |  | 0 |  |  |  |
+| cd-unmade | unmade+unmade+cinder-thrall | 40.1 | 100% | 7.4 | 67% | 0% |  | 0 |  |  |  |
+| wf-warden | forge-warden+cinder-thrall+cinder-thrall | 40.4 | 100% | 12.0 | 64% | 1% |  | 1 |  |  |  |
+| unsmith | unsmith | 40.7 | 91% | 27.3 | 48% | 9% |  | 23 | 600 |  |  |
+
+runs cleared 200/200 (stuck 0); end party level 41.5; grind fights/run 0.7
+hero attack rolls: hit 75%, graze 4%, crit 13%, miss 4%, fumble 3%
+random/worn-gear drops by rarity: worn 47, wrought 143, tempered 671, runed 1179, storied 1553; named relics dropped: 0
+party level entering the Hearth Below: 36.7
+forged: 800 heroes' weapons at +10; 800 gems set (752 in the weapon); the Warden's Masterpiece forged in 200 runs
+the Hollow Council: 3% of runs wipe somewhere in the group (6 of 200)
+unsmith: Stolen Arts taken 6.0 on average (of 6.0 he could take; the Thief reached in 100% of first tries)
+unsmith: the guest falls in 4% of first tries

@@ -22,8 +22,11 @@
 //             (Tamsin after her fall)
 //   finale    (M7) the road's end, the Unsmith: on the route it counts as a Brand does (test/road.test.mjs, spec A3)
 //   allies    (M7) [spawn]: guests on the heroes' side (spec §4.3; rules/gauntlet.js alliesFor), each resolved like a foe's
-//             spawn (level 'party' with partyDelta, variant '$rival:<kit>') but without the Waking, Grudges or Echoes
-//             only, until P1's guest reads it and adds its check
+//             spawn (level 'party' with partyDelta, variant '$rival:<kit>', `wears`) but without the Waking, Grudges or
+//             Echoes: Tamsin beside the party against the Unsmith, in her `finale` kit (data/rivals.js)
+//   wakeAt    (M7) a Hearthfire id: a wipe in this fight wakes the party at that fire instead of the last one rested at,
+//             when the fire burns (lit, or kindled): the Hollow Council's at the Eternal Hearth just above the Hollow
+//             Hall (spec A11), the Unsmith's at the Chain Fire (spec §3.5)
 // Hearthfires with `cold` start unlit (a cold-hearth lock) in data/world.js HEARTHS and on the map.
 
 import { deepFreeze } from '../core/freeze.js';
@@ -32,7 +35,8 @@ export const BACKDROPS = Object.freeze(['hearth-road', 'verdant-wood', 'thornhol
   'mossfall', 'mosswatch', 'fawnrest', 'eldergrove', 'heartroot', // M3 adds the last five
   'sun-road', 'sandspire', 'dust-trail', 'deep-shaft', 'glass-heart', 'glass-flats', 'miragewell', 'scorchgate', 'scorchgate-vaults', // M4
   'rockslide-pass', 'peaks-veil', 'highfold', 'iron-stair', 'ironhold', 'ironhold-deeps', 'harrows-forge', 'stormwatch', 'frost-road', 'frostmere', 'frostmere-below', // M5
-  'murkway', 'willowmurk', 'rotbridge', 'bogmire', 'lanternfen', 'mothers-hollow', 'long-boardwalk', 'misthollow', 'drowned-belfry', 'blackwater-reach', 'tidal-flats', 'causeway']); // M6
+  'murkway', 'willowmurk', 'rotbridge', 'bogmire', 'lanternfen', 'mothers-hollow', 'long-boardwalk', 'misthollow', 'drowned-belfry', 'blackwater-reach', 'tidal-flats', 'causeway', // M6
+  'hollow-hall', 'ash-stair', 'chained-deep', 'worldforge']); // M7
 
 const S = (family, level, o = {}) => ({ family, level, gearTier: 0, omens: [], ...o });
 // M4: a Sunscorch spawn that is not rabble climbs SUN_WAKE levels per Waking instead of 6 (M3 §4.6 wakeLevels).
@@ -61,8 +65,8 @@ const GLOOM_R = (family, level, o = {}) => S(family, level, { wakeOmenCap: GLOOM
 
 // M7: the Hearth Below is met at Waking 8 (every Brand is held; none is left to raise it). Its spawns that are not
 // rabble climb BELOW_WAKE levels per Waking and keep at most BELOW_OMENS Waking Omens, as the Gloomfen's do; BELOW_R is
-// a rabble spawn (the usual 2 levels a Waking), with the same cap. STUB from the M7 scaffold: the levels are first guesses that
-// put the Act III road at about level 38 at Waking 8; P4 tunes them with tools/sim.mjs (spec §8).
+// a rabble spawn (the usual 2 levels a Waking), with the same cap. The levels are tuned with tools/sim.mjs (spec §8;
+// docs/RULES.md §12, M7) for a party that arrives at about level 36.5.
 const BELOW_WAKE = 4;
 const BELOW_OMENS = 3;
 const BELOW = (family, level, o = {}) => S(family, level, { wakeLevels: BELOW_WAKE, wakeOmenCap: BELOW_OMENS, ...o });
@@ -720,63 +724,67 @@ export const ENCOUNTERS = deepFreeze({
     text: 'Marsh-lights on the reeds by the causeway, where the water-mark still shows.',
   },
 
-  // ---- M7: the Hearth Below (spec §2.5, §3.3; owner P4). STUB from the M7 scaffold, all of them: the spawns, modes, gates and
-  // fields are the spec's; levels are first guesses (BELOW), and every backdrop is its map's stand-in until P6 paints the
-  // map's own (spec §6.2). The Hollow Council and the Unsmith carry chosen Omens, never Twinned.
+  // ---- M7: the Hearth Below (spec §2.5, §3.3, A3, A11, A12; owner P4). Levels are Waking-0 levels: a player arrives at
+  // Waking 8 with every Brand held, so a BELOW spawn stands 32 levels higher and a rabble one 16. The Hollow Council is
+  // fought back to back (no rest between the four; a wipe wakes the party at the Eternal Hearth just above, `wakeAt`,
+  // and keeps who is beaten) and tuned together; the Unsmith is the finale, with Tamsin beside the party as a guest
+  // (`allies`) and his wipe waking the party at the Chain Fire. The uniques carry chosen Omens (`wakeOmenCap: 0`, never
+  // Twinned). Each fight and Hearthfire rests on its map's backdrop (spec §6.2).
   'under-coal': {
-    id: 'under-coal', type: 'hearthfire', name: 'The Under-Coal', place: 'The Ash Stair', backdrop: 'scorchgate', region: 'below',
+    id: 'under-coal', type: 'hearthfire', name: 'The Under-Coal', place: 'The Ash Stair', backdrop: 'ash-stair', region: 'below',
     text: 'A coal the size of a cart in a niche of the hearth\'s roots, cracked and cold. Something kept it burning once.',
   },
   'chain-fire': {
-    id: 'chain-fire', type: 'hearthfire', name: 'The Chain Fire', place: 'The Chained Deep', backdrop: 'frostmere-below', region: 'below',
+    id: 'chain-fire', type: 'hearthfire', name: 'The Chain Fire', place: 'The Chained Deep', backdrop: 'chained-deep', region: 'below',
     text: 'A fire in an iron brazier hung from a broken chain, on a platform over the Sleeper\'s hollow.',
   },
   'hollow-miravel': {
-    id: 'hollow-miravel', type: 'fight', name: 'Hollow Miravel', place: 'The Hollow Hall', backdrop: 'scorchgate-vaults', region: 'below',
-    spawns: [BELOW('hollow-miravel', 7, { omens: ['frenzied', 'swift'], wakeOmenCap: 0 })],
+    id: 'hollow-miravel', type: 'fight', name: 'Hollow Miravel', place: 'The Hollow Hall', backdrop: 'hollow-hall', region: 'below', wakeAt: 'hearthstone-keep',
+    spawns: [BELOW('hollow-miravel', 6, { omens: ['frenzied', 'thornskinned'], wakeOmenCap: 0 })],
     text: 'Elder Miravel before the first chair, the tree\'s, in the Hollow Wreath. It glows violet-black. Snap it off her.',
   },
   'hollow-qasim': {
-    id: 'hollow-qasim', type: 'fight', name: 'Hollow Qasim', place: 'The Hollow Hall', backdrop: 'scorchgate-vaults', region: 'below',
-    spawns: [BELOW('hollow-qasim', 7, { omens: ['ironclad', 'swift'], wakeOmenCap: 0 })],
+    id: 'hollow-qasim', type: 'fight', name: 'Hollow Qasim', place: 'The Hollow Hall', backdrop: 'hollow-hall', region: 'below', wakeAt: 'hearthstone-keep',
+    spawns: [BELOW('hollow-qasim', 6, { omens: ['frenzied', 'swift'], wakeOmenCap: 0 })],
     text: 'Cistern Lord Qasim before the second chair, the sun\'s, holding the Hollow Chalice. It is full of something dark. Snap it from him.',
   },
   'hollow-brundar': {
-    id: 'hollow-brundar', type: 'fight', name: 'Hollow Brundar', place: 'The Hollow Hall', backdrop: 'scorchgate-vaults', region: 'below',
-    spawns: [BELOW('hollow-brundar', 7, { omens: ['ironclad', 'thornskinned'], wakeOmenCap: 0 })],
+    id: 'hollow-brundar', type: 'fight', name: 'Hollow Brundar', place: 'The Hollow Hall', backdrop: 'hollow-hall', region: 'below', wakeAt: 'hearthstone-keep',
+    spawns: [BELOW('hollow-brundar', 6, { omens: ['frenzied', 'ironclad'], wakeOmenCap: 0 })],
     text: 'Thane Brundar before the third chair, the anvil\'s, in the Hollow Gauntlet. It has closed on his hand. Snap it off him.',
   },
   'hollow-gretch': {
-    id: 'hollow-gretch', type: 'fight', name: 'Hollow Gretch', place: 'The Hollow Hall', backdrop: 'scorchgate-vaults', region: 'below',
-    spawns: [BELOW('hollow-gretch', 7, { omens: ['frenzied', 'thornskinned'], wakeOmenCap: 0 })],
+    id: 'hollow-gretch', type: 'fight', name: 'Hollow Gretch', place: 'The Hollow Hall', backdrop: 'hollow-hall', region: 'below', wakeAt: 'hearthstone-keep',
+    spawns: [BELOW('hollow-gretch', 6, { omens: ['frenzied', 'swift'], wakeOmenCap: 0 })],
     text: 'Mayor Gretch before the last chair, the lantern\'s, wearing the Hollow Chain. It is too tight. Snap it off her.',
   },
   'as-thralls': {
-    id: 'as-thralls', type: 'fight', name: 'The Cinder-Thralls', place: 'The Ash Stair', backdrop: 'scorchgate', region: 'below',
+    id: 'as-thralls', type: 'fight', name: 'The Cinder-Thralls', place: 'The Ash Stair', backdrop: 'ash-stair', region: 'below',
     spawns: [BELOW_R('cinder-thrall', 22), BELOW_R('cinder-thrall', 22), BELOW_R('cinder-thrall', 22), BELOW('cinder-thrall', 6, { variant: 'thrall-overseer' })],
-    text: 'Cinder-thralls in the narrows between the iron roots, and an overseer among them with a whip of hot wire.',
+    text: 'Cinder-thralls in the narrows between the iron roots, and an overseer among them with a whip of hot chain.',
   },
   'as-patrol': {
-    id: 'as-patrol', type: 'fight', name: 'Thralls on the Landing', place: 'The Ash Stair', backdrop: 'scorchgate', region: 'below',
+    id: 'as-patrol', type: 'fight', name: 'Thralls on the Landing', place: 'The Ash Stair', backdrop: 'ash-stair', region: 'below',
     spawns: [BELOW_R('cinder-thrall', 22), BELOW_R('cinder-thrall', 22), BELOW_R('cinder-thrall', 22)],
     text: 'Cinder-thralls walking the landing in a ring, as if they were keeping something warm.',
   },
   'cd-unmade': {
-    id: 'cd-unmade', type: 'fight', name: 'The Unmade', place: 'The Chained Deep', backdrop: 'frostmere-below', region: 'below',
+    id: 'cd-unmade', type: 'fight', name: 'The Unmade', place: 'The Chained Deep', backdrop: 'chained-deep', region: 'below',
     spawns: [BELOW('unmade', 6), BELOW('unmade', 6), BELOW_R('cinder-thrall', 22)],
     text: 'Two of the unmade in the narrows of the walkway, still holding the shapes of what they held, and a thrall at their heels.',
   },
   'wf-warden': {
-    id: 'wf-warden', type: 'fight', name: 'The Forge-Warden', place: 'The Worldforge', backdrop: 'harrows-forge', region: 'below',
+    id: 'wf-warden', type: 'fight', name: 'The Forge-Warden', place: 'The Worldforge', backdrop: 'worldforge', region: 'below',
     spawns: [BELOW('forge-warden', 6), BELOW_R('cinder-thrall', 22), BELOW_R('cinder-thrall', 22)],
     text: 'The forge-warden at the near end of the bridge, breathing like a bellows, and two thralls feeding it.',
   },
-  // the finale (spec A3): it counts as a Brand does on the road. Tamsin fights beside the party as a guest (`allies`,
-  // spec A12, §4.3), in her `finale` kit (data/rivals.js, P4's; until it lands she fights in her rival starter's own).
+  // the finale (spec A3): it counts as a Brand does on the road. Tamsin fights beside the party as a guest (spec A12,
+  // §4.3): her `finale` kit (data/rivals.js) at party level + 2, wearing the violet-black relic she sold her starter for.
   unsmith: {
-    id: 'unsmith', type: 'fight', name: 'The Unsmith', place: 'The Worldforge', backdrop: 'harrows-forge', region: 'below',
-    finale: true, allies: [{ family: 'tamsin', variant: '$rival:finale', level: 'party', partyDelta: 2 }],
-    spawns: [BELOW('unsmith', 8, { omens: ['frenzied', 'ironclad'], wakeOmenCap: 0 })],
+    id: 'unsmith', type: 'fight', name: 'The Unsmith', place: 'The Worldforge', backdrop: 'worldforge', region: 'below',
+    finale: true, wakeAt: 'chain-fire', talk: 'unsmith', // his word before the fight (data/dialogue.js): "Face him." or "Not yet."
+    allies: [{ family: 'tamsin', variant: '$rival:finale', level: 'party', partyDelta: 2, wears: 'tamsins-bargain', name: 'Tamsin' }],
+    spawns: [BELOW('unsmith', 9, { omens: ['frenzied', 'ironclad'], wakeOmenCap: 0, name: 'Harrow Ironvein' })],
     text: 'Harrow Ironvein before the Worldforge, with his hammer, his apron and the heart of the forge. Break all three.',
   },
 });

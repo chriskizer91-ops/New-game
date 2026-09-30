@@ -787,3 +787,131 @@ test('the fen\'s statuses in the foes\' hands: a bog-hag\'s Hex (WIS) and Rot (C
     assert.ok(!statusOf(save.units.pip, st), `${family}/${move}: saved`);
   }
 });
+
+// ---- M7: the Hearth Below's Hollow Council and the Unsmith, driven with their own families (spec §3.5, §4.2, §4.4; P4)
+
+const GIFTS = { 'hollow-miravel': 'hollow-wreath', 'hollow-qasim': 'hollow-chalice', 'hollow-brundar': 'hollow-gauntlet', 'hollow-gretch': 'hollow-chain' };
+
+test('the Hollow Council: each rolls a d20 +4 while the gift is held, with its Arts coming up more often; pried loose, the gift takes the +4 and its Arts with it', async () => {
+  const { FOES } = await import('../src/data/foes.js');
+  const { rollIntent, dieBonus, resolveMoveId } = await import('../src/rules/ai.js');
+  for (const [family, gift] of Object.entries(GIFTS)) {
+    const s = sturdy(structuredClone(battleWith([{ family, level: 38, omens: ['frenzied'] }], { seed: 5 })));
+    const f = s.units.f1;
+    assert.deepEqual([f.tier, f.die, f.held.map(p => p.relic)], ['hollow', 20, [gift]], family);
+    assert.equal(dieBonus(f), 4, `${family}: +4 while the gift is held`);
+    assert.equal(s.openingEvents.find(e => e.t === 'intent' && e.foe === 'f1')?.bonus, 4, `${family}: its first intent says d20 +4`);
+    const moves = FOES[family].moves;
+    const arts = Object.keys(moves).filter(k => moves[k].requires === gift);
+    const rng = createRng(`hollow:${family}`);
+    const held = Array.from({ length: 400 }, () => rollIntent(s, f, rng));
+    assert.ok(held.every(it => it.bonus === 4 && it.face === Math.min(20, it.natural + 4) && it.face >= 5), `${family}: every face is the natural roll +4, capped at 20`);
+    const share = xs => xs.filter(it => arts.includes(it.move)).length / xs.length;
+    const withGift = share(held);
+    assert.ok(withGift > 0.4, `${family}: with the +4 the gift's Arts come up on about half the rolls (${withGift})`);
+    await pry(s, 'f1', gift);
+    assert.equal(dieBonus(f), 0, `${family}: pried loose, the +4 goes`);
+    assert.equal(f.die, 20, `${family}: the die stays a d20 (only a relic-bearer's steps down)`);
+    const loose = Array.from({ length: 400 }, () => rollIntent(s, f, rng));
+    assert.ok(loose.every(it => !('bonus' in it)) && loose.some(it => it.face < 5), `${family}: a plain d20 now`);
+    assert.equal(share(loose), 0, `${family}: the gift's Arts are gone`);
+    for (const a of arts) assert.equal(resolveMoveId(s, f, a), moves[a].fallback, `${family}: ${a} falls back`);
+  }
+});
+
+test('the Unsmith: two d20s and two moves a turn; at 66% the Thief takes up at most six relics the Warden never claimed, the highest first, with +1 Guard each; at 33% the Worldforge', async () => {
+  const { RELICS } = await import('../src/data/relics.js');
+  const { TUNING } = await import('../src/data/tuning.js');
+  const { stolenFor } = await import('../src/rules/codex.js');
+  const { dealDamage } = await import('../src/rules/combat.js');
+  const { rollIntent } = await import('../src/rules/ai.js');
+  const { B } = await import('./helpers.mjs');
+  const { game } = party();
+  const stolen = stolenFor(game);
+  assert.equal(stolen.length, TUNING.unsmith.stolen.max, 'a Warden who has claimed only a starter leaves him six to take');
+  const nos = stolen.map(id => RELICS[id].codex);
+  assert.deepEqual(nos, [...nos].sort((a, b) => b - a), 'the highest Codex number first');
+  const spawn = { family: 'unsmith', level: 40, omens: ['frenzied', 'ironclad'], stolen };
+  let s = sturdy(structuredClone(battleWith([spawn], { seed: 8 })));
+  const u0 = s.units.f1;
+  assert.deepEqual([u0.tier, u0.die, u0.dice], ['unsmith', 20, 2]);
+  assert.deepEqual(u0.held.map(p => p.relic), ['unmaking-hammer', 'ironvein-apron', 'worldforge-heart'], 'his three pieces');
+  assert.deepEqual(s.openingEvents.filter(e => e.t === 'intent' && e.foe === 'f1').map(e => e.slot), [0, 1], 'two intents shown');
+  // on his turn he makes both moves, in the order rolled
+  for (let i = 0; i < 60 && current(s) !== 'f1'; i++) s = act(s, autoCommand(s, current(s))).state;
+  const turn = foeTurn(s);
+  assert.deepEqual(turn.events.filter(e => e.t === 'move' && e.actor === 'f1').map(e => e.slot), [0, 1], 'two moves on his turn');
+  s = turn.state;
+  const u = s.units.f1;
+  const guard0 = u.guard;
+  // the Thief: at 66% he takes them up
+  const b = B(s, createRng(3));
+  dealDamage(b, s.units.warden, u, u.hp - Math.floor(u.maxHp * 0.6), { kind: 'slash' });
+  assert.equal(u.phase, 2);
+  assert.ok(b.ev.some(e => e.t === 'phase' && e.phase === 2 && /Thief/.test(e.text)));
+  const ev = b.ev.find(e => e.t === 'stolen');
+  assert.deepEqual([ev?.relics, u.stolen.ids], [stolen, stolen], 'what he took, in order');
+  assert.deepEqual(ev.names, stolen.map(id => RELICS[id].name));
+  assert.equal(u.guard, guard0 + stolen.length * TUNING.unsmith.stolen.guard, '+1 Guard for each');
+  const rng = createRng(11);
+  const seen = new Set(Array.from({ length: 600 }, () => rollIntent(s, u, rng).move));
+  for (const id of stolen) assert.ok(seen.has(`stolen:${id}`), `Stolen: ${RELICS[id].name} comes up on his table`);
+  // at 33%: the Worldforge
+  const c = B(s, createRng(4));
+  dealDamage(c, s.units.warden, u, u.hp - Math.floor(u.maxHp * 0.3), { kind: 'slash' });
+  assert.equal(u.phase, 3);
+  assert.ok(c.ev.some(e => e.t === 'phase' && e.phase === 3 && /Worldforge/.test(e.text)));
+  assert.ok(!c.ev.some(e => e.t === 'stolen'), 'he takes them up once');
+});
+
+test('the Unsmith and a full Codex: nothing is left for him to take, no Guard is added, and his fallback plays on the Thief\'s stolen faces (it leaves him Exposed)', async () => {
+  const { FOES } = await import('../src/data/foes.js');
+  const { RELICS } = await import('../src/data/relics.js');
+  const { stolenFor } = await import('../src/rules/codex.js');
+  const { dealDamage, statusOf, runEffects } = await import('../src/rules/combat.js');
+  const { rollIntent } = await import('../src/rules/ai.js');
+  const { B } = await import('./helpers.mjs');
+  const full = structuredClone(party().game);
+  for (const id of Object.keys(RELICS)) full.codex[id] = { sighted: true, claimed: true, awakened: false };
+  const stolen = stolenFor(full);
+  assert.deepEqual(stolen, [], 'a full Codex leaves him nothing');
+  const s = sturdy(structuredClone(battleWith([{ family: 'unsmith', level: 40, omens: ['frenzied', 'ironclad'], stolen }], { seed: 8 })));
+  const u = s.units.f1;
+  const guard0 = u.guard;
+  const b = B(s, createRng(3));
+  dealDamage(b, s.units.warden, u, u.hp - Math.floor(u.maxHp * 0.6), { kind: 'slash' });
+  assert.equal(u.phase, 2);
+  assert.deepEqual(u.stolen.ids, []);
+  assert.equal(u.guard, guard0, 'no Guard added');
+  assert.match(b.ev.find(e => e.t === 'stolen').text, /left none/);
+  const fb = FOES.unsmith.stolenFallback;
+  const rng = createRng(12);
+  const seen = Array.from({ length: 600 }, () => rollIntent(s, u, rng).move);
+  assert.ok(seen.includes(fb), 'the fallback plays');
+  assert.ok(!seen.some(m => m.startsWith('stolen')), 'and nothing stolen does');
+  const x = B(s, createRng(13));
+  runEffects(x, u, FOES.unsmith.moves[fb].effects, ['f1']);
+  assert.ok(statusOf(u, 'exposed'), 'reaching for nothing leaves him Exposed');
+});
+
+test('the Unsmith\'s Unmake leaves a hero Unmade for two turns (the relic\'s Surge struck out); the heart\'s pull holds a hero in the furnace\'s mouth; pried loose, each piece takes its Arts with it', async () => {
+  const { FOES } = await import('../src/data/foes.js');
+  const { statusOf } = await import('../src/rules/combat.js');
+  const { resolveMoveId } = await import('../src/rules/ai.js');
+  const moves = FOES.unsmith.moves;
+  const s = sturdy(structuredClone(battleWith([{ family: 'unsmith', level: 40 }], { seed: 5 })));
+  assert.notEqual(commands(s, 'warden').find(c => c.type === 'surge').power, 'heroic-strike', 'the Warden\'s starter relic has a Surge of its own');
+  await strike(s, 'f1', 'warden', moves.unmake.effects[0], 19, 1);
+  const um = statusOf(s.units.warden, 'unmade');
+  assert.ok(um && um.turns === 2 && um.source === 'f1', 'Unmade, for two turns');
+  assert.equal(commands(s, 'warden').find(c => c.type === 'surge').power, 'heroic-strike', 'its Surge is only a Heroic Strike now');
+  await strike(s, 'f1', 'bryn', moves['hearts-pull'].effects[0], 19, 1);
+  const held = statusOf(s.units.bryn, 'swallowed');
+  assert.deepEqual([held?.label, held?.source], ['In the furnace', 'f1'], 'held in the furnace\'s mouth');
+  for (const [piece, arts] of [['unmaking-hammer', ['unmake']], ['ironvein-apron', ['forge-apron']], ['worldforge-heart', ['hearts-pull', 'heart-flare']]]) {
+    for (const a of arts) assert.equal(resolveMoveId(s, s.units.f1, a), a, `${a} while he has the ${piece}`);
+    await pry(s, 'f1', piece);
+    for (const a of arts) assert.equal(resolveMoveId(s, s.units.f1, a), moves[a].fallback, `${a} falls back once the ${piece} is pried`);
+  }
+  assert.equal(s.units.f1.die, 20, 'the Unsmith never steps down');
+});

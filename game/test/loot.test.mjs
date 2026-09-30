@@ -310,3 +310,56 @@ test('M6: Hodge keeps his toll when knocked out still gripping it: it comes loos
   o.units.f1.hp = 0;
   assert.ok(battleLoot(o, createRng(8)).drops.some(i => i.base === 'gar-tooth' && i.shattered));
 });
+
+// ---- M7 (spec §3.4, §3.5; P4) -------------------------------------------------------------------------------------
+
+test('M7: the Hollow Council\'s gifts and the Unsmith\'s pieces come off as a Champion\'s do: pried loose, claimed whole; still gripped when the wearer falls, shattered (not kept, as Hodge keeps his toll)', async () => {
+  const { RELICS } = await import('../src/data/relics.js');
+  const { outcome } = await import('../src/rules/battle.js');
+  const GIFTS = { 'hollow-miravel': 'hollow-wreath', 'hollow-qasim': 'hollow-chalice', 'hollow-brundar': 'hollow-gauntlet', 'hollow-gretch': 'hollow-chain' };
+  for (const [family, gift] of Object.entries(GIFTS)) {
+    const pried = structuredClone(battleWith([{ family, level: 38, omens: ['frenzied'] }], { seed: 9 }));
+    pried.units.f1.held[0].held = false;
+    pried.units.f1.held[0].by = 'warden';
+    pried.units.f1.ko = true;
+    pried.units.f1.hp = 0;
+    const a = battleLoot(pried, createRng(21));
+    assert.deepEqual(a.claimed.map(i => i.base), [gift], `${family}: the gift, pried loose, is yours`);
+    assert.ok(!a.claimed[0].shattered && a.claimed[0].rarity === 'regalia', `${gift} whole, regalia`);
+    pried.ended = { result: 'victory' };
+    assert.deepEqual(outcome(pried).pried, [{ foe: 'f1', relic: gift, by: 'warden' }], 'and the outcome says who pried it');
+    const held = structuredClone(battleWith([{ family, level: 38, omens: ['frenzied'] }], { seed: 9 }));
+    held.units.f1.ko = true;
+    held.units.f1.hp = 0;
+    const b = battleLoot(held, createRng(21));
+    assert.equal(b.claimed.length, 0, `${family}: nothing pried, nothing claimed whole`);
+    assert.ok(b.drops.some(i => i.base === gift && i.shattered), `${family}: the gift still gripped comes off shattered (Hilda can reforge it)`);
+    assert.ok(b.drops.filter(i => !RELICS[i.base]).length >= 2, `${family} pays a Champion's two items`);
+  }
+  // the Unsmith's three: the two pried loose are yours, the one he still grips shatters
+  const u = structuredClone(battleWith([{ family: 'unsmith', level: 40, omens: ['frenzied', 'ironclad'] }], { seed: 4 }));
+  for (const p of u.units.f1.held) if (p.relic !== 'worldforge-heart') p.held = false;
+  u.units.f1.ko = true;
+  u.units.f1.hp = 0;
+  const l = battleLoot(u, createRng(5));
+  assert.deepEqual(l.claimed.map(i => i.base), ['unmaking-hammer', 'ironvein-apron']);
+  assert.ok(l.drops.some(i => i.base === 'worldforge-heart' && i.shattered && i.rarity === 'primal'), 'the heart he still held shatters');
+});
+
+test('M7: Tamsin fights beside the party in her Bargain, and nothing of hers is loot: the foes\' loot is theirs alone', async () => {
+  const { createBattle } = await import('../src/rules/battle.js');
+  const { party } = await import('./helpers.mjs');
+  const { game, heroes } = party();
+  const s = createBattle({
+    heroes, foes: [{ family: 'cinder-thrall', level: 30 }], seed: 3,
+    allies: [{ family: 'tamsin', variant: 'cairnmaul', kit: 'finale', level: 32, gearTier: 5, wears: 'tamsins-bargain' }],
+    ctx: { inventory: game.inventory, bag: game.bag },
+  });
+  assert.ok(s.units.a1.gear.some(g => g.relic === 'tamsins-bargain'), 'she wears it');
+  const x = structuredClone(s);
+  x.units.f1.ko = true;
+  x.units.a1.ko = true; // even fallen
+  const l = battleLoot(x, createRng(2));
+  assert.ok(![...l.claimed, ...l.drops].some(i => i.base === 'tamsins-bargain'), 'her Bargain stays hers until she gives it (tamsin-after)');
+  assert.ok(![...l.claimed, ...l.drops].some(i => i.provenance?.from === s.units.a1.name), 'nothing of hers drops');
+});
