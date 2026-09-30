@@ -163,7 +163,7 @@ export const ENCOUNTERS = deepFreeze({
   },
   'mire-shrine': {
     id: 'mire-shrine', type: 'fight', name: 'The Mire Shrine', place: 'Mossfall', backdrop: 'mossfall', region: 'verdant',
-    spawns: [S('mirelord', 4), S('boglurcher', 5), S('boglurcher', 5)],
+    spawns: [S('mirelord', 4), S('boglurcher', 4), S('boglurcher', 4)],
     text: 'Gorrow the Mire-King sits in the drowned shrine, and the Mire Pearl glows in his crown of reeds.',
   },
   'mw-stair': {
@@ -361,7 +361,7 @@ export const ENCOUNTERS = deepFreeze({
   },
   'wisp-queen': {
     id: 'wisp-queen', type: 'fight', name: 'The Wisp-Queen', place: 'Miragewell', backdrop: 'miragewell', region: 'sunscorch',
-    spawns: [SUN('mirage-wisp', 6, { variant: 'queen', relic: 'mirage-glass', name: 'The Wisp-Queen', wakeOmenCap: 2 }), SUN('mirage-wisp', 4, { wakeOmenCap: 2 }), SUN('mirage-wisp', 4, { wakeOmenCap: 2 })],
+    spawns: [SUN('mirage-wisp', 6, { variant: 'queen', relic: 'mirage-glass', name: 'The Wisp-Queen', wakeOmenCap: 2 }), SUN('mirage-wisp', 3, { wakeOmenCap: 2 }), SUN('mirage-wisp', 3, { wakeOmenCap: 2 })],
     text: 'The wisps drink the well dry each night. Their queen wears a lens of well-water that never spills.',
   },
   'sg-wights': {
@@ -651,7 +651,7 @@ export const ENCOUNTERS = deepFreeze({
   },
   'grue-hollow': {
     id: 'grue-hollow', type: 'fight', name: 'Mother Grue\'s Hollow', place: 'The Lanternfen', backdrop: 'lanternfen', region: 'gloomfen',
-    spawns: [GLOOM('bog-hag', 12, { variant: 'grue', relic: 'hag-stone', name: 'Mother Grue', omens: ['frenzied', 'swift'], wakeOmenCap: 0 }), GLOOM('bog-hag', 6)],
+    spawns: [GLOOM('bog-hag', 12, { variant: 'grue', relic: 'hag-stone', name: 'Mother Grue', omens: ['frenzied', 'swift'], wakeOmenCap: 0 }), GLOOM('bog-hag', 5)],
     text: 'A sunken hut behind a ring of hung stones, and Mother Grue at her pot with a holed stone on her finger.',
   },
   'lantern-mother': {

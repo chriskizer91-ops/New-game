@@ -362,7 +362,7 @@ long boardwalk at Waking 7, after the Brand of Lanterns):
     Hexed; **Every Favour Owed**, the Chain's: 3d8 blight to every hero, WIS for half, Frightened).
   - Each says their own words at 0 HP (`koText`) and has Grudge titles of their own (Miravel the Unheeded, Qasim the
     Unquenched, Brundar the Unforgiving, Gretch the Owed, and so on).
-- **The Unsmith** (tier unsmith; Harrow Ironvein; level 41 at Waking 8; 185 HP, Guard 19, atk 9, dmg 6, speed 9; Frenzied
+- **The Unsmith** (tier unsmith; Harrow Ironvein; level 41 at Waking 8; 190 HP, Guard 19, atk 9, dmg 6, speed 9; Frenzied
   and Ironclad; his moves add a die every 5 levels, not every 3, as he makes two a turn): *The Smith* (Hammer Blow, 2d10
   and 1d8 more; Ring the Anvil, 1d8 to every hero, CON for half, Staggered; **Forge-Apron**, the Apron's: Guarding and
   Warded; **Unmake**, the Hammer's: 2d8 and Unmade), at 66% *The Thief* (`steals`: his Stolen Arts on 7-14; Unmake; Ring
@@ -1324,18 +1324,19 @@ just beaten the Blackwater Leviathan, at Waking 8 with every Brand held (party l
 
 **M7 targets vs results (200 seeds, starters rotated):**
 
-(Re-run after the browser gate's rules fix: a pried gift now takes its +4 from the rolls already made. Every number moved
-within the seeds' noise, and every target holds.)
+(Re-run after the browser gate's and the reviews' rules fixes: a pried gift takes its +4 from the rolls already made,
+and a move a Stagger broke off stays broken off through a pry. The second helped the party most against the Unsmith,
+who is 190 HP now; see "What the tuning settled".)
 
 | target | result |
 |---|---|
-| `below`: the Hollow Council back to back, 35-45% of runs wipe somewhere in the four | 41% (82 of 200) |
-| `below`: no Council member above 25% (first try) | Miravel 6%, Qasim 13%, Brundar 15.5%, Gretch 11.5% |
-| `below`: the Unsmith with Tamsin, first try 30-40% | 31.5% (party level 41.1; 37.7 rounds; Tamsin falls in 25% of first tries) |
-| `below-forged`: a forged party with the Masterpiece, the Unsmith <= 20% | 7% |
-| `below`: the road fights <= 10% each | the thralls 0%, their pack 1%, the zone patrol 0%, the unmade 3%, the forge-warden 5.5% |
+| `below`: the Hollow Council back to back, 35-45% of runs wipe somewhere in the four | 41.5% (83 of 200) |
+| `below`: no Council member above 25% (first try) | Miravel 5.5%, Qasim 14.5%, Brundar 15%, Gretch 12% |
+| `below`: the Unsmith with Tamsin, first try 30-40% | 35.5% (party level 41.1; 38.4 rounds; Tamsin falls in 23% of first tries) |
+| `below-forged`: a forged party with the Masterpiece, the Unsmith <= 20% | 7.5% |
+| `below`: the road fights <= 10% each | the thralls 0%, their pack 1%, the zone patrol 0%, the unmade 2.5%, the forge-warden 6% |
 | zero stuck runs | 0 in every mode (M3's to M7's) |
-| every M3, M4, M4.5, M5 and M6 target unchanged | unchanged: every table from `m2` to `gloom-first-lead`, and the Gate 4, Gate 5 and Gate 6 checks, are the M6 release's number for number (the tables above stand; M3's first tries are still those the M5 section lists: m2 13% / 1% / 33%, direct Tamsin 66% win and Rotwarden 33%, leads2 4%, looper-w2 10%, first-lead 20% / 28% / 23% / 20%) |
+| every M3, M4, M4.5, M5 and M6 target | every mode re-run from scratch after the review's Stagger fix, which touches every fight with a piece since M3: every table moved a little and every target holds, three lead lairs retuned by a level (the Mire Shrine 19%, the Wisp-Queen 17.5%, Mother Grue 24.5%); the tables are in the last section, "M7: every earlier mode, re-run" |
 
 **What the tuning settled:**
 - The Hearth Below's spawns that are not rabble climb 4 levels per Waking (+32 at Waking 8; §5), and every road foe and
@@ -1347,9 +1348,12 @@ within the seeds' noise, and every target holds.)
   breaks one of his two moves and a ward for the worst hurt of the party.
 - **The Unsmith's blows add a die every 5 levels** (a foe's every 3): he makes two moves a turn, and at a Champion's
   scale each (with Tamsin brought down) he wiped 81.5% of first tries. His Hammer Blow set the band: 2d10 (29-30%), 2d12
-  (42%), 2d10 with a die every 4 levels (41%), 2d10 and 1d6 more (32%), 2d10 and 1d8 more (36%). 185 HP, Guard 19, atk 9,
-  dmg 6, Frenzied and Ironclad (a Grudge adds Swift, Thornskinned or Emberblooded, never Frenzied): a retry is about as
-  hard as the first try, and no run sticks.
+  (42%), 2d10 with a die every 4 levels (41%), 2d10 and 1d6 more (32%), 2d10 and 1d8 more (36%), all at 185 HP. Guard
+  19, atk 9, dmg 6, Frenzied and Ironclad (a Grudge adds Swift, Thornskinned or Emberblooded, never Frenzied): a retry is
+  about as hard as the first try, and no run sticks.
+- **The review's Stagger fix made him easier, so he is 190 HP.** Tamsin's Inside His Swing breaks one of his two moves
+  and her Pry It Loose pries a piece; before the fix, the pry brought the broken move back. At 185 HP he fell to 27.5%;
+  205 HP gave 45% and one run that never beat him (party level 48); 195 HP 38%; 190 HP 35.5%.
 - **The gifts and the pieces come loose early.** A Legend Strike jars a quarter of a piece's grip loose, whatever its size,
   so the autoplay pries each gift by round 4.4-5.5 (grips 40 -> 56-64 held them from round 3 to 4-5) and the Unsmith's
   three by rounds 4.5, 8.6 and 14.6 of 38; the Worldforge Heart (72) usually comes loose before his last phase, which keeps
@@ -1366,45 +1370,501 @@ within the seeds' noise, and every target holds.)
 
 | node | foes | lvl | win 1st | rounds | hp left | wipe 1st | yield | wipes | claimed | shattered | stuck |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| hollow-miravel | hollow-miravel | 36.7 | 94% | 19.9 | 48% | 6% |  | 15 | 200 |  |  |
-| hollow-qasim | hollow-qasim | 37.4 | 87% | 23.6 | 46% | 13% |  | 26 | 200 |  |  |
-| hollow-brundar | hollow-brundar | 38.3 | 85% | 23.3 | 48% | 16% |  | 31 | 200 |  |  |
-| hollow-gretch | hollow-gretch | 39.1 | 89% | 19.5 | 53% | 12% |  | 23 | 200 |  |  |
-| as-thralls | cinder-thrall+cinder-thrall+cinder-thrall+cinder-thrall | 39.9 | 100% | 11.0 | 70% | 0% |  | 0 |  |  |  |
-| as-patrol | cinder-thrall+cinder-thrall+cinder-thrall | 40.1 | 99% | 10.8 | 70% | 1% |  | 2 |  |  |  |
-| patrol:ash-stair | (zone patrol, 27% ran) | 40.4 | 100% | 8.0 | 75% | 0% |  | 0 |  |  |  |
-| cd-unmade | unmade+unmade+cinder-thrall | 40.5 | 97% | 10.4 | 63% | 3% |  | 6 |  |  |  |
-| wf-warden | forge-warden+cinder-thrall+cinder-thrall | 40.8 | 95% | 15.1 | 62% | 6% |  | 11 |  |  |  |
-| unsmith | unsmith | 41.1 | 69% | 37.7 | 41% | 32% |  | 100 | 600 |  |  |
+| hollow-miravel | hollow-miravel | 36.6 | 95% | 19.8 | 49% | 6% |  | 14 | 200 |  |  |
+| hollow-qasim | hollow-qasim | 37.4 | 86% | 23.7 | 47% | 15% |  | 29 | 200 |  |  |
+| hollow-brundar | hollow-brundar | 38.3 | 85% | 23.0 | 49% | 15% |  | 30 | 200 |  |  |
+| hollow-gretch | hollow-gretch | 39.1 | 88% | 19.4 | 53% | 12% |  | 24 | 200 |  |  |
+| as-thralls | cinder-thrall+cinder-thrall+cinder-thrall+cinder-thrall | 39.8 | 100% | 11.0 | 71% | 0% |  | 0 |  |  |  |
+| as-patrol | cinder-thrall+cinder-thrall+cinder-thrall | 40.1 | 99% | 11.0 | 71% | 1% |  | 2 |  |  |  |
+| patrol:ash-stair | (zone patrol, 27% ran) | 40.4 | 100% | 8.1 | 76% | 0% |  | 0 |  |  |  |
+| cd-unmade | unmade+unmade+cinder-thrall | 40.5 | 98% | 10.4 | 63% | 3% |  | 5 |  |  |  |
+| wf-warden | forge-warden+cinder-thrall+cinder-thrall | 40.8 | 94% | 15.1 | 62% | 6% |  | 12 |  |  |  |
+| unsmith | unsmith | 41.1 | 65% | 38.4 | 43% | 36% |  | 106 | 600 |  |  |
 
-runs cleared 200/200 (stuck 0); end party level 42.1; grind fights/run 4.7
+runs cleared 200/200 (stuck 0); end party level 42.1; grind fights/run 4.8
 hero attack rolls: hit 56%, graze 13%, crit 12%, miss 15%, fumble 4%
-random/worn-gear drops by rarity: worn 65, wrought 213, tempered 740, runed 1388, storied 1964; named relics dropped: 0
-party level entering the Hearth Below: 36.7
-the Hollow Council: 41% of runs wipe somewhere in the group (82 of 200)
+random/worn-gear drops by rarity: worn 79, wrought 224, tempered 716, runed 1406, storied 2006; named relics dropped: 0
+party level entering the Hearth Below: 36.6
+the Hollow Council: 42% of runs wipe somewhere in the group (83 of 200)
 unsmith: Stolen Arts taken 6.0 on average (of 6.0 he could take; the Thief reached in 100% of first tries)
-unsmith: the guest falls in 25% of first tries
+unsmith: the guest falls in 23% of first tries
 
 ### below-forged: the same party with weapons tempered to +10, one gem each, and the Warden's Masterpiece once the Council is freed
 
 | node | foes | lvl | win 1st | rounds | hp left | wipe 1st | yield | wipes | claimed | shattered | stuck |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| hollow-miravel | hollow-miravel | 36.7 | 99% | 13.5 | 52% | 1% |  | 3 | 200 |  |  |
-| hollow-qasim | hollow-qasim | 37.4 | 99% | 15.9 | 53% | 2% |  | 4 | 200 |  |  |
-| hollow-brundar | hollow-brundar | 38.2 | 97% | 13.9 | 58% | 4% |  | 7 | 200 |  |  |
-| hollow-gretch | hollow-gretch | 38.9 | 100% | 12.7 | 63% | 0% |  | 0 | 200 |  |  |
+| hollow-miravel | hollow-miravel | 36.6 | 99% | 13.6 | 52% | 2% |  | 4 | 200 |  |  |
+| hollow-qasim | hollow-qasim | 37.4 | 99% | 15.9 | 54% | 1% |  | 3 | 200 |  |  |
+| hollow-brundar | hollow-brundar | 38.2 | 98% | 13.9 | 57% | 3% |  | 5 | 200 |  |  |
+| hollow-gretch | hollow-gretch | 38.8 | 100% | 12.7 | 63% | 0% |  | 0 | 200 |  |  |
 | as-thralls | cinder-thrall+cinder-thrall+cinder-thrall+cinder-thrall | 39.5 | 100% | 7.9 | 73% | 0% |  | 0 |  |  |  |
-| as-patrol | cinder-thrall+cinder-thrall+cinder-thrall | 39.8 | 100% | 7.5 | 74% | 0% |  | 0 |  |  |  |
-| patrol:ash-stair | (zone patrol, 15% ran) | 40.0 | 100% | 5.3 | 79% | 0% |  | 0 |  |  |  |
-| cd-unmade | unmade+unmade+cinder-thrall | 40.2 | 100% | 7.6 | 67% | 0% |  | 0 |  |  |  |
-| wf-warden | forge-warden+cinder-thrall+cinder-thrall | 40.5 | 98% | 12.1 | 64% | 3% |  | 5 |  |  |  |
-| unsmith | unsmith | 40.7 | 93% | 27.0 | 49% | 7% |  | 16 | 600 |  |  |
+| as-patrol | cinder-thrall+cinder-thrall+cinder-thrall | 39.7 | 100% | 7.4 | 74% | 0% |  | 0 |  |  |  |
+| patrol:ash-stair | (zone patrol, 14% ran) | 40.0 | 100% | 5.2 | 80% | 0% |  | 0 |  |  |  |
+| cd-unmade | unmade+unmade+cinder-thrall | 40.1 | 100% | 7.5 | 67% | 0% |  | 0 |  |  |  |
+| wf-warden | forge-warden+cinder-thrall+cinder-thrall | 40.4 | 98% | 12.0 | 64% | 2% |  | 4 |  |  |  |
+| unsmith | unsmith | 40.7 | 93% | 27.6 | 49% | 8% |  | 19 | 600 |  |  |
 
-runs cleared 200/200 (stuck 0); end party level 41.4; grind fights/run 0.6
-hero attack rolls: hit 76%, graze 4%, crit 13%, miss 4%, fumble 3%
-random/worn-gear drops by rarity: worn 48, wrought 135, tempered 675, runed 1174, storied 1587; named relics dropped: 0
-party level entering the Hearth Below: 36.7
-forged: 800 heroes' weapons at +10; 800 gems set (752 in the weapon); the Warden's Masterpiece forged in 200 runs
-the Hollow Council: 6% of runs wipe somewhere in the group (11 of 200)
+runs cleared 200/200 (stuck 0); end party level 41.4; grind fights/run 0.7
+hero attack rolls: hit 75%, graze 4%, crit 13%, miss 4%, fumble 3%
+random/worn-gear drops by rarity: worn 53, wrought 137, tempered 663, runed 1198, storied 1563; named relics dropped: 0
+party level entering the Hearth Below: 36.6
+forged: 800 heroes' weapons at +10; 800 gems set (757 in the weapon); the Warden's Masterpiece forged in 200 runs
+the Hollow Council: 5% of runs wipe somewhere in the group (9 of 200)
 unsmith: Stolen Arts taken 6.0 on average (of 6.0 he could take; the Thief reached in 100% of first tries)
-unsmith: the guest falls in 3% of first tries
+unsmith: the guest falls in 4% of first tries
+
+### M7: every earlier mode, re-run (the review's Stagger fix)
+
+The review found that a move a Stagger had broken off came back to life when a pry rolled it again (M7-STATUS §2.3,
+A3). The fix touches every fight with a breakable piece since M3, so every mode was re-run from scratch (200 seeds,
+starters rotated): every table moved a little, and every target holds, but for three lead lairs on their bands' edges.
+Each was retuned by a level; each is a lead, so nothing after it moves:
+- the Mire Shrine's two boglurchers level 4 (were 5, a level above their mirelord): 19% (30% before; it had sat at
+  27-28%, over its band, since M3);
+- the Wisp-Queen's two wisps level 3 (were 4): 17.5% (27.5% before);
+- Mother Grue's hag level 5 (was 6): 24.5% (27% before).
+
+M3's targets (the sim prints no gate for them): the M2 road's first tries 13% / 1% / 32% (M2's table: 13 / 1 / 33);
+`direct`, Tamsin 67% party win (55-70%) and the Rotwarden 33% (30-40%); `leads2`, the Rotwarden 4% (<= 20%);
+`looper-w2`, 10% (<= 45%); `first-lead`, the Lamp Room 19%, the Mire Shrine 19%, the Gloamwing 25% and the Grove
+Circle 20% (15-25%). Zero stuck runs in every mode. These tables are the current ones; the milestones' own sections
+above keep the numbers they shipped with.
+
+#### m2: Waking 0, the M2 road, equips drops (a wipe grinds a level)
+
+| node | foes | lvl | win 1st | rounds | hp left | wipe 1st | yield | wipes | claimed | shattered | stuck |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| keep-vault | tallyman+cutpurse | 1.0 | 100% | 1.7 | 89% | 0% |  | 0 | 179 |  |  |
+| hearth-road | cutpurse+cutpurse+cutpurse | 1.0 | 100% | 2.7 | 78% | 0% |  | 0 |  |  |  |
+| waymarker-stones | thornhound+thornhound+briarling | 2.0 | 100% | 2.3 | 82% | 0% |  | 0 |  |  |  |
+| bramble-toll | bandit+cutpurse+cutpurse | 2.0 | 100% | 2.9 | 84% | 0% |  | 0 |  |  |  |
+| verdant-edge | briarling+briarling+thornhound | 3.0 | 100% | 2.2 | 82% | 0% |  | 0 |  |  |  |
+| rotstag-glade | rotstag | 3.0 | 88% | 6.5 | 49% | 13% |  | 26 | 200 |  |  |
+| tally-camp | tallyman+bandit+cutpurse | 4.1 | 100% | 4.8 | 69% | 0% |  | 0 | 197 | 3 |  |
+| snag-wallow | oldsnag | 5.0 | 99% | 5.5 | 64% | 1% |  | 2 | 200 |  |  |
+| bramble-deep | bandit+briarling+briarling | 5.1 | 100% | 3.2 | 65% | 0% |  | 0 |  |  |  |
+| briarmaw-den | briarmaw | 6.0 | 68% | 12.7 | 49% | 32% |  | 122 | 400 |  |  |
+
+runs cleared 200/200 (stuck 0); end party level 7.7; grind fights/run 2.0
+hero attack rolls: hit 65%, graze 13%, crit 7%, miss 13%, fumble 3%
+random/worn-gear drops by rarity: worn 1291, wrought 777, tempered 325, runed 267, storied 252, shattered 3; named relics dropped: 621
+
+#### direct: the critical path after the Brand (Waking 1)
+
+| node | foes | lvl | win 1st | rounds | hp left | wipe 1st | yield | wipes | claimed | shattered | stuck |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| patrol:thornway | (zone patrol, 4% ran) | 7.7 | 100% | 2.5 | 65% | 1% |  | 1 |  |  |  |
+| tamsin-duel | tamsin | 8.0 | 67% | 11.1 | 51% | 0% | 34% | 0 |  |  |  |
+| patrol:heartroot | (zone patrol) | 8.9 | 93% | 4.0 | 60% | 7% |  | 28 |  |  |  |
+| hr1-grubs | rotgrub+rotgrub+rotgrub | 9.1 | 96% | 3.6 | 64% | 5% |  | 9 |  |  |  |
+| hr1-sapwight | sapwight+rotgrub+rotgrub | 9.4 | 94% | 5.5 | 62% | 7% |  | 13 |  |  |  |
+| rotwarden-heart | rotwarden | 9.7 | 68% | 17.0 | 43% | 33% |  | 144 | 400 |  |  |
+
+runs cleared 200/200 (stuck 0); end party level 11.7; grind fights/run 3.1
+hero attack rolls: hit 67%, graze 13%, crit 8%, miss 9%, fumble 3%
+random/worn-gear drops by rarity: worn 577, wrought 636, tempered 506, runed 231, storied 247; named relics dropped: 133
+
+#### leads2: Mosswatch and Bell leads (Forewarned), then the critical path
+
+| node | foes | lvl | win 1st | rounds | hp left | wipe 1st | yield | wipes | claimed | shattered | stuck |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| patrol:mossfall | (zone patrol) | 7.7 | 100% | 3.1 | 83% | 0% |  | 0 |  |  |  |
+| mw-stair | tallyman+smuggler+smuggler | 8.0 | 100% | 4.0 | 74% | 0% |  | 0 |  |  |  |
+| mw-lantern | tallyman+tallyman+smuggler | 8.4 | 81% | 8.4 | 57% | 19% |  | 45 | 200 |  |  |
+| patrol:hindwood | (zone patrol, 1% ran) | 9.6 | 100% | 2.5 | 86% | 0% |  | 0 |  |  |  |
+| hw-glowcaps | glowcap+glowcap+glowcap | 9.7 | 100% | 2.6 | 92% | 0% |  | 0 |  |  |  |
+| gloamwing-hollow | gloamwing | 10.3 | 95% | 14.2 | 64% | 6% |  | 12 | 200 |  |  |
+| patrol:thornway | (zone patrol, 100% ran) | 10.7 | 100% | - | NaN% | 0% |  | 0 |  |  |  |
+| tamsin-duel | tamsin | 10.7 | 78% | 12.2 | 59% | 0% | 22% | 0 |  |  |  |
+| patrol:heartroot | (zone patrol, 23% ran) | 11.4 | 98% | 3.4 | 72% | 2% |  | 7 |  |  |  |
+| hr1-grubs | rotgrub+rotgrub+rotgrub | 11.5 | 100% | 3.3 | 74% | 0% |  | 0 |  |  |  |
+| hr1-sapwight | sapwight+rotgrub+rotgrub | 11.6 | 100% | 4.5 | 76% | 1% |  | 1 |  |  |  |
+| rotwarden-heart | rotwarden | 12.1 | 97% | 14.3 | 64% | 4% |  | 9 | 400 |  |  |
+
+runs cleared 200/200 (stuck 0); end party level 13.1; grind fights/run 0.8
+hero attack rolls: hit 68%, graze 12%, crit 8%, miss 9%, fumble 3%
+random/worn-gear drops by rarity: worn 602, wrought 1200, tempered 846, runed 326, storied 277; named relics dropped: 156
+
+#### leads-all: every lead, then the critical path
+
+| node | foes | lvl | win 1st | rounds | hp left | wipe 1st | yield | wipes | claimed | shattered | stuck |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| patrol:mossfall | (zone patrol, 1% ran) | 8.6 | 100% | 3.0 | 85% | 0% |  | 0 |  |  |  |
+| mw-stair | tallyman+smuggler+smuggler | 8.0 | 100% | 4.0 | 74% | 0% |  | 0 |  |  |  |
+| mw-lantern | tallyman+tallyman+smuggler | 8.4 | 81% | 8.4 | 57% | 19% |  | 45 | 200 |  |  |
+| mf-smugglers | smuggler+smuggler+smuggler | 9.7 | 100% | 2.5 | 89% | 0% |  | 0 |  |  |  |
+| mire-shrine | mirelord+boglurcher+boglurcher | 10.1 | 95% | 8.4 | 53% | 5% |  | 13 | 200 |  |  |
+| patrol:hindwood | (zone patrol, 5% ran) | 10.7 | 100% | 2.5 | 88% | 0% |  | 0 |  |  |  |
+| hw-glowcaps | glowcap+glowcap+glowcap | 10.7 | 100% | 2.6 | 94% | 0% |  | 0 |  |  |  |
+| gloamwing-hollow | gloamwing | 11.0 | 100% | 13.5 | 66% | 1% |  | 1 | 200 |  |  |
+| patrol:thornway | (zone patrol, 100% ran) | 11.6 | 100% | - | NaN% | 0% |  | 0 |  |  |  |
+| grove-circle | feral-druid+feral-druid+briarling | 11.6 | 100% | 11.5 | 81% | 0% |  | 0 | 200 |  |  |
+| tamsin-duel | tamsin | 12.3 | 85% | 12.5 | 66% | 0% | 15% | 0 |  |  |  |
+| hollowed-patrol | hollowed-ranger+hollowed-ranger+hollowed-ranger | 12.6 | 89% | 11.7 | 71% | 11% |  | 23 | 200 |  |  |
+| hr1-tappers | tallyman+smuggler+smuggler | 13.4 | 100% | 6.7 | 82% | 0% |  | 0 | 200 |  |  |
+| hr1-grubs | rotgrub+rotgrub+rotgrub | 14.1 | 100% | 2.4 | 93% | 0% |  | 0 |  |  |  |
+| hr1-sapwight | sapwight+rotgrub+rotgrub | 14.1 | 100% | 3.7 | 90% | 0% |  | 0 |  |  |  |
+| rotwarden-heart | rotwarden | 14.3 | 100% | 11.8 | 78% | 0% |  | 0 | 400 |  |  |
+
+runs cleared 200/200 (stuck 0); end party level 15.1; grind fights/run 1.2
+hero attack rolls: hit 69%, graze 11%, crit 8%, miss 9%, fumble 3%
+random/worn-gear drops by rarity: worn 677, wrought 2296, tempered 1330, runed 562, storied 409; named relics dropped: 170
+
+#### looper-w2: the migrated Waking-2 M2 save down the critical path
+
+| node | foes | lvl | win 1st | rounds | hp left | wipe 1st | yield | wipes | claimed | shattered | stuck |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| patrol:thornway | (zone patrol, 100% ran) | 14.0 | 100% | - | NaN% | 0% |  | 0 |  |  |  |
+| tamsin-duel | tamsin | 14.0 | 96% | 13.0 | 57% | 0% | 5% | 0 |  |  |  |
+| patrol:heartroot | (zone patrol, 14% ran) | 14.2 | 100% | 3.7 | 71% | 0% |  | 0 |  |  |  |
+| hr1-grubs | rotgrub+rotgrub+rotgrub | 14.0 | 100% | 3.2 | 72% | 0% |  | 0 |  |  |  |
+| hr1-sapwight | sapwight+rotgrub+rotgrub | 15.0 | 100% | 5.4 | 72% | 0% |  | 0 |  |  |  |
+| rotwarden-heart | rotwarden | 15.0 | 91% | 19.4 | 45% | 10% |  | 32 | 400 |  |  |
+
+runs cleared 200/200 (stuck 0); end party level 16.2; grind fights/run 0.4
+hero attack rolls: hit 64%, graze 12%, crit 11%, miss 10%, fumble 3%
+random/worn-gear drops by rarity: worn 215, wrought 264, tempered 408, runed 409, storied 221; named relics dropped: 191
+
+#### first-lead: each lead taken first at Waking 1
+
+| node | foes | lvl | win 1st | rounds | hp left | wipe 1st | yield | wipes | claimed | shattered | stuck |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| patrol:mossfall | (zone patrol) | 7.7 | 100% | 3.1 | 83% | 0% |  | 0 |  |  |  |
+| mw-stair | tallyman+smuggler+smuggler | 8.0 | 100% | 4.0 | 74% | 0% |  | 0 |  |  |  |
+| mw-lantern | tallyman+tallyman+smuggler | 8.4 | 81% | 8.4 | 57% | 19% |  | 45 | 200 |  |  |
+| mf-smugglers | smuggler+smuggler+smuggler | 8.0 | 100% | 2.8 | 84% | 0% |  | 0 |  |  |  |
+| mire-shrine | mirelord+boglurcher+boglurcher | 8.4 | 81% | 8.5 | 48% | 19% |  | 66 | 200 |  |  |
+| patrol:hindwood | (zone patrol) | 7.7 | 100% | 2.8 | 80% | 0% |  | 0 |  |  |  |
+| hw-glowcaps | glowcap+glowcap+glowcap | 8.3 | 100% | 2.7 | 89% | 0% |  | 0 |  |  |  |
+| gloamwing-hollow | gloamwing | 8.4 | 75% | 15.4 | 58% | 25% |  | 85 | 200 |  |  |
+| patrol:thornway | (zone patrol, 4% ran) | 7.7 | 100% | 2.5 | 65% | 1% |  | 1 |  |  |  |
+| grove-circle | feral-druid+feral-druid+briarling | 8.0 | 80% | 14.4 | 66% | 20% |  | 52 | 200 |  |  |
+
+runs cleared 800/800 (stuck 0); end party level 9.5; grind fights/run 0.9
+hero attack rolls: hit 63%, graze 13%, crit 7%, miss 13%, fumble 4%
+random/worn-gear drops by rarity: worn 704, wrought 1952, tempered 885, runed 263, storied 288; named relics dropped: 0
+
+#### sunscorch: from the direct run's end (Waking 2), home to the Keep, then SUN_PATH
+
+| node | foes | lvl | win 1st | rounds | hp left | wipe 1st | yield | wipes | claimed | shattered | stuck |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| patrol:sun-road | (zone patrol) | 11.7 | 100% | 4.0 | 77% | 1% |  | 1 |  |  |  |
+| sr-toll | dune-raider+dune-raider+dune-raider | 11.9 | 97% | 9.1 | 69% | 3% |  | 7 | 200 |  |  |
+| patrol:dust-trail | (zone patrol) | 12.8 | 100% | 3.5 | 80% | 0% |  | 0 |  |  |  |
+| dt-scorpions | glass-scorpion+glass-scorpion | 12.9 | 100% | 5.4 | 78% | 0% |  | 0 |  |  |  |
+| patrol:deep-shaft | (zone patrol) | 13.4 | 100% | 4.2 | 81% | 0% |  | 0 |  |  |  |
+| ds-crew | tallyman+smuggler+smuggler | 13.6 | 99% | 10.6 | 67% | 1% |  | 3 | 200 |  |  |
+| kharzul-heart | kharzul | 14.5 | 68% | 20.3 | 53% | 33% |  | 157 | 400 |  |  |
+| patrol:deep-shaft@back | (zone patrol, 2% ran) | 16.3 | 99% | 5.5 | 65% | 2% |  | 3 |  |  |  |
+| patrol:dust-trail@back | (zone patrol, 7% ran) | 16.5 | 98% | 4.6 | 64% | 2% |  | 4 |  |  |  |
+| patrol:glass-flats | (zone patrol, 3% ran) | 16.6 | 100% | 4.3 | 74% | 0% |  | 0 |  |  |  |
+| gf-raiders | dune-raider+dune-raider+dune-raider | 16.8 | 94% | 6.9 | 59% | 7% |  | 15 |  |  |  |
+| patrol:scorchgate | (zone patrol, 1% ran) | 17.5 | 99% | 5.4 | 69% | 1% |  | 2 |  |  |  |
+| sg-captain | ash-wight+ash-wight+ash-wight | 17.6 | 96% | 9.9 | 69% | 4% |  | 8 | 200 |  |  |
+| tamsin-scorchgate | tamsin | 18.4 | 68% | 13.5 | 58% | 0% | 32% | 0 |  |  |  |
+| vault-guard | ash-wight+ash-wight+ash-wight | 18.9 | 90% | 7.8 | 66% | 11% |  | 21 |  |  |  |
+| ashen-warden | ashen-warden | 19.3 | 70% | 19.5 | 46% | 31% |  | 133 | 400 |  |  |
+
+runs cleared 200/200 (stuck 0); end party level 21.1; grind fights/run 7.7
+hero attack rolls: hit 61%, graze 13%, crit 10%, miss 13%, fumble 3%
+random/worn-gear drops by rarity: worn 343, wrought 594, tempered 2080, runed 3057, storied 1472; named relics dropped: 0
+party level entering the Sunscorch: 11.7
+
+#### sunscorch-forged: the same party with weapons tempered to +4 and one gem each
+
+| node | foes | lvl | win 1st | rounds | hp left | wipe 1st | yield | wipes | claimed | shattered | stuck |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| patrol:sun-road | (zone patrol) | 11.7 | 100% | 3.0 | 82% | 0% |  | 0 |  |  |  |
+| sr-toll | dune-raider+dune-raider+dune-raider | 11.9 | 100% | 7.3 | 68% | 0% |  | 0 | 200 |  |  |
+| patrol:dust-trail | (zone patrol) | 12.8 | 100% | 2.7 | 83% | 0% |  | 0 |  |  |  |
+| dt-scorpions | glass-scorpion+glass-scorpion | 12.9 | 100% | 4.5 | 80% | 0% |  | 0 |  |  |  |
+| patrol:deep-shaft | (zone patrol) | 13.4 | 100% | 3.3 | 84% | 0% |  | 0 |  |  |  |
+| ds-crew | tallyman+smuggler+smuggler | 13.6 | 100% | 8.8 | 68% | 0% |  | 0 | 200 |  |  |
+| kharzul-heart | kharzul | 14.4 | 86% | 16.5 | 53% | 15% |  | 64 | 400 |  |  |
+| patrol:deep-shaft@back | (zone patrol, 1% ran) | 15.8 | 99% | 4.4 | 64% | 1% |  | 2 |  |  |  |
+| patrol:dust-trail@back | (zone patrol, 2% ran) | 16.0 | 98% | 3.8 | 64% | 3% |  | 5 |  |  |  |
+| patrol:glass-flats | (zone patrol, 1% ran) | 16.2 | 100% | 3.6 | 76% | 0% |  | 0 |  |  |  |
+| gf-raiders | dune-raider+dune-raider+dune-raider | 16.5 | 99% | 5.1 | 65% | 1% |  | 2 |  |  |  |
+| patrol:scorchgate | (zone patrol, 1% ran) | 17.0 | 100% | 4.6 | 72% | 0% |  | 0 |  |  |  |
+| sg-captain | ash-wight+ash-wight+ash-wight | 17.2 | 100% | 9.1 | 69% | 0% |  | 0 | 200 |  |  |
+| tamsin-scorchgate | tamsin | 18.0 | 92% | 11.8 | 59% | 0% | 9% | 0 |  |  |  |
+| vault-guard | ash-wight+ash-wight+ash-wight | 18.6 | 94% | 6.3 | 68% | 6% |  | 12 |  |  |  |
+| ashen-warden | ashen-warden | 18.9 | 94% | 16.7 | 54% | 6% |  | 22 | 400 |  |  |
+
+runs cleared 200/200 (stuck 0); end party level 20.2; grind fights/run 2.3
+hero attack rolls: hit 75%, graze 9%, crit 8%, miss 5%, fumble 3%
+random/worn-gear drops by rarity: worn 246, wrought 523, tempered 1646, runed 2589, storied 1233; named relics dropped: 0
+party level entering the Sunscorch: 11.7
+forged: 800 heroes' weapons at +4; 783 gems set (480 in the weapon)
+
+#### sun-first-lead: each Sunscorch lead's lair taken first: the Dust Trail's right after Sandspire (Waking 2), the Glass Flats' once Kharzul opens them (Waking 3)
+
+| node | foes | lvl | win 1st | rounds | hp left | wipe 1st | yield | wipes | claimed | shattered | stuck |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| patrol:sun-road | (zone patrol) | 11.7 | 100% | 4.1 | 78% | 0% |  | 2 |  |  |  |
+| sr-toll | dune-raider+dune-raider+dune-raider | 11.9 | 98% | 9.1 | 69% | 3% |  | 27 | 1000 |  |  |
+| patrol:dust-trail | (zone patrol) | 12.8 | 100% | 3.5 | 78% | 0% |  | 0 |  |  |  |
+| dt-scorpions | glass-scorpion+glass-scorpion | 13.0 | 100% | 5.4 | 77% | 0% |  | 2 |  |  |  |
+| patrol:deep-shaft | (zone patrol) | 13.4 | 100% | 4.2 | 80% | 0% |  | 0 |  |  |  |
+| ds-crew | tallyman+smuggler+smuggler | 13.6 | 98% | 10.7 | 66% | 2% |  | 12 | 600 |  |  |
+| kharzul-heart | kharzul | 14.5 | 66% | 20.2 | 49% | 34% |  | 452 | 1200 |  |  |
+| patrol:deep-shaft@back | (zone patrol, 1% ran) | 16.3 | 98% | 5.6 | 63% | 2% |  | 14 |  |  |  |
+| patrol:dust-trail@back | (zone patrol, 6% ran) | 16.5 | 96% | 4.6 | 63% | 4% |  | 24 |  |  |  |
+| patrol:glass-flats | (zone patrol, 2% ran) | 16.6 | 100% | 4.3 | 72% | 0% |  | 0 |  |  |  |
+| gf-caravan | tallyman+smuggler+smuggler | 16.7 | 82% | 15.7 | 60% | 19% |  | 44 | 200 |  |  |
+| wyrm-lair | sand-wyrm | 12.9 | 79% | 14.8 | 56% | 21% |  | 128 | 200 |  |  |
+| gnash-camp | dune-raider+dune-raider+dune-raider | 16.8 | 81% | 11.9 | 63% | 20% |  | 46 | 200 |  |  |
+| wisp-queen | mirage-wisp+mirage-wisp+mirage-wisp | 16.8 | 83% | 9.5 | 61% | 18% |  | 42 | 200 |  |  |
+| dt-aqueduct | glass-scorpion+glass-scorpion+glass-scorpion | 12.9 | 83% | 8.9 | 53% | 18% |  | 70 |  |  |  |
+
+runs cleared 1000/1000 (stuck 0); end party level 16.3; grind fights/run 3.6
+hero attack rolls: hit 62%, graze 13%, crit 8%, miss 13%, fumble 4%
+random/worn-gear drops by rarity: worn 1167, wrought 2177, tempered 7071, runed 4897, storied 2304; named relics dropped: 0
+party level entering the Sunscorch: 11.7
+
+#### Gate 4 targets (M4 spec §8)
+
+| mode | node | target | result |  |
+|---|---|---|---|---|
+| sunscorch | kharzul-heart | wipe 1st 30-40% | 32.5% | ok |
+| sunscorch | ashen-warden | wipe 1st 30-40% | 30.5% | ok |
+| sunscorch | tamsin-scorchgate | win 1st 55-70% | 68% | ok |
+| sunscorch-forged | kharzul-heart | wipe 1st 0-20% | 14.5% | ok |
+| sunscorch-forged | ashen-warden | wipe 1st 0-20% | 6% | ok |
+| sun-first-lead | gf-caravan | wipe 1st 15-25% | 18.5% | ok |
+| sun-first-lead | wyrm-lair | wipe 1st 15-25% | 21% | ok |
+| sun-first-lead | gnash-camp | wipe 1st 15-25% | 19.5% | ok |
+| sun-first-lead | wisp-queen | wipe 1st 15-25% | 17.5% | ok |
+| sun-first-lead | dt-aqueduct | wipe 1st 15-25% | 17.5% | ok |
+| sunscorch | (every run) | stuck 0 | 0 | ok |
+| sunscorch-forged | (every run) | stuck 0 | 0 | ok |
+| sun-first-lead | (every run) | stuck 0 | 0 | ok |
+
+#### ironspire: from the sunscorch run's end (Waking 4), home to the Keep, then IRON_PATH
+
+| node | foes | lvl | win 1st | rounds | hp left | wipe 1st | yield | wipes | claimed | shattered | stuck |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| er-wolves | rime-wolf+rime-wolf+rime-wolf | 21.1 | 100% | 3.1 | 78% | 0% |  | 0 |  |  |  |
+| er-toll | brigand+brigand+brigand | 21.4 | 100% | 5.2 | 69% | 0% |  | 0 |  |  |  |
+| er-camp | brigand+brigand+brigand | 21.5 | 99% | 6.7 | 66% | 2% |  | 3 |  |  |  |
+| patrol:rockslide-pass | (zone patrol, 7% ran) | 21.8 | 99% | 6.2 | 63% | 1% |  | 2 |  |  |  |
+| rp-brigands | brigand+brigand+brigand | 22.0 | 97% | 8.1 | 67% | 4% |  | 8 | 200 |  |  |
+| rp-rocklings | rockling+rockling+rockling+rockling | 22.4 | 99% | 4.5 | 67% | 1% |  | 2 |  |  |  |
+| patrol:iron-stair | (zone patrol, 7% ran) | 22.7 | 99% | 5.7 | 73% | 1% |  | 2 |  |  |  |
+| is-sentinels | iron-sentinel+iron-sentinel+iron-sentinel | 22.9 | 98% | 14.2 | 69% | 3% |  | 5 | 200 |  |  |
+| tamsin-ironhold | tamsin | 23.7 | 61% | 19.4 | 53% | 0% | 40% | 0 |  |  |  |
+| patrol:deeps | (zone patrol, 6% ran) | 24.1 | 90% | 4.3 | 52% | 11% |  | 21 |  |  |  |
+| id-forgeborn | forgeborn+forgeborn+forgeborn | 24.4 | 96% | 10.9 | 68% | 5% |  | 9 |  |  |  |
+| id-bellows | forgeborn+forgeborn+forgeborn | 24.8 | 91% | 12.9 | 55% | 10% |  | 19 |  |  |  |
+| mother-anvil | mother-anvil | 25.4 | 69% | 29.6 | 45% | 32% |  | 87 | 400 |  |  |
+| patrol:deeps@back | (zone patrol, 13% ran) | 26.7 | 99% | 4.6 | 61% | 1% |  | 2 |  |  |  |
+| patrol:frost-road | (zone patrol, 7% ran) | 26.9 | 100% | 4.4 | 69% | 1% |  | 1 |  |  |  |
+| fr-cutters | tallyman+smuggler+smuggler | 27.1 | 93% | 11.5 | 69% | 7% |  | 17 | 200 |  |  |
+| patrol:frostmere | (zone patrol, 11% ran) | 27.5 | 100% | 3.6 | 78% | 0% |  | 0 |  |  |  |
+| fm-wraiths | rime-wraith+rime-wraith+rime-wraith | 27.7 | 98% | 6.4 | 70% | 3% |  | 5 |  |  |  |
+| fb-choir | rime-wraith+rime-wraith+rime-wraith | 28.2 | 95% | 5.1 | 56% | 6% |  | 11 |  |  |  |
+| patrol:frostmere@back | (zone patrol, 35% ran) | 28.6 | 99% | 4.0 | 65% | 2% |  | 3 |  |  |  |
+| patrol:frostmere@again | (zone patrol, 36% ran) | 28.8 | 100% | 3.8 | 80% | 0% |  | 0 |  |  |  |
+| rime-abbot | rime-abbot | 29.0 | 67% | 19.0 | 47% | 33% |  | 114 | 400 |  |  |
+
+runs cleared 200/200 (stuck 0); end party level 30.0; grind fights/run 5.4
+hero attack rolls: hit 60%, graze 13%, crit 11%, miss 12%, fumble 4%
+random/worn-gear drops by rarity: worn 366, wrought 900, tempered 1485, runed 2888, storied 2234; named relics dropped: 121
+party level entering the Ironspire: 21.1
+
+#### ironspire-forged: the same party with weapons tempered to +6 and one gem each
+
+| node | foes | lvl | win 1st | rounds | hp left | wipe 1st | yield | wipes | claimed | shattered | stuck |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| er-wolves | rime-wolf+rime-wolf+rime-wolf | 21.1 | 100% | 2.3 | 82% | 0% |  | 0 |  |  |  |
+| er-toll | brigand+brigand+brigand | 21.4 | 100% | 4.1 | 73% | 0% |  | 0 |  |  |  |
+| er-camp | brigand+brigand+brigand | 21.5 | 100% | 5.3 | 69% | 0% |  | 0 |  |  |  |
+| patrol:rockslide-pass | (zone patrol, 7% ran) | 21.7 | 100% | 4.4 | 67% | 0% |  | 0 |  |  |  |
+| rp-brigands | brigand+brigand+brigand | 22.1 | 100% | 6.1 | 69% | 1% |  | 1 | 200 |  |  |
+| rp-rocklings | rockling+rockling+rockling+rockling | 22.5 | 100% | 3.9 | 70% | 1% |  | 1 |  |  |  |
+| patrol:iron-stair | (zone patrol, 7% ran) | 22.7 | 100% | 4.2 | 78% | 0% |  | 0 |  |  |  |
+| is-sentinels | iron-sentinel+iron-sentinel+iron-sentinel | 23.0 | 100% | 10.9 | 73% | 0% |  | 0 | 200 |  |  |
+| tamsin-ironhold | tamsin | 23.7 | 77% | 14.9 | 55% | 0% | 24% | 0 |  |  |  |
+| patrol:deeps | (zone patrol, 7% ran) | 24.1 | 97% | 3.4 | 57% | 4% |  | 7 |  |  |  |
+| id-forgeborn | forgeborn+forgeborn+forgeborn | 24.4 | 100% | 7.7 | 69% | 1% |  | 1 |  |  |  |
+| id-bellows | forgeborn+forgeborn+forgeborn | 24.9 | 99% | 9.6 | 60% | 1% |  | 2 |  |  |  |
+| mother-anvil | mother-anvil | 25.4 | 94% | 21.1 | 49% | 7% |  | 17 | 400 |  |  |
+| patrol:deeps@back | (zone patrol, 9% ran) | 26.4 | 100% | 3.5 | 61% | 0% |  | 0 |  |  |  |
+| patrol:frost-road | (zone patrol, 3% ran) | 26.5 | 100% | 3.3 | 72% | 0% |  | 0 |  |  |  |
+| fr-cutters | tallyman+smuggler+smuggler | 26.8 | 99% | 8.5 | 67% | 1% |  | 2 | 200 |  |  |
+| patrol:frostmere | (zone patrol, 5% ran) | 27.2 | 100% | 3.1 | 81% | 0% |  | 0 |  |  |  |
+| fm-wraiths | rime-wraith+rime-wraith+rime-wraith | 27.3 | 100% | 5.1 | 72% | 1% |  | 1 |  |  |  |
+| fb-choir | rime-wraith+rime-wraith+rime-wraith | 27.9 | 98% | 4.0 | 64% | 2% |  | 4 |  |  |  |
+| patrol:frostmere@back | (zone patrol, 23% ran) | 28.3 | 100% | 3.1 | 69% | 0% |  | 0 |  |  |  |
+| patrol:frostmere@again | (zone patrol, 26% ran) | 28.4 | 100% | 3.0 | 82% | 0% |  | 0 |  |  |  |
+| rime-abbot | rime-abbot | 28.6 | 85% | 15.1 | 52% | 15% |  | 53 | 400 |  |  |
+
+runs cleared 200/200 (stuck 0); end party level 29.5; grind fights/run 1.6
+hero attack rolls: hit 77%, graze 5%, crit 11%, miss 3%, fumble 4%
+random/worn-gear drops by rarity: worn 299, wrought 791, tempered 1474, runed 2813, storied 1974; named relics dropped: 153
+party level entering the Ironspire: 21.1
+forged: 800 heroes' weapons at +6; 799 gems set (585 in the weapon)
+
+#### iron-first-lead: each Ironspire lead's lair taken first: the Roc's and Old Horn's from Peak's Veil and the Journeyman's from the Deeps (Waking 4), the Drowned Abbess's once the Brand of Iron opens the Frost Road (Waking 5)
+
+| node | foes | lvl | win 1st | rounds | hp left | wipe 1st | yield | wipes | claimed | shattered | stuck |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| er-wolves | rime-wolf+rime-wolf+rime-wolf | 21.1 | 100% | 3.1 | 78% | 0% |  | 0 |  |  |  |
+| er-toll | brigand+brigand+brigand | 21.4 | 100% | 5.2 | 69% | 0% |  | 0 |  |  |  |
+| er-camp | brigand+brigand+brigand | 21.5 | 99% | 6.7 | 66% | 2% |  | 14 |  |  |  |
+| patrol:rockslide-pass | (zone patrol, 6% ran) | 21.8 | 98% | 6.2 | 62% | 2% |  | 18 |  |  |  |
+| rp-brigands | brigand+brigand+brigand | 22.0 | 98% | 8.0 | 66% | 2% |  | 18 | 800 |  |  |
+| rp-rocklings | rockling+rockling+rockling+rockling | 22.4 | 99% | 4.6 | 66% | 1% |  | 11 |  |  |  |
+| patrol:highfold | (zone patrol, 6% ran) | 22.7 | 100% | 3.5 | 80% | 0% |  | 0 |  |  |  |
+| hf-trolls | peak-troll+peak-troll | 22.9 | 100% | 6.2 | 75% | 0% |  | 0 |  |  |  |
+| roc-eyrie | thunder-roc | 23.3 | 81% | 14.7 | 39% | 20% |  | 59 | 200 |  |  |
+| patrol:iron-stair | (zone patrol, 7% ran) | 22.7 | 100% | 5.5 | 74% | 0% |  | 2 |  |  |  |
+| troll-cave | peak-troll+peak-troll | 22.9 | 80% | 16.2 | 57% | 20% |  | 41 | 200 |  |  |
+| is-sentinels | iron-sentinel+iron-sentinel+iron-sentinel | 22.9 | 97% | 13.8 | 69% | 3% |  | 13 | 400 |  |  |
+| tamsin-ironhold | tamsin | 23.7 | 61% | 19.1 | 54% | 0% | 40% | 0 |  |  |  |
+| patrol:deeps | (zone patrol, 8% ran) | 24.1 | 87% | 4.4 | 53% | 14% |  | 54 |  |  |  |
+| id-forgeborn | forgeborn+forgeborn+forgeborn | 24.4 | 97% | 11.0 | 69% | 3% |  | 12 |  |  |  |
+| id-smith | forgeborn+forgeborn | 24.8 | 78% | 24.0 | 61% | 22% |  | 51 | 200 |  |  |
+| id-bellows | forgeborn+forgeborn+forgeborn | 24.8 | 92% | 12.7 | 51% | 9% |  | 17 |  |  |  |
+| mother-anvil | mother-anvil | 25.4 | 65% | 29.3 | 47% | 35% |  | 103 | 400 |  |  |
+| patrol:deeps@back | (zone patrol, 15% ran) | 26.7 | 100% | 4.5 | 60% | 0% |  | 0 |  |  |  |
+| patrol:frost-road | (zone patrol, 5% ran) | 26.9 | 99% | 4.3 | 67% | 1% |  | 2 |  |  |  |
+| fr-cutters | tallyman+smuggler+smuggler | 27.1 | 91% | 11.7 | 66% | 10% |  | 19 | 200 |  |  |
+| patrol:frostmere | (zone patrol, 11% ran) | 27.5 | 100% | 3.8 | 78% | 0% |  | 0 |  |  |  |
+| fm-shrine | rime-wraith+rime-wraith+rime-wraith | 27.7 | 78% | 10.2 | 62% | 22% |  | 51 | 200 |  |  |
+
+runs cleared 800/800 (stuck 0); end party level 25.4; grind fights/run 1.9
+hero attack rolls: hit 62%, graze 12%, crit 11%, miss 11%, fumble 4%
+random/worn-gear drops by rarity: worn 664, wrought 1777, tempered 2831, runed 6410, storied 3641; named relics dropped: 242
+party level entering the Ironspire: 21.1
+
+#### Gate 5 targets (M5 spec §8)
+
+| mode | node | target | result |  |
+|---|---|---|---|---|
+| ironspire | mother-anvil | wipe 1st 30-40% | 31.5% | ok |
+| ironspire | rime-abbot | wipe 1st 30-40% | 33% | ok |
+| ironspire | tamsin-ironhold | win 1st 55-70% | 60.5% | ok |
+| ironspire-forged | mother-anvil | wipe 1st 0-20% | 6.5% | ok |
+| ironspire-forged | rime-abbot | wipe 1st 0-20% | 15% | ok |
+| iron-first-lead | roc-eyrie | wipe 1st 15-25% | 19.5% | ok |
+| iron-first-lead | troll-cave | wipe 1st 15-25% | 20% | ok |
+| iron-first-lead | id-smith | wipe 1st 15-25% | 22% | ok |
+| iron-first-lead | fm-shrine | wipe 1st 15-25% | 22% | ok |
+| ironspire | (every run) | stuck 0 | 0 | ok |
+| ironspire-forged | (every run) | stuck 0 | 0 | ok |
+| iron-first-lead | (every run) | stuck 0 | 0 | ok |
+
+#### gloomfen: from the ironspire run's end (Waking 6), home to the Keep, then GLOOM_PATH
+
+| node | foes | lvl | win 1st | rounds | hp left | wipe 1st | yield | wipes | claimed | shattered | stuck |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| patrol:murkway | (zone patrol, 49% ran) | 30.0 | 100% | 6.6 | 75% | 0% |  | 0 |  |  |  |
+| mk-leeches | mire-leech+mire-leech+mire-leech | 30.2 | 100% | 5.4 | 69% | 0% |  | 0 |  |  |  |
+| mk-reedcutters | smuggler+smuggler+tallyman | 30.5 | 100% | 6.7 | 68% | 0% |  | 0 |  |  |  |
+| wm-wights | willow-wight+willow-wight | 30.7 | 100% | 9.9 | 72% | 1% |  | 1 |  |  |  |
+| tamsin-rotbridge | tamsin | 30.9 | 64% | 18.1 | 53% | 0% | 36% | 0 |  |  |  |
+| patrol:lanternfen | (zone patrol, 62% ran) | 31.3 | 100% | 3.8 | 88% | 0% |  | 0 |  |  |  |
+| lf-moths | lamp-moth+lamp-moth+lamp-moth+lamp-moth | 31.4 | 100% | 3.0 | 82% | 0% |  | 0 |  |  |  |
+| lf-hags | bog-hag+bog-hag+mire-leech | 31.6 | 99% | 10.4 | 71% | 2% |  | 3 |  |  |  |
+| lantern-mother | lantern-mother | 31.9 | 66% | 32.2 | 49% | 34% |  | 126 | 400 |  |  |
+| patrol:lanternfen@back | (zone patrol, 52% ran) | 33.3 | 100% | 3.6 | 68% | 0% |  | 0 |  |  |  |
+| patrol:boardwalk | (zone patrol, 32% ran) | 33.4 | 100% | 4.3 | 82% | 0% |  | 0 |  |  |  |
+| lb-drowned | drowned+drowned+drowned | 33.6 | 99% | 6.8 | 60% | 1% |  | 2 |  |  |  |
+| patrol:misthollow | (zone patrol, 45% ran) | 34.0 | 100% | 4.0 | 73% | 0% |  | 0 |  |  |  |
+| mh-salvage | tallyman+smuggler+smuggler | 34.1 | 95% | 13.6 | 65% | 6% |  | 12 | 200 |  |  |
+| mh-ringers | drowned+drowned+drowned | 34.4 | 89% | 5.6 | 53% | 12% |  | 23 |  |  |  |
+| patrol:blackwater | (zone patrol, 43% ran) | 34.9 | 93% | 7.0 | 60% | 8% |  | 15 |  |  |  |
+| br-barge | smuggler+smuggler+smuggler | 35.1 | 100% | 8.4 | 62% | 1% |  | 1 |  |  |  |
+| patrol:tidal-flats | (zone patrol, 52% ran) | 35.2 | 97% | 6.3 | 55% | 3% |  | 6 |  |  |  |
+| tf-bargemaster | tallyman+smuggler+smuggler | 35.3 | 92% | 16.0 | 59% | 8% |  | 18 | 200 |  |  |
+| blackwater-leviathan | blackwater-leviathan | 35.6 | 64% | 27.8 | 28% | 36% |  | 93 | 400 |  |  |
+
+runs cleared 200/200 (stuck 0); end party level 36.6; grind fights/run 5.7
+hero attack rolls: hit 60%, graze 13%, crit 11%, miss 12%, fumble 4%
+random/worn-gear drops by rarity: worn 147, wrought 447, tempered 1005, runed 2368, storied 2160; named relics dropped: 128
+party level entering the Gloomfen: 30.0
+
+#### gloomfen-forged: the same party with weapons tempered to +8 and one gem each; Hodge at the end of the region
+
+| node | foes | lvl | win 1st | rounds | hp left | wipe 1st | yield | wipes | claimed | shattered | stuck |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| patrol:murkway | (zone patrol, 49% ran) | 30.0 | 100% | 5.4 | 77% | 0% |  | 0 |  |  |  |
+| mk-leeches | mire-leech+mire-leech+mire-leech | 30.2 | 100% | 3.8 | 72% | 0% |  | 0 |  |  |  |
+| mk-reedcutters | smuggler+smuggler+tallyman | 30.6 | 100% | 4.6 | 74% | 0% |  | 0 |  |  |  |
+| wm-wights | willow-wight+willow-wight | 30.7 | 100% | 7.2 | 75% | 1% |  | 1 |  |  |  |
+| tamsin-rotbridge | tamsin | 30.9 | 82% | 14.4 | 53% | 0% | 18% | 0 |  |  |  |
+| patrol:lanternfen | (zone patrol, 67% ran) | 31.4 | 100% | 2.6 | 90% | 0% |  | 0 |  |  |  |
+| lf-moths | lamp-moth+lamp-moth+lamp-moth+lamp-moth | 31.4 | 100% | 2.4 | 85% | 0% |  | 0 |  |  |  |
+| lf-hags | bog-hag+bog-hag+mire-leech | 31.7 | 100% | 7.6 | 76% | 0% |  | 0 |  |  |  |
+| lantern-mother | lantern-mother | 31.9 | 91% | 21.7 | 50% | 9% |  | 22 | 400 |  |  |
+| patrol:lanternfen@back | (zone patrol, 43% ran) | 33.0 | 100% | 2.8 | 71% | 0% |  | 0 |  |  |  |
+| patrol:boardwalk | (zone patrol, 18% ran) | 33.1 | 100% | 3.2 | 84% | 0% |  | 0 |  |  |  |
+| lb-drowned | drowned+drowned+drowned | 33.2 | 100% | 5.9 | 65% | 1% |  | 1 |  |  |  |
+| patrol:misthollow | (zone patrol, 36% ran) | 33.6 | 100% | 3.0 | 76% | 0% |  | 0 |  |  |  |
+| mh-salvage | tallyman+smuggler+smuggler | 33.8 | 100% | 9.5 | 68% | 0% |  | 0 | 200 |  |  |
+| mh-ringers | drowned+drowned+drowned | 34.1 | 97% | 5.2 | 57% | 3% |  | 6 |  |  |  |
+| patrol:blackwater | (zone patrol, 25% ran) | 34.5 | 97% | 5.3 | 60% | 4% |  | 7 |  |  |  |
+| br-barge | smuggler+smuggler+smuggler | 34.7 | 100% | 6.6 | 66% | 0% |  | 0 |  |  |  |
+| patrol:tidal-flats | (zone patrol, 35% ran) | 34.8 | 99% | 5.0 | 60% | 2% |  | 3 |  |  |  |
+| tf-bargemaster | tallyman+smuggler+smuggler | 35.0 | 99% | 11.4 | 63% | 1% |  | 2 | 200 |  |  |
+| blackwater-leviathan | blackwater-leviathan | 35.2 | 84% | 21.8 | 30% | 17% |  | 66 | 400 |  |  |
+| hodge | hodge | 36.3 | 58% | 18.2 | 38% | 42% |  | 84 | 116 |  |  |
+
+runs cleared 200/200 (stuck 0); end party level 36.5; grind fights/run 2.0
+hero attack rolls: hit 75%, graze 5%, crit 12%, miss 4%, fumble 4%
+random/worn-gear drops by rarity: worn 128, wrought 400, tempered 985, runed 2375, storied 1943; named relics dropped: 164
+party level entering the Gloomfen: 30.0
+forged: 800 heroes' weapons at +8; 800 gems set (708 in the weapon)
+
+#### gloom-first-lead: each Gloomfen lead's lair taken first: Grandfather Willow's, Hodge's (on arrival) and Mother Grue's (Waking 6), the Drowned Cantor's and Old Jaws's once the Brand of Lanterns opens the boardwalk (Waking 7)
+
+| node | foes | lvl | win 1st | rounds | hp left | wipe 1st | yield | wipes | claimed | shattered | stuck |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| patrol:murkway | (zone patrol, 45% ran) | 30.0 | 100% | 6.8 | 75% | 0% |  | 0 |  |  |  |
+| mk-leeches | mire-leech+mire-leech+mire-leech | 30.2 | 100% | 5.5 | 68% | 0% |  | 1 |  |  |  |
+| mk-reedcutters | smuggler+smuggler+tallyman | 30.5 | 100% | 6.7 | 67% | 0% |  | 0 |  |  |  |
+| wm-wights | willow-wight+willow-wight | 30.7 | 100% | 9.8 | 72% | 0% |  | 4 |  |  |  |
+| wm-willow | willow-wight+willow-wight | 30.9 | 76% | 25.7 | 64% | 24% |  | 77 | 200 |  |  |
+| hodge | hodge | 30.9 | 28% | 23.6 | 35% | 72% |  | 144 | 56 |  |  |
+| tamsin-rotbridge | tamsin | 30.9 | 68% | 18.1 | 52% | 0% | 32% | 0 |  |  |  |
+| patrol:lanternfen | (zone patrol, 56% ran) | 31.3 | 100% | 3.7 | 88% | 0% |  | 0 |  |  |  |
+| grue-hollow | bog-hag+bog-hag | 31.4 | 76% | 31.4 | 59% | 25% |  | 71 | 200 |  |  |
+| lf-moths | lamp-moth+lamp-moth+lamp-moth+lamp-moth | 31.4 | 100% | 3.1 | 82% | 0% |  | 0 |  |  |  |
+| lf-hags | bog-hag+bog-hag+mire-leech | 31.6 | 100% | 10.5 | 70% | 1% |  | 2 |  |  |  |
+| lantern-mother | lantern-mother | 31.9 | 62% | 32.1 | 49% | 38% |  | 272 | 800 |  |  |
+| patrol:lanternfen@back | (zone patrol, 57% ran) | 33.4 | 100% | 3.8 | 71% | 0% |  | 0 |  |  |  |
+| patrol:boardwalk | (zone patrol, 33% ran) | 33.5 | 100% | 4.4 | 81% | 0% |  | 0 |  |  |  |
+| lb-drowned | drowned+drowned+drowned | 33.6 | 100% | 6.8 | 61% | 0% |  | 0 |  |  |  |
+| patrol:misthollow | (zone patrol, 44% ran) | 34.0 | 100% | 4.1 | 72% | 0% |  | 0 |  |  |  |
+| mh-salvage | tallyman+smuggler+smuggler | 34.1 | 95% | 13.6 | 66% | 5% |  | 21 | 400 |  |  |
+| db-choir | drowned+drowned+drowned | 34.5 | 100% | 5.7 | 73% | 0% |  | 0 |  |  |  |
+| cantor | drowned+drowned+drowned | 35.0 | 80% | 25.0 | 63% | 20% |  | 42 | 200 |  |  |
+| mh-ringers | drowned+drowned+drowned | 34.5 | 89% | 5.9 | 50% | 12% |  | 23 |  |  |  |
+| patrol:blackwater | (zone patrol, 42% ran) | 34.9 | 91% | 7.2 | 59% | 9% |  | 18 |  |  |  |
+| br-barge | smuggler+smuggler+smuggler | 35.1 | 99% | 8.6 | 60% | 1% |  | 2 |  |  |  |
+| old-jaws | blackwater-gar+blackwater-gar+blackwater-gar | 35.2 | 80% | 15.2 | 57% | 21% |  | 46 | 200 |  |  |
+
+runs cleared 1000/1000 (stuck 0); end party level 33.3; grind fights/run 2.5
+hero attack rolls: hit 63%, graze 11%, crit 12%, miss 10%, fumble 4%
+random/worn-gear drops by rarity: worn 404, wrought 1233, tempered 2483, runed 5934, storied 5253; named relics dropped: 406
+party level entering the Gloomfen: 30.0
+
+#### Gate 6 targets (M6 spec §8)
+
+| mode | node | target | result |  |
+|---|---|---|---|---|
+| gloomfen | lantern-mother | wipe 1st 30-40% | 34% | ok |
+| gloomfen | blackwater-leviathan | wipe 1st 30-40% | 36% | ok |
+| gloomfen | tamsin-rotbridge | win 1st 55-70% | 64% | ok |
+| gloomfen-forged | lantern-mother | wipe 1st 0-20% | 9% | ok |
+| gloomfen-forged | blackwater-leviathan | wipe 1st 0-20% | 16.5% | ok |
+| gloomfen-forged | hodge | win 1st 50-100% | 58% | ok |
+| gloom-first-lead | wm-willow | wipe 1st 15-25% | 24% | ok |
+| gloom-first-lead | grue-hollow | wipe 1st 15-25% | 24.5% | ok |
+| gloom-first-lead | cantor | wipe 1st 15-25% | 20% | ok |
+| gloom-first-lead | old-jaws | wipe 1st 15-25% | 20.5% | ok |
+| gloom-first-lead | hodge | wipe 1st 60-80% | 72% | ok |
+| gloomfen | (every run) | stuck 0 | 0 | ok |
+| gloomfen-forged | (every run) | stuck 0 | 0 | ok |
+| gloom-first-lead | (every run) | stuck 0 | 0 | ok |

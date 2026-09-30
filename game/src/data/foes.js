@@ -1383,7 +1383,7 @@ const HEARTH_BELOW = {
   // ---- the Unsmith (spec A16, §3.5): Nos. 72-74 are his pieces
   unsmith: {
     id: 'unsmith', name: 'The Unsmith', art: 'unsmith', tier: 'unsmith', kind: 'human', unique: true, noFlee: true,
-    hp: 185, guard: 19, atk: 9, dmg: 6, speed: 9, armor: 'hide', aspect: 'ember',
+    hp: 190, guard: 19, atk: 9, dmg: 6, speed: 9, armor: 'hide', aspect: 'ember',
     saves: { STR: 5, DEX: 2, CON: 5, WIS: 4, CHA: 4 },
     relics: ['unmaking-hammer', 'ironvein-apron', 'worldforge-heart'],
     stolenFallback: 'nothing-left',
