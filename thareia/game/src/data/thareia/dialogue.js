@@ -84,11 +84,12 @@ export const TH_DIALOGUE = {
   'th-after-lurkers': {
     lines: [
       ['yara', 'Boglurchers. On my dock, in daylight. The water is cooking them out of the mud.'],
-      ['narrator', 'Three figures in kerchiefs come down the boardwalk at a run, pushing a handcart between them.'],
+      ['narrator', 'Two figures in kerchiefs come down the boardwalk at a run, pushing a handcart between them.'],
       ['th-skeet', 'That crate is spoken for, friends. Step off it and nobody gets wet.'],
       ['yara', 'Skeet Marrow. I should have known. Whoever is paying you, they are paying you too little.'],
+      ['narrator', 'Yara presses a hot tonic into your hand. You drink it in one swallow, and the aches go quiet.'],
     ],
-    do: [{ fight: 'pr-smugglers' }],
+    do: [{ heal: true }, { fight: 'pr-smugglers' }],
   },
   'th-shard': {
     lines: [

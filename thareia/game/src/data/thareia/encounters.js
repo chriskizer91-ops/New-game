@@ -21,8 +21,8 @@ export const TH_ENCOUNTERS = {
   // a smuggler crew comes for the crate while the dock is in uproar
   'pr-smugglers': {
     id: 'pr-smugglers', type: 'fight', name: 'The Crate-Thieves', place: 'Bogmire Docks', backdrop: 'bogmire', once: true, gentle: true,
-    spawns: [S('smuggler', 1), S('smuggler', 2, { gearTier: 1, name: 'Skeet Marrow' }), S('smuggler', 1)],
-    text: 'Kerchiefs over their faces and a handcart for the crate. Skeet Marrow has been paid to fetch it, and does not care who is standing on it.',
+    spawns: [S('smuggler', 1), S('smuggler', 2, { gearTier: 1, name: 'Skeet Marrow' })],
+    text: 'A kerchief over his face, a handcart for the crate and a hired knife beside him. Skeet Marrow has been paid to fetch it, and does not care who is standing on it.',
   },
   // optional: the leeches on the east boardwalk, between the dock and the reed island's cache
   'dk-leeches': {
