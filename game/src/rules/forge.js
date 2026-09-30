@@ -148,8 +148,9 @@ export function reroll(game, uid, affixIndex) {
 
 // ---- Salvage ----------------------------------------------------------------------------------------------
 
+// A relic is never melted down, nor the Warden's Masterpiece (M7 review: one per save, and Kindle Anew asks for it).
 export function salvageYield(item) {
-  if (!item || RELICS[item.base]) return null;
+  if (!item || RELICS[item.base] || item.masterpiece) return null;
   const gems = {};
   for (const id of gemsIn(item)) gems[id] = (gems[id] || 0) + 1;
   return { materials: { ...(TUNING.forge.salvage[item.rarity] || {}) }, gems };
@@ -159,6 +160,7 @@ export function salvage(game, uid) {
   const item = findItem(game, uid);
   if (!item) return { game, ok: false, yield: null, reason: 'Nothing to salvage' };
   if (RELICS[item.base]) return { game, ok: false, yield: null, reason: 'Hilda will not melt down a relic.' };
+  if (item.masterpiece) return { game, ok: false, yield: null, reason: 'Hilda will not melt down your Masterpiece.' };
   if (wearerOf(game, uid)) return { game, ok: false, yield: null, reason: 'Take it off first.' };
   const y = salvageYield(item);
   const g = {
@@ -170,11 +172,13 @@ export function salvage(game, uid) {
 
 // ---- Gems -------------------------------------------------------------------------------------------------
 
-// Runed and storied pieces have one socket; a relic has its data's `sockets` (1 if unsaid); the rest none.
+// Runed and storied pieces have one socket; a relic has its data's `sockets` (1 if unsaid); the Warden's Masterpiece
+// its Primal rarity's (M7 review: a Storied sword took a gem, and the Masterpiece none); the rest none.
 export function socketsOf(item) {
   if (!item) return 0;
   const relic = RELICS[item.base];
   if (relic) return Math.max(0, relic.sockets ?? 1);
+  if (item.masterpiece) return RARITY.primal.gemSlots;
   return ['runed', 'storied'].includes(item.rarity) ? RARITY[item.rarity].gemSlots : 0;
 }
 

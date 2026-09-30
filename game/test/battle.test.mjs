@@ -275,6 +275,30 @@ test('Kharzul: prying Cinderfang loose shuts Glasscutter and Molten Tail down; t
   assert.ok(k.held.every(p => !p.held));
 });
 
+test('a move a Stagger broke off stays broken off when a pry would roll it again: a Champion\'s one die, and the Unsmith\'s two (M7 review)', async () => {
+  // Kharzul: his charging Glasscutter, broken off by a Stagger, then Cinderfang pried: it still comes to nothing
+  const s = structuredClone(battleWith([{ family: 'kharzul', level: 14 }], { seed: 12 }));
+  const k = s.units.f1;
+  k.intent = { ...k.intent, move: 'glasscutter', name: 'Glasscutter', charging: true, cancelled: true, target: null };
+  const broken = structuredClone(k.intent);
+  const ev = await pry(s, 'f1', 'cinderfang');
+  assert.ok(ev.some(e => e.t === 'disarm' && e.relic === 'cinderfang'));
+  assert.deepEqual(k.intent, broken, 'still the broken-off Glasscutter');
+  assert.equal(ev.filter(e => e.t === 'intent').length, 0, 'no new roll shown');
+  // the Unsmith: his Unmake broken off, then the Unmaking Hammer pried: the first die stays broken off, and the second,
+  // live, is rolled again only if it needed the hammer
+  const u = structuredClone(battleWith([{ family: 'unsmith', level: 40 }], { seed: 8 }));
+  const h = u.units.f1;
+  h.intent = { ...h.intent, move: 'unmake', name: 'Unmake', charging: false, cancelled: true, slot: 0 };
+  h.intent2 = { ...h.intent2, move: 'unmake', name: 'Unmake', charging: false, slot: 1 };
+  delete h.intent2.cancelled;
+  const first = structuredClone(h.intent);
+  const ev2 = await pry(u, 'f1', 'unmaking-hammer');
+  assert.deepEqual(h.intent, first, 'the broken-off Unmake stays broken off');
+  assert.ok(h.intent2.move !== 'unmake' && !h.intent2.cancelled && h.intent2.slot === 1, `the live second die is rolled again (${h.intent2.move})`);
+  assert.deepEqual(ev2.filter(e => e.t === 'intent').map(e => e.slot), [1], 'only the second die is shown again');
+});
+
 test('Kharzul: its phases fire at 66% and 33% of its health, each with its own d20 table', async () => {
   const { dealDamage } = await import('../src/rules/combat.js');
   const { foeTable } = await import('../src/rules/ai.js');

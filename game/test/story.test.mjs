@@ -1363,7 +1363,8 @@ test('Tamsin below: past the unmade the party sees her; her return sets tamsin-r
 test('the Unsmith: past the forge-warden he calls you across; his word offers the fight or not yet; a wipe, a fire and Tamsin; he is no duel', () => {
   const b = deepFreeze(beat(joined(), 'wf-warden'));
   assert.equal(afterDialogue(b, 'wf-warden', 'victory'), 'unsmith-bridge');
-  assert.equal(pick(b, 'unsmith-bridge', /Cross the bridge/).next, 'unsmith');
+  assert.deepEqual(texts(b, 'unsmith-bridge'), [], 'no crossing from the bridge word: the Chain Fire first');
+  assert.match(said(b, 'unsmith-bridge'), /Back to the Chain Fire, and sleep first/);
   assert.deepEqual(texts(b, 'unsmith'), ['Ask him why.', 'Face him.', 'Not yet.']);
   assert.deepEqual(pick(b, 'unsmith', /Face him/).events, [{ t: 'fight', enc: 'unsmith' }]);
   assert.deepEqual(pick(b, 'unsmith', /Not yet/).events, []);

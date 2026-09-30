@@ -357,7 +357,10 @@ Masterpiece (§4.5).
 
 - **Where and when:** at Hilda's forge, once `hollow-gretch` is beaten and the party holds the Worldforge page
   (`flag: 'worldforge-page'`, from M6's `dead-tongue` quest).
-- **The price:** the page (spent), 5 embers, 5 silver, 2 bog amber and 2000 gold (P4 tunes the numbers).
+- **The price:** 5 embers, 5 silver, 2 bog amber and 2000 gold (P4 tunes the numbers). Hilda works from the page and
+  keeps it with her: the `worldforge-page` flag stays set, and one Masterpiece per save is what holds (the review
+  settled it: Hilda's talk and the Masterpiece quest read the flag, and clearing it would have her ask for the page
+  again).
 - **What she forges:** the Warden chooses a weapon base and names it: 1 to 24 characters of letters, digits, spaces,
   `'` and `-`, scrubbed as a pasted code is, and shown only through `textContent`. Hilda forges one **primal** item at
   the party's level, with the best affix set of its base.

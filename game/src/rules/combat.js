@@ -295,16 +295,18 @@ function disarm(B, src, t, piece) {
   const arts = Object.values(moves).filter(m => m.requires === relic).map(m => m.name);
   B.ev.push({ t: 'text', text: `${pieceName(piece)} clatters loose!${arts.length ? ` ${t.name} loses ${arts.join(' and ')}.` : ''}` });
   if (t.tier === 'relic-bearer') t.die = stepDownDie(t.die);
-  // M7: a hollow foe's gift takes its +4 with it, from the rolls she has already made too
+  // M7: a hollow foe's gift takes its +4 with it, from the rolls she has already made too. A move a Stagger broke off
+  // stays broken off (it comes to nothing either way): only a live one is rolled or read again (M7 review).
   const gift = familyData(t).bonusWhile === relic;
-  if (t.intent && moves[t.intent.move]?.requires === relic) {
+  const live = it => it && !it.cancelled;
+  if (live(t.intent) && moves[t.intent.move]?.requires === relic) {
     t.intent = rollIntent(B.s, t, B.rng, t.dice > 1 ? 0 : null);
     B.ev.push(intentEvent(t));
-  } else if (gift && t.intent?.bonus) {
+  } else if (gift && live(t.intent) && t.intent.bonus) {
     t.intent = dropBonus(B.s, t, t.intent, B.rng);
     B.ev.push(intentEvent(t));
   }
-  if (t.intent2 && moves[t.intent2.move]?.requires === relic) { // M7: the Unsmith's second die
+  if (live(t.intent2) && moves[t.intent2.move]?.requires === relic) { // M7: the Unsmith's second die
     t.intent2 = rollIntent(B.s, t, B.rng, 1);
     B.ev.push(intentEvent(t, t.intent2));
   }
@@ -520,7 +522,7 @@ export function applyEffect(B, a, t, eff) {
     case 'grip': return applyGrip(B, a, t, { dice: eff.dice, stat: eff.stat, relic: B.relic });
     case 'reveal': return resolveReveal(B, t, eff);
     case 'surge': return addSurge(B, t, eff.amount);
-    case 'mp': t.mp = Math.min(t.maxMp, t.mp + eff.amount); return undefined;
+    case 'mp': if (t.maxMp != null) t.mp = Math.min(t.maxMp, t.mp + eff.amount); return undefined; // (M7: a guest has no MP)
     case 'summon': return resolveSummon(B, a, eff);
     case 'escape':
       a.gone = true;

@@ -319,7 +319,9 @@ export function showToBeContinued(ctx, game, { act = 'act1' } = {}) {
 
 // ---- Act III (M7 spec §5, A14, A15) ---------------------------------------------------------------------
 
-const claimedCount = game => Object.keys(RELICS).filter(id => game?.codex?.[id]?.claimed).length;
+// the relics claimed, of those this Warden could claim, as the Codex counts them (the starters passed over are not
+// among them: a full Codex reads 73 of 73)
+const relicTally = game => PAGES.reduce(([c, n], p) => { const q = pageProgress(game, p.id); return [c + q.claimed, n + q.needed]; }, [0, 0]);
 const pagesDoneCount = game => PAGES.filter(p => game?.progress?.flags?.pages?.[p.id] || pageProgress(game, p.id).done).length;
 const masterpieceOf = game => (game?.inventory || []).find(i => i.masterpiece === true && !i.shattered) || null;
 const wardenName = game => String(game?.party?.roster?.warden?.name || 'the Warden');
@@ -387,7 +389,7 @@ export function creditsOf(game) {
     ],
     journey: [
       ['Days on the road', String(game?.progress?.flags?.day || 1)],
-      ['Relics claimed', `${claimedCount(game)} of ${Object.keys(RELICS).length}`],
+      ['Relics claimed', relicTally(game).join(' of ')],
       ['Brands', `${game ? uniqueBrands(game) : 0} of ${BRAND_TOTAL}`],
       ['Codex pages', `${pagesDoneCount(game)} of ${PAGES.length}`],
       ...(mp ? [['The Masterpiece', String(mp.name)]] : []),
@@ -495,8 +497,31 @@ export function showCredits(ctx, game) {
   for (const [k, v] of V.rows) cast.append(text('dt', '', k), text('dd', '', v));
   const mine = el('dl', 'credits-journey');
   for (const [k, v] of V.journey) mine.append(text('dt', '', k), text('dd', '', v));
+  // while there is more below the box, its foot fades and a cue under it says so (M7 review: the journey sat below
+  // the fold)
+  const more = text('p', 'credits-more', 'More below');
+  more.setAttribute('aria-hidden', 'true');
   roll.append(cast, text('p', 'label credits-k', 'Your journey'), mine, text('p', 'credits-thanks', V.thanks));
-  P.append(roll, C.go);
+  P.append(roll, more, C.go);
+  const atEnd = () => roll.scrollTop + roll.clientHeight >= roll.scrollHeight - 4;
+  const cue = () => { const end = atEnd(); more.classList.toggle('gone', end); roll.classList.toggle('more', !end); };
+  roll.addEventListener('scroll', cue, { passive: true });
+  requestAnimationFrame(cue);
+  // the roll moves on its own, slowly, once the names are in (never under reduced motion); a touch, a wheel or a key
+  // hands it to the player
+  if (!reduced) {
+    let t0 = 0, held = false;
+    const hold = () => { held = true; };
+    for (const e of ['pointerdown', 'wheel', 'touchstart', 'keydown']) roll.addEventListener(e, hold, { passive: true, once: true });
+    const step = t => {
+      if (held || !roll.isConnected) return;
+      t0 = t0 || t;
+      const y = Math.min(roll.scrollHeight - roll.clientHeight, Math.max(0, (t - t0 - 2600) * 0.032));
+      if (y > roll.scrollTop) roll.scrollTop = y;
+      if (!atEnd()) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
   ctx.audio.sfx('victory');
   return C.wait();
 }

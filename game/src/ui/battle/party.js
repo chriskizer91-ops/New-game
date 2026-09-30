@@ -275,7 +275,8 @@ export class Party {
     if (key === v.intentKey && !roll) return;
     v.intentKey = key;
     clearInterval(v.dieTimer);
-    v.move.textContent = it ? `${it.name}${it.cancelled ? ' (broken off)' : ''}` : '';
+    // (her card is narrow: "The Bargain's Edge" shows as "Bargain's Edge"; the title and her label keep the whole name)
+    v.move.textContent = it ? `${it.name.replace(/^The /, '')}${it.cancelled ? ' (broken off)' : ''}` : '';
     v.move.title = it ? `${dieText(it)}: ${it.name}${this.intentAim(u, it)}` : '';
     v.card.classList.toggle('int-off', !!it?.cancelled);
     if (!it) { v.die.replaceChildren(); return; }

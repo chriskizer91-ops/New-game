@@ -137,9 +137,9 @@ export function rollIntent(s, foe, rng, slot = null) {
 
 // M7 (spec §4.2): a roll made while the gift held, read again once the gift is pried loose: the +4 goes with it, so
 // the face drops back to the natural roll and the move is the table's for that face (her readied intent and the ones
-// Analyze foresaw). A roll without the bonus is returned as it is.
+// Analyze foresaw). A roll without the bonus, or one a Stagger broke off, is returned as it is.
 export function dropBonus(s, foe, it, rng) {
-  if (!it?.bonus) return it;
+  if (!it?.bonus || it.cancelled) return it;
   const face = it.natural;
   const row = foeTable(foe).find(([lo, hi]) => face >= lo && face <= hi) || foeTable(foe)[0];
   const moveId = resolveMoveId(s, foe, tableMove(foe, row[2], face));

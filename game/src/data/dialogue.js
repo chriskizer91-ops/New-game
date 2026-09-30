@@ -1991,14 +1991,15 @@ export const DIALOGUE = deepFreeze({
   },
 
   // ---- the Unsmith (spec A16, §3.5): Harrow Ironvein, Hilda's twin. Past the forge-warden he calls you across the
-  // bridge; `unsmith` is his word before the fight, which always offers it (and can be his encounter's talk, M6's
-  // pattern). After it, his end, and Tamsin's relic; a wipe wakes the party by a fire, and he waits.
+  // bridge, and Tamsin sends the party back to the Chain Fire to sleep first (the night before him); `unsmith` is his
+  // word before the fight, his encounter's talk (M6's pattern), which always offers it. After it, his end, and
+  // Tamsin's relic; a wipe wakes the party by a fire, and he waits.
   'unsmith-bridge': {
     lines: [
       ['narrator', 'The forge-warden folds like a dropped bellows. Across the bridge, a tall man at the great anvil looks up.'],
       ['unsmith', 'There you are, little Warden. Thorough to the last chair. Come across. Mind the moat; it keeps what it takes.'],
+      ['tamsin', 'Not tonight. Back to the Chain Fire, and sleep first. He\'ll wait. He wants us at our best; it\'s how he likes us.'],
     ],
-    choices: [{ text: 'Cross the bridge.', next: 'unsmith' }],
   },
   unsmith: {
     lines: [

@@ -41,7 +41,7 @@ import { GEMS, MATERIALS } from '../src/data/gems.js';
 import { newGame } from '../src/rules/gauntlet.js';
 import { levelUp } from '../src/rules/progression.js';
 import { createRng } from '../src/core/rng.js';
-import { canWalk, present, lockStatus, interact, roamMask } from '../src/rules/world.js';
+import { canWalk, present, lockStatus, interact, roamMask, enterMap, move } from '../src/rules/world.js';
 import { check } from '../src/rules/cond.js';
 
 const inside = (m, x, y) => x >= 0 && y >= 0 && x < m.w && y < m.h;
@@ -1556,6 +1556,14 @@ test('the Hearth Below maps hold what spec §2.3 puts on them', () => {
   const joined = structuredClone(g);
   joined.progress.flags.story['tamsin-returned'] = true;
   assert.ok(!present(joined, 'chained-deep').some(e => e.id === 'cd-tamsin'), 'she leaves the map once she has joined');
+  // the scene past the unmade lost (the page closed on it): she gets up as the party steps onto the paving, which lies
+  // across the way to the forge door, so nobody walks past her; once she has joined, never again
+  const onPaving = game => { const at = enterMap(game, { map: 'chained-deep', at: [33, 11], face: 's' }); return move(at.game, at.walk, 's').events.filter(e => e.t === 'trigger').map(e => [e.id, e.dialogue]); };
+  assert.deepEqual(onPaving(g), [['cd-tamsin-paving', 'tamsin-waiting']], 'stepping onto the paving without her scene plays it');
+  assert.deepEqual(onPaving(joined), [], 'not once she has joined');
+  // every tile a step through the forge door is taken from lies under the trigger
+  const paving = on('chained-deep', 'cd-tamsin-paving'), door = MAPS['chained-deep'].exits.find(x => x.id === 'cd-forge');
+  for (let y = door.area[1]; y <= door.area[3]; y++) assert.ok(cellsOf(paving).some(([x, yy]) => x === door.area[0] - 1 && yy === y), `the paving before the door, row ${y}`);
   // the Worldforge: the bridge gate the forge-warden holds; the Unsmith's lair, 3 by 2 with his foot inside it, the
   // finale; the heart behind him
   assert.deepEqual(on('worldforge', 'wf-bridge-gate').open, { beaten: 'wf-warden' });

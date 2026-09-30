@@ -1127,6 +1127,7 @@ const m7Probe = () => {
     played1: !!q('.bt-intent')?.classList.contains('played'), played2: !!q('.bt-int-two')?.classList.contains('played'),
     aria: q('.bt-foe-hit')?.getAttribute('aria-label') || '',
     stolen: shown('.bt-stolen') ? [...box.querySelectorAll('.bt-stolen-i')].map(i => i.dataset.relic) : [],
+    grips: [...(box?.querySelectorAll('.bt-grip-nm') || [])].map(n => ({ t: n.textContent, cut: n.scrollWidth > n.clientWidth + 1 || n.clientWidth === 0 })),
     guest: gcard ? { ...rect(gcard), aria: gcard.getAttribute('aria-label') || '', tag: gcard.querySelector('.bt-hero-tag')?.textContent || '', move: gcard.querySelector('.bt-guest-mv')?.textContent || '' } : null,
     cards: [...document.querySelectorAll('.bt-party .bt-hero')].map(rect),
     hasGuest: !!document.querySelector('.bt.has-guest'),
@@ -1220,6 +1221,7 @@ await scenario('unsmith', async rec => {
   const I = two.info;
   check(I.two && I.name1 && I.name2, `his plate shows two intents ("${I.name1}", then "${I.name2}")`);
   check(/, then /.test(I.aria), `his label reads both ("${I.aria}")`);
+  check(I.grips.length === 3 && I.grips.every(g => !g.cut), `his three pieces' grips each show a name in full (${I.grips.map(g => `${g.t}${g.cut ? ' (cut)' : ''}`).join(', ')})`);
   check(JSON.stringify(I.stolen) === JSON.stringify(took), `his plate shows ${took.length ? `the ${took.length} relics he took` : 'nothing stolen before his phase takes it'} (${I.stolen.join(', ') || 'none'})`);
   // Tamsin: her card with the party's four, all on the screen, 44 px, saying she fights beside you
   check(I.hasGuest && I.guest && I.cards.length === 5, `her card stands with the party's four (${I.cards.length} cards)`);

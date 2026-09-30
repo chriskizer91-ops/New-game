@@ -2966,6 +2966,9 @@ async function run(V) {
       };
       // without the Worldforge page Hilda says what she needs, and will not forge
       await openTab();
+      // every tab on the screen, the one the scene opened among them (M7 review: at 360 px the strip hid the last ones)
+      const tabsSeen = await W(() => [...document.querySelectorAll('.ov-forge .forge-tab')].map(b => { const r = b.getBoundingClientRect(); return { id: b.dataset.tab, l: Math.round(r.left), r: Math.round(r.right), h: Math.round(r.height), on: r.left >= -1 && r.right <= innerWidth + 1 }; }));
+      check(tabsSeen.length === 6 && tabsSeen.every(t => t.on && t.h >= 44), `${P} 45: every forge tab is on the screen and 44 px, the Masterpiece's among them (${tabsSeen.map(t => `${t.id} ${t.l}..${t.r}`).join(', ')})`);
       const why0 = await W(() => [...document.querySelectorAll('.ov-forge .mp-why li')].map(l => l.textContent));
       const off0 = await W(() => document.querySelector('.ov-forge .mp-go')?.disabled);
       check(why0.some(w => /Worldforge page/.test(w)) && off0 === true, `${P} 45: without the page the Masterpiece is not offered, and the tab says why (${why0.join(' / ')})`);

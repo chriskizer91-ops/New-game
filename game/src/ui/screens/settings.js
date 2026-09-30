@@ -113,7 +113,7 @@ export function mount(root, ctx, params = {}) {
   const load = button('Load this save', 'btn', async () => {
     err.textContent = '';
     const code = inTa.value.trim();
-    if (!code) { err.textContent = 'Paste a save code first. It starts with AETH and a number, like AETH3.'; ctx.audio.sfx('error'); return; }
+    if (!code) { err.textContent = 'Paste a save code first. It starts with AETH and a number, like AETH6.'; ctx.audio.sfx('error'); return; }
     let g;
     try { g = importCode(code, ctx.migrate); } catch (e) { err.textContent = e.message || 'That code could not be read.'; ctx.audio.sfx('error'); return; }
     // a damaged code never replaces your journey

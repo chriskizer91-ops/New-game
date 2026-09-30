@@ -871,7 +871,9 @@ test('Tamsin below (spec A12, §3.1): her return sets tamsin-returned and met-ta
 test('the Unsmith (spec A16, §3.5): Harrow Ironvein speaks at last; past the forge-warden he calls you across; his word always offers the fight; his end sends word to Hilda', () => {
   assert.equal(NPCS.unsmith.name, 'Harrow Ironvein');
   assert.deepEqual(AFTER['wf-warden'].map(a => [a.on, a.d]), [['victory', 'unsmith-bridge']]);
-  assert.ok(reachable('unsmith-bridge').has('unsmith'));
+  // (the bridge word ends there: Tamsin sends the party back to the Chain Fire to sleep, and his word waits across it)
+  assert.deepEqual([...reachable('unsmith-bridge')], ['unsmith-bridge']);
+  assert.match(lineText('unsmith-bridge'), /Chain Fire, and sleep first/);
   // his word before the fight: every node of it offers the fight, and "Not yet." (it can be his encounter's talk)
   for (const id of ['unsmith', 'unsmith-why']) {
     assert.ok(doOf(id).some(e => e.fight === 'unsmith'), `${id} offers the fight`);

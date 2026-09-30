@@ -97,7 +97,7 @@ export class Hud {
     this.layer.append(box);
     const f = {
       id: u.id, box, hit, intent, die, bonus, iname, itgt, charge, queue, two, die2, bonus2, iname2, itgt2, charge2, plate, name, bar, hpNum, st, state, grips, stolen,
-      statusKey: '', gripKey: '', intentKey: '', stolenKey: '', dieTimer: 0,
+      statusKey: '', gripKey: '', intentKey: '', stolenKey: '', dieTimer: 0, pieces: (u.held || []).length,
     };
     this.foes.set(u.id, f);
     return f;
@@ -111,7 +111,8 @@ export class Hud {
     const ph = f.plate.offsetHeight || 60;
     const iw = f.intent.offsetWidth || 100, ih = f.intent.offsetHeight || 40;
     const stageW = this.layer.clientWidth || 9999;
-    const plateW = clamp(Math.round(g.slotW - 6), 86, 200);
+    // (M7 review: a foe with three pieces, the Unsmith, has a wider plate, so each grip chip keeps its name)
+    const plateW = clamp(Math.round(g.slotW - 6), 86, f.pieces >= 3 ? 280 : 200);
     f.plateW = plateW;
     const hitPad = 6;
     // never under 44 px (M6: a foe gone down into the water shows only its back, and is still tapped to see why it
@@ -162,6 +163,8 @@ export class Hud {
       f.gripKey = gk;
       f.grips.replaceChildren(...(u.held || []).map((p, i) => this.gripChip(u, p, i)));
       f.grips.hidden = !(u.held || []).length;
+      f.pieces = (u.held || []).length;
+      f.grips.classList.toggle('many', f.pieces >= 3); // (their chips drop the number: the bar, the label and the card say it)
     }
     // M7: the Stolen Arts on his plate: each relic he took, by its icon (the Analyze sheet names them and their moves)
     const stolen = stolenOf(u);

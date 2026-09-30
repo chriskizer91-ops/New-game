@@ -346,7 +346,7 @@ long boardwalk at Waking 7, after the Brand of Lanterns):
   sent to their chair (a breakable piece: Nos. 67-70) and its Arts need it and sit on the d20's 15-20, so a natural 11 or
   better reaches them while the +4 holds. Two phases each (at 1 and 0.5); the second answers their story.
   - **Hollow Miravel** (verdant; 150 HP, Guard 19, atk 10, dmg 7; Frenzied, Thornskinned): *The Elder* (Rowan Staff;
-    Unheeded Advice, WIS or Hexed; Grey Bark wards her; **Hollow Bloom**, the Wreath's: 2d8 verdant to every hero, STR for
+    Unheeded Advice, WIS or Hexed; Grey Bark wards her; **Hollow Bloom**, the Wreath's: 2d8 piercing (verdant) to every hero, STR for
     half, Rooted), *Every Tree That Fell* (Thornwall: every hero Bleeds; Every Fallen Tree, charging 3d8 and two Bleeds;
     **Hollow Harvest**, the Wreath's: 2d6 to every hero and she Regenerates).
   - **Hollow Qasim** (ember; 125 HP, Guard 19, atk 8, dmg 6, speed 11; Frenzied, Swift): *The Cistern Lord* (Scimitar;
@@ -354,7 +354,7 @@ long boardwalk at Waking 7, after the Brand of Lanterns):
     heals 3d8 and is Hasted), *The Drought* (Drought: 2d8 ember to every hero, CON for half, Burning; Mirage, WIS or
     Charmed; **Drink Them Dry**, the Chalice's: 2d6 ember to every hero, and he heals 2d8).
   - **Hollow Brundar** (stone; 110 HP, Guard 18, atk 8, dmg 6, speed 8, mail; Frenzied, Ironclad): *The Thane* (Thane's
-    Hammer; Debts Paid Staggers; Sentinel's Stance, Guarding and Warded; **Iron Grip**, the Gauntlet's: 3d8 and Rooted),
+    Axe; Debts Paid Staggers; Sentinel's Stance, Guarding and Warded; **Iron Grip**, the Gauntlet's: 3d8 and Rooted),
     *Iron* (Seal the Deeps: 2d6 to every hero, STR for half, Staggered; **Ironfall**, the Gauntlet's: charging, 4d10).
   - **Hollow Gretch** (blight; 140 HP, Guard 19, atk 8, dmg 6; Frenzied, Swift): *The Mayor* (Gavel; The Mayor's Word,
     every hero WIS or Frightened; Counted Twice Marks; **Too Tight**, the Chain's: 2d8 blight and Rotting), *Fear and

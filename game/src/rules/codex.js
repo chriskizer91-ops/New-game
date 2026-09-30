@@ -102,12 +102,14 @@ export const allPagesDone = game => PAGES.every(p => pageProgress(game, p.id).do
 
 // The relics the Unsmith takes up at his second phase (spec §4.4): those on Pages I to IV that this game never
 // claimed, the highest Codex number first, at most TUNING.unsmith.stolen.max. It reads only the game, so the fight
-// card, the fight and the sim agree. (Page V's relics are his own, or come from the story.)
+// card, the fight and the sim agree. (Page V's relics are his own, or come from the story.) The starters you passed
+// over are never his: no Warden can claim them, and a page does not ask for them, so a full Codex leaves him nothing
+// (spec A13, A16).
 const BELOW = 'below';
 export function stolenFor(game) {
   const codex = codexOf(game);
   return PAGES.filter(p => p.id !== BELOW).flatMap(p => relicsOn(p.id))
-    .filter(id => !codex[id]?.claimed)
+    .filter(id => !codex[id]?.claimed && !RELICS[id].starter)
     .sort((a, b) => RELICS[b].codex - RELICS[a].codex)
     .slice(0, TUNING.unsmith.stolen.max);
 }

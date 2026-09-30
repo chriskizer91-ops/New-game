@@ -10,7 +10,7 @@
 // the unmade stand in the narrows (17,5) and hold the chain gate (x 18). Past it, the Chain Fire burns on a round
 // platform in a nook on the north side (25,1; stand 25,2), and the walkway bends down (x 32-35) to the paving before
 // the forge door in the middle of the east edge (`cd-forge`, 41,12-15; `from-forge` at 40,13). Tamsin waits on the
-// paving (37,13) until she has joined.
+// paving (37,13) until she has joined; stepping onto the paving without her scene plays it (cd-tamsin-paving).
 // The chains are signs (spec §2.3): the south-west one, `cd-chain-lull`, stands in its chain's line (9,21) beside the
 // cavern floor west of the hollow, which steps go down to from the walkway before the narrows (8-10,7); the south-east
 // one, `cd-chain-hush` (34,22), beside the floor east of the hollow, below the paving. The chain to the south edge
@@ -78,6 +78,10 @@ export default deepFreeze({
     CHAIN('cd-chain-hush', [34, 22], 'A great chain runs out of the web into the tunnel in the south-east corner, and frost furs its links where they go into the dark. Frostmere, then, and Hush under the ice.'),
     // Tamsin waits before the forge door, sorry; she leaves the map once she has joined (spec A12, §3.1)
     { id: 'cd-tamsin', kind: 'npc', npc: 'tamsin', talk: 'tamsin-return', at: [37, 13], face: 'w', if: { not: { flag: 'tamsin-returned' } } },
+    // should the scene past the unmade be lost (the page closed on it), she gets up as the party steps onto the paving,
+    // which lies across the way to the forge door: nobody walks past her
+    { id: 'cd-tamsin-paving', kind: 'trigger', area: [30, 12, 40, 15], on: 'step', dialogue: 'tamsin-waiting',
+      if: { all: [{ beaten: 'cd-unmade' }, { not: { flag: 'tamsin-returned' } }] } },
   ],
   exits: [
     { id: 'cd-up', area: [1, 0, 4, 0], to: 'ash-stair', anchor: 'from-deep' },

@@ -107,6 +107,12 @@
 .bt-grip-nm { font-family: var(--f-pixel); font-size: 9px; color: #c9d4e2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .bt-grip .bt-bar.grip { flex: 1; min-width: 18px; width: auto; }
 .bt-grip-num { font-family: var(--f-pixel); font-size: 9px; color: #9aa8bc; flex: none; }
+/* M7 review: three pieces (the Unsmith): each chip keeps its name whole, and gives up its chain icon and its number
+   for it (the bar shows the grip; the chip's label and the relic's card say it) */
+.bt-grips.many .bt-grip > :first-child, .bt-grips.many .bt-grip-num { display: none; }
+.bt-grips.many .bt-grip-nm { flex: 0 0 auto; }
+.bt-grips.many .bt-grip .bt-bar.grip { min-width: 10px; }
+.bt-grips.many .bt-grip.loose .bt-grip-num { display: inline; }
 .bt-grip::before { content: ""; position: absolute; inset: -14px -3px; } /* a 44px touch target (18px drawn) */
 .bt-grip:hover { border-color: #b4c3d2; }
 .bt-grip.loose { opacity: .55; }

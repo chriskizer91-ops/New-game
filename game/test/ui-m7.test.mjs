@@ -13,7 +13,7 @@ import { startBattle } from '../src/rules/gauntlet.js';
 import { threat } from '../src/rules/world.js';
 import { familyOf, stolenMoves } from '../src/rules/foe.js';
 import { rollIntent, intentEvent, familyData } from '../src/rules/ai.js';
-import { stolenFor } from '../src/rules/codex.js';
+import { stolenFor, pageProgress } from '../src/rules/codex.js';
 import { forgeMasterpiece, masterpieceCost } from '../src/rules/forge.js';
 import { createRng } from '../src/core/rng.js';
 import { TRACK_NAMES } from '../src/core/audio.js';
@@ -358,7 +358,13 @@ test('M7 cards: the credits name the cast and this journey; every saved string s
   assert.ok(C.rows.some(([k, v]) => k === 'Harrow Ironvein' && v === 'the Unsmith'));
   assert.ok(C.rows.some(([k]) => /Tamsin/.test(k)));
   const J = Object.fromEntries(C.journey);
-  assert.equal(J['Relics claimed'], `${Object.values(g.codex).filter(e => e.claimed).length} of ${RELIC_TOTAL}`);
+  // (of the relics this Warden could claim, as the Codex counts them: the starters passed over are not among them)
+  const tally = PAGES.reduce(([c, n], p) => { const q = pageProgress(g, p.id); return [c + q.claimed, n + q.needed]; }, [0, 0]);
+  assert.equal(J['Relics claimed'], `${Object.values(g.codex).filter(e => e.claimed).length} of ${RELIC_TOTAL - 2}`);
+  assert.equal(J['Relics claimed'], tally.join(' of '));
+  const full = structuredClone(g);
+  for (const id of Object.keys(RELICS)) if (!RELICS[id].starter || g.codex[id]?.claimed) full.codex[id] = { sighted: true, claimed: true, awakened: false };
+  assert.equal(Object.fromEntries(creditsOf(full).journey)['Relics claimed'], `${RELIC_TOTAL - 2} of ${RELIC_TOTAL - 2}`, 'a full Codex: every one');
   assert.equal(J['Brands'], `${BRANDS8.length} of ${BRAND_TOTAL}`);
   assert.match(J['Codex pages'], new RegExp(`^\\d of ${PAGES.length}$`));
   assert.equal(J['The Masterpiece'], 'Keeper');

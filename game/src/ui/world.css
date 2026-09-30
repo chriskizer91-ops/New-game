@@ -365,6 +365,12 @@
 /* the credits */
 .ov.ov-story.credits { background: radial-gradient(120% 80% at 50% 20%, rgba(30, 20, 14, .98), rgba(4, 3, 5, .99) 72%); }
 .credits-roll { max-height: 64vh; overflow-y: auto; overscroll-behavior: contain; padding: 4px 6px 12px; }
+/* M7 review: while the journey is still below the fold, the box's foot fades and a cue under it says so (the cue keeps
+   its line when it goes, so the button never jumps) */
+.credits-roll.more { -webkit-mask-image: linear-gradient(to bottom, #000 80%, transparent); mask-image: linear-gradient(to bottom, #000 80%, transparent); }
+.credits-more { margin: 0 0 10px; font-family: var(--f-pixel); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--hearth-hot); transition: opacity .3s ease; }
+.credits-more::after { content: ' \25BE'; }
+.credits-more.gone { opacity: 0; }
 .credits-roll.rolling > * { animation: wCreditIn .9s ease-out both; }
 .credits-roll.rolling > *:nth-child(2) { animation-delay: .2s; } .credits-roll.rolling > *:nth-child(3) { animation-delay: .5s; }
 .credits-roll.rolling > *:nth-child(4) { animation-delay: .9s; } .credits-roll.rolling > *:nth-child(5) { animation-delay: 1.2s; } .credits-roll.rolling > *:nth-child(6) { animation-delay: 1.6s; }

@@ -15,7 +15,7 @@ import { rollIntent, dieBonus, intentEvent } from '../src/rules/ai.js';
 import { stolenArt, stolenMoves } from '../src/rules/foe.js';
 import { stolenFor, allPagesDone, pagesDone } from '../src/rules/codex.js';
 import { check, condErrors } from '../src/rules/cond.js';
-import { masterpieceOffer, masterpieceName, forgeMasterpiece, masterpieceCost } from '../src/rules/forge.js';
+import { masterpieceOffer, masterpieceName, forgeMasterpiece, masterpieceCost, salvage, salvageYield, socketsOf, socket } from '../src/rules/forge.js';
 import { saveProblems, migrate } from '../src/rules/migrate.js';
 import { POWERS, deriveHero } from '../src/rules/stats.js';
 import { createRng } from '../src/core/rng.js';
@@ -159,6 +159,20 @@ test('M7 guest: the heroes can heal and revive her; the foes can aim at her', ()
   assert.ok(atHer > 0, 'the foes aim at her too');
 });
 
+test('M7 guest: a party-wide MP gift (the Hollow Chalice\'s The Given Cup) passes her by: she has no MP', async () => {
+  const { applyEffect } = await import('../src/rules/combat.js');
+  const { B } = await import('./helpers.mjs');
+  const { s } = withGuest();
+  const t = structuredClone(s);
+  const b = B(t, createRng(5));
+  const mp0 = t.units.a1.mp;
+  t.units.warden.mp = 0;
+  for (const id of t.order) if (t.units[id].side !== 'foe') applyEffect(b, t.units.warden, t.units[id], { type: 'mp', amount: 6 });
+  assert.equal(t.units.warden.mp, Math.min(t.units.warden.maxMp, 6), 'a hero gets it');
+  assert.equal(t.units.a1.mp, mp0, 'she is as she was');
+  assert.ok(!Number.isNaN(t.units.a1.mp));
+});
+
 test('M7 guest: the fight is lost when every hero is down, though she stands; she is never in the party', () => {
   let { s: t } = withGuest();
   for (let i = 0; i < 200 && current(t) !== 'a1'; i++) t = (t.units[current(t)].side === 'hero' ? act(t, { type: 'defend' }) : foeTurn(t)).state;
@@ -190,10 +204,20 @@ test('M7 Stolen Arts: stolenFor takes never-claimed Pages I-IV relics, the highe
   const next = stolenFor(g);
   assert.ok(next.every(id => !list.includes(id)));
   assert.ok(RELICS[next[0]].codex < Math.min(...nos));
-  // a full Codex leaves him nothing
+  // the starters you passed over are never his (no Warden can claim them)
+  assert.ok(list.every(id => !RELICS[id].starter), 'no starter');
+  // a full Codex leaves him nothing: every page done, with the two starters you passed over never claimed
   const full = structuredClone(game);
-  for (const id of Object.keys(RELICS)) full.codex[id] = { sighted: true, claimed: true, awakened: false };
+  const passed = Object.keys(RELICS).filter(id => RELICS[id].starter && !game.codex[id]?.claimed);
+  assert.equal(passed.length, 2, 'two starters passed over');
+  for (const id of Object.keys(RELICS)) if (!passed.includes(id)) full.codex[id] = { sighted: true, claimed: true, awakened: false };
+  assert.ok(allPagesDone(full), 'every page done');
   assert.deepEqual(stolenFor(full), []);
+  // one relic short of it, he takes that one
+  const short = structuredClone(full);
+  const last = list[0];
+  short.codex[last] = { sighted: true, claimed: false, awakened: false };
+  assert.deepEqual(stolenFor(short), [last]);
   assert.deepEqual(stolenFor(game), list, 'deterministic');
 });
 
@@ -281,6 +305,17 @@ test('M7 Masterpiece: forged once, Primal, named, paid for, with Kindle as its L
   assert.equal(masterpieceOffer(r.game).ok, false, 'one per save');
   assert.ok(masterpieceOffer(r.game).reasons.some(x => /one Masterpiece/.test(x)));
   assert.deepEqual(saveProblems(migrate(r.game)), [], 'a save with its Masterpiece is sound');
+  // Hilda never melts it down (one per save, and Kindle Anew asks for it): it is off the Salvage list, and refused
+  assert.equal(salvageYield(it), null, 'not on the Salvage list');
+  const melt = salvage(r.game, it.uid);
+  assert.deepEqual([melt.ok, melt.reason, melt.game], [false, 'Hilda will not melt down your Masterpiece.', r.game]);
+  assert.equal(check(melt.game, { masterpiece: true }), true, 'Kindle Anew still has it');
+  // its Primal rarity's sockets (a Storied sword has one): a gem goes in
+  assert.equal(socketsOf(it), 3);
+  const gemmed = socket({ ...r.game, gold: r.game.gold + 500, gems: { ...r.game.gems, 'bog-amber': 1 } }, it.uid, 2, 'bog-amber');
+  assert.equal(gemmed.ok, true, gemmed.reason || '');
+  assert.equal(gemmed.game.inventory.find(i => i.uid === it.uid).gems[2], 'bog-amber');
+  assert.deepEqual(saveProblems(migrate(gemmed.game)), [], 'and the save is sound');
   // equipped, its Surge is Kindle
   const h = r.game.party.roster.warden;
   const worn = { ...h, gear: { ...h.gear, weapon: it.uid } };

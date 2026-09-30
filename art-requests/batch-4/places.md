@@ -25,7 +25,7 @@ Layout:
 Leave plain: the nave's floor in front of each chair (the game draws a line of soot there, with the chair's owner beside it); the alcove's floor (a chest); the floor at the foot of the stair in.
 
 ## map-ash-stair.png
-Map: ash-stair · The Ash Stair · ash · the hearth's roots, going down
+Map: ash-stair · The Ash Stair · hearth-roots · the hearth's roots, going down
 Shape: portrait 2:3 · Scale: 24 squares across, 36 down
 The place: The Ash Stair, where the Eternal Hearth's roots go down through the world. It is a deep shaft of grey rock, its walls wrapped in roots of black iron as thick as towers, twisting down like a great tree's roots. Seams of glowing ember run through the rock like veins, and grey ash lies drifted on every step and ledge like snow. Hot, hushed, going down.
 Layout:
@@ -53,7 +53,7 @@ Layout:
 Leave plain: the narrows (the game draws the foes who hold them); the platform's centre (the game draws a fire in an iron brazier); the paving in front of the forge door (someone waits there).
 
 ## map-worldforge.png
-Map: worldforge · The Worldforge · forge · the Unsmith's forge at the bottom of the world
+Map: worldforge · The Worldforge · worldforge · the Unsmith's forge at the bottom of the world
 Shape: landscape 3:2 · Scale: 36 squares across, 24 down
 The place: The Worldforge, the Unsmith's forge at the bottom of the world: a colossal forge-hall hewn into the rock and plated with black iron. Against the right wall stands the Worldforge itself: a furnace as big as a house, shaped like a great heart of black iron and firebrick, its open mouth blazing white-gold, with channels of molten metal running from it across the floor. Around it:
 - a great anvil the size of a cart;

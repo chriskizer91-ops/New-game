@@ -58,8 +58,8 @@ export default deepFreeze({
     { id: 'wf-warden', kind: 'encounter', enc: 'wf-warden', mode: 'block', at: [10, 11], face: 'w' },
     // the finale (spec A3): his lair on the smith's place before the furnace, his sprite's foot inside it
     { id: 'unsmith', kind: 'encounter', enc: 'unsmith', mode: 'lair', at: [27, 12], area: [26, 11, 28, 12], face: 'w' },
-    // the heart: the step before the furnace's mouth, behind him (spec §4.7). Its look is `altar` until batch 4's painting
-    // lands, and then `painted` (spec §2.3)
+    // the heart: the step before the furnace's mouth, behind him (spec §4.7). Its look is `heart-step` until batch 4's
+    // painting lands, and then `painted` (spec §2.3)
     { id: 'wf-heart', kind: 'sign', at: [30, 11], look: 'heart-step', talk: 'the-heart', talkIf: { beaten: 'unsmith' }, text: 'The step before the furnace\'s mouth. The heat comes out of it like breath.' },
     // the Worldforge in the east wall, and the great anvil beside the smith's place (each drawn once, at its foot)
     { id: 'wf-furnace', kind: 'prop', prop: 'worldforge', at: [32, 18], solid: true },
