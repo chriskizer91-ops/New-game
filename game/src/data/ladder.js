@@ -1,17 +1,23 @@
 // The Ladder (M3 spec §3.6, M4 spec §3.6, M5 spec §3.6, M6 spec §3.6, M7 spec §3.6): one poster per villain, in order:
-// Act I, then the Act II posters of the Sunscorch, the Ironspire and the Gloomfen, then Act III's (M7), then the rumours: Harrow himself,
-// still missing (the Ironspire finds his forge, his hammer and his journeyman, not him).
-// LADDER = [{ id, enc?, spawn?, name, silhouette?, act }]
+// Act I, then the Act II posters of the Sunscorch, the Ironspire and the Gloomfen, then Act III's (M7), then the rumours.
+// LADDER = [{ id, enc?, spawn?, name, silhouette?, act, if?, found? }]
 //   enc/spawn  the encounter and spawn index whose foe the poster shows (renderFoe silhouette)
 //   silhouette a rumour: no encounter yet, only a name
+//   if         (M6) the entry shows only once its condition holds (the man on the barge, once Tamsin has fallen)
+//   found      (M7) { poster, if }: a rumour settled into a poster. Once `if` holds, the rumour is found: it shows
+//              "Found: <that poster's name>" and points at it (the missing smith and the man on the barge were both the
+//              Unsmith, and the fifth council shows it)
 //   state      silhouette -> scouted (flags.scouted[id], sighted or fought) -> settled ({ beaten: enc })
-// Owner: WP3S (M3), P3 story (M4, M5, M6).
+// Owner: WP3S (M3), P3 story (M4, M5, M6, M7).
 
 import { deepFreeze } from '../core/freeze.js';
 
 const P = (id, enc, name, spawn = 0) => ({ id, enc, spawn, name, act: 1 });
 const P2 = (id, enc, name, spawn = 0) => ({ id, enc, spawn, name, act: 2 });
 const P3 = (id, enc, name, spawn = 0) => ({ id, enc, spawn, name, act: 3 });
+// M7 (spec §2.4, §3.6): the rumours settle into the Unsmith's poster once the fifth council has sat (the gifts carry
+// Harrow's mark, and Hilda knows it)
+const FOUND = { poster: 'unsmith', if: { flag: 'council-5-done' } };
 
 export const LADDER = deepFreeze([
   P('sneck', 'keep-vault', 'Sneck the Tallyman'),
@@ -59,15 +65,14 @@ export const LADDER = deepFreeze([
   P2('old-jaws', 'old-jaws', 'Old Jaws'),
   P2('blackwater-leviathan', 'blackwater-leviathan', 'The Blackwater Leviathan'),
   // M7: the Hearth Below (spec §3.6): the Hollow Council, silhouettes until the fifth council sits (its scene scouts
-  // them), and the Unsmith, a silhouette until Tamsin's return (hers scouts him). STUB from the M7 scaffold: P3 settles
-  // the two rumours below into the Unsmith's poster ("Found: the Unsmith").
+  // them), and the Unsmith, a silhouette until Tamsin's return (hers scouts him). The two rumours below settle into his.
   P3('hollow-miravel', 'hollow-miravel', 'Hollow Miravel'),
   P3('hollow-qasim', 'hollow-qasim', 'Hollow Qasim'),
   P3('hollow-brundar', 'hollow-brundar', 'Hollow Brundar'),
   P3('hollow-gretch', 'hollow-gretch', 'Hollow Gretch'),
   P3('unsmith', 'unsmith', 'The Unsmith'),
-  // Act II rumours: Harrow is still missing
-  { id: 'missing-smith', name: 'the missing smith', silhouette: true, act: 2 },
-  // M6: the man on the barge who took Tamsin: a rumour once she has fallen (her duel over, won or yielded)
-  { id: 'man-on-the-barge', name: 'the man on the barge', silhouette: true, act: 2, if: { any: [{ flag: 'tamsin-fallen' }, { beaten: 'tamsin-rotbridge' }, { flag: 'tamsin-yielded-4' }] } },
+  // Act II rumours: Harrow is still missing (M7: found, the Unsmith)
+  { id: 'missing-smith', name: 'the missing smith', silhouette: true, act: 2, found: FOUND },
+  // M6: the man on the barge who took Tamsin: a rumour once she has fallen (her duel over, won or yielded; M7: found)
+  { id: 'man-on-the-barge', name: 'the man on the barge', silhouette: true, act: 2, if: { any: [{ flag: 'tamsin-fallen' }, { beaten: 'tamsin-rotbridge' }, { flag: 'tamsin-yielded-4' }] }, found: FOUND },
 ]);

@@ -9,7 +9,7 @@
 //                                                  bounty-giver pays any of them
 // The thank-you rule (M3 review): a line that claims a quest also sets its start flag, and a claim
 // needs every step done, so a deed done before meeting its giver is never lost.
-// Owner: WP3S (M3), P3 story (M4, M5, M6).
+// Owner: WP3S (M3), P3 story (M4, M5, M6, M7).
 
 import { deepFreeze } from '../core/freeze.js';
 
@@ -223,32 +223,39 @@ export const QUESTS = deepFreeze({
     ],
     reward: { gold: 250, gems: { 'bog-amber': 1 }, set: 'worldforge-page' },
   },
-  // ---- M7: the Hearth Below (spec §3.6). STUB from the M7 scaffold, all three: the spec's steps as far as today's
-  // conditions go, on the flags the stub scenes set. P1 adds `{ masterpiece: true }` and `{ ending }` (spec §4.8), and
-  // P3 adds the steps that read them, words the steps and finishes the rewards. ----
+  // ---- M7: the Hearth Below (spec §3.6) ----
+  // The main quest shows the moment the fifth council has sat (the Opening sets council-5-done), and closes with the
+  // ending chosen at the Worldforge's heart (each ending's scene claims it, data/dialogue.js ENDING). As in M4 to M6, a
+  // talk step also counts once what it leads to is done: the Chained Deep's, once the Unsmith has fallen.
   'hollow-council': {
     id: 'hollow-council', name: 'The Hollow Council', kind: 'main', giver: 'isolde', start: { flag: 'council-5-done' },
     steps: [
       step('Go down the vault stair and free the Hollow Council, all four.', { beaten: 'hollow-gretch' }, 'hollow-hall', 'hollow-gretch'),
-      step('Go down the Ash Stair to the Chained Deep.', { flag: 'met-tamsin-below' }, 'chained-deep', 'cd-tamsin'),
+      step('Go down the Ash Stair to the Chained Deep.', { any: [{ flag: 'met-tamsin-below' }, { beaten: 'unsmith' }] }, 'chained-deep', 'cd-tamsin'),
       step('Face the Unsmith at the Worldforge.', { beaten: 'unsmith' }, 'worldforge', 'unsmith'),
+      step('Choose at the Worldforge\'s heart what the hearth burns now.', { ending: true }, 'worldforge', 'wf-heart'),
     ],
-    reward: {}, // the ending is its reward (spec §3.6)
+    reward: {}, // the ending is its reward
   },
+  // Hilda offers the Masterpiece once the Council is freed and the Worldforge page is yours (spec §4.5). The price is
+  // TUNING.masterpiece: the gold and materials here are what a condition can say (the bog amber is on her forge's tab;
+  // story-data.test keeps them the same). The first step stays done once the price is spent on it. Her thanks once it
+  // is forged closes the quest (data/dialogue.js hilda-forged).
   masterpiece: {
     id: 'masterpiece', name: 'The Masterpiece', kind: 'side', giver: 'hilda', start: { all: [{ beaten: 'hollow-gretch' }, { flag: 'worldforge-page' }] },
     steps: [
-      // the price as far as a condition can say it (spec §4.5: the page, 5 embers, 5 silver, 2 bog amber, 2000 gold)
-      step('Bring Hilda what she asks for the Masterpiece.', { afford: { gold: 2000, materials: { embers: 5, silver: 5 } } }, 'keep', 'hilda'),
+      step('Gather Hilda\'s price for the Masterpiece: gold, embers, silver and bog amber.', { any: [{ afford: { gold: 2000, materials: { embers: 5, silver: 5 } } }, { masterpiece: true }] }, 'keep', 'hilda'),
+      step('Name your Masterpiece, and have Hilda forge it.', { masterpiece: true }, 'keep', 'hilda'),
     ],
-    reward: {}, // the Masterpiece itself (P1's forge)
+    reward: {}, // the Masterpiece itself (rules/forge.js forgeMasterpiece)
   },
+  // Fenwick's truth (spec §3.1): the hearth never burned wood. He gives his poker, No. 000, in the scene that claims it.
   'fenwicks-truth': {
     id: 'fenwicks-truth', name: 'Fenwick\'s Truth', kind: 'side', giver: 'fenwick', start: { beaten: 'hollow-gretch' },
     steps: [
-      step('Hear Fenwick out at the Eternal Hearth.', { owns: 'fenwicks-poker' }, 'keep-hall', 'fenwick'),
+      step('Hear Fenwick out at the Eternal Hearth.', { flag: 'fenwick-told' }, 'keep-hall', 'fenwick'),
     ],
-    reward: {}, // No. 000: Fenwick gives it himself (data/dialogue.js fenwick-truth)
+    reward: {}, // No. 000: Fenwick gives it himself (data/dialogue.js fenwick-poker)
   },
 });
 

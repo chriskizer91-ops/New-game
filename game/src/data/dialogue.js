@@ -1,11 +1,12 @@
 // Dialogue nodes (M3 spec §3.1, §4.4; M4 spec §3.1, §3.6; M5 spec §3.1, §3.5, §3.6; M6 spec §2.4, §3.1,
-// §3.5, §3.6). `{warden}` in a line is replaced with the player's name; every line is rendered with
-// textContent. Lines are at most 140 characters.
+// §3.5, §3.6; M7 spec §3.1, §3.5, §3.6, §4.7). `{warden}` in a line is replaced with the player's name; every line
+// is rendered with textContent. Lines are at most 140 characters.
 //
 // DIALOGUE[id] = {
 //   lines: [[speaker, text]],   speaker: an NPCS id | 'warden' | 'pip' | 'bryn' | 'alondra' | 'narrator'
 //   do?: [effect],              applied once when the node is shown
 //   choices?: [{ text, if?, next?, do?: [effect],
+//                needs?: [{ if: cond, why }],   (M7) shown disabled, with the `why` of each part that does not hold
 //                check?: { domain | ability, dc, name?, adv?: cond, pass: dialogueId, fail: dialogueId },
 //                contest?: { checks: [{ domain?, ability?, dc, name? }], need, pass, fail } }],
 // }
@@ -13,9 +14,13 @@
 //   {give: relicId} {item: {rarity, slot?, kind?, ilvl?}} {gold: n} {bag: {id: n}} {unlock: entityId}
 //   {gems: {gemId: n}} {materials: {scrap?, silver?, embers?}} (M4)
 //   {heal: true} {fight: encId} {claim: questId | 'bounties'}
-//   {open: 'shop:<id>'|'forge'|'atlas'|'journal'|'ladder'|'bounties'} {letter: brandId}
-//   {end: 'act1'|'act2'|'ironspire'|'gloomfen'}   the to-be-continued card ('ironspire': after the third
-//                                  council, M5; 'gloomfen': after the fourth, the end of Act II, M6)
+//   {open: 'shop:<id>'|'forge'|'masterpiece'|'atlas'|'journal'|'ladder'|'bounties'}   ('masterpiece', M7: Hilda's
+//                                  forge, on its Masterpiece tab)
+//   {letter: brandId | 'hollow'}   (M7: 'hollow' is the Unsmith's last letter, after the Hollow Council)
+//   {end: 'act1'|'act2'|'ironspire'|'gloomfen'|'act3-open'|'act3'}   the to-be-continued card ('ironspire': after the
+//                                  third council, M5; 'gloomfen': after the fourth, the end of Act II, M6; 'act3-open':
+//                                  after the fifth, the Act III title card, M7; 'act3': an ending's card, M7)
+//   {ending: 'rekindle'|'release'|'anew'}   (M7) the ending chosen at the Worldforge's heart, final for the save
 //   {pay: {gold?, bag?, materials?}} (M6: a choice that pays shows its price, disabled while unaffordable)
 //
 // Also here (read by rules/story.js and rules/world.js):
@@ -26,13 +31,16 @@
 //   RESTS = [{ at: hearthfireId, if?, d }]                played after resting at that Hearthfire
 //   LOOKOUTS[entityId] = { flag, maps }                   Longwatch from a lookout marks these maps
 // A `use` entity (bellframe, lookout) whose id is a DIALOGUE id opens that dialogue (M5: Peak's Veil's
-// bell rope `pv-bell-rope` and lookout `pv-lookout`).
-// Owner: WP3S (M3), P3 story (M4, M5, M6).
+// bell rope `pv-bell-rope` and lookout `pv-lookout`). M7: a sign's `talk` opens its scene too (the Worldforge's heart).
+// Owner: WP3S (M3), P3 story (M4, M5, M6, M7).
 
 import { deepFreeze } from '../core/freeze.js';
 
 const LEAVE = { text: 'Leave.' };
-const FORGE = [{ text: 'Temper something.', do: [{ open: 'forge' }] }, LEAVE];
+// M7 (spec §4.5): Hilda forges the Warden's Masterpiece once the Hollow Council is freed and the Worldforge page is
+// yours, one to a save (rules/forge.js sets masterpiece-forged): every line of hers offers it until then
+const MASTERPIECE_READY = { all: [{ beaten: 'hollow-gretch' }, { flag: 'worldforge-page' }, { not: { flag: 'masterpiece-forged' } }] };
+const FORGE = [{ text: 'Forge the Masterpiece.', if: MASTERPIECE_READY, do: [{ open: 'masterpiece' }] }, { text: 'Temper something.', do: [{ open: 'forge' }] }, LEAVE];
 const DAEL = [
   { text: 'Turn in bounties.', if: { bounty: 'any', state: 'ready' }, do: [{ claim: 'bounties' }], next: 'dael-paid' },
   { text: 'Read the bounty board.', do: [{ open: 'journal' }] },
@@ -108,6 +116,18 @@ const GRETCH = [
 const GRETCH_ASK = [{ text: 'Ask about soot-sealed letters.', next: 'gretch-box' }, ...GRETCH];
 // Tamsin has fallen: her Rotbridge duel is over, won or yielded, whether or not the scene after it played through
 const FALLEN = { any: [{ flag: 'tamsin-fallen' }, { beaten: 'tamsin-rotbridge' }, { flag: 'tamsin-yielded-4' }] };
+// M7 (spec §4.7): the Worldforge's heart, before an ending is chosen; and Kindle Anew's price, one part for each
+// condition of data/endings.js ENDINGS.anew.needs, in its order (story-data.test keeps them the same), each with the
+// reason the choice shows while that part does not hold
+const NO_ENDING = { not: { ending: true } };
+const ANEW = [
+  { if: { owns: 'fenwicks-poker' }, why: 'Fenwick\'s Poker' },
+  { if: { masterpiece: true }, why: 'your Masterpiece' },
+  { if: { pages: 'all' }, why: 'every page of the Codex' },
+];
+// an ending's scene: it sets the ending (once and for good: rules/story.js), closes the main quest (the thank-you rule:
+// a claim also sets its start flag) and ends on the ending's card, the credits and the last card (P7's `act3`)
+const ENDING = id => [{ ending: id }, { set: 'council-5-done' }, { claim: 'hollow-council' }, { end: 'act3' }];
 
 export const DIALOGUE = deepFreeze({
   // ---- story beats --------------------------------------------------------------------------
@@ -1150,8 +1170,8 @@ export const DIALOGUE = deepFreeze({
   },
   'isolde-boxes': {
     lines: [['isolde', 'The boxes are in the vault, under the Seal. Some nights I sit with them. They\'re warm. Boxes shouldn\'t be warm.']],
-    // M7 (spec §3.6): Isolde gives Act III's main quest, so her talk can start it: the Opening, as the keep-hall trigger
-    // plays it (STUB from the M7 scaffold: P3 decides whether she keeps offering it)
+    // M7 (spec §3.6): Isolde gives Act III's main quest, so her word can start it: the Opening, as the keep-hall trigger
+    // plays it on entering the hall (the fourth council leaves you in the hall, with her)
     choices: [{ text: 'Open them together, as the letter said.', if: { not: { flag: 'council-5-done' } }, next: 'council-5' }, LEAVE],
   },
   'notice-isolde-boots': { lines: [['isolde', 'Tamsin\'s boots. She hated boots as a girl; she said they made her slow. She\'d have hated these most of all.']] },
@@ -1707,49 +1727,399 @@ export const DIALOGUE = deepFreeze({
     do: [{ end: 'gloomfen' }],
   },
 
-  // ==== M7: the Hearth Below (spec §3.1, §3.5, §3.6, §4.7). STUB from the M7 scaffold, all of them: a line or two each, and the
-  // effects the rest of the data reads (the flags, the gifts). P3 writes the real scenes (the Opening's title card and
-  // the Act III card are P7's, spec §5); P1 adds the `ending` effect to the heart's choice (§4.7). ==========
-  // ---- the fifth council, the Opening (keep-hall trigger `council-5`, guarded by the flag it sets): the boxes open
-  // together, and the four go down to their chairs (their Ladder posters are scouted, spec §3.6) ----
+  // ==== M7: the Hearth Below (spec §1, §3.1, §3.5, §3.6, §4.7) ========================================================
+
+  // ---- the fifth council, the Opening (keep-hall trigger `council-5`, guarded by the flag it sets; Isolde's word can
+  // open it too). The four soot-sealed boxes are opened together, as the eighth letter said, in the vault under the
+  // Seal. Each gift takes the chair it was sent to, and the four walk down a stair that was never there; their posters
+  // leave silhouette (scout). Hilda knows the mark on the gifts: the Unsmith is her brother. Every way out ends on the
+  // Act III title card ({ end: 'act3-open' }, P7's).
   'council-5': {
     lines: [
-      ['narrator', 'Eight coals, four chairs, four boxes. The Council opens them together, as the Unsmith\'s letter said.'],
-      ['isolde', 'Something is wrong with them, {warden}. And there is a stair in the vault floor that was never there.'],
+      ['narrator', 'The Council sits a fifth time. Not one of the four has slept since the fourth, and neither has Isolde.'],
+      ['qasim', 'The box would not let me rest. It sounds like water in a dry cistern. I have come to be rid of a debt.'],
+      ['brundar', 'I said I don\'t open gifts from men who rob me. I\'ve changed my mind. I want to see what he thinks I\'m worth.'],
+      ['gretch', 'I\'m not a fool. Tonight I\'d like to be one, just the once, and have it over with.'],
+      ['miravel', 'Mine calls me by my name, in my own voice. Let\'s be done with it, before I answer.'],
+      ['isolde', 'The letter said together. Then together, in the vault, under the Seal, with the Warden beside me.'],
     ],
     do: [{ set: 'council-5-done' }, { scout: 'hollow-miravel' }, { scout: 'hollow-qasim' }, { scout: 'hollow-brundar' }, { scout: 'hollow-gretch' }],
+    choices: [{ text: 'Open them together.', next: 'council-5-open' }],
   },
-  // ---- the Hollow Council freed (spec §3.1): each one's line, back in their own town ----
-  'freed-miravel': { lines: [['miravel', 'The wreath showed me every tree I ever let fall, and made me feel each one. I still do, Warden. Thank you.']] },
-  'freed-qasim': { lines: [['qasim', 'The chalice was never full. It showed me every cup I sold that I should have given. I have stopped selling.']] },
-  'freed-brundar': { lines: [['brundar', 'The gauntlet held on to everything for me. You made it let go. Ironhold will not forget that.']] },
-  'freed-gretch': { lines: [['gretch', 'I told you I didn\'t open it. I lied. I always pay my favours, Warden, and I owe you a big one.']] },
-  // ---- Fenwick's truth (his talk once the Hollow Council is freed): he gives the Warden his poker, No. 000 ----
+  'council-5-open': {
+    lines: [
+      ['narrator', 'In the vault, four hands break four soot seals at once. In each box, on black velvet, lies a gift made for its chair.'],
+      ['narrator', 'A wreath of black thorn. A chalice. A gauntlet. A chain of office. Each is stamped with a hammer in a broken ring.'],
+      ['hilda', 'That\'s our mark. His. The soot letters, the man on the barge, and now these. My brother, every time.'],
+      ['narrator', 'Miravel lifts the wreath to look at it, and her hands put it on. The chalice fills in Qasim\'s hands, and he drinks.'],
+      ['narrator', 'The gauntlet closes on Brundar\'s fist. The chain drops over Gretch\'s head and draws tight. Their eyes go grey.'],
+      ['narrator', 'The vault floor opens: a stair, where there was never a stair. The four walk down it, and don\'t look back.'],
+    ],
+    choices: [{ text: 'Go after them.', next: 'council-5-stair' }],
+  },
+  'council-5-stair': {
+    lines: [
+      ['isolde', 'Wait. Fenwick. You\'ve kept that hearth nine hundred years. Where does that stair go?'],
+      ['fenwick', 'Down. To the hall the first Council sat in, before there was a Keep on top of it. And under that...'],
+      ['fenwick', 'Bring them back first. Then come and sit with me, and ask. I\'ll answer this time. I\'ve run out of ways not to.'],
+      ['hilda', 'And if my brother\'s at the bottom of it, bring me him. Or bring me word. I\'d take either.'],
+      ['isolde', 'I\'ll hold the hall. Go down after my Council, {warden}, and bring them home. Every one.'],
+    ],
+    do: [{ end: 'act3-open' }],
+  },
+
+  // ---- the Hollow Council freed (spec A11, §3.1, §3.5): in the Hollow Hall they are fights only; each one's scene as
+  // they come back to themselves (AFTER), the gift off them, pried loose or broken (so the lines never say which). The
+  // fourth's shows his last letter, signed at last (`hollow`). A wipe wakes the party by a fire (the last Hearthfire
+  // they rested at: the lines name no place), and who is beaten stays beaten.
+  'hollow-miravel-after': {
+    lines: [
+      ['narrator', 'The wreath is off her. Miravel sits down on the dais of the first chair, the tree\'s, and looks at her hands.'],
+      ['miravel', 'Warden. It spoke to me in the eldest trees\' voice. Shut every road, it said, and they\'ll never bleed again.'],
+      ['miravel', 'Go on. Three chairs are still full. I\'ll sit in my own a while. It\'s mine again.'],
+    ],
+  },
+  'hollow-qasim-after': {
+    lines: [
+      ['narrator', 'The chalice rolls away across the floor. Qasim sits on the steps of the sun\'s chair like a man after a long walk.'],
+      ['qasim', 'I have drunk from it for days, and I have never been so thirsty. That is a strange sort of desert, Warden.'],
+      ['qasim', 'Go. Two chairs are still full. I will not keep you. I dislike keeping what is not mine.'],
+    ],
+  },
+  'hollow-brundar-after': {
+    lines: [
+      ['narrator', 'The gauntlet lies open on the floor. Brundar holds his bare hand to his chest, and it shakes.'],
+      ['brundar', 'It wouldn\'t let go. Of my hall, my shame, my grudges. Of me. Harrow\'s rivets. I\'d know them blind.'],
+      ['brundar', 'One chair left: the Gloomfen\'s. Go and get Gretch. She\'ll hate being rescued. Do it anyway.'],
+    ],
+  },
+  'hollow-gretch-after': {
+    lines: [
+      ['narrator', 'The chain is off Gretch\'s neck. She sits down on the dais of the lantern\'s chair, hard, and folds her arms.'],
+      ['gretch', 'I\'m not a fool. I\'ve told Bogmire so for thirty years. Well. Now I\'ve told them wrong once.'],
+      ['narrator', 'Up the hall the other three stand from their chairs, and behind them the ash on the stair to the vault settles.'],
+      ['narrator', 'On the round table, where nobody set it, lies a letter sealed in soot.'],
+    ],
+    do: [{ letter: 'hollow' }],
+  },
+  'hollow-woke': {
+    lines: [
+      ['narrator', 'You wake by a fire with ash in your hair, and no memory of the way up.'],
+      ['bryn', 'They didn\'t follow us. They\'re still down there, waiting in their chairs. The ones we freed stay freed.'],
+    ],
+    do: [{ set: 'woke-by-council' }],
+  },
+  'hollow-woke-again': { lines: [['pip', 'Knocked flat again. They\'ll wait. Waiting is the one thing a hollow Council does well.']] },
+
+  // ---- the Hollow Council at home (spec §3.1): each one's thanks, once (their first meeting too, should the Warden
+  // never have met them in their own town), and what the gift showed them; then they notice it on you; then a line
+  'freed-miravel': {
+    lines: [
+      ['miravel', 'The wreath showed me every road shut with thorn, and the trees safe for good. I wanted it. That\'s the shame of it.'],
+      ['miravel', 'Keep folk never take my advice. You came down a stair after me instead. I\'ll forgive the Keep a great deal for that.'],
+    ],
+    do: [{ set: 'heard-miravel' }, { set: 'met-miravel-rot' }],
+  },
+  'miravel-home-again': { lines: [['miravel', 'The eldest trees still bleed where the Rot touched them, but slower now. So do I. Go gently, Warden.']] },
+  'notice-miravel-wreath': { lines: [['miravel', 'Take that wreath off near me, Warden. Please. I can still hear it, telling me to shut the roads.']] },
+  'freed-qasim': {
+    lines: [
+      ['qasim', 'The chalice was always full, and I was always thirsty. It showed me every cistern dry but mine, and I was glad.'],
+      ['qasim', 'You paid a debt I had not yet named, Warden. I dislike owing. For you, I shall learn to bear it.'],
+    ],
+    do: [{ set: 'heard-qasim' }, { set: 'met-qasim' }],
+  },
+  'qasim-home-again': { lines: [['qasim', 'Sit. Drink, slowly. The first cup is free now, for anyone. The chalice would hate that, so I pour it twice.']] },
+  'notice-qasim-chalice': { lines: [['qasim', 'You carry the chalice. Is it empty? Good. Keep it empty. If it ever fills, pour it on the ground.']] },
+  'freed-brundar': {
+    lines: [
+      ['brundar', 'The gauntlet held on for me: my hall, my shame, every grudge I own. I\'d never have let go on my own. You made it.'],
+      ['brundar', 'Ironhold owes you twice now. I hate owing. I\'ll hate it proudly, and I\'ll pay.'],
+    ],
+    do: [{ set: 'heard-brundar' }, { set: 'met-brundar' }],
+  },
+  'brundar-home-again': { lines: [['brundar', 'I\'ve opened every door in the Deeps. Let the mountain breathe. A fist that won\'t open isn\'t strong. It\'s stuck.']] },
+  'notice-brundar-gauntlet': { lines: [['brundar', 'That gauntlet on your hand. Open your fist. ...Good. Now you know you still can. Do it every morning.']] },
+  'freed-gretch': {
+    lines: [
+      ['gretch', 'The chain said Bogmire would never be afraid again, if I held it tight enough. Fear and favours. It had both.'],
+      ['gretch', 'You came down for me, and I always pay my favours. Eventually. This one I\'ll pay first. Don\'t tell anyone.'],
+    ],
+    do: [{ set: 'heard-gretch' }, { set: 'met-gretch' }],
+    choices: GRETCH,
+  },
+  'gretch-home-again': { lines: [['gretch', 'Bogmire thinks I went to the Keep for the soup. Let them. A mayor needs a mystery or two.']], choices: GRETCH },
+  'notice-gretch-chain': { lines: [['gretch', 'Wearing that chain in my town? Bold. Everyone here knows whose it was. It suits you better. Don\'t tell them.']], choices: GRETCH },
+
+  // ---- Fenwick (spec §3.1): the stair under his hearth; once the Council is freed, the truth, and his poker (No. 000).
+  // The hearth kept him as long as he kept it: without the poker he ages, and every line of his after is an old man's.
+  'fenwick-hollow': { lines: [['fenwick', 'I can feel them on the stair under my hearth, all four, walking down. Bring them up, Warden. Then ask me.']] },
   'fenwick-truth': {
     lines: [
-      ['fenwick', 'The hearth never burned wood, {warden}. It burned the Sleepers\' warmth, and I kept it. Nine hundred years.'],
-      ['fenwick', 'Take my poker. You\'ll need something to stir what comes next.'],
+      ['fenwick', 'Sit, {warden}. By the fire. I promised you the rest, and I\'ve put it off nine hundred years. That\'s long enough.'],
+      ['fenwick', 'This hearth never burned wood. Not one log. It burns the Sleepers: four of them, chained under four hills.'],
+      ['fenwick', 'A smith did it, in the First Age. He drew the Worldforge too, and never dared light it. I held his lamp.'],
+      ['fenwick', 'He lit this hearth over the first of them and put his poker in my hand. Keep it in, he said. So I have.'],
+      ['fenwick', 'It eats what it\'s given, Warden. It was given them. And every coal you lit, it ate a little more.'],
     ],
-    do: [{ give: 'fenwicks-poker' }, { claim: 'fenwicks-truth' }],
+    choices: [{ text: 'Let him finish.', next: 'fenwick-poker' }],
   },
-  // ---- Hilda's offer (spec §4.5): the Masterpiece, once the Council is freed and the Worldforge page is yours. A line
-  // only: P7's Masterpiece tab and P1's forge do the rest ----
+  'fenwick-poker': {
+    lines: [
+      ['fenwick', 'The hearth kept me as long as I kept it. Nine hundred years. Here. You\'ll want something to stir what comes next.'],
+      ['narrator', 'He holds out an iron poker, worn thin at the grip. When your hand closes on it, his opens, and stays open.'],
+      ['narrator', 'Nothing happens. Then something does: the lines of his face deepen one by one, like frost on a window.'],
+      ['fenwick', 'Ah. There\'s my knees. I\'d forgotten them. Go on, Warden. I\'ll sit up with it. I always have.'],
+    ],
+    do: [{ set: 'fenwick-told' }, { give: 'fenwicks-poker' }, { claim: 'fenwicks-truth' }],
+  },
+  'fenwick-old': { lines: [['fenwick', 'My hands shake now. Nine hundred years of weather, all at once, and it\'s all gone to my knees. Mind the fire for me.']] },
+  'notice-fenwick-poker': { lines: [['fenwick', 'Keep it moving, Warden. A poker that sits still forgets what it\'s for. So do old men.']] },
+  'fenwick-rekindle': { lines: [['fenwick', 'They\'re breathing under the floor again, slow. I slept to that sound nine hundred years. I wish I didn\'t know it now.']] },
+  'fenwick-release': { lines: [['fenwick', 'Logs! Real logs, in the Eternal Hearth. It smokes and spits and sulks. I\'ve never been so glad to be cold.']] },
+  'fenwick-anew': { lines: [['fenwick', 'It burns gold now, on something you made, and nobody\'s paying for it. I sit up with it anyway. Habit. It\'s lovely.']] },
+
+  // ---- Hilda (spec §3.1, §4.5): her brother's mark on the gifts. Once the Council is freed and the Worldforge page is
+  // yours she offers the Masterpiece, and names her brother at last (every line of hers then offers it: FORGE, which
+  // opens the forge's Masterpiece tab, P7's); without the page, a hint. Her thanks once it is forged (it closes the
+  // quest); how Harrow went, when you tell her; her work in the hearth, if you chose Kindle Anew.
+  'hilda-hollow': { lines: [['hilda', 'His mark on all four. I kept telling myself it was somebody else\'s broken ring. Give me something to hit, Warden.']], choices: FORGE },
   'hilda-masterpiece': {
-    lines: [['hilda', 'That page is my brother\'s hand. Bring me what I ask, and I\'ll forge you something Harrow never could.']],
+    lines: [
+      ['hilda', 'That page. The last leaf of the Worldforge plans, the one he dredged a fen for. Harrow never got it. You did.'],
+      ['hilda', 'Harrow Ironvein. The Unsmith. My twin. I\'ve never said the three together out loud. There. It\'s said.'],
+      ['hilda', 'His forge unmakes. This leaf is the other half: how the old smith made a thing fit to feed a hearth.'],
+      ['hilda', 'They wrote "do not forge it" on the chest. I\'m a smith. Bring me the price and a name, and I\'ll forge you a legend.'],
+    ],
+    do: [{ set: 'masterpiece-offered' }],
     choices: FORGE,
   },
-  // ---- Tamsin in the Chained Deep (spec A12): she joins for the one fight; after it she gives up her relic ----
+  'hilda-masterpiece-again': { lines: [['hilda', 'The page is on my bench, and my hands itch. Mostly gold, as ever. Bring me the price and a name.']], choices: FORGE },
+  'hilda-page': { lines: [['hilda', 'He stole the plans from under Ironhold. If a leaf of them ever turns up that he missed, bring it to me. I\'ve ideas.']], choices: FORGE },
+  'hilda-forged': {
+    lines: [
+      ['hilda', 'There. The best thing I\'ve ever made, and it\'s got your name on it, not mine. Don\'t let it go to your head.'],
+      ['hilda', 'Harrow would have made it prettier. I made it better. That\'s the whole difference between us.'],
+    ],
+    do: [{ claim: 'masterpiece' }],
+    choices: FORGE,
+  },
+  'hilda-told': {
+    lines: [
+      ['bryn', 'Hilda. He\'s gone. At the end he said: tell Hild I kept the fire in. He said you\'d know what he meant.'],
+      ['narrator', 'Hilda sets her hammer down on the anvil, which she never does, and stands a long while with her hands flat on it.'],
+      ['hilda', 'When we were small I let the forge go out every night, and he\'d creep back and bank it, so it was warm by morning.'],
+      ['hilda', 'Kept the fire in. The idiot. ...Thank you for telling me. Now give me something to hit, and don\'t watch.'],
+    ],
+    do: [{ set: 'harrow-told' }],
+    choices: FORGE,
+  },
+  'hilda-banks': { lines: [['hilda', 'I bank the forge every night now, so it\'s warm by morning. Somebody should. Hand me that blade.']], choices: FORGE },
+  'hilda-anew': { lines: [['hilda', 'My work, burning in the Eternal Hearth. Harrow would have hated it. Best review I\'ve ever had.']], choices: FORGE },
+  'notice-hilda-unmaking': { lines: [['hilda', 'His hammer. The bigger one he wrote about. It\'s heavy on the side he favoured. Mind that, or it\'ll mind you.']], choices: FORGE },
+  'notice-hilda-apron': { lines: [['hilda', 'His apron, with our mark on the pocket. He wore it every day of his life. It suits you. Don\'t burn it.']], choices: FORGE },
+  'notice-hilda-worldheart': { lines: [['hilda', 'Take that ring off at my forge, Warden. My coals lean towards it. So do I, and I don\'t like it.']], choices: FORGE },
+
+  // ---- Isolde (spec §3.1): she holds the hall while the Warden goes down. Tamsin comes home to her (and, should the
+  // scene below have been cut short, leaves her relic with Isolde for you: Page V never hangs on a lost scene). After
+  // an ending she answers it.
+  'isolde-holds': { lines: [['isolde', 'I\'m holding the hall. Four empty chairs at my table and an open stair in my vault. Bring my Council home, {warden}.']] },
+  'isolde-freed': { lines: [['isolde', 'My Council sat at my table this morning, grey and quiet, and ate everything. Now go down and finish it, {warden}.']] },
+  'isolde-tamsin': {
+    lines: [
+      ['isolde', 'Tamsin came up the vault stair this morning. She sat down at my table and ate everything I put in front of her.'],
+      ['isolde', 'We didn\'t say a word the whole time. Best talk we\'ve ever had. I think she\'ll stay a while.'],
+    ],
+    do: [{ set: 'heard-tamsin-home' }],
+  },
+  'isolde-bargain': {
+    lines: [
+      ['isolde', 'Tamsin came up the vault stair this morning, and left this on my table for you. She said you\'d know why.'],
+      ['isolde', 'Then she ate everything I put in front of her, and we didn\'t say a word. Best talk we\'ve ever had.'],
+    ],
+    do: [{ give: 'tamsins-bargain' }, { set: 'tamsin-gave' }, { set: 'tamsin-returned' }, { set: 'met-tamsin-below' }, { set: 'heard-tamsin-home' }],
+  },
+  'isolde-heart': { lines: [['isolde', 'Tamsin told me what my hearth eats. The choice is down there, {warden}, and it\'s yours. I won\'t make it for you.']] },
+  'isolde-rekindle': { lines: [['isolde', 'The hearth burns as it always has, and the Keep is warm. I sleep well. I don\'t think I should.']] },
+  'isolde-release': { lines: [['isolde', 'Logs in the Eternal Hearth, like any farmhouse. It smokes. Fenwick has never been happier. Nor have I.']] },
+  'isolde-anew': { lines: [['isolde', 'It burns gold now, on something my Warden made. Every Warden after you will warm their hands at it. I\'ll say whose.']] },
+  'notice-isolde-bargain': { lines: [['isolde', 'Tamsin\'s sword. It bled on my table the night she came home. It\'s stopped now. So has she, mostly.']] },
+
+  // ---- Tamsin below (spec A12, §3.1): she waits before the forge door, sorry. Past the unmade the party sees her; her
+  // return sets tamsin-returned (she leaves the map) and met-tamsin-below, and scouts the Unsmith (his poster, spec
+  // §3.6). She fights beside you as a guest; after him she gives up the relic she bought (No. 071), and goes up to
+  // Isolde. The night before, she keeps the watch at the Chain Fire.
+  'tamsin-waiting': {
+    lines: [
+      ['narrator', 'Past the narrows, on the paving before the forge door, someone gets up off the stones. Tamsin.'],
+      ['pip', 'It\'s her. Glowing, of course. Nobody draw a weapon. Well. Nobody swing one.'],
+    ],
+    choices: [{ text: 'Go to her.', next: 'tamsin-return' }],
+  },
   'tamsin-return': {
-    lines: [['tamsin', 'I followed the barge to the bottom of the world. I saw what he\'s making. I\'m sorry. Let me stand with you.']],
+    lines: [
+      ['tamsin', 'Don\'t. I know. Say it after. I followed his barge all the way down, to the bottom of the world.'],
+      ['tamsin', 'He fed the Keep\'s relic to his forge the night I gave it to him. That\'s what lit it. I lit the Worldforge, Warden.'],
+      ['tamsin', 'I wanted to be the better Warden. I was only the one who said yes. ...I\'m sorry. I\'ll tell Isolde myself.'],
+      ['tamsin', 'Let me stand with you against him. You won\'t have to look after me. Nobody ever has.'],
+      ['alondra', 'She means it. She\'s frightened, and she means it anyway. That\'s most of courage.'],
+    ],
     do: [{ set: 'tamsin-returned' }, { set: 'met-tamsin-below' }, { scout: 'unsmith' }],
+    choices: [{ text: 'Stand with us, then.', next: 'tamsin-joins' }],
+  },
+  'tamsin-joins': {
+    lines: [
+      ['pip', 'Fine. You stand on my left, where I can see the glow. And you\'re not having your boots back.'],
+      ['tamsin', 'Keep them. Warden: whatever he says down there, he\'ll say it well. Don\'t listen. I listened.'],
+    ],
   },
   'tamsin-after': {
-    lines: [['tamsin', 'Take it. I bought it with the wrong thing. It\'s yours now. It was always going to be.']],
-    do: [{ give: 'tamsins-bargain' }, { set: 'tamsin-gave' }],
+    lines: [
+      ['narrator', 'Tamsin looks down at the sword in her hands. The violet-black has stopped bleeding out of it. It only aches now.'],
+      ['tamsin', 'Take it. I bought it with the wrong thing, and I\'ve paid for it since. It\'s yours. It was always going to be.'],
+      ['tamsin', 'I\'m going up. I owe Isolde a conversation. She\'ll make me eat something first. She always does.'],
+      ['pip', 'That heart\'s still beating behind the furnace. Somebody has to decide what it burns now. Not me. Not me at all.'],
+    ],
+    do: [{ give: 'tamsins-bargain' }, { set: 'tamsin-gave' }, { set: 'tamsin-returned' }, { set: 'met-tamsin-below' }],
   },
-  // ---- the Worldforge's heart (spec §4.7): a stand-in; the choice comes later ----
+  'chain-fire-night': {
+    lines: [
+      ['narrator', 'Tamsin keeps the watch at the Chain Fire without being asked, her back to the Sleeper, her sword across her knees.'],
+      ['tamsin', 'Isolde sat up with me when I had bad dreams. I\'d pretend to sleep so she\'d stop. She never did. Sleep, Warden.'],
+    ],
+    do: [{ set: 'chain-fire-night' }],
+  },
+
+  // ---- the Unsmith (spec A16, §3.5): Harrow Ironvein, Hilda's twin. Past the forge-warden he calls you across the
+  // bridge; `unsmith` is his word before the fight, which always offers it (and can be his encounter's talk, M6's
+  // pattern). After it, his end, and Tamsin's relic; a wipe wakes the party by a fire, and he waits.
+  'unsmith-bridge': {
+    lines: [
+      ['narrator', 'The forge-warden folds like a dropped bellows. Across the bridge, a tall man at the great anvil looks up.'],
+      ['unsmith', 'There you are, little Warden. Thorough to the last chair. Come across. Mind the moat; it keeps what it takes.'],
+    ],
+    choices: [{ text: 'Cross the bridge.', next: 'unsmith' }],
+  },
+  unsmith: {
+    lines: [
+      ['narrator', 'Harrow Ironvein sets his hammer on the anvil. He has Hilda\'s hands, her way of standing, and a smile she never wears.'],
+      ['unsmith', 'Every relic you ever claimed, polished, on your belt. Good. Metal melts better clean. I did tell you.'],
+      ['unsmith', 'And my better Warden. You went back to them after all. I did wonder which of us you\'d stand with.'],
+      ['tamsin', 'The ones who came down after me. You never once came back up for anyone.'],
+    ],
+    choices: [{ text: 'Ask him why.', next: 'unsmith-why' }, { text: 'Face him.', do: [{ fight: 'unsmith' }] }, { text: 'Not yet.' }],
+  },
+  'unsmith-why': {
+    lines: [
+      ['unsmith', 'Your hearth never burned wood. It burns four Sleepers in chains, and every relic you carry is a spark off them.'],
+      ['unsmith', 'Nine hundred years of heroes, warming their hands at someone else. I read it in the plans, and I couldn\'t unread it.'],
+      ['unsmith', 'The old smith drew this forge and never dared light it. I lit it. Every relic melts in it, then the hearth goes out.'],
+      ['unsmith', 'And the Sleepers with it. That\'s kinder than waking them to what we\'ve done. Stand aside, little Warden.'],
+      ['tamsin', 'He\'s been starving them through your coals. Every one you lit. I watched him count their heartbeats.'],
+    ],
+    choices: [{ text: 'Face him.', do: [{ fight: 'unsmith' }] }, { text: 'Not yet.' }],
+  },
+  'unsmith-after': {
+    lines: [
+      ['narrator', 'Harrow Ironvein goes down on one knee before his forge. The fire in it gutters, and does not go out.'],
+      ['unsmith', 'Thorough, to the last. ...Tell Hild I kept the fire in. She\'ll know what I mean. She\'ll hate it.'],
+      ['narrator', 'He sits down with his back to the great anvil, the way a smith sits at the end of a long day, and does not get up.'],
+    ],
+    choices: [{ text: 'Turn to Tamsin.', next: 'tamsin-after' }],
+  },
+  'unsmith-woke': {
+    lines: [
+      ['narrator', 'You wake by a Hearthfire, every bone ringing. Tamsin sits across it, turning her sword in the light.'],
+      ['tamsin', 'He let us go. He wants us back with everything, one more time. Fine. We go back, and this time we win.'],
+    ],
+    do: [{ set: 'woke-by-unsmith' }],
+  },
+  'unsmith-woke-again': { lines: [['tamsin', 'Again. Fine. Getting knocked down is easy; I\'ve had practice. It\'s the getting up that counts. Up.']] },
+
+  // ---- the Worldforge's heart (spec A14, §4.7): the sign wf-heart's talk once the Unsmith falls. Rekindle and Release
+  // always; Kindle Anew with its price (ANEW), shown disabled with the reasons until it is paid; each through a last
+  // word before it is final ("Think again." goes back). Each ending's scene sets the ending (once and for good), closes
+  // the main quest and plays the Act III card (ENDING). Afterwards the heart only says what was chosen, and does
+  // nothing more.
   'the-heart': {
-    lines: [['narrator', 'The heart of the Worldforge beats in its furnace. What it burns now is yours to choose, but not yet.']],
+    lines: [['narrator', 'The furnace mouth, where the hearth\'s iron roots come down through the rock to the Worldforge\'s heart.']],
+    choices: [
+      { text: 'Rekindle: chain the Sleepers again.', if: NO_ENDING, next: 'choose-rekindle' },
+      { text: 'Release: break their chains.', if: NO_ENDING, next: 'choose-release' },
+      { text: 'Kindle Anew: a legend of your own.', if: NO_ENDING, needs: ANEW, next: 'choose-anew' },
+      { text: 'Not yet.', if: NO_ENDING },
+      { text: 'Look into the furnace.', if: { ending: 'rekindle' }, next: 'heart-rekindled' },
+      { text: 'Look into the furnace.', if: { ending: 'release' }, next: 'heart-released' },
+      { text: 'Look into the furnace.', if: { ending: 'anew' }, next: 'heart-anew' },
+    ],
+  },
+  'choose-rekindle': {
+    lines: [
+      ['narrator', 'Chain them again. The Sleepers sleep on, the hearth burns as it always has, and nobody up there need ever know.'],
+      ['alondra', 'They\'ll never wake. They\'ll never quite rest, either. I can hear that too.'],
+    ],
+    choices: [{ text: 'Rekindle.', next: 'ending-rekindle' }, { text: 'Think again.', next: 'the-heart' }],
+  },
+  'choose-release': {
+    lines: [
+      ['narrator', 'Break the chains. The Sleepers go free, the hearth goes out, and every coal you lit goes out with it.'],
+      ['bryn', 'The Keep has had an Eternal Hearth for nine hundred years. It will have to learn to be ordinary. That\'s allowed.'],
+    ],
+    choices: [{ text: 'Release them.', next: 'ending-release' }, { text: 'Think again.', next: 'the-heart' }],
+  },
+  'choose-anew': {
+    lines: [
+      ['narrator', 'Break the chains, and give the hearth something else to burn: a legend you forged, stirred with Fenwick\'s poker.'],
+      ['pip', 'Hilda\'s work, in the Eternal Hearth, forever. She\'s going to be unbearable. Do it.'],
+    ],
+    choices: [{ text: 'Kindle Anew.', needs: ANEW, next: 'ending-anew' }, { text: 'Think again.', next: 'the-heart' }],
+  },
+  'ending-rekindle': {
+    lines: [
+      ['narrator', 'You lay your hand on the Worldforge\'s heart: as it was. Down in the Deep the chains draw tight again, link by link.'],
+      ['narrator', 'Far above, eight coals flare in the Eternal Hearth. Under the Keep the First Sleeper sighs, and sleeps on.'],
+      ['alondra', 'All four of them. Slow, and a little slower. They didn\'t wake. I don\'t think they ever quite do.'],
+      ['bryn', 'The Keep will be warm this winter, and every winter after. Somebody has to remember what it costs.'],
+      ['pip', 'We\'ll remember. I\'ll carve it on something. Something heavy, so nobody can move it.'],
+    ],
+    do: ENDING('rekindle'),
+  },
+  'ending-release': {
+    lines: [
+      ['narrator', 'You lay your hand on the Worldforge\'s heart: let them go. Down in the Deep the chains go slack, and fall.'],
+      ['narrator', 'Far above, the eight coals go grey one by one, and the Keep is cold for the first time in nine hundred years.'],
+      ['alondra', 'They\'re turning over, all four. Not waking. Just breathing, the way you breathe after a long cry.'],
+      ['bryn', 'No Eternal Hearth. We\'ll burn logs, like anyone else. Fenwick will pretend to mind.'],
+      ['pip', 'Cold toes for everybody. Worth it. Mostly. Ask me again in winter.'],
+    ],
+    do: ENDING('release'),
+  },
+  'ending-anew': {
+    lines: [
+      ['narrator', 'You break the chains first. Down in the Deep they go slack, and far above, the eight coals gutter and dim.'],
+      ['narrator', 'Then you hold your Masterpiece to the Worldforge\'s heart, and its fire catches, the way a candle lights a candle.'],
+      ['narrator', 'You stir it with Fenwick\'s poker. The fire climbs the hearth\'s roots like a slow sunrise, and the hearth burns gold.'],
+      ['alondra', 'The Sleepers are free, and the hearth is warm, and nobody is paying for it. I didn\'t know we were allowed both.'],
+      ['bryn', 'You fed it a story instead of someone. Every Warden after you will warm their hands at yours.'],
+    ],
+    do: ENDING('anew'),
+  },
+  'heart-rekindled': { lines: [['narrator', 'The heart beats slow and steady in the furnace mouth. Far above, the hearth burns as it always has. The chains hold.']] },
+  'heart-released': { lines: [['narrator', 'The furnace is dark, and the heart in it is still. The chains lie slack in the Deep. Nothing here needs you now.']] },
+  'heart-anew': { lines: [['narrator', 'The heart burns gold in the furnace mouth, fed on a legend and nothing else. The chains lie slack in the Deep.']] },
+
+  // ---- arrivals below the Keep (ARRIVALS): first impressions of the Hearth Below ----------------------------------
+  'arrive-hollow-hall': {
+    lines: [['alondra', 'Four heartbeats ahead of us, slow and cold, like people asleep on their feet. And far below them, something vast.'], ['bryn', 'Four great chairs and a round table, older than the Keep. The first Council sat here, before there was a Keep.']],
+  },
+  'arrive-ash-stair': {
+    lines: [['pip', 'Ash to the knees, and it\'s warm. Nine hundred years of the Keep\'s fire came down this way.'], ['bryn', 'Iron roots, going down into the rock. Whatever the Keep is standing on, it has hold of it.']],
+  },
+  'arrive-chained-deep': {
+    lines: [['alondra', 'There. The fourth. I dreamed of four, and this is the one I never found. It was under the hearth all along.'], ['bryn', 'Chains out into the dark, to Misthollow, the ash and Frostmere. It\'s one machine. All of it.']],
+  },
+  'arrive-worldforge': {
+    lines: [['pip', 'A forge the size of a church, at the bottom of the world. Hilda would cry. Then she\'d start taking notes.'], ['alondra', 'It beats. The whole place beats, like a heart pretending to be a furnace.']],
   },
 });
 
@@ -1772,10 +2142,17 @@ export const ARRIVALS = deepFreeze({
   rotbridge: 'arrive-rotbridge',
   bogmire: 'arrive-bogmire',
   misthollow: 'arrive-misthollow',
+  // M7: the Hearth Below's four places
+  'hollow-hall': 'arrive-hollow-hall',
+  'ash-stair': 'arrive-ash-stair',
+  'chained-deep': 'arrive-chained-deep',
+  worldforge: 'arrive-worldforge',
 });
 
 // A first win plays its lines and sets a flag; a rematch (the region re-arms after its next Brand)
 // gets a shorter line, so nothing is found or relieved twice.
+// M7: a wipe against the Hollow Council wakes the party by a fire (spec A11; who is beaten stays beaten)
+const WOKE = [{ on: 'defeat', if: { flag: 'woke-by-council' }, d: 'hollow-woke-again' }, { on: 'defeat', d: 'hollow-woke' }];
 export const AFTER = deepFreeze({
   'tamsin-duel': [{ on: 'victory', d: 'tamsin-after-win' }, { on: 'yield', d: 'tamsin-yield' }],
   'hollowed-patrol': [{ on: 'victory', d: 'corra-freed' }],
@@ -1838,8 +2215,21 @@ export const AFTER = deepFreeze({
   'grue-hollow': [{ on: 'victory', if: { not: { flag: 'grue-told' } }, d: 'grue-rest' }],
   'mh-salvage': [{ on: 'victory', if: { not: { flag: 'chest-read' } }, d: 'salvage-chest' }],
   cantor: [{ on: 'victory', if: { not: { flag: 'cantor-fell' } }, d: 'cantor-rest' }],
-  // M7 (spec A12): after the Unsmith, Tamsin gives up the relic she bought (STUB from the M7 scaffold: P3 writes it)
-  unsmith: [{ on: 'victory', if: { not: { flag: 'tamsin-gave' } }, d: 'tamsin-after' }],
+  // M7 (spec A11, A12, §3.5): the Hollow Council freed, each in the Hollow Hall (the fourth's scene shows the Unsmith's
+  // last letter, once), and a wipe below wakes the party by a fire. Past the unmade the party sees Tamsin
+  // waiting (until she has joined); past the forge-warden the Unsmith calls you across; after him, his end and then
+  // Tamsin's relic (once: Isolde has it for you should the scene be cut short); a wipe against him, a fire.
+  'hollow-miravel': [{ on: 'victory', d: 'hollow-miravel-after' }, ...WOKE],
+  'hollow-qasim': [{ on: 'victory', d: 'hollow-qasim-after' }, ...WOKE],
+  'hollow-brundar': [{ on: 'victory', d: 'hollow-brundar-after' }, ...WOKE],
+  'hollow-gretch': [{ on: 'victory', if: { not: { flag: 'letter:hollow' } }, d: 'hollow-gretch-after' }, ...WOKE],
+  'cd-unmade': [{ on: 'victory', if: { not: { flag: 'tamsin-returned' } }, d: 'tamsin-waiting' }],
+  'wf-warden': [{ on: 'victory', if: { not: { beaten: 'unsmith' } }, d: 'unsmith-bridge' }],
+  unsmith: [
+    { on: 'victory', if: { not: { flag: 'tamsin-gave' } }, d: 'unsmith-after' },
+    { on: 'defeat', if: { flag: 'woke-by-unsmith' }, d: 'unsmith-woke-again' },
+    { on: 'defeat', d: 'unsmith-woke' },
+  ],
 });
 
 export const RESTS = deepFreeze([
@@ -1854,6 +2244,8 @@ export const RESTS = deepFreeze([
   { at: 'willow-hearth', if: { all: [{ flag: 'wards-mended' }, { not: { flag: 'wards-night' } }] }, d: 'wards-night' },
   { at: 'toll-lamp', if: { all: [FALLEN, { not: { flag: 'hodge-fireside' } }] }, d: 'toll-lamp-night' },
   { at: 'stilt-hearth', if: { all: [{ flag: 'children-home' }, { not: { flag: 'bogmire-lamps' } }] }, d: 'bogmire-lamps' },
+  // M7: Tamsin keeps the watch at the Chain Fire, once, the night before the Unsmith
+  { at: 'chain-fire', if: { all: [{ flag: 'tamsin-returned' }, { not: { beaten: 'unsmith' } }, { not: { flag: 'chain-fire-night' } }] }, d: 'chain-fire-night' },
 ]);
 
 export const LOOKOUTS = deepFreeze({
