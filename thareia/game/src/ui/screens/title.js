@@ -9,6 +9,7 @@
 //   - the milestone tag (TAG)
 // Owner: WP8; M6 P7 (the painted backdrop).
 import { renderBackdrop, renderHero } from '../../art/index.js';
+import { CUTS } from '../assets/cuts/index.js';
 import continentSrc from '../assets/sky/continent.webp';
 import { el, esc, button, toCanvas } from '../lib/dom.js';
 import { animate, isReduced } from '../lib/anim.js';
@@ -85,7 +86,8 @@ export function mount(root, ctx) {
 
   // the painted scene: the Keep at dusk, the party on the road. M6: the player's world painting behind a dark
   // rise the party stands on (the canvas draws only the rise and the party over it)
-  const still = { src: continentSrc, w: 1536, h: 1024 }; // Thareia: the continent painting
+  // Thareia: the player's title painting (the skiff over Aethermoor), else the continent painting
+  const still = CUTS['title-thareia'] || { src: continentSrc, w: 1536, h: 1024 };
   let painted = !!still;
   if (painted) {
     scene.classList.add('painted');

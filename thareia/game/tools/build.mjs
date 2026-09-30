@@ -69,7 +69,7 @@ async function bundle(minifyAll) {
   // what the player's paintings add to the output
   let painted = 0;
   for (const o of Object.values(result.metafile.outputs)) {
-    for (const [file, v] of Object.entries(o.inputs)) if (/src\/ui\/assets\/(paint|cuts|sky)\//.test(file.split(path.sep).join('/'))) painted += v.bytesInOutput;
+    for (const [file, v] of Object.entries(o.inputs)) if (/src\/(ui\/assets\/(paint|cuts|sky)\/|art\/painted-backdrops)/.test(file.split(path.sep).join('/'))) painted += v.bytesInOutput;
   }
   let js = '', css = '';
   for (const f of result.outputFiles) {

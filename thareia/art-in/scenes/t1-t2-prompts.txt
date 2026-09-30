@@ -1,0 +1,175 @@
+
+
+
+
+1. battle-gloomfen-docks.png
+
+Use case: stylized-concept. Create one finished game art asset. Follow the supplied Final Fantasy IX-inspired painted fantasy JRPG direction: sculpted charming forms, rich painterly detail, soft atmospheric light, clean readable shapes. This is a fresh art direction for Thareia.
+
+Painted fantasy JRPG battle background in the style of Final Fantasy IX, side-on view at eye level. A wide, sturdy plank boardwalk on stilts over black swamp water at a misty dusk: lanterns on crooked poles, dead cypress trees hung with moss, reeds and lily pads, fireflies, a glowing green-gold haze low over the water, stilt huts with thatch roofs in the background and the dark shape of a mooring tower. The bottom third is open, empty, flat boardwalk planks. Rich warm painterly detail, soft light, no text, no UI, no people or creatures. 1448 × 1086.
+Gameplay composition: low side-on eye-level camera, broad continuous horizontal playable ground across the full lower third; keep props, roots, rails, obstacles and scenery behind or outside that clear fighting area. Landscape 4:3.
+No borders, frames, watermark, or UI. Only the tiny fireflies requested are present; no other creatures.
+
+Final correction:
+Use case: stylized-concept. Create one finished game art asset. Follow the supplied Final Fantasy IX-inspired painted fantasy JRPG direction: sculpted charming forms, rich painterly detail, soft atmospheric light, clean readable shapes. This is a fresh art direction for Thareia.
+
+Edit the supplied Gloomfen dock image with ONE local change: extend the TOP SURFACE of the broad wooden foreground deck all the way to the bottom edge. Replace only the strip of visible vertical pilings, structural deck edge and under-deck water along the bottom with continuous flat horizontal walkable plank surface, matching the plank perspective, grain and light directly above. Preserve the village, cypress trees, lamps, mooring tower, water and sunset exactly. Keep the camera unchanged. Entire bottom third must be unobstructed flat boardwalk top surface, no drop-off or visible underside. No other changes. Output landscape 4:3, 1448 x 1086.
+Gameplay composition: low side-on eye-level camera, broad continuous horizontal playable ground across the full lower third; keep props, roots, rails, obstacles and scenery behind or outside that clear fighting area. Landscape 4:3.
+No borders, frames, watermark, or UI. Input image is the exact edit target. Preserve everything above the foreground deck.
+
+========================================================================
+
+2. cut-crate-cracks.png
+
+Use case: stylized-concept. Create one finished game art asset. Follow the supplied Final Fantasy IX-inspired painted fantasy JRPG direction: sculpted charming forms, rich painterly detail, soft atmospheric light, clean readable shapes. This is a fresh art direction for Thareia.
+
+Painted fantasy JRPG cut-scene in the style of Final Fantasy IX. The dark wooden cargo hold of a small airship, with ropes, barrels, sacks and a swinging lantern. In the middle, a heavy iron-banded crate stencilled FERNSHAW has split along one seam, and blinding amber-gold crystal light pours out. Jagged sunstone crystals glow inside, heat shimmers, the nearby planks are scorched, and small shards spin in the air. Dramatic and dangerous. No people. No other text. 1448 × 1086.
+Cinematic illustration, landscape 4:3.
+No borders, frames, watermark, or UI. The only lettering is the clearly legible painted stencil "FERNSHAW" on the intact front panel of the crate. Spell it F E R N S H A W. Keep the seam split and crystal light visible separately from that word.
+
+========================================================================
+
+3. title-thareia.png
+
+Use case: stylized-concept. Create one finished game art asset. Follow the supplied Final Fantasy IX-inspired painted fantasy JRPG direction: sculpted charming forms, rich painterly detail, soft atmospheric light, clean readable shapes. This is a fresh art direction for Thareia.
+
+Painted fantasy key art in the style of Final Fantasy IX. A small wooden airship with four glowing orange sunstone crystals and cream sails flies high over a vast green continent at golden hour: marsh, forest, a great lake with a castle, desert and snowy peaks spread out far below. A second, faint pale-blue planet hangs huge in the sky. Empty sky across the top third for the title. No text, no people. 1536 × 1024.
+Landscape 3:2.
+No borders, frames, watermark, or UI. Exactly FOUR clearly separate glowing orange crystals rise above a small wooden boat hull beneath cream triangular sails, no balloon. Keep the ship below the upper third. Reserve the entire uppermost third as quiet pale warm sky with room for future title lettering. The faint huge pale blue planet sits mostly in the middle sky below that title-safe band. No actual lettering.
+
+========================================================================
+
+4. battle-bogmire-town.png
+
+Use case: stylized-concept. Create one finished game art asset. Follow the supplied Final Fantasy IX-inspired painted fantasy JRPG direction: sculpted charming forms, rich painterly detail, soft atmospheric light, clean readable shapes. This is a fresh art direction for Thareia.
+
+Painted fantasy JRPG battle background in the style of Final Fantasy IX, side-on at eye level. A stilt-town market square on wooden decks over a marsh at night: striped market-stall awnings, barrels and crates, lanterns on posts, timber houses with patched shingle roofs and glowing windows behind. The bottom third is open, flat deck planks. Warm lantern light against blue night, painterly detail, no text, no UI, no people. 1448 × 1086.
+Gameplay composition: low side-on eye-level camera, broad continuous horizontal playable ground across the full lower third; keep props, roots, rails, obstacles and scenery behind or outside that clear fighting area. Landscape 4:3.
+No borders, frames, watermark, or UI. The reference is the nearby Gloomfen docks. Use compatible timber construction and painting style, but depict the market square described here at blue night. IMPORTANT: the entire lower third right to the bottom canvas edge is the TOP walking surface of one broad unobstructed wooden deck. No cutaway showing stilts at the bottom, no props in that lower third.
+
+========================================================================
+
+5. walk-thornhollow-landing.png
+
+Use case: stylized-concept. Create one finished game art asset. Follow the supplied Final Fantasy IX-inspired painted fantasy JRPG direction: sculpted charming forms, rich painterly detail, soft atmospheric light, clean readable shapes. This is a fresh art direction for Thareia.
+
+Painted fantasy JRPG map seen from high above at a slight angle, like a detailed isometric town map, in the style of Final Fantasy IX. A grassy clearing outside a wooden palisade town gate in a green forest, with a tall timber mooring mast and a small wooden landing platform where a cargo airship with orange crystals is tied up. A dirt road runs from the platform up to the open gate at the top edge, and a second road leaves the bottom edge into the trees. Crates, a rope winch, a lantern post and a little hut for the dock-hand. Clear, unbroken dirt paths and plank platforms. Warm afternoon light, no text, no people. 1536 × 1024.
+Gameplay composition: high elevated oblique/isometric camera, no horizon or sky, paths and platforms visibly join without gaps, enough clear space to walk. Landscape 3:2.
+No borders, frames, watermark, or UI. Reference image is only the small wooden skiff's construction and silhouette, not its sheet layout. Paint one related cargo skiff with four orange lift crystals and cream sails tied to the mast. No balloons. Keep both road exits on the exact top and bottom canvas edges and linked by continuous walkable ground.
+
+========================================================================
+
+6. walk-fawnrest-node.png
+
+Use case: stylized-concept. Create one finished game art asset. Follow the supplied Final Fantasy IX-inspired painted fantasy JRPG direction: sculpted charming forms, rich painterly detail, soft atmospheric light, clean readable shapes. This is a fresh art direction for Thareia.
+
+Painted fantasy JRPG map seen from high above at a slight angle, in the style of Final Fantasy IX. An ancient underground chamber beneath a forest shrine: fitted stone floors that match no known style, stone-lined channels too straight and too even, and at the centre a round dais with a great half-buried amber crystal node glowing too hot, with heat shimmer and cracked, scorched stone around it. Thick black-rotted tree roots push through the ceiling and walls and wither near the glow. A stone stair enters from the bottom edge. Clear, unbroken stone walkways around the dais. No text, no people or creatures. 1536 × 1024.
+Gameplay composition: high elevated oblique/isometric camera, no horizon or sky, paths and platforms visibly join without gaps, enough clear space to walk. Landscape 3:2.
+No borders, frames, watermark, or UI. Keep the central circular dais reachable from the bottom stair along continuous fitted-stone ground. Show an uninterrupted ring of walkable stone around the dais. Narrow geometric channels must not cut off walking access. Architecture is ancient stone, not modern machinery.
+
+========================================================================
+
+7. walk-drowned-fjords-cove.png
+
+Use case: stylized-concept. Create one finished game art asset. Follow the supplied Final Fantasy IX-inspired painted fantasy JRPG direction: sculpted charming forms, rich painterly detail, soft atmospheric light, clean readable shapes. This is a fresh art direction for Thareia.
+
+Painted fantasy JRPG map seen from high above at a slight angle, in the style of Final Fantasy IX. A narrow rocky fjord cove at night under moonlight, with a hidden smugglers' dock of rough planks, rowing boats, crates and nets, a cave mouth in the cliff, and lanterns hung low so they can't be seen from the sea. A narrow cliff path comes down from the top edge to the dock. Clear, unbroken paths and planks. Cold blue moonlight and warm lantern light. No text, no people. 1536 × 1024.
+Gameplay composition: high elevated oblique/isometric camera, no horizon or sky, paths and platforms visibly join without gaps, enough clear space to walk. Landscape 3:2.
+No borders, frames, watermark, or UI. The cliff path must visibly reach the top canvas edge and join the dock without any gap. Make the cave entrance accessible from that connected path. Keep crates and nets beside the route so travelers can pass. No sky or horizon.
+
+========================================================================
+
+8. battle-verdant-road.png
+
+Use case: stylized-concept. Create one finished game art asset. Follow the supplied Final Fantasy IX-inspired painted fantasy JRPG direction: sculpted charming forms, rich painterly detail, soft atmospheric light, clean readable shapes. This is a fresh art direction for Thareia.
+
+Painted fantasy JRPG battle background in the style of Final Fantasy IX, side-on at eye level. A sunlit forest road through tall old trees, ferns and wildflowers, dust in the light beams, a mossy milestone and a fallen log at the side. Some of the trees at the edges have blackened, rotting bark and bare branches (a creeping blight). The bottom third is open, flat dirt road. No text, no UI, no people. 1448 × 1086.
+Gameplay composition: low side-on eye-level camera, broad continuous horizontal playable ground across the full lower third; keep props, roots, rails, obstacles and scenery behind or outside that clear fighting area. Landscape 4:3.
+No borders, frames, watermark, or UI. 
+
+========================================================================
+
+9. battle-eldergrove.png
+
+Use case: stylized-concept. Create one finished game art asset. Follow the supplied Final Fantasy IX-inspired painted fantasy JRPG direction: sculpted charming forms, rich painterly detail, soft atmospheric light, clean readable shapes. This is a fresh art direction for Thareia.
+
+Painted fantasy JRPG battle background in the style of Final Fantasy IX, side-on at eye level. The roots of an enormous ancient tree in a druid village, with rope bridges and treehouses high above, hanging lanterns and green-gold light through the canopy. Some of the giant roots are grey and dying and weep dark sap. The bottom third is open, flat mossy ground between the roots. No text, no UI, no people. 1448 × 1086.
+Gameplay composition: low side-on eye-level camera, broad continuous horizontal playable ground across the full lower third; keep props, roots, rails, obstacles and scenery behind or outside that clear fighting area. Landscape 4:3.
+No borders, frames, watermark, or UI. Reference is a nearby forest road for palette and painted visual style only. Build the enormous druid-village tree scene described here, with its roots behind the clear lower-third fighting ground. No people, animals or creatures.
+
+========================================================================
+
+10. battle-fawnrest-node.png
+
+Use case: stylized-concept. Create one finished game art asset. Follow the supplied Final Fantasy IX-inspired painted fantasy JRPG direction: sculpted charming forms, rich painterly detail, soft atmospheric light, clean readable shapes. This is a fresh art direction for Thareia.
+
+Painted fantasy JRPG battle background in the style of Final Fantasy IX, side-on at eye level. An ancient underground stone chamber, lit from behind by a huge amber crystal node glowing dangerously hot, with heat shimmer, cracked stone and black-rotted roots hanging from the ceiling. Strange, precise stonework, with glowing channels in the floor. The bottom third is open, flat fitted stone floor. Dramatic orange and deep shadow. No text, no UI, no people or creatures. 1448 × 1086.
+Gameplay composition: low side-on eye-level camera, broad continuous horizontal playable ground across the full lower third; keep props, roots, rails, obstacles and scenery behind or outside that clear fighting area. Landscape 4:3.
+No borders, frames, watermark, or UI. Input image is a location continuity reference: same Fawnrest crystal, circular dais, precise fitted-stone designs, straight stone-lined channels and blackened roots. Change from overhead exploration view to a low, side-on, eye-level battle camera. The great hot crystal is in the background; the foreground is a wide continuous flat stone fighting floor. Any glowing channels are flush shallow inlays or behind the fighting area, never open gaps in the lower third.
+
+========================================================================
+
+11. battle-mosswatch-coast.png
+
+Use case: stylized-concept. Create one finished game art asset. Follow the supplied Final Fantasy IX-inspired painted fantasy JRPG direction: sculpted charming forms, rich painterly detail, soft atmospheric light, clean readable shapes. This is a fresh art direction for Thareia.
+
+Painted fantasy JRPG battle background in the style of Final Fantasy IX, side-on at eye level. A windswept clifftop by the sea at dusk, with a stone watchtower with a lit beacon on the left, sea stacks and crashing surf below, gulls, and heather and wind-bent grass. The bottom third is open, flat clifftop grass and rock. No text, no UI, no people. 1448 × 1086.
+Gameplay composition: low side-on eye-level camera, broad continuous horizontal playable ground across the full lower third; keep props, roots, rails, obstacles and scenery behind or outside that clear fighting area. Landscape 4:3.
+No borders, frames, watermark, or UI. Keep the far cliff drop behind the entire broad lower-third fighting area. All grass and rocks in the lower third are flat, low surface texture; the few gulls remain in the background sky.
+
+========================================================================
+
+12. cut-shard-glows.png
+
+Use case: stylized-concept. Create one finished game art asset. Follow the supplied Final Fantasy IX-inspired painted fantasy JRPG direction: sculpted charming forms, rich painterly detail, soft atmospheric light, clean readable shapes. This is a fresh art direction for Thareia.
+
+Painted fantasy JRPG cut-scene in the style of Final Fantasy IX. Close on a hand holding a small jagged amber crystal shard that glows brightly, held out over the grey, dying roots of an ancient tree. Faint threads of gold light run from the shard down into the soil, like veins. Soft forest light, a sense of discovery and dread. Only the hand, no face. 1448 × 1086.
+Cinematic illustration, landscape 4:3.
+No borders, frames, watermark, or UI. Show one anatomically natural hand and wrist holding the small crystal, fingers clearly formed. The surrounding figure remains outside the frame. No face or body.
+
+========================================================================
+
+13. cut-node-overheats.png
+
+Use case: stylized-concept. Create one finished game art asset. Follow the supplied Final Fantasy IX-inspired painted fantasy JRPG direction: sculpted charming forms, rich painterly detail, soft atmospheric light, clean readable shapes. This is a fresh art direction for Thareia.
+
+Painted fantasy JRPG cut-scene in the style of Final Fantasy IX. A wide view of a hidden underground chamber: a great amber crystal node set into precise ancient stonework is glowing white-hot at its heart. The stone around it cracks, roots blacken and curl away from it, and heat shimmer fills the air. Awe and danger. No people. 1448 × 1086.
+Cinematic illustration, landscape 4:3.
+No borders, frames, watermark, or UI. Input image is a strict location and material reference for the Fawnrest chamber, not a required camera angle. Show a cinematic wide view of that same central crystal dais, geometric fitted stone and straight channels, now at the dangerous peak of overheating. The crystal core burns white-hot inside amber outer facets; roots curl away. No people or creatures.
+
+========================================================================
+
+14. cut-guardian-wakes.png
+
+Use case: stylized-concept. Create one finished game art asset. Follow the supplied Final Fantasy IX-inspired painted fantasy JRPG direction: sculpted charming forms, rich painterly detail, soft atmospheric light, clean readable shapes. This is a fresh art direction for Thareia.
+
+Painted fantasy JRPG cut-scene in the style of Final Fantasy IX. A huge forest guardian beast, a stag-like creature grown through with black rot and tangled roots, with glowing amber cracks along its body, rising from the darkness of an ancient chamber in front of a blazing crystal node. Menacing and sad at once. 1448 × 1086.
+Cinematic illustration, landscape 4:3.
+No borders, frames, watermark, or UI. Input image establishes the Fawnrest chamber and amber crystal node. Paint a new cinematic moment with one huge stag-like forest guardian rising on the dais in front of the same crystal. Coherent four-legged stag anatomy, root-entangled antlers, black rot and amber glowing cracks. Its eyes and bearing carry sorrow as well as threat. No humans or party members, no gore, no text.
+
+========================================================================
+
+15. cut-node-cools.png
+
+Use case: stylized-concept. Create one finished game art asset. Follow the supplied Final Fantasy IX-inspired painted fantasy JRPG direction: sculpted charming forms, rich painterly detail, soft atmospheric light, clean readable shapes. This is a fresh art direction for Thareia.
+
+Painted fantasy JRPG cut-scene in the style of Final Fantasy IX. The same ancient chamber, now calm: the great crystal node glows a soft, steady gold, and the first green shoots curl out of the blackened roots above it. Morning light falls down the stair. Hopeful and quiet. No people. 1448 × 1086.
+Cinematic illustration, landscape 4:3.
+No borders, frames, watermark, or UI. Input image establishes the exact Fawnrest chamber, crystal silhouette, circular dais, fitted geometric stones, blackened roots and channels. Keep that place recognizable while changing its condition: calm steady soft golden crystal, NO white-hot glare or violent heat; first fresh green shoots on formerly dead roots; a shaft of morning light coming down a stair. Quiet hopeful cinematic view, no people or creatures.
+
+========================================================================
+
+16. airship-rental-skiff.png
+
+Use case: stylized-concept. Create one finished game art asset. Follow the supplied Final Fantasy IX-inspired painted fantasy JRPG direction: sculpted charming forms, rich painterly detail, soft atmospheric light, clean readable shapes. This is a fresh art direction for Thareia.
+
+A turnaround sheet of the same small wooden cargo airship as before (four orange sunstone crystals on masts, cream sails, a fish-tail rudder), now in a hire-company livery: faded blue-and-white painted stripes on the hull, a number painted on the bow, patched sails and a brass license plate. Views: top-down, side, front and three-quarter, on a plain light grey background. No text other than the painted number. 1536 × 1024.
+Landscape 3:2.
+No borders, frames, watermark, or UI. Use the reference only for the original small wooden hull, rigging, mast system and family resemblance. Apply this prompt's refit and FOUR orange lift crystals, no balloon. Render all four views as the same consistent ship in an evenly spaced 2 by 2 arrangement: top left directly overhead bow up; top right side bow right; bottom left directly front; bottom right three-quarter from above and ahead. Whole ship fully inside every view at comparable scale. Bow number is 27, the only text anywhere. Brass license plate is blank. Flat #d8d8d8 background, no cast shadows, no grid lines. All views have blue-and-white hull stripes, cream patched sails and fish-tail rudder.
+
+Final correction:
+Use case: stylized-concept. Create one finished game art asset. Follow the supplied Final Fantasy IX-inspired painted fantasy JRPG direction: sculpted charming forms, rich painterly detail, soft atmospheric light, clean readable shapes. This is a fresh art direction for Thareia.
+
+Edit the provided four-view rental-skiff sheet. Preserve the wooden hull shape, faded blue-and-white stripes, bow number 27, cream patched sails, brass hardware, lanterns, deck details, rigging, four-view arrangement, lighting and flat light grey background. Correct the lift array in EVERY view to exactly FOUR separate orange sunstone crystals. The current five-crystal array is wrong: replace the whole array with an even group of four crystals in matching brass cups on four supports: TWO equally tall inner crystals and TWO shorter outer crystals, with a clearly visible center gap between the two inner crystals. There is NO single central fifth crystal. Repeat the identical four-crystal configuration across the top, side, front and three-quarter views, accounting for perspective. Each view must depict the same one ship. Give the stern steering rudder a small split fish-tail outline consistently where visible. Do not change anything else. No other text. No grid or cast shadows. Landscape 3:2, 1536 x 1024.
+Landscape 3:2.
+No borders, frames, watermark, or UI. Input image is the exact edit target. The primary required correction is the count: FOUR crystals in each of four views, never five.
