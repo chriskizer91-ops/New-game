@@ -117,7 +117,8 @@ function entityState(game, e) {
       const info = encounterInfo(game, e.enc);
       return { solid: e.mode !== 'pack', state: 'present', glint: info.glint, grudge: info.grudge, name: info.name, lead: info.lead };
     }
-    case 'hearthfire': return { solid: true, state: e.cold && !f.kindled?.[e.id] ? 'cold' : 'lit' };
+    // Thareia (T2): `coldUntil` keeps a fire cold while its condition fails (no lock key lights it before then)
+    case 'hearthfire': return { solid: true, state: (e.cold || e.coldUntil) && !f.kindled?.[e.id] && (!e.coldUntil || !check(game, e.coldUntil)) ? 'cold' : 'lit' };
     case 'gate': { const open = check(game, e.open); return { solid: !open, state: open ? 'open' : 'closed' }; }
     case 'lock': {
       const open = !!f.unlocked?.[e.id];
@@ -383,7 +384,11 @@ export function interact(game, walk) {
     case 'chest': events.push({ t: 'chest', id: e.id, ...(e.lock ? { lock: e.lock } : {}) }); break;
     case 'lock': events.push({ t: 'lock', id: e.id, lock: e.lock, status: lockStatus(game, e.lock) }); break;
     case 'hearthfire':
-      events.push(e.state === 'cold' ? { t: 'lock', id: e.id, lock: 'cold-hearth', status: lockStatus(game, 'cold-hearth') } : { t: 'hearthfire', id: e.id });
+      // Thareia (T2): a cold fire a person lights opens their scene (`coldTalk`); one waiting on the story shows its text
+      if (e.state !== 'cold') events.push({ t: 'hearthfire', id: e.id });
+      else if (e.coldTalk) events.push({ t: 'talk', npc: null, dialogue: e.coldTalk });
+      else if (e.coldUntil) events.push({ t: 'sign', text: e.text || ENCOUNTERS[e.id]?.text || 'The fire is cold. It will not take a spark yet.' });
+      else events.push({ t: 'lock', id: e.id, lock: 'cold-hearth', status: lockStatus(game, 'cold-hearth') });
       break;
     case 'encounter':
       events.push(e.talk ? { t: 'talk', npc: null, dialogue: e.talk, enc: e.enc } : { t: 'encounter', id: e.enc });
@@ -487,6 +492,7 @@ export function openLock(game, entityId) {
   const hit = findEntity(entityId);
   if (!hit) return { game, ok: false, by: null };
   const e = hit.entity;
+  if (e.kind === 'hearthfire' && e.coldUntil) return { game, ok: false, by: null }; // Thareia (T2): the story lights it
   const type = e.kind === 'hearthfire' ? 'cold-hearth' : e.lock;
   const st = lockStatus(game, type);
   if (!st.open) return { game, ok: false, by: null };

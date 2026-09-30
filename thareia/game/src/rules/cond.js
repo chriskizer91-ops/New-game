@@ -22,6 +22,8 @@
 //   { masterpiece: true }    M7: the party owns the Warden's Masterpiece (an item with masterpiece: true, not shattered)
 //   { pages: 'all' }         M7: every page of the Codex is complete, as the Codex screen counts it
 //   { ending }               M7: game.ending is that ending ('rekindle' | 'release' | 'anew'), or any ending (true)
+//   { heroLevel: n }         Thareia (T2): the hero's own level (roster.warden.level) >= n (docks and regions)
+//   { key: id }              Thareia (T2): a key item is held (flags.keys[id], the story effect { key })
 //   { all: [...] } { any: [...] } { not: cond }
 // Import direction (A6): world -> story -> cond -> gauntlet. Never import world or story here.
 // Owner: WP1.
@@ -105,6 +107,8 @@ export function check(game, cond) {
   if ('waking' in cond) return (p.waking || 0) >= cond.waking;
   if ('domain' in cond) return bestDomain(game, cond.domain).level >= (cond.level || 0);
   if ('level' in cond) return partyLevel(game) >= cond.level;
+  if ('heroLevel' in cond) return (game?.party?.roster?.warden?.level || 1) >= cond.heroLevel;
+  if ('key' in cond) return !!bag(game, 'keys')[cond.key];
   if ('owns' in cond) return ownedRelics(game).has(cond.owns);
   if ('power' in cond) return [...ownedRelics(game)].some(r => RELICS[r].mapPower?.id === cond.power);
   if ('wears' in cond) return wornRelics(game).has(cond.wears);
@@ -145,7 +149,7 @@ export function canAfford(game, price) {
 // The keys check() understands, and a validator for data tests ("all conditions parse").
 export const COND_KEYS = Object.freeze(['all', 'any', 'not', 'flag', 'cleared', 'done', 'beaten', 'brand', 'brands', 'waking', 'level',
   'owns', 'power', 'wears', 'active', 'domain', 'unlocked', 'opened', 'kindled', 'quest', 'bounty', 'since', 'day', 'afford',
-  'masterpiece', 'pages', 'ending']);
+  'masterpiece', 'pages', 'ending', 'heroLevel', 'key']);
 
 // M6: a price is { gold?, bag?, materials? } with whole, positive amounts (the `afford` condition, the `pay` effect);
 // M7: and gems?

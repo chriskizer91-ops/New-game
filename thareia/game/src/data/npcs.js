@@ -18,6 +18,7 @@
 
 import { deepFreeze } from '../core/freeze.js';
 import { TH_NPCS } from './thareia/npcs.js';
+import { C1_NPCS } from './thareia/c1-npcs.js';
 
 const N = (id, name, role, talk, art = id) => ({ id, name, art, role, talk });
 // M6: Tamsin has fallen: her Rotbridge duel is over, won or yielded (the rules record both), whether or not the
@@ -471,6 +472,7 @@ export const NPCS = deepFreeze({
   // battle art's, art/foes.js, until art/map-sprites.js gives him one)
   unsmith: N('unsmith', 'Harrow Ironvein', 'The Unsmith', []),
   ...TH_NPCS, // Thareia (T1)
+  ...C1_NPCS, // Thareia (T2): Chapter 1
 });
 
 export const NPC_IDS = Object.freeze(Object.keys(NPCS));

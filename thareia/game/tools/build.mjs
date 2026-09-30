@@ -20,6 +20,7 @@
 // Owner: WP8.
 import { build } from 'esbuild';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { Buffer } from 'node:buffer';
@@ -38,8 +39,12 @@ if (body === undefined) throw new Error('src/index.html needs a <!--BODY--> mark
 
 // Thareia (T1): only the paintings of the maps Thareia's players can reach go into the file (the old game's other
 // paintings stay in src/ for the chapters that will use them). ui/world/view.js draws any other map from its tiles.
-const TH_PAINTINGS = ['bogmire-docks', 'bogmire', 'thornhollow'];
+// T2: Chapter 1's walked maps and the three new painted maps; an id whose painting is not in src/ui/assets/paint/ yet
+// (th-landing, th-fawnrest-node, th-fjords-cove until tools/paint-import.mjs writes them) is skipped.
+const TH_PAINT_LIST = ['bogmire-docks', 'bogmire', 'thornhollow', 'thornway', 'eldergrove', 'heartroot-1', 'mossfall',
+  'mosswatch-1', 'mosswatch-2', 'hindwood', 'fawnrest', 'briarmaw-den', 'th-landing', 'th-fawnrest-node', 'th-fjords-cove'];
 const PAINT_INDEX = path.join(root, 'src/ui/assets/paint/index.js');
+const TH_PAINTINGS = TH_PAINT_LIST.filter(id => existsSync(path.join(path.dirname(PAINT_INDEX), `${id}.js`)));
 const onlyThareia = {
   name: 'thareia-paintings',
   setup(b) {

@@ -117,13 +117,35 @@ export const SKILLS = deepFreeze({
   },
   'revive': {
     id: 'revive', name: 'Revive', domain: 'attunement', mp: 6, delay: 1.2, target: 'ally-ko',
-    text: 'Alondra calls them back by name. A fallen ally rises with 30% HP.',
+    text: 'A fallen ally is called back by name and rises with 30% HP.',
     effects: [{ type: 'revive', pct: 0.3 }],
   },
   'dawnsong': {
     id: 'dawnsong', name: 'Dawnsong', domain: 'attunement', mp: 7, delay: 1.2, target: 'all-allies',
     text: 'The Fawnrest hymn: every ally heals 1d8 + WIS and sheds one harmful status.',
     effects: [{ type: 'heal', dice: '1d8', stat: 'WIS', diceEvery: 4 }, { type: 'cleanse', harmful: 1 }],
+  },
+
+  // ---- Thareia (T2): Taela Greenmantle of Eldergrove (Attunement; design/09-t2-spec.md 4.2) ----------------
+  'root-snare': {
+    id: 'root-snare', name: 'Root Snare', domain: 'attunement', mp: 3, delay: 1, target: 'enemy',
+    text: 'Roots rise at her word: 1d6 + WIS verdant damage, and the foe is Rooted unless it makes a STR save.',
+    effects: [{ type: 'damage', dice: '1d6', stat: 'WIS', kind: 'verdant', aspect: 'verdant', diceEvery: 5 }, { type: 'status', status: 'rooted', save: 'STR' }],
+  },
+  'draw-the-rot': {
+    id: 'draw-the-rot', name: 'Draw the Rot', domain: 'attunement', mp: 3, delay: 1, target: 'ally',
+    text: 'She pulls the sickness out through her own hands: clears Rotting and Poisoned, then heals 1d6 + WIS.',
+    effects: [{ type: 'cleanse', statuses: ['rotting', 'poisoned'] }, { type: 'heal', dice: '1d6', stat: 'WIS' }],
+  },
+  'greenmantle': {
+    id: 'greenmantle', name: 'Greenmantle', domain: 'attunement', mp: 4, delay: 1, target: 'ally',
+    text: 'Her mantle over their shoulders: the ally is Regenerating, healing 1d6 + WIS at the start of each turn.',
+    effects: [{ type: 'status', status: 'regenerating', value: { dice: '1d6', stat: 'WIS', diceEvery: 5 } }],
+  },
+  'cool-the-roots': {
+    id: 'cool-the-roots', name: 'Cool the Roots', domain: 'attunement', mp: 7, delay: 1.2, target: 'all-allies',
+    text: 'The song that cools the roots: every ally stops Burning and is Warded for 1d6 + WIS.',
+    effects: [{ type: 'cleanse', statuses: ['burning'] }, { type: 'status', status: 'warded', value: { dice: '1d6', stat: 'WIS', diceEvery: 4 } }],
   },
 
   // ---- relic arts claimed from holders --------------------------------------------------------
@@ -134,6 +156,12 @@ export const SKILLS = deepFreeze({
   },
   'tally-cut': {
     id: 'tally-cut', name: 'Tally Cut', domain: 'combat', mp: 2, delay: 0.7, target: 'enemy',
+    text: 'One more notch on the spine: a quick weapon attack that leaves 2 stacks of Poisoned.',
+    effects: [{ type: 'attack', weapon: true, riders: [{ type: 'status', status: 'poisoned', stacks: 2 }] }],
+  },
+  // Thareia (T2): the Crateknife's art, Tally Cut's numbers under a new name (data/relics.js th-crateknife)
+  'strap-cut': {
+    id: 'strap-cut', name: 'Strap Cut', domain: 'combat', mp: 2, delay: 0.7, target: 'enemy',
     text: 'One more notch on the spine: a quick weapon attack that leaves 2 stacks of Poisoned.',
     effects: [{ type: 'attack', weapon: true, riders: [{ type: 'status', status: 'poisoned', stacks: 2 }] }],
   },

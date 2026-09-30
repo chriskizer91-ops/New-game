@@ -60,6 +60,7 @@ import { openPrefight, openLockPrompt, openHearthMenu, openPauseMenu, openShop, 
 import { reliquaryLine } from './codex.js';
 import { playBrandBanner, playCrownwalls, showLetter, playCouncil, showToBeContinued, showRegionCard, hasRegionCard, showOpening, playEnding, showCut } from '../world/story-fx.js';
 import { HEROES } from '../../data/heroes.js';
+import { C1_KEYS } from '../../data/thareia/c1-keys.js';
 import { createLoop } from '../world/loop.js';
 import { createMinimap } from '../world/minimap.js';
 import {
@@ -738,10 +739,17 @@ export function mount(root, ctx, params = {}) {
     const paid = events.filter(e => e.t === 'paid' && e.price).map(e => priceText(e.price)).filter(Boolean).join(', ');
     if (paid) { ctx.audio.sfx('coin'); ctx.toast(`Paid ${paid}`, 2800); announce(`Paid ${paid}`); }
     // M7: the ending chosen at the Worldforge's heart (its card follows the scene's { end: 'act3' })
-    let ending = null;
+    let ending = null, go = null;
     for (const e of events) {
       if (dead) return 'stop';
       if (e.t === 'ending') { ending = e.id; continue; }
+      // Thareia (T2): { go: { map, anchor } } moves the party once the scene's other events have played
+      if (e.t === 'go') { go = e; continue; }
+      if (e.t === 'key') {
+        const line = `Key item: ${C1_KEYS[e.id]?.name || e.id}.`;
+        ctx.audio.sfx('quest'); ctx.toast(line, 3200); announce(line);
+        continue;
+      }
       if (e.t === 'fight') return encounterFlow(e.enc, { skipTalk: true });
       if (e.t === 'open') { const r = await openFlow(e.screen); if (r) return r; }
       else if (e.t === 'item') await cards(() => ctx.services.cardReveal(e.item, { source: RELICS[e.item.base] ? 'claimed' : 'drop', backdrop: mapNow()?.backdrop }));
@@ -761,6 +769,7 @@ export function mount(root, ctx, params = {}) {
       else if (e.t === 'end' && e.act === 'act3') { await playEnding(ctx, game, ending || game.ending); if (dead) return 'stop'; return homeToHall(); }
       else if (e.t === 'end') await showToBeContinued(ctx, game, { act: e.act });
     }
+    if (go && !dead && MAPS[go.map]?.anchors?.[go.anchor]) return transition({ map: go.map, anchor: go.anchor });
     return null;
   }
   // M7 (spec §4.7, A14): after an ending's cards the party is back in the Great Hall, where the game goes on
@@ -778,7 +787,8 @@ export function mount(root, ctx, params = {}) {
       return null;
     }
     if (s === 'atlas') { leave('atlas', { mode: 'view' }); return 'stop'; }
-    // Thareia (T1): the airship: 'sky:<flight>' (ui/screens/sky.js)
+    // Thareia (T1): the airship: 'sky:<flight>' (ui/screens/sky.js). T2: 'sky:hire@<dock>' is a hired flight from that dock
+    if (s.startsWith('sky:hire@')) { leave('sky', { flight: 'hire', from: s.slice(9) }); return 'stop'; }
     if (s.startsWith('sky:')) { leave('sky', { flight: s.slice(4) }); return 'stop'; }
     if (s === 'journal') { leave('journal', { tab: 'quests' }); return 'stop'; }
     if (s === 'ladder') { leave('journal', { tab: 'ladder' }); return 'stop'; }
@@ -870,7 +880,7 @@ export function mount(root, ctx, params = {}) {
       try { game = G.rest(game, hfId); } catch (err) { console.error(err); return null; }
       ctx.audio.sfx('hearth');
       save(); refreshWorld();
-      ctx.toast(`Rested at ${HEARTHS[hfId]?.name || 'the fire'}. Day ${game.progress.flags.day}. Saved.`);
+      ctx.toast(`Rested at ${HEARTHS[hfId]?.name || 'the fire'}.${Story.dayShown(game) ? ` Day ${game.progress.flags.day}.` : ''} Saved.`);
       const dream = typeof Story.restDialogue === 'function' ? Story.restDialogue(game, hfId) : null;
       if (dream && DIALOGUE[dream]) return dialogueFlow(dream);
       return null;

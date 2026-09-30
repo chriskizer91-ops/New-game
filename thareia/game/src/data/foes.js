@@ -84,6 +84,39 @@ const TAMSIN_MOVES = {
   'not-like-this': { name: 'Not Like This', target: 'self', when: { hpBelow: 0.35 }, fallback: 'riposte', text: 'Not like this. She steadies: 2d8 healing and Warded.', effects: [{ type: 'heal', dice: '2d8' }, status('warded', { value: { dice: '1d6', diceEvery: 3 } })] },
 };
 
+// Thareia (T2, design/09-t2-spec.md 5.1-5.2): move sets for Chapter 1's own variants. The copied relics (th-crateknife,
+// th-lightfingers, th-thornwreath) carry new ids, so the Arts that need them are copies too; no name or line here says
+// an old faction's name.
+const RUNNER_MOVES = {
+  cut: TALLY_MOVES.cut,
+  'chalk-mark': { name: 'Chalk Mark', target: 'enemy', text: 'A chalk cross on your coat, for the others. You are Marked.', effects: [status('marked')] },
+  'smoke-pot': TALLY_MOVES['smoke-pot'],
+  'strap-cut': { name: 'Strap Cut', target: 'enemy', requires: 'th-crateknife', fallback: 'cut', text: 'The Crateknife bites deep: 2 stacks of Poisoned.', effects: [atk('1d4', 'pierce', { weapon: true, aspect: 'blight', bonusDice: [{ dice: '1d4', aspect: 'blight' }], riders: [status('poisoned', { stacks: 2 })] })] },
+};
+const SKEET_MOVES = {
+  ...SMUGGLER_MOVES,
+  sleight: { name: 'Sleight', target: 'enemy', requires: 'th-lightfingers', fallback: 'cut', text: 'Lightfingers finds your purse and your ribs: 2d6, Marked, and Skeet is Hasted.', effects: [atk('2d6', 'pierce', { riders: [status('marked')] }), status('hasted', { self: true })] },
+};
+const HART_MOVES = {
+  gore: { name: 'Gore', target: 'enemy', text: 'Black antlers, low and fast.', effects: [atk('2d8', 'pierce')] },
+  trample: { name: 'Trample', target: 'all-enemies', text: 'It goes through the party like a falling tree.', effects: [atk('1d8', 'crush')] },
+  'rot-bellow': { name: 'Rot Bellow', target: 'all-enemies', text: 'A bellow that smells of grave-sap. CON save or Poisoned.', effects: [status('poisoned', { save: 'CON' })] },
+  'antler-charge': { name: 'Antler Charge', target: 'enemy', charge: true, text: 'It lowers its head, charging.', effects: [atk('3d8', 'pierce', { riders: [status('staggered')] })] },
+  'rotwood-crown': { name: 'Rotwood Crown', target: 'all-enemies', requires: 'rotwood-circlet', fallback: 'gore', text: 'Black sap weeps from the circlet: 2d6 blight to all, CON save for half, and Rotting. The hart drinks it.', effects: [{ type: 'damage', dice: '2d6', kind: 'blight', aspect: 'blight', save: 'CON', riders: [status('rotting')] }, { type: 'heal', dice: '1d8', diceEvery: 2, self: true }] },
+  'node-flare': { name: 'Node Flare', target: 'all-enemies', requires: 'fawnrest-heartstone', fallback: 'gore', text: 'The stone in its chest flares white: 2d6 ember to all, DEX save for half, and Burning.', effects: [{ type: 'damage', dice: '2d6', kind: 'ember', aspect: 'ember', save: 'DEX', riders: [status('burning')] }] },
+  'root-call': { name: 'Root Call', target: 'self', requires: 'fawnrest-heartstone', fallback: 'trample', text: 'The node hums, and a rotgrub bores up out of the floor.', effects: [{ type: 'summon', family: 'rotgrub', count: 1, max: 2, levelDelta: -3 }] },
+  overheat: { name: 'Overheat', target: 'enemy', requires: 'fawnrest-heartstone', fallback: 'antler-charge', charge: true, text: 'The stone in its chest glows white-hot. It is charging. Stagger it!', effects: [{ type: 'damage', dice: '3d8', kind: 'ember', aspect: 'ember', riders: [status('burning')] }] },
+};
+const BEAST_MOVES = { // the Nameless Beast (Dael's bounty): its thorn-crown is the Thareia copy; its fang is not held
+  maul: { name: 'Maul', target: 'enemy', text: 'Bark-clad claws the size of shovels.', effects: [atk('2d6', 'slash')] },
+  'thorn-volley': { name: 'Thorn Volley', target: 'all-enemies', text: 'It shakes, and thorns fly like arrows.', effects: [atk('1d6', 'pierce')] },
+  'call-the-briars': { name: 'Call the Briars', target: 'self', requires: 'th-thornwreath', fallback: 'maul', text: 'The thorn-crown pulses and a Briarling tears up out of the floor.', effects: [{ type: 'summon', family: 'briarling', count: 1, max: 2, levelDelta: -2 }] },
+  'bramble-wall': { name: 'Bramble Wall', target: 'self', text: 'Bramble knits over its hide: Warded.', effects: [status('warded', { value: { dice: '3d6', diceEvery: 3 } })] },
+  rootquake: { name: 'Rootquake', target: 'all-enemies', text: 'The den floor heaves: 2d6 verdant, STR save for half, and you are Rooted.', effects: [{ type: 'damage', dice: '2d6', kind: 'verdant', aspect: 'verdant', save: 'STR', riders: [status('rooted')] }] },
+  devour: { name: 'Devour', target: 'enemy', charge: true, text: 'It opens its whole bramble-maw, charging.', effects: [atk('3d8', 'pierce')] },
+  thornstorm: { name: 'Thornstorm', target: 'all-enemies', text: 'A storm of thorns: everyone Bleeds.', effects: [atk('1d8', 'pierce', { riders: [status('bleeding')] })] },
+};
+
 const VERDANT = {
   cutpurse: {
     id: 'cutpurse', name: 'Cutpurse', art: 'cutpurse', tier: 'rabble', humanoid: true,
@@ -173,6 +206,11 @@ const VERDANT = {
         moves: { ...TALLY_MOVES, 'oath-cut': { name: 'Oath Cut', target: 'enemy', requires: 'isoldes-oath', fallback: 'cut', text: 'A borrowed oath, badly kept: 2d8 frost and 2 stacks of Chilled.', effects: [atk('2d8', 'slash', { aspect: 'frost', riders: [status('chilled', { stacks: 2 })] })] } },
         table: [[1, 4, 'cut'], [5, 6, 'tally-mark'], [7, 8, 'smoke-pot'], [9, 12, 'oath-cut']],
       },
+      // Thareia (T2): Chapter 1's crate-runners (the Crate-Runner with the Crateknife, the Lamp-Runner on the tower stair)
+      runner: {
+        name: 'Crate-Runner', moves: RUNNER_MOVES,
+        table: [[1, 3, 'cut'], [4, 4, 'chalk-mark'], [5, 5, 'smoke-pot'], [6, 8, 'strap-cut']],
+      },
       apothecary: {
         name: 'Vesper', hp: 30, art: 'vesper',
         moves: { ...TALLY_MOVES, 'miracle-sap': { name: 'Miracle Sap', target: 'all-allies', text: 'A thimble of miracle sap goes round: 2d8 healing.', effects: [{ type: 'heal', dice: '2d8', diceEvery: 3 }] } },
@@ -201,6 +239,23 @@ const VERDANT = {
     },
     table: [[1, 4, 'gore'], [5, 6, 'trample'], [7, 8, 'rot-bellow'], [9, 10, 'antler-charge'], [11, 12, 'rotwood-crown']],
     text: 'Once the white stag of Fawnrest. The Rot got into its antlers, and something tangled a crown there.',
+    variants: {
+      // Thareia (T2, design/09-t2-spec.md 5.2): the Hart of Fawnrest, the node's guardian under the shrine. A Champion at
+      // level 9 (321 hp); the node's heartstone grown through its chest feeds its fire Arts. No bell, and no lines.
+      guardian: {
+        name: 'The Hart of Fawnrest', tier: 'champion', unique: true, noFlee: true,
+        hp: 110, guard: 15, atk: 5, dmg: 1, weak: ['frost'],
+        relics: ['rotwood-circlet', 'fawnrest-heartstone'],
+        moves: HART_MOVES,
+        phases: [
+          { at: 1, text: 'The guardian wakes.', table: [[1, 7, 'gore'], [8, 11, 'trample'], [12, 15, 'rot-bellow'], [16, 20, 'rotwood-crown']] },
+          { at: 0.66, text: 'The node answers.', table: [[1, 5, 'gore'], [6, 8, 'antler-charge'], [9, 12, 'node-flare'], [13, 15, 'root-call'], [16, 20, 'rotwood-crown']] },
+          { at: 0.33, text: 'The last white stag.', table: [[1, 4, 'gore'], [5, 9, 'overheat'], [10, 14, 'node-flare'], [15, 17, 'antler-charge'], [18, 20, 'rot-bellow']] },
+        ],
+        koText: 'The hart sinks down with one long, mournful call. A silent amber flare, and it is gone.',
+        text: 'The white hart of Fawnrest, grown into the node below the shrine. A black crown in its antlers, a white-hot stone in its chest.',
+      },
+    },
   },
   oldsnag: {
     id: 'oldsnag', name: 'Old Snag', art: 'oldsnag', tier: 'relic-bearer', kind: 'beast', unique: true,
@@ -239,6 +294,18 @@ const VERDANT = {
       { at: 0.33, text: 'The thorn-crown blazes green. Briarmaw stops holding anything back.', table: [[1, 4, 'maul'], [5, 8, 'thornstorm'], [9, 12, 'devour'], [13, 15, 'call-the-briars'], [16, 20, 'fang-rake']] },
     ],
     text: 'The beast on Captain Dael\'s bounty board that nobody could name. It wears a crown of thorns that grew there.',
+    variants: {
+      // Thareia (T2): the Nameless Beast of Dael's bounty (S6). Its thorn-crown is the Thareia copy; it has no fang to lose.
+      nameless: {
+        name: 'The Nameless Beast', relics: ['th-thornwreath'], moves: BEAST_MOVES,
+        phases: [
+          { at: 1, text: 'The beast uncoils from the den wall.', table: [[1, 8, 'maul'], [9, 13, 'thorn-volley'], [14, 20, 'call-the-briars']] },
+          { at: 0.66, text: 'It tears itself free of the wall. The roots under your feet begin to move.', table: [[1, 6, 'maul'], [7, 9, 'thorn-volley'], [10, 12, 'rootquake'], [13, 15, 'bramble-wall'], [16, 20, 'call-the-briars']] },
+          { at: 0.33, text: 'The thorn-crown blazes green. It stops holding anything back.', table: [[1, 5, 'maul'], [6, 9, 'thornstorm'], [10, 14, 'devour'], [15, 20, 'call-the-briars']] },
+        ],
+        text: 'The beast on the ranger captain\'s bounty board. Nobody has a name for it. It wears a crown of thorns that grew there.',
+      },
+    },
   },
 
   // ---- M3: ten new families and the rival (spec §3.2). Scaffold stubs: stats and tables follow
@@ -253,6 +320,11 @@ const VERDANT = {
       queen: {
         name: 'Mags Kestrel', tier: 'relic-bearer', hp: 58, art: 'mags',
         moves: { ...SMUGGLER_MOVES, sleight: { name: 'Sleight', target: 'enemy', requires: 'lightfingers', fallback: 'cut', text: 'Lightfingers finds your purse and your ribs: 2d6, Marked, and Mags is Hasted.', effects: [atk('2d6', 'pierce', { riders: [status('marked')] }), status('hasted', { self: true })] } },
+        table: [[1, 5, 'cut'], [6, 8, 'caltrops'], [9, 12, 'sleight']],
+      },
+      // Thareia (T2): Skeet Marrow in the fjord cove, wearing the Thareia copy of Lightfingers
+      skeet: {
+        name: 'Skeet Marrow', tier: 'relic-bearer', hp: 58, moves: SKEET_MOVES,
         table: [[1, 5, 'cut'], [6, 8, 'caltrops'], [9, 12, 'sleight']],
       },
     },

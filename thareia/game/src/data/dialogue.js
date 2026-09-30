@@ -37,6 +37,7 @@
 import { deepFreeze } from '../core/freeze.js';
 
 import { TH_DIALOGUE, TH_AFTER } from './thareia/dialogue.js';
+import { C1_DIALOGUE, C1_AFTER, C1_RESTS } from './thareia/c1-dialogue.js';
 
 const LEAVE = { text: 'Leave.' };
 // M7 (spec §4.5): Hilda forges the Warden's Masterpiece once the Hollow Council is freed and the Worldforge page is
@@ -2125,6 +2126,7 @@ export const DIALOGUE = deepFreeze({
     lines: [['pip', 'A forge the size of a church, at the bottom of the world. Hilda would cry. Then she\'d start taking notes.'], ['alondra', 'It beats. The whole place beats, like a heart pretending to be a furnace.']],
   },
   ...TH_DIALOGUE, // Thareia (T1)
+  ...C1_DIALOGUE, // Thareia (T2): Chapter 1
 });
 
 export const ARRIVALS = deepFreeze({
@@ -2235,6 +2237,7 @@ export const AFTER = deepFreeze({
     { on: 'defeat', d: 'unsmith-woke' },
   ],
   ...TH_AFTER, // Thareia (T1)
+  ...C1_AFTER, // Thareia (T2): Chapter 1
 });
 
 export const RESTS = deepFreeze([
@@ -2251,6 +2254,7 @@ export const RESTS = deepFreeze([
   { at: 'stilt-hearth', if: { all: [{ flag: 'children-home' }, { not: { flag: 'bogmire-lamps' } }] }, d: 'bogmire-lamps' },
   // M7: Tamsin keeps the watch at the Chain Fire, once, the night before the Unsmith
   { at: 'chain-fire', if: { all: [{ flag: 'tamsin-returned' }, { not: { beaten: 'unsmith' } }, { not: { flag: 'chain-fire-night' } }] }, d: 'chain-fire-night' },
+  ...C1_RESTS, // Thareia (T2): Chapter 1 (the pulse at Eldergrove's hearth)
 ]);
 
 export const LOOKOUTS = deepFreeze({

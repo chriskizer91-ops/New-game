@@ -1,6 +1,8 @@
 // Thareia (T1): the Prologue's fights and rest points, merged into data/encounters.js ENCOUNTERS.
 // Format as data/encounters.js. The Prologue's story fights are `once`; their foes stand at levels 1-2, for a hero at
 // level 1 with Captain Dustwind (level 2) beside them.
+import { C1_HEARTH_IDS } from './c1-encounters.js';
+
 const S = (family, level, o = {}) => ({ family, level, gearTier: 0, omens: [], noWaking: true, ...o });
 
 export const TH_ENCOUNTERS = {
@@ -32,4 +34,4 @@ export const TH_ENCOUNTERS = {
   },
 };
 
-export const TH_HEARTH_IDS = ['docks-lantern', 'th-hearth'];
+export const TH_HEARTH_IDS = ['docks-lantern', 'th-hearth', ...C1_HEARTH_IDS]; // T2: Chapter 1's fires (c1-encounters.js)

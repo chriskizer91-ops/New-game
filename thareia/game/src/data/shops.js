@@ -5,6 +5,7 @@
 // Owner: WP3S (M3), P3 story (M4, M5, M6).
 
 import { deepFreeze } from '../core/freeze.js';
+import { C1_SHOPS } from './thareia/c1-shops.js';
 
 const STOCK = ['hearth-tonic', 'bitterroot', 'frost-draught', 'ember-salts'];
 
@@ -25,4 +26,5 @@ export const SHOPS = deepFreeze({
   // leeches bleed you; his Hearth Tonics also pay Hodge's toll one day in three)
   nettie: { id: 'nettie', name: 'Nettie\'s Hut', items: ['hearth-tonic', 'bitterroot', 'frost-draught', 'ember-salts'], gems: ['bog-amber', 'moss-agate', 'glass-pearl'] },
   sedge: { id: 'sedge', name: 'Sedge\'s Herbs', items: ['bitterroot', 'hearth-tonic', 'frost-draught', 'ember-salts'] },
+  ...C1_SHOPS, // Thareia (T2): Chapter 1
 });

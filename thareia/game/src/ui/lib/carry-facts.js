@@ -11,6 +11,7 @@ import { MAPS } from '../../data/maps/index.js';
 import { RELICS } from '../../data/relics.js';
 import { ENCOUNTERS } from '../../data/encounters.js';
 import { partyLevel } from '../../rules/gauntlet.js';
+import { dayShown } from '../../rules/story.js';
 
 // The title's line and the carry-over card count the relics out of how many there are (75 with Page V, as the count
 // was before M7); the Codex's labels count to the highest number instead ("No. 000 / 074": ui/lib/items.js codexNo)
@@ -22,7 +23,9 @@ const claimedOf = game => Object.keys(RELICS).filter(id => game.codex?.[id]?.cla
 export function saveLine(game) {
   const w = game.party.roster.warden;
   const place = MAPS[game.progress.pos?.map]?.name || 'Hearthstone Keep';
-  return `${w.name} · ${place} · Day ${game.progress.flags.day} · Lv ${partyLevel(game)} · ${claimedOf(game)}/${RELIC_TOTAL} relics`;
+  // Thareia (T2): no day once the grove has pulsed (rules/story.js dayShown)
+  const day = dayShown(game) ? ` · Day ${game.progress.flags.day}` : '';
+  return `${w.name} · ${place}${day} · Lv ${partyLevel(game)} · ${claimedOf(game)}/${RELIC_TOTAL} relics`;
 }
 
 export function carryFacts(game) {

@@ -3,6 +3,7 @@
 // The flags, in story order: th-arrived, th-saw-sedrin, th-read-notice, th-hired (Yara joins), th-crate-cracked (the
 // bog lurkers), then pr-lurkers and pr-smugglers beaten, th-shard (the humming shard), th-landed (Thornhollow, Yara
 // leaves, the Prologue's card).
+// T2: th-landing also sets c1-start (Chapter 1 begins at the landing); Yara joins as a guest ({ join, guest: true }).
 // New effects (rules/story.js): { join: heroId } { leave: heroId } { cut: id } (a painted event, CUTS[id] when there is
 // one) { note: text } (a toast). { open: 'sky:first-flight' } opens the flight (ui/screens/sky.js).
 const LEAVE = { text: 'Leave.' };
@@ -55,7 +56,7 @@ export const TH_DIALOGUE = {
       ['yara', 'Mind that crate. It is warm, and it hums. I do not like cargo that hums.'],
       ['narrator', 'Captain Yara Dustwind joins you. She fights with a shortbow, and she does not miss often.'],
     ],
-    do: [{ set: 'th-hired' }, { join: 'yara' }],
+    do: [{ set: 'th-hired' }, { join: 'yara', guest: true }],
   },
   'th-yara-deck': {
     lines: [['yara', 'The crate. By the tower. Into the hold, before the fog lifts and everyone in Bogmire sees what we are carrying.']],
@@ -176,7 +177,7 @@ export const TH_DIALOGUE = {
       ['yara', 'Me, I have a hold to patch. Here, for the trouble. If you are ever at a dock with money in your pocket, I rent.'],
       ['narrator', 'Captain Yara Dustwind goes back to her skiff. The shard in your pocket hums, and it hums louder when you face the west road.'],
     ],
-    do: [{ set: 'th-landed' }, { gold: 12 }, { leave: 'yara' }, { end: 'prologue' }],
+    do: [{ set: 'th-landed' }, { set: 'c1-start' }, { gold: 12 }, { leave: 'yara' }, { end: 'prologue' }],
   },
   'th-aldric': {
     lines: [

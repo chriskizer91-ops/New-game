@@ -3,6 +3,9 @@
 // Title -> new game -> the docks -> the town (the Sedrin crossing, the board) -> hired by Yara -> the crate -> both
 // fights on Auto -> the shard -> the skiff -> the flight (steered, then the world map's auto-flight) -> Thornhollow and
 // the Prologue's card. Fails on any page error or console error.
+// --ticket: the early route (board with the passage ticket at once, no town and no fights), to the same landing and card.
+// T2: the skiff lands on th-landing (the field outside Thornhollow's south gate); the card must show, and the HUD's
+// objective must be Chapter 1's first ("Stop the thieves at the crate.").
 import { createRequire } from 'node:module';
 import { execSync } from 'node:child_process';
 import { existsSync, mkdirSync } from 'node:fs';
@@ -29,10 +32,11 @@ const click = async (sel, o = {}) => { await page.locator(sel).first().click(o);
 const clickText = async (text) => { await page.getByRole('button', { name: text }).first().click(); await page.waitForTimeout(250); };
 const ovOpen = () => page.evaluate(() => !!document.querySelector('.ov'));
 // talk through an open dialogue: pick the first of `picks` offered, else advance
-async function talk(picks = [], { max = 40 } = {}) {
+async function talk(picks = [], { max = 40, stopAt = null } = {}) {
   for (let i = 0; i < max; i++) {
     await page.waitForTimeout(260);
     if (!await ovOpen()) return;
+    if (stopAt && await page.locator(stopAt).count()) return;
     const choices = await page.locator('.ov .dlg-choice:not([disabled])').allInnerTexts();
     const want = picks.find(p => choices.some(c => c.includes(p)));
     if (want) { await page.locator('.ov .dlg-choice', { hasText: want }).first().click(); picks = picks.filter(p => p !== want); continue; }
@@ -80,15 +84,7 @@ await shot('docks-intro');
 await talk();
 await shot('docks');
 
-if (args.ticket) {
-  // the ticket: straight from the docks to the skiff
-  await W('teleport', 'bogmire-docks', 28, 12, 'n'); await page.waitForTimeout(400); await W('interact'); await page.waitForTimeout(400);
-  await shot('ticket-skiff'); await talk(['Show your ticket']);
-  await page.waitForSelector('.screen-sky', { timeout: 15000, state: 'attached' }); await page.waitForTimeout(1500);
-  await shot('ticket-sky');
-  console.log(errors.length ? 'ERRORS:\n' + errors.join('\n') : 'no errors');
-  await browser.close(); process.exit(errors.length ? 1 : 0);
-}
+if (!args.ticket) {
 // ---- the town: the Sedrin crossing, the board ----
 await W('teleport', 'bogmire-docks', 24, 1, 'n'); await page.waitForTimeout(300);
 await W('step', 'n', 1); await page.waitForTimeout(1200); await talk();
@@ -113,9 +109,11 @@ await page.waitForTimeout(800); await shot('shard'); await talk();
 const st = await page.evaluate(() => window.__world.game().progress.flags.story);
 console.log('story flags', Object.keys(st).filter(k => k.startsWith('th-')).join(' '));
 
-// ---- the skiff and the flight ----
+}
+
+// ---- the skiff and the flight (--ticket: straight from the docks, showing the passage ticket) ----
 await W('teleport', 'bogmire-docks', 28, 12, 'n'); await page.waitForTimeout(400); await W('interact'); await page.waitForTimeout(400);
-await shot('skiff'); await talk(['Climb aboard']);
+await shot('skiff'); await talk([args.ticket ? 'Show your ticket' : 'Climb aboard']);
 await page.waitForSelector('.screen-sky', { timeout: 10000, state: 'attached' }); await page.waitForTimeout(1500);
 await shot('sky-takeoff');
 // steer north for a while with the keyboard
@@ -130,8 +128,14 @@ const pt = await page.evaluate(() => {
 });
 await page.mouse.click(pt[0], pt[1]); await page.waitForTimeout(1200); await shot('sky-auto');
 await page.waitForSelector('.screen-world', { timeout: 20000 }); await page.waitForTimeout(1200);
-await shot('thornhollow'); await talk(); await page.waitForTimeout(600); await shot('the-end');
+// T2: the skiff sets down on the landing field outside the south gate (th-landing); Yara's goodbye, then the card
+await shot('landing'); await talk([], { stopAt: '.tbc' }); await page.waitForTimeout(600);
+const card = await page.locator('.tbc').count();
+await shot('the-end');
+if (!card) errors.push('the Prologue\'s card did not show');
 await talk();
+const obj = await page.evaluate(() => document.body.innerText);
+if (!obj.includes('Stop the thieves at the crate.')) errors.push('the objective line is not Chapter 1\'s first');
 const g = await page.evaluate(() => window.__world.game());
 console.log('at', g.progress.pos, 'party', g.party.active, 'gold', g.gold, 'levels', g.party.active.map(id => g.party.roster[id].level));
 console.log(errors.length ? 'ERRORS:\n' + errors.join('\n') : 'no errors');

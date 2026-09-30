@@ -13,6 +13,7 @@
 //   Keys      rules/world.js lockStatus for every lock type: a tick or cross per key and whose
 //             Domain counts; the story seals (crownwalls, the roads to the Sunscorch and, M5, the
 //             Ironspire and, M6, the Gloomfen, each with what opens it) listed apart
+//             Thareia (T2): the key items held (flags.keys; names and text from data/thareia/c1-keys.js) come first
 //   Grudges   flags.grudges (the unsettled: name, title, where, their Omens, and whether the pack
 //             hunts you) and flags.settled (name and the day), from grudgeView(game)
 // M7 (spec §3.6, §5): Act III in the Journal: the Hollow Council's posters and the Unsmith's; a rumour the story has
@@ -47,6 +48,7 @@ import { el, button, toCanvas } from '../lib/dom.js';
 import { screenNav } from '../lib/keys.js';
 import { regionOpen } from '../lib/atlas-geo.js';
 import { foeLook } from '../battle/sprites.js';
+import { C1_KEYS } from '../../data/thareia/c1-keys.js';
 
 const TABS = [['quests', 'Quests'], ['bounties', 'Bounties'], ['ladder', 'Ladder'], ['keys', 'Keys'], ['grudges', 'Grudges']];
 const STATE_WORD = { active: 'Active', ready: 'Ready', done: 'Done' };
@@ -335,6 +337,16 @@ export function mount(root, ctx, params = {}) {
 
   // ---- keys -----------------------------------------------------------------------------------
   function renderKeys(g) {
+    // Thareia (T2): the key items held (flags.keys, the story effect { key }), above the locks
+    const held = Object.keys(g?.progress?.flags?.keys || {}).filter(id => g.progress.flags.keys[id]);
+    if (held.length) {
+      const box = el('section', 'jr-keyitems panel');
+      box.append(el('h2', 'label', 'Key items'));
+      const kl = el('ul', 'jl-keys');
+      for (const id of held) kl.append(el('li', { class: 'have', 'data-key': id }, [el('span', { class: 'mk', text: '✓' }), el('span', { class: 'kl', text: C1_KEYS[id]?.name || id }), el('small', { text: C1_KEYS[id]?.text || '' })]));
+      box.append(kl);
+      panel.append(box);
+    }
     const k = keys(g);
     panel.append(el('p', { class: 'jr-lede', text: 'Every lock has two keys or more: a relic’s map power, or a Domain. A relic counts while you own it, worn or not. A Domain counts for your best active hero.' }));
     const dom = el('ul', { class: 'jr-domains', 'aria-label': 'Your best Domains' });

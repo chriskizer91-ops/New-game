@@ -40,6 +40,12 @@ const S = {
   alondraStaff: { r: 'staff', p: { style: 'crook', headT: 63, haft: 'wood', haftR: 1.9, wrap: 'clothWhite', bands: [48], bandMat: 'silver', foot: 'silver', gem: 'pearl', chainMat: 'silver' } },
   alondraRobe: { r: 'robe', p: { mat: 'clothWhite', trim: 'silver', sash: 'clothBlue', cowl: 'clothWhite' } },
   sandals: { r: 'boots', p: { mat: 'robe', trim: 'leather' } },
+  // Thareia (T2): Taela Greenmantle's kit: a living-wood staff with a twig still sprouting, a patched moss-green mantle
+  // whose hem is black from the Rot, a hood, and soft wrapped boots
+  taelaStaff: { r: 'staff', p: { style: 'gnarl', headT: 60, haft: 'bark', haftR: 1.9, wobble: 1.2, wrap: 'moss', wrapA: 34, wrapB: 40, bands: [], foot: 'bark', leaves: 'moss', crystal: 'emerald', glow: 'verdant' } },
+  taelaRobe: { r: 'robe', p: { mat: 'hoodGreen', trim: 'rotwood', sash: 'leatherDark', cowl: 'moss' } },
+  taelaHood: { r: 'hood', p: { look: 'hood', mat: 'moss', tip: 0, trim: 'rotwood' } },
+  taelaBoots: { r: 'boots', p: { mat: 'rags', trim: 'string' } },
 };
 // identity layers (H) and the starter kit for each hero (art params; the rules own the real items)
 export const HERO_ART = Object.freeze({
@@ -68,6 +74,13 @@ export const HERO_ART = Object.freeze({
     name: 'Yara Dustwind', aspect: 'storm',
     H: { build: 'human', skin: 'skinTan', hairMat: 'hairSilver', hair: 'braid', quiver: 'leather', fletch: 'clothWhite', eye: '#3a1a10', tunic: 'gambeson', gloves: 'leather' },
     starter: { weapon: S.yew, body: S.pipJerkin, hands: S.pipGloves, feet: S.pipBoots },
+  },
+  // Thareia (T2): Taela Greenmantle, a half-elf druid: slight, ears half-pointed, dark auburn hair tied back, bark-stained
+  // hands, tired eyes with shadows under them (design/09-t2-spec.md 4.4)
+  taela: {
+    name: 'Taela Greenmantle', aspect: 'verdant',
+    H: { build: 'human', skin: 'skin', hairMat: 'hairAuburn', hair: 'pony', ears: 'half', marks: 'rotwood', mantle: 'moss', eye: '#24381c', gloves: 'bark', tunic: 'hoodGreen' },
+    starter: { weapon: S.taelaStaff, head: S.taelaHood, body: S.taelaRobe, feet: S.taelaBoots },
   },
 });
 export const HERO_KEYS = Object.keys(HERO_ART);

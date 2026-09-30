@@ -185,7 +185,8 @@ export function setInfo(item, game, heroId) {
   return { set: S, have: S.pieces.filter(p => worn.has(p)), pieces: S.pieces.map(p => ({ id: p, name: RELICS[p].name, on: worn.has(p) })) };
 }
 
-export function provenanceText(item, source) {
+// Thareia (T2): { day: false } leaves the day out (rules/story.js dayShown)
+export function provenanceText(item, source, { day = true } = {}) {
   const p = item.provenance || {};
   const from = p.from || 'the road';
   let lead;
@@ -194,7 +195,7 @@ export function provenanceText(item, source) {
   else if (item.shattered) lead = `Shattered on ${from}`;
   else if (source === 'claimed' || (isRelic(item) && source !== 'drop')) lead = `Pried from ${from}`;
   else lead = `Taken from ${from}`;
-  return [lead, p.where, p.day ? `Day ${p.day}` : null].filter(Boolean).join(' · ');
+  return [lead, p.where, p.day && day ? `Day ${p.day}` : null].filter(Boolean).join(' · ');
 }
 
 // ▲/▼ verdict for the picker: the stat that matters most for this slot.

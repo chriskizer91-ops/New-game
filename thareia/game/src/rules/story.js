@@ -32,6 +32,13 @@
 // label (Hodge's toll game: "Deception DC 16").
 // M7 effect: { ending: 'rekindle' | 'release' | 'anew' } sets game.ending, once: the choice at the Worldforge's heart is
 // final for the save, so a later `ending` changes nothing (event { t: 'ending', id }, only when it is set).
+// Thareia (T2, design/09-t2-spec.md 3.4): { join: heroId, guest: true } joins as a guest (roster[id].guest, at the party's
+// top level + HEROES[id].guestLevel); a plain { join } on a guest makes her a full member at max(her level, the hero's)
+// (XP raised to match). { key: id } a key item (flags.keys[id], event { t: 'key', id }; C1_KEYS names it).
+// { kindle: hearthfireId } lights a fire (flags.kindled, event { t: 'note', text: '<name> is lit.' }).
+// { go: { map, anchor } } moves the party there after the scene (event { t: 'go', map, anchor }).
+// dayShown(game) -> boolean: false in a Thareia game once c1-pulse is set (every day display checks it).
+// nextObjective in a Thareia game takes TH_OBJECTIVES first, then the first active quest.
 // Import direction (A6): world -> story -> cond -> gauntlet. Never import world here.
 // Owner: WP1.
 
@@ -42,9 +49,11 @@ import { QUESTS, BOUNTIES } from '../data/quests.js';
 import { LADDER } from '../data/ladder.js';
 import { TH_OBJECTIVES } from '../data/thareia/objectives.js';
 import { HEROES } from '../data/heroes.js';
+import { HEARTHS } from '../data/world.js';
 import { DOMAINS } from '../data/domains.js';
 import { check, questState, bountyState, flagsOf, storyOf, canAfford } from './cond.js';
 import { deriveHero } from './stats.js';
+import { grantXp } from './progression.js';
 import { generateItem, relicItem } from './loot.js';
 import { spawnsFor, recruit } from './gauntlet.js';
 import { pageBonus, markPages } from './codex.js';
@@ -189,18 +198,37 @@ function apply(g, effects, rng, events) {
     else if ('end' in e) events.push({ t: 'end', act: e.end });
     else if ('ending' in e) { if (g.ending == null) { g.ending = e.ending; events.push({ t: 'ending', id: e.ending }); } }
     // Thareia (T1): a companion joins or leaves; a painted cut-scene; a short line for the toast
-    else if ('join' in e) { if (joinInto(g, e.join, rng)) events.push({ t: 'join', hero: e.join }); }
+    else if ('join' in e) { if (joinInto(g, e.join, rng, !!e.guest)) events.push({ t: 'join', hero: e.join, ...(e.guest ? { guest: true } : {}) }); }
     else if ('leave' in e) { if (leaveFrom(g, e.leave)) events.push({ t: 'leave', hero: e.leave }); }
     else if ('cut' in e) events.push({ t: 'cut', id: e.cut, text: e.text || '' });
     else if ('note' in e) events.push({ t: 'note', text: e.note });
+    // Thareia (T2): a key item, a fire lit by a person, a move to another map after the scene
+    else if ('key' in e) { f.keys = { ...(f.keys || {}), [e.key]: true }; events.push({ t: 'key', id: e.key }); }
+    else if ('kindle' in e) {
+      f.kindled = { ...(f.kindled || {}), [e.kindle]: true };
+      events.push({ t: 'note', text: `${HEARTHS[e.kindle]?.name || 'The fire'} is lit.` });
+    } else if ('go' in e) events.push({ t: 'go', map: e.go.map, anchor: e.go.anchor });
   }
 }
 
-// Thareia (T1): a hero joins at the party's level (rules/gauntlet.js recruit), into the line when there is room
-function joinInto(g, id, rng) {
-  if (!HEROES[id] || g.party.roster[id]) return false;
-  const level = Math.max(1, ...g.party.active.map(h => g.party.roster[h]?.level || 1));
-  g.party.roster[id] = recruit(g, id, rng, { level: HEROES[id].guestLevel ? level + HEROES[id].guestLevel : level });
+// Thareia (T1): a hero joins at the party's level (rules/gauntlet.js recruit), into the line when there is room.
+// T2: a guest (`guest`) joins HEROES[id].guestLevel above the party's top (non-guest) level and is marked `guest`;
+// a plain join on a guest already here makes her a full member, at max(her level, the hero's) (XP raised to match).
+function joinInto(g, id, rng, guest = false) {
+  if (!HEROES[id]) return false;
+  const have = g.party.roster[id];
+  if (have) {
+    if (guest || !have.guest) return false;
+    const h = { ...have };
+    delete h.guest;
+    const need = Math.max(0, (g.party.roster.warden?.xp || 0) - (h.xp || 0));
+    g.party.roster[id] = need > 0 ? grantXp(h, need, rng).hero : h;
+    if (!g.party.active.includes(id) && g.party.active.length < 4) g.party.active = [...g.party.active, id];
+    return true;
+  }
+  const top = Math.max(1, ...g.party.active.filter(h => !g.party.roster[h]?.guest).map(h => g.party.roster[h]?.level || 1));
+  const level = guest ? top + (HEROES[id].guestLevel || 0) : top;
+  g.party.roster[id] = { ...recruit(g, id, rng, { level }), ...(guest ? { guest: true } : {}) };
   if (g.party.active.length < 4) g.party.active = [...g.party.active, id];
   return true;
 }
@@ -284,12 +312,16 @@ export function questLog(game) {
 }
 
 export function nextObjective(game) {
-  const q = questLog(game).find(x => x.kind === 'main' && x.state === 'active') || questLog(game).find(x => x.state === 'active');
-  if (q) return { text: q.step.text, map: q.step.target.map, entity: q.step.target.entity };
-  // Thareia (T1): the Prologue's steps
+  // Thareia: the story's own line first (TH_OBJECTIVES: Chapter 1's, then the Prologue's); side quests only after
   const t = game?.world === 'thareia' ? TH_OBJECTIVES.find(o => check(game, o.if)) : null;
-  return t ? { text: t.text, map: t.map, entity: t.entity } : null;
+  if (t) return { text: t.text, map: t.map, entity: t.entity };
+  const q = questLog(game).find(x => x.kind === 'main' && x.state === 'active') || questLog(game).find(x => x.state === 'active');
+  if (q) return { text: q.step.text, map: q.step.target?.map, entity: q.step.target?.entity };
+  return null;
 }
+
+// Thareia (T2, spec 3.5): the day is not shown once the grove has pulsed (Chapter 1's beat 6)
+export const dayShown = game => !(game?.world === 'thareia' && storyOf(game)['c1-pulse']);
 
 function claimInto(g, id, rng, events) {
   const f = g.progress.flags;

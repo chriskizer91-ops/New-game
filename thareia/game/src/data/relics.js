@@ -1374,6 +1374,79 @@ export const RELICS = deepFreeze({
       b: { name: 'The Hearth Itself', text: 'It is only a hearth, after all, and a hearth keeps people warm. +12 MP, +15% healing and 10% frost resist.', stats: { mp: 12, healBonus: 15, resist: { frost: 10 } } },
     },
   },
+  // ---- Thareia (T2, design/09-t2-spec.md 5.1-5.2): Chapter 1's relics. Codex Nos. 75-78 sit on no Codex page. -------
+  // The node's heartstone, grown through the Hart of Fawnrest's chest (the boss's second piece)
+  'fawnrest-heartstone': {
+    id: 'fawnrest-heartstone', codex: 75, name: 'The Fawnrest Heartstone', kind: 'amulet', slot: 'amulet', aspect: 'ember', rarity: 'heirloom', ilvl: 9,
+    holder: 'Grown through the chest of the Hart of Fawnrest', grip: 28, thareia: true,
+    stats: { hp: 6, mp: 3, resist: { ember: 25 } },
+    power: {
+      id: 'node-light', name: 'Node Light', target: 'all-enemies',
+      text: 'The stone remembers the node: 2d8 ember to every foe, and all of them Burn.',
+      effects: [{ type: 'damage', dice: '2d8', kind: 'ember', aspect: 'ember', diceEvery: 6, riders: [{ type: 'status', status: 'burning' }] }],
+    },
+    mapPower: { id: 'warm-stone', name: 'Warm Stone', text: 'It grows warm near buried stonework and hot water.' },
+    lore: 'The node\'s sunstone, grown through its chest. Cut loose, it still holds the heat of the spring under the shrine.',
+    sockets: 1, deeds: ['first-blood', 'fell-champion', 'surge'],
+    awaken: {
+      a: hand('Warm', 'The heat goes into the arm that holds it. +1 STR and +8 HP.', { STR: 1, hp: 8 }),
+      b: heart('Cooled', 'The stone runs gold instead of white. +1 WIS, +4 MP and +10% healing.', { WIS: 1, mp: 4, healBonus: 10 }),
+    },
+  },
+  // Text-only copies of three old relics (the same numbers; no line names an old faction or the old story)
+  'th-crateknife': {
+    id: 'th-crateknife', codex: 76, name: 'Crateknife', kind: 'dagger', slot: 'weapon', aspect: 'blight', rarity: 'storied', ilvl: 4,
+    holder: 'The crate-runners on the Thornway', grip: 14, thareia: true,
+    weapon: { dice: '1d4', dmg: 'pierce', hands: 1, weight: -15, ability: ['STR', 'DEX'], extra: [{ dice: '1d4', aspect: 'blight' }] },
+    stats: { hit: 1, crit: 1, speed: 1 },
+    grants: ['strap-cut'],
+    power: {
+      id: 'final-tally', name: 'Last Strap', target: 'enemy',
+      text: 'Every strap parts at once: 3d6 blight and 3 stacks of Poisoned.',
+      effects: [{ type: 'damage', dice: '3d6', kind: 'blight', aspect: 'blight', diceEvery: 6, riders: [{ type: 'status', status: 'poisoned', stacks: 3 }] }],
+    },
+    mapPower: { id: 'cut-the-tally', name: 'Cut the Straps', text: 'Cuts crate straps and cargo lashings.' },
+    lore: 'A runner\'s knife for cutting crate straps. There is a notch on the spine for every crate it has opened.',
+    sockets: 1, deeds: ['settle', 'hundred', 'rout'],
+    awaken: {
+      a: hand('Quick', 'Every strap cut before it is tied. +1 speed and +1 to hit.', { speed: 1, hit: 1 }),
+      b: heart('Counting', 'It keeps count for you now. +4 MP and +2 grip damage.', { mp: 4, gripDmg: 2 }),
+    },
+  },
+  'th-lightfingers': {
+    id: 'th-lightfingers', codex: 77, name: 'Lightfingers', kind: 'gloves', slot: 'hands', aspect: 'frost', rarity: 'heirloom', ilvl: 6,
+    holder: 'Skeet Marrow, in the fjord cove', grip: 20, thareia: true,
+    stats: { DEX: 1, gripDmg: 3, speed: 1 },
+    power: {
+      id: 'sleight-of-hand', name: 'Sleight of Hand', target: 'enemy',
+      text: 'Now you see it: 4d6 grip damage, 2d6 frost, and the foe is Chilled.',
+      effects: [{ type: 'grip', dice: '4d6' }, { type: 'damage', dice: '2d6', kind: 'frost', aspect: 'frost', diceEvery: 6, riders: [{ type: 'status', status: 'chilled' }] }],
+    },
+    mapPower: { id: 'lightfingers', name: 'Lightfingers', text: 'Picks a cargo seal without a scratch on the wax.' },
+    lore: 'Skeet Marrow never once paid a dock fee in them. The fingertips are worn through from counting other people\'s coin.',
+    sockets: 1, deeds: ['claim', 'rout', 'fell-holder'],
+    awaken: {
+      a: hand('Light', 'Quicker than the eye, and the grip. +1 DEX and +2 grip damage.', { DEX: 1, gripDmg: 2 }),
+      b: heart('Honest', 'The fingertips grow back. +1 CHA and +4 MP.', { CHA: 1, mp: 4 }),
+    },
+  },
+  'th-thornwreath': {
+    id: 'th-thornwreath', codex: 78, name: 'Thornwreath', kind: 'crown', slot: 'head', aspect: 'verdant', rarity: 'heirloom', ilvl: 7,
+    holder: 'The Nameless Beast\'s breakable thorn-crown', grip: 30, thareia: true,
+    stats: { hp: 8, guard: 1, surgeGain: 15, resist: { verdant: 25 } },
+    power: {
+      id: 'crown-of-briars', name: 'Crown of Briars', target: 'all-enemies',
+      text: 'The bramble answers its crown: 2d8 verdant to every foe and all of them are Rooted.',
+      effects: [{ type: 'damage', dice: '2d8', kind: 'pierce', aspect: 'verdant', diceEvery: 6, riders: [{ type: 'status', status: 'rooted' }] }],
+    },
+    mapPower: { id: 'briar-crown', name: 'Briar Crown', text: 'The bramble parts for whoever wears it.' },
+    lore: 'It grew around the beast\'s skull while nobody was looking, and it has not stopped growing since.',
+    sockets: 2, deeds: ['untouched', 'settle', 'hundred'],
+    awaken: {
+      a: { name: 'The Bramble King', text: 'It grows into a crown that fights. +1 Guard, +1 STR and +8 HP.', stats: { guard: 1, STR: 1, hp: 8 } },
+      b: { name: 'The Green Crown', text: 'It grows green again, and so do you: regrow 2 HP a turn and +15% Legend Surge.', stats: { regen: 2, surgeGain: 15 } },
+    },
+  },
 });
 
 export const SETS = deepFreeze({

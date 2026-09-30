@@ -95,17 +95,35 @@ import worldforge from './worldforge.js';
 import bogmireDocks from './bogmire-docks.js';
 import thBogmire from './th-bogmire.js';
 import thThornhollow from './th-thornhollow.js';
+// Thareia (T2): Chapter 1's maps (the th-* copies draw the old Verdant Wilds paintings; the landing, the node and the
+// cove are new painted maps)
+import thLanding from './th-landing.js';
+import thThornway from './th-thornway.js';
+import thEldergrove from './th-eldergrove.js';
+import thHeartroot1 from './th-heartroot-1.js';
+import thMossfall from './th-mossfall.js';
+import thMosswatch1 from './th-mosswatch-1.js';
+import thMosswatch2 from './th-mosswatch-2.js';
+import thHindwood from './th-hindwood.js';
+import thFawnrest from './th-fawnrest.js';
+import thBriarmawDen from './th-briarmaw-den.js';
+import thFawnrestNode from './th-fawnrest-node.js';
+import thFjordsCove from './th-fjords-cove.js';
 
 const LIST = [keep, keepHall, hearthRoad, thornhollow, thornway, briarmawDen, mossfall, mosswatch1, mosswatch2, hindwood, fawnrest, eldergrove, heartroot1, heartroot2,
   sunRoad, sandspire, dustTrail, dusthaven, deepShaft1, deepShaft2, glassFlats, miragewell, scorchgate, scorchgateVaults, keepGallery,
   oldBridge, drystoneLea, plankford, shrinewood, silverfall, lastCamp, rockslidePass, peaksVeil, highfold, ironStair, ironhold, ironholdDeeps, harrowsForge, stormwatch, frostRoad, frostmere, frostmereBelow, keepGallery2,
   murkway, willowmurk, rotbridge, bogmire, lanternfen, mothersHollow, longBoardwalk, misthollow, drownedBelfry, blackwaterReach, tidalFlats, causeway, keepGallery3,
   hollowHall, ashStair, chainedDeep, worldforge,
-  bogmireDocks, thBogmire, thThornhollow];
+  bogmireDocks, thBogmire, thThornhollow,
+  thLanding, thThornway, thEldergrove, thHeartroot1, thMossfall, thMosswatch1, thMosswatch2, thHindwood, thFawnrest, thBriarmawDen,
+  thFawnrestNode, thFjordsCove];
 
 export const MAPS = Object.freeze(Object.fromEntries(LIST.map(m => [m.id, m])));
 // Thareia's own maps (the old game's tests of its world leave them out; test/thareia.test.mjs checks them)
-export const TH_MAP_IDS = Object.freeze(['bogmire-docks', 'th-bogmire', 'th-thornhollow']);
+export const TH_MAP_IDS = Object.freeze(['bogmire-docks', 'th-bogmire', 'th-thornhollow',
+  'th-landing', 'th-thornway', 'th-eldergrove', 'th-heartroot-1', 'th-mossfall', 'th-mosswatch-1', 'th-mosswatch-2', 'th-hindwood',
+  'th-fawnrest', 'th-briarmaw-den', 'th-fawnrest-node', 'th-fjords-cove']);
 export const MAP_IDS = Object.freeze(LIST.map(m => m.id));
 
 // ENTITY_OF[id] -> { map, entity } for every placed encounter and Hearthfire (their ids are

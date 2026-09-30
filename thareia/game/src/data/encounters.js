@@ -31,13 +31,15 @@
 
 import { deepFreeze } from '../core/freeze.js';
 import { TH_ENCOUNTERS } from './thareia/encounters.js';
+import { C1_ENCOUNTERS, C1_PATROLS } from './thareia/c1-encounters.js';
 
 export const BACKDROPS = Object.freeze(['hearth-road', 'verdant-wood', 'thornhollow', 'briarmaw-den',
   'mossfall', 'mosswatch', 'fawnrest', 'eldergrove', 'heartroot', // M3 adds the last five
   'sun-road', 'sandspire', 'dust-trail', 'deep-shaft', 'glass-heart', 'glass-flats', 'miragewell', 'scorchgate', 'scorchgate-vaults', // M4
   'rockslide-pass', 'peaks-veil', 'highfold', 'iron-stair', 'ironhold', 'ironhold-deeps', 'harrows-forge', 'stormwatch', 'frost-road', 'frostmere', 'frostmere-below', // M5
   'murkway', 'willowmurk', 'rotbridge', 'bogmire', 'lanternfen', 'mothers-hollow', 'long-boardwalk', 'misthollow', 'drowned-belfry', 'blackwater-reach', 'tidal-flats', 'causeway', // M6
-  'hollow-hall', 'ash-stair', 'chained-deep', 'worldforge']); // M7
+  'hollow-hall', 'ash-stair', 'chained-deep', 'worldforge', // M7
+  'fawnrest-node']); // Thareia (T2): under Fawnrest (drawn in art/scenes.js until its painting is imported)
 
 const S = (family, level, o = {}) => ({ family, level, gearTier: 0, omens: [], ...o });
 // M4: a Sunscorch spawn that is not rabble climbs SUN_WAKE levels per Waking instead of 6 (M3 §4.6 wakeLevels).
@@ -789,6 +791,7 @@ export const ENCOUNTERS = deepFreeze({
     text: 'Harrow Ironvein before the Worldforge, with his hammer, his apron and the heart of the forge. Break all three.',
   },
   ...TH_ENCOUNTERS, // Thareia (T1)
+  ...C1_ENCOUNTERS, // Thareia (T2): Chapter 1
 });
 
 export const GAUNTLET = Object.freeze([
@@ -830,6 +833,7 @@ export const PATROLS = deepFreeze({
   causeway: [[GLOOM_R('marsh-light', 0), GLOOM_R('mire-leech', 0)], [GLOOM_R('mire-leech', 0), GLOOM_R('mire-leech', 0), GLOOM_R('marsh-light', 0)]],
   // M7: the Ash Stair (spec §2.6): cinder-thrall packs, rabble, two or three a pack
   'ash-stair': [[BELOW_R('cinder-thrall', 0), BELOW_R('cinder-thrall', 0), BELOW_R('cinder-thrall', 0)], [BELOW_R('cinder-thrall', 0), BELOW_R('cinder-thrall', 0)]],
+  ...C1_PATROLS, // Thareia (T2): Chapter 1
 });
 
 export const BRANDS = deepFreeze({

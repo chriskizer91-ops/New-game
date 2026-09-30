@@ -18,6 +18,7 @@ import { equip, unequip, compare, wearerOf, bestHeroFor, canUse } from '../rules
 import { itemProfile, POWERS } from '../rules/stats.js';
 import { identifyItem } from '../rules/loot.js';
 import { pageBonus } from '../rules/codex.js';
+import { dayShown } from '../rules/story.js';
 import { el, esc, button, toCanvas, fmt, sgn, replay, countTo } from './lib/dom.js';
 import { portraitCanvas, cornerCanvas, iconCanvas, bustCanvas, heroSprite, gearOf, itemsById, chestImage, tierOf, rarityName } from './lib/art.js';
 import {
@@ -122,7 +123,7 @@ export function buildCard(itemIn, ctx, opts = {}) {
       if (lore) body.append(el('p', 'lore', `“${esc(lore)}”`));
     }
     if (item.provenance?.from || opts.heldBy) {
-      const txt = opts.heldBy ? `Held by ${opts.heldBy}${relic ? ' · ' + relic.holder : ''}` : provenanceText(item, opts.source);
+      const txt = opts.heldBy ? `Held by ${opts.heldBy}${relic ? ' · ' + relic.holder : ''}` : provenanceText(item, opts.source, { day: dayShown(ctx.game) });
       body.append(el('p', 'ribbon', `<span>${esc(txt)}</span>`));
     }
     if (!opts.grey) {
@@ -162,7 +163,7 @@ export function buildCard(itemIn, ctx, opts = {}) {
     const st = stageInfo(item);
     if (st) {
       const ul = el('ul', 'cb-deeds');
-      for (const d of st.deeds) ul.append(el('li', d.done ? 'on' : '', `<i aria-hidden="true"></i><b>${esc(d.name)}</b><span>${esc(d.done ? (d.day ? `Day ${d.day}` : 'Done') : d.text)}</span>`));
+      for (const d of st.deeds) ul.append(el('li', d.done ? 'on' : '', `<i aria-hidden="true"></i><b>${esc(d.name)}</b><span>${esc(d.done ? (d.day && dayShown(ctx.game) ? `Day ${d.day}` : 'Done') : d.text)}</span>`));
       back.append(el('h3', 'cb-h', esc(st.line)), ul);
     }
     const grudge = item.provenance?.grudge || (item.stamp === 'grudge-settled' ? true : null);
@@ -173,7 +174,7 @@ export function buildCard(itemIn, ctx, opts = {}) {
       if (typeof grudge === 'string') g.append(el('span', 'cb-grudge-who', esc(grudge)));
       back.append(g);
     }
-    if (item.provenance?.from || opts.heldBy) back.append(el('p', 'ribbon', `<span>${esc(provenanceText(item, opts.source))}</span>`));
+    if (item.provenance?.from || opts.heldBy) back.append(el('p', 'ribbon', `<span>${esc(provenanceText(item, opts.source, { day: dayShown(ctx.game) }))}</span>`));
     back.append(button('Turn it back', 'btn chron-back', () => turn(false), { 'aria-label': 'Turn the card back to its face' }));
   }
   let turning = false;
@@ -596,7 +597,7 @@ export function installCardServices(ctx) {
         }, reduced() ? 0 : 420);
       };
       if (withChest) {
-        stage = chestStage(item, { backdrop: opts.backdrop, title, meta: provenanceText(item, opts.source), reduced: reduced() });
+        stage = chestStage(item, { backdrop: opts.backdrop, title, meta: provenanceText(item, opts.source, { day: dayShown(ctx.game) }), reduced: reduced() });
         left.append(stage.el);
         stage.start();
         const tier = tierOf(item);

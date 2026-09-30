@@ -118,8 +118,10 @@ export function rest(game, hfId) {
 // ---- M3 flow helpers (spec §4.6) ------------------------------------------------------------------
 
 // round(mean level of the active heroes)
+// Thareia (T2): a guest (roster[id].guest) is left out, so a guest a level up does not raise level checks
 export function partyLevel(game) {
-  const ids = game?.party?.active || [];
+  const all = game?.party?.active || [];
+  const ids = all.filter(id => !game.party.roster[id]?.guest);
   if (!ids.length) return 1;
   return Math.round(ids.reduce((a, id) => a + (game.party.roster[id]?.level || 1), 0) / ids.length);
 }

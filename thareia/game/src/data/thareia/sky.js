@@ -16,7 +16,8 @@ export const SKY_REGIONS = Object.freeze({
 
 export const DOCKS = Object.freeze({
   bogmire: Object.freeze({ id: 'bogmire', name: 'Bogmire', region: 'gloomfen', at: [405, 470], map: 'bogmire-docks', anchor: 'from-skiff' }),
-  thornhollow: Object.freeze({ id: 'thornhollow', name: 'Thornhollow', region: 'verdant', at: [1232, 566], map: 'th-thornhollow', anchor: 'from-skiff' }),
+  // T2: the skiff lands at the landing field outside the south gate (th-landing), not in the town
+  thornhollow: Object.freeze({ id: 'thornhollow', name: 'Thornhollow', region: 'verdant', at: [1232, 566], map: 'th-landing', anchor: 'from-skiff' }),
 });
 
 export const FLIGHTS = Object.freeze({

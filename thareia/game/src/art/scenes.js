@@ -82,6 +82,9 @@ export const BACKDROPS = Object.freeze({
   'ash-stair': { name: 'The Ash Stair', horizon: .6, floor: [.68, 1], fx: 'ashfall' },
   'chained-deep': { name: 'The Chained Deep', horizon: .56, floor: [.64, 1], fx: 'deep' },
   worldforge: { name: 'The Worldforge', horizon: .56, floor: [.64, 1], fx: 'forge' },
+  // Thareia (T2): under Fawnrest, the node; drawn as the Heartroot's until the player's painting is imported
+  // (tools/backdrop-import.mjs --key=fawnrest-node)
+  'fawnrest-node': { name: 'Under Fawnrest', horizon: .56, floor: [.64, 1], fx: 'glint' },
 });
 export const BACKDROP_KEYS = Object.keys(BACKDROPS);
 // the listed dark variant of a backdrop key ('mosswatch' -> 'mosswatch:dark'), or the key itself when none is listed
@@ -2059,6 +2062,8 @@ function darkPass(P, W, H) {
 }
 
 const layerCache = lru(24), baseCache = lru(24);
+// Thareia (T2): the node under Fawnrest draws the Heartroot's scene until its painting arrives
+PAINT['fawnrest-node'] = (W, H, gy, dark) => PAINT.heartroot(W, H, gy, dark);
 function painted(key, w, h, dark) {
   const S = spec(key, dark);
   return layerCache.get(`${S.base}|${w}|${h}|${S.dark ? 1 : 0}`, () => {

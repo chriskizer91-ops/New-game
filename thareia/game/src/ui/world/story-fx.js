@@ -38,6 +38,7 @@ import { ENDINGS } from '../../data/endings.js';
 import { NPCS } from '../../data/npcs.js';
 import { uniqueBrands } from '../../rules/gauntlet.js';
 import { pageProgress } from '../../rules/codex.js';
+import { dayShown } from '../../rules/story.js';
 import { loreAt as geoLoreAt, regionOpen } from '../lib/atlas-geo.js';
 import { openOverlay } from '../lib/overlay.js';
 import { el, toCanvas } from '../lib/dom.js';
@@ -298,8 +299,17 @@ export function chapterEnd(game, act = 'act1') {
     const lvl = Math.max(1, ...Object.values(game?.party?.roster || {}).map(h => h.level || 1));
     return {
       act, cls: 'tbc tbc-prologue', label: 'End of the Prologue', kick: 'The first flight', title: 'To be continued', sub: 'Chapter 1: The Rot\'s Roots',
-      stats: [['Day', game?.progress?.flags?.day || 1], ['Level', lvl], ['Gold', game?.gold || 0]], chips: [],
-      lines: ['The shard in your pocket is warm, and it hums when you face west.', 'Chapter 1 opens in the next part of Thareia.'],
+      stats: [...(dayShown(game) ? [['Day', game?.progress?.flags?.day || 1]] : []), ['Level', lvl], ['Gold', game?.gold || 0]], chips: [],
+      lines: ['The shard in your pocket is warm, and it hums when you face west.', 'Chapter 1 begins here, outside Thornhollow.'],
+    };
+  }
+  // Thareia (T2, spec 3.4): Chapter 1's card, after Aldric's letter; never a Day (spec 3.5)
+  if (act === 'chapter-1') {
+    const lvl = game?.party?.roster?.warden?.level || 1;
+    return {
+      act, cls: 'tbc tbc-prologue tbc-chapter-1', label: 'End of Chapter 1', kick: 'The Rot\'s Roots', title: 'To be continued', sub: 'Chapter 2: The Hearth\'s Tune',
+      stats: [['Level', lvl], ['Gold', game?.gold || 0]], chips: [],
+      lines: ['The node under Fawnrest glows a steady gold.', 'Someone should tell the Keep.'],
     };
   }
   if (act === 'gloomfen') {

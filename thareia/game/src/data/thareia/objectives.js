@@ -1,6 +1,10 @@
 // Thareia (T1): what to do next in the Prologue, for the HUD's objective line and the mini map's star
 // (rules/story.js nextObjective falls back to these when no quest is active). The first entry whose `if` holds.
+// T2: Chapter 1's entries (c1-objectives.js) come first.
+import { C1_OBJECTIVES } from './c1-objectives.js';
+
 export const TH_OBJECTIVES = Object.freeze([
+  ...C1_OBJECTIVES,
   { if: { all: [{ flag: 'th-landed' }] }, text: 'Find Aldric Fernshaw in Thornhollow. Chapter 1 comes next.', map: 'th-thornhollow', entity: 'th-aldric' },
   { if: { flag: 'th-shard' }, text: 'Board the skiff and fly to Thornhollow.', map: 'bogmire-docks', entity: 'skiff' },
   { if: { flag: 'th-crate-cracked' }, text: 'Defend the dock and the crate.', map: 'bogmire-docks', entity: 'dock-crate' },

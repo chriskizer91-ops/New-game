@@ -10,6 +10,7 @@
 // newly Kindled or ready to awaken ("Hilda can wake it"), and the forge materials and gems won.
 // Owner: WP8 (M3), P7a (M4).
 import { resolveBattle } from '../../rules/gauntlet.js';
+import { dayShown } from '../../rules/story.js';
 import { xpForLevel, xpToNext } from '../../rules/progression.js';
 import { diceIcon } from '../../art/index.js';
 import { SKILLS } from '../../data/skills.js';
@@ -75,14 +76,14 @@ export function mount(root, ctx, params = {}) {
     ctx.audio.music('hearth');
     const who = foes[0]?.name || 'Your rival';
     head.classList.add('af-yield');
-    head.innerHTML = `<p class="kick">You yield</p><h1 class="title-display">${esc(who)} lowers her blade.</h1><p class="meta">${esc(names.join(' · '))} · Day ${game.progress.flags.day}</p>`;
+    head.innerHTML = `<p class="kick">You yield</p><h1 class="title-display">${esc(who)} lowers her blade.</h1><p class="meta">${esc([...names, dayShown(game) ? `Day ${game.progress.flags.day}` : null].filter(Boolean).join(' · '))}</p>`;
     wrap.append(el('p', 'af-story panel', `${esc(who)} offers you a hand up and does not quite hide the grin. Nobody loses a coin, nobody holds a grudge, and the way she was guarding is open anyway. She will be waiting if you want the rematch.`));
   } else if (res === 'defeat') {
     ctx.audio.music('hearth');
     const hf = HEARTHS[report.wokeAt] || HEARTHS[game.progress.lastHearthfire] || null;
     const fire = hf ? hf.name : ENCOUNTERS[report.wokeAt]?.name || 'the last Hearthfire';
     const where = hf && MAPS[hf.map] ? MAPS[hf.map].name : null;
-    head.innerHTML = `<p class="kick">The party falls</p><h1 class="title-display">You wake at the Hearthfire.</h1><p class="meta">${esc([fire, where, `Day ${game.progress.flags.day}`].filter(Boolean).join(' · '))}</p>`;
+    head.innerHTML = `<p class="kick">The party falls</p><h1 class="title-display">You wake at the Hearthfire.</h1><p class="meta">${esc([fire, where, dayShown(game) ? `Day ${game.progress.flags.day}` : null].filter(Boolean).join(' · '))}</p>`;
     wrap.append(el('p', 'af-story panel', `Someone dragged you all back to ${esc(fire.replace(/^The /, 'the '))}. Everyone is on their feet, and every piece of gear is where you left it. The purse is lighter, and the lesson stuck.`));
   } else {
     ctx.audio.music('road');

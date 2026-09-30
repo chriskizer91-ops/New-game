@@ -7,6 +7,7 @@
 // Imports nothing from rules/.
 
 import { deepFreeze } from '../core/freeze.js';
+import { C1_ZONES, C1_HEARTHS } from './thareia/c1-world.js';
 
 // The M4 plug point: a region opens by adding its maps and swapping its sealed exits for exits.
 export const REGIONS = deepFreeze({
@@ -56,6 +57,7 @@ export const ZONES = deepFreeze({
   // M7 (spec §2.6): the Ash Stair, fighting on its own map's backdrop. A Waking-0 level like every zone's: at Waking 8
   // (no Brand is left to raise it) its rabble stand at about 38.
   'ash-stair': { id: 'ash-stair', level: 22, sets: 'ash-stair', backdrop: 'ash-stair' },
+  ...C1_ZONES, // Thareia (T2): Chapter 1
 });
 
 // The Hearthfires (ten in the Wilds, seven in the Sunscorch, eight in the Ironspire, eight in the Gloomfen, two below the
@@ -111,6 +113,7 @@ export const HEARTHS = deepFreeze({
   // Thareia (T1)
   'docks-lantern': H('bogmire-docks', 26, 5, [280, 540], 'The Dock Lantern', { face: 'e' }),
   'th-hearth': H('th-thornhollow', 12, 13, [310, 260], 'Thornhollow Hearth'),
+  ...C1_HEARTHS, // Thareia (T2): Chapter 1
 });
 export const HEARTH_IDS = Object.freeze(Object.keys(HEARTHS));
 

@@ -12,6 +12,7 @@
 // Owner: WP3S (M3), P3 story (M4, M5, M6, M7).
 
 import { deepFreeze } from '../core/freeze.js';
+import { C1_QUESTS } from './thareia/c1-quests.js';
 
 const step = (text, done, map, entity) => ({ text, done, target: { map, entity } });
 
@@ -256,6 +257,7 @@ export const QUESTS = deepFreeze({
     ],
     reward: {}, // No. 000: Fenwick gives it himself (data/dialogue.js fenwick-poker)
   },
+  ...C1_QUESTS, // Thareia (T2): Chapter 1's side quests (their `start` flags are Thareia's only)
 });
 
 export const BOUNTIES = deepFreeze({

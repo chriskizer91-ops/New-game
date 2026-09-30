@@ -114,6 +114,33 @@ export const HEROES = deepFreeze({
     guestLevel: 1, // she joins a level above the party (rules/story.js join)
     blurb: 'Weathered and laconic. She loves her skiff the way other people love their children, and says so.',
   },
+  // Thareia (T2): Taela Greenmantle, druid of Eldergrove (design/09-t2-spec.md 4). A guest from Eldergrove (a level above
+  // the party), for good once the node under Fawnrest is cooled. Quarterstaff and hood are real bases (data/items.js);
+  // metal armour is kind 'mail' or 'plate'.
+  taela: {
+    id: 'taela', name: 'Taela Greenmantle', title: 'druid of Eldergrove', race: 'half-elf', role: 'Healer and Verdant magic',
+    base: { STR: 10, DEX: 13, CON: 13, INT: 12, WIS: 16, CHA: 11 },
+    hpDie: 8, mp: { base: 10, perLevel: 3, stat: 'WIS' },
+    domain: 'attunement', secondary: ['knowledge'],
+    prof: {
+      weapons: ['staff', 'spear', 'dagger'],
+      armor: ['robe', 'leather'],
+      offhand: ['focus'],
+    },
+    asi: [['WIS', 'CON'], ['WIS', 'DEX']],
+    skills: [{ level: 1, id: 'mend' }, { level: 1, id: 'root-snare' }, { level: 2, id: 'ward' },
+      { level: 3, id: 'draw-the-rot' }, { level: 4, id: 'heartwood-splinters' }, { level: 5, id: 'greenmantle' },
+      { level: 6, id: 'dawnsong' }, { level: 8, id: 'revive' }, { level: 9, id: 'cool-the-roots' }],
+    gear: {
+      weapon: { base: 'quarterstaff', rarity: 'wrought' },
+      body: { base: 'robe', rarity: 'worn' },
+      head: { base: 'hood', rarity: 'worn' },
+    },
+    traits: [{ id: 'rootbound', name: 'Rootbound', text: 'Years in the Rot: cannot be Rotting.', immune: ['rotting'] }],
+    refuses: { kinds: ['mail', 'plate'], text: 'Taela will not wear metal. Eldergrove does not make it.' },
+    guestLevel: 1, // she joins a level above the party (rules/story.js join)
+    blurb: 'Fierce and exhausted. She has cut dead root out of Eldergrove for years, and she is done believing it is a disease.',
+  },
 });
 
 export const HERO_IDS = Object.freeze(['warden', 'pip', 'bryn', 'alondra']);
