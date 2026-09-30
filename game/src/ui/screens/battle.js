@@ -13,7 +13,8 @@
 // every sync, and gives the hero cards the swallower's name for their "Held under" badge.
 // M6 (spec §5): the Blackwater Leviathan dives into the water rather than under the floor (the stage, the plate
 // and a tap on it say so); the hero cards show Hexed and Rotting, and the new holds ("Led away", "In the river");
-// a fight on a foggy map's backdrop lies in drifting mist (the stage's `fog`).
+// a fight on a foggy map's backdrop lies in drifting mist (the backdrop's own, or else the stage's `fog`); the
+// harness can read the stage (hooks.stage: which pose a foe is drawn in).
 import '../battle.css';
 import { current, act, foeTurn, outcome, commands, targets, timeline, inspect } from '../../rules/battle.js';
 import { autoCommand } from '../../rules/autoplay.js';
@@ -101,6 +102,7 @@ export function mount(root, ctx, { battle, returnTo = 'world', auto: startAuto =
 
   // ---- components ---------------------------------------------------------------------------------------
   const stage = new Stage(stageHost, { backdrop, reduced, dark: !!state.ctx.dark, fog: FOGGY.has(backdrop) });
+  if (hooks) hooks.stage = stage;
   stageHost.append(intro);
   const nameOf = id => disp.units[id]?.label || '';
   const hud = new Hud({ stageHost, ribbonHost, onFoe: id => tapUnit(id), onGrip: (id, i) => tapGrip(id, i) });

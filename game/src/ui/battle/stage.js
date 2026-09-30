@@ -4,8 +4,10 @@
 // M5: sink(id, down) takes a burrowed foe under the floor (all but the top of it, over a mound of
 // rubble) and brings it back up; no target marker is ever drawn on it (it is never a valid target).
 // M6: sink(id, down, { water: true }) is a dive into black water (the Blackwater Leviathan): rings and a
-// churn of foam where it went down, in place of the rubble. A fight on a foggy map ({ fog: true }: the
-// Lanternfen, the Misthollow Ruins) has mist lying low over the ground, drifting behind the foes.
+// churn of foam where it went down, in place of the rubble; a foe whose art has a dive pose (FOE_ART[..].dive) is
+// drawn in it while under (its fluke going down, its own whirlpool), with the rings. A fight on a foggy map
+// ({ fog: true }) has mist lying low over the ground, drifting behind the foes, unless its backdrop draws its own
+// (a listing with mist: true: the Lanternfen, the Misthollow Ruins). posed(id): the pose a foe was last drawn in.
 import { renderBackdrop, BACKDROPS } from '../../art/scenes.js';
 import { itemIcon, RELIC_ART, ASPECT_LOOK } from '../../art/item-looks.js';
 import { FoeSprite } from './sprites.js';
@@ -25,7 +27,7 @@ export class Stage {
     this.backdropKey = BACKDROPS[backdrop] ? backdrop : 'hearth-road';
     this.reduced = reduced;
     this.dark = !!dark; // a fight in a dark map (battle.ctx.dark): renderBackdrop's dark treatment; the foes stay lit
-    this.fog = !!fog; // M6: a fight on a foggy map: the mist layer (bakeMist)
+    this.fog = !!fog && !BACKDROPS[this.backdropKey].mist; // M6: a foggy map's fight: the mist layer (bakeMist), if its backdrop has none
     this.mist = null;
     this.speed = 1;
     this.canvas = document.createElement('canvas');
@@ -160,6 +162,9 @@ export class Stage {
       x += w + (k < 1 ? 0 : gap);
     });
   }
+
+  // the pose a foe was last drawn in ('idle', 'hurt', 'attack', 'ko'; M6 'dive'), or null (the e2e harness reads it)
+  posed(id) { return this.foes.get(id)?.drawn || null; }
 
   // where a foe sits, in CSS px relative to the stage box (a sunk foe's top is where it shows above the
   // floor, so its intent bubble follows it down)
@@ -471,10 +476,14 @@ export class Stage {
       else if (v.fade.kind === 'wither') { clipBottom = u; alpha = 1 - u * 0.6; }
       else if (v.fade.kind === 'spawn') { clipBottom = 1 - u; if (u >= 1) v.fade = null; }
     }
+    const sunk = this.sinkOf(v, t);
+    // M6: once half under the water, a foe with a dive pose is drawn diving (the art draws the water it goes into)
+    const diving = !!(v.water && sp.def.dive && sunk >= 0.5);
+    if (diving) pose = 'dive';
+    v.drawn = pose;
     const frame = sp.frame(pose, at, v.tint);
     const drawX = Math.round(v.x - (b.x0 + b.x1) / 2) + dx;
     const drawY = this.floorY - foot[1] + v.depth + dy;
-    const sunk = this.sinkOf(v, t);
     // shadow
     if ((pose !== 'ko' || alpha > 0.3) && sunk < 0.5) {
       const sw = Math.round((b.x1 - b.x0) * 0.42), fy = this.floorY + v.depth;
@@ -483,6 +492,12 @@ export class Stage {
       ctx.fillRect(Math.round(v.x - sw * 0.7), fy + 1, Math.round(sw * 1.4), 1);
     }
     ctx.globalAlpha = alpha;
+    if (diving) {
+      ctx.drawImage(frame, drawX, drawY);
+      ctx.globalAlpha = 1;
+      this.wake(ctx, v, sunk, clockT, { rim: false });
+      return;
+    }
     if (sunk > 0.001) {
       // M5: under the floor: only the top of the figure shows, over the rubble it went down through
       const fh = b.y1 - b.y0, visH = Math.max(1, Math.round(fh * (1 - sunk * SINK)));
@@ -527,11 +542,12 @@ export class Stage {
   }
 
   // M6: where a foe dived into the water: dark water closing over it, a pale rim of foam, and rings going out
-  wake(ctx, v, k, clockT) {
+  // (rim: false, the rings alone: a dive pose draws its own water)
+  wake(ctx, v, k, clockT, { rim = true } = {}) {
     const b = v.sprite.box, fy = this.floorY + v.depth;
     const hw = Math.max(6, Math.round((b.x1 - b.x0) * 0.5 * Math.min(1, k * 1.4)));
     const cx = Math.round(v.x);
-    for (let x = -hw; x <= hw; x++) {
+    for (let x = -hw; rim && x <= hw; x++) {
       const e = Math.sqrt(Math.max(0, 1 - (x / (hw + 0.5)) ** 2)), h = Math.max(1, Math.round(e * 3 * k));
       ctx.fillStyle = (x * 5 + 3) % 7 ? '#0a1a1c' : '#12282a';
       ctx.fillRect(cx + x, fy - h + 1, 1, h + 1);

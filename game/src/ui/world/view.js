@@ -58,10 +58,7 @@ function atlasFor(biome) {
 }
 
 const KNOWN = new Set(OBJECT_KINDS || []);
-const FALLBACK_KIND = { 'tally-seal': 'sign', 'rot-knot': 'bramble', door: 'gate', table: 'board', 'barred-gate': 'gate', stream: 'ford-ice',
-  // M6: until the Gloomfen's own looks are drawn, each borrows the nearest one there is
-  'toll-bar': 'gate', 'leech-ford': 'gate', 'ward-gate': 'gate', 'hung-lanterns': 'bramble', 'hag-fence': 'thornwall', 'barge-planks': 'gate',
-  'water-gate': 'barred-gate', 'choir-screen': 'barred-gate', blackwater: 'chasm', 'witch-ward': 'rune-seal' };
+const FALLBACK_KIND = { 'tally-seal': 'sign', 'rot-knot': 'bramble', door: 'gate', table: 'board', 'barred-gate': 'gate', stream: 'ford-ice' };
 const OBJ = new Map();
 // An object sprite as canvases, one per animation frame, with its foot anchor (art/map-sprites.js
 // objectSprite: the foot goes on the bottom-centre of the entity's tile; tall objects rise upward).

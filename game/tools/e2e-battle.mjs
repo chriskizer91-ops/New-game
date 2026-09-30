@@ -11,10 +11,10 @@
 // turn with its forced blow (burrow); a charmed hero ("Charmed", then its turn played against a friend)
 // (charm). M6 (spec §8, P7): the Lantern Mother through three phases with the Lamplighter's Lantern and the Mourning
 // Veil snapped off (lantern); a hero led away under the water ("Led away", by her) and back in the line (led-away);
-// the Blackwater Leviathan diving ("Dived · out of reach") and swallowing a hero whole (leviathan); Hodge's Toll Is Due
-// at the strongest hero and his shove off the bridge ("In the river"), and his words when he sits down (hodge); a hexed
-// hero and a rotting one, and a heal halved by rot (fen). A fight that needs a rare moment is found by the rules first
-// (a starter, level and seed that has it; the harness plays the same fight).
+// the Blackwater Leviathan diving ("Dived · out of reach", drawn in its dive pose) and swallowing a hero whole
+// (leviathan); Hodge's Toll Is Due at the strongest hero and his shove off the bridge ("In the river"), and his words
+// when he sits down (hodge); a hexed hero and a rotting one, and a heal halved by rot (fen). A fight that needs a rare
+// moment is found by the rules first (a starter, level and seed that has it; the harness plays the same fight).
 // A scenario whose foes are still the scaffold's stand-ins reports BLOCKED, not a pass, and fails the run.
 // Asserts no console errors or uncaught exceptions, no horizontal scroll, 44px tap targets, and the
 // aftermath hand-off. Screenshots of the key moments go to tools/shots/battle-*.png.
@@ -335,6 +335,9 @@ await scenario('tutorial', async rec => {
   if (!landed) rec.notes.push('every attack missed');
   // the grip meter on the Tallyman opens the HELD BY preview
   const s2 = await page.$('.bt-grip');
+  // M6: an older relic's grip bar keeps the word it shipped with (the Warden's Seal: "Warden's")
+  const word = await page.evaluate(() => document.querySelector('.bt-grip .bt-grip-nm')?.textContent || '');
+  check(!s2 || word === RELICS['wardens-seal'].name.replace(/^The /, '').split(' ')[0], `the Tallyman's grip bar reads "${word}", not the Warden's Seal's own word`);
   if (s2) {
     await page.waitForSelector('.bt-cmds:not([hidden])', { timeout: 30000 });
     await page.click('.bt-grip');
@@ -779,8 +782,10 @@ const holdAdd = label => ev => ev.t === 'status' && ev.status === 'swallowed' &&
 const dived = ev => ev.t === 'status' && ev.status === 'burrowed' && ev.op === 'add';
 // what a foe's plate says while paused on an event about it (M5's burrow, M6's dive)
 const foeProbe = ev => {
-  const box = document.querySelector(`.bt-foe[data-id="${ev.t === 'intent' ? ev.foe : ev.target || ev.actor || ev.foe}"]`);
+  const id = ev.t === 'intent' ? ev.foe : ev.target || ev.actor || ev.foe;
+  const box = document.querySelector(`.bt-foe[data-id="${id}"]`);
   return {
+    pose: globalThis.__btHooks?.stage?.posed?.(id) || '', // the pose the stage last drew it in
     sunk: !!box?.classList.contains('sunk'), water: !!box?.classList.contains('water'), aria: box?.querySelector('.bt-foe-hit')?.getAttribute('aria-label') || '',
     state: box?.querySelector('.bt-foe-state')?.hidden ? '' : box?.querySelector('.bt-foe-state')?.textContent || '',
     intent: box?.querySelector('.bt-int-name')?.textContent || '', target: box?.querySelector('.bt-int-tgt')?.textContent || '',
@@ -822,7 +827,8 @@ await scenario('led-away', async rec => {
 
 await scenario('leviathan', async rec => {
   // M6: the Blackwater Leviathan's Sound takes it down into the water (its plate "Dived · out of reach", its hit box no
-  // target), and it breaches at its own turn; its Swallow takes a hero whole ("Swallowed whole", by it)
+  // target, the stage drawing its dive pose), and it breaches at its own turn; its Swallow takes a hero whole
+  // ("Swallowed whole", by it)
   if (stubbed('blackwater-leviathan').length) { blocked(rec, 'the Blackwater Leviathan is still the scaffold stand-in (P4: data/foes.js)'); return; }
   const lvl = levelFor('blackwater-leviathan');
   const whole = holdAdd('Swallowed whole');
@@ -837,9 +843,11 @@ await scenario('leviathan', async rec => {
     check(down, 'the Leviathan never dived (the rules said it would)');
     rec.shots.push(down.path);
     check(down.info.sunk && down.info.water && /^Dived · out of reach$/.test(down.info.state) && /cannot be targeted/.test(down.info.aria), `the dived plate reads "${down.info.state}" (${down.info.aria})`);
+    check(down.info.pose === 'dive', `under the water the stage draws it in its dive pose (${down.info.pose || 'none'})`);
     await layoutChecks(page, 'leviathan/dived');
     const up = await pauseWhen(page, (ev, id) => ev.t === 'status' && ev.target === id && ev.status === 'burrowed' && ev.op === 'remove', 'phone360-leviathan-up', { hurry: true, arg: down.ev.target, probe: foeProbe });
     check(up && !up.info.sunk && !up.info.state, `up again, the plate drops "Dived" (${JSON.stringify(up?.info)})`);
+    check(up && up.info.pose && up.info.pose !== 'dive', `up again, it is drawn out of the water (${up?.info.pose || 'none'})`);
     if (up) rec.shots.push(up.path);
   };
   const seeSwallow = async () => {
@@ -872,6 +880,9 @@ await scenario('hodge', async rec => {
   // his first intent is the toll, aimed at the strongest hero
   const first = await waitPaused(page, 'phone360-hodge-toll', { probe: foeProbe });
   check(first && first.ev.move === 'toll-is-due' && /Toll Is Due/.test(first.info.intent) && /^at /.test(first.info.target), `Hodge opens with Toll Is Due at a hero ("${first?.info.intent} ${first?.info.target}")`);
+  // his grip bar names the thing, not whose it is ("Toll", not "Hodge's")
+  const toll = await page.evaluate(id => document.querySelector(`.bt-foe[data-id="${id}"] .bt-grip-nm`)?.textContent || '', first.ev.foe);
+  check(toll === RELICS['unfair-toll'].name.split(' ').at(-1), `Hodge's grip bar reads "${toll}"`);
   rec.shots.push(first.path);
   const shove = await pauseWhen(page, ev => ev.t === 'status' && ev.status === 'swallowed' && ev.op === 'add' && ev.label === 'In the river', 'phone360-in-the-river', { hurry: true, probe: heroProbe });
   check(shove, 'nobody went into the river (the rules said someone would)');

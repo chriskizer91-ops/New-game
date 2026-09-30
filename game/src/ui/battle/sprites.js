@@ -7,12 +7,15 @@ import { RELIC_ART } from '../../art/item-looks.js';
 import { ITEMS } from '../../data/items.js';
 import { RELICS } from '../../data/relics.js';
 import { toCanvas, crop, alphaBox } from './util.js';
+import { ofPageIV } from './model.js';
 import { gearArt } from '../lib/art.js';
 
 // ---- foes -------------------------------------------------------------------------------------
 
 // Art options for a foe unit (engine unit or display copy). A relic the art can draw goes in
-// `relic`; pieces that were disarmed are `relicHeld: false` (Briarmaw uses `broken`).
+// `relic`; pieces that were disarmed are `relicHeld: false` (Briarmaw uses `broken`). M6: a Page IV piece worn
+// besides the one held goes in `wears` (Tamsin's Bogstriders on Rotbridge, over her lent starter); the earlier
+// duels' worn pieces (the Vale Gauntlets, the Ironvein Bracers) stay off, so those fights look as they shipped.
 export function foeLook(u) {
   const def = FOE_ART[u.art] || FOE_ART.cutpurse;
   const held = u.held || [];
@@ -35,13 +38,15 @@ export function foeLook(u) {
   } else {
     o.relic = null;
   }
+  if (u.wears && RELIC_ART[u.wears] && o.relic !== u.wears && ofPageIV(u.wears)) o.wears = u.wears;
   return o;
 }
 
 
 const RIM = 'rgba(236, 223, 195, 0.26)';
 
-const lookKey = o => [o.tier, o.gearTier, o.phase, o.relic || '-', o.relicHeld ? 1 : 0, (o.broken || []).join('+')].join('|');
+// (a worn piece only lengthens the key, so every earlier foe's key is as it was)
+const lookKey = o => [o.tier, o.gearTier, o.phase, o.relic || '-', o.relicHeld ? 1 : 0, (o.broken || []).join('+')].join('|') + (o.wears ? `|${o.wears}` : '');
 
 // The art animates from t: idle breath (1.6 Hz), blinks, a relic glint and shine window, and
 // emissive flicker. Composing is the per-frame cost (a 96px boss is ~12 ms on a slow phone), so t
@@ -116,7 +121,7 @@ export class FoeSprite {
   jobs(unit) {
     const base = foeLook(unit);
     const f = list => list.map(([pose, t]) => () => renderFoe(this.key, { ...base, pose, t, reduced: this.reduced }));
-    return { now: f(NOW_FOE), later: f(LATER_FOE) };
+    return { now: f(NOW_FOE), later: f(this.def.dive ? [...LATER_FOE, ['dive', 0]] : LATER_FOE) }; // M6: a diver's dive pose too
   }
   // every pose of a look the foe is about to change into (disarmed, broken piece, next phase)
   lookJobs(o) {

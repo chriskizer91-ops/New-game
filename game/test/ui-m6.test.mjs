@@ -1,18 +1,22 @@
 // M6 (P7): the UI's pure helpers for the Gloomfen Marsh (docs/M6-SPEC.md §5): the fen track, the chapter cards (the
 // third council opens the fen stair; the fourth ends Act II and opens nothing), the Gloomfen card, the Atlas's
-// Gloomfen view, the battle's fen statuses and dives, and a dialogue price. The screens themselves are covered in
-// Chromium by tools/e2e-world.mjs (28-39), tools/e2e-battle.mjs (lantern, led-away, leviathan, hodge, fen) and
-// tools/e2e-flow.mjs (Page IV in the Milestone 5 profile).
+// Gloomfen view, the battle's fen statuses and dives, its grip words and worn pieces (the older relics and foes as they
+// shipped), and a dialogue price. The screens themselves are covered in Chromium by tools/e2e-world.mjs (28-39),
+// tools/e2e-battle.mjs (lantern, led-away, leviathan, hodge, fen) and tools/e2e-flow.mjs (Page IV in the Milestone 5
+// profile).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { newGame } from '../src/rules/gauntlet.js';
+import { newGame, startBattle } from '../src/rules/gauntlet.js';
+import { ENCOUNTERS } from '../src/data/encounters.js';
 import { MAPS, MAP_IDS } from '../src/data/maps/index.js';
 import { HEARTHS, REGIONS, BRAND_TOTAL } from '../src/data/world.js';
 import { PAGES } from '../src/data/codex.js';
 import { TRACK_NAMES, badNotes } from '../src/core/audio.js';
 import { chapterEnd, hasRegionCard } from '../src/ui/world/story-fx.js';
 import { VIEWS, REGION_VIEW, framed, toFrame, relax, regionOpen } from '../src/ui/lib/atlas-geo.js';
-import { isHexed, rotStacks, afflictions, divesUnderWater, isSunk, holdInfo } from '../src/ui/battle/model.js';
+import { isHexed, rotStacks, afflictions, divesUnderWater, isSunk, holdInfo, gripWord } from '../src/ui/battle/model.js';
+import { RELICS } from '../src/data/relics.js';
+import { foeLook } from '../src/ui/battle/sprites.js';
 import { logLine } from '../src/ui/battle/log.js';
 import { priceText } from '../src/ui/world/dialogue.js';
 import { binderPage } from '../src/ui/screens/codex.js';
@@ -146,4 +150,40 @@ test('M6: a price reads as it costs ("120 gold", "2 Hearth Tonics", "1 silver")'
   assert.equal(priceText({ gold: 5, materials: { silver: 2 } }), '5 gold, 2 silver');
   assert.equal(priceText({}), '');
   assert.equal(priceText(), '');
+});
+
+test('M6 battle UI: a grip bar names a Page IV relic by the thing, not whose it is; the older relics keep their words', () => {
+  const shipped = name => name.replace(/^The /, '').split(' ')[0];
+  const WHOSE = /['\u2019]s?$/;
+  const IV = PAGES.find(p => p.id === 'gloomfen');
+  let whose = 0;
+  for (const r of Object.values(RELICS)) {
+    const w = gripWord(r.name, r.id), older = r.codex < IV.from;
+    if (older) assert.equal(w, shipped(r.name), `${r.id} keeps "${shipped(r.name)}"`);
+    else if (WHOSE.test(shipped(r.name))) { whose++; assert.equal(w, r.name.split(' ').at(-1), `${r.id}: "${r.name}" goes by the thing`); }
+    else assert.equal(w, shipped(r.name), `${r.id}: "${r.name}" goes by its first word`);
+    assert.equal(WHOSE.test(w), older && WHOSE.test(shipped(r.name)), `${r.id}: "${w}" says whose only on an older relic`);
+  }
+  assert.ok(whose >= 6, `Page IV has its possessive names (${whose})`);
+  assert.deepEqual(['unfair-toll', 'gar-tooth', 'corvus-harpoon', 'lamplighters-lantern', 'salvagers-helm', 'cantors-staff'].map(id => gripWord(RELICS[id].name, id)),
+    ['Toll', 'Tooth', 'Harpoon', 'Lantern', 'Helm', 'Staff']);
+  assert.equal(gripWord(RELICS['wardens-seal'].name, 'wardens-seal'), 'Warden\'s', 'the tutorial\'s Warden\'s Seal reads as it shipped');
+  assert.equal(gripWord(RELICS.bogstriders.name, 'bogstriders'), 'Bogstriders');
+  assert.equal(gripWord('Echo of a Blade', null), 'Echo', 'an Echo (no relic id) goes by its first word');
+});
+
+test('M6 battle UI: Tamsin wears her Bogstriders on Rotbridge over her lent starter; every earlier foe looks as it shipped', () => {
+  const foesOf = enc => { try { return Object.values(startBattle(newGame({ seed: 3 }), { nodeId: enc }).battle.units).filter(u => u.side === 'foe'); } catch { return []; } };
+  const [rb] = foesOf('tamsin-rotbridge');
+  const o = foeLook(rb);
+  assert.equal(o.wears, 'bogstriders', 'the worn boots go to the art');
+  assert.ok(o.relic && o.relic !== 'bogstriders' && o.relicHeld, `she still holds her starter (${o.relic})`);
+  // her earlier duels wear a piece too (the Vale Gauntlets, the Ironvein Bracers): their looks stay as they shipped
+  for (const enc of ['tamsin-duel', 'tamsin-ironhold']) assert.equal(foeLook(foesOf(enc)[0]).wears, undefined, enc);
+  let seen = 0;
+  for (const id of Object.keys(ENCOUNTERS)) {
+    if (id === 'tamsin-rotbridge') continue;
+    for (const u of foesOf(id)) { seen++; assert.equal(foeLook(u).wears, undefined, `${id}: ${u.name}`); }
+  }
+  assert.ok(seen > 200, `every other foe looked at (${seen})`);
 });

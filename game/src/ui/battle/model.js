@@ -3,6 +3,7 @@
 // which stays the single source of truth.
 import { STATUSES } from '../../data/statuses.js';
 import { RELICS } from '../../data/relics.js';
+import { PAGES } from '../../data/codex.js';
 import { familyData } from '../../rules/ai.js';
 
 const clone = x => (x == null ? x : structuredClone(x));
@@ -145,6 +146,19 @@ export function withStatusSource(ev, state) {
 
 export function pieceIndex(u, relic) {
   return (u?.held || []).findIndex(p => p.relic === relic || p.item?.base === relic);
+}
+
+// The grip bar's word for a relic: its name's first word after "The " ("Thornsplitter", "Cinderfang"). M6: from Page
+// IV on, a name that starts with whose it is ("Hodge's Unfair Toll", "The Gar's Tooth") goes by the thing itself, its
+// last word ("Toll", "Tooth"); the older relics keep the words they shipped with ("Warden's").
+const PAGE_IV = PAGES.find(p => p.id === 'gloomfen')?.from ?? Infinity;
+// A relic of Page IV (Codex No. 53 on): the M6 looks and words apply to it, so the older relics stay as they shipped.
+export const ofPageIV = relic => (RELICS[relic]?.codex ?? 0) >= PAGE_IV;
+const WHOSE = /['\u2019]s?$/;
+export function gripWord(name, relic = null) {
+  const words = String(name || 'relic').replace(/^The /, '').split(' ');
+  if (words.length > 1 && WHOSE.test(words[0]) && ofPageIV(relic)) return words[words.length - 1];
+  return words[0];
 }
 
 export function relicLabel(relic, u) {

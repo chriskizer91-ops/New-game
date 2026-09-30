@@ -2,12 +2,13 @@
 // the Initiative Ribbon, floating numbers and banners. Positions come from Stage.geom().
 // M5: a burrowed foe's plate says so (.bt-foe.sunk: "Burrowed · out of reach"), and its box is never a
 // valid target; on the ribbon a held hero's turn is iced over (.held) and a charmed one's pink (.charmed).
-// M6: a foe that dives into water (the Blackwater Leviathan) reads "Dived · out of reach" (.bt-foe.sunk.water).
+// M6: a foe that dives into water (the Blackwater Leviathan) reads "Dived · out of reach" (.bt-foe.sunk.water); a
+// grip bar names a Page IV relic by the thing, not whose it is (model.js gripWord: "Toll", not "Hodge's").
 import { statusIcon, diceIcon, gripIcon, INTENT_DIE } from '../../art/icons.js';
 import { STATUSES } from '../../data/statuses.js';
 import { RELICS } from '../../data/relics.js';
 import { el, pixelIcon, toCanvas, clamp } from './util.js';
-import { heldStatus, isCharmed, isSunk, untargetable, divesUnderWater } from './model.js';
+import { heldStatus, isCharmed, isSunk, untargetable, divesUnderWater, gripWord } from './model.js';
 
 // ---- small shared pieces ----------------------------------------------------------------------------
 
@@ -148,7 +149,7 @@ export class Hud {
     const pct = p.max ? clamp(p.grip / p.max, 0, 1) * 100 : 0;
     const b = el('button.bt-grip', { type: 'button', 'data-relic': p.relic || p.item?.base || '', 'data-idx': i, 'aria-label': p.held ? `${name}: grip ${p.grip} of ${p.max}. Show the card.` : `${name}: knocked loose. Show the card.` },
       pixelIcon(gripIcon({ size: 12, broken: !p.held }), 1),
-      el('span.bt-grip-nm', { text: name.replace(/^The /, '').split(' ')[0] }),
+      el('span.bt-grip-nm', { text: gripWord(name, p.relic || p.item?.base) }),
       el('span.bt-bar.grip', { style: `--pct:${pct}%` }, el('i.fill')),
       el('span.bt-grip-num', { text: p.held ? `${p.grip}` : 'loose' }),
     );
