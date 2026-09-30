@@ -14,7 +14,8 @@
 // keyIcon(kind, { size=12, dim }) -> ImageData  kinds: KEY_ICON_KEYS ('power' = a relic's map power, then the
 //   Domain ids); an unknown kind draws a plain token
 // markIcon(ok, { size=12 }) -> ImageData        a green check (ok) or a red cross
-// statusIcon draws a neutral token for a status key it has no icon for. (M5 adds burrowed, swallowed, charmed; M6 rotting and hexed.)
+// statusIcon draws a neutral token for a status key it has no icon for. (M5 adds burrowed, swallowed, charmed; M6 rotting and hexed;
+// M7 unmade and hearthlit.)
 // M4 (Hilda's forge, the Sunscorch locks):
 // gemIcon(id, { size=12 }) -> ImageData       ids: GEM_ICON_KEYS (data/gems.js); an unknown id draws a plain stone
 //   in its GEMS colour, or grey
@@ -157,6 +158,21 @@ const ST = {
     const tri = r => [0, 1, 2, 0].map(k => [6 + Math.cos(k * 2 * Math.PI / 3 - Math.PI / 2 + r) * 4.5, 6 + Math.sin(k * 2 * Math.PI / 3 - Math.PI / 2 + r) * 4.5]);
     stroke(C, tri(0), .32, raw('#c89af0')); stroke(C, tri(Math.PI), .32, raw('#c89af0'));
     fillPoly(C, [[3.7, 6], [6, 4.5], [8.3, 6], [6, 7.5]], raw('#f0e0ff')); fillDisc(C, 6, 6, 1.05, raw('#9a3aee')); px(C, 6, 6, raw('#140820'));
+  },
+  // M7 (spec §3.5): Unmade, the relic's power struck out of a hero: a cracked gem on an anvil, its light going out
+  unmade: C => {
+    fillPoly(C, [[1.2, 10.8], [2.4, 8.2], [9.6, 8.2], [10.8, 10.8]], col('#4a4a52'));
+    fillPoly(C, [[3.4, 8.2], [4.2, 6.8], [7.8, 6.8], [8.6, 8.2]], col('#6a6a74'));
+    fillPoly(C, [[6, 1], [9, 3.6], [6, 6.4], [3, 3.6]], col('#7a6aa8'));
+    stroke(C, [[6.2, 1.4], [5.4, 3.4], [6.6, 4.2], [5.8, 6]], .45, raw('#140c20'));
+    px(C, 4.4, 3.2, raw('#c8b8f0'));
+  },
+  // M7 (spec §4.5): Hearthlit, the hearth's own fire in a hero (the Masterpiece's Kindle): a gold flame on a hearth-stone
+  hearthlit: C => {
+    fillPoly(C, [[1.4, 11.2], [2.2, 9], [9.8, 9], [10.6, 11.2]], col('#8a7a6a'));
+    fillPoly(C, [[6, .8], [8.6, 4], [9.2, 6.2], [8.2, 8.4], [6, 9.2], [3.8, 8.4], [2.8, 6.2], [3.6, 4.2], [4.8, 5.4], [5.4, 2.8]], col('#f5b82a'));
+    fillPoly(C, [[6.1, 3.8], [7.7, 6], [7.4, 7.8], [6, 8.6], [4.6, 7.8], [4.6, 6.2], [5.4, 6.8]], raw('#fff0a0'));
+    fillDisc(C, 6.1, 7.4, .9, raw('#ffffff'));
   },
   charmed: C => { const pts = []; for (let k = 0; k <= 20; k++) { const a = k * .55, r = 1 + k * .22; pts.push([6 + Math.cos(a) * r, 6.2 + Math.sin(a) * r * .9]); } stroke(C, pts, .35, raw('#f8b8dc')); fillDisc(C, 4.7, 5.2, 1.9, col('#f06aa8')); fillDisc(C, 7.3, 5.2, 1.9, col('#f06aa8')); fillPoly(C, [[2.9, 5.8], [9.1, 5.8], [6, 9.6]], col('#f06aa8')); px(C, 4.2, 4.4, raw('#ffe0f0')); },
 };

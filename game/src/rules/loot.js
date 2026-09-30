@@ -5,7 +5,7 @@ import { ITEMS } from '../data/items.js';
 import { AFFIXES } from '../data/affixes.js';
 import { RARITY, RARITY_ORDER, RANDOM_RARITIES } from '../data/rarity.js';
 import { RELICS, STORIED_POWERS } from '../data/relics.js';
-import { FOES } from '../data/foes.js';
+import { FOES, tierAs, tierRow } from '../data/foes.js';
 import { NAMES } from '../data/names.js';
 import { TUNING } from '../data/tuning.js';
 import { weightedPick, clamp } from './util.js';
@@ -47,7 +47,10 @@ export function pickBase(rng, { slot, kind, ilvl = 1 } = {}) {
 }
 
 function affixValue(rng, a, rarityId, ilvl) {
-  const roll = rng.int(a.range[0], a.range[1]);
+  return affixValueAt(a, rarityId, ilvl, rng.int(a.range[0], a.range[1]));
+}
+// A trait's value for a given roll of its range (M7: the Masterpiece takes the top of every range).
+export function affixValueAt(a, rarityId, ilvl, roll) {
   let v = Math.round(roll * RARITY[rarityId].statMult) + Math.floor(ilvl * (a.perLevel || 0));
   if (['extraDice', 'vsHurt', 'vsUnaware'].includes(a.stat)) v = Math.min(v, 6); // 1d12 at most
   return v;
@@ -176,7 +179,7 @@ function randomDrop(rng, foe, luck, prov, min = 'worn', max = 'storied') {
 }
 
 function foeLuck(foe, waking) {
-  return T.luck[foe.tier] + waking * TUNING.waking.luck + 0.5 * foe.omens.length + (foe.grudge ? 1 : 0);
+  return tierRow(T.luck, foe.tier) + waking * TUNING.waking.luck + 0.5 * foe.omens.length + (foe.grudge ? 1 : 0);
 }
 
 // What a defeated foe leaves behind (excluding its held relics).
@@ -195,8 +198,8 @@ function foeDrops(rng, foe, waking, prov) {
     const worn = foe.gear.find(g => g.relic);
     if (worn) out.push(gearDrop(rng, worn, foe.level, prov));
   }
-  const min = foe.tier === 'champion' ? 'tempered' : foe.tier === 'relic-bearer' ? 'wrought' : 'worn';
-  const extra = (T.extra[foe.tier] || 0) + (foe.grudge ? 1 : 0); // a settled Grudge always pays out
+  const min = tierAs(foe.tier) === 'champion' ? 'tempered' : foe.tier === 'relic-bearer' ? 'wrought' : 'worn';
+  const extra = (tierRow(T.extra, foe.tier) || 0) + (foe.grudge ? 1 : 0); // a settled Grudge always pays out
   for (let i = 0; i < extra; i++) out.push(randomDrop(rng, foe, luck, prov, min));
   if (foe.grudge) return out.map(it => (RELICS[it.base] ? it : { ...it, rarity: bumpRarity(it.rarity), stamp: 'grudge-settled' }));
   return out;
@@ -220,7 +223,7 @@ export function battleLoot(s, rng) {
     }
     if (f.ko && !f.noLoot) {
       drops.push(...foeDrops(rng, f, s.waking || 0, prov));
-      if (rng.chance(T.consumable[f.tier] || 0)) {
+      if (rng.chance(tierRow(T.consumable, f.tier) || 0)) {
         const id = weightedPick(rng, Object.entries(T.consumableWeights).map(([v, w]) => ({ v, w })));
         consumables[id] = (consumables[id] || 0) + 1;
       }

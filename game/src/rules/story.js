@@ -4,7 +4,9 @@
 //
 // talkTo(game, npcId) -> dialogueId | null
 // dialogueView(game, id) -> { id, lines: [{ speaker, name, text }], choices: [{ i, text, odds: null | { pct, label, hero },
-//                              price?, disabled? }] }   M6: a choice that pays shows its price, disabled when unaffordable
+//                              price?, disabled?, reasons? }] }   M6: a choice that pays shows its price, disabled when
+//                              unaffordable. M7: a choice's `needs: [{ if: cond, why: text }]` shows it disabled, with
+//                              the `why` of every part that does not hold (Kindle Anew at the Worldforge's heart)
 // enterDialogue(game, id) -> { game, events }            applies node.do once
 // choose(game, id, i) -> { game, next: dialogueId | null, events, roll: null | { label, dc, total, nat, pass, parts? } }
 // questLog(game) -> [{ id, name, kind, state: 'active'|'ready'|'done', step: { text, target } }]   (hidden omitted)
@@ -27,6 +29,8 @@
 // a choice whose `do` pays is refused (and shown disabled) while the party cannot afford it (cond.js canAfford).
 // A check or a contest's check may name an `ability` as well as (or instead of) a `domain`, and a `name` for its
 // label (Hodge's toll game: "Deception DC 16").
+// M7 effect: { ending: 'rekindle' | 'release' | 'anew' } sets game.ending, once: the choice at the Worldforge's heart is
+// final for the save, so a later `ending` changes nothing (event { t: 'ending', id }, only when it is set).
 // Import direction (A6): world -> story -> cond -> gauntlet. Never import world here.
 // Owner: WP1.
 
@@ -115,10 +119,17 @@ export function dialogueView(game, id) {
     choices: (node.choices || []).map((c, i) => ({ c, i })).filter(({ c }) => check(game, c.if))
       .map(({ c, i }) => {
         const price = priceOf(c);
-        return { i, text: fill(game, c.text), odds: oddsFor(game, c), ...(price ? { price, ...(canAfford(game, price) ? {} : { disabled: true }) } : {}) };
+        const reasons = unmet(game, c);
+        return {
+          i, text: fill(game, c.text), odds: oddsFor(game, c), ...(price ? { price, ...(canAfford(game, price) ? {} : { disabled: true }) } : {}),
+          ...(reasons.length ? { disabled: true, reasons } : {}),
+        };
       }),
   };
 }
+
+// M7: the `why` of every part of a choice's `needs` that does not hold
+const unmet = (game, c) => (c.needs || []).filter(n => !check(game, n.if)).map(n => fill(game, n.why));
 
 // M6: what a choice costs (its `pay` effects, summed), or null
 function priceOf(choice) {
@@ -173,6 +184,7 @@ function apply(g, effects, rng, events) {
     else if ('open' in e) events.push({ t: 'open', screen: e.open });
     else if ('letter' in e) { f.story[`letter:${e.letter}`] = true; events.push({ t: 'letter', id: e.letter }); }
     else if ('end' in e) events.push({ t: 'end', act: e.end });
+    else if ('ending' in e) { if (g.ending == null) { g.ending = e.ending; events.push({ t: 'ending', id: e.ending }); } }
   }
 }
 
@@ -213,6 +225,7 @@ export function choose(game, id, i) {
   if (!c) return { game, next: null, events: [], roll: null };
   const price = priceOf(c);
   if (price && !canAfford(game, price)) return { game, next: null, events: [], roll: null }; // M6: shown disabled
+  if (unmet(game, c).length) return { game, next: null, events: [], roll: null }; // M7: shown disabled, with its reasons
   return run(game, (g, rng, events) => {
     apply(g, c.do, rng, events);
     if (c.check) {

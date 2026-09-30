@@ -14,6 +14,8 @@ import { STARTERS } from '../data/heroes.js';
 import { HEARTHS } from '../data/world.js';
 import { RELICS } from '../data/relics.js';
 import { MAPS, v1Anchor } from '../data/maps/index.js';
+import { ENDING_IDS } from '../data/endings.js';
+import { MASTERPIECE_NAME } from '../data/masterpiece.js';
 
 const NEW_FLAGS = ['story', 'unlocked', 'opened', 'kindled', 'visits', 'quests', 'scouted', 'seen', 'worn', 'beaten'];
 const V1_STORY = [['met-dael', 'thornhollow'], ['bounty-briarmaw', 'thornhollow']];
@@ -106,7 +108,7 @@ export function toV5(save) {
 // M7 (spec §4.1): the ending the Warden chose at the Worldforge's heart, final for the save: null until then, else
 // 'rekindle', 'release' or 'anew'. Nothing else changes, so an M6 save carries over whole; the M6 file stops at AETH5
 // and names an AETH6 code as newer. Idempotent: an ending already chosen is kept.
-export const ENDINGS = ['rekindle', 'release', 'anew'];
+export const ENDINGS = ENDING_IDS;
 export function toV6(save) {
   const v = toV5(save);
   if (v.version < 6) v.version = 6;
@@ -137,9 +139,12 @@ export function saveProblems(g) {
     if (it.awakened != null && it.awakened !== 'a' && it.awakened !== 'b') return false;
     const c = it.chronicle;
     if (c != null && !(obj(c) && (c.kills == null || num(c.kills)) && (c.bearers == null || strings(c.bearers)))) return false;
+    // M7: the Masterpiece, named by the Warden: marked `true`, with a name of the allowed letters only
+    if (it.masterpiece != null && !(it.masterpiece === true && typeof it.name === 'string' && MASTERPIECE_NAME.test(it.name))) return false;
     return true;
   };
   if (!Array.isArray(g.inventory) || !g.inventory.every(itemOk)) out.push('its items');
+  else if (g.inventory.filter(it => it.masterpiece).length > 1) out.push('its Masterpiece'); // one per save
   const roster = g.party?.roster, active = g.party?.active;
   if (!obj(roster) || !obj(roster.warden)) out.push('its party');
   else {

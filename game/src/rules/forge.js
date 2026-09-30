@@ -19,7 +19,12 @@
 //     (a sword only the Hand's heroes can hold has no Heart-path carrier) opens for its bearer too
 //   awaken(game, uid, branchId) -> { game, ok, cost, reason }
 //   bestDomainOf(hero) -> domainId                   pathOf(hero) -> 'a' (the Hand) | 'b' (the Heart)
-// Owner: P1 (M4).
+//   M7 (spec §4.5), the Masterpiece:
+//   masterpieceOffer(game) -> { ok, reasons, cost, bases }   cost is { gold, materials, gems }
+//   masterpieceName(raw) -> name | null                      angle brackets stripped (as a pasted code), spaces
+//                                                            folded, then 1 to 24 letters, digits, spaces, ' and -
+//   forgeMasterpiece(game, { base, name }) -> { game, ok, item, reason }
+// Owner: P1 (M4, M7).
 
 import { RELICS } from '../data/relics.js';
 import { ITEMS } from '../data/items.js';
@@ -30,7 +35,11 @@ import { HEROES } from '../data/heroes.js';
 import { TUNING } from '../data/tuning.js';
 import { deriveHero, gemsIn } from './stats.js';
 import { pageBonus, stageOf, deedsOf } from './codex.js';
-import { rerollAffix, affixedName, itemAspect } from './loot.js';
+import { rerollAffix, affixedName, itemAspect, rollAffixes, affixValueAt, newUid } from './loot.js';
+import { AFFIXES } from '../data/affixes.js';
+import { MASTERPIECE_BASES, MASTERPIECE_NAME, MASTERPIECE_POWER } from '../data/masterpiece.js';
+import { isBeaten, storyOf, ownsMasterpiece } from './cond.js';
+import { partyLevel } from './gauntlet.js';
 import { canUse } from './gear.js';
 import { rngFrom, addCounts } from './util.js';
 
@@ -277,4 +286,56 @@ export function awaken(game, uid, branchId) {
   const paid = pay(game, opt.cost);
   const g = { ...paid, codex: { ...paid.codex, [item.base]: { sighted: true, ...paid.codex?.[item.base], claimed: true, awakened: true } } };
   return { game: replaceItem(g, { ...item, awakened: branchId }), ok: true, cost: opt.cost, reason: null };
+}
+
+// ---- The Masterpiece (M7 spec §4.5) ------------------------------------------------------------------------
+
+export function masterpieceCost() {
+  const M = TUNING.masterpiece;
+  return { gold: M.gold, materials: { embers: M.embers, silver: M.silver }, gems: { 'bog-amber': M.amber } };
+}
+
+export function masterpieceName(raw) {
+  const name = String(raw ?? '').replace(/[<>]/g, '').replace(/\s+/g, ' ').trim();
+  return MASTERPIECE_NAME.test(name) ? name : null;
+}
+
+// What Hilda needs before she will forge it, and what it costs. `reasons` says what is missing, in the order a
+// player can see to it: the Council, the page, the one-per-save rule, then the price.
+export function masterpieceOffer(game) {
+  const reasons = [];
+  if (!isBeaten(game, 'hollow-gretch')) reasons.push('The Hollow Council sits below the Keep until the last chair is empty');
+  if (!storyOf(game)['worldforge-page']) reasons.push('Hilda needs the Worldforge page');
+  if (ownsMasterpiece(game) || storyOf(game)['masterpiece-forged']) reasons.push('Hilda forges one Masterpiece, and it is yours already');
+  const cost = masterpieceCost();
+  const short = shortOf(game, cost) || Object.entries(cost.gems).map(([g, n]) => ((game.gems?.[g] || 0) < n ? `Needs ${n} ${GEMS[g]?.name || g}` : null)).find(Boolean);
+  if (short) reasons.push(short);
+  return { ok: !reasons.length, reasons, cost, bases: [...MASTERPIECE_BASES] };
+}
+
+export function forgeMasterpiece(game, { base, name } = {}) {
+  const offer = masterpieceOffer(game);
+  if (!offer.ok) return { game, ok: false, item: null, reason: offer.reasons[0] };
+  if (!MASTERPIECE_BASES.includes(base) || !ITEMS[base]) return { game, ok: false, item: null, reason: 'Choose the weapon Hilda is to forge' };
+  const nm = masterpieceName(name);
+  if (!nm) return { game, ok: false, item: null, reason: 'Name it with 1 to 24 letters, numbers, spaces, apostrophes or hyphens' };
+  const rng = rngFrom(game.rngState);
+  const b = ITEMS[base], ilvl = partyLevel(game);
+  // the best traits its base can have: three, each at the top of its range, at the Primal strength
+  const affixes = rollAffixes(rng, b, 'storied', ilvl).map(a => ({ id: a.id, value: affixValueAt(AFFIXES[a.id], 'primal', ilvl, AFFIXES[a.id].range[1]) }));
+  const day = game.progress?.flags?.day || 1;
+  const item = {
+    uid: newUid(rng), base, kind: b.kind, slot: b.slot, rarity: 'primal', ilvl, name: nm,
+    aspect: itemAspect(b, affixes), affixes, gems: [], temper: 0, seed: rng.int(1, 2 ** 31 - 1),
+    provenance: { from: 'Hilda\'s forge', where: 'Ironhold', day }, chronicle: { kills: 0 },
+    masterpiece: true, power: MASTERPIECE_POWER.id,
+  };
+  const paid = pay(game, offer.cost);
+  const gems = addCounts(paid.gems || {}, Object.fromEntries(Object.entries(offer.cost.gems).map(([g, n]) => [g, -n])));
+  const flags = game.progress.flags;
+  const g = {
+    ...paid, gems, rngState: rng.getState(), inventory: [...paid.inventory, item],
+    progress: { ...game.progress, flags: { ...flags, story: { ...(flags.story || {}), 'masterpiece-forged': day } } },
+  };
+  return { game: g, ok: true, item, reason: null };
 }

@@ -1,6 +1,8 @@
 // Building foe combatants from spawns, and escalating spawns for the Waking and Grudges.
+// M7 (spec §4.2, §4.4): a tier's `dice` (the Unsmith's two); a spawn's `stolen` (the relics the Warden never claimed,
+// rules/codex.js stolenFor) is what its bearer takes up at the phase that `steals`, each as a Stolen Art (stolenArt).
 
-import { FOES, FOE_TIERS } from '../data/foes.js';
+import { FOES, FOE_TIERS, tierAs, tierRow } from '../data/foes.js';
 import { ITEMS } from '../data/items.js';
 import { RELICS } from '../data/relics.js';
 import { OMENS, OMEN_IDS } from '../data/omens.js';
@@ -27,7 +29,7 @@ export function addOmens(omens, n, seed, tier = null, { unique = false } = {}) {
   const out = [...(omens || [])];
   const rng = createRng(seed);
   for (let i = 0; i < n; i++) {
-    const free = OMEN_IDS.filter(o => !out.includes(o) && !(tier && OMENS[o].notFor?.includes(tier)));
+    const free = OMEN_IDS.filter(o => !out.includes(o) && !(tier && (OMENS[o].notFor?.includes(tier) || OMENS[o].notFor?.includes(tierAs(tier)))));
     if (!free.length) break;
     let pick = rng.pick(free);
     if (unique && OMENS[pick].split) {
@@ -122,11 +124,12 @@ export function buildFoe(spawn, { id, seq = 0, name } = {}) {
     armor: bodyArmor?.type || fam.armor || 'none', aspect: fam.aspect || null,
     weak: [...(fam.weak || [])], resist: [...(fam.resist || []), ...om.flatMap(o => o.resist || [])], immune: [...(fam.immune || [])],
     saves, statuses: [], next: 0, ko: false, gone: false,
-    die: FOE_TIERS[fam.tier].die, intent: null, queue: [],
+    die: FOE_TIERS[fam.tier].die, ...(FOE_TIERS[fam.tier].dice > 1 ? { dice: FOE_TIERS[fam.tier].dice, intent2: null } : {}), intent: null, queue: [],
+    ...(spawn.stolen?.length ? { stealable: [...spawn.stolen] } : {}),
     held: heldPieces(fam, spawn), phase: 1, gear,
     weapon: weaponBase ? { dice: ITEMS[weaponBase.base].dice, dmg: ITEMS[weaponBase.base].dmg } : null,
-    xp: Math.round(TUNING.xp.tier[fam.tier] * L * rewards),
-    gold: Math.round(TUNING.gold.tier[fam.tier] * L * rewards),
+    xp: Math.round(tierRow(TUNING.xp.tier, fam.tier) * L * rewards),
+    gold: Math.round(tierRow(TUNING.gold.tier, fam.tier) * L * rewards),
     grudge: spawn.grudge || null, wears: spawn.wears || null, ...(spawn.kit ? { kit: spawn.kit } : {}),
     summonedBy: spawn.summonedBy || null, noLoot: !!spawn.noLoot, spawnIndex: spawn.spawnIndex ?? null,
   };
@@ -135,4 +138,32 @@ export function buildFoe(spawn, { id, seq = 0, name } = {}) {
 // Rarity of the visible weapon/armour a humanoid carries (for loot and art).
 export function gearRarityIndex(foe) {
   return RARITY_ORDER.indexOf(GEAR_RARITY[foe.gearTier || 0]);
+}
+
+// M7 (spec §4.4): a relic the Warden never claimed, in the Unsmith's hands: one move of its own, named for it. A weapon
+// is an attack of its aspect; armour, a shield or a focus a ward on himself; a ring or an amulet a heal when it is
+// radiant or verdant, else a hex on a hero. (TUNING.unsmith.stolen holds the numbers.)
+export function stolenArt(relicId) {
+  const r = RELICS[relicId];
+  if (!r) throw new Error(`Unknown relic: ${relicId}`);
+  const S = TUNING.unsmith.stolen, name = `Stolen: ${r.name}`, aspect = r.aspect || null;
+  const base = { name, stolen: relicId };
+  if (r.slot === 'weapon') {
+    const kind = r.weapon?.dmg || 'crush';
+    return { ...base, target: 'enemy', text: `He swings the ${r.name}, the one you never came for: ${S.strike} ${aspect || kind}.`,
+      effects: [{ type: 'attack', dice: S.strike, diceEvery: S.strikeEvery, kind, ...(aspect ? { aspect } : {}) }] };
+  }
+  if (r.slot === 'ring' || r.slot === 'amulet') {
+    if (aspect === 'radiant' || aspect === 'verdant') {
+      return { ...base, target: 'self', text: `He turns the ${r.name} on his own wounds: he heals ${S.heal}.`, effects: [{ type: 'heal', dice: S.heal, diceEvery: S.healEvery }] };
+    }
+    return { ...base, target: 'enemy', text: `The ${r.name} was meant for you. Now it curses you: WIS save or Hexed.`, effects: [{ type: 'status', status: S.hex, save: 'WIS' }] };
+  }
+  return { ...base, target: 'self', text: `He wears the ${r.name} you left behind: Guarding, and Warded.`,
+    effects: [{ type: 'status', status: 'guarding' }, { type: 'status', status: 'warded', value: { ...S.ward } }] };
+}
+
+// The Stolen Arts he takes: the move for each relic (keyed 'stolen:<relic>') and the Guard they add.
+export function stolenMoves(ids) {
+  return Object.fromEntries(ids.map(id => [`stolen:${id}`, stolenArt(id)]));
 }

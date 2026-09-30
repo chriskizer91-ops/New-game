@@ -2,7 +2,8 @@
 //
 // Stats are for level 1; rules/foe.js scales them by level, gear tier, Omens and the Waking.
 // Each family has a MOVE TABLE read like a D&D random table: the foe rolls its intent die
-// (rabble d6, veteran d8, relic-bearer d12, champion d20) and the face picks the move.
+// (rabble d6, veteran d8, relic-bearer d12, champion d20; M7: hollow d20 +4, the Unsmith two d20s) and the face
+// picks the move.
 // The intent is rolled at the end of the foe's previous turn, so the player always sees it
 // coming. A disarmed relic-bearer's die drops a size (d12 -> d8): its high faces, which hold
 // its relic Art, can no longer come up.
@@ -21,12 +22,22 @@
 
 import { deepFreeze } from '../core/freeze.js';
 
+// M7 (spec §4.2): two tiers above the Champion's d20.
+//   hollow   the Hollow Council: a d20 that adds `bonus` (+4, capped at 20) while the family's `bonusWhile` relic (its
+//            gift) is still held, so the gift's Arts on the high faces come up more often; pried loose, the +4 goes
+//   unsmith  the Unsmith: `dice: 2`, two intents shown and two moves every turn
+// `as` names the tier whose rows a new tier reads in every table keyed by tier (xp, gold, loot, flee, spoils,
+// Grudges, the Champion Felled deed), unless the table gives it a row of its own (tierAs, tierRow).
 export const FOE_TIERS = deepFreeze({
   rabble: { id: 'rabble', name: 'Rabble', die: 6 },
   veteran: { id: 'veteran', name: 'Veteran', die: 8 },
   'relic-bearer': { id: 'relic-bearer', name: 'Relic-Bearer', die: 12 },
   champion: { id: 'champion', name: 'Champion', die: 20 },
+  hollow: { id: 'hollow', name: 'Hollow', die: 20, bonus: 4, as: 'champion' },
+  unsmith: { id: 'unsmith', name: 'The Unsmith', die: 20, dice: 2, as: 'champion' },
 });
+export const tierAs = tier => FOE_TIERS[tier]?.as || tier;
+export const tierRow = (table, tier) => table?.[tier] ?? table?.[tierAs(tier)];
 
 // Intent dice sizes in order, for stepping down when a relic-bearer is disarmed.
 export const DIE_STEPS = Object.freeze([6, 8, 12, 20]);

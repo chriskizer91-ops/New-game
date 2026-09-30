@@ -18,13 +18,18 @@
 //   { since: { flag, days } } story[flag] is not a day number yet, or flags.day - story[flag] >= days
 //   { day: { every, at } }   M6: flags.day % every === at (Hodge's price of the day, spec §4.4)
 //   { afford: { gold?, bag?: { [id]: n }, materials?: { [id]: n } } }   M6: the party has all of it
+//   { masterpiece: true }    M7: the party owns the Warden's Masterpiece (an item with masterpiece: true, not shattered)
+//   { pages: 'all' }         M7: every page of the Codex is complete, as the Codex screen counts it
+//   { ending }               M7: game.ending is that ending ('rekindle' | 'release' | 'anew'), or any ending (true)
 //   { all: [...] } { any: [...] } { not: cond }
 // Import direction (A6): world -> story -> cond -> gauntlet. Never import world or story here.
 // Owner: WP1.
 
 import { RELICS } from '../data/relics.js';
 import { QUESTS, BOUNTIES } from '../data/quests.js';
+import { ENDING_IDS } from '../data/endings.js';
 import { partyLevel, uniqueBrands } from './gauntlet.js';
+import { allPagesDone } from './codex.js';
 
 const EMPTY = Object.freeze({});
 export const flagsOf = game => game?.progress?.flags || EMPTY;
@@ -117,8 +122,14 @@ export function check(game, cond) {
   }
   if ('day' in cond) return (f.day || 1) % cond.day.every === (cond.day.at || 0);
   if ('afford' in cond) return canAfford(game, cond.afford);
+  if ('masterpiece' in cond) return ownsMasterpiece(game) === !!cond.masterpiece;
+  if ('pages' in cond) return allPagesDone(game);
+  if ('ending' in cond) return cond.ending === true ? game?.ending != null : game?.ending === cond.ending;
   throw new Error(`Unknown condition ${JSON.stringify(cond)}`);
 }
+
+// M7 (spec §4.5): the Warden's Masterpiece is in the inventory (one per save)
+export const ownsMasterpiece = game => (game?.inventory || []).some(it => it.masterpiece === true && !it.shattered);
 
 // M6: does the party have every part of a price? { gold?, bag?: { [consumableId]: n }, materials?: { [id]: n } }
 export function canAfford(game, price) {
@@ -131,7 +142,8 @@ export function canAfford(game, price) {
 
 // The keys check() understands, and a validator for data tests ("all conditions parse").
 export const COND_KEYS = Object.freeze(['all', 'any', 'not', 'flag', 'cleared', 'done', 'beaten', 'brand', 'brands', 'waking', 'level',
-  'owns', 'power', 'wears', 'active', 'domain', 'unlocked', 'opened', 'kindled', 'quest', 'bounty', 'since', 'day', 'afford']);
+  'owns', 'power', 'wears', 'active', 'domain', 'unlocked', 'opened', 'kindled', 'quest', 'bounty', 'since', 'day', 'afford',
+  'masterpiece', 'pages', 'ending']);
 
 // M6: a price is { gold?, bag?, materials? } with whole, positive amounts (the `afford` condition, the `pay` effect)
 export function priceErrors(price, at = 'price') {
@@ -167,5 +179,8 @@ export function condErrors(cond, at = 'cond') {
     if (!(d && Number.isInteger(d.every) && d.every >= 1 && Number.isInteger(d.at ?? 0) && (d.at ?? 0) >= 0 && (d.at ?? 0) < d.every)) return [`${at}: day needs { every, at } with 0 <= at < every`];
   }
   if ('afford' in cond) return priceErrors(cond.afford, `${at}.afford`);
+  if ('masterpiece' in cond && typeof cond.masterpiece !== 'boolean') return [`${at}: masterpiece is true or false`];
+  if ('pages' in cond && cond.pages !== 'all') return [`${at}: pages is 'all'`];
+  if ('ending' in cond && !(cond.ending === true || ENDING_IDS.includes(cond.ending))) return [`${at}: ending is true or one of ${ENDING_IDS.join(', ')}`];
   return [];
 }

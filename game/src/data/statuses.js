@@ -25,6 +25,8 @@
 //   charm          (M5) the bearer's next turn is a plain weapon attack on a random ally (charmed)
 //   healMult       (M6) multiplies every heal the bearer receives (rotting: halved, rounded down)
 //   hex            (M6) the bearer rolls its attack and save d20s with disadvantage (hexed); advantage cancels it
+//   hit            (M7) added to the bearer's attack rolls (hearthlit)
+//   unmakes        (M7) the bearer's relic powers are struck from it: its Legend Surge is the plain Heroic one (unmade)
 
 import { deepFreeze } from '../core/freeze.js';
 
@@ -116,5 +118,15 @@ export const STATUSES = deepFreeze({
   hexed: {
     id: 'hexed', name: 'Hexed', harmful: true, turns: 2, hex: true,
     text: 'Rolls its attacks and saves with disadvantage. Advantage cancels it out.',
+  },
+  // M7 (spec §3.5): the Unsmith's Unmake
+  unmade: {
+    id: 'unmade', name: 'Unmade', harmful: true, turns: 2, unmakes: true,
+    text: 'The Unsmith has struck the relic\'s power out of it: its Legend Surge is only a Heroic Strike.',
+  },
+  // M7 (spec §4.5): the Masterpiece's Kindle
+  hearthlit: {
+    id: 'hearthlit', name: 'Hearthlit', harmful: false, turns: 3, hit: 1,
+    text: 'The hearth\'s own fire is in them: +1 to hit.',
   },
 });

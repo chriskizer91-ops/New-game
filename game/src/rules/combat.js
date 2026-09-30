@@ -8,9 +8,10 @@ import { ASPECTS, ASPECT_MULT, ARMOR_CHART, PHYSICAL_KINDS } from '../data/aspec
 import { OMENS } from '../data/omens.js';
 import { RELICS } from '../data/relics.js';
 import { TUNING } from '../data/tuning.js';
+import { tierRow } from '../data/foes.js';
 import { scaledTerms, rollTerms, rollExpr, clamp } from './util.js';
 import { alive, targetable, unitsOf, familyData, rollIntent, refreshIntent, intentEvent, stepDownDie } from './ai.js';
-import { buildFoe } from './foe.js';
+import { buildFoe, stolenMoves } from './foe.js';
 
 const T = TUNING;
 const TIER_DC = { rabble: 0, veteran: 1, 'relic-bearer': 2, champion: 3 };
@@ -27,11 +28,11 @@ export function effGuard(u) {
 }
 
 export function saveDC(u) {
-  return u.side === 'hero' ? u.stats.dc : 10 + Math.floor(u.level / 2) + (TIER_DC[u.tier] || 0);
+  return u.side === 'hero' ? u.stats.dc : 10 + Math.floor(u.level / 2) + (tierRow(TIER_DC, u.tier) || 0);
 }
 
 function saveBonus(u, ability) {
-  return u.side === 'hero' ? modOf(u, ability) + u.stats.prof : (u.saves?.[ability] || 0);
+  return u.side === 'hero' ? modOf(u, ability) + u.stats.prof + (u.stats.saveBonus || 0) : (u.saves?.[ability] || 0);
 }
 
 // Aspect wheel: x1.5 if the attack beats the defender's aspect, x0.5 if the defender beats it
@@ -105,7 +106,14 @@ export function addStatus(B, t, id, { stacks = 1, turns, value, source, label } 
     addStatus(B, t, def.atMax, { source });
   }
   if (def.push) t.next += def.push;
-  if (def.breaksCharge && t.intent?.charging && !t.intent.cancelled) {
+  if (def.breaksCharge && t.dice > 1) {
+    // M7 (spec §4.2): a two-dice foe loses the next of its two moves that is still coming, charging or not
+    const it = [t.intent, t.intent2].find(i => i && !i.cancelled);
+    if (it) {
+      it.cancelled = true;
+      B.ev.push({ t: 'text', text: `${t.name}'s ${it.name} is broken off!`, ...(it.slot != null ? { slot: it.slot } : {}) });
+    }
+  } else if (def.breaksCharge && t.intent?.charging && !t.intent.cancelled) {
     t.intent.cancelled = true;
     B.ev.push({ t: 'text', text: `${t.name}'s ${t.intent.name} is broken off!` });
   }
@@ -219,11 +227,24 @@ function afterFoeHurt(B, t) {
     let p = (t.phase || 1) - 1;
     while (p + 1 < phases.length && frac <= phases[p + 1].at) p++;
     if (p + 1 > (t.phase || 1)) {
+      const from = t.phase || 1;
       t.phase = p + 1;
       B.ev.push({ t: 'phase', foe: t.id, phase: t.phase, text: phases[p].text });
+      if (!t.stolen && phases.slice(from, p + 1).some(ph => ph.steals)) takeStolen(B, t); // M7: the Thief
     }
   }
   if (t.omens.includes('twinned') && !t.split && t.hp <= t.maxHp * OMENS.twinned.split) splitTwin(B, t);
+}
+
+// M7 (spec §4.4): the Unsmith hangs the relics the Warden never claimed on himself (the spawn's `stolen`, at most
+// TUNING.unsmith.stolen.max, chosen by rules/codex.js stolenFor): one Stolen Art and +1 Guard each.
+function takeStolen(B, t) {
+  const ids = (t.stealable || []).slice(0, T.unsmith.stolen.max);
+  t.stolen = { ids, moves: stolenMoves(ids) };
+  t.guard += ids.length * T.unsmith.stolen.guard;
+  const names = ids.map(id => RELICS[id].name);
+  B.ev.push({ t: 'stolen', foe: t.id, relics: ids, names, guard: t.guard,
+    text: names.length ? `${t.name} takes up what you never claimed: ${names.join(', ')}.` : `${t.name} reaches for the relics you left behind, and finds you left none.` });
 }
 
 function splitTwin(B, t) {
@@ -275,8 +296,12 @@ function disarm(B, src, t, piece) {
   B.ev.push({ t: 'text', text: `${pieceName(piece)} clatters loose!${arts.length ? ` ${t.name} loses ${arts.join(' and ')}.` : ''}` });
   if (t.tier === 'relic-bearer') t.die = stepDownDie(t.die);
   if (t.intent && moves[t.intent.move]?.requires === relic) {
-    t.intent = rollIntent(B.s, t, B.rng);
+    t.intent = rollIntent(B.s, t, B.rng, t.dice > 1 ? 0 : null);
     B.ev.push(intentEvent(t));
+  }
+  if (t.intent2 && moves[t.intent2.move]?.requires === relic) { // M7: the Unsmith's second die
+    t.intent2 = rollIntent(B.s, t, B.rng, 1);
+    B.ev.push(intentEvent(t, t.intent2));
   }
   t.queue = t.queue.map(q => refreshIntent(B.s, t, q, B.rng));
 }
@@ -284,9 +309,10 @@ function disarm(B, src, t, piece) {
 // ---- attacks ---------------------------------------------------------------------------------------
 
 function attackBonus(a, eff) {
-  if (a.side === 'foe') return a.atk + (eff.hit || 0);
-  if (eff.weapon) return a.stats.weapon.hit + (eff.hit || 0);
-  return a.stats.prof + modOf(a, eff.stat) + a.stats.hitOther + (eff.hit || 0);
+  const lit = a.statuses.reduce((n, st) => n + (STATUSES[st.id]?.hit || 0), 0); // M7: Hearthlit
+  if (a.side !== 'hero') return a.atk + (eff.hit || 0) + lit; // a foe, or a guest built like one (M7)
+  if (eff.weapon) return a.stats.weapon.hit + (eff.hit || 0) + lit;
+  return a.stats.prof + modOf(a, eff.stat) + a.stats.hitOther + (eff.hit || 0) + lit;
 }
 
 function foeWeaponDice(a) {
@@ -309,7 +335,7 @@ function attackParts(a, t, eff) {
 }
 
 function attackFlat(a, eff) {
-  if (a.side === 'foe') return a.dmg;
+  if (a.side !== 'hero') return a.dmg; // a foe, or a guest built like one (M7)
   if (eff.weapon) return a.stats.weapon.flat;
   return (eff.noMod ? 0 : modOf(a, eff.stat)) + a.stats.dmgOther;
 }

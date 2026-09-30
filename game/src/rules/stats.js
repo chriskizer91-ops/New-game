@@ -7,6 +7,7 @@
 import { HEROES } from '../data/heroes.js';
 import { ITEMS } from '../data/items.js';
 import { RELICS, SETS, STORIED_POWERS, HEROIC_SURGE } from '../data/relics.js';
+import { MASTERPIECE_POWER } from '../data/masterpiece.js';
 import { AFFIXES } from '../data/affixes.js';
 import { RARITY } from '../data/rarity.js';
 import { DOMAINS } from '../data/domains.js';
@@ -41,12 +42,13 @@ export const POWERS = Object.freeze(Object.fromEntries([
   ...branchPowers(),
   ...Object.values(STORIED_POWERS).map(p => [p.id, p]),
   [HEROIC_SURGE.id, HEROIC_SURGE],
+  [MASTERPIECE_POWER.id, MASTERPIECE_POWER], // M7: the Masterpiece's Kindle
 ]));
 
 function emptyAcc() {
   return {
     hp: 0, hpPct: 0, mp: 0, guard: 0, hit: 0, dmg: 0, speed: 0, crit: 0, regen: 0, regenPct: 0, mpRegen: 0,
-    healBonus: 0, surgeGain: 0, gripDmg: 0, ambushImmune: 0,
+    healBonus: 0, surgeGain: 0, gripDmg: 0, ambushImmune: 0, save: 0, // M7: save, + to every saving throw
     abilities: {}, resist: {}, extra: [], vsHurt: [], vsUnaware: [],
   };
 }
@@ -216,7 +218,7 @@ export function deriveHero(hero, items, extra = null) {
     armorType: armor?.type || 'none', weapon,
     hitOther: acc.hit, dmgOther: acc.dmg,
     resist, immune, regen: acc.regen, regenPct: acc.regenPct, mpRegen: acc.mpRegen,
-    healBonus: acc.healBonus, surgeGain: acc.surgeGain, gripDmg: acc.gripDmg,
+    healBonus: acc.healBonus, surgeGain: acc.surgeGain, gripDmg: acc.gripDmg, saveBonus: acc.save,
     vsHurt: acc.vsHurt, vsUnaware: acc.vsUnaware, ambushImmune: acc.ambushImmune > 0,
     sets, setBonuses, powers, grants,
   };

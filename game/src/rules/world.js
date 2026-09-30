@@ -60,6 +60,7 @@ import { ENCOUNTERS, PATROLS } from '../data/encounters.js';
 import { ZONES } from '../data/world.js';
 import { ARRIVALS } from '../data/dialogue.js';
 import { TUNING } from '../data/tuning.js';
+import { tierAs, tierRow } from '../data/foes.js';
 import { createRng } from '../core/rng.js';
 import { check, ownedRelics, bestDomain, flagsOf } from './cond.js';
 import { talkTo } from './story.js';
@@ -96,7 +97,7 @@ const MEMO = new WeakMap();
 
 function encounterInfo(game, encId) {
   const spawns = ENCOUNTERS[encId]?.spawns ? spawnsFor(game, encId) : [];
-  const lead = spawns.slice().sort((a, b) => LEVEL[familyOf(b).tier] - LEVEL[familyOf(a).tier])[0];
+  const lead = spawns.slice().sort((a, b) => tierRow(LEVEL, familyOf(b).tier) - tierRow(LEVEL, familyOf(a).tier))[0];
   const fam = lead && familyOf(lead);
   return {
     spawns,
@@ -434,8 +435,8 @@ export function threat(game, encId) {
   const party = partyLevel(game);
   const level = Math.max(1, ...spawns.map(s => s.level));
   const tiers = spawns.map(s => familyOf(s).tier);
-  const tier = tiers.sort((a, b) => LEVEL[b] - LEVEL[a])[0] || 'rabble';
-  const d = level - party + (tier === 'champion' ? 1 : 0);
+  const tier = tiers.sort((a, b) => tierRow(LEVEL, b) - tierRow(LEVEL, a))[0] || 'rabble';
+  const d = level - party + (tierAs(tier) === 'champion' ? 1 : 0);
   const rating = d <= -3 ? 'easy' : d <= 0 ? 'fair' : d <= 3 ? 'hard' : 'deadly';
   return {
     level, party, rating, tier, spawns,
@@ -609,7 +610,7 @@ function seesTiles(map, ax, ay, bx, by) {
 }
 
 function leadOf(spawns) {
-  const lead = spawns.slice().sort((a, b) => LEVEL[familyOf(b).tier] - LEVEL[familyOf(a).tier] || b.level - a.level)[0];
+  const lead = spawns.slice().sort((a, b) => tierRow(LEVEL, familyOf(b).tier) - tierRow(LEVEL, familyOf(a).tier) || b.level - a.level)[0];
   const fam = familyOf(lead);
   return { family: lead.family, variant: lead.variant || null, art: fam.art, gearTier: lead.gearTier || 0, count: spawns.length };
 }

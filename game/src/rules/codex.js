@@ -11,6 +11,8 @@
 //   relicDeeds(relicId) -> [deedId]            the relic's three deeds
 //   deedsOf(item) -> [{ id, name, text, done }]   [] for anything that is not a relic
 //   stageOf(item) -> 'dormant' | 'kindled' | 'awakened' | null   (null for non-relics)
+//   allPagesDone(game) -> bool                 M7: every page complete, as the Codex screen counts it ({ pages: 'all' })
+//   stolenFor(game) -> [relicId]               M7: the relics the Unsmith takes up (spec §4.4)
 //
 // A page needs every relic on it except the starters you did not choose: those stay on their
 // pedestals in the Keep reliquary (you carry one starter; Tamsin's is only ever lent), so Page I
@@ -20,6 +22,7 @@
 import { RELICS } from '../data/relics.js';
 import { PAGES } from '../data/codex.js';
 import { DEEDS } from '../data/deeds.js';
+import { TUNING } from '../data/tuning.js';
 
 // A relic whose data names no deeds (only test fixtures): the plainest three.
 const DEFAULT_DEEDS = Object.freeze(['first-blood', 'fell-holder', 'brand']);
@@ -86,4 +89,22 @@ export function stageOf(item) {
   if (!item || !RELICS[item.base]) return null;
   if (item.awakened && RELICS[item.base].awaken?.[item.awakened]) return 'awakened';
   return deedsOf(item).some(d => d.done) ? 'kindled' : 'dormant';
+}
+
+// ---- Act III (M7) ------------------------------------------------------------------------------------
+
+// Every page complete, as the Codex screen counts it (the starters you passed over are not needed): Kindle Anew's
+// third condition (spec A13, §4.6).
+export const allPagesDone = game => PAGES.every(p => pageProgress(game, p.id).done);
+
+// The relics the Unsmith takes up at his second phase (spec §4.4): those on Pages I to IV that this game never
+// claimed, the highest Codex number first, at most TUNING.unsmith.stolen.max. It reads only the game, so the fight
+// card, the fight and the sim agree. (Page V's relics are his own, or come from the story.)
+const BELOW = 'below';
+export function stolenFor(game) {
+  const codex = codexOf(game);
+  return PAGES.filter(p => p.id !== BELOW).flatMap(p => relicsOn(p.id))
+    .filter(id => !codex[id]?.claimed)
+    .sort((a, b) => RELICS[b].codex - RELICS[a].codex)
+    .slice(0, TUNING.unsmith.stolen.max);
 }

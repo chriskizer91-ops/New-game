@@ -121,4 +121,18 @@ export const TUNING = deepFreeze({
     opals: { 'fm-wraiths': 1, 'fm-shrine': 1, 'fb-choir': 1, 'rime-abbot': 2 },
     ambers: { 'lf-hags': 1, 'grue-hollow': 1, 'wm-willow': 1, 'lantern-mother': 2 },
   },
+  // ---- M7 (spec §4.4, §4.5; P1, tuned by P4 with tools/sim.mjs) ----
+  // The Unsmith's Stolen Arts: at most `max` relics the Warden never claimed (Pages I-IV, the highest Codex number
+  // first), each one move of its own (rules/foe.js stolenArt) and `guard` more Guard.
+  unsmith: {
+    stolen: {
+      max: 6, guard: 1,
+      strike: '3d8', strikeEvery: 6,          // a weapon: an attack of its aspect
+      ward: { dice: '2d8', diceEvery: 4 },    // armour, a shield or a focus: Warded, and Guarding
+      heal: '3d6', healEvery: 5,              // a radiant or verdant ring or amulet: he heals
+      hex: 'hexed',                           // any other ring or amulet: a hero is Hexed (WIS save)
+    },
+  },
+  // Hilda's Masterpiece: the price (the Worldforge page is spent too), and what the forged weapon is
+  masterpiece: { gold: 2000, embers: 5, silver: 5, amber: 2, nameMax: 24 },
 });

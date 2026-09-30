@@ -22,7 +22,7 @@ import { RELICS } from '../data/relics.js';
 import { ENCOUNTERS, GAUNTLET, BRANDS } from '../data/encounters.js';
 import { RIVAL_KITS } from '../data/rivals.js';
 import { HEARTHS, START_AT, REGIONS } from '../data/world.js';
-import { FOES } from '../data/foes.js';
+import { FOES, tierAs, tierRow } from '../data/foes.js';
 import { TUNING } from '../data/tuning.js';
 import { SLOTS } from '../data/items.js';
 import { createBattle, outcome } from './battle.js';
@@ -30,7 +30,7 @@ import { escalateSpawn, addOmens, familyOf } from './foe.js';
 import { deriveHero } from './stats.js';
 import { grantXp } from './progression.js';
 import { generateItem, relicItem } from './loot.js';
-import { pageBonus, markPages, relicDeeds, deedsOf, stageOf } from './codex.js';
+import { pageBonus, markPages, relicDeeds, deedsOf, stageOf, stolenFor } from './codex.js';
 import { rngFrom, indexItems, addCounts } from './util.js';
 
 const START = GAUNTLET[0]; // 'hearthstone-keep', the Eternal Hearth
@@ -176,6 +176,13 @@ function resolveSpawn(game, sp) {
   return s;
 }
 
+// M7 (spec §4.3): an encounter's `allies`, the guests who fight on the heroes' side (Tamsin against the Unsmith).
+// Each is a spawn resolved like a foe's (level 'party' with partyDelta, variant '$rival:<kit>'), without the Waking,
+// Grudges or Echoes: a guest is made again for every fight, and nothing of her is saved.
+export function alliesFor(game, nodeId) {
+  return (ENCOUNTERS[nodeId]?.allies || []).map(sp => ({ gearTier: 0, omens: [], ...resolveSpawn(game, sp) }));
+}
+
 export function spawnsFor(game, nodeId) {
   const node = ENCOUNTERS[nodeId];
   const w = game.progress.waking;
@@ -206,7 +213,8 @@ export function startBattle(game, { nodeId = null, patrol = null } = {}, { ambus
   if (!node) throw new Error(`Unknown encounter ${nodeId}`);
   const rng = rngFrom(game.rngState);
   if (node.type !== 'fight') throw new Error(`${node.name} is not a battle`);
-  const foes = spawnsFor(game, nodeId);
+  // M7 (spec §4.4): a family whose phases steal takes up the relics this game never claimed
+  const foes = spawnsFor(game, nodeId).map(f => (familyOf(f).phases?.some(p => p.steals) ? { ...f, stolen: stolenFor(game) } : f));
   const seed = rng.int(1, 2 ** 31 - 1);
   const codex = { ...game.codex };
   for (const f of foes) {
@@ -217,7 +225,7 @@ export function startBattle(game, { nodeId = null, patrol = null } = {}, { ambus
   const story = flags.story || {};
   const battle = createBattle({
     heroes: game.party.active.map(id => game.party.roster[id]),
-    foes, seed, waking: game.progress.waking,
+    foes, allies: alliesFor(game, nodeId), seed, waking: game.progress.waking,
     ctx: {
       inventory: game.inventory, bag: game.bag, nodeId, where: node.place, day: flags.day, bonus: pageBonus(game),
       gentle: !!node.gentle, backdrop: node.backdrop, patrol: false, ambush,
@@ -260,7 +268,7 @@ function recordGrudge(g, battle, fled) {
   if (battle.ctx.patrol) return null;
   const elites = battle.order.map(id => battle.units[id])
     .filter(f => f.side === 'foe' && !f.ko && !f.gone && !f.summonedBy && f.tier !== 'rabble' && f.spawnIndex != null)
-    .sort((a, b) => TIER_RANK[b.tier] - TIER_RANK[a.tier] || b.maxHp - a.maxHp);
+    .sort((a, b) => tierRow(TIER_RANK, b.tier) - tierRow(TIER_RANK, a.tier) || b.maxHp - a.maxHp);
   const foe = elites[0];
   if (!foe) return null;
   const key = `${battle.ctx.nodeId}#${foe.spawnIndex}`;
@@ -272,7 +280,7 @@ function recordGrudge(g, battle, fled) {
   const winTitles = own.win || WIN_TITLES, fleeTitles = own.flee || FLEE_TITLES;
   const title = fled ? fleeTitles[Math.min(3, flees - 1)] : winTitles[Math.min(3, wins - 1)];
   // A capped number of Grudge Omens (so a loss is never a wall), never one it already had.
-  const cap = TUNING.wipe.grudgeOmens[foe.tier === 'champion' ? 'champion' : 'other'];
+  const cap = TUNING.wipe.grudgeOmens[tierAs(foe.tier) === 'champion' ? 'champion' : 'other'];
   const pool = [...new Set([...foe.omens, ...prev.omens])];
   // a unique foe, or a named holder with a relic in hand (Rasa, Gnash, Mags...), is never Twinned by a
   // Grudge: two of them would be two holders, and a loss would snowball (M4; the Waking's picks are unchanged)
@@ -417,7 +425,7 @@ export function fightDeedIds(battle, out, report, heroId, item) {
   const done = [];
   if (won) done.push('first-blood');
   if (won && foes.some(f => f.tier === 'relic-bearer' || (f.held || []).length || (f.gear || []).some(x => x.relic))) done.push('fell-holder');
-  if (won && foes.some(f => f.tier === 'champion')) done.push('fell-champion');
+  if (won && foes.some(f => tierAs(f.tier) === 'champion')) done.push('fell-champion');
   if (log.nat20?.[heroId]) done.push('legend-strike');
   if ((log.surged || []).some(x => x.uid === item.uid)) done.push('surge');
   if ((out.pried || []).length) done.push('claim');
@@ -445,7 +453,7 @@ function spoils(g, battle, node, out, report) {
   if (!node || !SPOILS.has(node.region || 'verdant')) return;
   const F = TUNING.forge;
   let materials = {};
-  for (const b of out.beaten) if (!battle.units[b.id]?.noLoot) materials = addCounts(materials, F.spoils[b.tier] || {});
+  for (const b of out.beaten) if (!battle.units[b.id]?.noLoot) materials = addCounts(materials, tierRow(F.spoils, b.tier) || {});
   const gems = {};
   if (F.garnets[node.id]) gems['ash-garnet'] = F.garnets[node.id];
   if (F.opals?.[node.id]) gems['frost-opal'] = F.opals[node.id];

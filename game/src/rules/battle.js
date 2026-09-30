@@ -17,6 +17,15 @@
 // M6 (spec §4.2, §4.4): rotting halves heals and hexed rolls its d20s with disadvantage (combat.js); a family's
 // `opener` is its first move in every fight (Hodge's Toll Is Due); Hodge's Unfair Toll makes the strongest
 // foe pay a toll at the start of every fight its bearer is in.
+// M7 (spec §4.2, §4.3, §4.4):
+//   - `allies` are guests on the heroes' side (`side: 'ally'`, `guest: true`: Tamsin against the Unsmith). They are
+//     built like foes and played by the engine: foeTurn() plays a guest's turn too (allyTurn is the same function),
+//     so a caller still asks only "is it a hero's turn?". They take no command and earn no XP, and they are not in
+//     outcome().party. The heroes' heals and revives reach them, the foes aim at them, and the fight is lost when
+//     every hero is down, whether or not a guest still stands.
+//   - A two-dice foe (the Unsmith's tier) shows two intents (`intent`, slot 0, and `intent2`, slot 1) and makes both
+//     moves on its turn, in that order. A Stagger breaks the next of the two that is still coming.
+//   - The Unsmith takes his Stolen Arts at the phase that says `steals` (rules/foe.js takeStolen).
 
 import { createRng } from '../core/rng.js';
 import { rollD20 } from '../core/dice.js';
@@ -24,9 +33,10 @@ import { SKILLS } from '../data/skills.js';
 import { STATUSES } from '../data/statuses.js';
 import { CONSUMABLES } from '../data/items.js';
 import { TUNING } from '../data/tuning.js';
+import { tierRow } from '../data/foes.js';
 import { deriveHero, heroSkills, POWERS } from './stats.js';
 import { buildFoe } from './foe.js';
-import { alive, targetable, unitsOf, familyData, rollIntent, refreshIntent, intentEvent, intentFor, strongest } from './ai.js';
+import { alive, targetable, unitsOf, familyData, rollIntent, refreshIntent, intentEvent, intentFor, strongest, teamOf, opponentsOf } from './ai.js';
 import { runEffects, dealDamage, applyHeal, addStatus, removeStatus, addSurge, damageMult, effLabel, statusOf, savingThrow } from './combat.js';
 import { battleLoot } from './loot.js';
 import { rngFrom, rollExpr, indexItems, clamp, holdPhrase, isPlaceLabel } from './util.js';
@@ -53,7 +63,7 @@ function heroUnit(hero, items, seq, bonus = null) {
     stats: {
       prof: d.prof, dc: d.dc, ib: d.ib, weapon: d.weapon, critRange: d.critRange, hitOther: d.hitOther,
       dmgOther: d.dmgOther, resist: d.resist, immune: d.immune, regen: d.regen, regenPct: d.regenPct,
-      mpRegen: d.mpRegen, healBonus: d.healBonus, surgeGain: d.surgeGain, gripDmg: d.gripDmg,
+      mpRegen: d.mpRegen, healBonus: d.healBonus, surgeGain: d.surgeGain, gripDmg: d.gripDmg, saveBonus: d.saveBonus || 0,
       vsHurt: d.vsHurt, vsUnaware: d.vsUnaware,
     },
   };
@@ -66,7 +76,7 @@ function heroUnit(hero, items, seq, bonus = null) {
 //         firstStrike, warded, dark, duel, bonus, caught }   (M3: spec §4.7; warded is a dice expression, e.g. '2d6+4';
 //         M4: bonus is the party-wide stats block, rules/codex.js pageBonus; M4.5: caught, a weak pack you
 //         ran down, is kept on the state (only when set) for the Rout deed)
-export function createBattle({ heroes = [], foes = [], seed = 1, waking = 0, ctx = {} } = {}) {
+export function createBattle({ heroes = [], foes = [], allies = [], seed = 1, waking = 0, ctx = {} } = {}) {
   const rng = createRng(seed);
   const items = ctx.inventory || ctx.items || [];
   const s = {
@@ -91,6 +101,13 @@ export function createBattle({ heroes = [], foes = [], seed = 1, waking = 0, ctx
     s.units[id] = u;
     s.order.push(id);
   });
+  // M7: a guest fights on the heroes' side, built like a foe and played by the engine
+  allies.forEach((spawn, i) => {
+    const id = `a${i + 1}`;
+    const u = { ...buildFoe({ ...spawn, noLoot: true }, { id, seq: s.seq++ }), side: 'ally', guest: true, xp: 0, gold: 0, spawnIndex: null };
+    s.units[id] = u;
+    s.order.push(id);
+  });
   const B = { s, rng, ev: [], touched: new Set() };
   rollInitiative(B);
   if (ctx.ambush) ambush(B, items, heroes);
@@ -98,16 +115,20 @@ export function createBattle({ heroes = [], foes = [], seed = 1, waking = 0, ctx
   if (ctx.warded) ward(B, ctx.warded);
   ironStance(B, heroes, items);
   tollIsDue(B, heroes, items);
-  for (const f of unitsOf(s, 'foe')) {
+  for (const f of engineUnits(s)) {
     const opener = familyData(f).opener; // M6: a foe whose first move is always the same
-    f.intent = opener ? intentFor(s, f, opener, rng, null) : rollIntent(s, f, rng);
+    f.intent = opener ? intentFor(s, f, opener, rng, null) : rollIntent(s, f, rng, f.dice > 1 ? 0 : null);
     B.ev.push(intentEvent(f));
+    if (f.dice > 1) { f.intent2 = rollIntent(s, f, rng, 1); B.ev.push(intentEvent(f, f.intent2)); } // M7: the second die
   }
   advance(B);
   s.openingEvents = B.ev;
   s.rngState = rng.getState();
   return s;
 }
+
+// The units the engine plays: the foes, then any guest (M7).
+const engineUnits = s => s.order.map(id => s.units[id]).filter(u => u.side === 'foe' || u.side === 'ally');
 
 // Initiative: d20 + speed bonus places each combatant's first turn on the ribbon.
 function rollInitiative(B) {
@@ -188,7 +209,7 @@ function statusDelayMult(u) {
 const frenzyMult = u => (u.side === 'foe' && u.omens.includes('frenzied') && u.hp < u.maxHp * OMENS.frenzied.frenzyBelow ? 0.5 : 1);
 
 function moveDelay(u) {
-  if (u.side !== 'foe' || !u.intent) return 1;
+  if (u.side === 'hero' || !u.intent) return 1;
   return familyData(u).moves[u.intent.move]?.delay || 1;
 }
 
@@ -297,9 +318,11 @@ function finishTurn(B, u, actionMult = 1) {
   let delay = unitDelay(u, actionMult);
   if (u.fumbled) { delay += TUNING.attack.fumbleDelay; u.fumbled = false; }
   u.next = B.s.time + delay;
-  if (u.side === 'foe') {
-    u.intent = u.queue.length ? refreshIntent(B.s, u, u.queue.shift(), B.rng) : rollIntent(B.s, u, B.rng);
+  if (u.side !== 'hero') {
+    const two = u.dice > 1;
+    u.intent = u.queue.length ? { ...refreshIntent(B.s, u, u.queue.shift(), B.rng), ...(two ? { slot: 0 } : {}) } : rollIntent(B.s, u, B.rng, two ? 0 : null);
     B.ev.push(intentEvent(u));
+    if (two) { u.intent2 = rollIntent(B.s, u, B.rng, 1); B.ev.push(intentEvent(u, u.intent2)); }
   }
 }
 
@@ -368,14 +391,15 @@ export function inspect(state, id) {
     weakTo: kinds.filter(k => mults[k] > 1.05), resists: kinds.filter(k => mults[k] > 0 && mults[k] < 0.95), immune: kinds.filter(k => mults[k] === 0),
     mults, statuses: u.statuses.map(st => ({ ...st })), omens: u.omens || [], tier: u.tier || null, die: u.die || null,
     grip: (u.held || []).map(p => ({ relic: p.relic || p.item?.base, name: p.item?.name || null, grip: p.grip, max: p.max, held: p.held })),
-    intent: u.intent || null, queue: u.analyzed ? u.queue : [], analyzed: !!u.analyzed, gear: u.gear || [],
+    intent: u.intent || null, ...(u.dice > 1 ? { intent2: u.intent2 || null } : {}), queue: u.analyzed ? u.queue : [], analyzed: !!u.analyzed, gear: u.gear || [],
+    ...(u.stolen ? { stolen: [...u.stolen.ids] } : {}), ...(u.guest ? { guest: true } : {}),
   };
 }
 
 // ---- commands -------------------------------------------------------------------------------------
 
-function enemiesOf(s, u) { return unitsOf(s, u.side === 'hero' ? 'foe' : 'hero').filter(targetable); }
-function alliesOf(s, u) { return unitsOf(s, u.side).filter(targetable); }
+function enemiesOf(s, u) { return opponentsOf(s, u).filter(targetable); }
+function alliesOf(s, u) { return teamOf(s, u.side).filter(targetable); }
 
 export function targets(state, command) {
   const u = state.units[command.actor ?? state.actor];
@@ -383,7 +407,7 @@ export function targets(state, command) {
   switch (command.targeting || targetingOf(command)) {
     case 'enemy': case 'all-enemies': return enemiesOf(state, u).map(t => t.id);
     case 'ally': case 'all-allies': return alliesOf(state, u).map(t => t.id);
-    case 'ally-ko': return unitsOf(state, u.side).filter(t => t.ko && !t.gone).map(t => t.id);
+    case 'ally-ko': return teamOf(state, u.side).filter(t => t.ko && !t.gone).map(t => t.id);
     case 'self': return [u.id];
     default: return [];
   }
@@ -398,8 +422,10 @@ function targetingOf(cmd) {
   return 'none';
 }
 
+// M7: an Unmade hero's relic powers are struck from it until the status wears off
 function surgePower(u) {
-  return u.powers[0] || { uid: u.weaponItem?.uid || null, power: 'heroic-strike', item: u.weaponItem, relic: null };
+  const unmade = u.statuses.some(st => STATUSES[st.id]?.unmakes);
+  return (!unmade && u.powers[0]) || { uid: u.weaponItem?.uid || null, power: 'heroic-strike', item: u.weaponItem, relic: null };
 }
 
 // The command menu for a hero. Disabled entries carry a `reason` for the UI to show.
@@ -460,7 +486,7 @@ function doFlee(B, u) {
   const s = B.s;
   const heroes = unitsOf(s, 'hero').filter(alive);
   const bonus = Math.max(...heroes.map(h => h.mods.DEX)) + u.stats.prof;
-  const dc = TUNING.flee.dc + Math.max(0, ...unitsOf(s, 'foe').filter(alive).map(f => TUNING.flee.tierDc[f.tier] || 0));
+  const dc = TUNING.flee.dc + Math.max(0, ...unitsOf(s, 'foe').filter(alive).map(f => tierRow(TUNING.flee.tierDc, f.tier) || 0));
   const r = rollD20(B.rng);
   const ok = r.kept !== 1 && r.kept + bonus >= dc;
   B.ev.push({ t: 'roll', actor: u.id, target: null, purpose: 'flee', die: 20, rolls: r.rolls, kept: r.kept, bonus, total: r.kept + bonus, vs: dc, result: ok ? 'save' : 'fail', adv: false, dis: false });
@@ -550,34 +576,42 @@ export function act(state, command) {
 
 // ---- resolving a foe's intent ---------------------------------------------------------------------
 
-function foeTargets(s, f, move) {
+function foeTargets(s, f, move, intent = f.intent) {
   switch (move.target) {
     case 'self': return [f.id];
-    case 'all-enemies': return unitsOf(s, 'hero').filter(targetable).map(h => h.id);
-    case 'all-allies': return unitsOf(s, 'foe').filter(targetable).map(x => x.id);
-    default: return [f.intent.target].filter(id => targetable(s.units[id]));
+    case 'all-enemies': return opponentsOf(s, f).filter(targetable).map(h => h.id);
+    case 'all-allies': return teamOf(s, f.side).filter(targetable).map(x => x.id);
+    default: return [intent.target].filter(id => targetable(s.units[id]));
   }
 }
 
+// One intent played out (M7: a two-dice foe plays two, `key` 'intent' then 'intent2'). Returns the move's delay.
+function playIntent(B, f, key) {
+  if (f[key]?.cancelled) {
+    B.ev.push({ t: 'text', text: `${f.name} staggers and the ${f[key].name} comes to nothing.` });
+    return 1;
+  }
+  const slot = f.dice > 1 ? (key === 'intent2' ? 1 : 0) : null;
+  f[key] = refreshIntent(B.s, f, f[key] || rollIntent(B.s, f, B.rng, slot), B.rng);
+  const it = f[key];
+  const move = familyData(f).moves[it.move];
+  const prov = f.statuses.find(st => st.id === 'provoked');
+  if (prov && move.target === 'enemy' && targetable(B.s.units[prov.source])) it.target = prov.source; // a held provoker cannot be hit
+  B.ev.push({ t: 'move', actor: f.id, name: move.name, text: move.text, move: it.move, ...(slot != null ? { slot } : {}), ...(f.side === 'ally' ? { side: 'ally' } : {}) });
+  runEffects(B, f, move.effects, foeTargets(B.s, f, move, it));
+  // M5: a move's `then` is what the foe does next (a Burrow, then the eruption under someone)
+  if (move.then && alive(f)) f.queue.unshift(intentFor(B.s, f, move.then, B.rng, it.face));
+  return move.delay || 1;
+}
+
+// A foe's turn, or (M7) a guest's: the engine plays every unit that is not a hero. allyTurn is the same function.
 export function foeTurn(state) {
   if (state.ended) throw new Error('The battle is over');
   const B = begin(state);
   const f = B.s.units[B.s.actor];
-  if (!f || f.side !== 'foe') throw new Error('foeTurn() needs a foe to be current');
-  let mult = 1;
-  if (f.intent?.cancelled) {
-    B.ev.push({ t: 'text', text: `${f.name} staggers and the ${f.intent.name} comes to nothing.` });
-  } else {
-    f.intent = refreshIntent(B.s, f, f.intent || rollIntent(B.s, f, B.rng), B.rng);
-    const move = familyData(f).moves[f.intent.move];
-    const prov = f.statuses.find(st => st.id === 'provoked');
-    if (prov && move.target === 'enemy' && targetable(B.s.units[prov.source])) f.intent.target = prov.source; // a held provoker cannot be hit
-    B.ev.push({ t: 'move', actor: f.id, name: move.name, text: move.text, move: f.intent.move });
-    runEffects(B, f, move.effects, foeTargets(B.s, f, move));
-    mult = move.delay || 1;
-    // M5: a move's `then` is what the foe does next (a Burrow, then the eruption under someone)
-    if (move.then && alive(f)) f.queue.unshift(intentFor(B.s, f, move.then, B.rng, f.intent.face));
-  }
+  if (!f || f.side === 'hero') throw new Error('foeTurn() needs a foe (or a guest) to be current');
+  const mult = playIntent(B, f, 'intent');
+  if (f.dice > 1 && alive(f) && !checkEnd(B)) playIntent(B, f, 'intent2');
   if (!checkEnd(B)) {
     finishTurn(B, f, mult);
     flushSurge(B, B.before);
@@ -586,3 +620,4 @@ export function foeTurn(state) {
   }
   return finish(B);
 }
+export const allyTurn = foeTurn;

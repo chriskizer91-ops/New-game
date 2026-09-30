@@ -21,6 +21,7 @@ import { CONSUMABLES } from '../src/data/items.js';
 import { GEMS } from '../src/data/gems.js';
 import { DOMAINS } from '../src/data/domains.js';
 import { condErrors, priceErrors } from '../src/rules/cond.js';
+import { ENDING_IDS } from '../src/data/endings.js';
 
 const SPEAKERS = new Set([...Object.keys(NPCS), ...HERO_IDS, 'narrator']);
 const conds = [];
@@ -228,7 +229,7 @@ function assertPrice(price, at) {
 }
 
 test('effects use the known vocabulary and name real things', () => {
-  const KEYS = ['set', 'unset', 'give', 'item', 'gold', 'bag', 'gems', 'materials', 'unlock', 'heal', 'fight', 'claim', 'open', 'letter', 'end', 'pay', 'scout'];
+  const KEYS = ['set', 'unset', 'give', 'item', 'gold', 'bag', 'gems', 'materials', 'unlock', 'heal', 'fight', 'claim', 'open', 'letter', 'end', 'pay', 'scout', 'ending'];
   const OPEN = ['forge', 'atlas', 'journal', 'ladder', 'bounties'];
   for (const [id, d] of Object.entries(DIALOGUE)) for (const e of [...(d.do || []), ...(d.choices || []).flatMap(c => c.do || [])]) {
     const k = Object.keys(e).find(x => KEYS.includes(x));
@@ -244,6 +245,7 @@ test('effects use the known vocabulary and name real things', () => {
     if (k === 'gold') assert.ok(Number.isInteger(e.gold) && e.gold > 0, `${id}: gold`);
     if (k === 'pay') assertPrice(e.pay, `${id}: pay`); // M6: Hodge's price of the day
     if (k === 'scout') assert.ok(ENCOUNTERS[e.scout], `${id}: scout ${e.scout}`); // M6: Hodge's poster, from talk
+    if (k === 'ending') assert.ok(ENDING_IDS.includes(e.ending), `${id}: ending ${e.ending}`); // M7: the choice at the heart
   }
 });
 
