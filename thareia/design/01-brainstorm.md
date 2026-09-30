@@ -83,11 +83,12 @@ Nothing here is built yet.
 faction harvesting Thareia's crystal energy forever; the ending is the player's choice; the party is Taela, Twick,
 Delva, Renn and Veyra, with the player's own hero.
 
+**Level gates and ships (2026-09-30):** zones are **hard-locked** by level **and** ship. A free ticket first, a rented
+skiff to level 10, then your own ships at levels 10, 20, 30 and 40 (the skiff, the refitted skiff, the cruiser, the
+Aethership). All four ship sheets are in `../art-in/airship/`. Details in `05-story-and-quests.md`.
+
 ## Open
 - **The walking views:** how many per region, and how they connect (they cost the most space; see below).
 - **The Southern Lowlands:** what lives there (the canon has no named places on the south shore).
-- **How hard are the level gates?** A hard lock, or a warning you can ignore? What keeps the party out: a dock permit, a
-  ship that can't yet climb, guarded roads?
 - **Level bands:** how levels 1–50 spread across the six regions, the crossing to Auros, and Auros itself.
-- **The first airship:** passage on fixed routes first and a ship of your own later, or your own ship from the start?
-  Is sunstone fuel a resource to manage?
+- **Sunstone fuel:** how much of a resource it is.

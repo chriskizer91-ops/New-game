@@ -62,10 +62,10 @@ Chapter 2.
 |---|---|---|---|---|
 | Prologue | Bogmire | 1–3 | Get out of a warming marsh | First flight (passage) |
 | 1 · The Rot's Roots | Verdant Wilds | 1–10 | Find why the trees are dying | Taela joins |
-| 2 · The Hearth's Tune | Mirrordeep and the Keep | 10–18 | Take the question to Fen Rootwalker | Your own skiff |
-| 3 · Singing Stones | Sunscorch Wastes | 15–25 | Follow the deep sunstone | Sunstone array II |
-| 4 · What the Dwarves Found | Ironspire Peaks | 25–35 | Open Ironhold's sealed tunnels | The larger ship |
-| 5 · Not Yet | Gloomfen, Southern Lowlands | 33–42 | Go through Misthollow's door | The Warming |
+| 2 · The Hearth's Tune | Mirrordeep and the Keep | 10–18 | Take the question to Fen Rootwalker | Your own skiff (level 10) |
+| 3 · Singing Stones | Sunscorch Wastes | 18–28 | Follow the deep sunstone | The refitted skiff (level 20) |
+| 4 · What the Dwarves Found | Ironspire Peaks | 28–36 | Open Ironhold's sealed tunnels | The cruiser (level 30) |
+| 5 · Not Yet | Gloomfen, Southern Lowlands | 36–42 | Go through Misthollow's door | The Warming; the Aethership (level 40) |
 | 6 · The Crossing | the Aether | 42–46 | Reach Auros | Port Zenith |
 | 7 · The Other End | Auros | 46–50 | Answer the network | The ending |
 
@@ -115,7 +115,8 @@ Chapter 2.
   canon: a rival who bargains, and turns on the Unwaning once he learns he has been used.
 - **Scorchgate's sealed lower levels:** hobgoblin warbands hold the ruins; below them an Unwaning cutter crew is
   retuning a second node. **Boss:** their harvester construct, wearing the node's relic.
-- **Upgrade:** sunstone array II, which rides the desert's heat thermals.
+- **Ship 2 (level 20):** Twick refits the skiff (brass bands, a bigger crystal array, sun sails); it rides the
+  desert's heat thermals.
 
 ### Chapter 4: What the Dwarves Found (Ironspire Peaks, 25–35)
 
@@ -128,7 +129,7 @@ Chapter 2.
   sunstone column ringed by glowing floors. Every node's line runs here, and the Unwaning's great siphon lens is bolted to its
   column. **Boss:** Ithariel's lieutenant, a lens-knight; the chamber's ancient guardian can be calmed with resonance
   and fights beside you.
-- **Upgrade:** the **larger ship**, built by the Amberworks–Ironhold exchange, with array III that clears the peaks.
+- **Ship 3 (level 30):** the **cruiser**, built by the Amberworks–Ironhold exchange, which clears the peaks.
 
 ### Chapter 5: Not Yet (Gloomfen and the Southern Lowlands, 33–42)
 
@@ -161,15 +162,19 @@ Chapter 2.
   worlds joined, sharing what flows) or lay it back to sleep for another century. The Maelstrom's heartbeat, the
   third terminus, is left for a sequel.
 
-## Level gates, told by the ship
+## Level gates, told by the ship (decided 2026-09-30)
 
-| Ship | How you get it | Reaches |
-|---|---|---|
-| Yara's cargo skiff (passage) | the Prologue | fixed routes only |
-| Your own skiff, array I | Chapter 2 | the Wilds, Mirrordeep, the Gloomfen's edge, the Lowlands |
-| The skiff, array II | Chapter 3 | the Sunscorch's heat thermals |
-| The larger ship, array III | Chapter 4 | over the Ironspire, and Aether storms |
-| The Aethership | Chapter 6 | above the Thinning, and Auros |
+**Zones are hard-locked.** A zone opens only when the party has **both** the level **and** a ship that can reach it.
+Ships are story rewards that arrive at set levels, so the two always line up.
+
+| Ship | Art | How you get it | Reaches |
+|---|---|---|---|
+| **Passage ticket** on Yara Dustwind's cargo skiff | the skiff sheet | free, in the Prologue | Bogmire to Thornhollow, one fixed route |
+| **A rented skiff** | the skiff sheet, hire colors drawn in code | hire at any dock, levels 1–10 | the licensed routes of the Verdant Wilds and Mirrordeep, docks only |
+| **Your own skiff** (ship 1) | `airship-skiff-turnaround.png` | **level 10:** buy Yara's old skiff with the Warden's Writ (Chapter 2) | anywhere low: the Wilds, Mirrordeep, the Gloomfen's edge, the Lowlands |
+| **The refitted skiff** (ship 2) | `ship-2-refitted-skiff.webp` | **level 20:** Twick's refit in Sandspire (Chapter 3) | the Sunscorch's heat thermals |
+| **The cruiser** (ship 3) | `ship-3-cruiser.webp` | **level 30:** built by the Amberworks–Ironhold exchange (Chapter 4) | over the Ironspire, through Aether storms |
+| **The Aethership** (ship 4) | `ship-4-aethership.webp` | **level 40:** granted by Warden Isolde and fitted by Veyra's people after the Warming (end of Chapter 5) | above the Thinning, and the crossing to Auros |
 
 Upgrades between these (hull, heat source, steering) show on the ship; each part has three levels.
 
