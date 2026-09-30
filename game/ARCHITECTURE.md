@@ -328,7 +328,8 @@ keys and reads the earlier ones, newest first, without ever writing or removing 
   then `hearth-blue`, and draws its own scene without them.
 - Tools: `tools/paint-refs.mjs` renders a batch's layout references (long roads as overlapping panels,
   `refs.json`); `tools/paint-prompts.mjs` writes its prompt sheet; `tools/paint-import.mjs` fits the
-  returned paintings to their maps (joining panels) and writes the asset modules; `test/paint.test.mjs`
+  returned paintings to their maps (joining panels) and writes the asset modules; `tools/paint-sheet.mjs` draws a
+  painting at its map's size with a labelled tile grid, to trace a map's rows from its painting (M6 batch 3); `test/paint.test.mjs`
   checks them, and fails when a painted map's rows no longer match its stamp (check the grid overlay,
   then `paint-import.mjs --stamp=<id>` keeps the picture and restamps it). Since M6 every map is painted
   (`art-in/maps/`, and `art-in/batch-3/` for the Gloomfen, whose maps are traced from their paintings like the East Road). The build counts the paintings apart from the game and fails

@@ -7,7 +7,7 @@ This is a browser JRPG built into **one self-contained HTML file** that plays on
 - Milestone 4 contract: `game/docs/M4-SPEC.md` (its Part A overrides Part B); what shipped: `game/docs/M4-STATUS.md`.
 - Milestone 4.5 ("the Road") contract: `game/docs/M45-SPEC.md` (its Part A overrides Part B); what shipped: `game/docs/M45-STATUS.md`.
 - Milestone 5 ("the Ironspire Peaks") contract: `game/docs/M5-SPEC.md` (its Part A overrides Part B); what shipped: `game/docs/M5-STATUS.md`.
-- Milestone 6 ("the Gloomfen Marsh": Hodge, Tamsin's fall, the end of Act II) contract: `game/docs/M6-SPEC.md` (its Part A overrides Part B); in progress.
+- Milestone 6 ("the Gloomfen Marsh": Hodge, Tamsin's fall, the end of Act II) contract: `game/docs/M6-SPEC.md` (its Part A overrides Part B); what shipped: `game/docs/M6-STATUS.md`.
 - Design intent: `docs/DESIGN-BRIEF.md`.
 
 ## Commands (run in `game/`)
