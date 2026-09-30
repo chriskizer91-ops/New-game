@@ -1369,6 +1369,9 @@ export const HEARTH_LOOKS = Object.freeze({
   // M6: the Gloomfen's eight
   'reed-shrine': 'reedshrine', 'willow-hearth': 'mootring', 'toll-lamp': 'tollpost', 'stilt-hearth': 'firebasket', 'fen-cairn': 'fencairn',
   'bell-hearth': 'bellbowl', 'wreck-fire': 'painted', 'flats-beacon': 'painted', // batch 3: the beached hull and the beacon are in their maps' paintings
+  // M7: the Hearth Below's two. STUB from the M7 scaffold: the Last Green Coal's coal and the Signal Fire's brazier stand
+  // in until P5 draws `undercoal` (a coal the size of a cart) and `chainfire` (a brazier hung from a broken chain)
+  'under-coal': 'coal', 'chain-fire': 'brazier',
 });
 const OBJ_SIZE = { gate: [16, 24], crownwall: [16, 24], thornwall: [16, 24], pedestal: [16, 24], board: [16, 24], bellframe: [16, 24], lookout: [16, 32], door: [16, 24], 'barred-gate': [16, 24] };
 Object.assign(OBJ_SIZE, { 'dune-glass': [16, 24], 'vault-seal': [16, 24], 'glass-spire': [16, 24], 'vault-door': [16, 24] });

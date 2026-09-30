@@ -23,6 +23,8 @@ const FALLEN = { any: [{ flag: 'tamsin-fallen' }, { beaten: 'tamsin-rotbridge' }
 
 export const NPCS = deepFreeze({
   fenwick: N('fenwick', 'Fenwick', 'Hearthkeeper', [
+    // M7 (spec §3.1): once the Hollow Council is freed, the truth, and his poker (STUB from the M7 scaffold: P3 writes it)
+    { if: { all: [{ beaten: 'hollow-gretch' }, { not: { quest: 'fenwicks-truth' } }] }, d: 'fenwick-truth' },
     // M4: a stone that beats, carried into the Great Hall (M5: and a hood woven under the ice; M6: and her lantern)
     { if: { wears: 'sunstone-heart' }, d: 'notice-fenwick-heart' },
     { if: { wears: 'hushweave-cowl' }, d: 'notice-fenwick-cowl' },
@@ -84,6 +86,9 @@ export const NPCS = deepFreeze({
     { if: { all: [{ flag: 'council-3-done' }, { not: { flag: 'heard-hild' } }] }, d: 'hilda-letter' },
     // M6: the man on the barge wore her brother's mark on his clasp (once, when you come home from Rotbridge)
     { if: { all: [FALLEN, { not: { flag: 'heard-barge' } }] }, d: 'hilda-barge' },
+    // M7 (spec §3.1, §4.5): once the Hollow Council is freed and the Worldforge page is yours, the Masterpiece
+    // (STUB from the M7 scaffold: a line only; P3 writes it)
+    { if: { all: [{ beaten: 'hollow-gretch' }, { flag: 'worldforge-page' }] }, d: 'hilda-masterpiece' },
     // M4: Hilda critiques the Sunscorch's blades by name (M5: and her brother's work; M6: the fen's iron)
     { if: { wears: 'cinderfang' }, d: 'notice-hilda-cinderfang' },
     { if: { wears: 'dunebreaker' }, d: 'notice-hilda-dunebreaker' },
@@ -119,6 +124,8 @@ export const NPCS = deepFreeze({
     { d: 'garret' },
   ]),
   miravel: N('miravel', 'Miravel', 'Main quest', [
+    // M7 (spec §3.1): freed from the Hollow Wreath (STUB from the M7 scaffold: P3 writes it)
+    { if: { beaten: 'hollow-miravel' }, d: 'freed-miravel' },
     { if: { all: [{ brand: 'brand-of-briars' }, { not: { flag: 'met-miravel-rot' } }] }, d: 'miravel-brand' },
     { if: { wears: 'rootsong' }, d: 'notice-miravel-rootsong' },
     { if: { wears: 'rotwood-circlet' }, d: 'notice-miravel-circlet' },
@@ -136,7 +143,8 @@ export const NPCS = deepFreeze({
     { d: 'ivo' },
   ]),
   pilgrim: N('pilgrim', 'Pilgrim', 'Flavour', [{ if: { quest: 'miracle-sap', state: 'ready' }, d: 'pilgrim-thanks' }, { d: 'pilgrim' }]),
-  tamsin: N('tamsin', 'Tamsin', 'Rival', [{ d: 'tamsin-door' }]),
+  // M7 (spec A12): in the Chained Deep she waits to join (the map's cd-tamsin; STUB from the M7 scaffold: P3 writes it)
+  tamsin: N('tamsin', 'Tamsin', 'Rival', [{ if: { flag: 'council-5-done' }, d: 'tamsin-return' }, { d: 'tamsin-door' }]),
   vesper: N('vesper', 'Vesper', 'Tallyman con', [{ d: 'vesper' }]),
   rotwarden: N('rotwarden', 'The Rotwarden', 'Boss', []),
 
@@ -151,6 +159,8 @@ export const NPCS = deepFreeze({
     { d: 'zara-again' },
   ]),
   qasim: N('qasim', 'Cistern Lord Qasim', 'Lord of the cistern', [
+    // M7 (spec §3.1): freed from the Hollow Chalice (STUB from the M7 scaffold: P3 writes it)
+    { if: { beaten: 'hollow-qasim' }, d: 'freed-qasim' },
     { if: { all: [{ beaten: 'dt-aqueduct' }, { not: { flag: 'cistern-told' } }] }, d: 'qasim-water' },
     { if: { not: { flag: 'met-qasim' } }, d: 'qasim' },
     { if: { all: [{ flag: 'sunscorch-complete' }, { not: { flag: 'council-2-done' } }] }, d: 'qasim-summons' },
@@ -250,6 +260,8 @@ export const NPCS = deepFreeze({
   ]),
   // Ironhold
   brundar: N('brundar', 'Thane Brundar', 'Thane of Ironhold', [
+    // M7 (spec §3.1): freed from the Hollow Gauntlet (STUB from the M7 scaffold: P3 writes it)
+    { if: { beaten: 'hollow-brundar' }, d: 'freed-brundar' },
     // the Thane's leave (the main quest): Tamsin's duel won or yielded gives the Rune-Key (also a first meeting)
     { if: { all: [{ any: [{ beaten: 'tamsin-ironhold' }, { flag: 'tamsin-yielded-3' }] }, { not: { flag: 'rune-given' } }] }, d: 'brundar-rune' },
     // the thank-you of the Sentinel's Oath
@@ -353,6 +365,8 @@ export const NPCS = deepFreeze({
   ]),
   // Bogmire: Mayor Gretch keeps order with fear and favours (the main quest, the Bogmire board, a soot-sealed box)
   gretch: N('gretch', 'Mayor Gretch', 'Mayor of Bogmire', [
+    // M7 (spec §3.1): freed from the Hollow Chain (STUB from the M7 scaffold: P3 writes it)
+    { if: { beaten: 'hollow-gretch' }, d: 'freed-gretch' },
     // the children home: the town's thanks (also a first meeting, for a Warden who went straight into the bogs)
     { if: { all: [{ flag: 'children-home' }, { not: { flag: 'gretch-thanked' } }] }, d: 'gretch-children' },
     { if: { not: { flag: 'met-gretch' } }, d: 'gretch' },

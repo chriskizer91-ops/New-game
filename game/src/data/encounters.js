@@ -20,6 +20,9 @@
 //   spawn.wakeLevels overrides levels per Waking; spawn.noWaking skips escalation.
 //   leaves    (M6) a condition: once it holds the encounter is gone from its map for good, as a done one is
 //             (Tamsin after her fall)
+//   finale    (M7) the road's end, the Unsmith: on the route it counts as a Brand does (test/road.test.mjs, spec A3)
+//   allies    (M7) [{ family, kit, level? }]: guests on the heroes' side (spec §4.3). STUB from the M7 scaffold: data
+//             only, until P1's guest reads it and adds its check
 // Hearthfires with `cold` start unlit (a cold-hearth lock) in data/world.js HEARTHS and on the map.
 
 import { deepFreeze } from '../core/freeze.js';
@@ -54,6 +57,15 @@ const GLOOM_WAKE = 4;
 const GLOOM_OMENS = 3;
 const GLOOM = (family, level, o = {}) => S(family, level, { wakeLevels: GLOOM_WAKE, wakeOmenCap: GLOOM_OMENS, ...o });
 const GLOOM_R = (family, level, o = {}) => S(family, level, { wakeOmenCap: GLOOM_OMENS, ...o });
+
+// M7: the Hearth Below is met at Waking 8 (every Brand is held; none is left to raise it). Its spawns that are not
+// rabble climb BELOW_WAKE levels per Waking and keep at most BELOW_OMENS Waking Omens, as the Gloomfen's do; BELOW_R is
+// a rabble spawn (the usual 2 levels a Waking), with the same cap. STUB from the M7 scaffold: the levels are first guesses that
+// put the Act III road at about level 38 at Waking 8; P4 tunes them with tools/sim.mjs (spec §8).
+const BELOW_WAKE = 4;
+const BELOW_OMENS = 3;
+const BELOW = (family, level, o = {}) => S(family, level, { wakeLevels: BELOW_WAKE, wakeOmenCap: BELOW_OMENS, ...o });
+const BELOW_R = (family, level, o = {}) => S(family, level, { wakeOmenCap: BELOW_OMENS, ...o });
 
 export const ENCOUNTERS = deepFreeze({
   'hearthstone-keep': {
@@ -706,6 +718,66 @@ export const ENCOUNTERS = deepFreeze({
     spawns: [GLOOM_R('marsh-light', 16), GLOOM_R('marsh-light', 16), GLOOM_R('mire-leech', 16)],
     text: 'Marsh-lights on the reeds by the causeway, where the water-mark still shows.',
   },
+
+  // ---- M7: the Hearth Below (spec §2.5, §3.3; owner P4). STUB from the M7 scaffold, all of them: the spawns, modes, gates and
+  // fields are the spec's; levels are first guesses (BELOW), and every backdrop is its map's stand-in until P6 paints the
+  // map's own (spec §6.2). The Hollow Council and the Unsmith carry chosen Omens, never Twinned.
+  'under-coal': {
+    id: 'under-coal', type: 'hearthfire', name: 'The Under-Coal', place: 'The Ash Stair', backdrop: 'scorchgate', region: 'below',
+    text: 'A coal the size of a cart in a niche of the hearth\'s roots, cracked and cold. Something kept it burning once.',
+  },
+  'chain-fire': {
+    id: 'chain-fire', type: 'hearthfire', name: 'The Chain Fire', place: 'The Chained Deep', backdrop: 'frostmere-below', region: 'below',
+    text: 'A fire in an iron brazier hung from a broken chain, on a platform over the Sleeper\'s hollow.',
+  },
+  'hollow-miravel': {
+    id: 'hollow-miravel', type: 'fight', name: 'Hollow Miravel', place: 'The Hollow Hall', backdrop: 'scorchgate-vaults', region: 'below',
+    spawns: [BELOW('hollow-miravel', 7, { omens: ['frenzied', 'swift'], wakeOmenCap: 0 })],
+    text: 'Elder Miravel before the first chair, the tree\'s, in the Hollow Wreath. It glows violet-black. Snap it off her.',
+  },
+  'hollow-qasim': {
+    id: 'hollow-qasim', type: 'fight', name: 'Hollow Qasim', place: 'The Hollow Hall', backdrop: 'scorchgate-vaults', region: 'below',
+    spawns: [BELOW('hollow-qasim', 7, { omens: ['ironclad', 'swift'], wakeOmenCap: 0 })],
+    text: 'Cistern Lord Qasim before the second chair, the sun\'s, holding the Hollow Chalice. It is full of something dark. Snap it from him.',
+  },
+  'hollow-brundar': {
+    id: 'hollow-brundar', type: 'fight', name: 'Hollow Brundar', place: 'The Hollow Hall', backdrop: 'scorchgate-vaults', region: 'below',
+    spawns: [BELOW('hollow-brundar', 7, { omens: ['ironclad', 'thornskinned'], wakeOmenCap: 0 })],
+    text: 'Thane Brundar before the third chair, the anvil\'s, in the Hollow Gauntlet. It has closed on his hand. Snap it off him.',
+  },
+  'hollow-gretch': {
+    id: 'hollow-gretch', type: 'fight', name: 'Hollow Gretch', place: 'The Hollow Hall', backdrop: 'scorchgate-vaults', region: 'below',
+    spawns: [BELOW('hollow-gretch', 7, { omens: ['frenzied', 'thornskinned'], wakeOmenCap: 0 })],
+    text: 'Mayor Gretch before the last chair, the lantern\'s, wearing the Hollow Chain. It is too tight. Snap it off her.',
+  },
+  'as-thralls': {
+    id: 'as-thralls', type: 'fight', name: 'The Cinder-Thralls', place: 'The Ash Stair', backdrop: 'scorchgate', region: 'below',
+    spawns: [BELOW_R('cinder-thrall', 22), BELOW_R('cinder-thrall', 22), BELOW_R('cinder-thrall', 22), BELOW('cinder-thrall', 6, { variant: 'thrall-overseer' })],
+    text: 'Cinder-thralls in the narrows between the iron roots, and an overseer among them with a whip of hot wire.',
+  },
+  'as-patrol': {
+    id: 'as-patrol', type: 'fight', name: 'Thralls on the Landing', place: 'The Ash Stair', backdrop: 'scorchgate', region: 'below',
+    spawns: [BELOW_R('cinder-thrall', 22), BELOW_R('cinder-thrall', 22), BELOW_R('cinder-thrall', 22)],
+    text: 'Cinder-thralls walking the landing in a ring, as if they were keeping something warm.',
+  },
+  'cd-unmade': {
+    id: 'cd-unmade', type: 'fight', name: 'The Unmade', place: 'The Chained Deep', backdrop: 'frostmere-below', region: 'below',
+    spawns: [BELOW('unmade', 6), BELOW('unmade', 6), BELOW_R('cinder-thrall', 22)],
+    text: 'Two of the unmade in the narrows of the walkway, still holding the shapes of what they held, and a thrall at their heels.',
+  },
+  'wf-warden': {
+    id: 'wf-warden', type: 'fight', name: 'The Forge-Warden', place: 'The Worldforge', backdrop: 'harrows-forge', region: 'below',
+    spawns: [BELOW('forge-warden', 6), BELOW_R('cinder-thrall', 22), BELOW_R('cinder-thrall', 22)],
+    text: 'The forge-warden at the near end of the bridge, breathing like a bellows, and two thralls feeding it.',
+  },
+  // the finale (spec A3): it counts as a Brand does on the road. Tamsin fights beside the party as a guest (`allies`,
+  // spec A12, §4.3): data only until P1's guest reads it (the `finale` kit is P1's and P4's, data/rivals.js).
+  unsmith: {
+    id: 'unsmith', type: 'fight', name: 'The Unsmith', place: 'The Worldforge', backdrop: 'harrows-forge', region: 'below',
+    finale: true, allies: [{ family: 'tamsin', kit: 'finale' }],
+    spawns: [BELOW('unsmith', 8, { omens: ['frenzied', 'ironclad'], wakeOmenCap: 0 })],
+    text: 'Harrow Ironvein before the Worldforge, with his hammer, his apron and the heart of the forge. Break all three.',
+  },
 });
 
 export const GAUNTLET = Object.freeze([
@@ -745,6 +817,8 @@ export const PATROLS = deepFreeze({
   blackwater: [[GLOOM_R('blackwater-gar', 0), GLOOM_R('blackwater-gar', 0), GLOOM_R('mire-leech', 0)], [GLOOM_R('blackwater-gar', 0), GLOOM_R('blackwater-gar', 0)]],
   'tidal-flats': [[GLOOM_R('blackwater-gar', 0), GLOOM_R('mire-leech', 0), GLOOM_R('mire-leech', 0)], [GLOOM_R('blackwater-gar', 0), GLOOM_R('blackwater-gar', 0), GLOOM_R('blackwater-gar', 0)]],
   causeway: [[GLOOM_R('marsh-light', 0), GLOOM_R('mire-leech', 0)], [GLOOM_R('mire-leech', 0), GLOOM_R('mire-leech', 0), GLOOM_R('marsh-light', 0)]],
+  // M7: the Ash Stair (spec §2.6): cinder-thrall packs, rabble, two or three a pack
+  'ash-stair': [[BELOW_R('cinder-thrall', 0), BELOW_R('cinder-thrall', 0), BELOW_R('cinder-thrall', 0)], [BELOW_R('cinder-thrall', 0), BELOW_R('cinder-thrall', 0)]],
 });
 
 export const BRANDS = deepFreeze({

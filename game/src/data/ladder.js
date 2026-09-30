@@ -1,5 +1,5 @@
-// The Ladder (M3 spec §3.6, M4 spec §3.6, M5 spec §3.6, M6 spec §3.6): one poster per villain, in order: Act I,
-// then the Act II posters of the Sunscorch, the Ironspire and the Gloomfen, then the rumours: Harrow himself,
+// The Ladder (M3 spec §3.6, M4 spec §3.6, M5 spec §3.6, M6 spec §3.6, M7 spec §3.6): one poster per villain, in order:
+// Act I, then the Act II posters of the Sunscorch, the Ironspire and the Gloomfen, then Act III's (M7), then the rumours: Harrow himself,
 // still missing (the Ironspire finds his forge, his hammer and his journeyman, not him).
 // LADDER = [{ id, enc?, spawn?, name, silhouette?, act }]
 //   enc/spawn  the encounter and spawn index whose foe the poster shows (renderFoe silhouette)
@@ -11,6 +11,7 @@ import { deepFreeze } from '../core/freeze.js';
 
 const P = (id, enc, name, spawn = 0) => ({ id, enc, spawn, name, act: 1 });
 const P2 = (id, enc, name, spawn = 0) => ({ id, enc, spawn, name, act: 2 });
+const P3 = (id, enc, name, spawn = 0) => ({ id, enc, spawn, name, act: 3 });
 
 export const LADDER = deepFreeze([
   P('sneck', 'keep-vault', 'Sneck the Tallyman'),
@@ -57,6 +58,14 @@ export const LADDER = deepFreeze([
   P2('drowned-cantor', 'cantor', 'The Drowned Cantor'),
   P2('old-jaws', 'old-jaws', 'Old Jaws'),
   P2('blackwater-leviathan', 'blackwater-leviathan', 'The Blackwater Leviathan'),
+  // M7: the Hearth Below (spec §3.6): the Hollow Council, silhouettes until the fifth council sits (its scene scouts
+  // them), and the Unsmith, a silhouette until Tamsin's return (hers scouts him). STUB from the M7 scaffold: P3 settles
+  // the two rumours below into the Unsmith's poster ("Found: the Unsmith").
+  P3('hollow-miravel', 'hollow-miravel', 'Hollow Miravel'),
+  P3('hollow-qasim', 'hollow-qasim', 'Hollow Qasim'),
+  P3('hollow-brundar', 'hollow-brundar', 'Hollow Brundar'),
+  P3('hollow-gretch', 'hollow-gretch', 'Hollow Gretch'),
+  P3('unsmith', 'unsmith', 'The Unsmith'),
   // Act II rumours: Harrow is still missing
   { id: 'missing-smith', name: 'the missing smith', silhouette: true, act: 2 },
   // M6: the man on the barge who took Tamsin: a rumour once she has fallen (her duel over, won or yielded)

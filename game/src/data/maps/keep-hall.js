@@ -71,12 +71,24 @@ export default deepFreeze({
     { id: 'council-3', kind: 'trigger', area: [0, 0, 23, 13], on: 'enter', if: { all: [{ flag: 'ironspire-complete' }, { not: { flag: 'council-3-done' } }] }, dialogue: 'council-3' },
     // M6 (spec §3.6): the fourth council, once both Gloomfen Brands are won (flag-guarded, never `once`); it ends Act II
     { id: 'council-4', kind: 'trigger', area: [0, 0, 23, 13], on: 'enter', if: { all: [{ flag: 'gloomfen-complete' }, { not: { flag: 'council-4-done' } }] }, dialogue: 'council-4' },
+    // M7 (spec A5, §2.4): the fifth council, the Opening, once the fourth has sat (flag-guarded, never `once`)
+    { id: 'council-5', kind: 'trigger', area: [0, 0, 23, 13], on: 'enter', if: { all: [{ flag: 'council-4-done' }, { not: { flag: 'council-5-done' } }] }, dialogue: 'council-5' },
+    // M7 (spec §2.4): the four soot-sealed boxes on the vault's back row, then opened; and the stair that was never
+    // there, down through the vault floor (a prop on the exit's tiles, not solid: no row of the painted hall changes).
+    // The way from the vault door to the stair, (20,7) to (21,7) to (21,8), stays open.
+    { id: 'vault-boxes', kind: 'prop', prop: 'vault-boxes', area: [21, 6, 22, 6], solid: true, if: { all: [{ flag: 'council-4-done' }, { not: { flag: 'council-5-done' } }] } },
+    { id: 'vault-boxes-open', kind: 'prop', prop: 'vault-boxes-open', area: [21, 6, 22, 6], solid: true, if: { flag: 'council-5-done' } },
+    { id: 'vault-stair', kind: 'prop', prop: 'vault-stair', area: [21, 8, 22, 8], if: { flag: 'council-5-done' } },
   ],
   exits: [
     { id: 'hall-s', area: [12, 13, 12, 13], to: 'keep', anchor: 'from-hall' },
     // M4: the door to the Sunscorch Gallery, the reliquary's second room
     { id: 'hall-e', area: [23, 11, 23, 11], to: 'keep-gallery', anchor: 'from-hall' },
+    // M7 (spec A5, §2.2): the vault floor opens onto the stair down to the Hollow Hall once the fifth council has sat.
+    // STUB from the M7 scaffold: its sealed words are a first draft (P2 and P3 word them).
+    { id: 'hall-down', area: [21, 8, 22, 8], to: 'hollow-hall', anchor: 'from-vault', gate: { flag: 'council-5-done' },
+      sealed: { region: 'below', text: 'The vault floor is old stone, cold as a well. Something under it is colder.', hint: 'It opens once the Council has sat a fifth time.' } },
   ],
-  anchors: { start: [12, 6, 'n'], 'from-court': [12, 12, 'n'], 'v1:hearthstone-keep': [12, 6, 'n'], 'v1:keep-vault': [18, 7, 'e'], 'from-gallery': [22, 11, 'w'] },
+  anchors: { start: [12, 6, 'n'], 'from-court': [12, 12, 'n'], 'v1:hearthstone-keep': [12, 6, 'n'], 'v1:keep-vault': [18, 7, 'e'], 'from-gallery': [22, 11, 'w'], 'from-below': [21, 7, 'w'] },
   roam: null,
 });

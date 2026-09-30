@@ -46,7 +46,10 @@ export default deepFreeze({
   ],
   entities: [
     { id: 'eldergrove-hearth', kind: 'hearthfire', at: [13, 15], stand: [13, 16, 'n'] },
-    { id: 'miravel', kind: 'npc', npc: 'miravel', at: [17, 11], face: 's' },
+    { id: 'miravel', kind: 'npc', npc: 'miravel', at: [17, 11], face: 's', if: { not: { flag: 'council-5-done' } } },
+    // M7 (spec §3.1): Miravel goes down with the Hollow Council at the fifth council, and comes home freed, to stand
+    // beside where she stood
+    { id: 'miravel-freed', kind: 'npc', npc: 'miravel', at: [17, 12], face: 'n', if: { beaten: 'hollow-miravel' } },
     { id: 'nan', kind: 'npc', npc: 'nan', at: [8, 16], face: 's' },
     { id: 'hilda', kind: 'npc', npc: 'hilda', at: [22, 18], face: 's', if: { all: [{ brand: 'brand-of-briars' }, { not: { brands: 2 } }] } },
     { id: 'eg-bryn-house', kind: 'sign', at: [5, 12], text: 'Bryn\'s house. The door is carved with tree-rings, and someone has added one.' },

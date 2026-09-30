@@ -1,5 +1,5 @@
-// Map data tests (M3 spec §2, §4.2, §6.1 WP3; M4 spec §2, §8; M5 spec §2, §8; M6 spec §2, §8) over all 56 maps.
-// Owner: WP3; M4 P2; M5 P2; M6 P2.
+// Map data tests (M3 spec §2, §4.2, §6.1 WP3; M4 spec §2, §8; M5 spec §2, §8; M6 spec §2, §8; M7 spec §2, §8) over all 60
+// maps. Owner: WP3; M4 P2; M5 P2; M6 P2; M7 P2.
 // Shape, bounds, exits, anchors, placements and locks, then the flood fills: every CRITICAL_PATH
 // target is reachable with only the guaranteed keys (per starter), every chest with all keys, every
 // hard lock and story gate really is the only way through to what it guards. The flood fills run
@@ -19,6 +19,10 @@
 // on the Brand of the Deep, the re-armed fights never shut the way home, the leads are reachable, every entity is
 // reachable with every key, the maps hold what spec §2.3 puts on them, the roads are spec §2.2's gate by gate, and
 // the chests pay in bog amber.
+// M7: the same for the Hearth Below: it opens down the vault stair in the Great Hall once the fifth council is sat, the
+// stair back is shut from the first Council fight until the last, every ACT3_PATH target is reachable from a
+// Gloomfen-complete party with only its starter relic, no lock stands below, every entity is reachable with every key,
+// the maps hold what spec §2.3 puts on them, and the roads are spec §2.2's gate by gate.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { MAPS, MAP_IDS, ENTITY_OF, anchor, v1Anchor } from '../src/data/maps/index.js';
@@ -28,7 +32,7 @@ import { RELICS } from '../src/data/relics.js';
 import { DOMAINS } from '../src/data/domains.js';
 import { STARTERS } from '../src/data/heroes.js';
 import { ENCOUNTERS, GAUNTLET, PATROLS, BRANDS } from '../src/data/encounters.js';
-import { HEARTHS, START_AT, CRITICAL_PATH, LEADS, ZONES, REGIONS, LORE, SUN_PATH, SUN_LEADS, IRON_PATH, IRON_LEADS, GLOOM_PATH, GLOOM_LEADS } from '../src/data/world.js';
+import { HEARTHS, START_AT, CRITICAL_PATH, LEADS, ZONES, REGIONS, LORE, SUN_PATH, SUN_LEADS, IRON_PATH, IRON_LEADS, GLOOM_PATH, GLOOM_LEADS, ACT3_PATH, ACT3_LEADS } from '../src/data/world.js';
 import { DIALOGUE } from '../src/data/dialogue.js';
 import { GEMS, MATERIALS } from '../src/data/gems.js';
 import { newGame } from '../src/rules/gauntlet.js';
@@ -45,14 +49,15 @@ const cellsOf = e => { const [x0, y0, x1, y1] = areaOf(e), out = []; for (let y 
 const DIRS = { n: [0, -1], e: [1, 0], s: [0, 1], w: [-1, 0] };
 const entities = () => Object.values(MAPS).flatMap(m => m.entities.map(e => ({ map: m.id, e })));
 
-test('56 maps (14 in the Wilds, 10 in the Sunscorch, 17 in the Ironspire with the East Road, 12 in the Gloomfen, and the reliquary\'s three Galleries); every row is w characters from the legend; entities and exits are in bounds', () => {
-  assert.equal(MAP_IDS.length, 56);
+test('60 maps (14 in the Wilds, 10 in the Sunscorch, 17 in the Ironspire with the East Road, 12 in the Gloomfen, 4 in the Hearth Below, and the reliquary\'s three Galleries); every row is w characters from the legend; entities and exits are in bounds', () => {
+  assert.equal(MAP_IDS.length, 60);
   assert.ok(MAPS['keep-gallery'], 'the Sunscorch Gallery');
   assert.ok(MAPS['keep-gallery-2'], 'the Ironspire Gallery');
   assert.ok(MAPS['keep-gallery-3'], 'the Gloomfen Gallery');
   assert.equal(MAP_IDS.filter(id => MAPS[id].region === 'sunscorch').length, 10);
   assert.equal(MAP_IDS.filter(id => MAPS[id].region === 'ironspire').length, 17);
   assert.equal(MAP_IDS.filter(id => MAPS[id].region === 'gloomfen').length, 12);
+  assert.equal(MAP_IDS.filter(id => MAPS[id].region === 'below').length, 4);
   for (const m of Object.values(MAPS)) {
     assert.equal(m.rows.length, m.h, `${m.id} height`);
     m.rows.forEach((r, y) => {
@@ -91,9 +96,10 @@ test('exits pair up both ways and land on walkable anchors; 2 sealed exits and 6
       assert.ok(!on, `${m.id}:${name} is not under ${on?.id}`);
     }
   }
-  // M6: the two ways into the Gloomfen lead somewhere now (the fen stair, the causeway), so no exit is sealed for good
+  // M6: the two ways into the Gloomfen lead somewhere now (the fen stair, the causeway), so no exit is sealed for good.
+  // M7: the vault stair down to the Hearth Below and the Hollow Hall's stair back are gated
   assert.equal(sealed, 0, 'no exit is sealed for good');
-  assert.deepEqual(gated.sort(), ['bm-causeway', 'fr-highfold', 'keep-e', 'keep-se', 'keep-sw', 'lb-e', 'mf-fen-stair', 'pv-w', 'ss-e', 'sw-n']);
+  assert.deepEqual(gated.sort(), ['bm-causeway', 'fr-highfold', 'hall-down', 'hh-up', 'keep-e', 'keep-se', 'keep-sw', 'lb-e', 'mf-fen-stair', 'pv-w', 'ss-e', 'sw-n']);
 });
 
 test('every exit pairs with an exit on the far map whose anchor is where the first one leads back', () => {
@@ -122,10 +128,12 @@ test('entities stand on walkable ground; every lock and gate tile is walkable on
 });
 
 test('no solid entity stands on an exit tile (move() would take the exit, canWalk would not)', () => {
+  // M7 (spec A5): a prop is solid only when it says so (rules/world.js), so the vault stair, a prop that is not solid,
+  // lies on the Great Hall's hall-down
   for (const m of Object.values(MAPS)) {
     for (const x of m.exits) {
       for (const [cx, cy] of cellsOf(x)) {
-        const on = m.entities.find(e => !['trigger', 'light', 'gate'].includes(e.kind) && !(e.kind === 'encounter' && e.mode === 'pack') && covers(e, cx, cy));
+        const on = m.entities.find(e => !['trigger', 'light', 'gate'].includes(e.kind) && !(e.kind === 'encounter' && e.mode === 'pack') && !(e.kind === 'prop' && !e.solid) && covers(e, cx, cy));
         assert.ok(!on, `${m.id}/${x.id} (${cx},${cy}) is covered by ${on?.id}`);
       }
     }
@@ -178,14 +186,15 @@ test('world tables: the critical path, leads and zones name real things', () => 
   for (const m of Object.values(MAPS)) if (m.zone) assert.ok(ZONES[m.zone], `${m.id} zone`);
 });
 
-test('world tables agree with the maps: the 33 Hearthfires, the 17 places, the regions and their sealed entries', () => {
+test('world tables agree with the maps: the 35 Hearthfires, the 17 places, the regions and their sealed entries', () => {
   const inView = ([x, y]) => x >= 0 && x <= 1200 && y >= 0 && y <= 800;
   const fires = Object.keys(ENCOUNTERS).filter(id => ENCOUNTERS[id].type === 'hearthfire');
   assert.deepEqual(Object.keys(HEARTHS).sort(), fires.sort(), 'HEARTHS covers every Hearthfire');
-  assert.equal(fires.length, 33);
+  assert.equal(fires.length, 35);
   assert.equal(fires.filter(id => ENCOUNTERS[id].region === 'sunscorch').length, 7, 'seven in the Sunscorch (M4 spec §2.5)');
   assert.equal(fires.filter(id => ENCOUNTERS[id].region === 'ironspire').length, 8, 'eight in the Ironspire (M5 spec §2.5: seven, and the East Road\'s Last Camp)');
   assert.equal(fires.filter(id => ENCOUNTERS[id].region === 'gloomfen').length, 8, 'eight in the Gloomfen (M6 spec §2.5)');
+  assert.equal(fires.filter(id => ENCOUNTERS[id].region === 'below').length, 2, 'two in the Hearth Below (M7 spec §2.5)');
   for (const [id, h] of Object.entries(HEARTHS)) {
     const e = ENTITY_OF[id].entity;
     assert.equal(h.name, ENCOUNTERS[id].name, `${id} name`);
@@ -199,15 +208,20 @@ test('world tables agree with the maps: the 33 Hearthfires, the 17 places, the r
     assert.ok(p.map === null || MAPS[p.map], `LORE.${id}.map`);
     assert.ok(p.region === null || REGIONS[p.region], `LORE.${id}.region`);
   }
-  const sealed = Object.values(MAPS).flatMap(m => m.exits.filter(x => x.sealed).map(x => ({ ...x, from: m.region })));
+  const sealed = Object.values(MAPS).flatMap(m => m.exits.filter(x => x.sealed).map(x => ({ ...x, from: m.region, map: m.id })));
   for (const r of Object.values(REGIONS)) {
     assert.ok(inView(r.lore), `${r.id} lore`);
     for (const id of r.entries || []) assert.equal(sealed.find(x => x.id === id)?.sealed.region, r.id, `${id} is a sealed entry to ${r.id}`);
   }
   // every sealed way into a region is one of its entries; a gate inside a region (M4.5: Sandspire's east
-  // gate, shut until the Brand of Glass) is not a way into it
+  // gate, shut until the Brand of Glass) is not a way into it, and nor (M7) is the stair back out of one: the Hollow
+  // Hall's hh-up, shut while the Council sits, climbs to the Great Hall, whose hall-down is the region's entry
   for (const x of sealed) {
-    if (x.from === x.sealed.region) { assert.ok(x.gate && x.to && MAPS[x.to].region === x.from, `${x.id} is a gate inside ${x.from}`); continue; }
+    if (x.from === x.sealed.region) {
+      const wayBack = !!x.to && MAPS[x.to].exits.some(y => (REGIONS[x.from].entries || []).includes(y.id) && y.to === x.map);
+      assert.ok(x.gate && x.to && (MAPS[x.to].region === x.from || wayBack), `${x.id} is a gate inside ${x.from}, or its way back out`);
+      continue;
+    }
     assert.ok(REGIONS[x.sealed.region].entries.includes(x.id), `${x.id} is listed in REGIONS.${x.sealed.region}.entries`);
   }
   for (const m of Object.values(MAPS)) for (const [lx, ly, tx, ty] of m.lore) assert.ok(inView([lx, ly]) && inside(m, tx, ty), `${m.id} lore`);
@@ -228,7 +242,11 @@ test('the reliquary: a pedestal per relic in codex order, Page I on rows 10 and 
   room('keep-gallery', [2, 5], 25, 38);
   room('keep-gallery-2', [2, 5], 39, 52);
   room('keep-gallery-3', [4, 7], 53, 66);
-  assert.equal(byCodex.length, 66);
+  // M7: Page V's nine (No. 000 and Nos. 67-74) have no pedestal; the spec gives the Hearth Below no gallery
+  assert.equal(byCodex.length, 75);
+  const placed = new Set(Object.values(MAPS).flatMap(m => m.entities.filter(e => e.kind === 'pedestal').map(e => e.relic)));
+  assert.deepEqual(byCodex.filter(id => !placed.has(id)), ['fenwicks-poker', 'hollow-wreath', 'hollow-chalice', 'hollow-gauntlet', 'hollow-chain',
+    'tamsins-bargain', 'unmaking-hammer', 'ironvein-apron', 'worldforge-heart']);
 });
 
 test('pack homes are walkable, roamable, off the exits and inside a roam rect', () => {
@@ -390,7 +408,7 @@ for (const starter of Object.keys(STARTERS)) {
 // Everything held: level 20, every relic, every fight won. `brand` adds every Brand so far (the Verdant
 // pair, then, M4.5, the Sunscorch pair, which opens Sandspire's east gate; M5, the Ironspire pair and the
 // flags of the Ironspire's gates; M6, the third council, which opens the fen stair, and the Gloomfen pair, which
-// opens the causeway home) and every duel's yield.
+// opens the causeway home; M7, the fourth council and the fifth, which opens the vault stair) and every duel's yield.
 function allKeys({ brand }) {
   const g = structuredClone(newGame({ name: 'Map', starter: 'hearthbrand', seed: 11 }));
   setLevels(g, 20);
@@ -413,6 +431,8 @@ function allKeys({ brand }) {
     g.progress.brands.push('brand-of-lanterns', 'brand-of-the-deep');
     g.progress.waking = 8;
     Object.assign(f.story, { 'ironspire-complete': true, 'council-3-done': true });
+    // M7: the fourth council ends Act II, and the fifth opens the vault stair down to the Hearth Below
+    Object.assign(f.story, { 'gloomfen-complete': true, 'council-4-done': true, 'council-5-done': true });
   }
   return g;
 }
@@ -454,8 +474,9 @@ test('every hard lock is the only way through to something (a chest, an encounte
 });
 
 // the story flags of Act I's end and after (M5: the second council opens the Keep's east postern, and the
-// monks the Highfold path down to Fawnrest; M6: the third council opens the fen stair)
-const LATER = ['act1-complete', 'sunscorch-complete', 'council-2-done', 'highfold-open', 'ironspire-complete', 'council-3-done'];
+// monks the Highfold path down to Fawnrest; M6: the third council opens the fen stair; M7: the fifth, the vault stair)
+const LATER = ['act1-complete', 'sunscorch-complete', 'council-2-done', 'highfold-open', 'ironspire-complete', 'council-3-done',
+  'gloomfen-complete', 'council-4-done', 'council-5-done'];
 // M6: the Brand of the Deep opens the Keep's south-west gate onto the causeway, and the Gloomfen is a back way into
 // the Wilds (the Murkway climbs the fen stair to Mossfall): before the Act's end neither Gloomfen Brand is held
 const beforeGloomfen = g => { g.progress.brands = g.progress.brands.filter(b => BRANDS[b].region !== 'gloomfen'); };
@@ -1302,6 +1323,272 @@ test('Gloomfen chests: a little silver, gems and materials by real ids, bog ambe
   for (const m of Object.values(MAPS)) for (const e of m.entities) if (e.kind === 'chest' && e.loot.gems?.['bog-amber']) assert.equal(m.region, 'gloomfen', `${m.id}/${e.id}: bog amber only in the Gloomfen`);
   assert.ok(chests.filter(({ e }) => e.loot.materials?.silver).length * 2 >= chests.length, 'most hold a little silver');
   assert.ok(chests.filter(({ e }) => e.loot.gems?.['bog-amber']).length >= 3, 'the fen pays in bog amber');
+});
+
+// ---- M7: the Hearth Below (spec §2, §8) -------------------------------------------------------------------------
+
+const AP = ACT3_PATH;
+const BELOW = MAP_IDS.filter(id => MAPS[id].region === 'below');
+const COUNCIL = ['hollow-miravel', 'hollow-qasim', 'hollow-brundar', 'hollow-gretch'];
+
+// A Gloomfen-complete party (spec §2.2, §8): the M3 to M6 critical paths behind it (all eight Brands, the Waking at 8,
+// every earlier Act's flags and duels), the fourth council sat and the fifth, at level 8 (the worst case the earlier
+// tests allow; nothing says it has levelled since), with only its starter relic. Then the first i ACT3_PATH targets
+// are beaten. `keys` opens every lock whose key the party holds.
+function belowStage(starter, i, { keys = true } = {}) {
+  const g = structuredClone(newGame({ name: 'Map', starter, seed: 11 }));
+  setLevels(g, 8);
+  for (const id of [...CP, ...SP, ...IP, ...GP]) beat(g, id);
+  Object.assign(g.progress.flags.story, { 'council-2-done': true, 'met-wynn': true, 'highfold-open': true, 'council-3-done': true,
+    'toll-paid': true, 'tamsin-fallen': true, 'council-4-done': true, 'council-5-done': true });
+  giveRuneKey(g);
+  for (let j = 0; j < i; j++) beat(g, AP[j]);
+  return keys ? openHeldLocks(g) : g;
+}
+
+test('the Hearth Below opens down the Great Hall\'s vault stair once the fifth council is sat, and not before (spec §2.2, §2.4, A5)', () => {
+  const down = MAPS['keep-hall'].exits.find(x => x.id === 'hall-down');
+  assert.deepEqual(down.area, [21, 8, 22, 8], 'the vault\'s two floor tiles');
+  assert.deepEqual(down.gate, { flag: 'council-5-done' });
+  assert.equal(down.to, 'hollow-hall');
+  assert.equal(down.anchor, 'from-vault');
+  assert.equal(down.sealed.region, 'below');
+  assert.ok(down.sealed.text && down.sealed.hint, 'the vault floor says why it is shut and what opens it');
+  assert.deepEqual(REGIONS.below.entries, ['hall-down']);
+  assert.equal(REGIONS.below.act, 3);
+  assert.deepEqual(REGIONS.below.brands, []);
+  assert.equal(BELOW.length, 4);
+  // every key: all four maps, down the vault stair
+  const all = openHeldLocks(allKeys({ brand: true }));
+  const r = flood(all);
+  assert.ok(r.used.has('hall-down'), 'the fill goes down the vault stair');
+  for (const id of BELOW) assert.ok(mapsOf(r).has(id), `${id} is reachable once the fifth council is sat`);
+  // before the fifth council nothing below can be reached, even with every key
+  const shut = structuredClone(all);
+  delete shut.progress.flags.story['council-5-done'];
+  const seen = mapsOf(flood(shut));
+  for (const id of BELOW) assert.ok(!seen.has(id), `${id} stays sealed before the fifth council, even with every key`);
+  // the vault stair is the only way between the Hearth Below and the rest of the world
+  for (const id of BELOW) {
+    for (const x of MAPS[id].exits) {
+      assert.ok(x.to && (!x.sealed || x.gate), `${id}/${x.id} is a way through`);
+      if (MAPS[x.to].region !== 'below') assert.ok(id === 'hollow-hall' && x.id === 'hh-up' && x.to === 'keep-hall', `${id}/${x.id} leaves the Hearth Below only up the vault stair`);
+    }
+  }
+  const up = anchor('keep-hall', 'from-below');
+  assert.deepEqual([up.x, up.y, up.face], [21, 7, 'w']);
+  assert.ok(cellsOf({ area: down.area }).some(([x, y]) => Math.abs(x - up.x) + Math.abs(y - up.y) === 1), 'the climb back up lands beside the vault stair');
+  // the vault (spec §2.4): the boxes on its back row, soot-sealed after the fourth council and open after the fifth, both
+  // solid; the stair, not solid, on the exit's tiles once the fifth council is sat; the way from the vault door to the
+  // stair, (20,7) to (21,7) to (21,8), stays open; and the fifth council's trigger is guarded by its flags, never once
+  const on = id => MAPS['keep-hall'].entities.find(e => e.id === id);
+  assert.deepEqual(on('vault-boxes').area, [21, 6, 22, 6]);
+  assert.deepEqual(on('vault-boxes').if, { all: [{ flag: 'council-4-done' }, { not: { flag: 'council-5-done' } }] });
+  assert.deepEqual(on('vault-boxes-open').area, [21, 6, 22, 6]);
+  assert.deepEqual(on('vault-boxes-open').if, { flag: 'council-5-done' });
+  assert.ok(on('vault-boxes').solid && on('vault-boxes-open').solid, 'the boxes are solid');
+  assert.deepEqual(on('vault-stair').area, down.area);
+  assert.deepEqual(on('vault-stair').if, { flag: 'council-5-done' });
+  assert.ok(!on('vault-stair').solid, 'the vault stair is not solid');
+  const trig = on('council-5');
+  assert.equal(trig.kind, 'trigger');
+  assert.deepEqual(trig.if, { all: [{ flag: 'council-4-done' }, { not: { flag: 'council-5-done' } }] });
+  assert.ok(!trig.once, 'the fifth council\'s trigger is guarded by its flags, never once');
+  const opening = structuredClone(shut);
+  for (const g of [opening, all]) {
+    for (const [x, y] of [[20, 7], [21, 7], [21, 8], [22, 8]]) assert.ok(canWalk(g, 'keep-hall', x, y), `keep-hall (${x},${y}) is open${g === all ? ' after the fifth council' : ''}`);
+  }
+  assert.ok(present(opening, 'keep-hall').some(e => e.id === 'vault-boxes') && !present(opening, 'keep-hall').some(e => e.id === 'vault-stair'), 'before the fifth council: the sealed boxes, and no stair');
+  assert.ok(present(all, 'keep-hall').some(e => e.id === 'vault-boxes-open') && present(all, 'keep-hall').some(e => e.id === 'vault-stair'), 'after it: the boxes open, and the stair');
+});
+
+test('the stair back (hh-up) is open before the first Council fight, shut from Miravel until Gretch is beaten, and open again after (spec §2.2, A11)', () => {
+  const back = MAPS['hollow-hall'].exits.find(x => x.id === 'hh-up');
+  assert.deepEqual(back.gate, { any: [{ not: { beaten: 'hollow-miravel' } }, { beaten: 'hollow-gretch' }] });
+  assert.equal(back.to, 'keep-hall');
+  assert.equal(back.anchor, 'from-below');
+  assert.equal(`${back.sealed.text} ${back.sealed.hint}`, 'The stair behind you has filled with ash. The Hollow Council sits until the last chair is empty.');
+  const foot = anchor('hollow-hall', 'from-vault');
+  assert.ok(cellsOf({ area: back.area }).some(([x, y]) => Math.abs(x - foot.x) + Math.abs(y - foot.y) === 1), 'the stair\'s foot is beside the way back up');
+  assert.deepEqual(AP.slice(1, 5), COUNCIL, 'the Council, back to back, in the order of their chairs');
+  for (let i = 1; i <= AP.indexOf('hollow-gretch') + 1; i++) {
+    const g = belowStage('hearthbrand', i);
+    const r = flood(g, { from: ['hollow-hall', foot.x, foot.y] });
+    const sitting = i > AP.indexOf('hollow-miravel') && i <= AP.indexOf('hollow-gretch');
+    assert.equal(r.used.has('hh-up'), !sitting, `stage ${i}: the stair back is ${sitting ? 'shut' : 'open'}`);
+    assert.equal(mapsOf(r).has('keep-hall'), !sitting, `stage ${i}: the Great Hall is ${sitting ? 'out of reach' : 'a climb away'}`);
+  }
+});
+
+for (const starter of Object.keys(STARTERS)) {
+  test(`reachability (${starter}): every ACT3_PATH target from a Gloomfen-complete party, with only the starter relic at the worst-case level`, () => {
+    for (let i = 0; i < AP.length; i++) {
+      const g = belowStage(starter, i);
+      const hit = ENTITY_OF[AP[i]];
+      assert.ok(hit, `${AP[i]} is placed`);
+      // the Act begins with a rest at the Eternal Hearth, in the Great Hall; everything after it lies below
+      assert.equal(MAPS[hit.map].region, i === 0 ? 'verdant' : 'below', `${AP[i]} is ${i === 0 ? 'the Keep\'s' : 'in the Hearth Below'}`);
+      const live = present(g, hit.map).find(e => e.id === hit.entity.id);
+      assert.ok(live, `${AP[i]} is present when it is next (stage ${i})`);
+      assert.ok(reaches(flood(g), hit.map, hit.entity), `${AP[i]} (${hit.map}) is reachable at stage ${i} (level 8)`);
+    }
+  });
+}
+
+test('no lock stands on the Act III road or anywhere below: every door on it is a fight or a story flag (spec §2.7)', () => {
+  for (let i = 0; i < AP.length; i++) {
+    const g = belowStage('cairnmaul', i, { keys: false });           // every hard lock shut
+    const hit = ENTITY_OF[AP[i]];
+    assert.ok(reaches(flood(g), hit.map, hit.entity), `${AP[i]} needs no key (stage ${i})`);
+  }
+  for (const id of BELOW) assert.ok(!MAPS[id].entities.some(e => e.kind === 'lock' || e.lock), `${id}: no lock`);
+});
+
+test('world tables: ACT3_PATH is spec §2.2\'s route and Act III has no leads, each target placed once below and reachable', () => {
+  assert.deepEqual([...AP], ['hearthstone-keep', 'hollow-miravel', 'hollow-qasim', 'hollow-brundar', 'hollow-gretch', 'under-coal',
+    'as-thralls', 'cd-unmade', 'chain-fire', 'wf-warden', 'unsmith']);
+  assert.deepEqual(JSON.parse(JSON.stringify(ACT3_LEADS)), {});
+  const placedIn = id => MAPS[ENTITY_OF[id]?.map]?.region;
+  for (const id of AP.slice(1)) {
+    assert.ok(ENCOUNTERS[id] && ENCOUNTERS[id].region === 'below', `${id} is a Hearth Below encounter`);
+    assert.equal(placedIn(id), 'below', `${id} is placed in the Hearth Below`);
+  }
+  for (const id of Object.keys(ENCOUNTERS).filter(k => ENCOUNTERS[k].region === 'below')) assert.equal(placedIn(id), 'below', `${id} sits on a Hearth Below map`);
+  // the road ends at the finale (spec §3.3, A3)
+  assert.equal(AP.at(-1), 'unsmith');
+  assert.equal(ENCOUNTERS.unsmith.finale, true);
+  assert.deepEqual(Object.keys(ENCOUNTERS).filter(k => ENCOUNTERS[k].finale), ['unsmith'], 'one finale');
+  const r = flood(belowStage('hearthbrand', AP.length));
+  for (const id of AP) assert.ok(reaches(r, ENTITY_OF[id].map, ENTITY_OF[id].entity), `${id} is still reachable at the road's end`);
+});
+
+test('every Hearth Below entity is reachable with every key', () => {
+  const r = flood(openHeldLocks(allKeys({ brand: true })));
+  for (const id of BELOW) {
+    for (const e of MAPS[id].entities) {
+      if (['trigger', 'light', 'prop'].includes(e.kind) || (e.kind === 'encounter' && e.if)) continue;
+      assert.ok(reaches(r, id, e), `${id}/${e.id} can be reached`);
+    }
+  }
+});
+
+// What spec §2.3 (with §2.5, §2.6, §3.1, §3.3) puts on each map: its biome and backdrop, its Hearthfires (true = cold), its
+// fights and their modes, and its people. Road-first (A3): every route fight stands still (a block or a lair); only the
+// zone's packs roam. STUB from the M7 scaffold: the biomes and backdrops here are the scaffold's stand-ins; P2 and P5 give
+// the maps the spec's biomes (council, ash, chains and forge), and P6 each map its own backdrop (spec §6.2, §8).
+const ACT3_SPEC = {
+  'hollow-hall': { biome: 'vault', backdrop: 'scorchgate-vaults', fires: {}, fights: { 'hollow-miravel': 'block', 'hollow-qasim': 'block', 'hollow-brundar': 'block', 'hollow-gretch': 'block' }, npcs: [] },
+  'ash-stair': { biome: 'ash', backdrop: 'scorchgate', fires: { 'under-coal': true }, fights: { 'as-thralls': 'block', 'as-patrol': 'pack' }, npcs: [] },
+  'chained-deep': { biome: 'ice-cave', backdrop: 'frostmere-below', fires: { 'chain-fire': false }, fights: { 'cd-unmade': 'block' }, npcs: ['tamsin'] },
+  worldforge: { biome: 'forge', backdrop: 'harrows-forge', fires: {}, fights: { 'wf-warden': 'block', unsmith: 'lair' }, npcs: [] },
+};
+
+test('the Hearth Below maps hold what spec §2.3 puts on them', () => {
+  assert.deepEqual(Object.keys(ACT3_SPEC).sort(), [...BELOW].sort());
+  for (const [id, want] of Object.entries(ACT3_SPEC)) {
+    const m = MAPS[id], of = k => m.entities.filter(e => e.kind === k);
+    assert.equal(m.biome, want.biome, `${id} biome`);
+    assert.equal(m.backdrop, want.backdrop, `${id} backdrop`);
+    assert.ok(m.lore.length >= 1, `${id} has lore for the Atlas`);
+    assert.deepEqual([m.lore[0][0], m.lore[0][1]], REGIONS.below.lore, `${id}'s "you are here" is the Keep's point (spec §2.1)`);
+    assert.ok(m.roads?.length, `${id} declares its roads (spec A3)`);
+    assert.ok(!m.dark && !m.fog, `${id} is neither dark nor foggy: the Act III road needs no light key`);
+    assert.deepEqual(Object.fromEntries(of('hearthfire').map(e => [e.id, !!e.cold])), want.fires, `${id} Hearthfires`);
+    assert.deepEqual(Object.fromEntries(of('encounter').map(e => [e.id, e.mode])), want.fights, `${id} fights`);
+    for (const npc of want.npcs) assert.ok(of('npc').some(e => e.npc === npc), `${id}: ${npc}`);
+  }
+  const on = (map, id) => MAPS[map].entities.find(e => e.id === id);
+  // the sizes (spec §2.1: the painting shapes batch 4 asks for, 3:2 or 2:3)
+  assert.deepEqual(BELOW.map(id => [id, MAPS[id].w, MAPS[id].h]).sort(), [['ash-stair', 24, 36], ['chained-deep', 42, 28], ['hollow-hall', 36, 24], ['worldforge', 36, 24]]);
+  // the music (spec §2.1): the dungeon track, and the boss track at the Worldforge
+  assert.deepEqual(BELOW.map(id => [id, MAPS[id].music]).sort(), [['ash-stair', 'dungeon'], ['chained-deep', 'dungeon'], ['hollow-hall', 'dungeon'], ['worldforge', 'boss']]);
+  // the zone (spec §2.6): the Ash Stair's cinder-thrall packs, rabble, 2 to 3 a pack
+  assert.deepEqual(BELOW.filter(id => MAPS[id].zone).map(id => [id, MAPS[id].zone]), [['ash-stair', 'ash-stair']]);
+  assert.equal(ZONES['ash-stair'].sets, 'ash-stair');
+  for (const set of PATROLS['ash-stair']) {
+    assert.ok(set.length >= 2 && set.length <= 3, 'two to three a pack');
+    for (const sp of set) assert.equal(sp.family, 'cinder-thrall', 'the packs are cinder-thralls');
+  }
+  // the Hollow Hall (spec §2.3): the four gates across the nave, each held by its Council member, who stands beside it
+  // facing the stair; the four chairs; the alms chest
+  COUNCIL.forEach((enc, k) => {
+    const gate = on('hollow-hall', `hh-gate-${k + 1}`);
+    assert.equal(gate.kind, 'gate');
+    assert.deepEqual(gate.open, { beaten: enc });
+    assert.equal(gate.guard, enc);
+    assert.equal(gate.look, 'hollow-gate');
+    const who = on('hollow-hall', enc);
+    assert.equal(who.mode, 'block');
+    assert.equal(who.face, 'w', `${enc} faces the stair`);
+    assert.ok(cellsOf(gate).some(([x, y]) => Math.abs(x - who.at[0]) + Math.abs(y - who.at[1]) === 1), `${enc} stands beside hh-gate-${k + 1}`);
+  });
+  const gx = COUNCIL.map((enc, k) => on('hollow-hall', `hh-gate-${k + 1}`).area[0]);
+  assert.deepEqual([...gx].sort((a, b) => a - b), gx, 'the gates in the order you meet them from the stair');
+  for (const chair of ['hh-chair-verdant', 'hh-chair-sunscorch', 'hh-chair-ironspire', 'hh-chair-gloomfen']) assert.equal(on('hollow-hall', chair)?.kind, 'sign', chair);
+  assert.equal(on('hollow-hall', 'hh-alms')?.kind, 'chest');
+  // the Ash Stair: the Under-Coal (cold) above the narrows, whose gate the cinder-thralls hold; the side ledge's chest
+  assert.deepEqual(on('ash-stair', 'as-ash-gate').open, { beaten: 'as-thralls' });
+  assert.equal(on('ash-stair', 'as-ash-gate').guard, 'as-thralls');
+  assert.ok(on('ash-stair', 'under-coal').at[1] < on('ash-stair', 'as-ash-gate').area[1], 'the Under-Coal is on the first landing, above the narrows');
+  assert.equal(on('ash-stair', 'as-cache')?.kind, 'chest');
+  // the Chained Deep: the chain gate the unmade hold, the Chain Fire past it, the First Sleeper (a large solid prop), the
+  // three chains out, and Tamsin before the forge door until she joins
+  assert.deepEqual(on('chained-deep', 'cd-chain-gate').open, { beaten: 'cd-unmade' });
+  assert.equal(on('chained-deep', 'cd-chain-gate').guard, 'cd-unmade');
+  assert.ok(on('chained-deep', 'chain-fire').at[0] > on('chained-deep', 'cd-chain-gate').area[2], 'the Chain Fire is past the narrows');
+  const sleeper = on('chained-deep', 'sleeper-first');
+  assert.ok(sleeper.kind === 'prop' && sleeper.solid && cellsOf(sleeper).length >= 9, 'the First Sleeper, large and solid');
+  for (const chain of ['cd-chain-lull', 'cd-chain-ash', 'cd-chain-hush']) assert.equal(on('chained-deep', chain)?.kind, 'sign', chain);
+  const tamsin = on('chained-deep', 'cd-tamsin');
+  assert.equal(tamsin.npc, 'tamsin');
+  assert.deepEqual(tamsin.if, { not: { flag: 'tamsin-returned' } });
+  const g = belowStage('hearthbrand', AP.indexOf('chain-fire') + 1);
+  assert.ok(present(g, 'chained-deep').some(e => e.id === 'cd-tamsin'), 'Tamsin waits before the forge door');
+  const joined = structuredClone(g);
+  joined.progress.flags.story['tamsin-returned'] = true;
+  assert.ok(!present(joined, 'chained-deep').some(e => e.id === 'cd-tamsin'), 'she leaves the map once she has joined');
+  // the Worldforge: the bridge gate the forge-warden holds; the Unsmith's lair, 3 by 2 with his foot inside it, the
+  // finale; the heart behind him
+  assert.deepEqual(on('worldforge', 'wf-bridge-gate').open, { beaten: 'wf-warden' });
+  assert.equal(on('worldforge', 'wf-bridge-gate').guard, 'wf-warden');
+  const lair = on('worldforge', 'unsmith');
+  const [x0, y0, x1, y1] = lair.area;
+  assert.deepEqual([x1 - x0 + 1, y1 - y0 + 1], [3, 2], 'the Unsmith\'s footprint');
+  assert.ok(covers(lair, lair.at[0], lair.at[1]), 'his sprite\'s foot is inside it');
+  assert.equal(on('worldforge', 'wf-heart')?.kind, 'sign');
+  assert.ok(on('worldforge', 'wf-heart').at[0] > x1, 'the heart is behind him');
+  // the chests pay no relic, in real materials and gems
+  for (const id of BELOW) {
+    for (const e of MAPS[id].entities.filter(x => x.kind === 'chest')) {
+      for (const [k, n] of Object.entries(e.loot.materials || {})) assert.ok(MATERIALS[k] && n >= 1, `${id}/${e.id}: ${k} x${n}`);
+      for (const [k, n] of Object.entries(e.loot.gems || {})) assert.ok(GEMS[k] && n >= 1, `${id}/${e.id}: ${k} x${n}`);
+      assert.ok(!e.loot.relic && (e.loot.items || []).every(it => !it.base || !RELICS[it.base]), `${e.id}: no chest duplicates a relic`);
+    }
+  }
+});
+
+// Spec §2.2's table of roads (A3): each road from its anchor to its exit (or up to its fight), with its gates in the
+// order you meet them, named by their guards.
+const ACT3_ROADS = [
+  ['hollow-hall', 'from-vault', 'hh-down', ['hollow-miravel', 'hollow-qasim', 'hollow-brundar', 'hollow-gretch']],
+  ['ash-stair', 'from-hall', 'as-down', ['as-thralls']],
+  ['chained-deep', 'from-stair', 'cd-forge', ['cd-unmade']],
+  ['worldforge', 'from-deep', 'unsmith', ['wf-warden']],
+];
+
+test('the Hearth Below roads are spec §2.2\'s, gate by gate, and every gate below stands on one of them', () => {
+  for (const [id, from, to, guards] of ACT3_ROADS) {
+    const m = MAPS[id];
+    const road = (m.roads || []).find(r => r.from === from && r.to === to);
+    assert.ok(road, `${id}: a road from ${from} to ${to}`);
+    const named = road.gates.map(g => { const e = m.entities.find(x => x.id === g); return e?.guard || e?.id; });
+    assert.deepEqual(named, guards, `${id}: ${from} -> ${to} passes ${guards.join(', ') || 'no gate'}, in that order`);
+  }
+  for (const id of BELOW) {
+    for (const e of MAPS[id].entities.filter(x => x.kind === 'gate')) {
+      assert.ok((MAPS[id].roads || []).some(r => r.gates.includes(e.id)), `${id}/${e.id} holds one of ${id}'s roads`);
+    }
+  }
 });
 
 test('every gated exit carries its sealed text: the rules shut only a sealed exit, so a gate alone would stand open', () => {

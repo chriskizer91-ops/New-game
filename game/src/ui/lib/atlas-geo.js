@@ -2,7 +2,7 @@
 // (test/shell.test.mjs). Coordinates are the illustrated map's viewBox (1200x800, the same 3:2 aspect
 // as the image).
 //
-//   VIEWS                      { wilds, sunscorch, ironspire, gloomfen, realm }: the crop each Atlas view shows, { x, y, w, h }
+//   VIEWS                      { wilds, sunscorch, ironspire, gloomfen, below, realm }: the crop each Atlas view shows, { x, y, w, h }
 //                              (every view is 3:2, like the frame). M6: the Gloomfen's is framed from its data
 //                              (framed(region): every one of its maps' lore and its Hearthfires, with a margin), so
 //                              it holds the four places and the long way down from Mossfall's fen stair to the Flats
@@ -55,9 +55,12 @@ export const VIEWS = Object.freeze({
   ironspire: Object.freeze({ x: 520, y: 60, w: 600, h: 400 }),
   // M6: the Gloomfen, from Mossfall's fen stair down to the Tidal Flats, framed from its data
   gloomfen: framed('gloomfen') || Object.freeze({ x: 0, y: 280, w: 726, h: 484 }),
+  // M7: the Hearth Below lies under the Keep, so its view is the Keep's island (STUB from the M7 scaffold: P7 draws
+  // its "Below the Keep" marker, spec §5)
+  below: Object.freeze({ x: 390, y: 290, w: 300, h: 200 }),
   realm: Object.freeze({ x: 0, y: 0, w: 1200, h: 800 }),
 });
-export const REGION_VIEW = Object.freeze({ verdant: 'wilds', sunscorch: 'sunscorch', ironspire: 'ironspire', gloomfen: 'gloomfen' });
+export const REGION_VIEW = Object.freeze({ verdant: 'wilds', sunscorch: 'sunscorch', ironspire: 'ironspire', gloomfen: 'gloomfen', below: 'below' });
 
 // exit id -> exit, over every map (a region's `entries` name exits)
 const EXIT = {};

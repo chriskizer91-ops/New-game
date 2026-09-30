@@ -11,11 +11,12 @@ import path from 'node:path';
 import { migrate } from '../src/rules/migrate.js';
 import { newGame } from '../src/rules/gauntlet.js';
 import { MAPS, MAP_IDS, ENTITY_OF } from '../src/data/maps/index.js';
-import { HEARTHS } from '../src/data/world.js';
+import { HEARTHS, REGIONS } from '../src/data/world.js';
 import { RELICS } from '../src/data/relics.js';
 import { QUESTS } from '../src/data/quests.js';
 import { DIALOGUE } from '../src/data/dialogue.js';
 import { carryFacts, saveLine, inSentence, RELIC_TOTAL } from '../src/ui/lib/carry-facts.js';
+import { codexNo } from '../src/ui/lib/items.js';
 import { VIEWS, REGION_VIEW, regionOpen, placeOf, loreAt, entityLore, toFrame, relax, RELIC_SITE } from '../src/ui/lib/atlas-geo.js';
 import { TRACK_NAMES, badNotes } from '../src/core/audio.js';
 import { binderPage, defaultPage, RIDDLES, HOLDER } from '../src/ui/screens/codex.js';
@@ -33,13 +34,13 @@ import { createRng } from '../src/core/rng.js';
 const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures/v1');
 const fixtures = readdirSync(dir).filter(f => f.endsWith('.json')).map(f => [f, JSON.parse(readFileSync(path.join(dir, f), 'utf8'))]);
 
-test('the carry-over card has the party, the relics out of 66, and a real place to wake for every M2 fixture', () => {
-  assert.equal(RELIC_TOTAL, 66);
+test('the carry-over card has the party, the relics out of 74 (M7: the highest Codex number), and a real place to wake for every M2 fixture', () => {
+  assert.equal(RELIC_TOTAL, 74);
   for (const [name, v1] of fixtures) {
     const g = migrate(v1);
     const F = carryFacts(g);
     assert.equal(F.heroes.length, 4, name);
-    assert.equal(F.total, 66, name);
+    assert.equal(F.total, 74, name);
     assert.equal(F.gold, v1.gold, name);
     assert.equal(F.waking, v1.progress.waking, name);
     assert.equal(F.place, MAPS[g.progress.pos.map].name, name);
@@ -53,8 +54,8 @@ test('the carry-over card has the party, the relics out of 66, and a real place 
 
 test('the title Continue line reads name · place · day · level · relics', () => {
   const g = newGame({ name: 'Wren', starter: 'hearthbrand', seed: 7 });
-  assert.match(saveLine(g), /^Wren · The Great Hall · Day 1 · Lv 1 · 1\/66 relics$/);
-  for (const [name, v1] of fixtures) assert.match(saveLine(migrate(v1)), /^.+ · .+ · Day \d+ · Lv \d+ · \d+\/66 relics$/, name);
+  assert.match(saveLine(g), /^Wren · The Great Hall · Day 1 · Lv 1 · 1\/74 relics$/);
+  for (const [name, v1] of fixtures) assert.match(saveLine(migrate(v1)), /^.+ · .+ · Day \d+ · Lv \d+ · \d+\/74 relics$/, name);
 });
 
 test('you-are-here projects onto each route between its lore ends, and points stay put', () => {
@@ -117,13 +118,17 @@ test('M4 Atlas: each open region has a view that frames its maps and fires; the 
   for (const id of MAP_IDS) assert.ok(typeof placeOf(id) === 'string' && placeOf(id).length > 2, `${id} has a place name`);
 });
 
-test('Atlas markers never overlap: each region\'s Hearthfires in its own view (M5: the Ironspire\'s too) and all of them in the realm view, on a phone and a laptop', () => {
+test('Atlas markers never overlap: each region\'s Hearthfires in its own view (M5: the Ironspire\'s too; M7: the Hearth Below\'s) and all of the painting\'s in the realm view, on a phone and a laptop', () => {
   const inRegion = region => Object.values(HEARTHS).filter(h => MAPS[h.map].region === region);
-  const VIEW_FIRES = { wilds: inRegion('verdant'), sunscorch: inRegion('sunscorch'), ironspire: inRegion('ironspire'), realm: Object.values(HEARTHS) };
+  // M7: the Hearth Below lies under the Keep, so the realm view leaves its fires to the Below view (ui/screens/atlas.js)
+  const VIEW_FIRES = { wilds: inRegion('verdant'), sunscorch: inRegion('sunscorch'), ironspire: inRegion('ironspire'), below: inRegion('below'),
+    realm: Object.values(HEARTHS).filter(h => REGIONS[MAPS[h.map].region].act !== 3) };
   assert.equal(VIEW_FIRES.sunscorch.length, 7, 'the Sunscorch view has the seven Sunscorch fires');
   assert.equal(VIEW_FIRES.ironspire.length, 8, 'M5: the Ironspire view has the eight Ironspire fires (the East Road\'s Last Camp among them)');
+  assert.equal(VIEW_FIRES.below.length, 2, 'M7: the Below view has the Hearth Below\'s two fires');
+  assert.equal(VIEW_FIRES.realm.length, 33, 'M7: the realm view has the 33 fires on the painting');
   for (const [W, H] of [[318, 212], [866, 577]]) {
-    for (const view of ['wilds', 'sunscorch', 'ironspire', 'realm']) {
+    for (const view of ['wilds', 'sunscorch', 'ironspire', 'below', 'realm']) {
       const run = () => relax(VIEW_FIRES[view].map(h => { const [x0, y0] = toFrame(VIEWS[view], h.lore, W, H); return { x0, y0 }; }), { W, H, r: 22 });
       const nodes = run();
       for (const n of nodes) assert.ok(n.x >= 22 && n.x <= W - 22 && n.y >= 22 && n.y <= H - 22, `${view} ${W}: inside the frame`);
@@ -168,7 +173,7 @@ test('every map\'s music names a real track (M4: the Sunscorch roads play the de
   assert.ok(MAP_IDS.some(id => MAPS[id].music === 'peaks'), 'M5: the peaks track is used');
 });
 
-test('the Codex binder: Page I counts your starter and the other 21, Pages II, III and IV all 14', () => {
+test('the Codex binder: Page I counts your starter and the other 21, Pages II, III and IV all 14, Page V (M7) its nine', () => {
   for (const id of Object.keys(RELICS)) {
     assert.ok(RIDDLES[id], `${id} has a riddle for its unsighted pocket`);
     assert.ok(HOLDER[id], `${id} has a holder line for its sighted pocket`);
@@ -194,6 +199,15 @@ test('the Codex binder: Page I counts your starter and the other 21, Pages II, I
   assert.equal(IV.relics.length, 14);
   assert.deepEqual([IV.progress.claimed, IV.progress.needed], [0, 14]);
   assert.equal(IV.reward.name, 'The Gloomfen Covenant');
+  // M7: Page V lists its nine, No. 000 first (spec §4.6), every one needed; the label counts to the highest number
+  const V = binderPage(g, 'below');
+  assert.equal(V.sealed, false);
+  assert.deepEqual(V.relics.map(x => x.codex), [0, 67, 68, 69, 70, 71, 72, 73, 74]);
+  assert.deepEqual([V.progress.claimed, V.progress.needed], [0, 9]);
+  assert.equal(V.reward.name, 'The Hearthkeeper\'s Oath');
+  assert.equal(codexNo(RELICS['fenwicks-poker']), 'No. 000 / 074');
+  assert.equal(codexNo(RELICS['hollow-wreath']), 'No. 067 / 074');
+  assert.equal(codexNo(RELICS.hearthbrand), 'No. 001 / 074');
   assert.ok(PAGES.every(p => !binderPage(g, p.id).sealed), 'no page is sealed');
   // a forced full claim: the reward is earned (and dated once markPages records the day)
   const g2 = structuredClone(g);
@@ -207,6 +221,7 @@ test('the Codex binder: Page I counts your starter and the other 21, Pages II, I
   // the binder opens on the page of the region the party stands in
   assert.equal(defaultPage(g), 'verdant');
   assert.equal(defaultPage({ ...g2, progress: { ...g2.progress, pos: { map: 'sandspire', x: 15, y: 13, face: 'n' } } }), 'sunscorch');
+  assert.equal(defaultPage({ ...g2, progress: { ...g2.progress, pos: { map: 'hollow-hall', x: 2, y: 22, face: 'n' } } }), 'below');
 });
 
 test('the Journal\'s Grudges: an M2 save\'s Grudge reads, the settled ones carry their day, and junk never throws', () => {

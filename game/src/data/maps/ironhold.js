@@ -55,7 +55,10 @@ export default deepFreeze({
   entities: [
     { id: 'thanes-hearth', kind: 'hearthfire', at: [15, 5], stand: [15, 6, 'n'] },
     { id: 'ih-throne', kind: 'sign', at: [19, 5], look: 'throne', text: 'The Thane\'s chair: one block of black granite, worn smooth by nine Thanes. The cushion on it is new, and has not been sat on much.' },
-    { id: 'brundar', kind: 'npc', npc: 'brundar', at: [19, 6], face: 's' },
+    { id: 'brundar', kind: 'npc', npc: 'brundar', at: [19, 6], face: 's', if: { not: { flag: 'council-5-done' } } },
+    // M7 (spec §3.1): Brundar goes down with the Hollow Council at the fifth council, and comes home freed, to stand
+    // beside where he stood
+    { id: 'brundar-freed', kind: 'npc', npc: 'brundar', at: [20, 6], face: 's', if: { beaten: 'hollow-brundar' } },
     { id: 'durra', kind: 'npc', npc: 'durra', at: [3, 15], face: 'e' },
     { id: 'ih-guard', kind: 'npc', npc: 'ih-guard', at: [26, 12], face: 's' },
     { id: 'ih-board', kind: 'board', at: [12, 22], opens: 'bounties' },

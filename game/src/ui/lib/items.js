@@ -42,7 +42,9 @@ const ARMOR_WORD = { none: 'Cloth', hide: 'Hide armour', mail: 'Mail armour', pl
 
 export const isRelic = item => !!RELICS[item?.base];
 export const relicOf = item => RELICS[item?.base] || null;
-export const RELIC_TOTAL = Object.keys(RELICS).length;
+// M7 (spec §4.6): the label's total is the highest Codex number, not the count ("No. 000 / 074": Page V starts at
+// No. 000, so there is one more relic than the last number says)
+export const RELIC_TOTAL = Math.max(...Object.values(RELICS).map(r => r.codex));
 const pad3 = n => String(n).padStart(3, '0');
 export const codexNo = relic => `No. ${pad3(relic.codex)} / ${pad3(RELIC_TOTAL)}`;
 

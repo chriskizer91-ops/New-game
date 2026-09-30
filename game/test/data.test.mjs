@@ -58,17 +58,24 @@ test('every shared item kind has at least one base item', () => {
   for (const c of ['hearth-tonic', 'ember-salts', 'frost-draught']) assert.ok(CONSUMABLES[c]);
 });
 
-test('the twelve M2 relics match the shared vocabulary; M3 adds twelve heirlooms (codex 13-24), M4 fourteen more (25-38), M5 fourteen more (39-52), M6 fourteen more (53-66)', () => {
+test('the twelve M2 relics match the shared vocabulary; M3 adds twelve heirlooms (codex 13-24), M4 fourteen more (25-38), M5 fourteen more (39-52), M6 fourteen more (53-66), M7 Page V\'s nine (No. 000 and 67-74)', () => {
   for (const id of Object.keys(RELIC_TABLE)) assert.ok(RELICS[id], id);
-  assert.equal(Object.keys(RELICS).length, 66);
-  assert.deepEqual(Object.values(RELICS).map(r => r.codex).sort((a, b) => a - b), Array.from({ length: 66 }, (_, i) => i + 1));
+  assert.equal(Object.keys(RELICS).length, 75);
+  assert.deepEqual(Object.values(RELICS).map(r => r.codex).sort((a, b) => a - b), Array.from({ length: 75 }, (_, i) => i));
   for (const r of Object.values(RELICS).filter(r => r.codex > 12 && r.codex <= 24)) {
     assert.equal(r.rarity, 'heirloom', r.id);
     assert.ok(r.power && r.mapPower, `${r.id} has a power and a map power`);
   }
-  // M4 (spec §3.4): every Sunscorch relic is an heirloom with a signature power and a map power
-  for (const r of Object.values(RELICS).filter(r => r.codex > 24)) {
+  // M4 (spec §3.4): every Sunscorch relic is an heirloom with a signature power and a map power (M5's and M6's too)
+  for (const r of Object.values(RELICS).filter(r => r.codex > 24 && r.codex <= 66)) {
     assert.equal(r.rarity, 'heirloom', r.id);
+    assert.ok(r.power && r.mapPower, `${r.id} has a power and a map power`);
+  }
+  // M7 (spec §3.4): Page V's No. 000 and the Worldforge Heart are primal, the rest regalia; each has both powers
+  const PAGE_V = Object.values(RELICS).filter(r => r.codex === 0 || r.codex > 66);
+  assert.deepEqual(PAGE_V.map(r => r.codex).sort((a, b) => a - b), [0, 67, 68, 69, 70, 71, 72, 73, 74]);
+  for (const r of PAGE_V) {
+    assert.equal(r.rarity, ['fenwicks-poker', 'worldforge-heart'].includes(r.id) ? 'primal' : 'regalia', r.id);
     assert.ok(r.power && r.mapPower, `${r.id} has a power and a map power`);
   }
   for (const [id, [kind, aspect]] of Object.entries(RELIC_TABLE)) {
@@ -148,13 +155,13 @@ test('data tables are frozen', () => {
 
 // ---- M3 data (spec §3.2-§3.5, §6.1 WP4) ----------------------------------------------------------------
 
-test('M3, M4, M5 and M6 encounters: every one has a region, a valid backdrop, real families and real relics', async () => {
+test('M3, M4, M5, M6 and M7 encounters: every one has a region, a valid backdrop, real families and real relics', async () => {
   const { BRANDS, PATROLS } = await import('../src/data/encounters.js');
   const { REGIONS } = await import('../src/data/world.js');
   const { familyOf } = await import('../src/rules/foe.js');
   for (const [id, n] of Object.entries(ENCOUNTERS)) {
     assert.ok(BACKDROPS.includes(n.backdrop), `${id} backdrop`);
-    if (!GAUNTLET.includes(id)) assert.ok(['verdant', 'sunscorch', 'ironspire', 'gloomfen'].includes(n.region), `${id} region`);
+    if (!GAUNTLET.includes(id)) assert.ok(['verdant', 'sunscorch', 'ironspire', 'gloomfen', 'below'].includes(n.region), `${id} region`);
     for (const s of n.spawns || []) {
       if (s.variant && !s.variant.startsWith('$rival')) assert.ok(FOES[s.family].variants?.[s.variant], `${id}: ${s.family}/${s.variant}`); // '$rival' or '$rival:<duel>' (M5)
       for (const r of [s.relic, s.wears]) if (r && r !== '$rival') assert.ok(RELICS[r], `${id}: relic ${r}`);
@@ -339,7 +346,7 @@ test('M4 relics: Codex Nos. 25-38 follow the spec table, each with a signature p
   assert.equal(c.lore, 'Forged in Scorchgate to kill the dragon that burned it. It failed. It has been warm ever since.');
 });
 
-test('M4, M5 and M6 relics: all 66 carry sockets (0-2), three deeds from DEED_IDS and two awakening branches with names and stats', async () => {
+test('M4, M5, M6 and M7 relics: all 75 carry sockets (0-2), three deeds from DEED_IDS and two awakening branches with names and stats', async () => {
   const { DEED_IDS } = await import('../src/data/deeds.js');
   const { POWERS, branchPowerId } = await import('../src/rules/stats.js');
   const STAT_KEYS = new Set([...Object.values(AFFIXES).map(a => a.stat), 'resist', 'STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA']);
@@ -379,7 +386,9 @@ test('M4, M5 and M6 relics: all 66 carry sockets (0-2), three deeds from DEED_ID
     }
   }
   for (const s of statusRefs) assert.ok(STATUSES[s], s);
-  assert.equal(names.size, 132); // two named branches for each of the 66 relics
+  assert.equal(names.size, 150); // two named branches for each of the 75 relics
+  // M7 (spec §3.4): no Page V relic asks for the Branded deed (no Brand is left to win, M6 review B2)
+  for (const r of Object.values(RELICS).filter(r => r.codex === 0 || r.codex > 66)) assert.ok(!r.deeds.includes('brand'), `${r.id} asks for no Brand`);
   // starters and Champion pieces carry two sockets; a key ring with no key has none
   for (const id of HAND_NAMED) assert.equal(RELICS[id].sockets, 2, id);
   assert.equal(RELICS['scorchgate-key'].sockets, 0);
@@ -458,8 +467,11 @@ const movesWith = (moves, pred) => Object.values(moves).filter(m => m.effects.so
 
 test('M5 foes: the Ironspire families are real (no scaffold stubs left), with the spec\'s tiers, kinds, aspects and their own art', async () => {
   const { damageMult } = await import('../src/rules/combat.js');
-  // M6 (spec §8): no stand-in family is left, the Gloomfen's ten included
-  assert.ok(Object.values(FOES).every(f => !f.stub), 'no stub family is left (M6 spec §8)');
+  // M6 (spec §8): no stand-in family is left, the Gloomfen's ten included. STUB from the M7 scaffold: the Hearth Below's
+  // eight families are the scaffold's stand-ins until M7 P4 writes them (M7 spec §7); every other family is real. P4
+  // removes this list, so the check covers every family again at M7's delivery (M7 spec §8).
+  const M7_STUBS = ['cinder-thrall', 'unmade', 'forge-warden', 'hollow-miravel', 'hollow-qasim', 'hollow-brundar', 'hollow-gretch', 'unsmith'];
+  assert.ok(Object.values(FOES).every(f => !f.stub || M7_STUBS.includes(f.id)), 'no stub family is left but the M7 scaffold\'s (M6 spec §8)');
   for (const [id, [tier, kind, aspect]] of Object.entries(IRON_FAMILIES)) {
     const f = FOES[id];
     assert.ok(f, id);

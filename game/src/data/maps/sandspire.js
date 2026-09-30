@@ -53,7 +53,10 @@ export default deepFreeze({
     { id: 'zara', kind: 'npc', npc: 'zara', at: [6, 5], face: 's' },
     { id: 'crate-cradle', kind: 'sign', at: [9, 5], look: 'cradle', if: { not: { flag: 'crate-returned' } }, text: 'An empty cradle of rope and straw, the shape of a crate. The straw is scorched in rings, as if something in it hummed.' },
     { id: 'crate-cradle-full', kind: 'sign', at: [9, 5], look: 'cradle-full', if: { flag: 'crate-returned' }, text: 'The crate is back in its cradle, empty and quiet now. Zara has hung a water-skin over it, for luck.' },
-    { id: 'qasim', kind: 'npc', npc: 'qasim', at: [24, 7], face: 's' },
+    { id: 'qasim', kind: 'npc', npc: 'qasim', at: [24, 7], face: 's', if: { not: { flag: 'council-5-done' } } },
+    // M7 (spec §3.1): Qasim goes down with the Hollow Council at the fifth council, and comes home freed, to stand
+    // beside where he stood
+    { id: 'qasim-freed', kind: 'npc', npc: 'qasim', at: [25, 7], face: 's', if: { beaten: 'hollow-qasim' } },
     { id: 'ss-cistern', kind: 'lock', lock: 'barred-gate', at: [19, 7] },
     { id: 'ss-cistern-cache', kind: 'chest', at: [20, 5], loot: { gold: 120, gems: { 'glass-pearl': 1 }, materials: { silver: 1 } } },
     { id: 'ss-board', kind: 'board', at: [12, 10], opens: 'bounties' },

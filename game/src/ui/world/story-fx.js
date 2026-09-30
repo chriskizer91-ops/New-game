@@ -240,8 +240,9 @@ export function chapterEnd(game, act = 'act1') {
     return ['Pages', `${done}/${open.length}`];
   };
   const open = r => { try { return !!game && regionOpen(game, r.id); } catch { return false; } };
-  // what comes next: the regions of the act still ahead, open now (their road stands open) or later
-  const ahead = (done = []) => Object.values(REGIONS).filter(r => r.act >= 2 && !done.includes(r.id));
+  // what comes next: the regions of the act still ahead, open now (their road stands open) or later. M7: only Act II's
+  // (the Hearth Below is Act III's, and the fourth council's card names it on its own, spec §2.1)
+  const ahead = (done = []) => Object.values(REGIONS).filter(r => r.act === 2 && !done.includes(r.id));
   const say = (regions, { full = false } = {}) => {
     const now = regions.filter(r => r.open && open(r) && ROAD_OPEN[r.id]);
     const later = regions.filter(r => !now.includes(r));
