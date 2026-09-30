@@ -1,0 +1,13 @@
+{
+  "name": "thareia-demo-2",
+  "private": true,
+  "type": "module",
+  "description": "Thareia demo 2: the 16 x 24 party in a painted town square, and the real battles in front of a painted backdrop.",
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "assets": "node tools/prep-assets.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}
