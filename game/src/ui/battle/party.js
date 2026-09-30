@@ -6,10 +6,18 @@
 // M6 (spec §4.2, §5): a hexed or rotting hero's card says so ("Hexed", "Rotting": .bt-hero.hexed, .rotting),
 // and the new holds leave their own marks where the hero stood: "Led away" (the Lantern Mother: black water, and
 // a lamp going away over it), "In the river" (Hodge's shove: ripples), "Swallowed whole" (the Leviathan: bubbles).
-import { HeroSprite, heroGear, heroCustom } from './sprites.js';
-import { el, clamp } from './util.js';
+// M7 (spec §4.3, §5): a guest (Tamsin against the Unsmith) stands in the row after the heroes, in her foe art turned
+// to face the foes, with a narrower card of her own (.bt-hero.bt-guest: her name, HP and the move she will make next,
+// no MP and no Legend Surge). Her card is a button (44 px) for her details, and a target for the heroes' heals; she
+// takes no command. The columns are measured from the cards, so the figures stand over them at any width.
+import { HeroSprite, FoeSprite, heroGear, heroCustom } from './sprites.js';
+import { el, clamp, pixelIcon } from './util.js';
 import { statusChip } from './hud.js';
-import { holdInfo, isCharmed, afflictions, rotStacks, statusWords } from './model.js';
+import { holdInfo, isCharmed, afflictions, rotStacks, statusWords, dieText } from './model.js';
+import { diceIcon, INTENT_DIE } from '../../art/icons.js';
+import { tierAs } from '../../data/foes.js';
+
+const GUEST_COL = 0.8; // a guest's column, against a hero's
 
 const STRIP_H = 54; // logical px
 const FEET = 51;
@@ -27,15 +35,21 @@ const HOLE_PLAIN = { rim: '#c9b8a0' };
 const holeLook = how => (HOLE_LOOK.find(([re]) => re.test(how)) || [null, HOLE_PLAIN])[1];
 
 export class Party {
-  constructor(host, heroes, { game, reduced, onTap, nameOf = () => '' }) {
+  constructor(host, heroes, { game, reduced, onTap, nameOf = () => '', guests = [] }) {
     this.host = host;
     this.reduced = reduced;
     this.nameOf = nameOf;
     this.speed = 1;
-    this.ids = heroes.map(h => h.id);
+    this.ids = [...heroes, ...guests].map(h => h.id);
+    this.guestIds = guests.map(g => g.id);
     this.v = new Map();
     this.canvas = el('canvas.bt-party-cv.px', { 'aria-hidden': 'true' });
     this.row = el('div.bt-heroes');
+    // M7: a guest's narrower column after the heroes' (inline: a grid cannot repeat a count of none)
+    if (guests.length) {
+      this.row.classList.add('has-guest');
+      this.row.style.gridTemplateColumns = `repeat(${heroes.length}, minmax(0, 1fr)) repeat(${guests.length}, minmax(0, ${GUEST_COL}fr))`;
+    }
     host.append(this.canvas, this.row);
     this.floor = document.createElement('canvas');
     for (const h of heroes) {
@@ -69,25 +83,67 @@ export class Party {
         shakeUntil: 0, tint: null, flashUntil: 0, attackAt: 0, statusKey: '', tagKey: '', out: false, outAt: 0,
       });
     }
+    for (const g of guests) this.addGuest(g, onTap);
     this.s = 2;
     this.lw = 200;
+    this.cols = null;
     this.actorId = null;
+  }
+
+  // M7: a guest's card and figure (her foe art, turned to face the foes as the heroes do)
+  addGuest(u, onTap) {
+    const sprite = new FoeSprite(u, this.reduced, { flip: true });
+    const card = el('button.bt-hero.bt-guest', { type: 'button', 'data-id': u.id, 'data-guest': '' });
+    const name = el('span.bt-hero-name', { text: u.label || u.name });
+    const hpCur = el('b');
+    const hpMax = el('span.max');
+    const hpNum = el('span.bt-num.hp', null, hpCur, hpMax);
+    const hp = el('span.bt-bar.hp', null, el('i.lag'), el('i.fill'));
+    const die = el('span.bt-guest-die', { 'aria-hidden': 'true' });
+    const move = el('span.bt-guest-mv');
+    const intent = el('span.bt-hero-line.sub.bt-guest-int', null, die, move);
+    const st = el('span.bt-hero-st');
+    const tag = el('span.bt-hero-tag');
+    const holdK = el('b.bt-hold-k'), holdBy = el('span.bt-hold-by'), holdT = el('span.bt-hold-t');
+    const hold = el('span.bt-hero-hold', { hidden: true }, holdK, holdBy, holdT);
+    card.append(
+      el('span.bt-hero-space', null, st, tag, hold),
+      el('span.bt-hero-info', null,
+        el('span.bt-hero-line', null, name),
+        el('span.bt-hero-line.sub', null, hp, hpNum),
+        intent),
+    );
+    card.addEventListener('click', () => onTap && onTap(u.id));
+    this.row.append(card);
+    this.v.set(u.id, {
+      id: u.id, guest: true, sprite, card, hp, hpCur, hpMax, st, tag, name, hold, holdK, holdBy, holdT, die, move, intentKey: '', dieTimer: 0,
+      pose: u.ko ? 'ko' : 'idle', base: u.ko ? 'ko' : 'idle', poseUntil: 0, hopAt: 0, hopDur: 0,
+      shakeUntil: 0, tint: null, flashUntil: 0, attackAt: 0, statusKey: '', tagKey: '', out: false, outAt: 0,
+    });
   }
 
   layout() {
     const r = this.host.getBoundingClientRect();
     const cssW = Math.max(200, Math.round(r.width));
-    const colW = cssW / this.ids.length;
+    const nh = this.ids.length - this.guestIds.length, ng = this.guestIds.length;
+    const colW = cssW / (nh + ng * GUEST_COL);
     this.s = colW >= 150 ? 3 : 2;
     const s = this.s;
     this.lw = Math.ceil(cssW / s);
     this.lh = STRIP_H;
     this.canvas.width = this.lw;
     this.canvas.height = this.lh;
-    Object.assign(this.canvas.style, { width: `${this.lw * s}px`, height: `${this.lh * s}px`, left: `${Math.floor((cssW - this.lw * s) / 2)}px` });
+    const left = Math.floor((cssW - this.lw * s) / 2);
+    Object.assign(this.canvas.style, { width: `${this.lw * s}px`, height: `${this.lh * s}px`, left: `${left}px` });
     this.host.style.setProperty('--strip-h', `${this.lh * s}px`);
     this.ctx = this.canvas.getContext('2d');
     this.ctx.imageSmoothingEnabled = false;
+    // M7: with a guest the columns are not even: each figure stands over the middle of its own card
+    this.cols = null;
+    if (ng) {
+      const cols = this.ids.map(id => { const c = this.v.get(id).card.getBoundingClientRect(); return (c.left + c.width / 2 - r.left - left) / s; });
+      if (cols.every(Number.isFinite) && cols.some(x => x > 0)) this.cols = cols;
+    }
     this.paintFloor();
   }
 
@@ -112,7 +168,7 @@ export class Party {
     g.fillRect(0, top + 1, w, 1);
   }
 
-  colX(i) { return (i + 0.5) * this.lw / this.ids.length; }
+  colX(i) { return this.cols?.[i] ?? (i + 0.5) * this.lw / this.ids.length; }
 
   // centre of a hero's figure in CSS px relative to the party host
   geom(id) {
@@ -127,6 +183,7 @@ export class Party {
   update(u) {
     const v = this.v.get(u.id);
     if (!v) return;
+    if (v.guest) { this.updateGuest(u, v); return; }
     const hpPct = clamp(u.hp / u.maxHp, 0, 1) * 100;
     v.hp.style.setProperty('--pct', `${hpPct}%`);
     v.hp.classList.toggle('low', hpPct <= 30);
@@ -170,6 +227,67 @@ export class Party {
     const base = u.ko ? 'ko' : guarding ? 'guard' : 'idle';
     if (v.base !== base) { v.base = base; if (!v.poseUntil) v.pose = base; }
   }
+  // M7: the guest's card: her HP, her statuses, the move she makes next (the engine plays her), and a word over her
+  // figure ("Guest"; KO when she is down). The screen reader hears that she fights beside you and takes no command.
+  updateGuest(u, v) {
+    v.sprite.setUnit(u);
+    const hpPct = clamp(u.hp / u.maxHp, 0, 1) * 100;
+    v.hp.style.setProperty('--pct', `${hpPct}%`);
+    v.hp.classList.toggle('low', hpPct <= 30);
+    v.hpCur.textContent = `${u.hp}`;
+    v.hpMax.textContent = `/${u.maxHp}`;
+    v.card.classList.toggle('ko', !!u.ko);
+    const held = u.ko ? null : holdInfo(u, id => shortFoe(this.nameOf(id)));
+    const charmed = !u.ko && isCharmed(u);
+    v.card.classList.toggle('held', !!held);
+    v.card.classList.toggle('charmed', charmed);
+    v.hold.hidden = !held;
+    if (held) {
+      v.holdK.textContent = held.label;
+      v.holdBy.textContent = held.by ? `by ${held.by}` : '';
+      v.holdT.textContent = held.turns ? `${held.turns} ${held.turns === 1 ? 'turn' : 'turns'} left` : '';
+      v.card.dataset.hold = held.label;
+    } else delete v.card.dataset.hold;
+    if (!!held !== v.out) { v.out = !!held; v.outAt = this.now(); }
+    const words = u.ko ? [['ko', 'KO']] : [charmed ? ['charmed', 'Charmed'] : ['guest', 'Guest'], ...afflictions(u).map(w => [w.toLowerCase(), w])];
+    const tagKey = words.map(w => w[1]).join('|');
+    if (tagKey !== v.tagKey) { v.tagKey = tagKey; v.tag.replaceChildren(...words.map(([k, w]) => el('b.bt-tag-w', { 'data-k': k, text: w }))); }
+    const key = u.statuses.map(s => `${s.id}${s.stacks}`).join(',');
+    if (key !== v.statusKey) {
+      const before = new Set(v.statusKey.split(',').map(k => k.replace(/\d+$/, '')));
+      v.statusKey = key;
+      v.st.replaceChildren(...u.statuses.slice(0, 3).map(s => statusChip(s, 2, !before.has(s.id))));
+    }
+    this.setIntent(u, u.ko ? null : u.intent);
+    const it = !u.ko && u.intent ? `, next: ${u.intent.name}${this.intentAim(u, u.intent)}` : '';
+    v.card.setAttribute('aria-label', `${u.name}, fighting beside you (she takes no command): ${u.ko ? 'knocked out' : `HP ${u.hp} of ${u.maxHp}`}${it}${held ? `, ${held.text}: out of the line` : ''}${statusWords(u, { worded: true }).map(w => `, ${w}`).join('')}`);
+    const guarding = u.statuses.some(s => s.id === 'guarding');
+    const base = u.ko ? 'ko' : guarding ? 'guard' : 'idle';
+    if (v.base !== base) { v.base = base; if (!v.poseUntil) v.pose = base; }
+  }
+  // " at The Unsmith" (the screen gives the names)
+  intentAim(u, it) { const n = it?.target && it.target !== u.id ? this.nameOf(it.target) : ''; return n ? ` at ${n}` : ''; }
+  // the guest's next move on her card: its die (a tumble when it is rolled) and its name
+  setIntent(u, it, { roll = false } = {}) {
+    const v = this.v.get(u.id);
+    if (!v?.guest) return;
+    const key = it ? `${it.face}|${it.name}|${it.target}|${it.cancelled}` : '-';
+    if (key === v.intentKey && !roll) return;
+    v.intentKey = key;
+    clearInterval(v.dieTimer);
+    v.move.textContent = it ? `${it.name}${it.cancelled ? ' (broken off)' : ''}` : '';
+    v.move.title = it ? `${dieText(it)}: ${it.name}${this.intentAim(u, it)}` : '';
+    v.card.classList.toggle('int-off', !!it?.cancelled);
+    if (!it) { v.die.replaceChildren(); return; }
+    const look = INTENT_DIE[u.tier] || INTENT_DIE[tierAs(u.tier)] || INTENT_DIE.rabble;
+    const draw = (face, spin = 0) => v.die.replaceChildren(pixelIcon(diceIcon(it.die || look.sides, { value: face, size: 12, mat: look.mat, spin }), 1));
+    draw(it.natural ?? it.face);
+    if (!roll || this.reduced || it.face == null) return;
+    let k = 0;
+    v.dieTimer = setInterval(() => draw(1 + Math.floor(Math.random() * (it.die || look.sides)), k++ & 3), 70);
+    setTimeout(() => { clearInterval(v.dieTimer); draw(it.natural ?? it.face); }, 420 / this.speed);
+  }
+
   // M6 (review): a hero's new Charmed, Hexed or Rotting is its tag word popping in, not a float, which would cover
   // the tag; a new stack of rot pops it again. False when the hero shows no such word.
   popTag(id, k) {
@@ -240,6 +358,8 @@ export class Party {
       if (v.flashUntil && t >= v.flashUntil) { v.tint = null; v.flashUntil = 0; }
       let pose = v.pose, at = clockT;
       if (pose === 'attack') at = (t - v.attackAt) / Math.max(1, v.poseUntil - v.attackAt) < 0.42 ? 0.1 : 0.6;
+      // M7: a guest drawn from a beast's art has no casting or guarding pose (a humanoid's rig has both)
+      if (v.guest && v.sprite.def.kind !== 'humanoid' && (pose === 'cast' || pose === 'guard')) pose = 'idle';
       const cx = Math.round(this.colX(i));
       let dx = 0, dy = 0;
       if (t < v.shakeUntil) dx = (Math.floor(t / 40) % 2 ? 1 : -1) * 2;

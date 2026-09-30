@@ -26,6 +26,7 @@
 import { walkerSheet, npcSheet, mapFoeSheet, renderFoe, gearLooks, FOE_ART, RARITY_LOOK } from '../../art/index.js';
 import { NPCS } from '../../data/npcs.js';
 import { RELICS } from '../../data/relics.js';
+import { tierAs } from '../../data/foes.js';
 import { present, mapOf } from '../../rules/world.js';
 import { spawnsFor } from '../../rules/gauntlet.js';
 import { buildFoe, familyOf } from '../../rules/foe.js';
@@ -35,7 +36,10 @@ import { TILE, STEP_MS, SHOWOFF_MS, EMOTE_MS, GLINT_MS, HIDDEN_TILES, MAX_SPRITE
 
 const SLOT_ORDER = ['weapon', 'offhand', 'head', 'body', 'hands', 'feet', 'amulet', 'ring'];
 const ROW = { s: 0, n: 1, e: 2, w: 3 };
-const TIER_RANK = { rabble: 0, veteran: 1, 'relic-bearer': 2, champion: 3 };
+// the tier that leads a block on the map (its sprite, its relic). M7: the Hollow Council and the Unsmith lead over
+// everything; any other new tier ranks as the tier it counts as (data/foes.js tierAs)
+const TIER_RANK = { rabble: 0, veteran: 1, 'relic-bearer': 2, champion: 3, hollow: 4, unsmith: 5 };
+const tierRank = t => TIER_RANK[t] ?? TIER_RANK[tierAs(t)] ?? 0;
 const HALF = TILE / 2;
 
 // ---- gear signatures (the showoff) ------------------------------------------------------------------
@@ -120,7 +124,7 @@ const foeSheetFor = (lead, relic = null) => sheetOf(`foe|${lead.art}|${lead.gear
 function leadRelic(game, encId) {
   let spawns = [];
   try { spawns = spawnsFor(game, encId); } catch { return null; }
-  const lead = spawns.slice().sort((a, b) => TIER_RANK[familyOf(b).tier] - TIER_RANK[familyOf(a).tier])[0];
+  const lead = spawns.slice().sort((a, b) => tierRank(familyOf(b).tier) - tierRank(familyOf(a).tier))[0];
   return lead ? (lead.held || []).find(h => h.relic)?.relic || lead.wears || null : null;
 }
 
@@ -138,7 +142,7 @@ function lairFor(game, encId) {
   let spawns = [];
   try { spawns = spawnsFor(game, encId); } catch { spawns = []; }
   if (!spawns.length) return null;
-  const lead = spawns.slice().sort((a, b) => TIER_RANK[familyOf(b).tier] - TIER_RANK[familyOf(a).tier])[0];
+  const lead = spawns.slice().sort((a, b) => tierRank(familyOf(b).tier) - tierRank(familyOf(a).tier))[0];
   let unit, look;
   try { unit = buildFoe(lead, { id: `map-${encId}` }); look = foeLook(unit); } catch { return null; }
   const art = FOE_ART[unit.art] ? unit.art : 'cutpurse';

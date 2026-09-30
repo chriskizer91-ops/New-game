@@ -3,6 +3,7 @@
 // in the pixel font, 3 lines of 15 px text typed at 45 chars/s with a per-speaker blip (instant with
 // reduced motion), choices as 44 px buttons with odds chips ("Influence DC 14 · 65% · Alondra"), and
 // the roll shown after a check. role="dialog" (openOverlay) with an aria-live line.
+// M7 (spec §4.7): a choice shown shut with its `reasons` lists them under it (Kindle Anew: "Needs Fenwick's Poker"...).
 // Exports:
 //   openDialogue(ctx, { game, id, dock }) -> Promise<{ game, events, id }>   runs a dialogue to its
 //     end through rules/story.js (enterDialogue applies node.do; choose rolls checks and contests)
@@ -173,6 +174,16 @@ function dialogueBox(ctx, { dock } = {}) {
             chip.textContent = priceText(c.price);
             b.append(chip);
             b.setAttribute('aria-label', `${c.text} (${chip.textContent}${c.disabled ? ': you cannot afford it' : ''})`);
+          }
+          // M7: a choice that needs what the party does not have yet (Kindle Anew at the Worldforge's heart) is shown
+          // shut, with the reason for every part that does not hold (story.js dialogueView `reasons`)
+          if (c.reasons?.length) {
+            const why = el('span', { class: 'dlg-why', role: 'list', 'aria-label': 'Needs' });
+            why.append(el('span', { class: 'dlg-why-k', text: 'Needs', 'aria-hidden': 'true' }));
+            for (const r of c.reasons) { const li = el('span', { class: 'dlg-why-r', role: 'listitem' }); li.textContent = r; why.append(li); }
+            b.append(why);
+            b.classList.add('has-why');
+            b.setAttribute('aria-label', `${String(c.text).replace(/[.!?]+$/, '')}: not yet. Needs ${c.reasons.join(', ')}.`);
           }
           if (c.disabled) { b.disabled = true; b.classList.add('is-disabled'); }
           b.addEventListener('click', () => { ctx.audio.sfx('confirm'); choices.replaceChildren(); nextB.hidden = false; skip.hidden = false; res(c.i); });

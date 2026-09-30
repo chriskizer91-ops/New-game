@@ -7,10 +7,14 @@
 // M6 (spec §4.2, §5): a heal halved by rot says so; a hexed unit's roll says why it has disadvantage; the
 // Blackwater Leviathan dives into the water (not under the floor); a `ko` that carries its own words (Hodge
 // sitting down on his stool) shows them.
+// M7 (spec §4.2-§4.4, §5): the guest (`side: 'ally'`) plays out in the party's row: her intents on her card, her move
+// under her own banner (data-side="guest"), her blows from her figure; a two-dice foe's intents (slot 0 and 1) roll
+// together and each is dimmed once played; a hollow foe's die settles on its natural roll with its +4; the Unsmith's
+// `stolen` event hangs the relics he took on him (a banner, his plate, +Guard).
 import { SKILLS } from '../../data/skills.js';
 import { RELICS } from '../../data/relics.js';
 import { STATUSES } from '../../data/statuses.js';
-import { applyStatus, addUnitFrom, pieceIndex, relicLabel, statusName, harmful, moveTargetKind, withStatusSource, isHexed, divesUnderWater, holdPhrase } from './model.js';
+import { applyStatus, addUnitFrom, pieceIndex, relicLabel, statusName, harmful, moveTargetKind, withStatusSource, isHexed, divesUnderWater, holdPhrase, inParty, moveAttacks } from './model.js';
 import { logLine } from './log.js';
 import { legendSlam } from './slam.js';
 import { aspectColor } from './stage.js';
@@ -27,7 +31,8 @@ export class Player {
   wait(ms) { return this.S.clock.wait(ms); }
   U(id) { return this.disp.units[id]; }
   name(id) { const u = this.U(id); return u ? u.label : ''; }
-  isHero(id) { return this.U(id)?.side === 'hero'; }
+  // M7: in the party's row (a hero, or the guest beside them), not on the stage
+  isHero(id) { return inParty(this.U(id)); }
 
   // ---- entry ---------------------------------------------------------------------------------------
   async play(events, next) {
@@ -99,22 +104,35 @@ export class Player {
     S.setActor(ev.actor);
     S.ribbonAdvance(ev.actor);
     const u = this.U(ev.actor);
-    S.caption(u?.side === 'foe' && u.intent ? `${u.intent.name}${u.intent.charging ? ', charging' : ''}` : '', 'turn');
+    // a foe's (or the guest's) turn names what it is about to do; the Unsmith's names both of his moves
+    const say = it => `${it.name}${it.charging && !it.cancelled ? ', charging' : ''}${it.cancelled ? ' (broken off)' : ''}`;
+    const its = u && u.side !== 'hero' ? [u.intent, u.dice > 1 ? u.intent2 : null].filter(Boolean) : [];
+    S.caption(its.length ? its.map(say).join(', then ') : '', 'turn');
     await this.wait(140);
   }
 
   async intents(batch) {
     const S = this.S;
     let any = false;
+    const rolled = [];
     for (const ev of batch) {
       const u = this.U(ev.foe);
       if (!u) continue;
       const line = logLine(ev, this.disp);
       if (line) S.log(line);
-      u.intent = { die: ev.die, face: ev.face, move: ev.move, name: ev.name, text: ev.text, target: ev.target, charging: ev.charging };
+      // M7: a hollow foe's intent keeps its natural roll and bonus; a two-dice foe's second (slot 1) is its intent2
+      const it = {
+        die: ev.die, face: ev.face, move: ev.move, name: ev.name, text: ev.text, target: ev.target, charging: ev.charging,
+        ...(ev.bonus ? { natural: ev.natural, bonus: ev.bonus } : {}), ...(ev.slot != null ? { slot: ev.slot } : {}),
+      };
+      if (ev.slot === 1) u.intent2 = it; else u.intent = it;
       if (u.ko || u.gone) continue;
-      S.hud.tumbleIntent(u, u.intent, 560 / S.clock.speed, S.reduced || S.clock.skipping);
+      if (!rolled.includes(u)) rolled.push(u);
       if (ev.face != null) any = true; // an opener is not rolled: no dice sound for it
+    }
+    for (const u of rolled) {
+      if (u.side === 'ally') S.party.setIntent(u, u.intent, { roll: !(S.reduced || S.clock.skipping) });
+      else S.hud.tumbleIntent(u, u.intent, 560 / S.clock.speed, S.reduced || S.clock.skipping);
     }
     if (any) { S.sfx('dice'); await this.wait(600); }
     for (const ev of batch) await this.peak(ev);
@@ -138,16 +156,25 @@ export class Player {
     if (ev.charm) {
       // M5: a charmed hero's turn, played by the engine: it turns on a friend (the roll and blow follow)
       S.moveBanner(ev.name || 'Charmed', 'charm', ev.target ? `turns on ${this.name(ev.target)}` : '');
-      if (u.side === 'hero') S.party.flashColor(u.id, [255, 130, 200, 0.55], 420);
+      if (inParty(u)) S.party.flashColor(u.id, [255, 130, 200, 0.55], 420);
       else S.stage.flashUnit?.(u.id, [255, 130, 200, 0.55], 420);
       S.caption(ev.text || `${u.label} is charmed!`, 'charm');
       S.sfx('status');
       await this.wait(640);
       return;
     }
-    S.moveBanner(ev.name, u.side);
+    // M7: the guest's move has a banner of its own (data-side="guest"); a two-dice foe's move says which die it is
+    S.moveBanner(ev.name, u.side === 'ally' ? 'guest' : u.side, ev.slot != null && u.dice > 1 ? `die ${ev.slot + 1} of ${u.dice}` : u.side === 'ally' ? `${u.label}, beside you` : '');
+    if (ev.slot != null) {
+      const it = ev.slot === 1 ? u.intent2 : u.intent;
+      if (it) { it.played = true; this.refresh(u.id); }
+    }
     if (u.side === 'foe') {
       S.stage.attack(u.id, 620);
+      S.caption(ev.text || ev.name, 'move');
+    } else if (u.side === 'ally') {
+      // her blow comes with its roll (on_roll); anything else she casts
+      if (!moveAttacks(u, ev.move)) S.party.cast(u.id, 700);
       S.caption(ev.text || ev.name, 'move');
     } else {
       const sk = ev.skill && SKILLS[ev.skill];
@@ -155,7 +182,7 @@ export class Player {
       if (!weaponAttack) S.party.cast(u.id, 700);
       S.caption(ev.text || ev.name, 'move');
     }
-    await this.wait(u.side === 'foe' ? 560 : 520);
+    await this.wait(u.side === 'hero' ? 520 : 560);
   }
 
   async on_roll(ev) {
@@ -170,6 +197,10 @@ export class Player {
       if (cls !== 'melee' && ev.target && !this.isHero(ev.target)) {
         S.stage.projectile(this.heroX(actor.id), ev.target, cls === 'arrow' ? 'arrow' : 'bolt', cls === 'arrow' ? '#e8d6a8' : aspectColor(actor.weaponItem?.aspect || 'radiant'));
       }
+      await this.wait(ev.result === 'miss' || ev.result === 'fumble' ? 220 : 240);
+    } else if (actor?.side === 'ally') {
+      // M7: the guest lunges from her place in the row
+      S.party.attack(actor.id, 460);
       await this.wait(ev.result === 'miss' || ev.result === 'fumble' ? 220 : 240);
     }
     if (ev.result === 'miss' || ev.result === 'fumble') {
@@ -216,7 +247,7 @@ export class Player {
     if (this.revived === ev.target) { this.revived = null; this.refresh(t.id); return; }
     if (!ev.amount) return;
     this.float(t.id, `+${ev.amount}`, ev.rot ? 'heal rot' : 'heal', ev.rot ? 'halved by rot' : '');
-    if (t.side === 'hero') S.party.flashColor(t.id, [140, 255, 150, 0.35], 260);
+    if (inParty(t)) S.party.flashColor(t.id, [140, 255, 150, 0.35], 260);
     S.sfx('heal');
     this.refresh(t.id);
     // the harness pauses while the number (and a rot's "halved by rot") is still up, as on a hit
@@ -412,6 +443,29 @@ export class Player {
     await this.wait(1250);
   }
 
+  // M7 (spec §4.4): the Unsmith hangs the relics you never claimed on himself: a Stolen Art and +1 Guard each
+  async on_stolen(ev) {
+    const S = this.S, t = this.U(ev.foe);
+    if (!t) return;
+    const ids = (ev.relics || []).filter(id => RELICS[id]);
+    t.stolen = ids;
+    S.sfx(ids.length ? 'phase' : 'miss');
+    if (ids.length) {
+      S.stage.flash('#6a3cae', 360, 0.5);
+      const [x, y] = S.stage.point(t.id, 'center');
+      S.stage.ring(x, y, '#c8a2ff', 44, 800);
+      S.stage.sparks(x, y, '#e8d4ff', 10 + ids.length * 4, { spread: 1.3 });
+    }
+    this.refresh(t.id);
+    const n = ids.length;
+    S.bigBanner(n ? 'He takes what you never claimed' : 'Nothing left to take', n ? `${n} Stolen ${n === 1 ? 'Art' : 'Arts'} · Guard +${n}` : 'You claimed every relic he reached for', 'stolen');
+    if (ev.text) S.caption(ev.text, 'text');
+    if (n) this.float(t.id, `Guard +${n}`, 'status bad', `${n} stolen`, 1300);
+    await this.wait(650);
+    await this.peak(ev);
+    await this.wait(n ? 1150 : 600);
+  }
+
   async on_spawn(ev) {
     const S = this.S;
     const u = addUnitFrom(this.disp, this.next, ev.foe, S.labels);
@@ -441,10 +495,10 @@ export class Player {
   async on_fled() { this.S.ended = 'fled'; }
 }
 
-// text for the intent bubble's target line
+// text for the intent bubble's target line (M7: the guest's "everyone" is every foe)
 export function intentTarget(u, intent, nameOf) {
   const kind = moveTargetKind(u, intent.move);
-  if (kind === 'all-enemies') return 'at everyone';
+  if (kind === 'all-enemies') return u?.side === 'ally' ? 'at every foe' : 'at everyone';
   if (kind === 'all-allies') return 'rallies its side';
   if (kind === 'self' || intent.target === u.id) return 'on itself';
   const n = intent.target ? nameOf(intent.target) : '';

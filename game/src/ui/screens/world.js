@@ -18,6 +18,11 @@
 // region's card with the player's painting (once a save: flags.seen['card:gloomfen']); a foggy map draws its
 // mist (view.setFog: thick to the sight radius, thin once the fog lock is open) in place of the darkness; the
 // fourth council plays its title card, and a price paid in a dialogue toasts what it cost.
+// M7 (spec §5): the Opening's title card ({ t: 'end', act: 'act3-open' }: "Act III: The Hollow Council"); the Hearth
+// Below's card the first time down the vault stair (the region card, once a save); an ending ({ t: 'ending', id }, then
+// { t: 'end', act: 'act3' }): its card, the credits and the last card, then back to the Great Hall; the Masterpiece
+// tab of Hilda's forge ({ t: 'open', screen: 'masterpiece' }); the reliquary counts the relics that stand in its
+// galleries and names Page V's nine (no pedestal) as carried or still below; a hollow or Unsmith fight plays `boss`.
 // Test seam: with globalThis.__aethTest set, installs window.__world = { state(), teleport(map, x, y, face),
 //   press(key), step(dir, n), interact(), story(events), emotes(), ... } (see installSeam below) and
 //   window.__worldTools.
@@ -26,7 +31,7 @@ import '../world.css';
 import { MAPS, v1Anchor } from '../../data/maps/index.js';
 import { START_AT, HEARTHS, ZONES, REGIONS } from '../../data/world.js';
 import { ENCOUNTERS } from '../../data/encounters.js';
-import { FOES } from '../../data/foes.js';
+import { FOES, tierAs } from '../../data/foes.js';
 import { DIALOGUE } from '../../data/dialogue.js';
 import { NPCS } from '../../data/npcs.js';
 import { LOCKS, CROWNWALL } from '../../data/locks.js';
@@ -46,13 +51,14 @@ import * as Art from '../../art/index.js';
 import { el } from '../lib/dom.js';
 import { overlayOpen } from '../lib/overlay.js';
 import { session, getWalk, setWalk, setPending, takePending, clearSession, afterBattle } from '../world/session.js';
-import { createView } from '../world/view.js';
+import { createView, objBuilds } from '../world/view.js';
 import { createActors, gearSig, newGearName } from '../world/actors.js';
 import { createControls } from '../world/controls.js';
 import { createHud, createSidePanel } from '../world/hud.js';
 import { openDialogue, openMessage, priceText } from '../world/dialogue.js';
 import { openPrefight, openLockPrompt, openHearthMenu, openPauseMenu, openShop, openForge, previewRelic } from '../world/sheets.js';
-import { playBrandBanner, playCrownwalls, showLetter, playCouncil, showToBeContinued, showRegionCard, hasRegionCard } from '../world/story-fx.js';
+import { reliquaryLine } from './codex.js';
+import { playBrandBanner, playCrownwalls, showLetter, playCouncil, showToBeContinued, showRegionCard, hasRegionCard, showOpening, playEnding } from '../world/story-fx.js';
 import { createLoop } from '../world/loop.js';
 import {
   TILE, STEP_MS, RUN_MS, IDLE_TICK_MS, HOLD_MS, FADE_MS, SAVE_EVERY_STEPS, NEAR_TILES, MAP_ZOOM, TAP_TURN_MS, IDLE_FPS, MAX_SPRITES, SHOWOFF_MS, MAX_PATH,
@@ -320,6 +326,8 @@ export function mount(root, ctx, params = {}) {
     try { r = W.enterMap(game, target); } catch (err) { console.error(err); M.transition = false; await fadeTo(0, FADE_MS); return 'stop'; }
     apply(r);
     session.seed = game.seed;
+    // (the view bakes the whole map here, every object sprite with it, while the screen is black: M7's big props, the
+    // First Sleeper and the Worldforge, take a tenth of a second or two the first time, and the fade in stays smooth)
     enterVisuals(null);
     save();
     await fadeTo(0, FADE_MS);
@@ -467,10 +475,7 @@ export function mount(root, ctx, params = {}) {
       const d = describe(e);
       out.push({ key: e.id, label: d.label, sub: d.sub || '', kind: e.kind, dist, e });
     }
-    if (reliquary) {
-      const home = Object.keys(RELICS).filter(id => game.codex?.[id]?.claimed).length;
-      out.push({ key: reliquary.e.id, label: 'The reliquary', sub: `${home} of ${Object.keys(RELICS).length} relics home`, kind: 'pedestal', dist: reliquary.dist, e: reliquary.e });
-    }
+    if (reliquary) out.push({ key: reliquary.e.id, label: 'The reliquary', sub: reliquaryLine(game), kind: 'pedestal', dist: reliquary.dist, e: reliquary.e });
     for (const r of walk.roamers || []) {
       const dist = Math.max(Math.abs(r.x - walk.x), Math.abs(r.y - walk.y));
       if (dist > NEAR_TILES) continue;
@@ -702,8 +707,11 @@ export function mount(root, ctx, params = {}) {
     // M6: a price paid (Hodge's toll): what it cost
     const paid = events.filter(e => e.t === 'paid' && e.price).map(e => priceText(e.price)).filter(Boolean).join(', ');
     if (paid) { ctx.audio.sfx('coin'); ctx.toast(`Paid ${paid}`, 2800); announce(`Paid ${paid}`); }
+    // M7: the ending chosen at the Worldforge's heart (its card follows the scene's { end: 'act3' })
+    let ending = null;
     for (const e of events) {
       if (dead) return 'stop';
+      if (e.t === 'ending') { ending = e.id; continue; }
       if (e.t === 'fight') return encounterFlow(e.enc, { skipTalk: true });
       if (e.t === 'open') { const r = await openFlow(e.screen); if (r) return r; }
       else if (e.t === 'item') await cards(() => ctx.services.cardReveal(e.item, { source: RELICS[e.item.base] ? 'claimed' : 'drop', backdrop: mapNow()?.backdrop }));
@@ -712,15 +720,23 @@ export function mount(root, ctx, params = {}) {
         // a gift finished a Codex page: its reward is for good (the Codex shows it in gold)
         const line = pageWords(e.id);
         if (line) { ctx.audio.sfx('stamp'); ctx.toast(line, 4200); announce(line); }
-      } else if (e.t === 'end') await showToBeContinued(ctx, game, { act: e.act });
+      } else if (e.t === 'end' && e.act === 'act3-open') await showOpening(ctx, game);
+      else if (e.t === 'end' && e.act === 'act3') { await playEnding(ctx, game, ending || game.ending); if (dead) return 'stop'; return homeToHall(); }
+      else if (e.t === 'end') await showToBeContinued(ctx, game, { act: e.act });
     }
     return null;
+  }
+  // M7 (spec §4.7, A14): after an ending's cards the party is back in the Great Hall, where the game goes on
+  async function homeToHall() {
+    if (dead) return 'stop';
+    return transition({ map: START_AT.map, at: [START_AT.x, START_AT.y], face: START_AT.face || 'n' });
   }
   async function openFlow(screen) {
     const s = String(screen || '');
     if (s.startsWith('shop:')) { const g = await openShop(ctx, { game, shopId: s.slice(5) }); if (g !== game) { game = g; save(); refreshUi(); } return null; }
-    if (s === 'forge') {
-      const g = await openForge(ctx, { game });
+    if (s === 'forge' || s === 'masterpiece') {
+      // M7: a scene may open the forge on its Masterpiece tab
+      const g = await openForge(ctx, { game, ...(s === 'masterpiece' ? { tab: 'masterpiece' } : {}) });
       if (g !== game) { game = g; save(); refreshWorld(); const so = showoffs(); if (so.length) await playShowoffs(so); }
       return null;
     }
@@ -849,7 +865,7 @@ export function mount(root, ctx, params = {}) {
   function battle(target, info, opts = {}) {
     let r;
     try { r = G.startBattle(game, target, opts); } catch (err) { console.error(err); ctx.toast('That fight would not start.'); return null; }
-    const boss = Object.values(r.battle.units || {}).some(u => u.side === 'foe' && u.tier === 'champion');
+    const boss = Object.values(r.battle.units || {}).some(u => u.side === 'foe' && tierAs(u.tier) === 'champion');
     game = r.game;
     save();
     setPending({ ...info, boss, pos: { map: walk.map, x: walk.x, y: walk.y } });
@@ -1096,7 +1112,7 @@ export function mount(root, ctx, params = {}) {
     window.__world = {
       state: () => ({
         map: walk.map, x: walk.x, y: walk.y, face: walk.face, tick: walk.tick, grace: walk.grace, visit: walk.visit,
-        moving: M.moving, lock, transition: M.transition, steps: M.steps, stepMs: M.dur, roamers: (walk.roamers || []).map(r => ({ id: r.id, x: r.x, y: r.y, mood: r.mood, enc: r.enc || null })),
+        moving: M.moving, lock, transition: M.transition, fade: view.fade, objBuilds: objBuilds(), steps: M.steps, stepMs: M.dur, roamers: (walk.roamers || []).map(r => ({ id: r.id, x: r.x, y: r.y, mood: r.mood, enc: r.enc || null })),
         scale: view.size.s, view: [view.size.w, view.size.h], camera: [view.camera.x, view.camera.y], dark: !!view.map?.darkKey, painted: !!view.map?.painted,
         fog: view.map?.fogKey ? (view.map.fogThick ? 'thick' : 'thin') : '', sight: (() => { try { const r = W.light(game, walk); return r === Infinity ? null : r; } catch { return null; } })(),
         a: controls.btnA.getAttribute('aria-label'), prompt: controls.prompt.textContent, deck: root.classList.contains('deck-on'),

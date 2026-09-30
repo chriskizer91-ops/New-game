@@ -58,14 +58,21 @@ function atlasFor(biome) {
 }
 
 const KNOWN = new Set(OBJECT_KINDS || []);
-const FALLBACK_KIND = { 'tally-seal': 'sign', 'rot-knot': 'bramble', door: 'gate', table: 'board', 'barred-gate': 'gate', stream: 'ford-ice' };
+// (M7: the Hollow Hall's soot line draws as the plain gate in a build without its sprite; P5's art/map-sprites.js has
+// it, and a known kind is always drawn as itself)
+const FALLBACK_KIND = { 'tally-seal': 'sign', 'rot-knot': 'bramble', door: 'gate', table: 'board', 'barred-gate': 'gate', stream: 'ford-ice', 'hollow-gate': 'gate' };
 const OBJ = new Map();
+// M7: how many object sprites have been built so far (the world's test seam reports it: a map's sprites, the Hearth
+// Below's big props among them, are all built while the screen is black, never once the map shows)
+let objBuilt = 0;
+export const objBuilds = () => objBuilt;
 // An object sprite as canvases, one per animation frame, with its foot anchor (art/map-sprites.js
 // objectSprite: the foot goes on the bottom-centre of the entity's tile; tall objects rise upward).
 export function objSprite(kind, state, opts = {}) {
   const k = `${kind}|${state || ''}|${opts.id || ''}|${opts.look || ''}|${opts.relic ? opts.relic.uid + ':' + (opts.relic.temper || 0) : ''}`;
   let o = OBJ.get(k);
   if (!o) {
+    objBuilt++;
     const use = KNOWN.has(kind) ? kind : (FALLBACK_KIND[kind] || 'sign');
     const frames = [];
     let foot = null;
@@ -159,7 +166,9 @@ const GATE_KIND = { gate: 'gate', chain: 'chain', crownwall: 'crownwall', door: 
   // M6: Hodge's toll-bar across Rotbridge, the Murkway's leech ford, Willowmurk's ward-gate, the Lanternfen's hung
   // lanterns and hag-fence, the long boardwalk's missing planks, Misthollow's water-gate, the Belfry's choir-screen
   'toll-bar': 'toll-bar', 'leech-ford': 'leech-ford', 'ward-gate': 'ward-gate', 'hung-lanterns': 'hung-lanterns', 'hag-fence': 'hag-fence',
-  'barge-planks': 'barge-planks', 'water-gate': 'water-gate', 'choir-screen': 'choir-screen' };
+  'barge-planks': 'barge-planks', 'water-gate': 'water-gate', 'choir-screen': 'choir-screen',
+  // M7: the soot line across the Hollow Hall's nave before each Council chair (hh-gate-1 to -4)
+  'hollow-gate': 'hollow-gate' };
 const FORD_BY = { 'stillwater-lance': 'ice', rootsong: 'roots' };
 const areaOf = e => e.area || [e.at[0], e.at[1], e.at[0], e.at[1]];
 

@@ -34,13 +34,13 @@ import { createRng } from '../src/core/rng.js';
 const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures/v1');
 const fixtures = readdirSync(dir).filter(f => f.endsWith('.json')).map(f => [f, JSON.parse(readFileSync(path.join(dir, f), 'utf8'))]);
 
-test('the carry-over card has the party, the relics out of 74 (M7: the highest Codex number), and a real place to wake for every M2 fixture', () => {
-  assert.equal(RELIC_TOTAL, 74);
+test('the carry-over card has the party, the relics out of 75 (M7: every relic, No. 000 among them), and a real place to wake for every M2 fixture', () => {
+  assert.equal(RELIC_TOTAL, 75);
   for (const [name, v1] of fixtures) {
     const g = migrate(v1);
     const F = carryFacts(g);
     assert.equal(F.heroes.length, 4, name);
-    assert.equal(F.total, 74, name);
+    assert.equal(F.total, 75, name);
     assert.equal(F.gold, v1.gold, name);
     assert.equal(F.waking, v1.progress.waking, name);
     assert.equal(F.place, MAPS[g.progress.pos.map].name, name);
@@ -54,8 +54,8 @@ test('the carry-over card has the party, the relics out of 74 (M7: the highest C
 
 test('the title Continue line reads name · place · day · level · relics', () => {
   const g = newGame({ name: 'Wren', starter: 'hearthbrand', seed: 7 });
-  assert.match(saveLine(g), /^Wren · The Great Hall · Day 1 · Lv 1 · 1\/74 relics$/);
-  for (const [name, v1] of fixtures) assert.match(saveLine(migrate(v1)), /^.+ · .+ · Day \d+ · Lv \d+ · \d+\/74 relics$/, name);
+  assert.match(saveLine(g), /^Wren · The Great Hall · Day 1 · Lv 1 · 1\/75 relics$/);
+  for (const [name, v1] of fixtures) assert.match(saveLine(migrate(v1)), /^.+ · .+ · Day \d+ · Lv \d+ · \d+\/75 relics$/, name);
 });
 
 test('you-are-here projects onto each route between its lore ends, and points stay put', () => {
@@ -390,7 +390,8 @@ test('M5: the second council opens the Ironspire: the Atlas, the Codex\'s road n
   assert.deepEqual(V.chips.map(c => [c.id, c.open]), [['gloomfen', false]]);
   assert.deepEqual(V.lines, ['The Blackwater still holds the causeway.', 'The Gloomfen Marsh opens in the next chapter.']);
   assert.deepEqual(V.stats.map(r => r[0]), ['Day', 'Relics', 'Brands', 'Pages']);
-  assert.equal(V.stats[3][1], `0/${PAGES.filter(p => p.from != null).length}`);
+  // M7: the Pages stat counts every page, Page V (which lists its numbers) among them
+  assert.equal(V.stats[3][1], `0/${PAGES.filter(p => p.from != null || p.nos?.length).length}`);
   // M6: the third council sat: the fen stair below Mossfall opens the Gloomfen, and Page IV's road note goes
   const g3 = structuredClone(g2);
   g3.progress.flags.story['council-3-done'] = true;

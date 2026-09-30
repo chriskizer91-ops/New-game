@@ -15,12 +15,16 @@
 //             Ironspire and, M6, the Gloomfen, each with what opens it) listed apart
 //   Grudges   flags.grudges (the unsettled: name, title, where, their Omens, and whether the pack
 //             hunts you) and flags.settled (name and the day), from grudgeView(game)
+// M7 (spec §3.6, §5): Act III in the Journal: the Hollow Council's posters and the Unsmith's; a rumour the story has
+// settled into a poster (a LADDER entry's `found: { if, poster }`: the missing smith and the man on the barge, found
+// in the Unsmith) says "Found: <poster>" and takes you to it; the Keys tab lists the road to the Hearth Below once the
+// fourth council has sat (roadShown), sealed until the fifth.
 // Every saved string (a Grudge's name and title, an Omen id) goes in through textContent.
 // Pure helper for tests (node): grudgeView(game).
 // Test hooks: tabs are .jr-tab[data-tab]; posters are .poster[data-id][data-state]; Grudges are
 // .jr-grudge[data-key][data-state="active"|"settled"] (the empty states .jr-empty).
 // Owner: WP8; M4 P7b (the Grudges tab, the Sandspire board); M5 P7 (the Stormwatch board, the Ironspire road);
-// M6 P7 (the Bogmire board, the Gloomfen road).
+// M6 P7 (the Bogmire board, the Gloomfen road); M7 P7 (Act III: the road below, the rumours found).
 import { questLog, bounties, ladder } from '../../rules/story.js';
 import { lockStatus, keys } from '../../rules/world.js';
 import { check } from '../../rules/cond.js';
@@ -60,7 +64,31 @@ const ROADS = {
     open: g => (safeCheck(g, { brand: 'brand-of-the-deep' }) ? 'The fen stair below Mossfall stands open, and the causeway from the Keep\'s south-west gate runs dry.' : 'The fen stair below Mossfall stands open. Willowmurk\'s safe paths lead down into the Gloomfen.'),
     shut: 'Sealed until the Council has sat a third time.',
   },
+  // M7: the stair under the vault opens with the fifth council
+  below: { open: 'The stair under the vault stands open. The Hollow Hall waits below the Keep.', shut: 'Sealed until the Council has sat a fifth time.' },
 };
+
+// M7: a road the Keys tab lists: an open region with an entry; an Act III road only once the fourth council has sat (the
+// Hollow Council is named), or once it is open. Pure: node tests use it.
+export function roadShown(game, region) {
+  const r = REGIONS[region];
+  if (!r?.open || !r.entries?.length) return false;
+  if ((r.act || 1) < 3) return true;
+  return regionOpen(game, region) || safeCheck(game, { flag: 'council-4-done' });
+}
+
+// M7: a rumour the story has settled into a poster ("Found: the Unsmith"): the LADDER entry's `found`, once it holds.
+// `said` is the rules' own word when rules/story.js ladder() gives one (`found`: the poster's id, once the `if` holds);
+// else the data's `found: { if, poster }` is checked here. Pure: node tests use it (with a ladder of their own).
+// -> { poster, name } | null
+export function rumourFound(game, id, ladder = LADDER, said = undefined) {
+  if (typeof said === 'string') { const P = ladder.find(x => x.id === said); return P ? { poster: P.id, name: P.name } : null; }
+  const L = ladder.find(x => x.id === id);
+  const f = L?.found;
+  if (!f?.poster || !safeCheck(game, f.if)) return null;
+  const P = ladder.find(x => x.id === f.poster);
+  return P ? { poster: P.id, name: P.name } : null;
+}
 
 // The Grudges tab's rows (pure; node tests use it). A Grudge is keyed `<encId>#<spawnIndex>`; old
 // saves may miss any field, so everything falls back to something that reads.
@@ -268,12 +296,25 @@ export function mount(root, ctx, params = {}) {
       const L0 = LADDER.find(x => x.id === p.id) || {};
       const L = { ...L0, enc: p.enc ?? L0.enc, spawn: p.spawn ?? L0.spawn };
       const known = p.state !== 'silhouette';
-      const card = el('article', `poster is-${p.state}${L.silhouette ? ' rumour' : ''}`);
+      // M7: a rumour the story settled into a poster (found in the Unsmith) points at it
+      const found = L.silhouette ? rumourFound(g, p.id, LADDER, p.found) : null;
+      const card = el('article', `poster is-${p.state}${L.silhouette ? ' rumour' : ''}${found ? ' is-found' : ''}`);
       card.dataset.id = p.id; card.dataset.state = p.state;
+      if (found) card.dataset.found = found.poster;
       const art = el('canvas', { class: 'px poster-art', width: '112', height: '96', role: 'img', 'aria-label': known ? p.name : L.silhouette ? `A rumour: ${p.name}` : 'An unknown villain, a black silhouette' });
-      card.append(el('span', { class: 'poster-k', text: L.silhouette ? `Act ${p.act}` : 'Wanted' }), el('span', 'poster-frame', [art]));
+      card.append(el('span', { class: 'poster-k', text: found ? 'Found' : L.silhouette ? `Act ${p.act}` : 'Wanted' }), el('span', 'poster-frame', [art]));
       card.append(el('b', { class: 'poster-name', text: known || L.silhouette ? p.name : '???' }));
-      card.append(el('small', { class: 'poster-where', text: L.silhouette ? 'Only a rumour' : known ? whereOf(L.enc) || '' : 'Not scouted' }));
+      if (found) {
+        const go = button('', 'btn ghost poster-found', () => {
+          const to = grid.querySelector(`.poster[data-id="${found.poster}"]`);
+          if (!to) return;
+          ctx.audio.sfx('page');
+          to.scrollIntoView({ block: 'center', behavior: ctx.reduced() ? 'auto' : 'smooth' });
+          to.classList.remove('flash-to'); void to.offsetWidth; to.classList.add('flash-to');
+        }, { 'aria-label': `${p.name}: found. Show ${found.name}'s poster` });
+        go.textContent = `Found: ${found.name.replace(/^The /, 'the ')}`;
+        card.append(go);
+      } else card.append(el('small', { class: 'poster-where', text: L.silhouette ? 'Only a rumour' : known ? whereOf(L.enc) || '' : 'Not scouted' }));
       if (p.state === 'settled') card.append(el('span', { class: 'poster-stamp', text: 'Settled' }));
       else if (p.state === 'scouted') card.append(el('span', { class: 'poster-stamp scouted', text: 'Scouted' }));
       grid.append(card);
@@ -336,7 +377,7 @@ export function mount(root, ctx, params = {}) {
     // with the second council (M5), the Gloomfen's (the fen stair) with the third (M6); the rest wait on
     // later chapters
     const act1 = safeCheck(g, { flag: 'act1-complete' });
-    for (const r of Object.values(REGIONS).filter(r => r.open && r.entries?.length)) {
+    for (const r of Object.values(REGIONS).filter(r => roadShown(g, r.id))) {
       const o = regionOpen(g, r.id);
       const R = ROADS[r.id] || { open: 'Its road stands open.', shut: 'Sealed for now.' };
       seal(`The road to ${inSentence(r.name)}`, o, o ? (typeof R.open === 'function' ? R.open(g) : R.open) : R.shut);

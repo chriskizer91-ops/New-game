@@ -2,8 +2,10 @@
 // M5: a hold reads by its label ("Pip is held under by the Rime-Abbot"); a hold's lost turn, a release and
 // a charmed hero's turn are said by the engine's own text and move lines, so they add no line of their own.
 // M6: a heal a Rotting unit got half of says so; a `ko` with its own words (Hodge's) is said in them.
+// M7: a hollow foe's intent gives its natural roll and the +4 ("d20 13 +4 = 17"); a two-dice foe's names its die
+// ("die 2 of 2"); the Unsmith taking up his Stolen Arts is said in the engine's words.
 import { STATUSES } from '../../data/statuses.js';
-import { statusName, relicLabel, holdPhrase } from './model.js';
+import { statusName, relicLabel, holdPhrase, dieText } from './model.js';
 
 const RES = { crit: 'LEGEND STRIKE', hit: 'hit', graze: 'graze', miss: 'miss', fumble: 'fumble', save: 'saved', fail: 'failed' };
 const EFF = { weak: ' (weak!)', resist: ' (resisted)', immune: ' (immune)', normal: '' };
@@ -14,8 +16,12 @@ export function logLine(ev, disp) {
   const N = id => (id && U(id) ? U(id).label : id ? 'someone' : '');
   switch (ev.t) {
     case 'turn': return { text: `${N(ev.actor)}'s turn`, kind: 'turn' };
-    case 'intent':
-      return { text: ev.queued ? `Foreseen: ${N(ev.foe)} will use ${ev.name} (d${ev.die} ${ev.face})` : `${N(ev.foe)} readies ${ev.text.replace(/^\d+: /, '')} (${ev.face == null ? 'always the first move' : `d${ev.die} ${ev.face}`})`, kind: 'intent' };
+    case 'intent': {
+      if (ev.queued) return { text: `Foreseen: ${N(ev.foe)} will use ${ev.name} (d${ev.die} ${ev.face})`, kind: 'intent' };
+      const slot = ev.slot != null && (U(ev.foe)?.dice || 2) > 1 ? `, die ${ev.slot + 1} of ${U(ev.foe)?.dice || 2}` : '';
+      return { text: `${N(ev.foe)} readies ${ev.text.replace(/^\d+: /, '')} (${ev.face == null ? 'always the first move' : dieText(ev)}${slot})`, kind: 'intent' };
+    }
+    case 'stolen': return ev.text ? { text: ev.text, kind: 'stolen' } : null;
     case 'roll': {
       const dice = ev.rolls && ev.rolls.length > 1 ? `[${ev.rolls.join(', ')}] keeps ${ev.kept}` : `${ev.kept}`;
       const sign = ev.bonus >= 0 ? `+ ${ev.bonus}` : `- ${-ev.bonus}`;

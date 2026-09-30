@@ -4,11 +4,17 @@
 // valid target; on the ribbon a held hero's turn is iced over (.held) and a charmed one's pink (.charmed).
 // M6: a foe that dives into water (the Blackwater Leviathan) reads "Dived · out of reach" (.bt-foe.sunk.water); a
 // grip bar names a Page IV relic by the thing, not whose it is (model.js gripWord: "Toll", not "Hodge's").
+// M7 (spec §4.2, §4.4, §5): the new tiers' dice read as the Champion's unless the art gives them a look of their own;
+// a two-dice foe (the Unsmith) shows both intents, one row a die (.bt-int-row[data-slot]), the one he has played
+// dimmed and a Staggered one broken off; a hollow foe's die shows its natural roll with the +4 beside it
+// (.bt-int-bonus: "+4 = 17") while the gift holds; the Stolen Arts he takes up sit on his plate as the relics'
+// icons (.bt-stolen); the guest's turns on the ribbon are hers (.bt-rib.ally).
 import { statusIcon, diceIcon, gripIcon, INTENT_DIE } from '../../art/icons.js';
+import { itemIcon } from '../../art/item-looks.js';
 import { STATUSES } from '../../data/statuses.js';
 import { RELICS } from '../../data/relics.js';
 import { el, pixelIcon, toCanvas, clamp } from './util.js';
-import { heldStatus, isCharmed, isSunk, untargetable, divesUnderWater, gripWord, statusWords } from './model.js';
+import { heldStatus, isCharmed, isSunk, untargetable, divesUnderWater, gripWord, statusWords, tierKey, dieText, stolenOf } from './model.js';
 
 // ---- small shared pieces ----------------------------------------------------------------------------
 
@@ -28,10 +34,16 @@ export function relicName(piece) {
   return piece.item?.name || 'relic';
 }
 
+// the intent die's look: the tier's own, else the tier it reads as (the hollow and the Unsmith read the Champion's)
+export function intentDie(tier) {
+  return INTENT_DIE[tierKey(INTENT_DIE, tier)] || INTENT_DIE.rabble;
+}
 function dieFor(u, intent) {
-  const look = INTENT_DIE[u.tier] || INTENT_DIE.rabble;
+  const look = intentDie(u.tier);
   return { sides: intent?.die || look.sides, mat: look.mat };
 }
+// what the die shows: the natural roll (a hollow foe's +4 is beside it), else the face
+const shownFace = it => it?.natural ?? it?.face;
 
 // ---- foe plates + intents ------------------------------------------------------------------------------
 
@@ -55,11 +67,19 @@ export class Hud {
     const hit = el('button.bt-foe-hit', { type: 'button', 'data-id': u.id });
     hit.addEventListener('click', () => this.onFoe(u.id));
     const die = el('span.bt-die');
+    const bonus = el('span.bt-int-bonus', { hidden: true });
     const iname = el('span.bt-int-name');
     const itgt = el('span.bt-int-tgt');
     const charge = el('span.bt-int-charge', { text: 'charging' });
     const queue = el('span.bt-int-queue');
-    const intent = el('div.bt-intent', { 'aria-hidden': 'true' }, die, el('span.bt-int-txt', null, iname, itgt), charge, queue);
+    // M7: the second die's row (the Unsmith: two intents, both played on his turn, in order)
+    const die2 = el('span.bt-die');
+    const bonus2 = el('span.bt-int-bonus', { hidden: true });
+    const iname2 = el('span.bt-int-name');
+    const itgt2 = el('span.bt-int-tgt');
+    const charge2 = el('span.bt-int-charge', { text: 'charging' });
+    const two = el('span.bt-int-two', { hidden: true, 'data-slot': '1' }, die2, el('span.bt-int-txt', null, el('span.bt-int-line', null, bonus2, iname2), itgt2), charge2);
+    const intent = el('div.bt-intent', { 'aria-hidden': 'true' }, die, el('span.bt-int-txt', null, el('span.bt-int-line', null, bonus, iname), itgt), charge, two, queue);
     const name = el('span.bt-foe-name', { text: u.label || u.name });
     const lv = el('span.bt-foe-lv', { text: `L${u.level}` });
     const bar = el('span.bt-bar.hp.foe', null, el('i.lag'), el('i.fill'));
@@ -67,13 +87,18 @@ export class Hud {
     const st = el('span.bt-foe-st');
     const grips = el('span.bt-grips');
     const state = el('span.bt-foe-state', { hidden: true });
+    // M7: the Stolen Arts he took up (the relics' icons), once he has taken them
+    const stolen = el('span.bt-stolen', { hidden: true });
     st.hidden = true;
     grips.hidden = true;
-    const plate = el('div.bt-plate', null, el('span.bt-plate-top', null, name, lv), el('span.bt-plate-bar', null, bar, hpNum), state, st, grips);
+    const plate = el('div.bt-plate', null, el('span.bt-plate-top', null, name, lv), el('span.bt-plate-bar', null, bar, hpNum), state, st, grips, stolen);
     plate.addEventListener('click', e => { if (!e.target.closest('.bt-grip')) this.onFoe(u.id); });
     const box = el('div.bt-foe', { 'data-id': u.id }, hit, intent, plate);
     this.layer.append(box);
-    const f = { id: u.id, box, hit, intent, die, iname, itgt, charge, queue, plate, name, bar, hpNum, st, state, grips, statusKey: '', gripKey: '', intentKey: '', dieTimer: 0 };
+    const f = {
+      id: u.id, box, hit, intent, die, bonus, iname, itgt, charge, queue, two, die2, bonus2, iname2, itgt2, charge2, plate, name, bar, hpNum, st, state, grips, stolen,
+      statusKey: '', gripKey: '', intentKey: '', stolenKey: '', dieTimer: 0,
+    };
     this.foes.set(u.id, f);
     return f;
   }
@@ -138,10 +163,26 @@ export class Hud {
       f.grips.replaceChildren(...(u.held || []).map((p, i) => this.gripChip(u, p, i)));
       f.grips.hidden = !(u.held || []).length;
     }
+    // M7: the Stolen Arts on his plate: each relic he took, by its icon (the Analyze sheet names them and their moves)
+    const stolen = stolenOf(u);
+    const sk = stolen.map(s => s.id).join(',');
+    if (sk !== f.stolenKey) {
+      f.stolenKey = sk;
+      f.stolen.replaceChildren(el('span.bt-stolen-k', { text: 'Stolen' }), ...stolen.map(s => {
+        const i = el('i.bt-stolen-i', { title: s.move, 'data-relic': s.id });
+        try { const img = itemIcon(s.id, { size: 12 }); if (img) i.append(pixelIcon(img, 1)); } catch { /* the name is in the title */ }
+        return i;
+      }));
+      f.stolen.hidden = !stolen.length;
+      f.stolen.setAttribute('aria-label', stolen.length ? `Stolen Arts: ${stolen.map(s => s.name).join(', ')}` : '');
+    }
     // intent bubble
     this.setIntent(u, u.intent, analyzedQueue ?? (u.analyzed ? u.queue : []));
-    const intentTxt = u.intent ? `, intends ${u.intent.name}${u.intent.charging ? ' (charging)' : ''}` : '';
-    f.hit.setAttribute('aria-label', `${u.label || u.name}, level ${u.level}, HP ${u.hp} of ${u.maxHp}${statusWords(u).map(w => `, ${w}`).join('')}${untargetable(u) ? ', cannot be targeted' : ''}${intentTxt}`);
+    const said = it => `${it.name}${it.charging && !it.cancelled ? ' (charging)' : ''}${it.cancelled ? ' (broken off)' : ''}${it.bonus ? ` (${dieText(it)})` : ''}`;
+    const its = [u.intent, u.dice > 1 ? u.intent2 : null].filter(Boolean);
+    const intentTxt = its.length ? `, intends ${its.map(said).join(', then ')}` : '';
+    const stolenTxt = stolen.length ? `, wearing ${stolen.length} stolen ${stolen.length === 1 ? 'relic' : 'relics'}` : '';
+    f.hit.setAttribute('aria-label', `${u.label || u.name}, level ${u.level}, HP ${u.hp} of ${u.maxHp}${statusWords(u).map(w => `, ${w}`).join('')}${untargetable(u) ? ', cannot be targeted' : ''}${intentTxt}${stolenTxt}`);
   }
 
   gripChip(u, p, i) {
@@ -161,45 +202,74 @@ export class Hud {
   setIntent(u, intent, queue = []) {
     const f = this.foes.get(u.id);
     if (!f) return;
-    const key = intent ? `${intent.face}|${intent.name}|${intent.target}|${intent.charging}|${intent.cancelled}|${intent.die}|${queue.map(q => q.face + q.name).join(',')}` : '-';
+    const second = u.dice > 1 ? u.intent2 || null : null;
+    const k = it => (it ? `${it.face}|${it.natural ?? ''}|${it.bonus ?? ''}|${it.name}|${it.target}|${it.charging}|${it.cancelled}|${it.played}|${it.die}` : '-');
+    const key = intent ? `${k(intent)}|${k(second)}|${queue.map(q => q.face + q.name).join(',')}` : '-';
     if (key === f.intentKey) return;
     f.intentKey = key;
     f.intent.hidden = !intent || u.ko || u.gone;
     if (!intent) return;
     const d = dieFor(u, intent);
-    f.die.replaceChildren(pixelIcon(diceIcon(d.sides, { value: intent.face, size: 16, mat: d.mat }), 2));
-    f.iname.textContent = intent.name;
-    f.itgt.textContent = this.targetText(u, intent);
-    f.charge.hidden = !intent.charging || intent.cancelled;
+    this.paintRow(u, intent, { die: f.die, bonus: f.bonus, name: f.iname, tgt: f.itgt, charge: f.charge }, d);
     f.intent.classList.toggle('cancelled', !!intent.cancelled);
     f.intent.classList.toggle('charging', !!intent.charging && !intent.cancelled);
+    f.intent.classList.toggle('played', !!intent.played && !!second);
+    // M7: the second die (slot 1), in its own row under the first
+    f.two.hidden = !second;
+    f.intent.classList.toggle('two-dice', !!second);
+    if (second) {
+      this.paintRow(u, second, { die: f.die2, bonus: f.bonus2, name: f.iname2, tgt: f.itgt2, charge: f.charge2 }, dieFor(u, second));
+      f.two.classList.toggle('cancelled', !!second.cancelled);
+      f.two.classList.toggle('played', !!second.played);
+    }
     f.queue.replaceChildren(...queue.map(q => el('span.bt-q', null, pixelIcon(diceIcon(d.sides, { value: q.face, size: 12, mat: d.mat }), 1), el('span', { text: q.name }))));
     f.queue.hidden = !queue.length;
+  }
+  // one intent's row: its die (a hollow foe's natural roll, with "+4 = 17" beside the move), its name and its aim
+  paintRow(u, it, r, d) {
+    r.die.replaceChildren(pixelIcon(diceIcon(d.sides, { value: shownFace(it), size: 16, mat: d.mat }), 2));
+    r.bonus.hidden = !it.bonus;
+    r.bonus.textContent = it.bonus ? `+${it.bonus} = ${it.face}` : '';
+    r.name.textContent = it.name;
+    r.tgt.textContent = this.targetText(u, it);
+    r.charge.hidden = !it.charging || !!it.cancelled;
   }
   // replaced by the screen with a version that knows move targets and display names
   targetText(u, intent) { return intent.target && intent.target !== u.id ? 'at someone' : ''; }
 
-  // the intent die tumbles, then settles on its face
+  // the intent die tumbles, then settles on its face (M7: a hollow foe's on its natural roll, the +4 popping in
+  // beside it; the Unsmith's two dice tumble together)
   tumbleIntent(u, intent, ms, reduced) {
     const f = this.foes.get(u.id);
     if (!f || !intent) return;
     clearInterval(f.dieTimer);
-    const d = dieFor(u, intent);
     f.intentKey = '';
     this.setIntent(u, intent, u.analyzed ? u.queue : []);
-    if (reduced || ms < 90 || intent.face == null) return; // an opener is not rolled: its die stays blank
+    const rows = [[f.die, intent, f.bonus]];
+    if (u.dice > 1 && u.intent2 && !f.two.hidden) rows.push([f.die2, u.intent2, f.bonus2]);
+    const rolled = rows.filter(([, it]) => it.face != null);
+    if (reduced || ms < 90 || !rolled.length) return; // an opener is not rolled: its die stays blank
     f.intent.classList.add('rolling');
+    for (const [, , b] of rolled) b.classList.add('wait');
     let k = 0;
     const draw = () => {
-      const face = 1 + Math.floor(Math.random() * d.sides);
-      f.die.replaceChildren(pixelIcon(diceIcon(d.sides, { value: face, size: 16, mat: d.mat, spin: k++ & 3 }), 2));
+      k++;
+      for (const [die, it] of rolled) {
+        const d = dieFor(u, it);
+        die.replaceChildren(pixelIcon(diceIcon(d.sides, { value: 1 + Math.floor(Math.random() * d.sides), size: 16, mat: d.mat, spin: k & 3 }), 2));
+      }
     };
     draw();
     f.dieTimer = setInterval(draw, 70);
     setTimeout(() => {
       clearInterval(f.dieTimer);
       f.intent.classList.remove('rolling');
-      f.die.replaceChildren(pixelIcon(diceIcon(d.sides, { value: intent.face, size: 16, mat: d.mat }), 2));
+      for (const [die, it, b] of rolled) {
+        const d = dieFor(u, it);
+        die.replaceChildren(pixelIcon(diceIcon(d.sides, { value: shownFace(it), size: 16, mat: d.mat }), 2));
+        b.classList.remove('wait');
+        if (it.bonus) { b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); }
+      }
       f.intent.classList.remove('settle'); void f.intent.offsetWidth; f.intent.classList.add('settle');
     }, ms * 0.75);
   }
@@ -265,7 +335,9 @@ export class Hud {
 function li(list, u, canvas, i) {
   const held = heldStatus(u), charmed = isCharmed(u);
   const how = held ? `, ${String(held.label || STATUSES[held.id]?.name || 'held').toLowerCase()}: the turn is lost` : charmed ? ', charmed' : '';
-  const item = el(`li.bt-rib.${u.side}${i === 0 ? '.now' : ''}${held ? '.held' : ''}${charmed ? '.charmed' : ''}`, { title: `${i === 0 ? 'Now' : `Turn ${i + 1}`}: ${u.label || u.name}${how}` }, canvas);
+  // M7: the guest's turn (.bt-rib.ally) is hers: the engine plays it
+  const who = u.side === 'ally' ? `${u.label || u.name}, beside you` : u.label || u.name;
+  const item = el(`li.bt-rib.${u.side}${i === 0 ? '.now' : ''}${held ? '.held' : ''}${charmed ? '.charmed' : ''}`, { title: `${i === 0 ? 'Now' : `Turn ${i + 1}`}: ${who}${how}` }, canvas);
   if (i === 0) item.append(el('span.bt-rib-now', { text: 'now' }));
   list.append(item);
 }

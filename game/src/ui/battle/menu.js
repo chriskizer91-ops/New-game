@@ -1,12 +1,22 @@
 // Player input for a hero's turn: the six commands, the Skills and Items submenus with MP costs
 // and disabled reasons, and targeting (tap a foe or a hero; group moves confirm on any tap).
 // Also the Analyze/inspect sheet. Keyboard: arrows/WASD move, Enter/Z confirm, Esc/X back, 1-6.
+// M7 (spec §4.2-§4.4, §5): the sheet reads a hollow foe's roll ("d20 13 +4 = 17"), the Unsmith's two intents and his
+// Stolen Arts (each relic he took, and what its Art does), and the guest's details: what she does next, and that she
+// fights beside you and takes no command.
 import { aspectIcon, statusIcon, gripIcon } from '../../art/icons.js';
 import { STATUSES } from '../../data/statuses.js';
 import { OMENS } from '../../data/omens.js';
 import { ASPECTS } from '../../data/aspects.js';
+import { RELICS } from '../../data/relics.js';
+import { stolenArt } from '../../rules/foe.js';
 import { el, pixelIcon, clamp } from './util.js';
 import { relicName } from './hud.js';
+import { dieText } from './model.js';
+
+// the words for a tier on the sheet (the new tiers by their own names)
+const TIER_NAME = { hollow: 'Hollow Council', unsmith: 'Unsmith' };
+const tierWords = info => (info.guest ? 'guest' : info.tier ? TIER_NAME[info.tier] || info.tier.replace('-', ' ') : 'hero');
 
 const GROUP = ['all-enemies', 'all-allies'];
 
@@ -255,7 +265,7 @@ export function inspectSheet(root, info, extra, { sfx, onRelic }) {
   return new Promise(resolve => {
     const close = el('button.btn', { type: 'button', text: 'Close' });
     const sec = (title, ...kids) => el('div.bt-ins-sec', null, el('h4', { text: title }), ...kids);
-    const tierName = info.tier ? info.tier.replace('-', ' ') : 'hero';
+    const tierName = tierWords(info);
     const hpPct = clamp(info.hp / info.maxHp, 0, 1) * 100;
     const head = el('div.bt-ins-head', null,
       extra.portrait ? el('div.bt-ins-pic', null, extra.portrait) : null,
@@ -285,13 +295,24 @@ export function inspectSheet(root, info, extra, { sfx, onRelic }) {
         return b;
       }), el('p.bt-ins-note', { text: 'Crush damage and Disarm wear grip down. At 0 the relic drops and is yours at victory; kill the holder first and it shatters.' })));
     }
-    if (info.side === 'foe') {
-      const it = info.intent;
+    if (info.side === 'foe' || info.side === 'ally') {
+      // M7: the Unsmith shows both of his intents (the second die: intent2); a hollow foe's roll gives its +4
+      const line = (it, cls = '') => el(`p.bt-ins-intent${cls}`, null, el('b', { text: it.face == null ? 'First move' : dieText(it) }), el('span', { text: ` ${it.name}${it.target && extra.names(it.target) && it.target !== info.id ? ` at ${extra.names(it.target)}` : ''}${it.charging ? ', charging' : ''}${it.cancelled ? ' (broken off)' : ''}` }));
       const rows = [];
-      if (it) rows.push(el('p.bt-ins-intent', null, el('b', { text: it.face == null ? 'First move' : `d${it.die} ${it.face}` }), el('span', { text: ` ${it.name}${it.target && extra.names(it.target) && it.target !== info.id ? ` at ${extra.names(it.target)}` : ''}${it.charging ? ', charging' : ''}${it.cancelled ? ' (broken off)' : ''}` })));
-      if (info.analyzed && info.queue.length) rows.push(...info.queue.map((q, i) => el('p.bt-ins-intent.next', null, el('b', { text: `then ${q.face}` }), el('span', { text: ` ${q.name}` }), el('small', { text: i === 0 ? ' (foreseen)' : '' }))));
+      if (info.intent) rows.push(line(info.intent));
+      if (info.intent2) rows.push(line(info.intent2, '.second'));
+      if (info.intent && info.intent2) rows.push(el('p.bt-ins-note', { text: 'Two dice: both moves come on his turn, in this order. A Stagger breaks the next of the two.' }));
+      if (info.intent?.bonus) rows.push(el('p.bt-ins-note', { text: `The gift adds +${info.intent.bonus} to the die while it holds, so its Arts on the high faces come up more often. Pry it loose and the +${info.intent.bonus} goes with it.` }));
+      if (info.side === 'ally') rows.push(el('p.bt-ins-note', { text: 'She fights beside you. Her turns play on their own: she takes no command.' }));
+      else if (info.analyzed && info.queue.length) rows.push(...info.queue.map((q, i) => el('p.bt-ins-intent.next', null, el('b', { text: `then ${q.face}` }), el('span', { text: ` ${q.name}` }), el('small', { text: i === 0 ? ' (foreseen)' : '' }))));
       else rows.push(el('p.bt-ins-note', { text: 'Analyze foresees its next move.' }));
-      parts.push(sec('Intent', ...rows));
+      parts.push(sec(info.side === 'ally' ? 'Her next move' : info.intent2 ? 'Intents' : 'Intent', ...rows));
+    }
+    if (info.stolen?.length) {
+      // M7 (spec §4.4): the relics he took up, each an Art of its own and +1 Guard
+      const arts = info.stolen.filter(id => RELICS[id]).map(id => { let a = null; try { a = stolenArt(id); } catch { a = null; } return { id, name: RELICS[id].name, text: a?.text || '' }; });
+      parts.push(sec(`Stolen Arts · ${arts.length}`, ...arts.map(a => el('p.bt-ins-st.bt-ins-stolen', { 'data-relic': a.id }, el('span', null, el('b', { text: `Stolen: ${a.name}` }), el('small', { text: ` ${a.text}` })))),
+        el('p.bt-ins-note', { text: 'The relics you never claimed. Each gives him an Art and +1 Guard.' })));
     }
     if (info.statuses.length) {
       // M5: a hold reads by its label and names its holder ("Held under by the Rime-Abbot")

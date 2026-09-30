@@ -156,7 +156,7 @@
 .pf-bar i { position: absolute; inset: 0 auto 0 0; width: var(--p, 50%); background: linear-gradient(90deg, #4fae3c, #e8c050 45%, #ee6c54 80%, #b01e1e); }
 .pf-lv { font-family: var(--f-pixel); font-size: 10px; color: var(--parchment-2); }
 .pf-foes { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 6px; }
-.pf-foes li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 8px; align-items: center; }
+.pf-foes li { display: grid; grid-template-columns: minmax(22px, auto) minmax(0, 1fr); gap: 8px; align-items: center; }
 .pf-foe b { font-size: 16px; }
 .pf-foe small { font-family: var(--f-pixel); font-size: 9px; color: var(--ash); }
 .pf-grudge, .pf-grudge-note { color: #ff9a86; }
@@ -323,3 +323,68 @@
   .deck-on .w-dpad, .deck-on .w-pill, .deck-on .w-btn { pointer-events: auto; }
   .deck-on .w-stage-prompt { display: block; top: 8px; bottom: auto; }
 }
+
+/* ---- M7 (spec §3.5, §4.2-§4.4): the new tiers' dice, what the Unsmith will take, and Tamsin beside you ---- */
+.pf-dice { display: inline-flex; align-items: center; gap: 2px; }
+.pf-dice canvas { image-rendering: pixelated; }
+.pf-bonus { font-family: var(--f-pixel); font-weight: 400; font-size: 10px; padding: 1px 3px; color: #f1e6ff; background: #3a1f5a; box-shadow: 0 0 0 1px #8a5ad0; }
+.pf-foes li.tier-hollow .pf-foe b, .pf-foes li.tier-unsmith .pf-foe b { color: #e2c8ff; }
+.pf-stolen, .pf-allies { margin-top: 10px; }
+.pf-stolen-list { list-style: none; margin: 4px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 4px 10px; }
+.pf-stolen-list li { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 14px; color: #e2c8ff; }
+.pf-stolen-list li span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pf-stolen-list canvas { flex: none; width: 16px; height: 16px; image-rendering: pixelated; }
+.pf-stolen-note { margin: 6px 0 0; font-size: 14px; color: var(--parchment-2); }
+.pf-ally { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px; align-items: center; padding: 4px 8px; background: #1c1624; box-shadow: 0 0 0 2px var(--ink), 0 0 0 3px #6a4e8a; }
+.pf-ally canvas { width: 64px; height: 64px; image-rendering: pixelated; }
+.pf-ally-t { display: grid; gap: 2px; }
+.pf-ally-t b { font-size: 16px; color: #e2cfff; }
+.pf-ally-t small { font-size: 13px; color: var(--parchment-2); }
+
+/* ---------- M7 (spec §5, A14, A15): Act III's cards ---------- */
+/* the Opening: "Act III: The Hollow Council", the eight coals, violet-black under the Keep */
+.ov.ov-story.act3 { background: radial-gradient(120% 80% at 50% 20%, rgba(44, 24, 60, .97), rgba(5, 3, 8, .98) 72%); }
+.story-card.act3-card .kick { color: #c8a2ff; }
+.story-card.act3-card h2 { text-shadow: 0 3px 0 var(--ink), 0 0 26px rgba(170, 120, 240, .6); }
+.act3-text { max-width: 44ch; margin: 0 auto 8px; }
+.act3-text:last-of-type { color: #e2c8ff !important; font-style: italic; }
+/* the Hearth Below's card (the region card, in the Below's own colours) */
+.ov.ov-story.region-below { background: radial-gradient(120% 80% at 50% 18%, rgba(40, 26, 48, .97), rgba(5, 3, 8, .98) 72%); }
+.region-below .region-head .kick { color: #c8a2ff; }
+.region-below .region-view { background: #140f1a; box-shadow: 0 0 0 3px var(--ink), 0 0 0 5px #5a4470; }
+/* an ending: its still (or drawn scene), its name and its words */
+.ov.ov-story.ending { background: radial-gradient(120% 80% at 50% 18%, rgba(56, 34, 16, .97), rgba(6, 4, 6, .98) 72%); }
+.ov.ov-story.ending-release { background: radial-gradient(120% 80% at 50% 18%, rgba(34, 36, 44, .97), rgba(4, 4, 8, .98) 72%); }
+.ov.ov-story.ending-anew { background: radial-gradient(120% 80% at 50% 18%, rgba(34, 44, 72, .97), rgba(4, 5, 10, .98) 72%); }
+.story-card.ending-card { padding-top: 8px; }
+.ending-card .region-view { box-shadow: 0 0 0 3px var(--ink), 0 0 0 5px #7a5a3a; }
+.ending-anew .ending-card .region-view { box-shadow: 0 0 0 3px var(--ink), 0 0 0 5px #c4d6f4, 0 0 22px rgba(196, 214, 244, .35); }
+.ending-anew .ending-card h2 { color: #fffaf0; text-shadow: 0 3px 0 var(--ink), 0 0 28px rgba(196, 214, 244, .7); }
+.ending-sub { margin: 0 auto 8px; max-width: 44ch; color: var(--hearth-hot) !important; font-style: italic; }
+.ending-text { margin: 0 auto 8px; max-width: 46ch; }
+/* the credits */
+.ov.ov-story.credits { background: radial-gradient(120% 80% at 50% 20%, rgba(30, 20, 14, .98), rgba(4, 3, 5, .99) 72%); }
+.credits-roll { max-height: 64vh; overflow-y: auto; overscroll-behavior: contain; padding: 4px 6px 12px; }
+.credits-roll.rolling > * { animation: wCreditIn .9s ease-out both; }
+.credits-roll.rolling > *:nth-child(2) { animation-delay: .2s; } .credits-roll.rolling > *:nth-child(3) { animation-delay: .5s; }
+.credits-roll.rolling > *:nth-child(4) { animation-delay: .9s; } .credits-roll.rolling > *:nth-child(5) { animation-delay: 1.2s; } .credits-roll.rolling > *:nth-child(6) { animation-delay: 1.6s; }
+@keyframes wCreditIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+.credits-cast, .credits-journey { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px 14px; margin: 8px auto 14px; max-width: 460px; text-align: left; }
+.credits-cast dt, .credits-journey dt { text-align: right; font-family: var(--f-pixel); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--ash); align-self: center; overflow-wrap: anywhere; }
+.credits-cast dd, .credits-journey dd { margin: 0; font-family: var(--f-display); font-weight: 700; font-size: 17px; color: #fff3da; overflow-wrap: anywhere; }
+.credits-k { margin-top: 6px; }
+.credits-thanks { margin: 10px 0 0; font-family: var(--f-display); font-size: 22px !important; color: var(--hearth-hot) !important; }
+/* the last card */
+.ov.ov-story.last-card { background: radial-gradient(120% 80% at 50% 20%, rgba(60, 36, 14, .97), rgba(6, 4, 6, .98) 72%); }
+.last-text { max-width: 46ch; margin: 0 auto 8px; }
+.last-text:last-of-type { color: var(--hearth-hot) !important; font-style: italic; }
+@media (prefers-reduced-motion: reduce) { .credits-roll.rolling > * { animation: none; } }
+/* M7 (spec §4.7): a shut choice's reasons, under it (Kindle Anew at the Worldforge's heart: "Needs ✗ Fenwick's Poker
+   ✗ your Masterpiece ✗ every page of the Codex"), side by side where they fit, so the heart's four choices stay on a
+   phone's screen */
+.dlg-why { flex: 1 0 100%; display: flex; flex-wrap: wrap; align-items: baseline; gap: 1px 10px; padding-left: 18px; }
+.dlg-why-k { font-family: var(--f-pixel); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; color: #ee6c54; }
+.dlg-why-r { font-size: 13px; color: #ffb4a4; }
+.dlg-why-r::before { content: "✗ "; color: #ee6c54; }
+.dlg-choice.is-disabled.has-why { opacity: 1; }
+.dlg-choice.is-disabled.has-why .dlg-choice-t, .dlg-choice.is-disabled.has-why .dlg-choice-n { opacity: .6; }

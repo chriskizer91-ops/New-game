@@ -632,3 +632,23 @@ li.jr-grudge { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-
 li.jr-grudge b { overflow-wrap: anywhere; }
 .jg-stamp { padding: 2px 8px; font-family: var(--f-pixel); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--up); border: 2px solid currentColor; transform: rotate(-6deg); }
 @media (min-width: 760px) { .jr-grudges.is-active { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; } .jr-grudges.is-active > .jr-gh, .jr-grudges.is-active > .jr-empty { grid-column: 1 / -1; } }
+
+/* ---------- M7: the Codex's five pages in one row (Page V, the Hearth Below), at 360 px too ---------- */
+.tabs.cx-tabs { grid-template-columns: repeat(var(--n, 5), minmax(0, 1fr)); gap: 5px; }
+@media (max-width: 420px) { .cx-tabs .cx-tab { padding-inline: 1px; } .cx-no { font-size: 19px; gap: 3px; } .cx-rg { font-size: 8px; letter-spacing: 0; } }
+/* M7: a rumour found in a poster (the missing smith, the man on the barge: the Unsmith), and the poster it points at */
+.poster.is-found .poster-k { color: #4a2270; }
+.poster .btn.poster-found { min-height: 44px; margin-top: 4px; padding: 4px 8px; font-family: var(--f-pixel); font-size: 9px; letter-spacing: .04em; color: #f1e6ff; background: #3a1f5a; border-color: #1a0e28; }
+.poster.flash-to { animation: jrFlashTo 1.2s ease-out 1; }
+@keyframes jrFlashTo { 0%, 40% { box-shadow: 0 0 0 2px var(--ink), 0 0 0 4px #c8a2ff, 0 0 18px rgba(200, 162, 255, .6); } 100% { box-shadow: none; } }
+@media (prefers-reduced-motion: reduce) { .poster.flash-to { animation: none; outline: 2px solid #c8a2ff; } }
+/* ---------- M7: "Below the Keep" on the Atlas, and the four maps below ---------- */
+.atlas-mk.mk-below .mk-ico { width: 32px; height: 32px; color: #e2c8ff; background: #2a1638; box-shadow: 0 0 0 2px #120c08, 0 0 0 3px #b48ae8, 0 0 12px rgba(180, 138, 232, .6); }
+.mk-region.rg-below .mk-ico { color: #e2c8ff; background: #2a1638; }
+.atlas-below { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; }
+.atlas-below li { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 4px 8px; background: var(--iron); box-shadow: 0 0 0 1px var(--ink), inset 0 0 0 1px var(--seam); }
+.atlas-below b { font-size: 15px; }
+.atlas-below small { font-family: var(--f-pixel); font-size: 9px; letter-spacing: .06em; text-transform: uppercase; color: var(--ash); white-space: nowrap; }
+.atlas-below .ab-here { box-shadow: 0 0 0 1px var(--ink), inset 0 0 0 1px #b48ae8; }
+.atlas-below .ab-here small { color: #e2c8ff; }
+.atlas-below .ab-walked small { color: var(--up); }

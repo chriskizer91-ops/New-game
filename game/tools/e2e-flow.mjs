@@ -65,7 +65,9 @@
 // And a Milestone 6 profile (the M2, M3, M4, M4.5, M5 and M6 saves seeded, with the M4.5, M5 and M6 started
 // markers; aethermoor.save.m6 is the newest):
 //   O. "Continue from Milestone 6" (offered first) -> the Milestone 6 card -> Walk on (nothing written)
-//      -> the first step writes this milestone's own save (version 6, the ending unchosen); Settings lists all six
+//      -> the first step writes this milestone's own save (version 6, the ending unchosen); the Codex's Page V (the
+//      Hearth Below) shows in the carried journey (open, No. 000 first, its pockets and reward, its road note: the
+//      stair under the vault); Settings lists all six
 //      old saves; Export M6 backup is the M6 save byte for byte (AETH5); Carry over my M6 save, "Not yet" changes
 //      nothing, then carries it over again with a backup; after a reload the title continues it. All six old
 //      saves, and the M4.5, M5 and M6 markers, stay byte-identical throughout; nothing of Milestone 6's is written.
@@ -75,7 +77,7 @@
 // Owner: WP8 (M3); the M4 counts and section K: P7a; M5's keys and section M: the lead; M6's keys and section N: the lead;
 // M7's keys and section O: the lead;
 // M6 P7: Page IV in section N, the fen track among the tracks played, and B's Ladder is the rules' ladder() (an
-// entry with an `if`, the man on the barge, shows only once it holds).
+// entry with an `if`, the man on the barge, shows only once it holds). M7 P7: Page V in section O.
 import { execSync } from 'node:child_process';
 import { existsSync, mkdirSync, rmSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -1369,6 +1371,29 @@ async function runM6(V) {
   const live = s.live && JSON.parse(s.live);
   check(!!live && live.version === SAVE_VERSION && live.gold === 1212 && live.ending === null && s.mark === '1', `${V.name}: the first step writes this milestone's own save from the Milestone 6 one, with the ending unchosen`);
   await untouched('after the carry-over');
+
+  // M7 (P7): the Codex's Page V (the Hearth Below) shows in the carried-over journey: its nine from the data (the page
+  // lists its numbers), No. 000 first and labelled "No. 000/074", its reward, and, the fifth council not yet sat, what
+  // opens its road (the stair under the vault)
+  await page.evaluate(() => window.__app.go('codex', { from: 'world', page: 'below' }));
+  await waitScreen('codex');
+  const PV = PAGES.find(P => P.id === 'below');
+  const nV = Object.values(RELICS).filter(r => PV.nos.includes(r.codex)).length;
+  const cxV = await page.evaluate(() => ({
+    tab: document.querySelector('.cx-tab[aria-selected="true"]')?.dataset.page, tabs: document.querySelectorAll('.cx-tab').length, sealed: document.querySelectorAll('.cx-tab.is-sealed, .cx-sealed').length,
+    pockets: document.querySelectorAll('.pocket').length, first: document.querySelector('.pocket')?.dataset.relic || '', no: document.querySelector('.pocket .no')?.textContent || '',
+    prog: document.querySelector('.cx-prog')?.textContent || '', reward: document.querySelector('.cx-reward')?.textContent || '', road: document.querySelector('.cx-road')?.textContent || '',
+    scrollW: document.documentElement.scrollWidth, vw: innerWidth,
+  }));
+  check(cxV.tab === 'below' && cxV.tabs === PAGES.length && !cxV.sealed && nV === 9 && cxV.pockets === nV && new RegExp(`0 of ${nV} claimed`).test(cxV.prog) && cxV.reward.includes(PV.reward.name),
+    `${V.name}: the Codex's Page V shows in the carried-over journey: ${cxV.pockets} pockets, "${cxV.prog}", ${PV.reward.name}`);
+  check(cxV.first === 'fenwicks-poker' && cxV.no === 'No. 000/074', `${V.name}: Page V starts with No. 000 (${cxV.first}, "${cxV.no}")`);
+  check(/vault/.test(cxV.road) && /fifth/.test(cxV.road), `${V.name}: Page V says what opens the Hearth Below's road ("${cxV.road}")`);
+  check(cxV.scrollW <= cxV.vw, `${V.name}: Page V has no horizontal scroll (${cxV.scrollW} <= ${cxV.vw})`);
+  await shot('codex-V');
+  await page.evaluate(() => window.__app.go('world'));
+  await waitScreen('world');
+  await untouched('after the Codex');
 
   await page.evaluate(() => window.__app.go('settings', { from: 'world' }));
   await waitScreen('settings');
