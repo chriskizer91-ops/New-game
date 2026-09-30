@@ -144,8 +144,9 @@ The player, after their testers played M4: "the way the game progressed at m2 wa
 ### 3.4 Next
 
 1. **Milestone 7, Act III** (the roadmap: the Hollow Council, the Unsmith, 3 endings, the post-game Heat ladder; `docs/DESIGN-BRIEF.md` §9, §13). Write `game/docs/M7-SPEC.md` first. What the game already set up for it: the four soot-sealed boxes and their letters (Qasim, Brundar, Gretch, Miravel; the eighth letter says "open them together"), Tamsin's fall and the violet-black relic (not yet in the Codex), Harrow Ironvein and the Worldforge plans (the Unsmith is strongly implied to be Harrow, never said), the Sleepers (Hush under Frostmere, Lull under the Belfry, one under the ash, a fourth unnamed), Fenwick's secret (no No. 000 poker exists yet), and the end-of-Act-II card, which names the Hollow Council. The brief's numbers do not fit the game as built (160 relics and 120 Codex entries for the true ending against 66 relics; 7 companions against 4 fixed heroes; 30 Omens against 6), so the spec must rescale them.
-2. Step 0 as before: freeze `dist/aethermoor-m6.html` (pin its sha256), M7's own key `aethermoor.save.m7` reading M6 first, save version 6 (`AETH6.` codes), `dist/aethermoor-m7.html`.
-3. **Deliver** the same way (§6 "Delivery").
+2. **Delivery size:** M6 only just fit the 30 MiB a file sent in the chat may be (fully minified, §6 "Delivery"). Settle how M7 goes out in its spec.
+3. Step 0 as before: freeze `dist/aethermoor-m6.html` (pin its sha256), M7's own key `aethermoor.save.m7` reading M6 first, save version 6 (`AETH6.` codes), `dist/aethermoor-m7.html`.
+4. **Deliver** the same way (§6 "Delivery").
 
 ## 4. Architecture and key decisions
 
@@ -248,5 +249,5 @@ node tools/map-draft.mjs --all   # ASCII preview of every map with entities
 **Delivery** (how M3 to M6 went out; repeat it for M7):
 1. `npm run build`, then audit the delivery file before sending it: the only URLs are Google Fonts (and the SVG namespace); no `fetch`/XHR/WebSocket/`eval`, no local paths, no AI model names (scan with the base64 image data stripped: a long base64 run can spell anything); look at its HTML shell. Publishing it as a claude.ai page is different: the Artifact rules require reading the whole file first.
 2. Commit it (`dist/` is tracked; check nothing in `game/.gitignore` hides it), push.
-3. Send it with SendUserFile, `display: 'attach'`.
+3. Send it with SendUserFile, `display: 'attach'`. **A file sent that way must be under 30 MiB.** M6's was 30.1 MiB, so it went out fully minified (`node tools/build.mjs --minify`: 29.85 MiB), after world, flow and codes passed on that exact file. Milestone 7's paintings will push past even that: plan its delivery in its spec (a zip of the HTML, lighter paintings, or the paintings in a second file).
 4. Tell the player how to move their save (old version: Settings → Make a save code; new version: Settings → Load a code), the iPhone caveat, and offer a new, separate page for phone play. Never republish the M2 URL.

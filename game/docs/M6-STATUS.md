@@ -39,7 +39,7 @@ numbers, and the known issues.
 | e2e-codes | **27 codes at both sizes**: every real M2 code, plus M3, M4, Milestone 4.5 and M5 codes; the earlier milestones' keys are never written. |
 | Balance | Every M6 target met, every earlier target unchanged, 0 stuck runs; see §2.1. |
 | Performance | At 4× CPU throttle: p95 frame JS 2.0-4.0 ms with at most 20 `drawImage` per frame, the Lanternfen in thick fog 3.7-3.9 ms and the Long Boardwalk 2.4-2.6 ms (targets 16 ms and 40). |
-| Size | The game **2583 KB** (warns above 2.5 MB, fails above 3.2 MB); the paintings **28,217 KB** (fails above 32 MB); the file **30,800 KB**. |
+| Size | The game **2583 KB** (warns above 2.5 MB, fails above 3.2 MB); the paintings **28,217 KB** (fails above 32 MB); the file **30,800 KB**. The download is the fully minified build (`build.mjs --minify`: the game 2349 KB, the file 29.85 MiB), because a file sent in the chat must be under 30 MiB; world, flow and codes passed again on that exact file. |
 
 ### 2.1 Balance (`node tools/sim.mjs --seeds 200`, starters rotated)
 
@@ -110,8 +110,10 @@ grid overlay. What the traces changed besides the tiles:
 ## 3. Known issues
 
 1. **The game is 2583 KB**, over the 2.5 MB warning line (under the 3.2 MB limit). `--minify` is in reserve.
-2. **The download is about 30 MB** with every map painted at full detail (the player's choice, A6). A claude.ai page
-   holds 16 MB, so a page for the phone would be a separate build with lighter paintings.
+2. **The download is 29.85 MiB** with every map painted at full detail (the player's choice, A6), fully minified to
+   fit the 30 MiB a file sent in the chat may be. Milestone 7's paintings will not fit that way: it needs another way
+   to deliver (a zip, lighter paintings, or the paintings in a second file). A claude.ai page holds 16 MB, so a page
+   for the phone would be a separate build with lighter paintings.
 3. **The domain keys open every Gloomfen lock at the party's levels**, so the fog and the bog rarely bite a party that
    has them (as in M5).
 4. **The witch-wards' relic keys lie behind witch-wards** (spec §2.7's table): only Knowledge 7 opens the first. Nobody

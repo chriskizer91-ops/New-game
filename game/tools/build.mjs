@@ -6,7 +6,8 @@
 //
 //   node tools/build.mjs                 # into dist/
 //   node tools/build.mjs --out /tmp/x    # into a private folder (parallel builders; A5)
-//   node tools/build.mjs --minify        # full minification, for size experiments only
+//   node tools/build.mjs --minify        # full minification (identifiers renamed): M6's delivery, to fit a
+//                                        # 30 MiB upload (gate the minified file itself before sending it)
 //
 // The bundle is an IIFE, whitespace-minified (esbuild minifyWhitespace: identifiers and structure
 // are kept), so the delivered file's format never changes between builds.
