@@ -13,6 +13,7 @@ import { execSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { MAPS } from '../src/data/maps/index.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = Object.fromEntries(process.argv.slice(2).map(a => { const [k, v] = a.replace(/^--/, '').split('='); return [k, v ?? true]; }));
@@ -79,11 +80,20 @@ async function run(tag, start, { full }) {
     await W('teleport', map, x + back[0], y + back[1], dir); await wait(500); await idle();
     await W('press', dir); await wait(900); await idle();
   }
+  // walk out through an exit (the real map change, so the arrival triggers and scenes play): stand inside the map
+  // beside the exit's tile and step into it
+  async function walkIn(fromMap, exitId) {
+    const m = MAPS[fromMap], ex = m.exits.find(e => e.id === exitId), [x0, y0, x1, y1] = ex.area;
+    const [x, y, dir] = y1 === m.h - 1 ? [x0, y0, 's'] : x0 === 0 ? [x0, y0, 'w'] : x1 === m.w - 1 ? [x0, y0, 'e'] : [x0, y1, 'n'];
+    await stepInto(fromMap, x, y, dir); await wait(900); await idle();
+  }
   async function fightOnAuto(name) {
     await page.waitForSelector('.screen-battle', { timeout: 15000 });
     await wait(600); await shot(name);
     const auto = page.getByRole('button', { name: /auto/i });
     if (await auto.count()) await auto.first().click();
+    // the fastest battle speed (the e2e plays some twenty fights)
+    for (let i = 0; i < 3; i++) { const sp = page.getByRole('button', { name: /^[124]x$/ }); if (!(await sp.count()) || (await sp.first().innerText()).trim() === '4x') break; await sp.first().click(); await wait(150); }
     for (let i = 0; i < 400 && await page.locator('.screen-battle').count(); i++) {
       await wait(500);
       if (await page.locator('.screen-aftermath .btn.primary, .screen-battle .bt-end .btn.primary').count()) break;
@@ -114,13 +124,16 @@ async function run(tag, start, { full }) {
       await fightOnAuto(`fight-${enc}${t > 1 ? '-try' + t : ''}`);
       await talk();
       if ((await flags()).beaten?.[enc]) { console.log(`  ${tag}: won ${enc}${t > 1 ? ` on try ${t}` : ''}`); return true; }
-      console.log(`  ${tag}: lost ${enc} (try ${t}); resting`);
-      await W('train', 1);
+      // a loss: rest, and grind a level (the side fights and patrols the e2e skips; a Grudge foe comes back stronger)
+      lv = Math.max(lv, (await game()).party.roster.warden.level) + 1;
+      console.log(`  ${tag}: lost ${enc} (try ${t}); resting and training to ${lv}`);
+      await W('train', lv);
     }
     fail(`${tag}: ${enc} not won in 3 tries`);
     return false;
   }
-  const train = async lv => { const l = await W('train', lv); console.log(`  ${tag}: party ${l.join('/')} (trained to ${lv})`); };
+  let lv = 1;
+  const train = async to => { lv = Math.max(lv, to); const l = await W('train', lv); console.log(`  ${tag}: party ${l.join('/')} (trained to ${lv})`); };
   const want = async (flag, step) => { if (!(await story())[flag]) fail(`${tag}: ${step}: ${flag} is not set`); };
   const objective = async (text, step) => { const h = await hud(); if (!h.includes(text)) fail(`${tag}: ${step}: the objective is not "${text}"`); };
 
@@ -137,7 +150,7 @@ async function run(tag, start, { full }) {
   await objective('Find Aldric Fernshaw on the square.', 'step 1');
 
   // 2. Aldric: 10 gp and the courier job; the north gate opens
-  await W('teleport', 'th-thornhollow', 12, 19, 'n'); await wait(900); await talk(); await shot('thornhollow');
+  await walkIn('th-landing', 'tl-n'); await talk(); await shot('thornhollow');
   const gold0 = (await game()).gold;
   await use('th-thornhollow', 'th-aldric', [], ['w', 's', 'e', 'n']);
   const gold1 = (await game()).gold;
@@ -151,7 +164,7 @@ async function run(tag, start, { full }) {
 
   // 4. out the north gate: the Thornway trigger fight, the runner camp, the bramble
   await train(2);
-  await fight('c1-verdant-edge', () => stepInto('th-thornway', 14, 52, 'n'));
+  await fight('c1-verdant-edge', () => walkIn('th-thornhollow', 'tt-n'));
   await shot('thornway');
   await train(3);
   await fight('c1-runner-camp', () => use('th-thornway', 'c1-runner-camp', [], ['s', 'e', 'w', 'n']));
@@ -161,7 +174,7 @@ async function run(tag, start, { full }) {
 
   // 5. Eldergrove: Taela, the shard cut, Taela a guest
   await train(4);
-  await W('teleport', 'th-eldergrove', 14, 23, 'n'); await wait(900); await talk(); await shot('eldergrove');
+  await walkIn('th-thornway', 'tw-n'); await talk(); await shot('eldergrove');
   await use('th-eldergrove', 'th-taela', [], ['s', 'w', 'e', 'n']); await want('c1-met-taela', 'step 5');
   shotIf.cut = 'shard-glows';
   await stepInto('th-eldergrove', 14, 4, 'n'); await talk();
@@ -174,7 +187,7 @@ async function run(tag, start, { full }) {
   await train(5);
   await fight('c1-grove-circle', () => use('th-eldergrove', 'c1-grove-circle', [], ['e', 's', 'n', 'w']));
   await want('c1-circle-saved', 'step 6');
-  await stepInto('th-heartroot-1', 12, 21, 'n'); await talk(); await shot('heartroot');
+  await walkIn('th-eldergrove', 'eg-tree'); await talk(); await stepInto('th-heartroot-1', 12, 21, 'n'); await talk(); await shot('heartroot');
   await fight('c1-roots-grubs', () => use('th-heartroot-1', 'c1-roots-grubs', [], ['e', 's', 'n', 'w']));
   await use('th-heartroot-1', 'th-hr-coal', ['Ask Taela to light it.'], ['e', 'n', 's', 'w']);
   await fight('c1-roots-sapwight', () => use('th-heartroot-1', 'c1-roots-sapwight', [], ['s', 'e', 'w', 'n']));
@@ -228,10 +241,10 @@ async function run(tag, start, { full }) {
 
   // 10. the tower: the stair, the lantern, the Rot line; the Hindwood road opens
   await train(7);
-  await W('teleport', 'th-mosswatch-1', 6, 13, 'n'); await wait(900); await talk();
+  await walkIn('th-mossfall', 'mf-tower'); await talk();
   await use('th-mosswatch-1', 'th-garret', [], ['e', 's', 'n', 'w']); await want('c1-mw-arrived', 'step 10');
   await fight('c1-mw-stair', () => use('th-mosswatch-1', 'c1-mw-stair', [], ['s', 'e', 'w', 'n']));
-  await W('teleport', 'th-mosswatch-2', 6, 9, 'n'); await wait(900); await talk();
+  await walkIn('th-mosswatch-1', 'mw1-up'); await talk();
   await fight('c1-mw-lantern', () => use('th-mosswatch-2', 'c1-mw-lantern', [], ['s', 'e', 'w', 'n']));
   await use('th-mosswatch-2', 'th-garret-up', [], ['e', 's', 'w', 'n']); await shot('rot-line');
   await want('c1-to-fawnrest', 'step 10');
@@ -247,20 +260,20 @@ async function run(tag, start, { full }) {
   if (await land.count()) { await shot('over-thornhollow'); await land.first().click(); } else fail(`${tag}: step 11: no Land button over Thornhollow`);
   await page.waitForSelector('.screen-world', { timeout: 20000 }); await wait(1200); await talk();
   await shot('landed-thornhollow');
-  await W('teleport', 'th-hindwood', 29, 34, 'w'); await wait(900); await talk(); await shot('hindwood');
+  await walkIn('th-thornhollow', 'tt-ne'); await talk(); await shot('hindwood');
   await fight('c1-glowcaps', () => use('th-hindwood', 'c1-glowcaps', [], ['s', 'e', 'w', 'n']));
   await use('th-hindwood', 'c1-feral-druid', ['Let Taela talk.'], ['e', 's', 'w', 'n']);
   await want('c1-hindwood', 'step 11'); await shot('burners');
 
   // 12. Fawnrest: the keeper, the court, the stair
-  await W('teleport', 'th-fawnrest', 11, 17, 'n'); await wait(900); await talk(); await shot('fawnrest');
+  await walkIn('th-hindwood', 'hw-n'); await talk(); await shot('fawnrest');
   await use('th-fawnrest', 'th-keeper', [], ['s', 'e', 'w', 'n']); await want('c1-fawnrest', 'step 12');
   await stepInto('th-fawnrest', 11, 8, 'n'); await talk(); await want('c1-stair-found', 'step 12');
   await shot('stair');
 
   // 13. the node: the stair, the hall and the roots, the node cut, the boss on Auto, the cooling cut; Taela for good
   await train(9);
-  await W('teleport', 'th-fawnrest-node', 23, 30, 'n'); await wait(900); await talk(); await shot('node');
+  await walkIn('th-fawnrest', 'fr-node'); await talk(); await shot('node');
   await fight('c1-node-stair', () => use('th-fawnrest-node', 'c1-node-stair', [], ['e', 's', 'n', 'w']));
   await fight('c1-node-hall', () => stepInto('th-fawnrest-node', 23, 21, 'n'));
   shotIf.cut = 'node-overheats';
@@ -285,6 +298,8 @@ async function run(tag, start, { full }) {
   await talk();
   await want('c1-done', 'step 14');
   await objective('Chapter 1 is done. Chapter 2 comes next.', 'the end');
+  // the third traced painting: the fjord cove (S1's night run), with the party on it
+  await W('teleport', 'th-fjords-cove', ...MAPS['th-fjords-cove'].anchors['from-boat']); await wait(1200); await talk(); await shot('fjords-cove');
   const g = await game();
   console.log(`  ${tag}: at ${g.progress.pos.map}, party ${g.party.active.join('/')}, levels ${g.party.active.map(id => g.party.roster[id].level).join('/')}, gold ${g.gold}`);
   await page.close();

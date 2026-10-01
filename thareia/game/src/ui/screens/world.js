@@ -47,6 +47,7 @@ import { check } from '../../rules/cond.js';
 import { migrate, SAVE_VERSION } from '../../rules/migrate.js';
 import { relicItem } from '../../rules/loot.js';
 import { grantXp, xpForLevel } from '../../rules/progression.js';
+import { equip as equipItem, bestHeroFor } from '../../rules/party.js';
 import { dirTo, DIRS } from '../../rules/path.js';
 import * as Art from '../../art/index.js';
 import { el } from '../lib/dom.js';
@@ -1211,7 +1212,7 @@ export function mount(root, ctx, params = {}) {
       },
       resetPerf() { loop.stats.n = 0; drawN = 0; },
       busy: () => lock > 0 || M.transition || M.moving || !!M.path,
-      // T2 e2e (tools/e2e-t2.mjs): the party trained up to `level` (the XP the skipped side fights would give), and
+      // T2 e2e (tools/e2e-t2.mjs): the party trained up to `level` (the XP the skipped side fights would give), geared
       // rested, between scenes
       train(level) {
         const roster = { ...game.party.roster };
@@ -1219,7 +1220,14 @@ export function mount(root, ctx, params = {}) {
           const h = roster[id];
           if (h && h.level < level) roster[id] = grantXp(h, xpForLevel(level) - (h.xp || 0), createRng(`e2e:train:${id}:${level}`)).hero;
         }
-        game = G.healAll({ ...game, party: { ...game.party, roster } });
+        game = { ...game, party: { ...game.party, roster } };
+        // and wearing the best of what the bag holds, as a player would between fights
+        for (const it of game.inventory || []) {
+          if (it.shattered) continue;
+          const who = bestHeroFor(game, it);
+          if (who) game = equipItem(game, who, it.uid).game;
+        }
+        game = G.healAll(game);
         save(); refreshUi();
         return game.party.active.map(id => game.party.roster[id].level);
       },
