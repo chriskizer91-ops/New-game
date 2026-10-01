@@ -170,7 +170,7 @@ Ships are story rewards that arrive at set levels, so the two always line up.
 | Ship | Art | How you get it | Reaches |
 |---|---|---|---|
 | **Passage ticket** on Yara Dustwind's cargo skiff | the skiff sheet | free, in the Prologue | Bogmire to Thornhollow, one fixed route |
-| **A rented skiff** | the skiff sheet, hire colors drawn in code | hire at any dock, levels 1–10 | the licensed routes of the Verdant Wilds and Mirrordeep, docks only |
+| **A rented skiff** | `skiff-rented` (from `airship-rental-skiff.png`) | from Chapter 1 beat 7 (Aldric sponsors it and prepays the first flight; then 10 gp a flight), at the hire posts of Thornhollow (the landing), Eldergrove and Mosswatch; Fawnrest is land-only once walked to | the licensed docks of the Verdant Wilds (Mirrordeep's routes come in T3), docks only |
 | **Your own skiff** (ship 1) | `airship-skiff-turnaround.png` | **level 10:** buy Yara's old skiff with the Warden's Writ (Chapter 2) | anywhere low: the Wilds, Mirrordeep, the Gloomfen's edge, the Lowlands |
 | **The refitted skiff** (ship 2) | `ship-2-refitted-skiff.webp` | **level 20:** Twick's refit in Sandspire (Chapter 3) | the Sunscorch's heat thermals |
 | **The cruiser** (ship 3) | `ship-3-cruiser.webp` | **level 30:** built by the Amberworks–Ironhold exchange (Chapter 4) | over the Ironspire, through Aether storms |

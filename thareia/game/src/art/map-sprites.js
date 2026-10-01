@@ -46,6 +46,8 @@ export const NPC_LOOKS = Object.freeze({
   // lizardfolk Outrider (scaled skin, bone-and-leather, a spear); Merryn Copperpot, the tiny halfling herbalist; Aldric
   // Fernshaw, the nervous merchant
   yara: { H: { build: 'human', skin: 'skinTan', hairMat: 'hairSilver', hair: 'braid', eye: '#3a1a10', quiver: 'leather', fletch: 'clothWhite', gloves: 'leather', boots: 'leatherDark' }, gear: { weapon: A('bow', { wood: 'yew' }), body: A('leather', { mat: 'leather', shirt: 'gambeson', belt: 'leatherDark' }) } },
+  // Thareia (T2): Taela Greenmantle standing at Eldergrove, before she joins (her hero look, HERO_ART.taela)
+  taela: { H: { build: 'human', skin: 'skin', hairMat: 'hairAuburn', hair: 'pony', ears: 'half', marks: 'rotwood', mantle: 'moss', eye: '#24381c', gloves: 'bark', tunic: 'hoodGreen' }, gear: { weapon: A('staff', { style: 'gnarl', headT: 60, haft: 'bark', haftR: 1.9, wobble: 1.2, wrap: 'moss', wrapA: 34, wrapB: 40, bands: [], foot: 'bark', leaves: 'moss', crystal: 'emerald', glow: 'verdant' }), head: A('hood', { look: 'hood', mat: 'moss', tip: 0, trim: 'rotwood' }), body: A('robe', { mat: 'hoodGreen', trim: 'rotwood', sash: 'leatherDark', cowl: 'moss' }), feet: A('boots', { mat: 'rags', trim: 'string' }) } },
   sedrin: { H: { build: 'human', skin: 'drake', hairMat: 'drake', hair: 'none', eye: '#6a4a08', gloves: 'drake', boots: 'drake' }, gear: { weapon: A('spear', { head: 'bone', haft: 'bogwood' }), body: A('leather', { mat: 'leatherDark', shirt: 'robeBark', belt: 'leather' }) } },
   merryn: { H: { build: 'youth', skin: 'skinPale', hairMat: 'hairBrown', hair: 'bun', eye: '#24381c', gloves: 'skinPale', boots: 'leather', bottleRow: ['emerald', 'amber'] }, gear: { body: A('robe', { mat: 'hoodGreen', trim: 'gambeson', sash: 'leather' }) } },
   aldric: { H: { build: 'human', skin: 'skin', hairMat: 'hairBrown', hair: 'short', eye: '#1c2a48', gloves: 'skin', boots: 'leatherDark', tunic: 'wool' }, gear: { body: A('robe', { mat: 'clothBlue', trim: 'gold', sash: 'leatherDark' }) } },
@@ -1504,7 +1506,9 @@ export const OBJECT_KINDS = Object.freeze(['chest', 'hearth', 'gate', 'chain', '
   'toll-bar', 'leech-ford', 'ward-gate', 'hung-lanterns', 'hag-fence', 'barge-planks', 'water-gate', 'choir-screen', 'blackwater', 'witch-ward',
   'wreck', 'marsh-lights', 'black-barge', 'lantern', 'sleeping-child', 'crane', 'diving-bell', 'sealed-chest', 'barge', 'bell', 'sleeper',
   // M7: the Hearth Below's gate look and its props
-  'hollow-gate', 'vault-stair', 'vault-boxes', 'vault-boxes-open', 'sleeper-first', 'worldforge', 'great-anvil']);
+  'hollow-gate', 'vault-stair', 'vault-boxes', 'vault-boxes-open', 'sleeper-first', 'worldforge', 'great-anvil',
+  // Thareia (T2): the node under Fawnrest, and the slab pushed off the stair down to it
+  'node', 'open-slab']);
 // states each kind draws (the first is the default); any other state string falls back to the default
 export const OBJECT_STATES = Object.freeze({
   chest: ['closed', 'open', 'locked', 'sealed'], hearth: ['lit', 'cold'], gate: ['closed', 'open'], chain: ['closed', 'post', 'open'],
@@ -1522,6 +1526,7 @@ export const OBJECT_STATES = Object.freeze({
   'sealed-chest': ['closed'], barge: ['closed'], bell: ['closed'], sleeper: ['closed'],
   'hollow-gate': ['closed', 'open'], 'vault-stair': ['closed'], 'vault-boxes': ['closed'], 'vault-boxes-open': ['closed'], 'sleeper-first': ['closed'],
   worldforge: ['closed'], 'great-anvil': ['closed'],
+  node: ['white', 'gold'], 'open-slab': ['closed'], // Thareia (T2): the node is white-hot until c1-node-cooled, then gold
 });
 // hearthfire id -> look (pass { id } to objectSprite('hearth', state, { id }))
 export const HEARTH_LOOKS = Object.freeze({
@@ -1537,6 +1542,10 @@ export const HEARTH_LOOKS = Object.freeze({
   'under-coal': 'undercoal', 'chain-fire': 'chainfire',
   // Thareia (T1): the docks' brazier under the mooring tower (a fire basket, as Bogmire's), Thornhollow's ring
   'docks-lantern': 'firebasket', 'th-hearth': 'ring',
+  // Thareia (T2): Chapter 1's nine, as the old Wilds fires in the same spots (the Thornway Stone keeps the den-mouth's
+  // ring; Garret's kitchen hearth is a hearth under a mantel; the pilgrims' camp is a ring of stones)
+  'th-tw-hearth': 'ring', 'th-eg-hearth': 'ring', 'th-hr-coal': 'coal', 'th-mf-cairn': 'cairn', 'th-mw-hearth': 'hall',
+  'th-mw-fire': 'brazier', 'th-hw-cairn': 'cairn', 'th-fr-camp': 'ring', 'th-fr-stone': 'stone',
 });
 const OBJ_SIZE = { gate: [16, 24], crownwall: [16, 24], thornwall: [16, 24], pedestal: [16, 24], board: [16, 24], bellframe: [16, 24], lookout: [16, 32], door: [16, 24], 'barred-gate': [16, 24] };
 Object.assign(OBJ_SIZE, { 'dune-glass': [16, 24], 'vault-seal': [16, 24], 'glass-spire': [16, 24], 'vault-door': [16, 24] });
@@ -1546,6 +1555,7 @@ Object.assign(OBJ_SIZE, { 'toll-bar': [16, 24], 'leech-ford': [16, 24], 'ward-ga
   lantern: [16, 32], crane: [32, 40], 'diving-bell': [16, 32], barge: [48, 28], bell: [16, 32], sleeper: [96, 56] }); // M6
 Object.assign(OBJ_SIZE, { 'hollow-gate': [16, 24], 'vault-boxes': [16, 20], 'vault-boxes-open': [16, 20], 'sleeper-first': [240, 152], worldforge: [112, 240],
   'great-anvil': [48, 40] }); // M7
+Object.assign(OBJ_SIZE, { node: [48, 64], 'open-slab': [16, 16] }); // Thareia (T2)
 // M7: a big prop whose foot is not at its bottom edge (the First Sleeper lies round its foot, in the middle of its hollow)
 const FOOT_UP = { 'sleeper-first': 44 };
 const OBJ_STATE_SIZE = { 'sign:monolith': [16, 24], 'sign:spire': [16, 32], 'sign:bell-rope': [16, 24], 'sign:throne': [16, 24], 'sign:frozen-monk': [16, 24] };
@@ -2426,8 +2436,48 @@ function gloomHearth(F, look, lit, f) {
    `area`: an area draws its sprite on every tile) and make the tiles under it solid in the rows. Each is drawn to the footprint the
    maps give it (notes/M7-P2-maps.md): the Sleeper fills its hollow round its foot, the Worldforge stands up the forge's east wall
    from its foot with its mouth on its west side two rows above the step, and the anvil stands over its footing. ---- */
-const BELOW_OBJ = new Set(['hollow-gate', 'vault-stair', 'vault-boxes', 'vault-boxes-open', 'sleeper-first', 'worldforge', 'great-anvil']);
+const BELOW_OBJ = new Set(['hollow-gate', 'vault-stair', 'vault-boxes', 'vault-boxes-open', 'sleeper-first', 'worldforge', 'great-anvil',
+  'node', 'open-slab']); // Thareia (T2): drawn in the same switch
 const BELOW_ANIM = new Set(['hollow-gate', 'sleeper-first', 'worldforge', 'great-anvil']); // two frames while shut (a prop is always 'closed')
+// Thareia (T2): the node (48 x 64): a stone dais, roots gripping it, and a cluster of crystal as tall as a door, white-hot
+// (radiant) until it is cooled, then a steady gold (amber); it pulses (2 frames) either way
+function nodeProp(F, st, f, W, H) {
+  const B = H - 1, hot = st !== 'gold', glass = hot ? 'radiant' : 'amber';
+  F.add({ mat: 'granite', prof: 'bevel', bw: 1.4, grp: 'dais', shapes: [E([24, B - 5], 23, 5.6)], tex: q => (q.y > B - 4 ? -.8 : (q.x + q.y) % 7 === 0 ? -.6 : 0) });
+  F.add({ mat: 'granite', prof: 'bevel', bw: 1, grp: 'step', shapes: [E([24, B - 8], 18, 4.4)], tex: q => ((q.x * 3 + q.y) % 11 === 0 ? -.8 : .2) });
+  F.add({ mat: hot ? 'amber' : 'gold', prof: 'flat', grp: 'script', noShadow: true, noOutline: true, shapes: [3, 9, 15, 33, 39, 45].map(x => RECT(x, B - 4.6, x + 1.6, B - 3.8)), tex: () => (hot ? .4 : -.2) });
+  const roots = [[[20, B - 12], [4, B - 6]], [[21, B - 11], [10, B - 2]], [[28, B - 12], [44, B - 5]], [[27, B - 11], [36, B - 1]], [[24, B - 12], [25, B]]];
+  F.add({ mat: 'bark', prof: 'round', bw: 1, grp: 'roots', shapes: roots.map(([a, b]) => C(a, b, 2, .8)), tex: q => ((q.x + q.y) % 5 === 0 ? -.8 : 0) });
+  const k = f ? 1.04 : 1, sh = (pts) => P(pts.map(([x, y]) => [24 + (x - 24) * k, B - 10 - (B - 10 - y) * k]));
+  const shards = [
+    sh([[14, B - 10], [12, B - 30], [15, B - 36], [19, B - 12]]),
+    sh([[31, B - 10], [34, B - 28], [37, B - 32], [36, B - 10]]),
+    sh([[18, B - 9], [19, B - 44], [24, B - 58], [29, B - 42], [30, B - 9]]),
+    sh([[9, B - 9], [8, B - 20], [11, B - 23], [13, B - 9]]),
+    sh([[35, B - 9], [38, B - 22], [41, B - 19], [40, B - 9]]),
+  ];
+  F.add({ mat: glass, prof: 'bevel', bw: 1.4, grp: 'crystal', shapes: shards, tex: q => (q.x < 24 ? .5 : -.3) + ((q.x * 2 + q.y) % 9 === 0 ? .4 : 0) });
+  F.add({ mat: hot ? 'radiant' : 'topaz', prof: 'flat', grp: 'core', noShadow: true, noOutline: true, shapes: [E([24, B - 26], f ? 4.4 : 3.6, f ? 12 : 10.5)], tex: () => (hot ? 1.3 : .6) });
+  F.add({ mat: 'bark', prof: 'round', bw: .8, grp: 'grip', shapes: [C([17, B - 12], [21, B - 24], 1.2, .7), C([31, B - 12], [27, B - 22], 1.2, .7)] });
+  return 'halo';
+}
+// the node over a painted map: only its light, a soft round glow laid over the painting's own crystal (192 x 176, foot 6 px up)
+function nodeGlow(st, f) {
+  const W = 192, H = 176, cx = 96, cy = 86, hot = st !== 'gold';
+  const r = (hot ? 88 : 80) * (f ? 1.05 : 1), peak = (hot ? .62 : .34) * (f ? .88 : 1);
+  const inner = hot ? [255, 252, 236] : [255, 214, 120], outer = hot ? [255, 222, 150] : [238, 160, 60];
+  const img = new ImageData(W, H), d = img.data;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const t = Math.hypot(x - cx, (y - cy) * 1.12) / r;
+    if (t >= 1) continue;
+    const a = peak * (1 - t) * (1 - t) + (bayer(x, y) - .5) * .02, i = (y * W + x) * 4;
+    for (let c = 0; c < 3; c++) d[i + c] = inner[c] + (outer[c] - inner[c]) * t;
+    d[i + 3] = Math.max(0, Math.min(255, Math.round(a * 255)));
+  }
+  img.anchors = { foot: [cx, H - 7] };
+  img.frames = 2;
+  return img;
+}
 const BELOW_SIGNS = new Set(['chain', 'chair-tree', 'chair-sun', 'chair-anvil', 'chair-lantern', 'heart-step']);
 const BELOW_HEARTH = new Set(['undercoal', 'chainfire']);
 Object.assign(HEARTH_SIZE, { undercoal: [28, 28], chainfire: [16, 32] });
@@ -2494,6 +2544,14 @@ function belowObjectParts(F, kind, st, f, o, W, H) {
     }
     case 'sleeper-first': return firstSleeper(F, f, W, H);
     case 'worldforge': return worldforge(F, f, W, H);
+    case 'node': return nodeProp(F, st, f, W, H);
+    case 'open-slab': { // Thareia (T2): Fawnrest's court, a paving slab pushed aside off a dark stair going down
+      F.add({ mat: 'dark', prof: 'flat', grp: 'hole', shapes: [RECT(1.6, 4, 11, 14.6)], tex: () => -1 });
+      F.add({ mat: 'granite', prof: 'bevel', bw: .6, grp: 'steps', shapes: [RECT(2.4, 6.6, 10.2, 7.8), RECT(2.4, 9.6, 10.2, 10.8), RECT(2.4, 12.6, 10.2, 13.8)], tex: q => (q.y > 12 ? -1.2 : q.y > 9 ? -.8 : -.3) });
+      F.add({ mat: 'granite', prof: 'bevel', bw: 1, grp: 'slab', shapes: [P([[10.4, 2.6], [15.6, 4.4], [15.6, 15.4], [10.4, 13.8]])], tex: q => ((q.x + q.y) % 5 === 0 ? -1 : .2) });
+      F.add({ mat: 'moss', prof: 'flat', grp: 'moss', noShadow: true, noOutline: true, shapes: [O([12.6, 5.2], .8), O([14.6, 12.6], .7)], tex: () => -.4 });
+      return;
+    }
     case 'great-anvil': { // the great anvil: black iron on a stepped plinth, its face worn bright, a bar of metal glowing on it
       F.add({ mat: 'w.firebrick', prof: 'bevel', bw: 1, grp: 'plinth', shapes: [RECT(8, B - 5.4, 40, B + .4)], tex: q => ((q.y & 1) === 0 || (q.x + ((q.y >> 1) & 1) * 2) % 5 === 0 ? -1.1 : -.2) });
       F.add({ mat: 'blackiron', prof: 'round', bw: 1.6, grp: 'waist', shapes: [P([[15, B - 5], [17, 21], [31, 21], [33, B - 5]])], tex: q => (q.y % 4 === 0 ? -.6 : 0) });
@@ -2690,7 +2748,8 @@ export function objectSprite(kind, state = null, { frame = 0, relic = null, id =
   const states = OBJECT_STATES[kind] || ['closed'];
   const st = states.includes(state) ? state : states[0];
   const lit = kind === 'hearth' && st === 'lit';
-  const frames = ANIM.has(kind) || lit || (kind === 'ford-ice' && st === 'stream') || (kind === 'deer' && st !== 'alert') || ((SUN_ANIM.has(kind) || IRON_ANIM.has(kind)) && st === 'closed')
+  if (kind === 'node' && look === 'glow') { const s2 = states.includes(state) ? state : states[0]; return objCache.get(`node-glow|${s2}|${frame & 1}`, () => nodeGlow(s2, frame & 1)); }
+  const frames = kind === 'node' || ANIM.has(kind) || lit || (kind === 'ford-ice' && st === 'stream') || (kind === 'deer' && st !== 'alert') || ((SUN_ANIM.has(kind) || IRON_ANIM.has(kind)) && st === 'closed')
     || (GLOOM_ANIM.has(kind) && st === 'closed') || GLOOM_ANIM_ANY.has(kind) || (kind === 'sign' && st === 'ward-stone') || (BELOW_ANIM.has(kind) && st === 'closed') ? 2 : 1;
   const f = frames > 1 ? frame & 1 : 0;
   const hl = kind === 'hearth' ? look || HEARTH_LOOKS[id] || 'ring' : look || '';

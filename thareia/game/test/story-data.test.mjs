@@ -8,10 +8,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { ARRIVALS, RESTS, LOOKOUTS } from '../src/data/dialogue.js';
+import { ARRIVALS, LOOKOUTS } from '../src/data/dialogue.js';
 
-import { QUESTS, BOUNTIES } from '../src/data/quests.js';
-import { SHOPS } from '../src/data/shops.js';
+import { BOUNTIES } from '../src/data/quests.js';
 import { LADDER } from '../src/data/ladder.js';
 import { LETTERS } from '../src/data/letters.js';
 
@@ -24,7 +23,7 @@ import { DOMAINS } from '../src/data/domains.js';
 import { condErrors, priceErrors } from '../src/rules/cond.js';
 import { ENDINGS, ENDING_IDS } from '../src/data/endings.js';
 import { TUNING } from '../src/data/tuning.js';
-import { AFTER, DIALOGUE, ENCOUNTERS, HEARTHS, MAPS, NPCS } from './old-world.mjs'; // the old game's world, without Thareia's
+import { AFTER, DIALOGUE, ENCOUNTERS, HEARTHS, MAPS, NPCS, QUESTS, SHOPS, RESTS } from './old-world.mjs'; // the old game's world, without Thareia's
 
 const SPEAKERS = new Set([...Object.keys(NPCS), ...HERO_IDS, 'narrator']);
 const conds = [];

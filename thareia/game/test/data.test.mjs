@@ -12,7 +12,7 @@ import { FOES, FOE_TIERS } from '../src/data/foes.js';
 import { OMENS } from '../src/data/omens.js';
 import { GAUNTLET, BACKDROPS } from '../src/data/encounters.js';
 import { DOMAIN_IDS } from '../src/data/domains.js';
-import { ENCOUNTERS, HEARTHS } from './old-world.mjs'; // the old game's world, without Thareia's
+import { ENCOUNTERS, HEARTHS, RELICS as OLD_RELICS } from './old-world.mjs'; // the old game's world, without Thareia's
 
 const RELIC_TABLE = {
   hearthbrand: ['sword', 'ember'], 'stillwater-lance': ['spear', 'frost'], cairnmaul: ['hammer', 'stone'],
@@ -61,8 +61,10 @@ test('every shared item kind has at least one base item', () => {
 
 test('the twelve M2 relics match the shared vocabulary; M3 adds twelve heirlooms (codex 13-24), M4 fourteen more (25-38), M5 fourteen more (39-52), M6 fourteen more (53-66), M7 Page V\'s nine (No. 000 and 67-74)', () => {
   for (const id of Object.keys(RELIC_TABLE)) assert.ok(RELICS[id], id);
-  assert.equal(Object.keys(RELICS).length, 75);
-  assert.deepEqual(Object.values(RELICS).map(r => r.codex).sort((a, b) => a - b), Array.from({ length: 75 }, (_, i) => i));
+  assert.equal(Object.keys(OLD_RELICS).length, 75);
+  assert.deepEqual(Object.values(OLD_RELICS).map(r => r.codex).sort((a, b) => a - b), Array.from({ length: 75 }, (_, i) => i));
+  // Thareia (T2): Chapter 1's four follow on at Nos. 75-78, on no Codex page
+  assert.deepEqual(Object.values(RELICS).filter(r => r.thareia).map(r => r.codex).sort((a, b) => a - b), [75, 76, 77, 78]);
   for (const r of Object.values(RELICS).filter(r => r.codex > 12 && r.codex <= 24)) {
     assert.equal(r.rarity, 'heirloom', r.id);
     assert.ok(r.power && r.mapPower, `${r.id} has a power and a map power`);
@@ -73,7 +75,7 @@ test('the twelve M2 relics match the shared vocabulary; M3 adds twelve heirlooms
     assert.ok(r.power && r.mapPower, `${r.id} has a power and a map power`);
   }
   // M7 (spec §3.4): Page V's No. 000 and the Worldforge Heart are primal, the rest regalia; each has both powers
-  const PAGE_V = Object.values(RELICS).filter(r => r.codex === 0 || r.codex > 66);
+  const PAGE_V = Object.values(OLD_RELICS).filter(r => r.codex === 0 || r.codex > 66);
   assert.deepEqual(PAGE_V.map(r => r.codex).sort((a, b) => a - b), [0, 67, 68, 69, 70, 71, 72, 73, 74]);
   for (const r of PAGE_V) {
     assert.equal(r.rarity, ['fenwicks-poker', 'worldforge-heart'].includes(r.id) ? 'primal' : 'regalia', r.id);
@@ -392,7 +394,8 @@ test('M4, M5, M6 and M7 relics: all 75 carry sockets (0-2), three deeds from DEE
     }
   }
   for (const s of statusRefs) assert.ok(STATUSES[s], s);
-  assert.equal(names.size, 150); // two named branches for each of the 75 relics
+  assert.equal(Object.keys(OLD_RELICS).length, 75);
+  assert.equal(names.size, 2 * Object.keys(RELICS).length); // two named branches for each relic (the old 75 and Thareia's)
   // M7 (spec §3.4): no Page V relic asks for the Branded deed (no Brand is left to win, M6 review B2)
   for (const r of Object.values(RELICS).filter(r => r.codex === 0 || r.codex > 66)) assert.ok(!r.deeds.includes('brand'), `${r.id} asks for no Brand`);
   // starters and Champion pieces carry two sockets; a key ring with no key has none

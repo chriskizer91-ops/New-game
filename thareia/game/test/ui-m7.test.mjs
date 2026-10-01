@@ -375,7 +375,8 @@ test('M7 cards: the credits name the cast and this journey; every saved string s
   const plain = Object.fromEntries(creditsOf(party().game).journey);
   assert.ok(!('The Masterpiece' in plain) && !('The ending' in plain));
   assert.ok(creditsOf(null).rows.length > 0, 'odd input never throws');
-  assert.equal(RELIC_TOTAL, Object.keys(RELICS).length);
+  // Thareia (T2): Chapter 1's relics sit on no Codex page, so the total counts the rest
+  assert.equal(RELIC_TOTAL, Object.values(RELICS).filter(r => !r.thareia).length);
 });
 
 test('M7 cards: the last card says the post-game opens in the next chapter', () => {

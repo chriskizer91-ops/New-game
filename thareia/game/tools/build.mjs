@@ -17,7 +17,10 @@
 // every painted map over a smaller file; 24 MB for batch 2, 32 MB once batch 3 painted the Gloomfen). A
 // claude.ai page holds 16 MB, so above that the fragment is only a note: a page for the phone gets its own
 // lighter copy of the paintings.
-// Owner: WP8.
+// Thareia T2 (design/09-t2-spec.md 6.7): the game bundles three.js for the 3D ship, so the game's limit is 4 MB (warn at
+// 3.6 MB). When the whitespace-minified game is over it, the build falls back to full minification by itself (as
+// --minify does), checks that file the same way, and fails only if it is still over.
+// Owner: Thareia T2 package A (the airship).
 import { build } from 'esbuild';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -29,8 +32,8 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const argv = process.argv.slice(2);
 const outArg = argv.find(a => a.startsWith('--out='))?.slice(6) ?? (argv.includes('--out') ? argv[argv.indexOf('--out') + 1] : null);
 const out = outArg ? path.resolve(outArg) : path.join(root, 'dist');
-const DELIVERY = 'thareia-t1.html';
-const FROZEN = [];
+const DELIVERY = 'thareia-t2.html';
+const FROZEN = ['thareia-t1.html'];
 if (FROZEN.includes(DELIVERY)) throw new Error(`${DELIVERY} is an earlier milestone's frozen file`);
 
 const tpl = await readFile(path.join(root, 'src/index.html'), 'utf8');
@@ -91,13 +94,19 @@ async function bundle(minifyAll) {
   return { full, fragment, bytes: Buffer.byteLength(full), painted };
 }
 
-const WARN = 2.5 * 1024 * 1024, FAIL = 3.2 * 1024 * 1024, PAINT_FAIL = 32 * 1024 * 1024, PAGE = 16 * 1024 * 1024;
+const WARN = 3.6 * 1024 * 1024, FAIL = 4 * 1024 * 1024, PAINT_FAIL = 32 * 1024 * 1024, PAGE = 16 * 1024 * 1024;
 const kb = n => (n / 1024).toFixed(0) + ' KB';
-const fullMinify = argv.includes('--minify');
-const { full, fragment, bytes, painted } = await bundle(fullMinify);
+let fullMinify = argv.includes('--minify');
+let built = await bundle(fullMinify);
+if (!fullMinify && built.bytes - built.painted > FAIL) {
+  console.log(`the game is ${kb(built.bytes - built.painted)} whitespace-minified, over the 4 MB limit: building fully minified`);
+  fullMinify = true;
+  built = await bundle(true);
+}
+const { full, fragment, bytes, painted } = built;
 const game = bytes - painted;
 if (game > FAIL) {
-  console.error(`build FAILED: the game is ${kb(game)} (${kb(bytes)} with the paintings), over the 3.2 MB limit (M5 spec A6)`);
+  console.error(`build FAILED: the game is ${kb(game)} (${kb(bytes)} with the paintings)${fullMinify ? ', fully minified,' : ''} over the 4 MB limit (T2 spec 6.7)`);
   process.exit(1);
 }
 if (painted > PAINT_FAIL) {
@@ -110,5 +119,5 @@ await writeFile(path.join(out, 'thareia.html'), full);
 await writeFile(path.join(out, 'thareia.artifact.html'), fragment);
 await writeFile(path.join(out, DELIVERY), full);
 console.log(`built ${rel('thareia.html')} (${kb(bytes)}: the game ${kb(game)}, the paintings ${kb(painted)}${fullMinify ? ', fully minified' : ''}), ${rel('thareia.artifact.html')} (${kb(Buffer.byteLength(fragment))}), ${rel(DELIVERY)}`);
-if (game > WARN) console.warn(`build WARNING: the game is ${kb(game)}, over 2.5 MB (M5 spec A6 warns here; fails above 3.2 MB)`);
+if (game > WARN) console.warn(`build WARNING: the game is ${kb(game)}, over 3.6 MB (T2 spec 6.7 warns here; fails above 4 MB)`);
 if (Buffer.byteLength(fragment) > PAGE) console.log(`note: the page fragment is over the 16 MB a claude.ai page holds; a page for the phone needs lighter paintings (M6 spec A6)`);

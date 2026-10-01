@@ -1,0 +1,363 @@
+{
+ "version": 6,
+ "seed": 1698758408,
+ "rngState": 1315111226,
+ "party": {
+  "active": [
+   "warden"
+  ],
+  "roster": {
+   "warden": {
+    "id": "warden",
+    "name": "Wren",
+    "level": 2,
+    "xp": 35,
+    "hp": 24,
+    "mp": 7,
+    "surge": 61,
+    "base": {
+     "STR": 15,
+     "CON": 14,
+     "DEX": 13,
+     "CHA": 12,
+     "WIS": 10,
+     "INT": 8
+    },
+    "gear": {
+     "weapon": "it231dtqndo3c",
+     "offhand": "iqonzohz7g15k",
+     "head": null,
+     "body": "i5i0qmojalm3h",
+     "hands": null,
+     "feet": "i41xzby5yq6ix",
+     "amulet": null,
+     "ring": "ikkltf2clh8c5"
+    },
+    "skills": [
+     "challenge"
+    ],
+    "domains": {
+     "combat": {
+      "level": 2,
+      "path": null,
+      "opt7": null,
+      "opt13": null
+     },
+     "physical": {
+      "level": 1,
+      "path": null,
+      "opt7": null,
+      "opt13": null
+     },
+     "influence": {
+      "level": 1,
+      "path": null,
+      "opt7": null,
+      "opt13": null
+     }
+    },
+    "hpRolls": [
+     10
+    ],
+    "look": {
+     "skin": "skin",
+     "hairMat": "hairAuburn",
+     "hair": "short",
+     "beard": false,
+     "eye": "#1c2a48"
+    }
+   }
+  }
+ },
+ "inventory": [
+  {
+   "uid": "it231dtqndo3c",
+   "base": "hearthbrand",
+   "kind": "sword",
+   "slot": "weapon",
+   "rarity": "heirloom",
+   "ilvl": 1,
+   "name": "Hearthbrand",
+   "aspect": "ember",
+   "affixes": [],
+   "gems": [],
+   "temper": 0,
+   "seed": 1156625195,
+   "provenance": {
+    "from": "your own pack",
+    "where": "Bogmire",
+    "day": 1
+   },
+   "chronicle": {
+    "kills": 2,
+    "bearers": [
+     "warden"
+    ],
+    "mightiest": {
+     "name": "Boglurcher",
+     "level": 1
+    }
+   }
+  },
+  {
+   "uid": "i5i0qmojalm3h",
+   "base": "chain-shirt",
+   "kind": "mail",
+   "slot": "body",
+   "rarity": "worn",
+   "ilvl": 1,
+   "name": "Patched Chain Shirt",
+   "aspect": null,
+   "affixes": [],
+   "gems": [],
+   "temper": 0,
+   "seed": 834206586,
+   "provenance": {
+    "from": "your own pack",
+    "where": "Bogmire",
+    "day": 1
+   },
+   "chronicle": {
+    "kills": 0,
+    "bearers": [
+     "warden"
+    ]
+   }
+  },
+  {
+   "uid": "i41xzby5yq6ix",
+   "base": "boots",
+   "kind": "boots",
+   "slot": "feet",
+   "rarity": "worn",
+   "ilvl": 1,
+   "name": "Patched Travel Boots",
+   "aspect": null,
+   "affixes": [],
+   "gems": [],
+   "temper": 0,
+   "seed": 316271816,
+   "provenance": {
+    "from": "your own pack",
+    "where": "Bogmire",
+    "day": 1
+   },
+   "chronicle": {
+    "kills": 0,
+    "bearers": [
+     "warden"
+    ]
+   }
+  },
+  {
+   "uid": "iqonzohz7g15k",
+   "base": "heater-shield",
+   "kind": "shield",
+   "slot": "offhand",
+   "rarity": "worn",
+   "ilvl": 1,
+   "name": "Road-Worn Heater Shield",
+   "aspect": null,
+   "affixes": [],
+   "gems": [],
+   "temper": 0,
+   "seed": 1112353894,
+   "provenance": {
+    "from": "your own pack",
+    "where": "Bogmire",
+    "day": 1
+   },
+   "chronicle": {
+    "kills": 0,
+    "bearers": [
+     "warden"
+    ]
+   }
+  },
+  {
+   "uid": "ipsr4ctseb1on",
+   "base": "shortbow",
+   "kind": "bow",
+   "slot": "weapon",
+   "rarity": "worn",
+   "ilvl": 1,
+   "name": "Scuffed Shortbow",
+   "aspect": null,
+   "affixes": [],
+   "gems": [],
+   "temper": 0,
+   "seed": 520341735,
+   "provenance": {
+    "from": "Boglurcher",
+    "where": "Bogmire Docks",
+    "day": 1
+   },
+   "chronicle": {
+    "kills": 0
+   }
+  },
+  {
+   "uid": "i3pdi21ay3vls",
+   "base": "gloves",
+   "kind": "gloves",
+   "slot": "hands",
+   "rarity": "worn",
+   "ilvl": 1,
+   "name": "Hand-Me-Down Riding Gloves",
+   "aspect": null,
+   "affixes": [],
+   "gems": [],
+   "temper": 0,
+   "seed": 234455186,
+   "provenance": {
+    "from": "Smuggler",
+    "where": "Bogmire Docks",
+    "day": 1
+   },
+   "chronicle": {
+    "kills": 0
+   }
+  },
+  {
+   "uid": "ikkltf2clh8c5",
+   "base": "ring",
+   "kind": "ring",
+   "slot": "ring",
+   "rarity": "runed",
+   "ilvl": 2,
+   "name": "Dusthaven Iron Band of the Iron Will",
+   "aspect": null,
+   "affixes": [
+    {
+     "id": "ironwill",
+     "value": 1
+    },
+    {
+     "id": "dusthaven",
+     "value": 2
+    },
+    {
+     "id": "eldergrown",
+     "value": 11
+    }
+   ],
+   "gems": [],
+   "temper": 0,
+   "seed": 1132455948,
+   "provenance": {
+    "from": "a gift",
+    "where": null,
+    "day": 1
+   },
+   "chronicle": {
+    "kills": 0,
+    "bearers": [
+     "warden"
+    ]
+   }
+  }
+ ],
+ "gold": 77,
+ "codex": {
+  "hearthbrand": {
+   "sighted": true,
+   "claimed": true,
+   "awakened": false
+  },
+  "stillwater-lance": {
+   "sighted": true,
+   "claimed": false,
+   "awakened": false
+  },
+  "cairnmaul": {
+   "sighted": true,
+   "claimed": false,
+   "awakened": false
+  }
+ },
+ "materials": {
+  "scrap": 0,
+  "silver": 0,
+  "embers": 0
+ },
+ "gems": {},
+ "progress": {
+  "waking": 0,
+  "brands": [],
+  "lastHearthfire": "docks-lantern",
+  "pos": {
+   "map": "th-landing",
+   "x": 29,
+   "y": 16,
+   "face": "n"
+  },
+  "act": 1,
+  "flags": {
+   "cleared": {
+    "pr-lurkers": true,
+    "pr-smugglers": true
+   },
+   "done": {
+    "pr-lurkers": true,
+    "pr-smugglers": true
+   },
+   "grudges": {},
+   "day": 1,
+   "runs": 0,
+   "story": {
+    "starter": "hearthbrand",
+    "th-arrived": true,
+    "th-ticket": true,
+    "th-read-notice": true,
+    "th-hired": true,
+    "th-crate-cracked": true,
+    "th-shard": true,
+    "th-landed": true,
+    "c1-start": true
+   },
+   "unlocked": {},
+   "opened": {},
+   "kindled": {
+    "docks-lantern": true
+   },
+   "visits": {
+    "bogmire-docks": 5,
+    "th-bogmire": 2,
+    "th-landing": 1
+   },
+   "quests": {},
+   "scouted": {
+    "pr-lurkers": true,
+    "pr-smugglers": true
+   },
+   "seen": {},
+   "worn": {
+    "warden": "it231dtqndo3c+0|iqonzohz7g15k+0||i5i0qmojalm3h+0||i41xzby5yq6ix+0||ikkltf2clh8c5+0",
+    "yara": "i4qerkajoey8z+0|||i22zwnpqynq81+0||i5xb4sa4sg3gd+0||"
+   },
+   "beaten": {
+    "pr-lurkers": 1,
+    "pr-smugglers": 1
+   },
+   "pages": {},
+   "settled": {},
+   "docks": {
+    "thornhollow": true,
+    "bogmire": true
+   }
+  }
+ },
+ "settings": {
+  "sound": true,
+  "battleSpeed": 1,
+  "reducedMotion": false
+ },
+ "bag": {
+  "hearth-tonic": 2,
+  "ember-salts": 1,
+  "frost-draught": 1,
+  "bitterroot": 1
+ },
+ "world": "thareia",
+ "ending": null
+}

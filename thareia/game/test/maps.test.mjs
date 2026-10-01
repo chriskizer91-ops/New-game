@@ -31,7 +31,6 @@ import assert from 'node:assert/strict';
 import { ENTITY_OF, anchor, v1Anchor } from '../src/data/maps/index.js';
 import { LEGEND } from '../src/data/tiles.js';
 import { LOCKS } from '../src/data/locks.js';
-import { RELICS } from '../src/data/relics.js';
 import { DOMAINS } from '../src/data/domains.js';
 import { STARTERS } from '../src/data/heroes.js';
 import { GAUNTLET, PATROLS, BRANDS } from '../src/data/encounters.js';
@@ -43,7 +42,7 @@ import { levelUp } from '../src/rules/progression.js';
 import { createRng } from '../src/core/rng.js';
 import { canWalk, present, lockStatus, interact, roamMask, enterMap, move } from '../src/rules/world.js';
 import { check } from '../src/rules/cond.js';
-import { DIALOGUE, ENCOUNTERS, HEARTHS, MAPS, MAP_IDS } from './old-world.mjs'; // the old game's world, without Thareia's
+import { DIALOGUE, ENCOUNTERS, HEARTHS, MAPS, MAP_IDS, RELICS } from './old-world.mjs'; // the old game's world, without Thareia's
 
 const inside = (m, x, y) => x >= 0 && y >= 0 && x < m.w && y < m.h;
 const areaOf = e => e.area || [e.at[0], e.at[1], e.at[0], e.at[1]];

@@ -93,6 +93,15 @@ const RUNNER_MOVES = {
   'smoke-pot': TALLY_MOVES['smoke-pot'],
   'strap-cut': { name: 'Strap Cut', target: 'enemy', requires: 'th-crateknife', fallback: 'cut', text: 'The Crateknife bites deep: 2 stacks of Poisoned.', effects: [atk('1d4', 'pierce', { weapon: true, aspect: 'blight', bonusDice: [{ dice: '1d4', aspect: 'blight' }], riders: [status('poisoned', { stacks: 2 })] })] },
 };
+// Hollis and Vesper in Chapter 1: the old holders' Arts, with the runners' Chalk Mark in place of the ledger's mark
+const TH_TALLY_MOVES = { cut: RUNNER_MOVES.cut, 'chalk-mark': RUNNER_MOVES['chalk-mark'], 'smoke-pot': RUNNER_MOVES['smoke-pot'] };
+// Thornhollow's lost patrol (S2) carries the outfitter's longbow and brigandine from gear tier 1
+const TH_RANGER_GEAR = [
+  [{ base: 'shortbow' }, { base: 'hood' }, { base: 'jerkin' }],
+  [{ base: 'longbow' }, { base: 'hood' }, { base: 'brigandine' }, { base: 'boots' }],
+  [{ base: 'longbow' }, { base: 'hood' }, { base: 'brigandine' }, { base: 'boots' }],
+  [{ base: 'longbow' }, { base: 'mail-coif' }, { base: 'brigandine' }, { base: 'ironshod-boots' }],
+];
 const SKEET_MOVES = {
   ...SMUGGLER_MOVES,
   sleight: { name: 'Sleight', target: 'enemy', requires: 'th-lightfingers', fallback: 'cut', text: 'Lightfingers finds your purse and your ribs: 2d6, Marked, and Skeet is Hasted.', effects: [atk('2d6', 'pierce', { riders: [status('marked')] }), status('hasted', { self: true })] },
@@ -102,7 +111,7 @@ const HART_MOVES = {
   trample: { name: 'Trample', target: 'all-enemies', text: 'It goes through the party like a falling tree.', effects: [atk('1d8', 'crush')] },
   'rot-bellow': { name: 'Rot Bellow', target: 'all-enemies', text: 'A bellow that smells of grave-sap. CON save or Poisoned.', effects: [status('poisoned', { save: 'CON' })] },
   'antler-charge': { name: 'Antler Charge', target: 'enemy', charge: true, text: 'It lowers its head, charging.', effects: [atk('3d8', 'pierce', { riders: [status('staggered')] })] },
-  'rotwood-crown': { name: 'Rotwood Crown', target: 'all-enemies', requires: 'rotwood-circlet', fallback: 'gore', text: 'Black sap weeps from the circlet: 2d6 blight to all, CON save for half, and Rotting. The hart drinks it.', effects: [{ type: 'damage', dice: '2d6', kind: 'blight', aspect: 'blight', save: 'CON', riders: [status('rotting')] }, { type: 'heal', dice: '1d8', diceEvery: 2, self: true }] },
+  'rotwood-crown': { name: 'Rotwood Crown', target: 'all-enemies', requires: 'rotwood-circlet', fallback: 'gore', text: 'Black sap weeps from the circlet: 2d6 blight to all, CON save for half, and Rotting. The hart drinks it.', effects: [{ type: 'damage', dice: '2d6', kind: 'blight', aspect: 'blight', save: 'CON', riders: [status('rotting')] }, { type: 'heal', dice: '1d8', diceEvery: 1, self: true }] },
   'node-flare': { name: 'Node Flare', target: 'all-enemies', requires: 'fawnrest-heartstone', fallback: 'gore', text: 'The stone in its chest flares white: 2d6 ember to all, DEX save for half, and Burning.', effects: [{ type: 'damage', dice: '2d6', kind: 'ember', aspect: 'ember', save: 'DEX', riders: [status('burning')] }] },
   'root-call': { name: 'Root Call', target: 'self', requires: 'fawnrest-heartstone', fallback: 'trample', text: 'The node hums, and a rotgrub bores up out of the floor.', effects: [{ type: 'summon', family: 'rotgrub', count: 1, max: 2, levelDelta: -3 }] },
   overheat: { name: 'Overheat', target: 'enemy', requires: 'fawnrest-heartstone', fallback: 'antler-charge', charge: true, text: 'The stone in its chest glows white-hot. It is charging. Stagger it!', effects: [{ type: 'damage', dice: '3d8', kind: 'ember', aspect: 'ember', riders: [status('burning')] }] },
@@ -128,6 +137,11 @@ const VERDANT = {
       bolt: { name: 'Bolt', target: 'self', when: { hpBelow: 0.5 }, fallback: 'stab', text: 'It breaks and runs for the trees.', effects: [{ type: 'escape' }] },
     },
     table: [[1, 3, 'stab'], [4, 5, 'pocket-sand'], [6, 6, 'bolt']],
+    // Thareia (T2): Chapter 1's solo stretch (the landing and the Thornway, before Taela joins) meets softer kin of the
+    // Wilds' rabble, so a hero alone at level 1-4 who rests at each fire does not wipe (design/09-t2-spec.md 5.5)
+    variants: {
+      'road-rat': { hp: 12, atk: 2, dmg: 1, speed: 10, table: [[1, 4, 'stab'], [5, 5, 'pocket-sand'], [6, 6, 'bolt']], text: 'Road-rats who work the landing and the Thornway. They run when it goes badly.' },
+    },
     gear: [
       [{ base: 'belt-knife' }, { base: 'hood' }],
       [{ base: 'belt-knife' }, { base: 'hood' }, { base: 'jerkin' }],
@@ -146,6 +160,9 @@ const VERDANT = {
       tangle: { name: 'Tangle', target: 'enemy', text: 'Runners wrap your ankles. STR save or Rooted.', effects: [status('rooted', { save: 'STR' })] },
     },
     table: [[1, 3, 'thorn-jab'], [4, 5, 'seed-spit'], [6, 6, 'tangle']],
+    variants: { // Thareia (T2): the solo stretch's (see cutpurse)
+      wild: { hp: 10, atk: 2, table: [[1, 4, 'thorn-jab'], [5, 5, 'seed-spit'], [6, 6, 'tangle']], text: 'Bramble that walks. The Rot has got into its roots.' },
+    },
     text: 'Bramble that learned to walk the night the hearth flickered.',
   },
   thornhound: {
@@ -158,6 +175,9 @@ const VERDANT = {
       howl: { name: 'Pack Howl', target: 'all-allies', text: 'The pack answers: every foe is Hasted.', effects: [status('hasted')] },
     },
     table: [[1, 3, 'bite'], [4, 5, 'lunge'], [6, 6, 'howl']],
+    variants: { // Thareia (T2): the solo stretch's (see cutpurse)
+      wild: { hp: 13, atk: 2, table: [[1, 4, 'bite'], [5, 5, 'lunge'], [6, 6, 'howl']], text: 'Lean hunting dogs gone feral in the bramble, burrs matted into their hides.' },
+    },
     text: 'Lean hunting dogs gone feral in the bramble, burrs matted into their hides.',
   },
   bandit: {
@@ -174,6 +194,8 @@ const VERDANT = {
         moves: { ...BANDIT_MOVES, longshot: { name: 'Longshot', target: 'enemy', requires: 'hartshorn', fallback: 'hack', charge: true, text: 'Hartshorn draws to the ear, charging a shot that crackles.', effects: [atk('3d8', 'pierce', { aspect: 'storm' })] } },
         table: [[1, 4, 'hack'], [5, 5, 'shield-bash'], [6, 6, 'dirty-trick'], [7, 8, 'heavy-swing'], [9, 9, 'second-wind'], [10, 12, 'longshot']],
       },
+      // Thareia (T2): the bandit in the ranger's boots on the Thornway (the solo stretch; see cutpurse)
+      'boot-thief': { hp: 18, atk: 2, table: [[1, 4, 'hack'], [5, 5, 'shield-bash'], [6, 6, 'dirty-trick'], [7, 7, 'heavy-swing'], [8, 8, 'second-wind']], text: 'A road bandit in good ranger boots that are not his.' },
     },
     gear: [
       [{ base: 'hand-axe' }, { base: 'hood' }, { base: 'jerkin' }],
@@ -208,8 +230,22 @@ const VERDANT = {
       },
       // Thareia (T2): Chapter 1's crate-runners (the Crate-Runner with the Crateknife, the Lamp-Runner on the tower stair)
       runner: {
-        name: 'Crate-Runner', moves: RUNNER_MOVES,
-        table: [[1, 3, 'cut'], [4, 4, 'chalk-mark'], [5, 5, 'smoke-pot'], [6, 8, 'strap-cut']],
+        name: 'Crate-Runner', moves: RUNNER_MOVES, hp: 16, atk: 2, dmg: 1,
+        table: [[1, 4, 'cut'], [5, 6, 'chalk-mark'], [7, 7, 'smoke-pot'], [8, 8, 'strap-cut']],
+        text: 'A runner who moves other people\'s crates by night, and cuts the straps of the ones that are not theirs.',
+      },
+      // Thareia (T2): Hollis Fairweight in the Lamp Room, and Vesper at Fawnrest, with the runners' Chalk Mark
+      'th-signalmaster': {
+        name: 'Hollis Fairweight', tier: 'relic-bearer', hp: 60, art: 'hollis',
+        moves: { ...TH_TALLY_MOVES, 'signal-flare': { name: 'Signal Flare', target: 'all-enemies', requires: 'mosswatch-lantern', fallback: 'cut', text: 'The Lantern flares: 2d6 ember to all, and everyone is Marked.', effects: [{ type: 'damage', dice: '2d6', kind: 'ember', aspect: 'ember', riders: [status('marked')] }] } },
+        table: [[1, 4, 'cut'], [5, 6, 'chalk-mark'], [7, 8, 'smoke-pot'], [9, 12, 'signal-flare']],
+        text: 'The tower\'s own signalman, sending lamp-signals out to sea at night.',
+      },
+      'th-apothecary': {
+        name: 'Vesper', hp: 30, art: 'vesper',
+        moves: { ...TH_TALLY_MOVES, 'miracle-sap': { name: 'Miracle Sap', target: 'all-allies', text: 'A thimble of miracle sap goes round: 2d8 healing.', effects: [{ type: 'heal', dice: '2d8', diceEvery: 3 }] } },
+        table: [[1, 3, 'cut'], [4, 4, 'chalk-mark'], [5, 5, 'smoke-pot'], [6, 8, 'miracle-sap']],
+        text: 'A seller of miracle sap, one silver a thimble. The pilgrims who drink it cough.',
       },
       apothecary: {
         name: 'Vesper', hp: 30, art: 'vesper',
@@ -371,6 +407,19 @@ const VERDANT = {
     },
     table: [[1, 3, 'latch'], [4, 5, 'ichor-spit'], [6, 6, 'burrow']],
     text: 'Pale grubs as long as your arm, fat on the black sap of the eldest trees.',
+    variants: {
+      // Thareia (T2): Chapter 1's party is two, not four. Its grubs, leeches and sapwights under the Eldest Tree and
+      // Fawnrest keep their levels (and XP) and hit softer (design/09-t2-spec.md 5.5)
+      th: {
+        hp: 12, atk: 2,
+        moves: {
+          latch: { name: 'Latch', target: 'enemy', text: 'It latches on: Bleeding.', effects: [atk('1d4', 'pierce', { riders: [status('bleeding')] })] },
+          'ichor-spit': { name: 'Ichor Spit', target: 'enemy', text: 'Black spit: Poisoned.', effects: [atk('1d4', 'pierce', { aspect: 'blight', riders: [status('poisoned')] })] },
+          burrow: { name: 'Burrow', target: 'self', text: 'It burrows into the root-mulch: Guarding.', effects: [status('guarding')] },
+        },
+        table: [[1, 3, 'latch'], [4, 4, 'ichor-spit'], [5, 6, 'burrow']],
+      },
+    },
   },
   'feral-druid': {
     id: 'feral-druid', name: 'Feral Druid', art: 'feral-druid', tier: 'veteran', humanoid: true,
@@ -405,6 +454,17 @@ const VERDANT = {
         moves: { ...RANGER_MOVES, 'hold-the-line': { name: 'Hold the Line', target: 'all-allies', requires: 'oathshield', fallback: 'rot-arrow', text: 'The Oathshield comes up and the patrol closes ranks: Warded.', effects: [status('warded', { value: { dice: '3d6', diceEvery: 3 } })] } },
         table: [[1, 5, 'rot-arrow'], [6, 7, 'knife'], [8, 8, 'remember'], [9, 12, 'hold-the-line']],
       },
+      // Thareia (T2): Thornhollow's lost patrol under the Eldest Tree (S2): Sergeant Edda Vane and her rangers
+      vane: {
+        name: 'Sergeant Edda Vane', tier: 'relic-bearer', hp: 72, art: 'corra', gear: TH_RANGER_GEAR,
+        moves: { ...RANGER_MOVES, 'hold-the-line': { name: 'Hold the Line', target: 'all-allies', text: 'Edda barks the old order and the patrol closes ranks: Guarding.', effects: [status('guarding')] } },
+        table: [[1, 5, 'rot-arrow'], [6, 7, 'knife'], [8, 8, 'remember'], [9, 12, 'hold-the-line']],
+        text: 'Thornhollow\'s patrol sergeant. The Rot kept her walking, and she still gives the orders.',
+      },
+      thornhollow: {
+        gear: TH_RANGER_GEAR,
+        text: 'A Thornhollow ranger who went under the Eldest Tree. The Rot kept them walking.',
+      },
     },
     gear: [
       [{ base: 'shortbow' }, { base: 'hood' }, { base: 'jerkin' }],
@@ -424,6 +484,9 @@ const VERDANT = {
       'bark-hide': { name: 'Bark Hide', target: 'self', text: 'Its bark thickens: Guarding.', effects: [status('guarding')] },
     },
     table: [[1, 4, 'sap-leech'], [5, 6, 'grasp'], [7, 8, 'bark-hide']],
+    variants: { // Thareia (T2): Chapter 1's (see rotgrub)
+      th: { hp: 26, atk: 3, table: [[1, 3, 'sap-leech'], [4, 5, 'grasp'], [6, 8, 'bark-hide']] },
+    },
     text: 'A ghoul of bark and black sap. It used to be someone the Heartroot drank.',
   },
   gloamwing: {
@@ -1059,6 +1122,16 @@ const GLOOMFEN = {
       sink: { name: 'Sink', target: 'self', when: { hpBelow: 0.5 }, fallback: 'latch', text: 'It lets go and sinks back into the black water.', effects: [{ type: 'escape' }] },
     },
     table: [[1, 3, 'latch'], [4, 5, 'drink'], [6, 6, 'sink']],
+    variants: { // Thareia (T2): Chapter 1's (see rotgrub)
+      th: {
+        hp: 13, atk: 3,
+        moves: {
+          latch: { name: 'Latch On', target: 'enemy', text: 'It comes up out of the warm water and fastens on: Bleeding.', effects: [atk('1d4', 'pierce', { riders: [status('bleeding')] })] },
+          drink: { name: 'Drink', target: 'enemy', text: 'It drinks, and swells, and heals by what it drinks.', effects: [{ type: 'damage', dice: '1d4', kind: 'blight', aspect: 'blight' }, { type: 'heal', dice: '1d4', diceEvery: 4, self: true }] },
+          sink: { name: 'Sink', target: 'self', when: { hpBelow: 0.5 }, fallback: 'latch', text: 'It lets go and sinks back into the water.', effects: [{ type: 'escape' }] },
+        },
+      },
+    },
     text: 'A leech as long as your arm, black and patient, lying in the fords of the safe paths. It fastens on, and it drinks.',
   },
   'marsh-light': {

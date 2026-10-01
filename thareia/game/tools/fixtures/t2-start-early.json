@@ -1,0 +1,259 @@
+{
+ "version": 6,
+ "seed": 779257810,
+ "rngState": -1812026067,
+ "party": {
+  "active": [
+   "warden"
+  ],
+  "roster": {
+   "warden": {
+    "id": "warden",
+    "name": "Wren",
+    "level": 1,
+    "xp": 0,
+    "hp": 12,
+    "mp": 8,
+    "surge": 0,
+    "base": {
+     "STR": 15,
+     "CON": 14,
+     "DEX": 13,
+     "CHA": 12,
+     "WIS": 10,
+     "INT": 8
+    },
+    "gear": {
+     "weapon": "ivrd17i6klqnl",
+     "offhand": "iuib7hysll5pp",
+     "head": null,
+     "body": "ir34pybznzze",
+     "hands": null,
+     "feet": "ipx8wwz221ubo",
+     "amulet": null,
+     "ring": null
+    },
+    "skills": [
+     "challenge"
+    ],
+    "domains": {
+     "combat": {
+      "level": 1,
+      "path": null,
+      "opt7": null,
+      "opt13": null
+     },
+     "physical": {
+      "level": 1,
+      "path": null,
+      "opt7": null,
+      "opt13": null
+     },
+     "influence": {
+      "level": 1,
+      "path": null,
+      "opt7": null,
+      "opt13": null
+     }
+    },
+    "hpRolls": [],
+    "look": {
+     "skin": "skin",
+     "hairMat": "hairAuburn",
+     "hair": "short",
+     "beard": false,
+     "eye": "#1c2a48"
+    }
+   }
+  }
+ },
+ "inventory": [
+  {
+   "uid": "ivrd17i6klqnl",
+   "base": "hearthbrand",
+   "kind": "sword",
+   "slot": "weapon",
+   "rarity": "heirloom",
+   "ilvl": 1,
+   "name": "Hearthbrand",
+   "aspect": "ember",
+   "affixes": [],
+   "gems": [],
+   "temper": 0,
+   "seed": 1709466411,
+   "provenance": {
+    "from": "your own pack",
+    "where": "Bogmire",
+    "day": 1
+   },
+   "chronicle": {
+    "kills": 0,
+    "bearers": [
+     "warden"
+    ]
+   }
+  },
+  {
+   "uid": "ir34pybznzze",
+   "base": "chain-shirt",
+   "kind": "mail",
+   "slot": "body",
+   "rarity": "worn",
+   "ilvl": 1,
+   "name": "Patched Chain Shirt",
+   "aspect": null,
+   "affixes": [],
+   "gems": [],
+   "temper": 0,
+   "seed": 959627125,
+   "provenance": {
+    "from": "your own pack",
+    "where": "Bogmire",
+    "day": 1
+   },
+   "chronicle": {
+    "kills": 0,
+    "bearers": [
+     "warden"
+    ]
+   }
+  },
+  {
+   "uid": "ipx8wwz221ubo",
+   "base": "boots",
+   "kind": "boots",
+   "slot": "feet",
+   "rarity": "worn",
+   "ilvl": 1,
+   "name": "Hand-Me-Down Travel Boots",
+   "aspect": null,
+   "affixes": [],
+   "gems": [],
+   "temper": 0,
+   "seed": 444087784,
+   "provenance": {
+    "from": "your own pack",
+    "where": "Bogmire",
+    "day": 1
+   },
+   "chronicle": {
+    "kills": 0,
+    "bearers": [
+     "warden"
+    ]
+   }
+  },
+  {
+   "uid": "iuib7hysll5pp",
+   "base": "heater-shield",
+   "kind": "shield",
+   "slot": "offhand",
+   "rarity": "worn",
+   "ilvl": 1,
+   "name": "Notched Heater Shield",
+   "aspect": null,
+   "affixes": [],
+   "gems": [],
+   "temper": 0,
+   "seed": 1039465589,
+   "provenance": {
+    "from": "your own pack",
+    "where": "Bogmire",
+    "day": 1
+   },
+   "chronicle": {
+    "kills": 0,
+    "bearers": [
+     "warden"
+    ]
+   }
+  }
+ ],
+ "gold": 62,
+ "codex": {
+  "hearthbrand": {
+   "sighted": true,
+   "claimed": true,
+   "awakened": false
+  },
+  "stillwater-lance": {
+   "sighted": true,
+   "claimed": false,
+   "awakened": false
+  },
+  "cairnmaul": {
+   "sighted": true,
+   "claimed": false,
+   "awakened": false
+  }
+ },
+ "materials": {
+  "scrap": 0,
+  "silver": 0,
+  "embers": 0
+ },
+ "gems": {},
+ "progress": {
+  "waking": 0,
+  "brands": [],
+  "lastHearthfire": "docks-lantern",
+  "pos": {
+   "map": "th-landing",
+   "x": 29,
+   "y": 16,
+   "face": "n"
+  },
+  "act": 1,
+  "flags": {
+   "cleared": {},
+   "done": {},
+   "grudges": {},
+   "day": 1,
+   "runs": 0,
+   "story": {
+    "starter": "hearthbrand",
+    "th-arrived": true,
+    "th-ticket": true,
+    "th-shard": true,
+    "th-early": true,
+    "th-landed": true,
+    "c1-start": true
+   },
+   "unlocked": {},
+   "opened": {},
+   "kindled": {
+    "docks-lantern": true
+   },
+   "visits": {
+    "bogmire-docks": 2,
+    "th-landing": 1
+   },
+   "quests": {},
+   "scouted": {},
+   "seen": {},
+   "worn": {
+    "warden": "ivrd17i6klqnl+0|iuib7hysll5pp+0||ir34pybznzze+0||ipx8wwz221ubo+0||"
+   },
+   "beaten": {},
+   "pages": {},
+   "settled": {},
+   "docks": {
+    "thornhollow": true,
+    "bogmire": true
+   }
+  }
+ },
+ "settings": {
+  "sound": true,
+  "battleSpeed": 1,
+  "reducedMotion": false
+ },
+ "bag": {
+  "hearth-tonic": 3,
+  "ember-salts": 1,
+  "frost-draught": 1,
+  "bitterroot": 1
+ },
+ "world": "thareia",
+ "ending": null
+}

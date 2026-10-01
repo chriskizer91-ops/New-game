@@ -171,6 +171,7 @@ const GATE_KIND = { gate: 'gate', chain: 'chain', crownwall: 'crownwall', door: 
   'hollow-gate': 'hollow-gate' };
 const FORD_BY = { 'stillwater-lance': 'ice', rootsong: 'roots' };
 const areaOf = e => e.area || [e.at[0], e.at[1], e.at[0], e.at[1]];
+const paintedMap = map => !!map && Object.prototype.hasOwnProperty.call(PAINTINGS, map.paint || map.id);
 
 function objectFor(game, e, map = null) {
   switch (e.kind) {
@@ -179,7 +180,8 @@ function objectFor(game, e, map = null) {
       if (e.state === 'opened') return { kind: 'chest', state: 'open' };
       return { kind: 'chest', state: e.lock ? (e.lock === 'tally-seal' ? 'sealed' : 'locked') : 'closed' };
     }
-    case 'sign': return e.look === 'painted' ? null : { kind: 'sign', state: e.look || null }; // M5: a painted map's own stone or pool
+    // M5: a painted map's own stone or pool; Thareia (T2): a sign with `prop: 'deer'` is drawn as the deer (the S9 deer)
+    case 'sign': return e.prop === 'deer' ? { kind: 'deer', state: 'graze' } : e.look === 'painted' ? null : { kind: 'sign', state: e.look || null };
     case 'board': return { kind: 'board', state: e.opens === 'ladder' ? 'ladder' : 'bounties' };
     case 'table': case 'lookout': return { kind: e.kind, state: null };
     case 'bellframe':
@@ -207,7 +209,9 @@ function objectFor(game, e, map = null) {
       const look = e.look || (e.lock === 'chasm' && map?.biome === 'frozen-lake' ? 'floes' : null);
       return { kind: LOCK_KIND[e.lock] || 'sign', state: open ? 'open' : 'closed', look };
     }
-    case 'prop': return e.prop && e.prop !== 'deer' ? { kind: e.prop, state: null } : null;
+    // Thareia (T2): the node under Fawnrest is white-hot until c1-node-cooled, then gold; over its painting only its glow
+    case 'prop': if (e.prop === 'node') return { kind: 'node', state: storyOf(game)['c1-node-cooled'] ? 'gold' : 'white', look: paintedMap(map) ? 'glow' : null };
+      return e.prop && e.prop !== 'deer' ? { kind: e.prop, state: null } : null;
     default: return null;
   }
 }

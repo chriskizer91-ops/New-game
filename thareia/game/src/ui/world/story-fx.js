@@ -276,8 +276,9 @@ const andList = names => (names.length > 1 ? `${names.slice(0, -1).join(', ')} a
 // -> { act, cls, label, kick, title, sub, stats: [[k, v]], chips: [{ id, name, open }], lines: [text] }
 // The Pages stat counts every page of the Codex (M7: Page V, which lists its numbers, among them).
 export function chapterEnd(game, act = 'act1') {
-  const relics = Object.keys(RELICS).filter(id => game?.codex?.[id]?.claimed).length;
-  const stats = [['Day', game?.progress?.flags?.day || 1], ['Relics', `${relics}/${Object.keys(RELICS).length}`], ['Brands', `${game ? uniqueBrands(game) : 0}/${BRAND_TOTAL}`]];
+  const codexIds = Object.keys(RELICS).filter(id => !RELICS[id].thareia); // Chapter 1's relics sit on no Codex page
+  const relics = codexIds.filter(id => game?.codex?.[id]?.claimed).length;
+  const stats = [['Day', game?.progress?.flags?.day || 1], ['Relics', `${relics}/${codexIds.length}`], ['Brands', `${game ? uniqueBrands(game) : 0}/${BRAND_TOTAL}`]];
   const pages = () => {
     const open = PAGES.filter(p => p.from != null || p.nos?.length);
     const done = open.filter(p => game?.progress?.flags?.pages?.[p.id] || pageProgress(game, p.id).done).length;

@@ -1378,7 +1378,7 @@ export const RELICS = deepFreeze({
   // The node's heartstone, grown through the Hart of Fawnrest's chest (the boss's second piece)
   'fawnrest-heartstone': {
     id: 'fawnrest-heartstone', codex: 75, name: 'The Fawnrest Heartstone', kind: 'amulet', slot: 'amulet', aspect: 'ember', rarity: 'heirloom', ilvl: 9,
-    holder: 'Grown through the chest of the Hart of Fawnrest', grip: 28, thareia: true,
+    holder: 'Grown through the chest of the Hart of Fawnrest', grip: 36, thareia: true,
     stats: { hp: 6, mp: 3, resist: { ember: 25 } },
     power: {
       id: 'node-light', name: 'Node Light', target: 'all-enemies',
@@ -1401,7 +1401,7 @@ export const RELICS = deepFreeze({
     stats: { hit: 1, crit: 1, speed: 1 },
     grants: ['strap-cut'],
     power: {
-      id: 'final-tally', name: 'Last Strap', target: 'enemy',
+      id: 'last-strap', name: 'Last Strap', target: 'enemy',
       text: 'Every strap parts at once: 3d6 blight and 3 stacks of Poisoned.',
       effects: [{ type: 'damage', dice: '3d6', kind: 'blight', aspect: 'blight', diceEvery: 6, riders: [{ type: 'status', status: 'poisoned', stacks: 3 }] }],
     },
@@ -1418,7 +1418,7 @@ export const RELICS = deepFreeze({
     holder: 'Skeet Marrow, in the fjord cove', grip: 20, thareia: true,
     stats: { DEX: 1, gripDmg: 3, speed: 1 },
     power: {
-      id: 'sleight-of-hand', name: 'Sleight of Hand', target: 'enemy',
+      id: 'th-sleight-of-hand', name: 'Sleight of Hand', target: 'enemy',
       text: 'Now you see it: 4d6 grip damage, 2d6 frost, and the foe is Chilled.',
       effects: [{ type: 'grip', dice: '4d6' }, { type: 'damage', dice: '2d6', kind: 'frost', aspect: 'frost', diceEvery: 6, riders: [{ type: 'status', status: 'chilled' }] }],
     },
@@ -1435,7 +1435,7 @@ export const RELICS = deepFreeze({
     holder: 'The Nameless Beast\'s breakable thorn-crown', grip: 30, thareia: true,
     stats: { hp: 8, guard: 1, surgeGain: 15, resist: { verdant: 25 } },
     power: {
-      id: 'crown-of-briars', name: 'Crown of Briars', target: 'all-enemies',
+      id: 'th-crown-of-briars', name: 'Crown of Briars', target: 'all-enemies',
       text: 'The bramble answers its crown: 2d8 verdant to every foe and all of them are Rooted.',
       effects: [{ type: 'damage', dice: '2d8', kind: 'pierce', aspect: 'verdant', diceEvery: 6, riders: [{ type: 'status', status: 'rooted' }] }],
     },
@@ -1443,8 +1443,8 @@ export const RELICS = deepFreeze({
     lore: 'It grew around the beast\'s skull while nobody was looking, and it has not stopped growing since.',
     sockets: 2, deeds: ['untouched', 'settle', 'hundred'],
     awaken: {
-      a: { name: 'The Bramble King', text: 'It grows into a crown that fights. +1 Guard, +1 STR and +8 HP.', stats: { guard: 1, STR: 1, hp: 8 } },
-      b: { name: 'The Green Crown', text: 'It grows green again, and so do you: regrow 2 HP a turn and +15% Legend Surge.', stats: { regen: 2, surgeGain: 15 } },
+      a: hand('Bramble', 'It grows into a crown that fights. +1 Guard, +1 STR and +8 HP.', { guard: 1, STR: 1, hp: 8 }),
+      b: heart('Green', 'It grows green again, and so do you: regrow 2 HP a turn and +15% Legend Surge.', { regen: 2, surgeGain: 15 }),
     },
   },
 });

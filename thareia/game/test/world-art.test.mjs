@@ -162,7 +162,7 @@ test('the M3-M5 overworld art is pixel for pixel as it shipped', () => {
   const KITS = [undefined, null, { weapon: 'hearthbrand', amulet: 'wardens-seal' }, { weapon: 'briarfang', head: 'thornwatch-hood', body: 'thornwatch-jerkin', feet: 'thornwatch-boots' },
     { weapon: 'cinderfang', offhand: 'ashen-aegis', head: 'cinder-crown', body: 'glass-carapace', feet: 'sandwalkers' }];
   check('walkers', digest(h => {
-    for (const key of HERO_KEYS.filter(k => k !== 'yara')) for (const g of KITS) img(h, walkerSheet(key, g).img); // Thareia's heroes are new
+    for (const key of HERO_KEYS.filter(k => !['yara', 'taela'].includes(k))) for (const g of KITS) img(h, walkerSheet(key, g).img); // Thareia's heroes are new
     const P = WARDEN_PRESETS;
     for (let k = 0; k < 8; k++) img(h, walkerSheet('warden', undefined, { custom: { skin: P.skin[k % 4], hairMat: P.hairMat[(k * 5) % 6], hair: P.hair[k % 6], beard: k === 3 || k === 6, eye: P.eye[k % 4] } }).img);
   }));

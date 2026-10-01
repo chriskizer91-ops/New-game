@@ -75,6 +75,19 @@
 //   below-forged     the same, with every hero's weapon tempered to +10 and one gem each (a Bog Amber), and the
 //                    Warden's Masterpiece forged at Hilda's once the Council is freed (the Warden's own, of the kind
 //                    they carry, tempered to +10 too): the Unsmith <= 20%.
+// Thareia (T2, design/09-t2-spec.md 5.5), run on its own:
+//   node tools/sim.mjs --route=thareia-c1 [--early] [--seeds 200] [--trace]
+//                    Chapter 1's main path on Auto from a T1 end state: the fight route (the dock fights won with Yara,
+//                    the hero at level 2 with 63 XP) or, with --early, the early route (the ticket: no Yara, level 1,
+//                    0 XP). Exactly one roaming pack per roaming map crossed (the Thornway, the Heartroot, Mossfall, the
+//                    Hindwood), the burners talked down (0 XP), a rest at each fire passed, and a walk back to the last
+//                    fire before a fight when the party is below half its HP. Taela joins as a guest at the shard
+//                    (c1-shard-glows) and for good once the node cools (c1-node-cools). A wipe wakes the party at the
+//                    last fire and it tries again; after three wipes on one fight it grinds a level on the nearest zone.
+//                    Prints the hero's level at each point of the 5.5 table (median, lowest, and the share of runs at
+//                    the target), the early route's grove-circle win rate and the boss's first-try wipe rate, and exits
+//                    non-zero when a target level is missed (the median run below it). A fight lost eight times is a
+//                    stuck run (a foe that wipes the party grows a Grudge, so a few runs snowball); it is listed.
 // Every mode: zero stuck runs. A duel lost is a yield (not retried); the door opens anyway. Hodge is fought once
 // (ONE_TRY): a player who loses to him pays the day's price instead, and the bar opens either way (spec A11).
 // Crossing a zone map costs a fight with one of its roaming patrols ('patrol:<zone>' in a route);
@@ -108,6 +121,10 @@ import { RARITY_ORDER } from '../src/data/rarity.js';
 import { RELICS } from '../src/data/relics.js';
 import { ITEMS } from '../src/data/items.js';
 import { MASTERPIECE_BASES } from '../src/data/masterpiece.js';
+import { enterDialogue, afterDialogue } from '../src/rules/story.js';
+import { grantXp } from '../src/rules/progression.js';
+import { THAREIA_START } from '../src/data/heroes.js';
+import { TH_START_AT, TH_START_HEARTH } from '../src/data/world.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -860,9 +877,191 @@ function report(all) {
   return out.join('\n');
 }
 
+// ---- Thareia (T2): Chapter 1's main path (design/09-t2-spec.md 5.5) ------------------------------------------------
+// Steps: a fire id rests there; 'patrol:<zone>' fights one roaming pack of that zone; 'scene:<dialogue>' plays a story
+// scene (its effects: Taela joins); '@<point>' records the hero's level at a point of the 5.5 table. Fights are fought
+// until won. The burners (c1-feral-druid) are talked down, so the route leaves them out.
+const C1_ROUTE_ARG = args.find(a => a.startsWith('--route='))?.slice(8) || arg('route', null);
+const C1_EARLY = args.includes('--early');
+const C1_ROUTE = [
+  'c1-landing', 'th-hearth',
+  'patrol:th-thornway', 'c1-verdant-edge', 'c1-runner-camp', 'c1-bramble-deep', 'th-tw-hearth',
+  '@eldergrove', 'th-eg-hearth', 'scene:c1-shard-glows', 'c1-grove-circle', 'th-eg-hearth',
+  'c1-roots-grubs', 'patrol:th-roots', 'th-hr-coal', 'c1-roots-sapwight', '@heartroot',
+  'th-eg-hearth', 'th-hearth', 'patrol:th-mossfall', 'th-mf-cairn', 'th-mw-hearth', 'c1-mw-stair', 'th-mw-hearth', 'c1-mw-lantern', '@mosswatch',
+  'th-mw-fire', 'th-hearth', 'patrol:th-hindwood', 'th-hw-cairn', 'c1-glowcaps', 'th-fr-camp',
+  'c1-node-stair', 'c1-node-hall', 'c1-node-roots', '@before-boss', 'th-fr-camp', 'c1-guardian', 'scene:c1-node-cools', '@after-boss',
+];
+// the 5.5 targets: [point, label, fight-route level, early-route level]
+const C1_POINTS = [
+  ['eldergrove', 'Arrive at Eldergrove', 4, 3], ['heartroot', 'After the Heartroot', 6, 6], ['mosswatch', 'After Mosswatch', 7, 7],
+  ['before-boss', 'Before the boss', 9, 9], ['after-boss', 'After the boss', 10, 10],
+];
+// the zone a wipe grinds in, by the fight's map
+const C1_GRIND = { verdant: 'th-thornway', roots: 'th-roots', moss: 'th-mossfall', hind: 'th-hindwood' };
+const c1GrindZone = id => (/roots|grubs|sapwight|patrol-roots/.test(id) ? C1_GRIND.roots : /mw-|mire|mf-/.test(id) ? C1_GRIND.moss
+  : /glowcap|node|guardian|hindwood/.test(id) ? C1_GRIND.hind : C1_GRIND.verdant);
+const heroLevel = g => g.party.roster.warden.level;
+const hurt = g => { const ids = g.party.active; let hp = 0, max = 0; for (const id of ids) { const h = g.party.roster[id]; const d = deriveHero(h, g.inventory, pageBonus(g)); hp += Math.max(0, h.hp); max += d.maxHp; } return hp / max < 0.5; };
+
+// The end of T1 on either route, as tools/e2e-t1.mjs and test/c1-story.test.mjs play it: the fight route wins the two
+// dock fights beside Yara (Auto), and the hero stands at level 2 with 63 XP at the landing (spec 1).
+function t1End(seed, stats) {
+  let g = newGame({ name: 'Sim', seed, heroes: THAREIA_START, at: TH_START_AT, hearth: TH_START_HEARTH });
+  g = enterDialogue(g, 'th-intro').game;
+  if (C1_EARLY) g = enterDialogue(g, 'th-board-early').game;
+  else {
+    for (const id of ['th-board', 'th-yara-hired', 'th-crate-cracks']) g = enterDialogue(g, id).game;
+    for (const enc of ['pr-lurkers', 'pr-smugglers']) {
+      for (let tries = 0; tries < MAX_TRIES; tries++) {
+        const started = startBattle(g, { nodeId: enc });
+        const res = resolveBattle(started.game, fight(started.battle, stats));
+        g = res.game;
+        if (res.report.result === 'victory') { g = equipDrops(g, [...res.report.claimed, ...res.report.drops]); break; }
+        g = rest(g, g.progress.lastHearthfire);
+      }
+      const after = afterDialogue(g, enc, 'victory');
+      if (after) g = enterDialogue(g, after).game;
+    }
+    const w = g.party.roster.warden;
+    if ((w.xp || 0) < 63) { g = structuredClone(g); g.party.roster.warden = grantXp(w, 63 - (w.xp || 0), createRng(`t1xp:${seed}`)).hero; }
+  }
+  g = enterDialogue(g, 'th-landing').game;
+  if (g.party.active.join() !== 'warden') throw new Error(`the landing: the hero should be alone, not ${g.party.active.join(', ')}`);
+  return rest(g, TH_START_HEARTH); // Yara patches the hero up before the landing; the Dock Lantern stays the last fire
+}
+
+function c1Grind(g, stats, ctx, id) {
+  const zone = ZONES[c1GrindZone(id)];
+  const target = heroLevel(g) + 1;
+  for (let i = 0; i < 40 && heroLevel(g) < target; i++) {
+    const set = ctx.rng.pick(PATROLS[zone.sets]);
+    const lvl = zone.level + ctx.rng.int(0, 1);
+    const spawns = set.map((sp, k) => ({ ...sp, level: lvl, spawnIndex: k }));
+    const started = startBattle(g, { patrol: { spawns, where: zone.id, backdrop: zone.backdrop } });
+    const res = resolveBattle(started.game, fight(started.battle, stats));
+    g = res.game;
+    stats.grindFights++;
+    if (res.report.result === 'victory') g = equipDrops(g, res.report.drops);
+    g = rest(g, g.progress.lastHearthfire);
+  }
+  return g;
+}
+
+function c1Run(seed, stats) {
+  const ctx = { rng: createRng(`c1:${seed}:${C1_EARLY ? 'early' : 'fight'}`) };
+  let g = t1End(seed, stats);
+  const levels = {};
+  for (const step of C1_ROUTE) {
+    if (step.startsWith('@')) { levels[step.slice(1)] = { level: heroLevel(g), xp: g.party.roster.warden.xp }; continue; }
+    if (step.startsWith('scene:')) {
+      const id = step.slice(6);
+      const r = enterDialogue(g, id);
+      if (!r.events.length) throw new Error(`scene ${id} did nothing (data/thareia/c1-dialogue.js)`);
+      g = r.game;
+      if (id === 'c1-shard-glows' && !g.party.roster.taela?.guest) throw new Error('Taela should join as a guest at c1-shard-glows');
+      if (id === 'c1-node-cools' && (!g.party.roster.taela || g.party.roster.taela.guest)) throw new Error('Taela should join for good at c1-node-cools');
+      continue;
+    }
+    if (step.startsWith('patrol:')) {
+      const zone = ZONES[step.slice(7)];
+      const set = ctx.rng.pick(PATROLS[zone.sets]);
+      const level = zone.level + ctx.rng.int(0, 1);
+      const spawns = set.map((sp, i) => ({ ...sp, level, spawnIndex: i }));
+      const ns = nodeStats(stats, step);
+      ns.first++; ns.level.push(heroLevel(g));
+      if (isWeak(g, spawns)) { ns.ran = (ns.ran || 0) + 1; continue; }
+      if (hurt(g)) g = rest(g, g.progress.lastHearthfire);
+      const started = startBattle(g, { patrol: { spawns, where: zone.id, backdrop: zone.backdrop } });
+      const b = fight(started.battle, stats);
+      const res = resolveBattle(started.game, b);
+      g = res.game; ns.tries++;
+      if (res.report.result === 'victory') { ns.firstWins++; ns.wins++; g = equipDrops(g, res.report.drops); } else { ns.wipes++; g = rest(g, g.progress.lastHearthfire); }
+      continue;
+    }
+    const node = ENCOUNTERS[step];
+    if (!node) throw new Error(`unknown step ${step}`);
+    if (node.type === 'hearthfire') { g = rest(g, step); continue; }
+    const ns = nodeStats(stats, step);
+    for (let tries = 1; ; tries++) {
+      if (tries > MAX_TRIES) { ns.stuck++; stats.stuck++; return { levels, stuck: step }; }
+      if (hurt(g)) { g = rest(g, g.progress.lastHearthfire); stats.walkBacks = (stats.walkBacks || 0) + 1; }
+      const lv = heroLevel(g);
+      const started = startBattle(g, { nodeId: step });
+      const b = fight(started.battle, stats);
+      const res = resolveBattle(started.game, b);
+      g = res.game;
+      const rep = res.report;
+      ns.tries++;
+      if (TRACE) {
+        const units = Object.values(b.units);
+        const who = units.map(u => `${u.name} L${u.level} ${Math.max(0, u.hp)}/${u.maxHp}`).join(', ');
+        console.log(`  ${C1_EARLY ? 'early' : 'fight'} seed ${seed} ${step} try ${tries}: ${rep.result} at hero L${lv}, ${rep.rounds} rounds (${who})`);
+      }
+      if (tries === 1) { ns.first++; ns.level.push(lv); ns.rounds.push(rep.rounds); }
+      if (rep.result === 'victory') {
+        ns.wins++;
+        if (tries === 1) { ns.firstWins++; ns.hpLeft.push(hpLeft(b)); }
+        recordDrops(stats, rep.drops);
+        ns.claims += rep.claimed.filter(i => RELICS[i.base]).length;
+        g = equipDrops(g, [...rep.claimed, ...rep.drops]);
+        break;
+      }
+      ns.wipes++;
+      g = rest(g, g.progress.lastHearthfire);
+      if (tries % 3 === 0) g = c1Grind(g, stats, ctx, step);
+    }
+  }
+  return { levels, stuck: null };
+}
+
+function runThareiaC1() {
+  const t0 = performance.now();
+  const stats = newStats();
+  const runs = [];
+  for (let seed = FROM; seed <= TO; seed++) runs.push(c1Run(seed, stats));
+  const route = C1_EARLY ? 'early' : 'fight';
+  const median = xs => { const s = [...xs].sort((a, b) => a - b); return s.length ? s[Math.floor((s.length - 1) / 2)] : NaN; };
+  const out = [`Thareia Chapter 1, the ${route} route: ${runs.length} runs from a T1 end state (hero L${C1_EARLY ? 1 : 2}${C1_EARLY ? ', no Yara' : ', 63 XP'})`, ''];
+  const rows = [];
+  let missed = 0;
+  for (const [pt, label, fightL, earlyL] of C1_POINTS) {
+    const want = C1_EARLY ? earlyL : fightL;
+    const got = runs.map(r => r.levels[pt]?.level).filter(Number.isFinite);
+    const xps = runs.map(r => r.levels[pt]?.xp).filter(Number.isFinite);
+    const at = got.filter(l => l >= want).length;
+    const ok = median(got) >= want; // a stuck run never reaches the point: it counts in the share, not the median
+    if (!ok) missed++;
+    rows.push([label, `L${want}`, `L${median(got)}`, got.length ? `L${Math.min(...got)}` : '-', `${Math.round(median(xps))}`, pct(at, runs.length), ok ? 'ok' : 'MISSED']);
+  }
+  out.push(table(rows, ['Point', 'Target', 'Median', 'Lowest', 'Median XP', 'At target', '']));
+  out.push('');
+  const fights = C1_ROUTE.filter(id => id.startsWith('patrol:') || ENCOUNTERS[id]?.type === 'fight');
+  const frows = fights.map(id => { const n = stats.nodes[id] || { first: 0, firstWins: 0, wins: 0, tries: 0, level: [], wipes: 0 };
+    return [id, f1(avg(n.level)), pct(n.firstWins, n.first), n.wipes, n.ran ? pct(n.ran, n.first) : '-']; });
+  out.push(table(frows, ['Fight', 'Hero L', 'First-try win', 'Wipes', 'Ran']));
+  const grove = stats.nodes['c1-grove-circle'] || { first: 0, firstWins: 0 };
+  const boss = stats.nodes['c1-guardian'] || { first: 0, firstWins: 0 };
+  const groveWin = grove.first ? grove.firstWins / grove.first : 0;
+  const bossWipe = boss.first ? 1 - boss.firstWins / boss.first : 0;
+  out.push('');
+  out.push(`Grove circle first-try win: ${pct(grove.firstWins, grove.first)}${C1_EARLY ? ` (target >= 80%: ${groveWin >= 0.8 ? 'ok' : 'MISSED, drop Oda to level 4'})` : ''}`);
+  out.push(`Boss first-try wipe: ${pct(boss.first - boss.firstWins, boss.first)} over ${boss.first} runs (target 30-40%: ${bossWipe >= 0.3 && bossWipe <= 0.4 ? 'ok' : 'off'})`);
+  const stuckAt = {};
+  for (const r of runs) if (r.stuck) stuckAt[r.stuck] = (stuckAt[r.stuck] || 0) + 1;
+  out.push(`Stuck runs: ${stats.stuck}${stats.stuck ? ` (${Object.entries(stuckAt).map(([k, n]) => `${k} ${n}`).join(', ')})` : ''}; walks back to a fire to heal: ${stats.walkBacks || 0}; grinding fights: ${stats.grindFights}`);
+  out.push(`\n(${((performance.now() - t0) / 1000).toFixed(1)}s)`);
+  console.log(out.join('\n'));
+  if (missed) { console.log(`\n${missed} target level${missed === 1 ? '' : 's'} missed.`); process.exitCode = 1; }
+}
+
 // Run as a script; imported (a tuning harness), it only exposes the routes and the players.
 export { playRoute, fight, newStats, forgeParty, AFTER_BRAND, SUN_START, SUN_ROUTE, SUN_LEAD_ROUTES, IRON_START, IRON_ROUTE, IRON_LEAD_ROUTES, GLOOM_START, GLOOM_ROUTE, GLOOM_LEAD_ROUTES, COUNCIL, BELOW_ROUTE, BELOW_FORGED_ROUTE, STARTERS, GAUNTLET };
-if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+const RUN_AS_SCRIPT = process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
+if (RUN_AS_SCRIPT && C1_ROUTE_ARG) {
+  if (C1_ROUTE_ARG !== 'thareia-c1') throw new Error(`Unknown route ${C1_ROUTE_ARG} (the one route is thareia-c1)`);
+  runThareiaC1();
+} else if (RUN_AS_SCRIPT) {
   const t0 = performance.now();
   if (JSON_OUT) { const stats = simulate(); process.stdout.write(JSON.stringify({ stats, cache: sunCacheNew, ironCache: ironCacheNew, gloomCache: gloomCacheNew })); }
   else {

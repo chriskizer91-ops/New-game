@@ -2,10 +2,15 @@
 // tools/paint-import.mjs --cut (it rewrites this list). A screen shows a still listed here and draws
 // its own scene when the still is missing.
 import crateCracks from './crate-cracks.js';
+import grovePulse from './grove-pulse.js';
+import guardianWakes from './guardian-wakes.js';
 import hearthBlue from './hearth-blue.js';
 import hearthGold from './hearth-gold.js';
+import nodeCools from './node-cools.js';
+import nodeOverheats from './node-overheats.js';
 import regionGloomfen from './region-gloomfen.js';
+import shardGlows from './shard-glows.js';
 import titleThareia from './title-thareia.js';
 import titleWorld from './title-world.js';
 
-export const CUTS = Object.freeze({ 'crate-cracks': crateCracks, 'hearth-blue': hearthBlue, 'hearth-gold': hearthGold, 'region-gloomfen': regionGloomfen, 'title-thareia': titleThareia, 'title-world': titleWorld });
+export const CUTS = Object.freeze({ 'crate-cracks': crateCracks, 'grove-pulse': grovePulse, 'guardian-wakes': guardianWakes, 'hearth-blue': hearthBlue, 'hearth-gold': hearthGold, 'node-cools': nodeCools, 'node-overheats': nodeOverheats, 'region-gloomfen': regionGloomfen, 'shard-glows': shardGlows, 'title-thareia': titleThareia, 'title-world': titleWorld });

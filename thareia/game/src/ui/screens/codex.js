@@ -113,7 +113,11 @@ export const RIDDLES = Object.freeze({
   'tamsins-bargain': 'Bought with the wrong thing, from a man on a black barge. She would give it back if she could.',
   'unmaking-hammer': 'A smith’s second hammer. The first one made things. This one takes them apart.',
   'ironvein-apron': 'A smith’s leather apron with a family’s mark on the bib, scorched black and never burned through.',
-  'worldforge-heart': 'The hottest thing in the world, small enough to wear, and beating. It waits at the bottom of the world.',
+  'worldforge-heart': 'The hottest thing in the world, small enough to wear, and beating. It waits at the bottom of the world.',  // Thareia (T2): Chapter 1's four (on no page; their pockets show on the card)
+  'fawnrest-heartstone': 'A warm stone that grew where a heart should be. The pilgrims stopped coming to Fawnrest.',
+  'th-crateknife': 'A notch for every crate it opened. Ask on the road north of Thornhollow.',
+  'th-lightfingers': 'Worn through at the fingertips. Their owner never paid a dock fee in them.',
+  'th-thornwreath': 'A crown of bramble on a beast with no name, in a den under the cliff.',
 });
 
 // Who holds each relic, short enough for a pocket ("Held by ...") and the grey card's stamp.
@@ -140,6 +144,8 @@ export const HOLDER = Object.freeze({
   'fenwicks-poker': 'Fenwick', 'hollow-wreath': 'Hollow Miravel', 'hollow-chalice': 'Hollow Qasim', 'hollow-gauntlet': 'Hollow Brundar',
   'hollow-chain': 'Hollow Gretch', 'tamsins-bargain': 'Tamsin', 'unmaking-hammer': 'the Unsmith', 'ironvein-apron': 'the Unsmith',
   'worldforge-heart': 'the Unsmith',
+  // Thareia (T2): Chapter 1's four
+  'fawnrest-heartstone': 'the Hart of Fawnrest', 'th-crateknife': 'a crate-runner', 'th-lightfingers': 'Skeet Marrow', 'th-thornwreath': 'the Nameless Beast',
 });
 
 const PAGE_IDS = PAGES.map(p => p.id);

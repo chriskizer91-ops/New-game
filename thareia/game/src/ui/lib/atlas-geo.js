@@ -166,9 +166,10 @@ function relicSites() {
   for (const [id, e] of Object.entries(ENCOUNTERS)) {
     for (const s of e.spawns || []) {
       const fam = FOES[s.family];
+      const v = typeof s.variant === 'string' ? fam?.variants?.[s.variant] : null; // a variant may hold its own relics
       const ids = [
         typeof s.relic === 'string' && !s.relic.startsWith('$') ? s.relic : null,
-        ...(s.relic ? [] : fam?.relics || []),
+        ...(s.relic ? [] : (v?.relics ?? fam?.relics) || []),
         typeof s.wears === 'string' ? s.wears : null,
       ].filter(Boolean);
       for (const r of ids) if (!out[r]) out[r] = id;

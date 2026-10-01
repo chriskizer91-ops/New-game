@@ -15,10 +15,12 @@ import { dayShown } from '../../rules/story.js';
 
 // The title's line and the carry-over card count the relics out of how many there are (75 with Page V, as the count
 // was before M7); the Codex's labels count to the highest number instead ("No. 000 / 074": ui/lib/items.js codexNo)
-export const RELIC_TOTAL = Object.keys(RELICS).length;
+// Thareia (T2): Chapter 1's relics (`thareia: true`) sit on no Codex page, so the count leaves them out
+const CODEX_IDS = Object.keys(RELICS).filter(id => !RELICS[id].thareia);
+export const RELIC_TOTAL = CODEX_IDS.length;
 export const inSentence = name => String(name || '').replace(/^The /, 'the ');
 const shortName = (id, h) => (id === 'alondra' ? 'Alondra' : String(h?.name || id).split(' ')[0]);
-const claimedOf = game => Object.keys(RELICS).filter(id => game.codex?.[id]?.claimed).length;
+const claimedOf = game => CODEX_IDS.filter(id => game.codex?.[id]?.claimed).length;
 
 export function saveLine(game) {
   const w = game.party.roster.warden;

@@ -86,6 +86,8 @@ Delva, Renn and Veyra, with the player's own hero.
 **Level gates and ships (2026-09-30):** zones are **hard-locked** by level **and** ship. A free ticket first, a rented
 skiff to level 10, then your own ships at levels 10, 20, 30 and 40 (the skiff, the refitted skiff, the cruiser, the
 Aethership). All four ship sheets are in `../art-in/airship/`. Details in `05-story-and-quests.md`.
+(T2, spec 09 6.1: the rented skiff opens with Aldric's sponsorship in Chapter 1; the main path ends at level 10, and a
+player who does everything reaches 12-13 before Chapter 2.)
 
 ## Open
 - **The walking views:** how many per region, and how they connect (they cost the most space; see below).

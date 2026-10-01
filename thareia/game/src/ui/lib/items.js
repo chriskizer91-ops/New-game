@@ -44,9 +44,10 @@ export const isRelic = item => !!RELICS[item?.base];
 export const relicOf = item => RELICS[item?.base] || null;
 // M7 (spec §4.6): the label's total is the highest Codex number, not the count ("No. 000 / 074": Page V starts at
 // No. 000, so there is one more relic than the last number says)
-export const RELIC_TOTAL = Math.max(...Object.values(RELICS).map(r => r.codex));
+// Thareia (T2): Chapter 1's relics (`thareia: true`, Nos. 75-78) sit on no Codex page, so they are not in the total
+export const RELIC_TOTAL = Math.max(...Object.values(RELICS).filter(r => !r.thareia).map(r => r.codex));
 const pad3 = n => String(n).padStart(3, '0');
-export const codexNo = relic => `No. ${pad3(relic.codex)} / ${pad3(RELIC_TOTAL)}`;
+export const codexNo = relic => (relic.thareia ? `No. ${pad3(relic.codex)}` : `No. ${pad3(relic.codex)} / ${pad3(RELIC_TOTAL)}`);
 
 export const temperOf = item => Math.max(0, item?.temper || 0);
 const makeOf = item => (isRelic(item) ? 0 : RARITY[item.rarity]?.enchant || 0);

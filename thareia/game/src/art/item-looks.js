@@ -283,6 +283,14 @@ export const RELIC_ART = Object.freeze({
   'ironvein-apron': { r: 'leather', relic: true, fx: 'dust', aspect: 'stone', p: { style: 'apron', mat: 'm7.scorched', strap: 'leatherDark', trim: 'leatherDark', rivet: 'brass', mark: 'brass', vein: 'ember', scorch: 'char' } },
   // the Worldforge Heart: a heart of molten metal, white-hot at its core, shut in a cage of black iron on a heavy band
   'worldforge-heart': { r: 'ring', relic: true, fx: 'rise', aspect: 'ember', p: { style: 'heartcage', metal: 'blackiron', heart: 'm7.molten', core: 'radiant', drip: 1, gem: 'm7.molten' } },
+  // ---- Thareia (T2): Chapter 1's relics ----
+  // the Fawnrest Heartstone: the node's sunstone on a bronze chain, gold veins in it (the node cooled from white to gold)
+  'fawnrest-heartstone': { r: 'amulet', relic: true, fx: 'rise', aspect: 'ember', p: { style: 'heart', chain: 'bronze', metal: 'bronze', stone: 'topaz', core: 'ember', veins: 'radiant', gem: 'topaz' } },
+  // the three text-only copies keep the old relics' looks (the numbers are the same; only their words changed), with a
+  // plainer trim: a runner's knife with a bronze guard, worn gloves with an iron cuff, the wreath without its berries
+  'th-crateknife': { r: 'dagger', relic: true, fx: 'rise', aspect: 'blight', p: { shape: 'knife', gripEnd: 13, guardT: 2.8, bladeL: 40, bladeW: 6, blade: 'blackiron', bladeTex: rotSpots, tally: 'blight', guard: 'coin', guardMat: 'bronze', guardW: 6.5, grip: 'leatherDark', gripR: 2.1, pommel: 'bronze', pommelShape: 'coin', pommelR: 3.4 } },
+  'th-lightfingers': { r: 'gloves', relic: true, fx: 'fall', aspect: 'frost', p: { mat: 'leatherDark', cuffMat: 'leatherDark', tex: frostStitch, tips: 'skinPale', tipCut: .66, fray: 'leather', trim: 'iron', sigil: 'frost', cuffBand: 'iron', cuffGem: 'sapphire', cuffSet: 'iron', coin: 'bronze', coinAt: [27.4, 21.2], coinR: [5, 3.3, .18] } },
+  'th-thornwreath': { r: 'crown', relic: true, fx: 'spore', aspect: 'verdant', p: { style: 'thorn', mat: 'bramble', mat2: 'bark', thorn: 'thorn', buds: 'verdant', leaves: 'moss' } },
 });
 export const RELIC_IDS = Object.keys(RELIC_ART);
 

@@ -46,6 +46,7 @@ import * as Story from '../../rules/story.js';
 import { check } from '../../rules/cond.js';
 import { migrate, SAVE_VERSION } from '../../rules/migrate.js';
 import { relicItem } from '../../rules/loot.js';
+import { grantXp, xpForLevel } from '../../rules/progression.js';
 import { dirTo, DIRS } from '../../rules/path.js';
 import * as Art from '../../art/index.js';
 import { el } from '../lib/dom.js';
@@ -846,6 +847,9 @@ export function mount(root, ctx, params = {}) {
     // gold, forge materials and gems (M4: a Sunscorch chest's loot), and consumables
     const words = lootWords({ gold: r.gold, materials: r.materials, gems: r.gems, bag: r.bag });
     if (words) { ctx.toast(words, 2800); announce(words); }
+    // Thareia (T2): a chest may hold a paper to read (the runners' ledger, the manifest, the signal code)
+    const note = entityById(e.id)?.note;
+    if (note) { await openMessage(ctx, { text: note, dock: dockRect() }); if (dead) return 'stop'; }
     for (const it of r.items || []) { if (dead) return 'stop'; await cards(() => ctx.services.cardReveal(it, { source: 'drop', backdrop: mapNow()?.backdrop })); }
     return null;
   }
@@ -1207,6 +1211,18 @@ export function mount(root, ctx, params = {}) {
       },
       resetPerf() { loop.stats.n = 0; drawN = 0; },
       busy: () => lock > 0 || M.transition || M.moving || !!M.path,
+      // T2 e2e (tools/e2e-t2.mjs): the party trained up to `level` (the XP the skipped side fights would give), and
+      // rested, between scenes
+      train(level) {
+        const roster = { ...game.party.roster };
+        for (const id of game.party.active) {
+          const h = roster[id];
+          if (h && h.level < level) roster[id] = grantXp(h, xpForLevel(level) - (h.xp || 0), createRng(`e2e:train:${id}:${level}`)).hero;
+        }
+        game = G.healAll({ ...game, party: { ...game.party, roster } });
+        save(); refreshUi();
+        return game.party.active.map(id => game.party.roster[id].level);
+      },
     };
   }
 

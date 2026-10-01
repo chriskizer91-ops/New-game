@@ -6,9 +6,11 @@
 // --ticket: the early route (board with the passage ticket at once, no town and no fights), to the same landing and card.
 // T2: the skiff lands on th-landing (the field outside Thornhollow's south gate); the card must show, and the HUD's
 // objective must be Chapter 1's first ("Stop the thieves at the crate.").
+// --fixture=<path>: write the game at the end (on the landing, the card closed) as JSON: the T2 e2e starts from it
+// (tools/fixtures/t2-start.json from the fight route, t2-start-early.json from --ticket).
 import { createRequire } from 'node:module';
 import { execSync } from 'node:child_process';
-import { existsSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -138,6 +140,7 @@ const obj = await page.evaluate(() => document.body.innerText);
 if (!obj.includes('Stop the thieves at the crate.')) errors.push('the objective line is not Chapter 1\'s first');
 const g = await page.evaluate(() => window.__world.game());
 console.log('at', g.progress.pos, 'party', g.party.active, 'gold', g.gold, 'levels', g.party.active.map(id => g.party.roster[id].level));
+if (args.fixture && !errors.length) { const f = path.resolve(root, args.fixture); mkdirSync(path.dirname(f), { recursive: true }); writeFileSync(f, JSON.stringify(g, null, 1) + '\n'); console.log('wrote', path.relative(root, f)); }
 console.log(errors.length ? 'ERRORS:\n' + errors.join('\n') : 'no errors');
 await browser.close();
 if (errors.length) process.exit(1);

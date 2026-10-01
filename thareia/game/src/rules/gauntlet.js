@@ -22,7 +22,7 @@ import { RELICS } from '../data/relics.js';
 import { ENCOUNTERS, GAUNTLET, BRANDS } from '../data/encounters.js';
 import { RIVAL_KITS } from '../data/rivals.js';
 import { HEARTHS, START_AT, REGIONS } from '../data/world.js';
-import { FOES, tierAs, tierRow } from '../data/foes.js';
+import { tierAs, tierRow } from '../data/foes.js';
 import { TUNING } from '../data/tuning.js';
 import { SLOTS } from '../data/items.js';
 import { createBattle, outcome } from './battle.js';
@@ -136,7 +136,8 @@ export function travel(game, hfId) {
   return { ...game, progress: { ...game.progress, pos: { map: h.map, x: h.x, y: h.y, face: h.face } } };
 }
 
-function healAll(game) {
+// (exported for the e2e seam: the party rested between scenes)
+export function healAll(game) {
   const roster = {};
   const bonus = pageBonus(game);
   for (const [id, h] of Object.entries(game.party.roster)) {
@@ -161,7 +162,7 @@ function echoItem(game, relicId, level, salt) {
 }
 
 function heldFor(game, spawn, key) {
-  const ids = spawn.relic ? [spawn.relic] : (FOES[spawn.family].relics || []);
+  const ids = spawn.relic ? [spawn.relic] : (familyOf(spawn).relics || []); // a variant may hold its own (T2: the Hart's heartstone)
   if (!ids.length) return null;
   return ids.map((id, j) => (owns(game, id) ? { item: echoItem(game, id, spawn.level, `${key}:${j}`) } : { relic: id }));
 }
